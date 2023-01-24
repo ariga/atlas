@@ -13,9 +13,9 @@ An operator class identifies the operators to be used by the index for the index
 Here is how you can specify an operator class for a column in an index definition:
 
 ```sql
-CREATE INDEX 
-    name 
-ON 
+CREATE INDEX
+    name
+ON
     table (column opclass [ ( opclass_options ) ] [sort options] [, ...]);
 ```
 
@@ -42,11 +42,11 @@ Here is how a portion of the table might look like after inserting values:
 ```sql
 SELECT
         *
-FROM    
+FROM
         internet_provider
 ```
 ```console title="Output"
- id | subscriber_name  |      email_address      | payment_pending | active_user 
+ id | subscriber_name  |      email_address      | payment_pending | active_user
 ----+------------------+-------------------------+-----------------+-------------
   0 | Abel Warren      | havb@example.com        | 730             | false
   1 | Erick Valentine  | riuee@example.com       | 70              | false
@@ -61,7 +61,7 @@ FROM
 .
 .
 .
-   id   | subscriber_name  |      email_address      | payment_pending | active_user 
+   id   | subscriber_name  |      email_address      | payment_pending | active_user
 --------+------------------+-------------------------+-----------------+-------------
  999999 | James Strong     | jxgi3@example.com       | 788             | true
  999998 | Virginia Ballard | rkdzo0@example.com      | 598             | false
@@ -76,14 +76,14 @@ FROM
 (1000000 rows)
 ```
 
-We do not have any indexes other than the primary index on the `id` column. 
+We do not have any indexes other than the primary index on the `id` column.
 
 Now, let’s assume that we are not aware of the usage of operator classes in indexes just yet. We want to accelerate queries involving patterns matching expressions with a `LIKE` operator in order to search a name in the `subscriber_name` column. In this case, we would create an index on the column `subscriber_name` with the following command:
 
 ```sql
-CREATE INDEX 
+CREATE INDEX
     internet_provider_idx
-ON 
+ON
     internet_provider(subscriber_name);
 ```
 
@@ -98,7 +98,7 @@ Awesome! Our index is now created on the `subscriber_name` column. Now, suppose 
 EXPLAIN ANALYZE
 SELECT
         *
-FROM    
+FROM
         internet_provider
 WHERE
         subscriber_name LIKE 'Shirley C%'
@@ -109,7 +109,7 @@ The EXPLAIN command is used for understanding the performance of a query. You ca
 :::
 
 ```console title="Output"
-                                                             QUERY PLAN                                                             
+                                                             QUERY PLAN
 ------------------------------------------------------------------------------------------------------------------------------------
  Gather  (cost=1000.00..15874.33 rows=100 width=44) (actual time=5.956..227.339 rows=78 loops=1)
    Workers Planned: 2
@@ -129,7 +129,7 @@ Notice that the `internet_provider_idx` index that we created was not used in or
 In a parallel sequential scan, the table's blocks will be divided into ranges and shared among the cooperating processes. Each worker process will complete the scanning of its given range of blocks before requesting an additional range of blocks. To learn more about Parallel Plans in PostgreSQL, visit the official documentation [here](https://www.postgresql.org/docs/current/parallel-plans.html).
 :::
 
-Now, you might be wondering why the index that we created was not being used in the execution of this query. This is when having knowledge about the usage of operator classes becomes important. 
+Now, you might be wondering why the index that we created was not being used in the execution of this query. This is when having knowledge about the usage of operator classes becomes important.
 
 As mentioned earlier, an operator class identifies the operators to be used by the index for the indexed column. Let’s see this in action by specifying an operator class in our definition with the following commands:
 
@@ -139,9 +139,9 @@ DROP INDEX internet_provider_idx;
 DROP INDEX
 Time: 43.279 ms
 
-CREATE INDEX 
+CREATE INDEX
     internet_provider_idx
-ON 
+ON
     internet_provider(subscriber_name varchar_pattern_ops)
 ```
 
@@ -156,13 +156,13 @@ This time, we specified an operator class `varchar_pattern_ops` in our index def
 EXPLAIN ANALYZE
 SELECT
         *
-FROM    
+FROM
         internet_provider
 WHERE
         subscriber_name LIKE 'Shirley C%'
 ```
 ```console title="Output"
-                                                                 QUERY PLAN                                                                  
+                                                                 QUERY PLAN
 ---------------------------------------------------------------------------------------------------------------------------------------------
  Index Scan using internet_provider_idx on internet_provider  (cost=0.42..8.45 rows=100 width=44) (actual time=0.025..0.131 rows=78 loops=1)
    Index Cond: (((subscriber_name)::text ~>=~ 'Shirley C'::text) AND ((subscriber_name)::text ~<~ 'Shirley D'::text))
@@ -172,7 +172,7 @@ WHERE
 (5 rows)
 ```
 
-Amazing! This time, Index Scan was performed using `internet_provider_idx`. As a result, the cost, planning time, and execution time for our query have reduced significantly, as we expected. 
+Amazing! This time, Index Scan was performed using `internet_provider_idx`. As a result, the cost, planning time, and execution time for our query have reduced significantly, as we expected.
 
 The previous index (without a specified operator class) could have been helpful while executing queries with WHERE clauses with operators such as  <, <=, >, or >=. Though, the same index could not be utilized when executing queries with WHERE clauses with a `LIKE` operator.
 
@@ -250,8 +250,8 @@ Atlas generates the necessary SQL statements to add the new index to the databas
 -- Planned Changes:
 -- Create index "internet_provider_idx" to table: "internet_provider"
 CREATE INDEX "internet_provider_idx" ON "public"."internet_provider" ("subscriber_name" varchar_pattern_ops)
-Use the arrow keys to navigate: ↓ ↑ → ← 
-? Are you sure?: 
+Use the arrow keys to navigate: ↓ ↑ → ←
+? Are you sure?:
   ▸ Apply
     Abort
 ```
@@ -264,13 +264,13 @@ To verify that our new index was created, open the database command line tool fr
 
 ```console title="Output"
                                         Table "public.internet_provider"
-     Column      |          Type          | Collation | Nullable |                    Default                    
+     Column      |          Type          | Collation | Nullable |                    Default
 -----------------+------------------------+-----------+----------+-----------------------------------------------
  id              | integer                |           | not null | nextval('internet_provider_id_seq'::regclass)
- subscriber_name | character varying(255) |           | not null | 
- email_address   | character varying(255) |           | not null | 
- payment_pending | character varying(100) |           | not null | 
- active_user     | character varying(255) |           | not null | 
+ subscriber_name | character varying(255) |           | not null |
+ email_address   | character varying(255) |           | not null |
+ payment_pending | character varying(100) |           | not null |
+ active_user     | character varying(255) |           | not null |
 Indexes:
     "internet_provider_pkey" PRIMARY KEY, btree (id)
     "internet_provider_idx" btree (subscriber_name varchar_pattern_ops)
@@ -280,10 +280,10 @@ Amazing! Our new index `internet_provider_idx` with operator class `varchar_patt
 
 ### Wrapping up
 
-In this guide, we demonstrated how using indexes with an appropriate operator class becomes a very crucial skill in optimizing query performance with combinations of certain clauses and operators. 
+In this guide, we demonstrated how using indexes with an appropriate operator class becomes a very crucial skill in optimizing query performance with combinations of certain clauses and operators.
 
 ## Need More Help?​
 
 [Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
 
-[Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io/), our OSS database schema management tool, and our cloud platform [Ariga Cloud](https://ariga.cloud/).
+[Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io/), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud/).

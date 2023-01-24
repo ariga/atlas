@@ -351,8 +351,8 @@ Press `Enter` key while the Apply option is highlighted to apply the changes:
 -- Planned Changes:
 -- Modify "scorecard" table
 ALTER TABLE `scorecard`.`scorecard` ADD INDEX `sci_math_avg_idx` (((`science` + `mathematics`) / 2))
-Use the arrow keys to navigate: ↓ ↑ → ← 
-? Are you sure?: 
+Use the arrow keys to navigate: ↓ ↑ → ←
+? Are you sure?:
   ▸ Apply
     Abort
 ```
@@ -374,10 +374,10 @@ SHOW INDEXES FROM scorecard;
   Cardinality: 997438
      Sub_part: NULL
        Packed: NULL
-         Null: 
+         Null:
    Index_type: BTREE
-      Comment: 
-Index_comment: 
+      Comment:
+Index_comment:
       Visible: YES
    Expression: NULL
 *************************** 2. row ***************************
@@ -392,8 +392,8 @@ Index_comment:
        Packed: NULL
          Null: YES
    Index_type: BTREE
-      Comment: 
-Index_comment: 
+      Comment:
+Index_comment:
       Visible: YES
    Expression: ((`science` + `mathematics`) / 2)
 2 rows in set (0.00 sec)
@@ -407,4 +407,4 @@ In this guide, we demonstrated how using functional indexes with an appropriate 
 # Need More Help?​​
 [Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
 
-[Sign up](https://www.getrevue.co/profile/ariga) to our newsletter to stay up to date about [Atlas](https://atlasgo.io/), our OSS database schema management tool, and our cloud platform [Ariga Cloud](https://ariga.cloud/).
+[Sign up](https://www.getrevue.co/profile/ariga) to our newsletter to stay up to date about [Atlas](https://atlasgo.io/), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud/).

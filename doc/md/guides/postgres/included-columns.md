@@ -91,20 +91,20 @@ Now, suppose we want to find the ID of a user by their email address. Let’s ch
 
 ```sql
 EXPLAIN ANALYZE
-SELECT    
+SELECT
     first_name,
     last_name,
     email
-FROM    
+FROM
     "bankdb"
-WHERE 
+WHERE
     email = 'd-abbott3425@google.edu';
 ```
 
 ```console title="Output"
-QUERY PLAN                            
+QUERY PLAN
 ----------------
- Seq Scan on bankdb  (cost=0.00..38.75 rows=1 width=37) (actual time=0.180..0.181 
+ Seq Scan on bankdb  (cost=0.00..38.75 rows=1 width=37) (actual time=0.180..0.181
 rows=1 loops=1)
    Filter: ((email)::text = 'd-abbott3425@google.edu'::text)
    Rows Removed by Filter: 1499
@@ -118,7 +118,7 @@ Time: 0.626 ms
 Notice that the total cost is 38.75 units. If we want to use a unique index to accelerate the query, we can create it on the `email` column with the following command:
 
 ```sql
-CREATE UNIQUE INDEX emails_idx 
+CREATE UNIQUE INDEX emails_idx
 ON bankdb(email);
 ```
 ```console title="Output"
@@ -130,19 +130,19 @@ Now, let's check the performance of querying data of first and last names based 
 
 ```sql
 EXPLAIN ANALYZE
-SELECT    
+SELECT
     first_name,
     last_name,
     email
-FROM    
+FROM
     "bankdb"
-WHERE 
+WHERE
     email = 'd-abbott3425@google.edu';
 ```
 ```console title="Output"
-QUERY PLAN                   
+QUERY PLAN
 ----------------------------------
- Index Scan using emails_idx on bankdb  (cost=0.28..8.29 rows=1 width=37) (actual 
+ Index Scan using emails_idx on bankdb  (cost=0.28..8.29 rows=1 width=37) (actual
 time=0.200..0.203 rows=1 loops=1)
    Index Cond: ((email)::text = 'd-abbott3425@google.edu'::text)
  Planning Time: 0.081 ms
@@ -167,7 +167,7 @@ Suppose we want to accelerate the same query using the `INCLUDE` clause.
 In the following command, we will create an index with an `INCLUDE` clause that precisely covers `first_name` and `last_name` columns which are part of the query for which we are trying to improve performance.
 
 ```sql
-CREATE UNIQUE INDEX emails_idx 
+CREATE UNIQUE INDEX emails_idx
 ON bankdb(email)
 INCLUDE(first_name,last_name);
 ```
@@ -181,17 +181,17 @@ Now, let's check the performance of querying data of first and last names based 
 
 ```sql
 EXPLAIN ANALYZE
-SELECT    
+SELECT
     first_name,
     last_name,
     email
-FROM    
+FROM
     "bankdb"
-WHERE 
+WHERE
     email = 'd-abbott3425@google.edu';
 ```
 ```console title="Output"
-QUERY PLAN                 
+QUERY PLAN
 ---------------------------------------
  Index Only Scan using emails_idx on bankdb  (cost=0.28..4.29 rows=1 width=37) (ac
 tual time=0.228..0.231 rows=1 loops=1)
@@ -201,7 +201,7 @@ tual time=0.228..0.231 rows=1 loops=1)
  Execution Time: 0.283 ms
 (5 rows)
 ```
-Notice that the total cost is now 4.29, which is significantly lower, compared to 8.29 which we got while using a unique index without the `INCLUDE` clause. We were able to reduce the total cost because the query only scanned the index in order to get the data. As a result, `heap fetches` is also zero, which means the query does not access any tables to retrieve the records. 
+Notice that the total cost is now 4.29, which is significantly lower, compared to 8.29 which we got while using a unique index without the `INCLUDE` clause. We were able to reduce the total cost because the query only scanned the index in order to get the data. As a result, `heap fetches` is also zero, which means the query does not access any tables to retrieve the records.
 
 :::info
 You might be wondering why we didn’t just use `CREATE INDEX ON bankdb(email,first_name,last_name)` instead of using the `INCLUDE` clause. One of the advantages of using the `INCLUDE` clause is having fewer levels in a  B-tree. All `INCLUDE` columns are stored in the doubly linked list of the B-tree index.
@@ -287,8 +287,8 @@ Atlas generates the necessary SQL statements to add the new index to the databas
 -- Planned Changes:
 -- Create index "emails_idx" to table: "bankdb"
 CREATE UNIQUE INDEX "emails_idx" ON "public"."bankdb" ("email") INCLUDE ("first_name", "last_name")
-Use the arrow keys to navigate: ↓ ↑ → ← 
-? Are you sure?: 
+Use the arrow keys to navigate: ↓ ↑ → ←
+? Are you sure?:
   ▸ Apply
     Abort
 ```
@@ -301,15 +301,15 @@ To verify that our new index was created, open the database command line tool fr
 
 ```console title="Output"
                                     Table "public.bankdb"
- Column     |          Type         |Collation| Nullable |              Default   
-            
+ Column     |          Type         |Collation| Nullable |              Default
+
 ------------+-----------------------+---------+----------+------------------------------------
  id         | integer               |         | not null | nextval('bankdb_id_seq'::regclass)
  savings    | character varying(100)|         |          | NULL::character varying
  first_name | character varying(255)|         |          | NULL::character varying
  last_name  | character varying(255)|         |          | NULL::character varying
  email      | character varying(255)|         |          | NULL::character varying
- bank       | character varying(34) |         |          | 
+ bank       | character varying(34) |         |          |
 Indexes:
     "bankdb_pkey" PRIMARY KEY, btree (id)
     "emails_idx" UNIQUE, btree (email) INCLUDE (first_name, last_name)
@@ -320,6 +320,6 @@ Amazing! Our new index with included columns is now created!
 
 In this section, we learned about PostgreSQL indexes with included columns and how we can easily create them in our database by using Atlas.
 
-## Need More Help?​
+## Need More Help?
 
-[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling. [Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io), our OSS database schema management tool, and our cloud platform [Ariga Cloud](https://ariga.cloud).
+[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling. [Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud).
