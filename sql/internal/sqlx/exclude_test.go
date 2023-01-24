@@ -100,7 +100,6 @@ func TestExcludeRealm_Checks(t *testing.T) {
 			schema.NewTable("t1").AddChecks(schema.NewCheck().SetName("c1")),
 		),
 	)
-
 	r, err := ExcludeRealm(r, []string{"s1.t1.c1"})
 	require.NoError(t, err)
 	require.Len(t, r.Schemas[0].Tables[0].Attrs, 0)
