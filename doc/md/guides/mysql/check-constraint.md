@@ -99,7 +99,7 @@ INSERT INTO example (id, value) VALUES (1, -1);
 
 ```sql title="Syntax"
 ALTER TABLE table_name
-MODIFY COLUMN column_name data_type CHECK (column_name condition);
+MODIFY COLUMN column_name data_type CHECK (expression);
 ```
 
 ```sql title="Example"
