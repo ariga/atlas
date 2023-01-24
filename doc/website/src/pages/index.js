@@ -6,7 +6,6 @@ import index from './index.module.css';
 import GithubIcon from '../assets/icons/github.svg';
 import DiscordIcon from '../assets/icons/discord.svg';
 import TwitterIcon from '../assets/icons/twitter.svg';
-import NewsletterIcon from '../assets/icons/newsletter.svg';
 import BrowserOnly from "@docusaurus/core/lib/client/exports/BrowserOnly";
 
 function Nav() {
@@ -34,17 +33,14 @@ function SocialLinks() {
         <a href="https://github.com/ariga/atlas" target="_blank">
             <GithubIcon />
         </a>
-
         <a href="https://discord.gg/zZ6sWVg6NT" target="_blank">
             <DiscordIcon />
         </a>
         <a href="https://twitter.com/ariga_io" target="_blank">
             <TwitterIcon />
         </a>
-        <a href="https://atlasnewsletter.substack.com/" target="_blank">
-            <NewsletterIcon />
-        </a>
     </div>
+    
 }
 
 function Header() {
