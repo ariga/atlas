@@ -12,24 +12,22 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlclient"
 )
 
-func init() {
-	sqlclient.Register(
-		"cockroach",
-		sqlclient.DriverOpener(Open),
-		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("crdb"),
-		sqlclient.RegisterURLParser(parser{}),
-	)
-}
-
-// crdbDiff implements the sqlx.DiffDriver for CockroachDB.
 type (
 	crdbDiff    struct{ diff }
 	crdbInspect struct{ inspect }
+	noLocker    interface {
+		migrate.Driver
+		migrate.Snapshoter
+		migrate.CleanChecker
+		schema.Normalizer
+	}
+	noLockDriver struct {
+		noLocker
+	}
 )
 
 var _ sqlx.DiffDriver = (*crdbDiff)(nil)
@@ -266,10 +264,11 @@ const (
 	TypeGeometry = "geometry"
 )
 
-// CockroachDB query for getting schema indexes.
-// Scanning constraints is disabled due to internal CockroachDB error.
-// (internal error: unexpected type *tree.DOidWrapper for key value)
-const crdbIndexesQuery = `
+const (
+	// CockroachDB query for getting schema indexes.
+	// Scanning constraints is disabled due to internal CockroachDB error.
+	// (internal error: unexpected type *tree.DOidWrapper for key value)
+	crdbIndexesQuery = `
 SELECT
 	t.relname AS table_name,
 	i.relname AS index_name,
@@ -301,7 +300,7 @@ ORDER BY
 	table_name, index_name, idx.ord
 `
 
-const crdbColumnsQuery = `
+	crdbColumnsQuery = `
 SELECT
 	t1.table_name,
 	t1.column_name,
@@ -341,3 +340,4 @@ WHERE
 ORDER BY
 	t1.table_name, t1.ordinal_position
 `
+)

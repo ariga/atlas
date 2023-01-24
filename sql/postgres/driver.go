@@ -28,12 +28,13 @@ type (
 		schema.Differ
 		schema.Inspector
 		migrate.PlanApplier
-		schema string // the schema given in the `search_path` parameter (if given)
 	}
 
 	// database connection and its information.
 	conn struct {
 		schema.ExecQuerier
+		// The schema in the `search_path` parameter (if given).
+		schema string
 		// System variables that are set on `Open`.
 		collate string
 		ctype   string
@@ -69,7 +70,12 @@ func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
 		}
 		return nil, err
 	}
-	drv.(*Driver).schema = ur.Schema
+	switch drv := drv.(type) {
+	case *Driver:
+		drv.schema = ur.Schema
+	case noLockDriver:
+		drv.noLocker.(*Driver).schema = ur.Schema
+	}
 	return &sqlclient.Client{
 		Name:   DriverName,
 		DB:     db,
@@ -101,11 +107,13 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	}
 	// Means we are connected to CockroachDB because we have a result for name='crdb_version'. see `paramsQuery`.
 	if c.crdb = len(params) == 4; c.crdb {
-		return &Driver{
-			conn:        c,
-			Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
-			Inspector:   &crdbInspect{inspect{c}},
-			PlanApplier: &planApply{c},
+		return noLockDriver{
+			&Driver{
+				conn:        c,
+				Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
+				Inspector:   &crdbInspect{inspect{c}},
+				PlanApplier: &planApply{c},
+			},
 		}, nil
 	}
 	return &Driver{
