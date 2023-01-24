@@ -105,7 +105,7 @@ func TestDriver_UnlockError(t *testing.T) {
 
 func TestDriver_CheckClean(t *testing.T) {
 	s := schema.New("test")
-	drv := &Driver{Inspector: &mockInspector{schema: s}, schema: "test"}
+	drv := &Driver{Inspector: &mockInspector{schema: s}, conn: conn{schema: "test"}}
 	// Empty schema.
 	err := drv.CheckClean(context.Background(), nil)
 	require.NoError(t, err)
