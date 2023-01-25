@@ -215,3 +215,39 @@ func TestMemDir(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, hs1, hs2)
 }
+
+func TestLocalFile_Directive(t *testing.T) {
+	f := migrate.NewLocalFile("1.sql", []byte(`-- atlas:lint ignore
+alter table users drop column id;
+`))
+	require.Empty(t, f.Directive("lint"), "statement directives are ignored")
+
+	f = migrate.NewLocalFile("1.sql", []byte(`-- atlas:lint ignore
+
+alter table users drop column id;
+
+-- atlas:lint DS102
+alter table pets drop column id;
+`))
+	require.Equal(t, []string{"ignore"}, f.Directive("lint"), "single directive")
+
+	f = migrate.NewLocalFile("1.sql", []byte(`-- atlas:lint ignore
+-- atlas:txmode none
+
+alter table users drop column id;
+
+-- atlas:lint DS102
+alter table pets drop column id;
+`))
+	require.Equal(t, []string{"ignore"}, f.Directive("lint"), "first directive from two")
+	require.Equal(t, []string{"none"}, f.Directive("txmode"), "second directive from two")
+
+	f = migrate.NewLocalFile("1.sql", nil)
+	require.Empty(t, f.Directive("lint"))
+	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:lint ignore"))
+	require.Empty(t, f.Directive("lint"))
+	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:lint ignore\n"))
+	require.Empty(t, f.Directive("lint"))
+	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:lint ignore\n\n"))
+	require.Equal(t, []string{"ignore"}, f.Directive("lint"), "double newline as directive separator")
+}
