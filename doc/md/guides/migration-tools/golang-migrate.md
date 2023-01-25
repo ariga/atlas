@@ -72,7 +72,7 @@ h1:y6Zf8kAu98N0jAR+yemZ7zT91nUyECLWzxxR7GHJIAg=
 1_init.up.sql h1:kOM+4u8UsYvvjQMFYAo2hDv5rbx3Mdbh9GvhmbpS0Ig=
 ```
 
-## Convert you migrations directory to an Atlas schema file
+## Convert your migrations directory to an Atlas schema file
 
 With Atlas, users can describe their desired schema using an [HCL-based configuration language](https://atlasgo.io/atlas-schema/sql-resources).
 As a new user coming from an existing project, you may not want to learn this new language and
