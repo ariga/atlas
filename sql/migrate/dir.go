@@ -179,6 +179,37 @@ func (f LocalFile) Bytes() []byte {
 	return f.b
 }
 
+// Directive returns the (global) file directives that match the provided name.
+// File directives are located at the top of the file and should not be associated with any
+// statement. Hence, double new lines are used to separate file directives from its content.
+func (f LocalFile) Directive(name string) (ds []string) {
+	var (
+		comments []string
+		content  = string(f.b)
+	)
+	for strings.HasPrefix(content, "#") || strings.HasPrefix(content, "--") {
+		idx := strings.IndexByte(content, '\n')
+		if idx == -1 {
+			// Comments-only file.
+			comments = append(comments, content)
+			break
+		}
+		comments = append(comments, strings.TrimSpace(content[:idx]))
+		content = content[idx+1:]
+	}
+	// File directives are separated by
+	// double newlines from file content.
+	if !strings.HasPrefix(content, "\n") {
+		return nil
+	}
+	for _, c := range comments {
+		if d, ok := directive(c, name); ok {
+			ds = append(ds, d)
+		}
+	}
+	return ds
+}
+
 // MemDir provides an in-memory Dir implementation.
 type MemDir struct {
 	files map[string]File
