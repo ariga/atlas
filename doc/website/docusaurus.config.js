@@ -128,7 +128,7 @@ module.exports = {
     },
     announcementBar: {
       id: 'announcementBar-1', // Increment on change
-      content: `️🚀 Sign up for a user testing session and receive exclusive Atlas swag, register <a target="_blank" rel="noopener noreferrer" href="https://calendly.com/ariga-user-testing/atlas-user-testing">here!</a>`,
+      content: `️🚀 <a target="_blank" rel="noopener noreferrer" href="https://atlasnewsletter.substack.com/"> Subscribe</a><span> to the Atlas newsletter to stay up to date on new releases and updates!</span/>`, 
       isCloseable: true,
     },
   },
