@@ -127,8 +127,8 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-1', // Increment on change
-      content: `️🚀 <a target="_blank" rel="noopener noreferrer" href="https://atlasnewsletter.substack.com/"> Subscribe</a><span> to the Atlas newsletter to stay up to date on new releases and updates!</span/>`, 
+      id: 'announcementBar-2', // Increment on change
+      content: `️🚀 Read the latest updates in <a target="_blank" rel="noopener noreferrer" href="https://atlasnewsletter.substack.com/">our newsletter!</a>`, 
       isCloseable: true,
     },
   },
