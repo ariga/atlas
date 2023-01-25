@@ -94,6 +94,16 @@ func TestExcludeRealm_Tables(t *testing.T) {
 	require.Empty(t, r.Schemas[2].Tables)
 }
 
+func TestExcludeRealm_Checks(t *testing.T) {
+	r := schema.NewRealm(
+		schema.New("s1").AddTables(
+			schema.NewTable("t1").AddChecks(schema.NewCheck().SetName("c1")),
+		),
+	)
+	r, err := ExcludeRealm(r, []string{"s1.t1.c1"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas[0].Tables[0].Attrs, 0)
+}
 func TestExcludeRealm_Columns(t *testing.T) {
 	r := schema.NewRealm(
 		schema.New("s1").AddTables(
