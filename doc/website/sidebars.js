@@ -166,6 +166,11 @@ module.exports = {
                     label: 'Prefix Indexes'
                 },
                 {
+                    type: 'doc',
+                    id: 'guides/mysql/check-constraint',
+                    label: 'CHECK Constraint'
+                },
+                {
                   type: 'doc',
                   id: 'guides/mysql/generated-columns',
                   label: 'Generated Columns'
