@@ -36,13 +36,14 @@ set of migration files to analyze. Currently, two modes are supported.
 Annotating a statement with the `--atlas:nolint` directive allows excluding it from the analysis reporting. For example:
 
 <Tabs
-defaultValue="all"
+defaultValue="all-changes"
 values={[
-{label: 'All', value: 'all'},
-{label: 'Class of changes', value: 'by_name'},
-{label: 'Specific checks', value: 'by_check'},
+{label: 'All changes', value: 'all-changes'},
+{label: 'Class of changes', value: 'by-name'},
+{label: 'Specific checks', value: 'by-check'},
+{label: 'File level', value: 'file-level'},
 ]}>
-<TabItem value="all">
+<TabItem value="all-changes">
 
 Using `--atlas:nolint` excludes the annotated statement from all linters.
 
@@ -65,7 +66,7 @@ ALTER TABLE `t4` DROP COLUMN `c4`, ADD COLUMN `d4` varchar(255) NOT NULL;
 ```
 
 </TabItem>
-<TabItem value="by_name">
+<TabItem value="by-name">
 
 Using `--atlas:nolint [names...]` excludes reporting specific analyzers for the annotated statements.
 
@@ -93,7 +94,7 @@ ALTER TABLE `t4` DROP COLUMN `c4`, ADD COLUMN `d4` varchar(255) NOT NULL;
 
 </TabItem>
 
-<TabItem value="by_check">
+<TabItem value="by-check">
 
 Using `--atlas:nolint [checks...]` excludes reporting specific [checks](../lint/analyzers.md#checks) for the annotated
 statement.
@@ -103,6 +104,39 @@ statement.
 -- atlas:nolint DS103 MY101
 ALTER TABLE `t1` DROP COLUMN `c1`, ADD COLUMN `d1` varchar(255) NOT NULL;
 ```
+
+</TabItem>
+
+
+<TabItem value="file-level">
+
+The `--atlas:nolint` directive can be used at the file level to exclude the file from analysis, or to exclude specific
+statements in the file from specific [checks](../lint/analyzers.md#checks) or analyzers.
+
+```sql
+//highlight-next-line
+-- atlas:nolint
+
+ALTER TABLE `t1` DROP COLUMN `c1`, ADD COLUMN `d1` varchar(255) NOT NULL;
+
+DROP TABLE `t2`;
+```
+
+Skip a specific analyzer for all statements in the file:
+
+```sql
+//highlight-next-line
+-- atlas:nolint destructive
+
+ALTER TABLE `t1` DROP COLUMN `c1`, ADD COLUMN `d1` varchar(255) NOT NULL;
+
+DROP TABLE `t2`;
+```
+
+:::note
+File directives are located at the top of the file and should not be associated with any statement. Hence, double new
+lines are used to separate file directives from its content.
+:::
 
 </TabItem>
 </Tabs>

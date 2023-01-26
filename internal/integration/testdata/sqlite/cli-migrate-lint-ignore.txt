@@ -10,6 +10,18 @@ cmp got.txt empty.txt
 atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
 cmp got.txt expected3.txt
 
+# Ignore entire file.
+atlas migrate lint --dir file://migrations4 --dev-url URL --latest=1 > got.txt
+cmp got.txt empty.txt
+
+# Ignore destructive changes globally.
+atlas migrate lint --dir file://migrations5 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected5.txt
+
+# Ignore multiple change codes globally.
+atlas migrate lint --dir file://migrations6 --dev-url URL --latest=1 > got.txt
+cmp got.txt empty.txt
+
 -- migrations1/1.sql --
 CREATE TABLE users (id int);
 CREATE TABLE pets (id int);
@@ -49,3 +61,37 @@ DROP TABLE pets;
 
 	L1: Adding a non-nullable "text" column "name" will fail in case table "users" is not empty
 
+-- migrations4/1.sql --
+CREATE TABLE users (id int);
+CREATE TABLE pets (id int);
+
+-- migrations4/2.sql --
+-- atlas:nolint
+
+DROP TABLE pets;
+ALTER TABLE users ADD COLUMN name text NOT NULL;
+
+-- migrations5/1.sql --
+CREATE TABLE users (id int);
+CREATE TABLE pets (id int);
+
+-- migrations5/2.sql --
+-- atlas:nolint destructive
+
+DROP TABLE pets;
+ALTER TABLE users ADD COLUMN name text NOT NULL;
+
+-- expected5.txt --
+2.sql: data dependent changes detected:
+
+	L4: Adding a non-nullable "text" column "name" will fail in case table "users" is not empty
+
+-- migrations6/1.sql --
+CREATE TABLE users (id int);
+CREATE TABLE pets (id int);
+
+-- migrations6/2.sql --
+-- atlas:nolint destructive data_depend
+
+DROP TABLE pets;
+ALTER TABLE users ADD COLUMN name text NOT NULL;
