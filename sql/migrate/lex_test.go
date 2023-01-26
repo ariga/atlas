@@ -64,10 +64,13 @@ cmd5;
 atlas:lint not a directive
 */
 cmd6;
+
+-- atlas:nolint
+cmd7;
 `
 	stmts, err := NewLocalFile("f", []byte(f)).StmtDecls()
 	require.NoError(t, err)
-	require.Len(t, stmts, 7)
+	require.Len(t, stmts, 8)
 
 	require.Equal(t, "cmd0;", stmts[0].Text)
 	require.Equal(t, 0, stmts[0].Pos, "start of the file")
@@ -98,4 +101,7 @@ cmd6;
 	require.Equal(t, []string{"#atlas:lint error\n", "/*atlas:nolint DS101*/", "/* atlas:lint not a directive */", "/*\natlas:lint not a directive\n*/"}, stmts[6].Comments)
 	require.Equal(t, []string{"error"}, stmts[6].Directive("lint"))
 	require.Equal(t, []string{"DS101"}, stmts[6].Directive("nolint"))
+
+	require.Equal(t, "cmd7;", stmts[7].Text)
+	require.Equal(t, []string{""}, stmts[7].Directive("nolint"))
 }

@@ -115,12 +115,18 @@ func (r *Runner) summary(ctx context.Context) error {
 			nl = nolintRules(f)
 			fr = NewFileReport(f)
 		)
+		if nl.ignored {
+			continue
+		}
 		for _, az := range r.Analyzers {
-			if err := az.Analyze(ctx, &sqlcheck.Pass{
+			err := az.Analyze(ctx, &sqlcheck.Pass{
 				File:     f,
 				Dev:      r.Dev,
 				Reporter: nl.reporterFor(fr, az),
-			}); err != nil && !nl.skipped {
+			})
+			// If the last report was skipped,
+			// skip emitting its error.
+			if err != nil && !nl.skipped {
 				es = append(es, err.Error())
 			}
 		}
@@ -314,6 +320,21 @@ func (w *TemplateWriter) WriteReport(r *SummaryReport) error {
 
 func nolintRules(f *sqlcheck.File) *skipRules {
 	s := &skipRules{pos2rules: make(map[int][]string)}
+	if l, ok := f.File.(*migrate.LocalFile); ok {
+		ds := l.Directive("nolint")
+		// A file directive without specific classes/codes
+		// (e.g. atlas:nolint) ignores the entire file.
+		if s.ignored = len(ds) == 1 && ds[0] == ""; s.ignored {
+			return s
+		}
+		// A file directive with specific classes/codes applies these
+		// rules on all statements (e.g., atlas:nolint destructive).
+		for _, d := range ds {
+			for _, c := range f.Changes {
+				s.pos2rules[c.Stmt.Pos] = append(s.pos2rules[c.Stmt.Pos], strings.Split(d, " ")...)
+			}
+		}
+	}
 	for _, c := range f.Changes {
 		for _, d := range c.Stmt.Directive("nolint") {
 			s.pos2rules[c.Stmt.Pos] = append(s.pos2rules[c.Stmt.Pos], strings.Split(d, " ")...)
@@ -324,7 +345,8 @@ func nolintRules(f *sqlcheck.File) *skipRules {
 
 type skipRules struct {
 	pos2rules map[int][]string // statement positions to rules
-	skipped   bool             // last one skipped
+	ignored   bool             // file is ignored. i.e., no analysis is performed
+	skipped   bool             // if the last report was skipped by the rules
 }
 
 func (s *skipRules) reporterFor(rw sqlcheck.ReportWriter, az sqlcheck.Analyzer) sqlcheck.ReportWriter {
