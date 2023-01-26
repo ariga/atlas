@@ -110,7 +110,7 @@ ALTER TABLE `t1` DROP COLUMN `c1`, ADD COLUMN `d1` varchar(255) NOT NULL;
 
 <TabItem value="file-level">
 
-The `--atlas:nolint` directive can be used at the file level to exclude the file from analysis, or to exclude specific
+The `--atlas:nolint` directive can be used to exclude the whole file (given at top) from analysis, or to exclude specific
 statements in the file from specific [checks](../lint/analyzers.md#checks) or analyzers.
 
 ```sql
