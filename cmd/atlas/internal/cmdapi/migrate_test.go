@@ -575,7 +575,7 @@ func TestMigrate_ApplyTxMode(t *testing.T) {
 				// Apply the first 2 migrations for the faulty one.
 				s, err = runCmd(
 					migrateApplyCmd(),
-					"--dir", "file://testdata/sqlitetx_2",
+					"--dir", "file://testdata/sqlitetx2",
 					"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test_2.db")),
 					"--tx-mode", mode,
 					"2",
@@ -598,7 +598,7 @@ func TestMigrate_ApplyTxMode(t *testing.T) {
 				// Apply the rest, expect it to fail due to constraint error, but only the new one is reported.
 				s, err = runCmd(
 					migrateApplyCmd(),
-					"--dir", "file://testdata/sqlitetx_2",
+					"--dir", "file://testdata/sqlitetx2",
 					"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test_2.db")),
 					"--tx-mode", mode,
 				)
@@ -608,6 +608,41 @@ func TestMigrate_ApplyTxMode(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMigrate_ApplyTxModeDirective(t *testing.T) {
+	for _, mode := range []string{txModeNone, txModeFile} {
+		u := openSQLite(t, "")
+		_, err := runCmd(
+			migrateApplyCmd(),
+			"--dir", "file://testdata/sqlitetx3",
+			"--url", u,
+			"--tx-mode", mode,
+		)
+		require.EqualError(t, err, `sql/migrate: execute: executing statement "INSERT INTO t1 VALUES (1), (1);" from version "20220925094021": UNIQUE constraint failed: t1.a`)
+		db, err := sql.Open("sqlite3", strings.TrimPrefix(u, "sqlite://"))
+		require.NoError(t, err)
+		var n int
+		require.NoError(t, db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE name IN ('atlas_schema_revisions', 'users', 't1')").Scan(&n))
+		require.Equal(t, 3, n)
+		require.NoError(t, db.Close())
+	}
+
+	_, err := runCmd(
+		migrateApplyCmd(),
+		"--dir", "file://testdata/sqlitetx3",
+		"--url", "sqlite://txmode?mode=memory&_fk=1",
+		"--tx-mode", txModeAll,
+	)
+	require.EqualError(t, err, `cannot set txmode directive to "none" in "20220925094021_second.sql" when txmode "all" is set globally`)
+
+	_, err = runCmd(
+		migrateApplyCmd(),
+		"--dir", "file://testdata/sqlitetx4",
+		"--url", "sqlite://txmode?mode=memory&_fk=1",
+		"--tx-mode", txModeAll,
+	)
+	require.EqualError(t, err, `unknown txmode "unknown" found in file directive "20220925094021_second.sql"`)
 }
 
 func TestMigrate_ApplyBaseline(t *testing.T) {
