@@ -221,7 +221,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		drv migrate.Driver
 	)
 	for _, f := range pending {
-		drv, rrw, err = mux.driver(cmd.Context())
+		drv, rrw, err = mux.driverFor(cmd.Context(), f)
 		if err != nil {
 			return err
 		}
@@ -1144,17 +1144,23 @@ type tx struct {
 	dryRun       bool
 	mode, schema string
 	c            *sqlclient.Client
-	tx           *sqlclient.TxClient
 	rrw          migrate.RevisionReadWriter
+	// current transaction context.
+	tx    *sqlclient.TxClient
+	txrrw migrate.RevisionReadWriter
 }
 
-// driver returns the migrate.Driver to use to execute migration statements.
-func (tx *tx) driver(ctx context.Context) (migrate.Driver, migrate.RevisionReadWriter, error) {
+// driverFor returns the migrate.Driver to use to execute migration statements.
+func (tx *tx) driverFor(ctx context.Context, f migrate.File) (migrate.Driver, migrate.RevisionReadWriter, error) {
 	if tx.dryRun {
 		// If the --dry-run flag is given we don't want to execute any statements on the database.
 		return &dryRunDriver{tx.c.Driver}, &dryRunRevisions{tx.rrw}, nil
 	}
-	switch tx.mode {
+	mode, err := tx.modeFor(f)
+	if err != nil {
+		return nil, nil, err
+	}
+	switch mode {
 	case txModeNone:
 		return tx.c.Driver, tx.rrw, nil
 	case txModeFile:
@@ -1167,11 +1173,10 @@ func (tx *tx) driver(ctx context.Context) (migrate.Driver, migrate.RevisionReadW
 		if err != nil {
 			return nil, nil, err
 		}
-		tx.rrw, err = entRevisions(ctx, tx.tx.Client, tx.schema)
-		if err != nil {
+		if tx.txrrw, err = entRevisions(ctx, tx.tx.Client, tx.schema); err != nil {
 			return nil, nil, err
 		}
-		return tx.tx.Driver, tx.rrw, nil
+		return tx.tx.Driver, tx.txrrw, nil
 	case txModeAll:
 		// In file-mode, this function is called each time a new file is executed. Since we wrap all files into one
 		// huge transaction, if there already is an opened one, use that.
@@ -1181,14 +1186,13 @@ func (tx *tx) driver(ctx context.Context) (migrate.Driver, migrate.RevisionReadW
 			if err != nil {
 				return nil, nil, err
 			}
-			tx.rrw, err = entRevisions(ctx, tx.tx.Client, tx.schema)
-			if err != nil {
+			if tx.txrrw, err = entRevisions(ctx, tx.tx.Client, tx.schema); err != nil {
 				return nil, nil, err
 			}
 		}
-		return tx.tx.Driver, tx.rrw, nil
+		return tx.tx.Driver, tx.txrrw, nil
 	default:
-		return nil, nil, fmt.Errorf("unknown tx-mode %q", tx.mode)
+		return nil, nil, fmt.Errorf("unknown tx-mode %q", mode)
 	}
 }
 
@@ -1205,7 +1209,7 @@ func (tx *tx) mayRollback(err error) error {
 // mayCommit may commit a transaction depending on the given transaction mode.
 func (tx *tx) mayCommit() error {
 	// Only commit if each file is wrapped in a transaction.
-	if !tx.dryRun && tx.mode == txModeFile {
+	if tx.tx != nil && !tx.dryRun && tx.mode == txModeFile {
 		return tx.commit()
 	}
 	return nil
@@ -1216,8 +1220,30 @@ func (tx *tx) commit() error {
 	if tx.tx == nil {
 		return nil
 	}
-	defer func() { tx.tx = nil }()
+	defer func() { tx.tx, tx.txrrw = nil, nil }()
 	return tx.tx.Commit()
+}
+
+func (tx *tx) modeFor(f migrate.File) (string, error) {
+	l, ok := f.(*migrate.LocalFile)
+	if !ok {
+		return tx.mode, nil
+	}
+	switch ds := l.Directive("txmode"); {
+	case len(ds) > 1:
+		return "", fmt.Errorf("multiple txmode values found in file %q: %q", f.Name(), ds)
+	case len(ds) == 0 || ds[0] == tx.mode:
+		return tx.mode, nil
+	case ds[0] == txModeAll:
+		return "", fmt.Errorf("txmode %q is not allowed in file directive %q", txModeAll, f.Name())
+	case ds[0] == txModeNone, ds[0] == txModeFile:
+		if tx.mode == txModeAll {
+			return "", fmt.Errorf("cannot set txmode directive to %q in %q when txmode %q is set globally", ds[0], f.Name(), txModeAll)
+		}
+		return ds[0], nil
+	default:
+		return "", fmt.Errorf("unknown txmode %q found in file directive %q", ds[0], f.Name())
+	}
 }
 
 func operatorVersion() string {

@@ -47,6 +47,16 @@ in future releases. A good source of information can be found in the
 [PostgreSQL wiki](https://wiki.postgresql.org/wiki/Transactional_DDL_in_PostgreSQL:_A_Competitive_Analysis).
 :::
 
+#### File level transaction mode
+
+The `--atlas:txmode` directive can be used to override the transaction mode for a specific migration file:
+
+```sql {1}
+-- atlas:txmode none
+
+CREATE INDEX CONCURRENTLY name_idx ON users (name);
+```
+
 ### Existing Databases
 
 If you have an existing database project and want to switch over to Atlas Versioned Migrations, you need to provide
