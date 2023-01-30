@@ -14,9 +14,9 @@ database schema.
 
 ### Signing Up
 
-![Login](https://release.ariga.io/images/assets/login1.png)
+![Login](https://atlasgo.io/uploads/images/login-new.png)
 1. To get started with [Atlas Cloud](https://atlasgo.cloud/), create an account by clicking 'sign up' on the homepage.
-2. In the sign up screen, enter your work email and choose a password.
+2. In the sign up screen, you can either sign up with GitHub or enter your work email and choose a password.
 3. Next, you will receive an email to verify your account. From your email, [Atlas Cloud](https://atlasgo.cloud/)
 will open in a new tab, and you will need to sign in to access your account.
 4. Once signed in, you will be asked to confirm the service agreement in order to continue with the login process.
@@ -25,13 +25,13 @@ to invite team members to join. Choose a meaningful name for the organization, a
 For example, "Acme Corp" will be available at "acme-corp.atlasgo.cloud".
 
 ### Choosing an organization
-![Choosing organization](https://atlasgo.io/uploads/images/choose-org1.png)
+![Choosing organization](https://atlasgo.io/uploads/images/choose-org-new.png)
 Atlas Cloud allows you to be a part of multiple organizations.
 After logging in (not including the first login), you will see all the organizations you have access to. Choose the organization you would to log in to.
 If you would like to create a new organization, click 'create a new organization'.
-While logged in to one organization, you would be able to switch to another by clicking on your avatar on the top right corner and choose the organization you would like to switch to.
+While logged in to one organization, you would be able to switch to another by clicking on your avatar in the bottom left corner and choose the organization you would like to switch to.
 
-![Switching organization](https://atlasgo.io/uploads/images/choose-org2.png)
+![Switching organization](https://atlasgo.io/uploads/images/switch-org.png)
 
 ### Connecting to the Atlas GitHub action
 At first you will notice that your projects and CI runs pages are empty. In order to connect the organization
@@ -213,7 +213,7 @@ jobs:
 6. After merging the workflow to your mainline branch, the workflow will be triggered.
 7. Refresh Atlas Cloud and your project will appear!
 
-![Setup Projects](https://release.ariga.io/images/assets/setup-projects.png)
+![Setup Projects](https://atlasgo.io/uploads/images/new-project.png)
 
 ### Viewing CI Runs
 In the system, you can view all the CI runs that were triggered by the Atlas GitHub workflow.
@@ -235,15 +235,15 @@ values={[
 
 <TabItem value="successful">
 
-![Successful Run](https://release.ariga.io/images/assets/successful-run.png)
+![Successful Run](https://atlasgo.io/uploads/images/successful-ci.png)
 
-The CI ran successfully and no errors or issues were found in your SQL statements or Atlas sum file.
+CI ran successfully and no errors or issues were found in your SQL statements or Atlas sum file.
 
 </TabItem>
 
 <TabItem value = "issues">
 
-![Issues Found Run](https://release.ariga.io/images/assets/issues-found-screenshot.png)
+![Issues Found Run](https://atlasgo.io/uploads/images/issues-found-ci.png)
 
 In cases where your SQL statements _might_ cause a failure in production, the CI run will be labeled as 'issues
 found'. In this example, we can see that the column `name` was created as non-nullable. The CI is letting us know that
@@ -255,7 +255,7 @@ The report also makes sure to reference the specific data-dependent check that w
 
 <TabItem value = "failed">
 
-![Failed Run](https://release.ariga.io/images/assets/failed-run2.png)
+![Failed Run](https://atlasgo.io/uploads/images/failed-ci.png)
 The CI run can fail for multiple reasons: incorrect SQL statements, wrong configuration, and more.
 In this example, we can see the CI has failed due to an SQL statement that attempts to drop a table. Because this
 is dangerous and will result in loss of data, the CI will automatically fail any `drop` statements.
