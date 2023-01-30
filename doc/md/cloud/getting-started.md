@@ -237,7 +237,7 @@ values={[
 
 ![Successful Run](https://atlasgo.io/uploads/images/successful-ci.png)
 
-The CI ran successfully and no errors or issues were found in your SQL statements or Atlas sum file.
+CI ran successfully and no errors or issues were found in your SQL statements or Atlas sum file.
 
 </TabItem>
 
