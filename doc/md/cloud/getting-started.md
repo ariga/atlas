@@ -42,9 +42,8 @@ If you already have the Atlas GitHub action set up, you may skip step 4. In step
 `ariga-token: ${{ secrets.ARIGA_TOKEN }}` to your yaml file.
 :::
 
-1. From the Settings page, under 'Bots', click on "Create Bot" to create a new CI bot.  
-The CI bot will be used to connect your GitHub and allow Atlas Cloud to lint your pull requests.
-2. After saving your CI bot, click on "Create Token", and generate a token for your bot
+1. From the Settings page, under 'Bots', click on 'Create Bot' to create a new CI bot.  
+2. After saving your CI bot, click on 'Create Token' and generate a token for your bot.
 3. On your GitHub repo, under the 'Settings' section, click on 'Secrets' > 'Actions' to create a new repository secret.
 ![GitHub Secrets](https://release.ariga.io/images/assets/github-secrets.png)
 :::note
