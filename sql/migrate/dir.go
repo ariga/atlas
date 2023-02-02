@@ -218,8 +218,9 @@ type MemDir struct {
 // Open implements fs.FS.
 func (d *MemDir) Open(name string) (fs.File, error) {
 	var b []byte
-	switch name {
-	case HashFileName:
+	f, ok := d.files[name]
+	switch {
+	case !ok && name == HashFileName:
 		h, err := d.Checksum()
 		if err != nil {
 			return nil, err
@@ -227,11 +228,9 @@ func (d *MemDir) Open(name string) (fs.File, error) {
 		if b, err = h.MarshalText(); err != nil {
 			return nil, err
 		}
+	case !ok:
+		return nil, fs.ErrNotExist
 	default:
-		f, ok := d.files[name]
-		if !ok {
-			return nil, fs.ErrNotExist
-		}
 		b = f.Bytes()
 	}
 	return &memFile{
@@ -252,7 +251,9 @@ func (d *MemDir) WriteFile(name string, data []byte) error {
 func (d *MemDir) Files() ([]File, error) {
 	files := make([]File, 0, len(d.files))
 	for _, f := range d.files {
-		files = append(files, f)
+		if filepath.Ext(f.Name()) == ".sql" {
+			files = append(files, f)
+		}
 	}
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].Name() < files[j].Name()
