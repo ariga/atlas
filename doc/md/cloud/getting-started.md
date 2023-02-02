@@ -284,7 +284,7 @@ in order to access the organization.
 
 ### Deleting Tokens
 It is possible to delete the access token, however once you do so the token will be **invalidated**.
-Before you delete the token, you must rememebr to generate a new token, and copy the new token into your GitHub project's 'Secrets'
+Before you delete the token, you must remember to generate a new token, and copy the new token into your GitHub project's 'Secrets'
 
 :::info
 For more help, reach out to us on our [Discord server](https://discord.gg/zZ6sWVg6NT).
