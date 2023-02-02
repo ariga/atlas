@@ -281,9 +281,9 @@ Under 'Settings' > 'Members', you can invite team members to your organization.
 These members will receive an email with a link to Atlas Cloud, and will be required to sign up with the same email
 in order to access the organization.
 
-### Regenerating Tokens
-It is possible to regenerate the access token, however once you do so the old token will be **invalidated**.
-When choosing to regenerate the token, you must remember to copy the new one into your GitHub project's 'Secrets'.
+### Deleting Tokens
+It is possible to delete the access token, however once you do so the token will be **invalidated**.
+Before you delete the token, you must rememebr to generate a new token, and copy the new token into your GitHub project's 'Secrets'
 
 :::info
 For more help, reach out to us on our [Discord server](https://discord.gg/zZ6sWVg6NT).
