@@ -34,6 +34,7 @@ While logged in to one organization, you would be able to switch to another by c
 ![Switching organization](https://atlasgo.io/uploads/images/switch-org.png)
 
 ### Connecting to the Atlas GitHub action
+In order to connect to the Atlas GitHub Action, we will create a bot with permission to Report CI run results. Bots are used to manage permissions and make sure dedicated actions, such as reporting CI results are executed only by the entity with the desired permission.
 At first you will notice that your projects and CI runs pages are empty. In order to connect the organization
 to your GitHub repository, you will need to setup the Atlas GitHub action on your repository by following these steps:
 
@@ -42,8 +43,9 @@ If you already have the Atlas GitHub action set up, you may skip step 4. In step
 `ariga-token: ${{ secrets.ARIGA_TOKEN }}` to your yaml file.
 :::
 
-1. From the Settings page, under 'Bots', click on 'Create Bot' to create a new CI bot.  
-2. After saving your CI bot, click on 'Create Token' and generate a token for your bot.
+1. From the Settings page, under 'Bots', click on "Create Bot" to create a new CI bot.  
+The CI bot will be used to connect your GitHub and allow Atlas Cloud to lint your pull requests.
+2. After saving your CI bot, click on "Create Token", and generate a token for your bot
 3. On your GitHub repo, under the 'Settings' section, click on 'Secrets' > 'Actions' to create a new repository secret.
 ![GitHub Secrets](https://release.ariga.io/images/assets/github-secrets.png)
 :::note
