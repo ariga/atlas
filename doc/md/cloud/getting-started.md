@@ -42,15 +42,17 @@ If you already have the Atlas GitHub action set up, you may skip step 4. In step
 `ariga-token: ${{ secrets.ARIGA_TOKEN }}` to your yaml file.
 :::
 
-1. From the Settings page, generate an access token under 'Tokens'.
-2. On your GitHub repo, under the 'Settings' section, click on 'Secrets' > 'Actions' to create a new repository secret.
+1. From the Settings page, under 'Bots', click on "Create Bot" to create a new CI bot.  
+The CI bot will be used to connect your GitHub and allow Atlas Cloud to lint your pull requests.
+2. After saving your CI bot, click on "Create Token", and generate a token for your bot
+3. On your GitHub repo, under the 'Settings' section, click on 'Secrets' > 'Actions' to create a new repository secret.
 ![GitHub Secrets](https://release.ariga.io/images/assets/github-secrets.png)
 :::note
 If you do not see this on your GitHub repository, ask your repository owner for access or help.
 :::
-3. Name your secret (for example, ARIGA_TOKEN) and paste the generated token from step 2.
-4. Install the Atlas GitHub Action by adding a file named `.github/workflows/atlas-ci.yaml` to your repo.
-5. Based on the type of database you are using, copy the following code into the workflow definition file. Set up
+4. Name your secret (for example, ARIGA_TOKEN) and paste the generated token from step 2.
+5. Install the Atlas GitHub Action by adding a file named `.github/workflows/atlas-ci.yaml` to your repo.
+6. Based on the type of database you are using, copy the following code into the workflow definition file. Set up
 the `ariga-token` input parameter to the secret name you chose in the previous step, and ensure your
 mainline branch and migration directory path are configured correctly:
 
