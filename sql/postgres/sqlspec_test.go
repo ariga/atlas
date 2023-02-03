@@ -1518,6 +1518,14 @@ func TestTypes(t *testing.T) {
 			typeExpr: `sql("varchar(2) [ 2 ] [  ]")`,
 			expected: &ArrayType{Type: &schema.StringType{T: "varchar", Size: 2}, T: "varchar(2)[]"},
 		},
+		{
+			typeExpr: "oid",
+			expected: &OIDType{T: typeOID},
+		},
+		{
+			typeExpr: "regclass",
+			expected: &OIDType{T: typeRegClass},
+		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
 			var test schema.Schema
