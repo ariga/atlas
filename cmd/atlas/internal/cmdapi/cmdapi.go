@@ -541,7 +541,7 @@ func sqlStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 		if err != nil {
 			return nil, err
 		}
-		dir = &validMemDir{&migrate.MemDir{}}
+		dir = &validMemDir{}
 		if err := dir.WriteFile(fi.Name(), b); err != nil {
 			return nil, err
 		}
@@ -584,7 +584,7 @@ func (sr *stateReadCloser) Close() {
 }
 
 // validMemDir will not throw an error when put into migrate.Validate.
-type validMemDir struct{ *migrate.MemDir }
+type validMemDir struct{ migrate.MemDir }
 
 func (d *validMemDir) Validate() error { return nil }
 
