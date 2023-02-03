@@ -412,7 +412,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 	})
 }
 
-func TesSchema_ApplySources(t *testing.T) {
+func TestSchema_ApplySources(t *testing.T) {
 	var (
 		p   = t.TempDir()
 		cfg = filepath.Join(p, "atlas.hcl")
@@ -458,9 +458,9 @@ env "local" {
 	require.Equal(t, []string{
 		"-- Planned Changes:",
 		`-- Create "one" table`,
-		"CREATE TABLE `one` (`id` int NOT NULL)",
+		"CREATE TABLE `one` (`id` int NOT NULL);",
 		`-- Create "two" table`,
-		"CREATE TABLE `two` (`id` int NOT NULL)",
+		"CREATE TABLE `two` (`id` int NOT NULL);",
 	}, lines)
 }
 

@@ -215,10 +215,8 @@ func TestMemDir(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, hs1, hs2)
 
-	// If a checksum file is given, it will be used instead of generating the sum on the fly.
-	require.NoError(t, migrate.Validate(&d))
-	require.NoError(t, d.WriteFile(migrate.HashFileName, []byte("")))
-	require.ErrorIs(t, migrate.Validate(&d), migrate.ErrChecksumMismatch)
+	// Will fail without checksum file.
+	require.ErrorIs(t, migrate.Validate(&d), migrate.ErrChecksumNotFound)
 
 	// Will not return the non-sql checksum file.
 	files, err = d.Files()
