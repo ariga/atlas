@@ -741,6 +741,12 @@ type (
 	// Defined here for backward compatibility reasons.
 	UUIDType = schema.UUIDType
 
+	// OIDType defines an object identifier type.
+	OIDType struct {
+		schema.Type
+		T string
+	}
+
 	// A XMLType defines an XML type.
 	XMLType struct {
 		schema.Type

@@ -404,6 +404,20 @@ const (
 	TypeTSTZMultiRange = "tstzmultirange"
 	TypeDateRange      = "daterange"
 	TypeDateMultiRange = "datemultirange"
+
+	// PostgreSQL internal object types and their aliases.
+	typeOID           = "oid"
+	typeRegClass      = "regclass"
+	typeRegCollation  = "regcollation"
+	typeRegConfig     = "regconfig"
+	typeRegDictionary = "regdictionary"
+	typeRegNamespace  = "regnamespace"
+	typeRegOper       = "regoper"
+	typeRegOperator   = "regoperator"
+	typeRegProc       = "regproc"
+	typeRegProcedure  = "regprocedure"
+	typeRegRole       = "regrole"
+	typeRegType       = "regtype"
 )
 
 // List of supported index types.
