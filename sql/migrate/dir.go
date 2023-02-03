@@ -217,24 +217,12 @@ type MemDir struct {
 
 // Open implements fs.FS.
 func (d *MemDir) Open(name string) (fs.File, error) {
-	var b []byte
 	f, ok := d.files[name]
-	switch {
-	case !ok && name == HashFileName:
-		h, err := d.Checksum()
-		if err != nil {
-			return nil, err
-		}
-		if b, err = h.MarshalText(); err != nil {
-			return nil, err
-		}
-	case !ok:
+	if !ok {
 		return nil, fs.ErrNotExist
-	default:
-		b = f.Bytes()
 	}
 	return &memFile{
-		ReadCloser: io.NopCloser(bytes.NewReader(b)),
+		ReadCloser: io.NopCloser(bytes.NewReader(f.Bytes())),
 	}, nil
 }
 
@@ -426,6 +414,11 @@ var (
 // Validate checks if the migration dir is in sync with its sum file.
 // If they don't match ErrChecksumMismatch is returned.
 func Validate(dir Dir) error {
+	// If a migration directory implements the Validate() method,
+	// it will be used to determine the validity instead.
+	if v, ok := dir.(interface{ Validate() error }); ok {
+		return v.Validate()
+	}
 	fh, err := readHashFile(dir)
 	if errors.Is(err, fs.ErrNotExist) {
 		// If there are no migration files yet this is okay.
