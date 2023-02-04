@@ -1526,6 +1526,10 @@ func TestTypes(t *testing.T) {
 			typeExpr: "regclass",
 			expected: &OIDType{T: typeRegClass},
 		},
+		{
+			typeExpr: "name",
+			expected: &schema.StringType{T: typeName},
+		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
 			var test schema.Schema

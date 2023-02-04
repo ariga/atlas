@@ -734,11 +734,11 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec("hstore"),
 		schemahcl.NewTypeSpec("sql", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
 	),
-	// PostgreSQL internal types.
+	// PostgreSQL internal and special types.
 	schemahcl.WithSpecs(func() (specs []*schemahcl.TypeSpec) {
 		for _, t := range []string{
 			typeOID, typeRegClass, typeRegCollation, typeRegConfig, typeRegDictionary, typeRegNamespace,
-			typeRegOper, typeRegOperator, typeRegProc, typeRegProcedure, typeRegRole, typeRegType,
+			typeName, typeRegOper, typeRegOperator, typeRegProc, typeRegProcedure, typeRegRole, typeRegType,
 		} {
 			specs = append(specs, schemahcl.NewTypeSpec(t))
 		}
