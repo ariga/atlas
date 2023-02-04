@@ -333,6 +333,7 @@ const (
 	TypeCharVar   = "character varying"
 	TypeVarChar   = "varchar" // character varying
 	TypeText      = "text"
+	typeName      = "name" // internal type for object names
 
 	TypeSmallInt = "smallint"
 	TypeInteger  = "integer"
