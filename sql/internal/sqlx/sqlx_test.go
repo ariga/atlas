@@ -112,7 +112,6 @@ func TestMayWrap(t *testing.T) {
 				expect = "(" + expect + ")"
 			}
 			require.Equal(t, expect, MayWrap(tt.input))
-
 		})
 	}
 }

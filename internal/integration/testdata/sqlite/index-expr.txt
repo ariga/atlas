@@ -39,11 +39,11 @@ table "users" {
   }
   index "full_name" {
     on {
-        expr = "first_name || '''s first name'"
+        expr = "lower(first_name) || '''s first name'"
     }
   }
 }
 
 -- 2.sql --
 CREATE TABLE "users" (`first_name` text NOT NULL)
-CREATE INDEX `full_name` ON `users` ((first_name || '''s first name'))
+CREATE INDEX `full_name` ON `users` ((lower(first_name) || '''s first name'))
