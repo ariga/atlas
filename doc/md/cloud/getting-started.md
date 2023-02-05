@@ -34,7 +34,7 @@ While logged in to one organization, you would be able to switch to another by c
 ![Switching organization](https://atlasgo.io/uploads/images/switch-org.png)
 
 ### Connecting to the Atlas GitHub action
-In order to connect to the Atlas GitHub Action, we will create a bot with permission to Report CI run results. Bots are used to manage permissions and make sure dedicated actions, such as reporting CI results are executed only by the entity with the desired permission.
+In order to connect to the Atlas GitHub Action, we will create a bot with permission to report CI run results. Bots are used to manage permissions and make sure dedicated actions, such as reporting CI results, are executed only by the entity with the desired permission.
 At first you will notice that your projects and CI runs pages are empty. In order to connect the organization
 to your GitHub repository, you will need to setup the Atlas GitHub action on your repository by following these steps:
 
@@ -44,8 +44,8 @@ If you already have the Atlas GitHub action set up, you may skip step 4. In step
 :::
 
 1. From the Settings page, under 'Bots', click on "Create Bot" to create a new CI bot.  
-The CI bot will be used to connect your GitHub and allow Atlas Cloud to lint your pull requests.
-2. After saving your CI bot, click on "Create Token", and generate a token for your bot
+The CI bot will be used to connect your GitHub and will allow Atlas Cloud to lint your pull requests.
+2. After saving your CI bot, click on "Create Token", and generate a token for your bot.
 3. On your GitHub repo, under the 'Settings' section, click on 'Secrets' > 'Actions' to create a new repository secret.
 ![GitHub Secrets](https://release.ariga.io/images/assets/github-secrets.png)
 :::note
@@ -284,8 +284,6 @@ in order to access the organization.
 
 ### Deleting Tokens
 It is possible to delete the access token, however once you do so the token will be **invalidated**.
-Before you delete the token, you must remember to generate a new token, and copy the new token into your GitHub project's 'Secrets'
-
 :::info
 For more help, reach out to us on our [Discord server](https://discord.gg/zZ6sWVg6NT).
 :::
