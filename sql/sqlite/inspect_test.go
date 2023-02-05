@@ -86,6 +86,7 @@ func TestDriver_InspectTable(t *testing.T) {
 ------+--------------+----------+ ------------+----------+----------
  c1   | int           |  1      |             |  0       |  0
  c2   | integer       |  0      |             |  0       |  0
+ c3   | json          |  0      |             |  0       |  0
 `))
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexesQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
@@ -94,6 +95,7 @@ func TestDriver_InspectTable(t *testing.T) {
  c1u   |  1           |  c     |  0       | CREATE UNIQUE INDEX c1u on users(c1, c2)
  c1_c2 |  0           |  c     |  1       | CREATE INDEX c1_c2 on users(c1, c2*2) WHERE c1 <> NULL
  c1_x  |  0           |  c     |  0       | CREATE INDEX c1_x ON users (f(c1))
+ c3_x  |  0           |  c     |  0       | CREATE INDEX c3_x ON users (json_extract(c3, '$.x') desc, json_extract(c3, '$.y') desc)
 `))
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexColumnsQuery, "c1u"))).
 					WillReturnRows(sqltest.Rows(`
@@ -115,6 +117,13 @@ func TestDriver_InspectTable(t *testing.T) {
 -------+--------+
  nil   |  0     |
 `))
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexColumnsQuery, "c3_x"))).
+					WillReturnRows(sqltest.Rows(`
+ name  |   desc |
+-------+--------+
+ nil   |  1     |
+ nil   |  1     |
+`))
 				m.noFKs("users")
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
@@ -122,6 +131,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				columns := []*schema.Column{
 					{Name: "c1", Type: &schema.ColumnType{Null: true, Type: &schema.IntegerType{T: "int"}, Raw: "int"}},
 					{Name: "c2", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}},
+					{Name: "c3", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json"}},
 				}
 				indexes := []*schema.Index{
 					{
@@ -158,6 +168,18 @@ func TestDriver_InspectTable(t *testing.T) {
 						},
 						Attrs: []schema.Attr{
 							&CreateStmt{S: "CREATE INDEX c1_x ON users (f(c1))"},
+							&IndexOrigin{O: "c"},
+						},
+					},
+					{
+						Name:  "c3_x",
+						Table: t,
+						Parts: []*schema.IndexPart{
+							{SeqNo: 1, X: &schema.RawExpr{X: "json_extract(c3, '$.x')"}, Desc: true},
+							{SeqNo: 2, X: &schema.RawExpr{X: "json_extract(c3, '$.y')"}, Desc: true},
+						},
+						Attrs: []schema.Attr{
+							&CreateStmt{S: "CREATE INDEX c3_x ON users (json_extract(c3, '$.x') desc, json_extract(c3, '$.y') desc)"},
 							&IndexOrigin{O: "c"},
 						},
 					},

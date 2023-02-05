@@ -227,8 +227,11 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
-// A regexp to extract index parts.
-var reIdxParts = regexp.MustCompile("(?i)ON\\s+[\"`]*(?:\\w+)[\"`]*\\s*\\((.+)\\)")
+var (
+	// A regexp to extract index parts.
+	reIdxParts = regexp.MustCompile("(?i)ON\\s+[\"`]*(?:\\w+)[\"`]*\\s*\\((.+?)\\)(\\s*WHERE\\s+.+)?$")
+	reIdxDesc  = regexp.MustCompile("(?i)\\s+DESC\\s*$")
+)
 
 func (i *inspect) indexInfo(ctx context.Context, t *schema.Table, idx *schema.Index) error {
 	var (
@@ -271,15 +274,23 @@ func (i *inspect) indexInfo(ctx context.Context, t *schema.Table, idx *schema.In
 	if !sqlx.Has(idx.Attrs, &c) || !reIdxParts.MatchString(c.S) {
 		return nil
 	}
-	parts := strings.Split(reIdxParts.FindStringSubmatch(c.S)[1], ",")
-	// Unable to parse index parts correctly.
-	if len(parts) != len(idx.Parts) {
-		return nil
-	}
-	for i, p := range idx.Parts {
-		if p.X != nil {
-			p.X.(*schema.RawExpr).X = strings.TrimSpace(parts[i])
+	x := reIdxParts.FindStringSubmatch(c.S)[1]
+	for _, p := range idx.Parts {
+		j := sqlx.ExprLastIndex(x)
+		// Unable to parse index parts correctly.
+		if j == -1 {
+			return nil
 		}
+		if p.X != nil {
+			// Remove any extra spaces and the "DESC" clause
+			// in case the key-part is descending.
+			kx := strings.TrimSpace(x[:j+1])
+			if p.Desc {
+				kx = reIdxDesc.ReplaceAllString(kx, "")
+			}
+			p.X.(*schema.RawExpr).X = kx
+		}
+		x = strings.TrimLeft(x[j+1:], ", ")
 	}
 	return nil
 }
