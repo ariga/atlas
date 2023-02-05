@@ -282,9 +282,9 @@ Under 'Settings' > 'Members', you can invite team members to your organization.
 These members will receive an email with a link to Atlas Cloud, and will be required to sign up with the same email
 in order to access the organization.
 
-### Deleting Tokens
-It is possible to delete the access token, however once you do so the token will be **invalidated**.  
-If you would like to generate a new token instead the one you have deleted, you can do it by entering your bot from 'Bot Setting' screen and create a new token for it, make sure to update your GitHub project's 'Secrets' with the new token.
+### Deleting Bots and Tokens
+It is possible to delete a bot, however once you do all of its tokens will be **invalidated**.  
+If you would like to generate a new bot with a new token, make sure to update your GitHub project's 'Secrets' with the new token.
 
 :::info
 For more help, reach out to us on our [Discord server](https://discord.gg/zZ6sWVg6NT).
