@@ -34,6 +34,7 @@ While logged in to one organization, you would be able to switch to another by c
 ![Switching organization](https://atlasgo.io/uploads/images/switch-org.png)
 
 ### Connecting to the Atlas GitHub action
+In order to connect to the Atlas GitHub Action, we will create a bot with permission to report CI run results. Bots are used to manage permissions and make sure dedicated actions, such as reporting CI results, are executed only by the entity with the desired permission.
 At first you will notice that your projects and CI runs pages are empty. In order to connect the organization
 to your GitHub repository, you will need to setup the Atlas GitHub action on your repository by following these steps:
 
@@ -42,15 +43,17 @@ If you already have the Atlas GitHub action set up, you may skip step 4. In step
 `ariga-token: ${{ secrets.ARIGA_TOKEN }}` to your yaml file.
 :::
 
-1. From the Settings page, generate an access token under 'Tokens'.
-2. On your GitHub repo, under the 'Settings' section, click on 'Secrets' > 'Actions' to create a new repository secret.
+1. From the Settings page, under 'Bots', click on "Create Bot" to create a new CI bot.  
+The CI bot will be used to connect your GitHub and will allow Atlas Cloud to lint your pull requests.
+2. After saving your CI bot, click on "Create Token", and generate a token for your bot.
+3. On your GitHub repo, under the 'Settings' section, click on 'Secrets' > 'Actions' to create a new repository secret.
 ![GitHub Secrets](https://release.ariga.io/images/assets/github-secrets.png)
 :::note
 If you do not see this on your GitHub repository, ask your repository owner for access or help.
 :::
-3. Name your secret (for example, ARIGA_TOKEN) and paste the generated token from step 2.
-4. Install the Atlas GitHub Action by adding a file named `.github/workflows/atlas-ci.yaml` to your repo.
-5. Based on the type of database you are using, copy the following code into the workflow definition file. Set up
+4. Name your secret (for example, ARIGA_TOKEN) and paste the generated token from step 2.
+5. Install the Atlas GitHub Action by adding a file named `.github/workflows/atlas-ci.yaml` to your repo.
+6. Based on the type of database you are using, copy the following code into the workflow definition file. Set up
 the `ariga-token` input parameter to the secret name you chose in the previous step, and ensure your
 mainline branch and migration directory path are configured correctly:
 
@@ -279,9 +282,9 @@ Under 'Settings' > 'Members', you can invite team members to your organization.
 These members will receive an email with a link to Atlas Cloud, and will be required to sign up with the same email
 in order to access the organization.
 
-### Regenerating Tokens
-It is possible to regenerate the access token, however once you do so the old token will be **invalidated**.
-When choosing to regenerate the token, you must remember to copy the new one into your GitHub project's 'Secrets'.
+### Deleting Bots and Tokens
+It is possible to delete a bot, however once you do all of its tokens will be **invalidated**.  
+If you would like to generate a new bot with a new token, make sure to update your GitHub project's 'Secrets' with the new token.
 
 :::info
 For more help, reach out to us on our [Discord server](https://discord.gg/zZ6sWVg6NT).
