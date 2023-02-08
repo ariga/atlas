@@ -313,6 +313,10 @@ func TestTypes(t *testing.T) {
 			expected: &schema.IntegerType{T: "int8"},
 		},
 		{
+			typeExpr: "uint64",
+			expected: &schema.IntegerType{T: "uint64"},
+		},
+		{
 			typeExpr: "real",
 			expected: &schema.FloatType{T: "real"},
 		},
