@@ -1,0 +1,225 @@
+---
+id: declarative-hcl-singleschema
+title: A Quickstart Guide to Declarative Migrations with a Single Schema
+slug: /declarative/declarative-hcl
+---
+
+import InstallationInstructions from '../components/_installation_instructions.mdx'
+
+### Introduction
+
+Atlas makes it easy to manage your database using the declarative migrations workflow. Declarative migrations focus on describing the desired state of the database and allow the migration engine to plan and execute the necessary actions to reach that state.
+
+In this quickstart guide, we will go through the three essential steps for using Atlas to manage your database schema: inspecting your database, authoring the desired changes, and applying those changes.
+
+### Installing Atlas
+
+<InstallationInstructions />
+
+### Warming up
+To demonstrate the examples in the article, let's create a docker container with an `example` database and insert a table in it.
+Use the following command to run a MySQL Docker container
+
+```console
+docker run --name atlas-demo -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=example -p 3306:3306 -d mysql:latest
+```
+
+Once the container is running, you can connect to the MySQL server using the statement below:
+
+```console
+docker exec -it atlas-demo mysql -ppass
+```
+
+Once you're connected, you can switch to the `example` database and add a table in it by running the following command:
+
+```sql
+USE example;
+CREATE TABLE customers (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL
+);
+```
+
+## Step 1: Inspecting the database
+
+Before making any changes to your database, it's important to know what your database schema looks like. To do this, you can use the `atlas schema inspect` command to inspect your database. This command generates a file that represents your database schema, which can be used as a starting point for making changes.
+
+### Usage:
+```
+atlas schema inspect [flags]
+```
+
+### Example:
+
+The following command will inspect the current state of the schema `example` and store it in a file named schema.hcl
+
+```console
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > schema.hcl
+```
+
+```hcl title="schema.hcl"
+schema "example" {}
+
+table "customers" {
+  schema = schema.example
+  column "id" {
+    null           = false
+    type           = int
+    auto_increment = true
+  }
+  column "first_name" {
+    null = false
+    type = varchar(255)
+  }
+  column "last_name" {
+    null = false
+    type = varchar(255)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+```
+
+## Step 2: Authoring the desired change
+
+Once you have inspected your database, the next step is to author the desired change. This is done by modifying the HCL file that defines the present state of your schema. The file should include the changes you want to make to your database, such as adding tables, columns, or indexes.
+
+### Example:
+
+Let’s add the following table definition to the HCL schema file that we previously created by `atlas schema inspect` command:
+
+```hcl
+table "orders" {
+  schema = schema.example
+  column "id" {
+    null           = false
+    type           = int
+    auto_increment = true
+  }
+  column "customer_id" {
+    null = false
+    type = int
+  }
+  column "order_date" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "orders_ibfk_1" {
+    columns     = [column.customer_id]
+    ref_columns = [table.customers.column.id]
+  }
+}
+```
+
+## Step 3: Applying the changes
+
+The final step is to apply the changes to your database. To do this, simply run the `atlas schema apply` command with required flags. This command will compare the current state of your database to the desired state defined in your HCL or SQL file and make the necessary changes.
+
+### Usage:
+
+```console
+atlas schema apply [flags]
+```
+
+### Example:
+
+Let’s apply the changes we created in Step 2 using the following command:
+
+```console
+atlas schema apply \
+  --url "mysql://root:pass@localhost:3306/example" \
+  --to "file://schema.hcl"
+```
+
+Atlas compares  the current state of the database with the state described in the schema file, and shows you any necessary changes to bring the database in line with the schema definition.
+
+```console
+-- Planned Changes:
+-- Create "orders" table
+CREATE TABLE `example`.`orders` (`id` int NOT NULL AUTO_INCREMENT, `customer_id` int NOT NULL, `order_date` date NOT NULL, PRIMARY KEY (`id`), INDEX `orders_ibfk_1` (`customer_id`), CONSTRAINT `orders_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `example`.`customers` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+Use the arrow keys to navigate: ↓ ↑ → ← 
+? Are you sure?: 
+  ▸ Apply
+    Abort
+```
+
+Selecting `Apply` will apply the changes to the local environment.
+
+You can inspect the latest state of the database into the schema.hcl file again and verify that the changes have been applied by re-running the `atlas schema inspect` command:
+
+```console
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example"
+```
+```hcl
+table "customers" {
+  schema = schema.example
+  column "id" {
+    null           = false
+    type           = int
+    auto_increment = true
+  }
+  column "first_name" {
+    null = false
+    type = varchar(255)
+  }
+  column "last_name" {
+    null = false
+    type = varchar(255)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+table "orders" {
+  schema = schema.example
+  column "id" {
+    null           = false
+    type           = int
+    auto_increment = true
+  }
+  column "customer_id" {
+    null = false
+    type = int
+  }
+  column "order_date" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "orders_ibfk_1" {
+    columns     = [column.customer_id]
+    ref_columns = [table.customers.column.id]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+  index "orders_ibfk_1" {
+    columns = [column.customer_id]
+  }
+}
+schema "example" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+```
+We can confirm that the table has been effectively inserted into the `example` schema.
+
+:::info
+By following the steps above, you can inspect the current state of the database, make changes to the schema definition file and apply those changes to the database with confidence.
+:::
+
+### Conclusion
+
+The declarative migration is a flexible way to manage your database schema. It allows you to define your desired state in a simple, human-readable language, and then automatically apply those changes to your database. This can save you time and effort, and also reduce the risk of errors or inconsistencies in your database schema.
+
+## Need More Help?​
+
+[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling. 
+
+[Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud).
