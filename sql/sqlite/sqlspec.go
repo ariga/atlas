@@ -177,6 +177,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.AliasTypeSpec("unsigned_big_int", "unsigned big int", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec("int2", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec("int8", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("uint64", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec("double", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.AliasTypeSpec("double_precision", "double precision", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec("float", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),

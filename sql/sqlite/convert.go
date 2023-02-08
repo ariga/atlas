@@ -63,7 +63,7 @@ func ParseType(c string) (schema.Type, error) {
 		return &schema.BoolType{T: t}, nil
 	case "blob":
 		return &schema.BinaryType{T: t}, nil
-	case "int2", "int8", "int", "integer", "tinyint", "smallint", "mediumint", "bigint", "unsigned big int":
+	case "int2", "int8", "int", "uint64", "integer", "tinyint", "smallint", "mediumint", "bigint", "unsigned big int":
 		// All integer types have the same "type affinity".
 		return &schema.IntegerType{T: t}, nil
 	case "real", "double", "double precision", "float":

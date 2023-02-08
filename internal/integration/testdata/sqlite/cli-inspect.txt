@@ -44,6 +44,10 @@ table "users" {
     null = false
     type = int
   }
+  column "ac" {
+    null = false
+    type = uint64
+  }
 }
 schema "main" {
 }
