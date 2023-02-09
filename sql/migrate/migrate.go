@@ -831,7 +831,7 @@ type (
 	}
 )
 
-func (e NotCleanError) Error() string {
+func (e *NotCleanError) Error() string {
 	return "sql/migrate: connected database is not clean: " + e.Reason
 }
 

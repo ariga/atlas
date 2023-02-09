@@ -390,7 +390,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 		}
 		return pl.Plan(cmd.Context(), name, desired.StateReader)
 	}()
-	var cerr migrate.NotCleanError
+	var cerr *migrate.NotCleanError
 	switch {
 	case errors.Is(err, migrate.ErrNoPlan):
 		cmd.Println("The migration directory is synced with the desired state, no changes to be made")
