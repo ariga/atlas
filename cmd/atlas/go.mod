@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	ariga.io/atlas v0.9.0
-	entgo.io/ent v0.11.5-0.20221123165602-b6a475f066c4
+	entgo.io/ent v0.11.8-0.20230210122553-349b95097887
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220816024939-bc8df83d7b9d
 	github.com/auxten/postgresql-parser v1.0.1
 	github.com/fatih/color v1.13.0
