@@ -188,8 +188,7 @@ func TestExecutor_Replay(t *testing.T) {
 	drv.dirty = true
 	drv.realm = schema.Realm{Schemas: []*schema.Schema{{Name: "schema"}}}
 	_, err = ex.Replay(ctx, migrate.RealmConn(drv, nil))
-	var cerr *migrate.NotCleanError
-	require.ErrorAs(t, err, &cerr)
+	require.ErrorAs(t, err, new(*migrate.NotCleanError))
 }
 
 func TestExecutor_Pending(t *testing.T) {
