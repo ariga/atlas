@@ -8,7 +8,7 @@ replace ariga.io/atlas/cmd/atlas => ../../cmd/atlas
 
 require (
 	ariga.io/atlas v0.9.0
-	entgo.io/ent v0.11.8-0.20230210122553-349b95097887
+	entgo.io/ent v0.11.5-0.20221123165602-b6a475f066c4
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/lib/pq v1.10.7
