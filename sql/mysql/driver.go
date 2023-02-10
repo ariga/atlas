@@ -165,12 +165,15 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 
 // CheckClean implements migrate.CleanChecker.
 func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error {
+	if revT == nil { // accept nil values
+		revT = &migrate.TableIdent{}
+	}
 	s, err := d.InspectSchema(ctx, "", nil)
 	if err != nil && !schema.IsNotExistError(err) {
 		return err
 	}
 	if s != nil {
-		if len(s.Tables) == 0 || (revT != nil && (revT.Schema == "" || s.Name == revT.Schema) && len(s.Tables) == 1 && s.Tables[0].Name == revT.Name) {
+		if len(s.Tables) == 0 || (revT.Schema == "" || s.Name == revT.Schema) && len(s.Tables) == 1 && s.Tables[0].Name == revT.Name {
 			return nil
 		}
 		return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
