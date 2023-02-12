@@ -561,7 +561,7 @@ func TestMySQL_Snapshot(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = drv.(migrate.Snapshoter).Snapshot(context.Background())
-		require.ErrorAs(t, err, &migrate.NotCleanError{})
+		require.ErrorAs(t, err, new(*migrate.NotCleanError))
 
 		r, err := t.driver().InspectRealm(context.Background(), nil)
 		require.NoError(t, err)

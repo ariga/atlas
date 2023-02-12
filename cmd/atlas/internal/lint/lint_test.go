@@ -180,7 +180,7 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	})
 	require.NoError(t, err)
 	_, err = l.LoadChanges(ctx, base, files)
-	require.ErrorAs(t, err, &migrate.NotCleanError{})
+	require.ErrorAs(t, err, new(*migrate.NotCleanError))
 }
 
 type testDir struct {

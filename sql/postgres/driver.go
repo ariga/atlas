@@ -185,7 +185,7 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 			return nil, err
 		}
 		if len(s.Tables) > 0 {
-			return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in connected schema", s.Tables[0].Name)}
+			return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in connected schema", s.Tables[0].Name)}
 		}
 		return func(ctx context.Context) error {
 			current, err := d.InspectSchema(ctx, s.Name, nil)
@@ -221,11 +221,11 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	}
 	if s, ok := realm.Schema("public"); len(realm.Schemas) == 1 && ok {
 		if len(s.Tables) > 0 {
-			return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+			return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
 		}
 		return restore, nil
 	}
-	return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
+	return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
 }
 
 // CheckClean implements migrate.CleanChecker.

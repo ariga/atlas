@@ -128,7 +128,7 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	// If a schema was found, it has to have no tables attached to be considered clean.
 	if s != nil {
 		if len(s.Tables) > 0 {
-			return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+			return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
 		}
 		return func(ctx context.Context) error {
 			current, err := d.InspectSchema(ctx, s.Name, nil)
@@ -148,7 +148,7 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 		return nil, err
 	}
 	if len(realm.Schemas) > 0 {
-		return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
+		return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
 	}
 	return func(ctx context.Context) error {
 		current, err := d.InspectRealm(ctx, nil)
@@ -184,13 +184,13 @@ func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error
 	}
 	switch n := len(r.Schemas); {
 	case n > 1:
-		return migrate.NotCleanError{Reason: fmt.Sprintf("found multiple schemas: %d", len(r.Schemas))}
+		return &migrate.NotCleanError{Reason: fmt.Sprintf("found multiple schemas: %d", len(r.Schemas))}
 	case n == 1 && r.Schemas[0].Name != revT.Schema:
-		return migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", r.Schemas[0].Name)}
+		return &migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", r.Schemas[0].Name)}
 	case n == 1 && len(r.Schemas[0].Tables) > 1:
-		return migrate.NotCleanError{Reason: fmt.Sprintf("found multiple tables: %d", len(r.Schemas[0].Tables))}
+		return &migrate.NotCleanError{Reason: fmt.Sprintf("found multiple tables: %d", len(r.Schemas[0].Tables))}
 	case n == 1 && len(r.Schemas[0].Tables) == 1 && r.Schemas[0].Tables[0].Name != revT.Name:
-		return migrate.NotCleanError{Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
+		return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
 	}
 	return nil
 }

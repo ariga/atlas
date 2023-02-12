@@ -623,7 +623,7 @@ func TestPostgres_Snapshot(t *testing.T) {
 		drv := client.Driver
 
 		_, err = t.driver().(migrate.Snapshoter).Snapshot(context.Background())
-		require.ErrorAs(t, err, &migrate.NotCleanError{})
+		require.ErrorAs(t, err, new(*migrate.NotCleanError))
 
 		r, err := drv.InspectRealm(context.Background(), nil)
 		require.NoError(t, err)
@@ -721,7 +721,7 @@ table "users" {
 
 func TestPostgres_CLI_MultiSchema(t *testing.T) {
 	h := `
-			schema "public" {	
+			schema "public" {
 			}
 			table "users" {
 				schema = schema.public
@@ -732,7 +732,7 @@ func TestPostgres_CLI_MultiSchema(t *testing.T) {
 					columns = [column.id]
 				}
 			}
-			schema "test2" {	
+			schema "test2" {
 			}
 			table "pets" {
 				schema = schema.test2
@@ -975,7 +975,7 @@ create table atlas_types_sanity
     "tMACAddr8"            macaddr8                    default '08:00:2b:01:02:03:04:05'                null,
     "tCircle"              circle                      default                                          null,
     "tLine"                line                        default                                          null,
-    "tLseg"                lseg                        default                                          null, 
+    "tLseg"                lseg                        default                                          null,
     "tBox"                 box                         default                                          null,
     "tPath"                path                        default                                          null,
     "tPoint"               point                       default                                          null,
@@ -1001,12 +1001,12 @@ create table atlas_types_sanity
     "tSerial4"             serial4                                                                          ,
     "tSerial8"             serial8                                                                          ,
     "tArray"               text[10][10]                 default '{}'                                    null,
-    "tXML"                 xml                          default '<a>foo</a>'                            null,  
+    "tXML"                 xml                          default '<a>foo</a>'                            null,
     "tJSON"                json                         default '{"key":"value"}'                       null,
     "tJSONB"               jsonb                        default '{"key":"value"}'                       null,
     "tUUID"                uuid                         default  'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' null,
     "tMoney"               money                        default  18                                     null,
-    "tInterval"            interval                     default '4 hours'                               null, 
+    "tInterval"            interval                     default '4 hours'                               null,
     "tUserDefined"         address                      default '("ab","cd")'                           null
 );
 `

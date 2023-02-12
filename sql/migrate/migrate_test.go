@@ -188,7 +188,7 @@ func TestExecutor_Replay(t *testing.T) {
 	drv.dirty = true
 	drv.realm = schema.Realm{Schemas: []*schema.Schema{{Name: "schema"}}}
 	_, err = ex.Replay(ctx, migrate.RealmConn(drv, nil))
-	require.ErrorAs(t, err, &migrate.NotCleanError{})
+	require.ErrorAs(t, err, new(*migrate.NotCleanError))
 }
 
 func TestExecutor_Pending(t *testing.T) {
@@ -592,7 +592,7 @@ func (m *mockDriver) ApplyChanges(_ context.Context, changes []schema.Change, _ 
 
 func (m *mockDriver) Snapshot(context.Context) (migrate.RestoreFunc, error) {
 	if m.dirty {
-		return nil, migrate.NotCleanError{}
+		return nil, &migrate.NotCleanError{}
 	}
 	realm := m.realm
 	return func(context.Context) error {
