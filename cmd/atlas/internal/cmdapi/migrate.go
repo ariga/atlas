@@ -688,7 +688,7 @@ func migrateNewCmd() *cobra.Command {
 				if err := dirFormatBC(flags.dirFormat, &flags.dirURL); err != nil {
 					return err
 				}
-				return checkDir(cmd, flags.dirURL, false)
+				return checkDir(cmd, flags.dirURL, true)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return migrateNewRun(cmd, args, flags)
