@@ -19,11 +19,10 @@ type RevisionFunc func(context.Context, *ent.RevisionMutation) (ent.Value, error
 
 // Mutate calls f(ctx, m).
 func (f RevisionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	mv, ok := m.(*ent.RevisionMutation)
-	if !ok {
-		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RevisionMutation", m)
+	if mv, ok := m.(*ent.RevisionMutation); ok {
+		return f(ctx, mv)
 	}
-	return f(ctx, mv)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RevisionMutation", m)
 }
 
 // Condition is a hook condition function.

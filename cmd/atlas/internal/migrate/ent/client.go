@@ -31,7 +31,7 @@ type Client struct {
 
 // NewClient creates a new client configured with the given options.
 func NewClient(opts ...Option) *Client {
-	cfg := config{log: log.Println, hooks: &hooks{}}
+	cfg := config{log: log.Println, hooks: &hooks{}, inters: &inters{}}
 	cfg.options(opts...)
 	client := &Client{config: cfg}
 	client.init()
@@ -126,6 +126,22 @@ func (c *Client) Use(hooks ...Hook) {
 	c.Revision.Use(hooks...)
 }
 
+// Intercept adds the query interceptors to all the entity clients.
+// In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
+func (c *Client) Intercept(interceptors ...Interceptor) {
+	c.Revision.Intercept(interceptors...)
+}
+
+// Mutate implements the ent.Mutator interface.
+func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
+	switch m := m.(type) {
+	case *RevisionMutation:
+		return c.Revision.mutate(ctx, m)
+	default:
+		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
 // RevisionClient is a client for the Revision schema.
 type RevisionClient struct {
 	config
@@ -140,6 +156,12 @@ func NewRevisionClient(c config) *RevisionClient {
 // A call to `Use(f, g, h)` equals to `revision.Hooks(f(g(h())))`.
 func (c *RevisionClient) Use(hooks ...Hook) {
 	c.hooks.Revision = append(c.hooks.Revision, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `revision.Intercept(f(g(h())))`.
+func (c *RevisionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Revision = append(c.inters.Revision, interceptors...)
 }
 
 // Create returns a builder for creating a Revision entity.
@@ -194,6 +216,8 @@ func (c *RevisionClient) DeleteOneID(id string) *RevisionDeleteOne {
 func (c *RevisionClient) Query() *RevisionQuery {
 	return &RevisionQuery{
 		config: c.config,
+		ctx:    &QueryContext{Type: TypeRevision},
+		inters: c.Interceptors(),
 	}
 }
 
@@ -214,4 +238,24 @@ func (c *RevisionClient) GetX(ctx context.Context, id string) *Revision {
 // Hooks returns the client hooks.
 func (c *RevisionClient) Hooks() []Hook {
 	return c.hooks.Revision
+}
+
+// Interceptors returns the client interceptors.
+func (c *RevisionClient) Interceptors() []Interceptor {
+	return c.inters.Revision
+}
+
+func (c *RevisionClient) mutate(ctx context.Context, m *RevisionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&RevisionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&RevisionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&RevisionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&RevisionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Revision mutation op: %q", m.Op())
+	}
 }

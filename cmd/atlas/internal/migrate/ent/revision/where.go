@@ -16,260 +16,176 @@ import (
 
 // ID filters vertices based on their ID field.
 func ID(id string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldID), id))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldID, id))
 }
 
 // IDEQ applies the EQ predicate on the ID field.
 func IDEQ(id string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldID), id))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldID, id))
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
 func IDNEQ(id string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldID), id))
-	})
+	return predicate.Revision(sql.FieldNEQ(FieldID, id))
 }
 
 // IDIn applies the In predicate on the ID field.
 func IDIn(ids ...string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		v := make([]any, len(ids))
-		for i := range v {
-			v[i] = ids[i]
-		}
-		s.Where(sql.In(s.C(FieldID), v...))
-	})
+	return predicate.Revision(sql.FieldIn(FieldID, ids...))
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
 func IDNotIn(ids ...string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		v := make([]any, len(ids))
-		for i := range v {
-			v[i] = ids[i]
-		}
-		s.Where(sql.NotIn(s.C(FieldID), v...))
-	})
+	return predicate.Revision(sql.FieldNotIn(FieldID, ids...))
 }
 
 // IDGT applies the GT predicate on the ID field.
 func IDGT(id string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldID), id))
-	})
+	return predicate.Revision(sql.FieldGT(FieldID, id))
 }
 
 // IDGTE applies the GTE predicate on the ID field.
 func IDGTE(id string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldID), id))
-	})
+	return predicate.Revision(sql.FieldGTE(FieldID, id))
 }
 
 // IDLT applies the LT predicate on the ID field.
 func IDLT(id string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldID), id))
-	})
+	return predicate.Revision(sql.FieldLT(FieldID, id))
 }
 
 // IDLTE applies the LTE predicate on the ID field.
 func IDLTE(id string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldID), id))
-	})
+	return predicate.Revision(sql.FieldLTE(FieldID, id))
 }
 
 // Description applies equality check predicate on the "description" field. It's identical to DescriptionEQ.
 func Description(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldDescription, v))
 }
 
 // Type applies equality check predicate on the "type" field. It's identical to TypeEQ.
 func Type(v migrate.RevisionType) predicate.Revision {
 	vc := uint(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldType), vc))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldType, vc))
 }
 
 // Applied applies equality check predicate on the "applied" field. It's identical to AppliedEQ.
 func Applied(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldApplied), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldApplied, v))
 }
 
 // Total applies equality check predicate on the "total" field. It's identical to TotalEQ.
 func Total(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldTotal), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldTotal, v))
 }
 
 // ExecutedAt applies equality check predicate on the "executed_at" field. It's identical to ExecutedAtEQ.
 func ExecutedAt(v time.Time) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldExecutedAt), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldExecutedAt, v))
 }
 
 // ExecutionTime applies equality check predicate on the "execution_time" field. It's identical to ExecutionTimeEQ.
 func ExecutionTime(v time.Duration) predicate.Revision {
 	vc := int64(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldExecutionTime), vc))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldExecutionTime, vc))
 }
 
 // Error applies equality check predicate on the "error" field. It's identical to ErrorEQ.
 func Error(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldError, v))
 }
 
 // ErrorStmt applies equality check predicate on the "error_stmt" field. It's identical to ErrorStmtEQ.
 func ErrorStmt(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldErrorStmt, v))
 }
 
 // Hash applies equality check predicate on the "hash" field. It's identical to HashEQ.
 func Hash(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldHash, v))
 }
 
 // OperatorVersion applies equality check predicate on the "operator_version" field. It's identical to OperatorVersionEQ.
 func OperatorVersion(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldOperatorVersion, v))
 }
 
 // DescriptionEQ applies the EQ predicate on the "description" field.
 func DescriptionEQ(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldDescription, v))
 }
 
 // DescriptionNEQ applies the NEQ predicate on the "description" field.
 func DescriptionNEQ(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldNEQ(FieldDescription, v))
 }
 
 // DescriptionIn applies the In predicate on the "description" field.
 func DescriptionIn(vs ...string) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldDescription), v...))
-	})
+	return predicate.Revision(sql.FieldIn(FieldDescription, vs...))
 }
 
 // DescriptionNotIn applies the NotIn predicate on the "description" field.
 func DescriptionNotIn(vs ...string) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldDescription), v...))
-	})
+	return predicate.Revision(sql.FieldNotIn(FieldDescription, vs...))
 }
 
 // DescriptionGT applies the GT predicate on the "description" field.
 func DescriptionGT(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldGT(FieldDescription, v))
 }
 
 // DescriptionGTE applies the GTE predicate on the "description" field.
 func DescriptionGTE(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldGTE(FieldDescription, v))
 }
 
 // DescriptionLT applies the LT predicate on the "description" field.
 func DescriptionLT(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldLT(FieldDescription, v))
 }
 
 // DescriptionLTE applies the LTE predicate on the "description" field.
 func DescriptionLTE(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldLTE(FieldDescription, v))
 }
 
 // DescriptionContains applies the Contains predicate on the "description" field.
 func DescriptionContains(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldContains(FieldDescription, v))
 }
 
 // DescriptionHasPrefix applies the HasPrefix predicate on the "description" field.
 func DescriptionHasPrefix(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldHasPrefix(FieldDescription, v))
 }
 
 // DescriptionHasSuffix applies the HasSuffix predicate on the "description" field.
 func DescriptionHasSuffix(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldHasSuffix(FieldDescription, v))
 }
 
 // DescriptionEqualFold applies the EqualFold predicate on the "description" field.
 func DescriptionEqualFold(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldEqualFold(FieldDescription, v))
 }
 
 // DescriptionContainsFold applies the ContainsFold predicate on the "description" field.
 func DescriptionContainsFold(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldDescription), v))
-	})
+	return predicate.Revision(sql.FieldContainsFold(FieldDescription, v))
 }
 
 // TypeEQ applies the EQ predicate on the "type" field.
 func TypeEQ(v migrate.RevisionType) predicate.Revision {
 	vc := uint(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldType), vc))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldType, vc))
 }
 
 // TypeNEQ applies the NEQ predicate on the "type" field.
 func TypeNEQ(v migrate.RevisionType) predicate.Revision {
 	vc := uint(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldType), vc))
-	})
+	return predicate.Revision(sql.FieldNEQ(FieldType, vc))
 }
 
 // TypeIn applies the In predicate on the "type" field.
@@ -278,9 +194,7 @@ func TypeIn(vs ...migrate.RevisionType) predicate.Revision {
 	for i := range v {
 		v[i] = uint(vs[i])
 	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldType), v...))
-	})
+	return predicate.Revision(sql.FieldIn(FieldType, v...))
 }
 
 // TypeNotIn applies the NotIn predicate on the "type" field.
@@ -289,249 +203,163 @@ func TypeNotIn(vs ...migrate.RevisionType) predicate.Revision {
 	for i := range v {
 		v[i] = uint(vs[i])
 	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldType), v...))
-	})
+	return predicate.Revision(sql.FieldNotIn(FieldType, v...))
 }
 
 // TypeGT applies the GT predicate on the "type" field.
 func TypeGT(v migrate.RevisionType) predicate.Revision {
 	vc := uint(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldType), vc))
-	})
+	return predicate.Revision(sql.FieldGT(FieldType, vc))
 }
 
 // TypeGTE applies the GTE predicate on the "type" field.
 func TypeGTE(v migrate.RevisionType) predicate.Revision {
 	vc := uint(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldType), vc))
-	})
+	return predicate.Revision(sql.FieldGTE(FieldType, vc))
 }
 
 // TypeLT applies the LT predicate on the "type" field.
 func TypeLT(v migrate.RevisionType) predicate.Revision {
 	vc := uint(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldType), vc))
-	})
+	return predicate.Revision(sql.FieldLT(FieldType, vc))
 }
 
 // TypeLTE applies the LTE predicate on the "type" field.
 func TypeLTE(v migrate.RevisionType) predicate.Revision {
 	vc := uint(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldType), vc))
-	})
+	return predicate.Revision(sql.FieldLTE(FieldType, vc))
 }
 
 // AppliedEQ applies the EQ predicate on the "applied" field.
 func AppliedEQ(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldApplied), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldApplied, v))
 }
 
 // AppliedNEQ applies the NEQ predicate on the "applied" field.
 func AppliedNEQ(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldApplied), v))
-	})
+	return predicate.Revision(sql.FieldNEQ(FieldApplied, v))
 }
 
 // AppliedIn applies the In predicate on the "applied" field.
 func AppliedIn(vs ...int) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldApplied), v...))
-	})
+	return predicate.Revision(sql.FieldIn(FieldApplied, vs...))
 }
 
 // AppliedNotIn applies the NotIn predicate on the "applied" field.
 func AppliedNotIn(vs ...int) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldApplied), v...))
-	})
+	return predicate.Revision(sql.FieldNotIn(FieldApplied, vs...))
 }
 
 // AppliedGT applies the GT predicate on the "applied" field.
 func AppliedGT(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldApplied), v))
-	})
+	return predicate.Revision(sql.FieldGT(FieldApplied, v))
 }
 
 // AppliedGTE applies the GTE predicate on the "applied" field.
 func AppliedGTE(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldApplied), v))
-	})
+	return predicate.Revision(sql.FieldGTE(FieldApplied, v))
 }
 
 // AppliedLT applies the LT predicate on the "applied" field.
 func AppliedLT(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldApplied), v))
-	})
+	return predicate.Revision(sql.FieldLT(FieldApplied, v))
 }
 
 // AppliedLTE applies the LTE predicate on the "applied" field.
 func AppliedLTE(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldApplied), v))
-	})
+	return predicate.Revision(sql.FieldLTE(FieldApplied, v))
 }
 
 // TotalEQ applies the EQ predicate on the "total" field.
 func TotalEQ(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldTotal), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldTotal, v))
 }
 
 // TotalNEQ applies the NEQ predicate on the "total" field.
 func TotalNEQ(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldTotal), v))
-	})
+	return predicate.Revision(sql.FieldNEQ(FieldTotal, v))
 }
 
 // TotalIn applies the In predicate on the "total" field.
 func TotalIn(vs ...int) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldTotal), v...))
-	})
+	return predicate.Revision(sql.FieldIn(FieldTotal, vs...))
 }
 
 // TotalNotIn applies the NotIn predicate on the "total" field.
 func TotalNotIn(vs ...int) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldTotal), v...))
-	})
+	return predicate.Revision(sql.FieldNotIn(FieldTotal, vs...))
 }
 
 // TotalGT applies the GT predicate on the "total" field.
 func TotalGT(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldTotal), v))
-	})
+	return predicate.Revision(sql.FieldGT(FieldTotal, v))
 }
 
 // TotalGTE applies the GTE predicate on the "total" field.
 func TotalGTE(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldTotal), v))
-	})
+	return predicate.Revision(sql.FieldGTE(FieldTotal, v))
 }
 
 // TotalLT applies the LT predicate on the "total" field.
 func TotalLT(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldTotal), v))
-	})
+	return predicate.Revision(sql.FieldLT(FieldTotal, v))
 }
 
 // TotalLTE applies the LTE predicate on the "total" field.
 func TotalLTE(v int) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldTotal), v))
-	})
+	return predicate.Revision(sql.FieldLTE(FieldTotal, v))
 }
 
 // ExecutedAtEQ applies the EQ predicate on the "executed_at" field.
 func ExecutedAtEQ(v time.Time) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldExecutedAt), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldExecutedAt, v))
 }
 
 // ExecutedAtNEQ applies the NEQ predicate on the "executed_at" field.
 func ExecutedAtNEQ(v time.Time) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldExecutedAt), v))
-	})
+	return predicate.Revision(sql.FieldNEQ(FieldExecutedAt, v))
 }
 
 // ExecutedAtIn applies the In predicate on the "executed_at" field.
 func ExecutedAtIn(vs ...time.Time) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldExecutedAt), v...))
-	})
+	return predicate.Revision(sql.FieldIn(FieldExecutedAt, vs...))
 }
 
 // ExecutedAtNotIn applies the NotIn predicate on the "executed_at" field.
 func ExecutedAtNotIn(vs ...time.Time) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldExecutedAt), v...))
-	})
+	return predicate.Revision(sql.FieldNotIn(FieldExecutedAt, vs...))
 }
 
 // ExecutedAtGT applies the GT predicate on the "executed_at" field.
 func ExecutedAtGT(v time.Time) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldExecutedAt), v))
-	})
+	return predicate.Revision(sql.FieldGT(FieldExecutedAt, v))
 }
 
 // ExecutedAtGTE applies the GTE predicate on the "executed_at" field.
 func ExecutedAtGTE(v time.Time) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldExecutedAt), v))
-	})
+	return predicate.Revision(sql.FieldGTE(FieldExecutedAt, v))
 }
 
 // ExecutedAtLT applies the LT predicate on the "executed_at" field.
 func ExecutedAtLT(v time.Time) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldExecutedAt), v))
-	})
+	return predicate.Revision(sql.FieldLT(FieldExecutedAt, v))
 }
 
 // ExecutedAtLTE applies the LTE predicate on the "executed_at" field.
 func ExecutedAtLTE(v time.Time) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldExecutedAt), v))
-	})
+	return predicate.Revision(sql.FieldLTE(FieldExecutedAt, v))
 }
 
 // ExecutionTimeEQ applies the EQ predicate on the "execution_time" field.
 func ExecutionTimeEQ(v time.Duration) predicate.Revision {
 	vc := int64(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldExecutionTime), vc))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldExecutionTime, vc))
 }
 
 // ExecutionTimeNEQ applies the NEQ predicate on the "execution_time" field.
 func ExecutionTimeNEQ(v time.Duration) predicate.Revision {
 	vc := int64(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldExecutionTime), vc))
-	})
+	return predicate.Revision(sql.FieldNEQ(FieldExecutionTime, vc))
 }
 
 // ExecutionTimeIn applies the In predicate on the "execution_time" field.
@@ -540,9 +368,7 @@ func ExecutionTimeIn(vs ...time.Duration) predicate.Revision {
 	for i := range v {
 		v[i] = int64(vs[i])
 	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldExecutionTime), v...))
-	})
+	return predicate.Revision(sql.FieldIn(FieldExecutionTime, v...))
 }
 
 // ExecutionTimeNotIn applies the NotIn predicate on the "execution_time" field.
@@ -551,479 +377,321 @@ func ExecutionTimeNotIn(vs ...time.Duration) predicate.Revision {
 	for i := range v {
 		v[i] = int64(vs[i])
 	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldExecutionTime), v...))
-	})
+	return predicate.Revision(sql.FieldNotIn(FieldExecutionTime, v...))
 }
 
 // ExecutionTimeGT applies the GT predicate on the "execution_time" field.
 func ExecutionTimeGT(v time.Duration) predicate.Revision {
 	vc := int64(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldExecutionTime), vc))
-	})
+	return predicate.Revision(sql.FieldGT(FieldExecutionTime, vc))
 }
 
 // ExecutionTimeGTE applies the GTE predicate on the "execution_time" field.
 func ExecutionTimeGTE(v time.Duration) predicate.Revision {
 	vc := int64(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldExecutionTime), vc))
-	})
+	return predicate.Revision(sql.FieldGTE(FieldExecutionTime, vc))
 }
 
 // ExecutionTimeLT applies the LT predicate on the "execution_time" field.
 func ExecutionTimeLT(v time.Duration) predicate.Revision {
 	vc := int64(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldExecutionTime), vc))
-	})
+	return predicate.Revision(sql.FieldLT(FieldExecutionTime, vc))
 }
 
 // ExecutionTimeLTE applies the LTE predicate on the "execution_time" field.
 func ExecutionTimeLTE(v time.Duration) predicate.Revision {
 	vc := int64(v)
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldExecutionTime), vc))
-	})
+	return predicate.Revision(sql.FieldLTE(FieldExecutionTime, vc))
 }
 
 // ErrorEQ applies the EQ predicate on the "error" field.
 func ErrorEQ(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldError, v))
 }
 
 // ErrorNEQ applies the NEQ predicate on the "error" field.
 func ErrorNEQ(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldNEQ(FieldError, v))
 }
 
 // ErrorIn applies the In predicate on the "error" field.
 func ErrorIn(vs ...string) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldError), v...))
-	})
+	return predicate.Revision(sql.FieldIn(FieldError, vs...))
 }
 
 // ErrorNotIn applies the NotIn predicate on the "error" field.
 func ErrorNotIn(vs ...string) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldError), v...))
-	})
+	return predicate.Revision(sql.FieldNotIn(FieldError, vs...))
 }
 
 // ErrorGT applies the GT predicate on the "error" field.
 func ErrorGT(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldGT(FieldError, v))
 }
 
 // ErrorGTE applies the GTE predicate on the "error" field.
 func ErrorGTE(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldGTE(FieldError, v))
 }
 
 // ErrorLT applies the LT predicate on the "error" field.
 func ErrorLT(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldLT(FieldError, v))
 }
 
 // ErrorLTE applies the LTE predicate on the "error" field.
 func ErrorLTE(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldLTE(FieldError, v))
 }
 
 // ErrorContains applies the Contains predicate on the "error" field.
 func ErrorContains(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldContains(FieldError, v))
 }
 
 // ErrorHasPrefix applies the HasPrefix predicate on the "error" field.
 func ErrorHasPrefix(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldHasPrefix(FieldError, v))
 }
 
 // ErrorHasSuffix applies the HasSuffix predicate on the "error" field.
 func ErrorHasSuffix(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldHasSuffix(FieldError, v))
 }
 
 // ErrorIsNil applies the IsNil predicate on the "error" field.
 func ErrorIsNil() predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldError)))
-	})
+	return predicate.Revision(sql.FieldIsNull(FieldError))
 }
 
 // ErrorNotNil applies the NotNil predicate on the "error" field.
 func ErrorNotNil() predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldError)))
-	})
+	return predicate.Revision(sql.FieldNotNull(FieldError))
 }
 
 // ErrorEqualFold applies the EqualFold predicate on the "error" field.
 func ErrorEqualFold(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldEqualFold(FieldError, v))
 }
 
 // ErrorContainsFold applies the ContainsFold predicate on the "error" field.
 func ErrorContainsFold(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldError), v))
-	})
+	return predicate.Revision(sql.FieldContainsFold(FieldError, v))
 }
 
 // ErrorStmtEQ applies the EQ predicate on the "error_stmt" field.
 func ErrorStmtEQ(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldErrorStmt, v))
 }
 
 // ErrorStmtNEQ applies the NEQ predicate on the "error_stmt" field.
 func ErrorStmtNEQ(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldNEQ(FieldErrorStmt, v))
 }
 
 // ErrorStmtIn applies the In predicate on the "error_stmt" field.
 func ErrorStmtIn(vs ...string) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldErrorStmt), v...))
-	})
+	return predicate.Revision(sql.FieldIn(FieldErrorStmt, vs...))
 }
 
 // ErrorStmtNotIn applies the NotIn predicate on the "error_stmt" field.
 func ErrorStmtNotIn(vs ...string) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldErrorStmt), v...))
-	})
+	return predicate.Revision(sql.FieldNotIn(FieldErrorStmt, vs...))
 }
 
 // ErrorStmtGT applies the GT predicate on the "error_stmt" field.
 func ErrorStmtGT(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldGT(FieldErrorStmt, v))
 }
 
 // ErrorStmtGTE applies the GTE predicate on the "error_stmt" field.
 func ErrorStmtGTE(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldGTE(FieldErrorStmt, v))
 }
 
 // ErrorStmtLT applies the LT predicate on the "error_stmt" field.
 func ErrorStmtLT(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldLT(FieldErrorStmt, v))
 }
 
 // ErrorStmtLTE applies the LTE predicate on the "error_stmt" field.
 func ErrorStmtLTE(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldLTE(FieldErrorStmt, v))
 }
 
 // ErrorStmtContains applies the Contains predicate on the "error_stmt" field.
 func ErrorStmtContains(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldContains(FieldErrorStmt, v))
 }
 
 // ErrorStmtHasPrefix applies the HasPrefix predicate on the "error_stmt" field.
 func ErrorStmtHasPrefix(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldHasPrefix(FieldErrorStmt, v))
 }
 
 // ErrorStmtHasSuffix applies the HasSuffix predicate on the "error_stmt" field.
 func ErrorStmtHasSuffix(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldHasSuffix(FieldErrorStmt, v))
 }
 
 // ErrorStmtIsNil applies the IsNil predicate on the "error_stmt" field.
 func ErrorStmtIsNil() predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldErrorStmt)))
-	})
+	return predicate.Revision(sql.FieldIsNull(FieldErrorStmt))
 }
 
 // ErrorStmtNotNil applies the NotNil predicate on the "error_stmt" field.
 func ErrorStmtNotNil() predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldErrorStmt)))
-	})
+	return predicate.Revision(sql.FieldNotNull(FieldErrorStmt))
 }
 
 // ErrorStmtEqualFold applies the EqualFold predicate on the "error_stmt" field.
 func ErrorStmtEqualFold(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldEqualFold(FieldErrorStmt, v))
 }
 
 // ErrorStmtContainsFold applies the ContainsFold predicate on the "error_stmt" field.
 func ErrorStmtContainsFold(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldErrorStmt), v))
-	})
+	return predicate.Revision(sql.FieldContainsFold(FieldErrorStmt, v))
 }
 
 // HashEQ applies the EQ predicate on the "hash" field.
 func HashEQ(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldHash, v))
 }
 
 // HashNEQ applies the NEQ predicate on the "hash" field.
 func HashNEQ(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldNEQ(FieldHash, v))
 }
 
 // HashIn applies the In predicate on the "hash" field.
 func HashIn(vs ...string) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldHash), v...))
-	})
+	return predicate.Revision(sql.FieldIn(FieldHash, vs...))
 }
 
 // HashNotIn applies the NotIn predicate on the "hash" field.
 func HashNotIn(vs ...string) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldHash), v...))
-	})
+	return predicate.Revision(sql.FieldNotIn(FieldHash, vs...))
 }
 
 // HashGT applies the GT predicate on the "hash" field.
 func HashGT(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldGT(FieldHash, v))
 }
 
 // HashGTE applies the GTE predicate on the "hash" field.
 func HashGTE(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldGTE(FieldHash, v))
 }
 
 // HashLT applies the LT predicate on the "hash" field.
 func HashLT(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldLT(FieldHash, v))
 }
 
 // HashLTE applies the LTE predicate on the "hash" field.
 func HashLTE(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldLTE(FieldHash, v))
 }
 
 // HashContains applies the Contains predicate on the "hash" field.
 func HashContains(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldContains(FieldHash, v))
 }
 
 // HashHasPrefix applies the HasPrefix predicate on the "hash" field.
 func HashHasPrefix(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldHasPrefix(FieldHash, v))
 }
 
 // HashHasSuffix applies the HasSuffix predicate on the "hash" field.
 func HashHasSuffix(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldHasSuffix(FieldHash, v))
 }
 
 // HashEqualFold applies the EqualFold predicate on the "hash" field.
 func HashEqualFold(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldEqualFold(FieldHash, v))
 }
 
 // HashContainsFold applies the ContainsFold predicate on the "hash" field.
 func HashContainsFold(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldHash), v))
-	})
+	return predicate.Revision(sql.FieldContainsFold(FieldHash, v))
 }
 
 // PartialHashesIsNil applies the IsNil predicate on the "partial_hashes" field.
 func PartialHashesIsNil() predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldPartialHashes)))
-	})
+	return predicate.Revision(sql.FieldIsNull(FieldPartialHashes))
 }
 
 // PartialHashesNotNil applies the NotNil predicate on the "partial_hashes" field.
 func PartialHashesNotNil() predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldPartialHashes)))
-	})
+	return predicate.Revision(sql.FieldNotNull(FieldPartialHashes))
 }
 
 // OperatorVersionEQ applies the EQ predicate on the "operator_version" field.
 func OperatorVersionEQ(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldEQ(FieldOperatorVersion, v))
 }
 
 // OperatorVersionNEQ applies the NEQ predicate on the "operator_version" field.
 func OperatorVersionNEQ(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldNEQ(FieldOperatorVersion, v))
 }
 
 // OperatorVersionIn applies the In predicate on the "operator_version" field.
 func OperatorVersionIn(vs ...string) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldOperatorVersion), v...))
-	})
+	return predicate.Revision(sql.FieldIn(FieldOperatorVersion, vs...))
 }
 
 // OperatorVersionNotIn applies the NotIn predicate on the "operator_version" field.
 func OperatorVersionNotIn(vs ...string) predicate.Revision {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldOperatorVersion), v...))
-	})
+	return predicate.Revision(sql.FieldNotIn(FieldOperatorVersion, vs...))
 }
 
 // OperatorVersionGT applies the GT predicate on the "operator_version" field.
 func OperatorVersionGT(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldGT(FieldOperatorVersion, v))
 }
 
 // OperatorVersionGTE applies the GTE predicate on the "operator_version" field.
 func OperatorVersionGTE(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldGTE(FieldOperatorVersion, v))
 }
 
 // OperatorVersionLT applies the LT predicate on the "operator_version" field.
 func OperatorVersionLT(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldLT(FieldOperatorVersion, v))
 }
 
 // OperatorVersionLTE applies the LTE predicate on the "operator_version" field.
 func OperatorVersionLTE(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldLTE(FieldOperatorVersion, v))
 }
 
 // OperatorVersionContains applies the Contains predicate on the "operator_version" field.
 func OperatorVersionContains(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldContains(FieldOperatorVersion, v))
 }
 
 // OperatorVersionHasPrefix applies the HasPrefix predicate on the "operator_version" field.
 func OperatorVersionHasPrefix(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldHasPrefix(FieldOperatorVersion, v))
 }
 
 // OperatorVersionHasSuffix applies the HasSuffix predicate on the "operator_version" field.
 func OperatorVersionHasSuffix(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldHasSuffix(FieldOperatorVersion, v))
 }
 
 // OperatorVersionEqualFold applies the EqualFold predicate on the "operator_version" field.
 func OperatorVersionEqualFold(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldEqualFold(FieldOperatorVersion, v))
 }
 
 // OperatorVersionContainsFold applies the ContainsFold predicate on the "operator_version" field.
 func OperatorVersionContainsFold(v string) predicate.Revision {
-	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldOperatorVersion), v))
-	})
+	return predicate.Revision(sql.FieldContainsFold(FieldOperatorVersion, v))
 }
 
 // And groups predicates with the AND operator between them.
