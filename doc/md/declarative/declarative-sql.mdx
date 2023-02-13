@@ -25,7 +25,7 @@ Use the following command to run a MySQL Docker container
 docker run --name atlas-demo -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=example -p 3306:3306 -d mysql:latest
 ```
 
-Once the container is running, you can connect to the MySQL server using the statements below:
+Once the container is running, you can connect to the MySQL server using the command below:
 
 ```console
 docker exec -it atlas-demo mysql -ppass --database=example
@@ -90,8 +90,8 @@ CREATE TABLE `customers` (
     `id` int NOT NULL AUTO_INCREMENT, 
     `first_name` varchar(255) NOT NULL, 
     `last_name` varchar(255) NOT NULL, 
-    PRIMARY KEY (`id`)) 
-    CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+    PRIMARY KEY (`id`)
+);
 
 CREATE TABLE orders (
     id int NOT NULL AUTO_INCREMENT, 
