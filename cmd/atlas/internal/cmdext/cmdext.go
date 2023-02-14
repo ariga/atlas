@@ -8,13 +8,22 @@ package cmdext
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 
+	"entgo.io/ent/dialect/sql"
+	entschema "entgo.io/ent/dialect/sql/schema"
+	"entgo.io/ent/entc"
+	"entgo.io/ent/entc/gen"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -191,4 +200,135 @@ func blockError(name string, b *hclsyntax.Block) func(string, ...any) error {
 	return func(format string, args ...any) error {
 		return fmt.Errorf("%s.%s: %w", name, b.Labels[1], fmt.Errorf(format, args...))
 	}
+}
+
+type (
+	// LoadStateOptions for external state loaders.
+	LoadStateOptions struct {
+		URLs []*url.URL
+		Dev  *sqlclient.Client // Client for the dev database.
+	}
+	// StateLoader allows loading StateReader's from external sources.
+	StateLoader interface {
+		LoadState(context.Context, *LoadStateOptions) (migrate.StateReader, error)
+	}
+
+	// MigrateDiffOptions for external migration differ.
+	MigrateDiffOptions struct {
+		Name string
+		To   []string
+		Dir  migrate.Dir
+		Dev  *sqlclient.Client
+	}
+	// MigrateDiffer allows external sources to implement custom migration differs.
+	MigrateDiffer interface {
+		MigrateDiff(context.Context, *MigrateDiffOptions) error
+		needDiff([]string) bool
+	}
+)
+
+// States is a global registry for external state loaders.
+var States = registry{
+	"ent": EntLoader{},
+}
+
+type registry map[string]StateLoader
+
+// Loader returns the state loader for the given scheme.
+func (r registry) Loader(scheme string) (StateLoader, bool) {
+	l, ok := r[scheme]
+	return l, ok
+}
+
+// Differ returns the raw states differ for the given URLs, if registered.
+func (r registry) Differ(to []string) (MigrateDiffer, bool) {
+	for _, l := range r {
+		if d, ok := l.(MigrateDiffer); ok && d.needDiff(to) {
+			return d, true
+		}
+	}
+	return nil, false
+}
+
+// EntLoader is a StateLoader for loading ent.Schema's as StateReader's.
+type EntLoader struct{}
+
+// LoadState returns a migrate.StateReader that reads the schema from an ent.Schema.
+func (l EntLoader) LoadState(ctx context.Context, opts *LoadStateOptions) (migrate.StateReader, error) {
+	switch {
+	case opts.Dev == nil, len(opts.URLs) != 1:
+		return nil, errors.New("schema url and dev database are required")
+	case opts.URLs[0].Query().Has("globalid"):
+		return nil, errors.New("globalid is not supported by this command. Use 'migrate diff' instead")
+	}
+	tables, err := l.tables(opts.URLs[0])
+	if err != nil {
+		return nil, err
+	}
+	m, err := entschema.NewMigrate(sql.OpenDB(opts.Dev.Name, opts.Dev.DB))
+	if err != nil {
+		return nil, fmt.Errorf("creating migrate reader: %w", err)
+	}
+	realm, err := m.StateReader(tables...).ReadState(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("reading schema state: %w", err)
+	}
+	if nr, ok := opts.Dev.Driver.(schema.Normalizer); ok {
+		if realm, err = nr.NormalizeRealm(ctx, realm); err != nil {
+			return nil, err
+		}
+	}
+	return migrate.Realm(realm), nil
+}
+
+// MigrateDiff returns the diff between ent.Schema and a directory.
+func (l EntLoader) MigrateDiff(ctx context.Context, opts *MigrateDiffOptions) error {
+	if !l.needDiff(opts.To) {
+		return errors.New("invalid diff call")
+	}
+	u, err := url.Parse(opts.To[0])
+	if err != nil {
+		return nil
+	}
+	tables, err := l.tables(u)
+	if err != nil {
+		return err
+	}
+	m, err := entschema.NewMigrate(
+		sql.OpenDB(opts.Dev.Name, opts.Dev.DB),
+		entschema.WithFormatter(migrate.DefaultFormatter),
+		entschema.WithGlobalUniqueID(true),
+		entschema.WithDir(opts.Dir),
+		entschema.WithMigrationMode(entschema.ModeReplay),
+	)
+	if err != nil {
+		return fmt.Errorf("creating migrate reader: %w", err)
+	}
+	return m.NamedDiff(ctx, opts.Name, tables...)
+}
+
+// needDiff indicates if we need to offload the diffing to Ent in
+// case global unique id is enabled in versioned migration mode.
+func (EntLoader) needDiff(to []string) bool {
+	if len(to) != 1 {
+		return false
+	}
+	u1, err := url.Parse(to[0])
+	if err != nil || u1.Scheme != "ent" {
+		return false
+	}
+	gid, _ := strconv.ParseBool(u1.Query().Get("globalid"))
+	return gid
+}
+
+func (EntLoader) tables(u *url.URL) ([]*entschema.Table, error) {
+	abs, err := filepath.Abs(filepath.Join(u.Host, u.Path))
+	if err != nil {
+		return nil, err
+	}
+	graph, err := entc.LoadGraph(abs, &gen.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("loading schema: %w", err)
+	}
+	return graph.Tables()
 }
