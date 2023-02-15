@@ -17,9 +17,11 @@ import (
 	"strings"
 	"time"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/zclconf/go-cty/cty"
@@ -442,6 +444,14 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 			panic("unreachable") // checked by filesExt.
 		}
 	default:
+		// In case there is an external state-loader registered with this scheme.
+		if l, ok := cmdext.States.Loader(scheme); ok {
+			sr, err := l.LoadState(ctx, &cmdext.LoadStateOptions{URLs: parsed, Dev: config.dev})
+			if err != nil {
+				return nil, err
+			}
+			return &stateReadCloser{StateReader: sr}, nil
+		}
 		// All other schemes are database (or docker) connections.
 		c, err := sqlclient.Open(ctx, config.urls[0]) // call to selectScheme already checks for len > 0
 		if err != nil {

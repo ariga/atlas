@@ -7,8 +7,8 @@ replace ariga.io/atlas => ../../
 replace ariga.io/atlas/cmd/atlas => ../../cmd/atlas
 
 require (
-	ariga.io/atlas v0.9.1-0.20230212120503-6bee8348ef93
-	entgo.io/ent v0.11.8-0.20230210122553-349b95097887
+	ariga.io/atlas v0.9.1-0.20230212142236-47ec3817e19f
+	entgo.io/ent v0.11.9-0.20230214130636-4e05f767170e
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/lib/pq v1.10.7
@@ -20,7 +20,7 @@ require (
 )
 
 require (
-	ariga.io/atlas/cmd/atlas v0.9.1-0.20230212120503-6bee8348ef93 // indirect
+	ariga.io/atlas/cmd/atlas v0.9.1-0.20230212142236-47ec3817e19f // indirect
 	cloud.google.com/go v0.103.0 // indirect
 	cloud.google.com/go/compute v1.7.0 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
@@ -54,7 +54,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/getsentry/raven-go v0.2.0 // indirect
 	github.com/go-openapi/inflect v0.19.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -70,6 +70,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/manifoldco/promptui v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
@@ -94,11 +95,12 @@ require (
 	gocloud.dev v0.27.0 // indirect
 	golang.org/x/exp v0.0.0-20220428152302-39d4317da171 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.0.0-20220802222814-0bcc04d9c69b // indirect
+	golang.org/x/net v0.2.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/tools v0.3.1-0.20221202221704-aa9f4b2f3d57 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/api v0.91.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
