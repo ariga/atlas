@@ -331,15 +331,15 @@ directory state to the desired schema. The desired state can be another connecte
 }
 
 func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) error {
-	// Open a dev driver.
-	dev, err := sqlclient.Open(cmd.Context(), flags.devURL)
+	ctx := cmd.Context()
+	dev, err := sqlclient.Open(ctx, flags.devURL)
 	if err != nil {
 		return err
 	}
 	defer dev.Close()
 	// Acquire a lock.
 	if l, ok := dev.Driver.(schema.Locker); ok {
-		unlock, err := l.Lock(cmd.Context(), "atlas_migrate_diff", flags.lockTimeout)
+		unlock, err := l.Lock(ctx, "atlas_migrate_diff", flags.lockTimeout)
 		if err != nil {
 			return fmt.Errorf("acquiring database lock: %w", err)
 		}
@@ -369,15 +369,16 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 	// If there is a state-loader that requires a custom
 	// 'migrate diff' handling, offload it the work.
 	if d, ok := cmdext.States.Differ(flags.desiredURLs); ok {
-		return d.MigrateDiff(cmd.Context(), &cmdext.MigrateDiffOptions{
+		err := d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
 			To:   flags.desiredURLs,
 			Name: name,
 			Dir:  dir,
 			Dev:  dev,
 		})
+		return maskNoPlan(cmd, err)
 	}
 	// Get a state reader for the desired state.
-	desired, err := stateReader(cmd.Context(), &stateReaderConfig{
+	desired, err := stateReader(ctx, &stateReaderConfig{
 		urls:    flags.desiredURLs,
 		dev:     dev,
 		client:  dev,
@@ -397,23 +398,29 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 	pl := migrate.NewPlanner(dev.Driver, dir, opts...)
 	plan, err := func() (*migrate.Plan, error) {
 		if dev.URL.Schema != "" {
-			return pl.PlanSchema(cmd.Context(), name, desired.StateReader)
+			return pl.PlanSchema(ctx, name, desired.StateReader)
 		}
-		return pl.Plan(cmd.Context(), name, desired.StateReader)
+		return pl.Plan(ctx, name, desired.StateReader)
 	}()
 	var cerr *migrate.NotCleanError
 	switch {
-	case errors.Is(err, migrate.ErrNoPlan):
-		cmd.Println("The migration directory is synced with the desired state, no changes to be made")
-		return nil
 	case errors.As(err, &cerr) && dev.URL.Schema == "" && desired.schema != "":
 		return fmt.Errorf("dev database is not clean (%s). Add a schema to the URL to limit the scope of the connection", cerr.Reason)
 	case err != nil:
-		return err
+		return maskNoPlan(cmd, err)
 	default:
 		// Write the plan to a new file.
 		return pl.WritePlan(plan)
 	}
+}
+
+// maskNoPlan masks ErrNoPlan errors.
+func maskNoPlan(cmd *cobra.Command, err error) error {
+	if errors.Is(err, migrate.ErrNoPlan) {
+		cmd.Println("The migration directory is synced with the desired state, no changes to be made")
+		return nil
+	}
+	return err
 }
 
 type migrateHashFlags struct{ dirURL, dirFormat string }

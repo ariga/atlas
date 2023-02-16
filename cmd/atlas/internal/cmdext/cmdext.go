@@ -301,6 +301,7 @@ func (l EntLoader) MigrateDiff(ctx context.Context, opts *MigrateDiffOptions) er
 		entschema.WithGlobalUniqueID(true),
 		entschema.WithDir(opts.Dir),
 		entschema.WithMigrationMode(entschema.ModeReplay),
+		entschema.WithErrNoPlan(true),
 	)
 	if err != nil {
 		return fmt.Errorf("creating migrate reader: %w", err)
