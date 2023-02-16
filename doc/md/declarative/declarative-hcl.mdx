@@ -89,6 +89,10 @@ To learn more about inspecting schema with Atlas in variety of use cases, visit 
 
 Once you have inspected your database, the next step is to plan a change. This is done by modifying the HCL file in a way that it defines the desired state of your schema. The file should include the changes you want to make to your database, such as creating tables, columns, or indexes.
 
+:::info
+In this article, we will be focusing on HCL-based schema inspection with Atlas. For those opting to use SQL schema, refer to the documentation [here](https://atlasgo.io/declarative/declarative-sql).
+:::
+
 ### Example:
 
 Let’s add the following table definition to the HCL schema file that we previously created with the `atlas schema inspect` command:
