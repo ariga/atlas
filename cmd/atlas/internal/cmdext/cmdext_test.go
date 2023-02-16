@@ -17,6 +17,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlclient"
 	_ "ariga.io/atlas/sql/sqlite"
+	"ariga.io/atlas/sql/sqltool"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
@@ -118,21 +119,41 @@ func TestEntLoader_MigrateDiff(t *testing.T) {
 	ctx := context.Background()
 	drv, err := sqlclient.Open(ctx, "sqlite://test?mode=memory&_fk=1")
 	require.NoError(t, err)
-	dir, err := migrate.NewLocalDir(t.TempDir())
-	require.NoError(t, err)
 	d, ok := cmdext.States.Differ([]string{"ent://../migrate/ent/schema?globalid=1"})
 	require.True(t, ok)
-	err = d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
-		Name: "boring",
-		Dev:  drv,
-		Dir:  dir,
-		To:   []string{"ent://../migrate/ent/schema?globalid=1"},
-	})
-	require.NoError(t, err)
-	files, err := dir.Files()
-	require.NoError(t, err)
-	require.True(t, strings.HasSuffix(files[0].Name(), "_boring.sql"))
 
-	_, ok = cmdext.States.Differ([]string{"ent://../migrate/ent/schema"})
-	require.False(t, ok, "skipping schemas without globalid")
+	t.Run("AtlasFormat", func(t *testing.T) {
+		dir, err := migrate.NewLocalDir(t.TempDir())
+		require.NoError(t, err)
+		err = d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
+			Name: "boring",
+			Dev:  drv,
+			Dir:  dir,
+			To:   []string{"ent://../migrate/ent/schema?globalid=1"},
+		})
+		require.NoError(t, err)
+		files, err := dir.Files()
+		require.NoError(t, err)
+		require.True(t, strings.HasSuffix(files[0].Name(), "_boring.sql"))
+	})
+
+	t.Run("OtherFormat", func(t *testing.T) {
+		dir, err := sqltool.NewGolangMigrateDir(t.TempDir())
+		require.NoError(t, err)
+		err = d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
+			Name: "boring",
+			Dev:  drv,
+			Dir:  dir,
+			To:   []string{"ent://../migrate/ent/schema?globalid=1"},
+		})
+		require.NoError(t, err)
+		files, err := dir.Files()
+		require.NoError(t, err)
+		require.True(t, strings.HasSuffix(files[0].Name(), "_boring.up.sql"))
+	})
+
+	t.Run("Invalid", func(t *testing.T) {
+		_, ok := cmdext.States.Differ([]string{"ent://../migrate/ent/schema"})
+		require.False(t, ok, "skipping schemas without globalid")
+	})
 }

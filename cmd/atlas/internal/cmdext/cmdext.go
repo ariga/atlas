@@ -19,6 +19,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/sqltool"
 
 	"entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
@@ -296,7 +297,7 @@ func (l EntLoader) MigrateDiff(ctx context.Context, opts *MigrateDiffOptions) er
 	}
 	m, err := entschema.NewMigrate(
 		sql.OpenDB(opts.Dev.Name, opts.Dev.DB),
-		entschema.WithFormatter(migrate.DefaultFormatter),
+		entschema.WithFormatter(dirFormatter(opts.Dir)),
 		entschema.WithGlobalUniqueID(true),
 		entschema.WithDir(opts.Dir),
 		entschema.WithMigrationMode(entschema.ModeReplay),
@@ -331,4 +332,21 @@ func (EntLoader) tables(u *url.URL) ([]*entschema.Table, error) {
 		return nil, fmt.Errorf("loading schema: %w", err)
 	}
 	return graph.Tables()
+}
+
+func dirFormatter(dir migrate.Dir) migrate.Formatter {
+	switch dir.(type) {
+	case *sqltool.DBMateDir:
+		return sqltool.DBMateFormatter
+	case *sqltool.GolangMigrateDir:
+		return sqltool.GolangMigrateFormatter
+	case *sqltool.GooseDir:
+		return sqltool.GooseFormatter
+	case *sqltool.FlywayDir:
+		return sqltool.FlywayFormatter
+	case *sqltool.LiquibaseDir:
+		return sqltool.LiquibaseFormatter
+	default:
+		return migrate.DefaultFormatter
+	}
 }
