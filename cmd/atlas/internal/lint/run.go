@@ -87,7 +87,8 @@ func (r *Runner) summary(ctx context.Context) error {
 		return r.sum.StepError(stepIntegrityCheck, fmt.Sprintf("File %s is invalid", migrate.HashFileName), err)
 	default:
 		// If the hash file exists, it is valid.
-		if _, err = r.Dir.Open(migrate.HashFileName); err == nil {
+		if f, err := r.Dir.Open(migrate.HashFileName); err == nil {
+			f.Close()
 			r.sum.StepResult(stepIntegrityCheck, fmt.Sprintf("File %s is valid", migrate.HashFileName), nil)
 		}
 	}
