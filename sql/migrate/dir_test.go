@@ -201,6 +201,8 @@ func TestMemDir(t *testing.T) {
 	files, err := d.Files()
 	require.NoError(t, err)
 	require.Empty(t, files)
+	require.NoError(t, migrate.Validate(&d))
+
 	require.NoError(t, d.WriteFile("1.sql", []byte("create table t(c int);")))
 	files, err = d.Files()
 	require.NoError(t, err)
