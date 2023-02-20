@@ -262,24 +262,20 @@ var (
 	// templateFuncs contains the template.FuncMap for the DefaultFormatter.
 	templateFuncs = template.FuncMap{"now": func() string { return time.Now().UTC().Format("20060102150405") }}
 	// DefaultFormatter is a default implementation for Formatter.
-	DefaultFormatter = &TemplateFormatter{
-		templates: []struct{ N, C *template.Template }{
-			{
-				N: template.Must(template.New("").Funcs(templateFuncs).Parse(
-					"{{ with .Version }}{{ . }}{{ else }}{{ now }}{{ end }}{{ with .Name }}_{{ . }}{{ end }}.sql",
-				)),
-				C: template.Must(template.New("").Parse(
-					`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
-				)),
-			},
+	DefaultFormatter = TemplateFormatter{
+		{
+			N: template.Must(template.New("").Funcs(templateFuncs).Parse(
+				"{{ with .Version }}{{ . }}{{ else }}{{ now }}{{ end }}{{ with .Name }}_{{ . }}{{ end }}.sql",
+			)),
+			C: template.Must(template.New("").Parse(
+				`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
+			)),
 		},
 	}
 )
 
 // TemplateFormatter implements Formatter by using templates.
-type TemplateFormatter struct {
-	templates []struct{ N, C *template.Template }
-}
+type TemplateFormatter []struct{ N, C *template.Template }
 
 // NewTemplateFormatter creates a new Formatter working with the given templates.
 //
@@ -287,21 +283,21 @@ type TemplateFormatter struct {
 //		template.Must(template.New("").Parse("{{now.Unix}}{{.Name}}.sql")),                 // name template
 //		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")), // content template
 //	)
-func NewTemplateFormatter(templates ...*template.Template) (*TemplateFormatter, error) {
+func NewTemplateFormatter(templates ...*template.Template) (TemplateFormatter, error) {
 	if n := len(templates); n == 0 || n%2 == 1 {
-		return nil, fmt.Errorf("zero or odd number of templates given")
+		return nil, fmt.Errorf("zero or odd number of templates given: %d", n)
 	}
-	t := new(TemplateFormatter)
+	t := make(TemplateFormatter, 0, len(templates))
 	for i := 0; i < len(templates); i += 2 {
-		t.templates = append(t.templates, struct{ N, C *template.Template }{templates[i], templates[i+1]})
+		t = append(t, struct{ N, C *template.Template }{templates[i], templates[i+1]})
 	}
 	return t, nil
 }
 
 // Format implements the Formatter interface.
-func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
-	files := make([]File, 0, len(t.templates))
-	for _, tpl := range t.templates {
+func (t TemplateFormatter) Format(plan *Plan) ([]File, error) {
+	files := make([]File, 0, len(t))
+	for _, tpl := range t {
 		var n, b bytes.Buffer
 		if err := tpl.N.Execute(&n, plan); err != nil {
 			return nil, err
