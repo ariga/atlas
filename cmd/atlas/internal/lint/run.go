@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"strings"
 	"text/template"
 
@@ -86,7 +87,10 @@ func (r *Runner) summary(ctx context.Context) error {
 		r.sum.Files = append(r.sum.Files, &FileReport{Name: migrate.HashFileName, Error: err.Error()})
 		return r.sum.StepError(stepIntegrityCheck, fmt.Sprintf("File %s is invalid", migrate.HashFileName), err)
 	default:
-		r.sum.StepResult(stepIntegrityCheck, fmt.Sprintf("File %s is valid", migrate.HashFileName), nil)
+		// If the hash file exists, it is valid.
+		if _, err := fs.Stat(r.Dir, migrate.HashFileName); err == nil {
+			r.sum.StepResult(stepIntegrityCheck, fmt.Sprintf("File %s is valid", migrate.HashFileName), nil)
+		}
 	}
 
 	// Detect new migration files.

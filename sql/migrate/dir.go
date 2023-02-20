@@ -422,8 +422,9 @@ func Validate(dir Dir) error {
 	fh, err := readHashFile(dir)
 	if errors.Is(err, fs.ErrNotExist) {
 		// If there are no migration files yet this is okay.
-		files, err := dir.Files()
-		if err != nil || len(files) > 0 {
+		if files, err := dir.Files(); err != nil {
+			return err
+		} else if len(files) > 0 {
 			return ErrChecksumNotFound
 		}
 		return nil
