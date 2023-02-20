@@ -2,14 +2,14 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package atlasapi_test
+package x_test
 
 import (
 	"context"
 	"testing"
 	_ "unsafe"
 
-	"ariga.io/atlas/cmd/atlas/atlasapi"
+	"ariga.io/atlas/cmd/atlas/x"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -34,5 +34,5 @@ func TestLintLatest(t *testing.T) {
 	require.NotNil(t, report)
 }
 
-//go:linkname lintLatest ariga.io/atlas/cmd/atlas/atlasapi.lintLatest
-func lintLatest(context.Context, *sqlclient.Client, migrate.Dir, int, []sqlcheck.Analyzer) (report *atlasapi.SummaryReport, err error)
+//go:linkname lintLatest ariga.io/atlas/cmd/atlas/x.lintLatest
+func lintLatest(context.Context, *sqlclient.Client, migrate.Dir, int, []sqlcheck.Analyzer) (report *x.SummaryReport, err error)

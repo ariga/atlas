@@ -2,11 +2,11 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-// Package atlasapi contains a small set of functions to explore how a public
-// API for the CLI might look in the future. Note that this package is intended
-// for experimental purposes only and should not be used externally, apart from
-// within the project's codebase.
-package atlasapi
+// Package x contains a small set of functions to explore how a public API
+// for the CLI might look in the future. Note that this package is intended
+// for experimental purposes only and should not be used externally, apart
+// from within the project's codebase.
+package x
 
 import (
 	"context"
