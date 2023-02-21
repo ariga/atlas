@@ -1,7 +1,7 @@
 ---
 id: apply
 slug: /versioned/apply
-title: Migration Applying
+title: Applying Migrations
 ---
 
 import Tabs from '@theme/Tabs';
@@ -63,11 +63,51 @@ If you have an existing database project and want to switch over to Atlas Versio
 Atlas with a starting point. The first step is to create a migration file reflecting the current schema state. This can
 be easily done:
 
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
 ```shell
 atlas migrate diff my_baseline \
   --dir "file://migrations" \
-  --to "mysql://root:pass@remote:3306/my_schema"
+  --to "mysql://root:pass@localhost:3306/my_schema"
 ```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas migrate diff my_baseline \
+  --dir "file://migrations" \
+  --to "maria://root:pass@localhost:3306/my_schema"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas migrate diff my_baseline \
+  --dir "file://migrations" \
+  --to "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas migrate diff my_baseline \
+  --dir "file://migrations" \
+  --to "sqlite://file.db"
+```
+
+</TabItem>
+</Tabs>
 
 <Tabs
 defaultValue="baseline"
@@ -132,6 +172,16 @@ revert schema changes made by specific migration files using the `schema clean` 
 1\. To undo the changes made by migration files that have already been deleted, you can use the [`schema apply`](../declarative/apply#migration-directory)
 command to roll back the database state to the state defined by the migration directory:
 
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
 ```shell
 atlas schema apply \
   --url "mysql://root:pass@localhost:3306/example" \
@@ -140,12 +190,89 @@ atlas schema apply \
   --exclude "atlas_schema_revisions"
 ```
 
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema apply \
+  --url "maria://root:pass@localhost:3306/example" \
+  --to "file://migrations" \
+  --dev-url "docker://maria/latest/example" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema apply \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable" \
+  --to "file://migrations" \
+  --dev-url "docker://postgres/15" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas schema apply \
+  --url "sqlite://file.db" \
+  --to "file://migrations" \
+  --dev-url "sqlite://file?mode=memory" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
+</Tabs>
+
 2\. Remove the files/versions that were rolled back from the revision table:
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
 ```shell
 atlas migrate set \
   --url "mysql://root:pass@localhost:3306/example" \
   --dir "file://migrations"
 ```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas migrate set \
+  --url "maria://root:pass@localhost:3306/example" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas migrate set \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas migrate set \
+  --url "sqlite://file.db" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+</Tabs>
 
 <details>
   <summary>Example output</summary>
@@ -163,11 +290,52 @@ atlas migrate set \
 </details>
 
 3\. Verify the migration status by using the `atlas migrate status` command:
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
 ```shell
 atlas migrate status \
   --url "mysql://root:pass@localhost:3306/example" \
   --dir "file://migrations"
 ```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas migrate status \
+  --url "maria://root:pass@localhost:3306/example" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas migrate status \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas migrate status \
+  --url "sqlite://file.db" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+</Tabs>
 
 <details>
   <summary>Example output</summary>
@@ -190,13 +358,60 @@ atlas migrate status \
 `version` parameter to specify that the database should be rolled back to the state defined in a specific version of
 the migration directory. For example:
 
-```shell
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```shell {3}
 atlas schema apply \
   --url "mysql://root:pass@localhost:3306/example" \
   --to "file://migrations?version=20220925094437" \
   --dev-url "docker://mysql/8/example" \
   --exclude "atlas_schema_revisions"
 ```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell {3}
+atlas schema apply \
+  --url "maria://root:pass@localhost:3306/example" \
+  --to "file://migrations?version=20220925094437" \
+  --dev-url "docker://maria/latest/example" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell {3}
+atlas schema apply \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable" \
+  --to "file://migrations?version=20220925094437" \
+  --dev-url "docker://postgres/15" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell {3}
+atlas schema apply \
+  --url "sqlite://file.db" \
+  --to "file://migrations?version=20220925094437" \
+  --dev-url "sqlite://file?mode=memory" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
+</Tabs>
+
 ```shell title="tree ." {6}
 .
 └── migrations
@@ -208,11 +423,52 @@ atlas schema apply \
 ```
 
 2\. To remove the `20220925094438` version from the revision table, set the current version to the preceding one `20220925094437`:
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
 ```shell
 atlas migrate set 20220925094437 \
   --url "mysql://root:pass@localhost:3306/example" \
   --dir "file://migrations"
 ```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas migrate set 20220925094437 \
+  --url "maria://root:pass@localhost:3306/example" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas migrate set 20220925094437 \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas migrate set 20220925094437 \
+  --url "sqlite://file.db" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+</Tabs>
 
 <details>
   <summary>Example output</summary>
@@ -229,11 +485,52 @@ atlas migrate set 20220925094437 \
 </details>
 
 3\. Verify the migration status by using the `atlas migrate status` command:
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
 ```shell
 atlas migrate status \
   --url "mysql://root:pass@localhost:3306/example" \
   --dir "file://migrations"
 ```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas migrate status \
+  --url "maria://root:pass@localhost:3306/example" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas migrate status \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas migrate status \
+  --url "sqlite://file.db" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+</Tabs>
 
 <details>
   <summary>Example output</summary>
@@ -252,13 +549,51 @@ atlas migrate status \
 
 #### Reverting all schema changes
 
-3\. In order to clean the entire schema, use the [`schema clean`](../cli-reference#atlas-schema-clean) command, and then use
+In order to clean the entire schema, use the [`schema clean`](../cli-reference#atlas-schema-clean) command, and then use
 [`migrate apply`](#flags) to replay the migration files. For example:
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
 
 ```shell
 atlas schema clean -u "mysql://root:pass@:3306/example"
 atlas migrate apply -u "mysql://root:pass@:3306/example"
 ```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema clean -u "maria://root:pass@localhost:3306/example"
+atlas migrate apply -u "maria://root:pass@localhost:3306/example"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema clean -u "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+atlas migrate apply -u "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas migrate status \
+  --url "sqlite://file.db" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+</Tabs>
 
 ### Migration status
 

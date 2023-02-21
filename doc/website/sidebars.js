@@ -34,12 +34,12 @@ module.exports = {
             label: "Versioned Workflows",
             collapsed: false,
             items: [
-                {type: 'doc', id: 'versioned/diff', label: 'Migration Authoring'},
+                {type: 'doc', id: 'versioned/diff', label: 'Generating Migrations'},
                 {type: 'doc', id: 'versioned/lint', label: 'Migration Linting'},
                 {type: 'doc', id: 'versioned/new', label: 'Manual Migrations'},
-                {type: 'doc', id: 'versioned/apply', label: 'Migration Applying'},
+                {type: 'doc', id: 'versioned/apply', label: 'Applying Migrations'},
                 {type: 'doc', id: 'versioned/troubleshoot', label: 'Migration Troubleshooting'},
-                {type: 'doc', id: 'versioned/import', label: 'Migration Import'},
+                {type: 'doc', id: 'versioned/import', label: 'Import Existing Migrations'},
             ]
         },
         {
