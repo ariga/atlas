@@ -1,10 +1,12 @@
 ---
-id: declarative-sql-singleschema
-title: Getting started with SQL declarative migrations for a MySQL schema
-slug: /declarative/declarative-sql
+id: sqlite-declarative-sql
+title: Getting started with SQL declarative migrations for an SQLite schema
+slug: /declarative/sqlite-declarative-sql
 ---
 
 import InstallationInstructions from '../components/_installation_instructions.mdx'
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 ### Introduction
 
@@ -17,27 +19,21 @@ In this quickstart guide, we will go through the three essential steps for using
 <InstallationInstructions />
 
 ### Warming up
-To demonstrate the examples in the article, let's start a docker container with an example database and create a table in it.
+To demonstrate the examples in the article, install the SQLite command-line tool on your host machine if it's not already installed. You can download it from the SQLite website at https://www.sqlite.org/download.html
 
-Use the following command to run a MySQL Docker container
-
-```console
-docker run --name atlas-demo -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=example -p 3306:3306 -d mysql:latest
-```
-
-Once the container is running, you can connect to the MySQL server using the command below:
+Once SQLite is installed, you can connect to the create a database server using the statement below in terminal:
 
 ```console
-docker exec -it atlas-demo mysql -ppass --database=example
+sqlite3 example.db
 ```
 
 Once you're connected, you can create a table in it by running the following command:
 
 ```sql
 CREATE TABLE customers (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    first_name VARCHAR(255) NOT NULL,
-    last_name VARCHAR(255) NOT NULL
+    id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL
 );
 ```
 
@@ -45,29 +41,32 @@ CREATE TABLE customers (
 
 Before planning any changes to your database, it can be useful to know what your database schema looks like. To do this, you can use the `atlas schema inspect` command to inspect your database. This command generates a file that represents your database schema, which can be used as a starting point for making changes.
 
-### Usage:
-
+### Usage
 ```
 atlas schema inspect [flags]
 ```
 
-### Example:
+### Example
 
 The following command will inspect the current state of the schema `example` and store it in a file named `schema.sql`
 
 ```console
-atlas schema inspect -u "mysql://root:pass@localhost:3306/example" --log "{{ sql . }}" > schema.sql
+atlas schema inspect \
+--url "sqlite://example.db" \
+--log "{{ sql . }}" > schema.sql
 ```
 
 ```sql title="schema.sql"
 -- create "customers" table
+​​-- create "customers" table
 CREATE TABLE `customers` (
-    `id` int NOT NULL AUTO_INCREMENT, 
-    `first_name` varchar(255) NOT NULL, 
-    `last_name` varchar(255) NOT NULL, 
-    PRIMARY KEY (`id`)
+     `id` integer NULL, 
+     `first_name` text NOT NULL, 
+     `last_name` text NOT NULL, 
+     PRIMARY KEY (`id`)
 );
 ```
+
 :::info
 To learn more about inspecting schema with Atlas in variety of use cases, visit the documentation [here](https://atlasgo.io/declarative/inspect)
 :::
@@ -77,28 +76,28 @@ To learn more about inspecting schema with Atlas in variety of use cases, visit 
 Once you have inspected your database, the next step is to plan a change. This is done by modifying the SQL file in a way that it defines the desired state of your schema. The file should include the changes you want to make to your database, such as creating tables, columns, or indexes.
 
 :::info
-In this article, we will be focusing on SQL-based schema inspection with Atlas. For those opting to use HCL schema, please refer to the documentation [here](https://atlasgo.io/declarative/declarative-hcl).
+In this article, we will be focusing on SQL-based schema inspection with Atlas. For those opting to use an HCL schema, read the documentation [here](https://atlasgo.io/declarative/sqlite-declarative-hcl).
 :::
 
-### Example:
+### Example
 
 Let’s add the following table definition to the SQL schema file that we previously created with the `atlas schema inspect` command:
 
-```sql title="schema.sql" {9-16}
--- create "customers" table
+```sql title="schema.sql" {9-15}
+​​-- create "customers" table
 CREATE TABLE `customers` (
-    `id` int NOT NULL AUTO_INCREMENT, 
-    `first_name` varchar(255) NOT NULL, 
-    `last_name` varchar(255) NOT NULL, 
-    PRIMARY KEY (`id`)
+     `id` integer NULL, 
+     `first_name` text NOT NULL, 
+     `last_name` text NOT NULL, 
+     PRIMARY KEY (`id`)
 );
 
 CREATE TABLE orders (
-    id int NOT NULL AUTO_INCREMENT, 
-    customer_id int NOT NULL, 
-    order_date date NOT NULL, 
-    PRIMARY KEY (id), 
-    CONSTRAINT customer_id_fk FOREIGN KEY (customer_id) REFERENCES example.customers (id)
+     id integer NULL, 
+     customer_id integer NOT NULL, 
+     order_date date NOT NULL, 
+     PRIMARY KEY (id), 
+     CONSTRAINT fk1 FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 ```
 
@@ -106,21 +105,21 @@ CREATE TABLE orders (
 
 The final step is to apply the change to your database. To do this, simply run the `atlas schema apply` command. This command will compare the current state of your database to the desired state defined in your SQL file and make the necessary changes.
 
-### Usage:
+### Usage
 
 ```console
 atlas schema apply [flags]
 ```
 
-### Example:
+### Example
 
 Let’s apply the changes we created in Step 2 using the following command:
 
 ```console
 atlas schema apply \
-  --url "mysql://root:pass@localhost:3306/example" \
-  --to "file://schema.sql" \
-  --dev-url "docker://mysql/8/example"
+--url "sqlite://example.db" \
+--to "file://schema.sql" \
+--dev-url "sqlite://file?mode=memory"
 ```
 
 :::info The role of the [Dev Database](/concepts/dev-database)
@@ -132,7 +131,8 @@ from the current state to the desired state.
 ```console
 -- Planned Changes:
 -- Create "orders" table
-CREATE TABLE `orders` (`id` int NOT NULL AUTO_INCREMENT, `customer_id` int NOT NULL, `order_date` date NOT NULL, PRIMARY KEY (`id`), INDEX `customer_id_fk` (`customer_id`), CONSTRAINT `customer_id_fk` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+// highlight-next-line-info
+CREATE TABLE `orders` (`id` integer NULL, `customer_id` integer NOT NULL, `order_date` date NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `fk1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION);
 Use the arrow keys to navigate: ↓ ↑ → ← 
 ? Are you sure?: 
   ▸ Apply
@@ -144,28 +144,31 @@ Selecting `Apply` will apply the changes to the database.
 You can inspect the latest state of the database again and verify that the changes have been applied by re-running the `atlas schema inspect` command:
 
 ```console
-atlas schema inspect -u "mysql://root:pass@localhost:3306/example" --log "{{ sql . }}"
+atlas schema inspect \
+--url "sqlite://example.db" \
+--log "{{ sql . }}"
 ```
-
 ```sql
 -- create "customers" table
 CREATE TABLE `customers` (
-    `id` int NOT NULL AUTO_INCREMENT, 
-    `first_name` varchar(255) NOT NULL, 
-    `last_name` varchar(255) NOT NULL, 
-    PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+    `id` integer NULL, 
+    `first_name` text NOT NULL, 
+    `last_name` text NOT NULL, 
+    PRIMARY KEY (`id`)
+);
 
 -- create "orders" table
 CREATE TABLE `orders` (
-    `id` int NOT NULL AUTO_INCREMENT, 
-    `customer_id` int NOT NULL, 
-    `order_date` date NOT NULL, PRIMARY KEY (`id`), 
-    INDEX `customer_id_fk` (`customer_id`), 
-    CONSTRAINT `customer_id_fk` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+    `id` integer NULL, 
+    `customer_id` integer NOT NULL, 
+    `order_date` date NOT NULL, 
+    PRIMARY KEY (`id`), 
+    CONSTRAINT `fk1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+);
 ```
 Great! Our changes have been successfully applied to the `example` schema.
 
-### Conclusion
+## Conclusion
 
 By following the steps above, you can inspect the current state of the database, make changes to the schema definition file and apply those changes to the database with confidence.
 
