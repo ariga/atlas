@@ -221,6 +221,16 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/postgres/ar-101',
                     label: 'Optimal data alignment (AR101)'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/postgres/descending-indexes',
+                    label: 'Descending Indexes'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/postgres/functional-indexes',
+                    label: 'Functional Indexes'
                 }
             ],
         },
@@ -234,6 +244,16 @@ module.exports = {
                     id: 'guides/sqlite/partial-indexes',
                     label: 'Partial Indexes'
                 },
+                {
+                    type: 'doc',
+                    id: 'guides/sqlite/descending-indexes',
+                    label: 'Descending Indexes'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/sqlite/functional-indexes',
+                    label: 'Functional Indexes'
+                }
             ],
         },
         {
