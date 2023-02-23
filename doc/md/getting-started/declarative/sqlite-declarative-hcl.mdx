@@ -1,0 +1,245 @@
+---
+id: sqlite-declarative-hcl
+title: Getting started with HCL declarative migrations for an SQLite schema
+slug: /getting-started/sqlite-declarative-hcl
+---
+
+import InstallationInstructions from '../../components/_installation_instructions.mdx'
+
+### Introduction
+
+Atlas makes it easy to manage your database using the declarative migrations workflow. Declarative migrations focus on describing the desired state of the database and allow the migration engine to plan and execute the necessary actions to reach that state.
+
+In this quickstart guide, we will go through the three essential steps for using Atlas to manage your database schema: inspecting your database, authoring the desired changes, and applying those changes.
+
+
+### Installing Atlas
+
+<InstallationInstructions />
+
+### Warming up
+To demonstrate the examples in the article, install the SQLite command-line tool on your host machine if it's not
+already installed. You can download it from the SQLite website at https://www.sqlite.org/download.html
+
+Once SQLite is installed, you can create a new database file by running the following command:
+
+```console
+sqlite3 example.db
+```
+
+Then, create an example `customers` table in it by executing the following statement:
+
+```sql
+CREATE TABLE customers (
+    id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL
+);
+```
+
+## Step 1: Inspecting the database
+
+Before planning any changes to your database, it can be useful to know what your database schema looks like.
+To do this, you can use the `atlas schema inspect` command to inspect your database. This command generates an output
+in [HCL](/guides/ddl#hcl) format that represents your database schema in a simple, human-readable language.
+This can be used as a starting point for making changes.
+
+### Usage
+```
+atlas schema inspect [flags]
+```
+
+### Example
+
+The following command will inspect the current state of the schema `example` and store it in a file named `schema.hcl`
+
+```console
+atlas schema inspect --url "sqlite://example.db" > schema.hcl
+```
+
+```hcl title="schema.hcl"
+schema "main" {}
+
+table "customers" {
+  schema = schema.main
+  column "id" {
+    null = true
+    type = integer
+  }
+  column "first_name" {
+    null = false
+    type = text
+  }
+  column "last_name" {
+    null = false
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+```
+
+:::info
+To learn more about inspecting schema with Atlas in variety of use cases, visit the documentation [here](/declarative/inspect)
+:::
+
+## Step 2: Planning a change
+
+Once you have inspected your database, the next step is to plan a change. This is done by modifying the [HCL](/guides/ddl#hcl) file in a way that it defines the desired state of your schema. The file should include the changes you want to make to your database, such as creating tables, columns, or indexes.
+
+:::info
+In this article, we will be focusing on HCL-based schema inspection with Atlas. For those opting to use SQL schema, refer to the documentation [here](/getting-started/sqlite-declarative-sql).
+:::
+
+### Example
+
+Let’s add the following table definition to the HCL schema file that we previously created with the `atlas schema inspect` command:
+
+```hcl title="schema.hcl" {22-44}
+schema "main" {}
+
+table "customers" {
+  schema = schema.main
+  column "id" {
+    null = true
+    type = integer
+  }
+  column "first_name" {
+    null = false
+    type = text
+  }
+  column "last_name" {
+    null = false
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+
+table "orders" {
+  schema = schema.main
+  column "id" {
+    null = true
+    type = integer
+  }
+  column "customer_id" {
+    null = false
+    type = integer
+  }
+  column "order_date" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "fk1" {
+    columns     = [column.customer_id]
+    ref_columns = [table.customers.column.id]
+  }
+}
+```
+
+## Step 3: Applying the change
+
+The final step is to apply the change to your database. To do this, simply run the `atlas schema apply` command.
+This command will compare the current state of your database to the desired state defined in your HCL file and make
+the necessary changes.
+
+### Usage
+
+```console
+atlas schema apply [flags]
+```
+
+### Example
+
+Let’s apply the changes we created in Step 2 using the following command:
+
+```console
+atlas schema apply \
+  --url "sqlite://example.db" \
+  --to "file://schema.hcl"
+```
+
+```console
+-- Planned Changes:
+-- Create "orders" table
+// highlight-next-line-info
+CREATE TABLE `orders` (`id` integer NULL, `customer_id` integer NOT NULL, `order_date` date NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `fk1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`));
+Use the arrow keys to navigate: ↓ ↑ → ← 
+? Are you sure?: 
+  ▸ Apply
+    Abort
+```
+
+Selecting `Apply` will apply the changes to the database.
+
+You can inspect the latest state of the database again and verify that the changes have been applied by re-running the `atlas schema inspect` command:
+
+```console
+atlas schema inspect --url "sqlite://example.db"
+```
+```hcl
+table "customers" {
+  schema = schema.main
+  column "id" {
+    null = true
+    type = integer
+  }
+  column "first_name" {
+    null = false
+    type = text
+  }
+  column "last_name" {
+    null = false
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+table "orders" {
+  schema = schema.main
+  column "id" {
+    null = true
+    type = integer
+  }
+  column "customer_id" {
+    null = false
+    type = integer
+  }
+  column "order_date" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "fk1" {
+    columns     = [column.customer_id]
+    ref_columns = [table.customers.column.id]
+  }
+}
+schema "main" {
+}
+```
+Great! Our changes have been successfully applied to the `example` schema.
+
+## Conclusion
+
+By following the steps above, you can inspect the current state of the database, make changes to the schema definition file and apply those changes to the database with confidence.
+
+The declarative migration is a flexible way to manage your database schema. It allows you to define your desired state in a simple, human-readable language, and then automatically apply those changes to your database. This can save you time and effort, and also reduce the risk of errors or inconsistencies in your database schema.
+
+:::info
+Atlas supports both Declarative and Versioned workflows for managing database schemas. The choice between the two depends on your requirements. To understand the difference and choose the best option for you, visit the documentation on Declarative vs Versioned workflow [here](/concepts/declarative-vs-versioned).
+:::
+
+## Need More Help?
+
+[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling. 
+
+[Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about Atlas, and the cloud platform [Atlas Cloud](https://atlasgo.cloud).

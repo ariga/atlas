@@ -1,0 +1,250 @@
+---
+id: postgresql-declarative-hcl
+title: Getting started with HCL declarative migrations for a PostgreSQL schema
+slug: /getting-started/postgresql-declarative-hcl
+---
+
+import InstallationInstructions from '../../components/_installation_instructions.mdx'
+
+### Introduction
+
+Atlas makes it easy to manage your database using the declarative migrations workflow. Declarative migrations focus on describing the desired state of the database and allow the migration engine to plan and execute the necessary actions to reach that state.
+
+In this quickstart guide, we will go through the three essential steps for using Atlas to manage your database schema: inspecting your database, authoring the desired changes, and applying those changes.
+
+
+### Installing Atlas
+
+<InstallationInstructions />
+
+### Warming up
+To demonstrate the examples in the article, let's start a docker container with an `example` database and create a table in it.
+
+Use the following command to run a PostgreSQL Docker container:
+
+```console
+docker run --name atlas-demo -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=example -p 5432:5432 -d postgres:latest
+```
+
+Once the container is running, you can connect to the PostgreSQL database using the command below:
+
+```console
+docker exec -it atlas-demo psql "postgres://postgres:pass@localhost:5432/example"
+```
+
+Once you're connected, you can create a table in it by running the following command:
+
+```sql
+CREATE TABLE customers (
+   id INT PRIMARY KEY,
+   first_name VARCHAR(255) NOT NULL,
+   last_name VARCHAR(255) NOT NULL
+);
+```
+
+## Step 1: Inspecting the database
+
+Before planning any changes to your database, it can be useful to know what your database schema looks like. To do this, you can use the `atlas schema inspect` command to inspect your database. This command generates an output in [HCL](/guides/ddl#hcl) format that represents your database schema in a simple, human-readable language. This can be used as a starting point for making changes.
+
+
+### Usage
+```
+atlas schema inspect [flags]
+```
+
+### Example
+
+The following command will inspect the current state of the schema `example` and store it in a file named `schema.hcl`
+
+```console
+atlas schema inspect \
+  --url "postgres://postgres:pass@localhost:5432/example?search_path=public&sslmode=disable" > schema.hcl
+```
+
+```hcl title="schema.hcl"
+schema "public" {}
+
+table "customers" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = integer
+  }
+  column "first_name" {
+    null = false
+    type = character_varying(255)
+  }
+  column "last_name" {
+    null = false
+    type = character_varying(255)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+```
+
+:::info
+To learn more about inspecting schema with Atlas in variety of use cases, visit the documentation [here](/declarative/inspect)
+:::
+
+## Step 2: Planning a change
+
+Once you have inspected your database, the next step is to plan a change. This is done by modifying the [HCL](/guides/ddl#hcl) file in a way that it defines the desired state of your schema. The file should include the changes you want to make to your database, such as creating tables, columns, or indexes.
+
+:::info
+In this article, we will be focusing on HCL-based schema inspection with Atlas. For those opting to use SQL schema, refer to the documentation [here](/getting-started/postgresql-declarative-sql).
+:::
+
+### Example
+
+Let’s add the following table definition to the HCL schema file that we previously created with the `atlas schema inspect` command:
+
+```hcl title="schema.hcl" {22-44}
+schema "public" {}
+
+table "customers" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = integer
+  }
+  column "first_name" {
+    null = false
+    type = character_varying(255)
+  }
+  column "last_name" {
+    null = false
+    type = character_varying(255)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+
+table "orders" {
+ schema = schema.public
+ column "id" {
+   null           = false
+   type           = int
+   auto_increment = true
+ }
+ column "customer_id" {
+   null = false
+   type = int
+ }
+ column "order_date" {
+   null = false
+   type = date
+ }
+ primary_key {
+   columns = [column.id]
+ }
+ foreign_key "customer_id_fk" {
+   columns     = [column.customer_id]
+   ref_columns = [table.customers.column.id]
+ }
+}
+```
+
+## Step 3: Applying the change
+
+The final step is to apply the change to your database. To do this, simply run the `atlas schema apply` command. This command will compare the current state of your database to the desired state defined in your HCL file and make the necessary changes.
+
+### Usage
+
+```console
+atlas schema apply [flags]
+```
+
+### Example
+
+Let’s apply the changes we created in Step 2 using the following command:
+
+```console
+atlas schema apply \
+  --url "postgres://postgres:pass@localhost:5432/example?search_path=public&sslmode=disable" \
+  --to "file://schema.hcl"
+```
+
+```console
+-- Planned Changes:
+-- Create "orders" table
+// highlight-next-line-info
+CREATE TABLE "public"."orders" ("id" integer NOT NULL, "customer_id" integer NOT NULL, "order_date" date NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "customer_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers" ("id"));
+Use the arrow keys to navigate: ↓ ↑ → ←
+? Are you sure?:
+  > Apply
+    Abort
+```
+
+Selecting `Apply` will apply the changes to the database.
+
+You can inspect the latest state of the database again and verify that the changes have been applied by re-running the `atlas schema inspect` command:
+
+```console
+atlas schema inspect \
+  --url "postgres://postgres:pass@localhost:5432/example?search_path=public&sslmode=disable"
+```
+```hcl
+table "customers" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = integer
+  }
+  column "first_name" {
+    null = false
+    type = character_varying(255)
+  }
+  column "last_name" {
+    null = false
+    type = character_varying(255)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+table "orders" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = integer
+  }
+  column "customer_id" {
+    null = false
+    type = integer
+  }
+  column "order_date" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "customer_id_fk" {
+    columns     = [column.customer_id]
+    ref_columns = [table.customers.column.id]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+}
+schema "public" {
+}
+```
+Great! Our changes have been successfully applied to the `example` schema.
+
+## Conclusion
+
+By following the steps above, you can inspect the current state of the database, make changes to the schema definition file and apply those changes to the database with confidence.
+
+The declarative migration is a flexible way to manage your database schema. It allows you to define your desired state in a simple, human-readable language, and then automatically apply those changes to your database. This can save you time and effort, and also reduce the risk of errors or inconsistencies in your database schema.
+
+:::info
+Atlas supports both Declarative and Versioned workflows for managing database schemas. The choice between the two depends on your requirements. To understand the difference and choose the best option for you, visit the documentation on Declarative vs Versioned workflow [here](/concepts/declarative-vs-versioned).
+:::
+
+## Need More Help?
+
+[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling. 
+
+[Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about Atlas, and the cloud platform [Atlas Cloud](https://atlasgo.cloud).
