@@ -39,7 +39,7 @@ func lintLatest(ctx context.Context, dev *sqlclient.Client, dir migrate.Dir, lat
 			return nil
 		}),
 	}
-	if err = r.Run(ctx); err != nil {
+	if err = r.Run(ctx); err != nil && !errors.As(err, &lint.SilentError{}) {
 		return nil, err
 	}
 	if report == nil {
