@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function"
 )
 
 // Marshal returns the Atlas HCL encoding of v.
@@ -237,27 +238,47 @@ func (s *State) resource(ctx *hcl.EvalContext, file *hcl.File) (*Resource, error
 	return res, nil
 }
 
-// mayExtendVars gets the current scope context, and extend it with additional
-// variables if it was configured this way using WithScopedEnums.
-func (s *State) mayExtendVars(ctx *hcl.EvalContext, scope []string) *hcl.EvalContext {
-	vars, ok := s.config.pathVars[strings.Join(scope, ".")]
-	if !ok {
+// mayScopeContext returns a new limited context for the given scope with access only
+// to variables defined by WithScopedEnums and WithTypes and references in the document.
+func (s *State) mayScopeContext(ctx *hcl.EvalContext, scope []string) *hcl.EvalContext {
+	path := strings.Join(scope, ".")
+	vars, ok1 := s.config.pathVars[path]
+	funcs, ok2 := s.config.pathFuncs[path]
+	if !ok1 && !ok2 {
 		return ctx
 	}
-	ctx = ctx.NewChild()
-	ctx.Variables = vars
-	return ctx
+	nctx := &hcl.EvalContext{
+		Variables: make(map[string]cty.Value),
+		Functions: make(map[string]function.Function),
+	}
+	for n, v := range vars {
+		nctx.Variables[n] = v
+	}
+	for n, f := range funcs {
+		nctx.Functions[n] = f
+	}
+	// A patch from the past. Should be moved
+	// to specific scopes in the future.
+	nctx.Functions["sql"] = rawExprImpl()
+	for p := ctx; p != nil; p = p.Parent() {
+		for k, v := range p.Variables {
+			if isRef(v) {
+				nctx.Variables[k] = v
+			}
+		}
+	}
+	return nctx
 }
 
 func (s *State) toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, scope []string) ([]*Attr, error) {
 	var attrs []*Attr
 	for _, hclAttr := range hclAttrs {
-		ctx := s.mayExtendVars(ctx, append(scope, hclAttr.Name))
-		at := &Attr{K: hclAttr.Name}
-		value, diag := hclAttr.Expr.Value(ctx)
+		scope := append(scope, hclAttr.Name)
+		value, diag := hclAttr.Expr.Value(s.mayScopeContext(ctx, scope))
 		if diag.HasErrors() {
-			return nil, s.typeError(diag)
+			return nil, s.typeError(diag, scope)
 		}
+		at := &Attr{K: hclAttr.Name}
 		switch t := value.Type(); {
 		case isRef(value):
 			at.V = cty.CapsuleVal(ctyRefType, &Ref{V: value.GetAttr("__ref").AsString()})
@@ -284,7 +305,8 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, sco
 }
 
 // typeError improves diagnostic reporting in case of parse error.
-func (s *State) typeError(diag hcl.Diagnostics) error {
+func (s *State) typeError(diag hcl.Diagnostics, scope []string) error {
+	path := strings.Join(scope, ".")
 	for _, d := range diag {
 		switch e := d.Expression.(type) {
 		case *hclsyntax.FunctionCallExpr:
@@ -300,6 +322,9 @@ func (s *State) typeError(diag hcl.Diagnostics) error {
 			}
 			if t, ok := s.findTypeSpec(e.Traversal.RootName()); ok && len(t.Attributes) > 0 {
 				d.Detail = fmt.Sprintf("Type %q requires at least 1 argument", t.Name)
+			} else if n := len(scope); n > 1 && (s.config.pathVars[path] != nil || s.config.pathFuncs[path] != nil) {
+				d.Summary = strings.Replace(d.Summary, "variable", fmt.Sprintf("%s.%s", scope[n-2], scope[n-1]), 1)
+				d.Detail = strings.Replace(d.Detail, "variable", scope[n-1], 1)
 			}
 		}
 	}
@@ -307,7 +332,20 @@ func (s *State) typeError(diag hcl.Diagnostics) error {
 }
 
 func isRef(v cty.Value) bool {
-	return v.Type().IsObjectType() && v.Type().HasAttribute("__ref")
+	t := v.Type()
+	if !t.IsObjectType() {
+		return false
+	}
+	if t.HasAttribute("__ref") {
+		return true
+	}
+	it := v.ElementIterator()
+	for it.Next() {
+		if _, v := it.Element(); isRef(v) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope []string) (*Resource, error) {
@@ -324,7 +362,7 @@ func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope [
 	default:
 		return nil, fmt.Errorf("too many labels for block: %s", block.Labels)
 	}
-	ctx = s.mayExtendVars(ctx, scope)
+	ctx = s.mayScopeContext(ctx, scope)
 	attrs, err := s.toAttrs(ctx, block.Body.Attributes, scope)
 	if err != nil {
 		return nil, err

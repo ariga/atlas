@@ -18,12 +18,12 @@ import (
 type (
 	// Config configures an unmarshaling.
 	Config struct {
-		types    []*TypeSpec
-		newCtx   func() *hcl.EvalContext
-		pathVars map[string]map[string]cty.Value
-		datasrc  map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
+		types     []*TypeSpec
+		newCtx    func() *hcl.EvalContext
+		pathVars  map[string]map[string]cty.Value
+		pathFuncs map[string]map[string]function.Function
+		datasrc   map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
 	}
-
 	// Option configures a Config.
 	Option func(*Config)
 )
@@ -31,7 +31,8 @@ type (
 // New returns a State configured with options.
 func New(opts ...Option) *State {
 	cfg := &Config{
-		pathVars: make(map[string]map[string]cty.Value),
+		pathVars:  make(map[string]map[string]cty.Value),
+		pathFuncs: make(map[string]map[string]function.Function),
 		newCtx: func() *hcl.EvalContext {
 			return stdTypes(&hcl.EvalContext{
 				Functions: stdFuncs(),
@@ -97,31 +98,27 @@ func WithDataSource(name string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty
 	}
 }
 
-// WithTypes configures the list of given types as identifiers in the unmarshaling context.
-func WithTypes(typeSpecs []*TypeSpec) Option {
-	newCtx := func() *hcl.EvalContext {
-		ctx := stdTypes(&hcl.EvalContext{
-			Functions: stdFuncs(),
-			Variables: make(map[string]cty.Value),
-		})
-		for _, ts := range typeSpecs {
-			typeSpec := ts
-			// If no required args exist, register the type as a variable in the HCL context.
-			if len(typeFuncReqArgs(typeSpec)) == 0 {
-				typ := &Type{T: typeSpec.T}
-				ctx.Variables[typeSpec.Name] = cty.CapsuleVal(ctyTypeSpec, typ)
-			}
-			// If func args exist, register the type as a function in HCL.
-			if len(typeFuncArgs(typeSpec)) > 0 {
-				ctx.Functions[typeSpec.Name] = typeFuncSpec(typeSpec)
-			}
+// WithTypes configures the given types as identifiers in the unmarshal
+// context. The path controls where the usage of this type is allowed.
+func WithTypes(path string, typeSpecs []*TypeSpec) Option {
+	vars := make(map[string]cty.Value)
+	funcs := make(map[string]function.Function)
+	for _, ts := range typeSpecs {
+		typeSpec := ts
+		// If no required args exist, register the type as a variable in the HCL context.
+		if len(typeFuncReqArgs(typeSpec)) == 0 {
+			typ := &Type{T: typeSpec.T}
+			vars[typeSpec.Name] = cty.CapsuleVal(ctyTypeSpec, typ)
 		}
-		ctx.Functions["sql"] = rawExprImpl()
-		return ctx
+		// If func args exist, register the type as a function in HCL.
+		if len(typeFuncArgs(typeSpec)) > 0 {
+			funcs[typeSpec.Name] = typeFuncSpec(typeSpec)
+		}
 	}
 	return func(c *Config) {
-		c.newCtx = newCtx
 		c.types = append(c.types, typeSpecs...)
+		c.pathVars[path] = vars
+		c.pathFuncs[path] = funcs
 	}
 }
 

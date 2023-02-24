@@ -347,7 +347,7 @@ table "accounts" {
 	require.NoError(t, err)
 }
 
-var hcl = schemahcl.New(schemahcl.WithTypes(postgres.TypeRegistry.Specs()))
+var hcl = schemahcl.New(schemahcl.WithTypes("table.column.type", postgres.TypeRegistry.Specs()))
 
 func TestMarshalTopLevel(t *testing.T) {
 	c := &sqlspec.Schema{
