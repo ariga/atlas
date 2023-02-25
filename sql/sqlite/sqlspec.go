@@ -201,7 +201,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 
 var (
 	hclState = schemahcl.New(
-		schemahcl.WithTypes(TypeRegistry.Specs()),
+		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
 		schemahcl.WithScopedEnums("table.column.as.type", stored, virtual),
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),

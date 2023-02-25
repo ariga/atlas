@@ -335,14 +335,19 @@ point {
 }
 
 func TestWithTypes(t *testing.T) {
-	f := `first    = int
-second   = bool
-third    = int(10)
-sized    = varchar(255)
-variadic = enum("a","b","c")
+	f := `parent "name" {
+  child "name" {
+    first    = int
+    second   = bool
+    third    = int(10)
+    sized    = varchar(255)
+    variadic = enum("a","b","c")
+  }
+}
 `
 	s := New(
 		WithTypes(
+			"parent.child",
 			[]*TypeSpec{
 				{Name: "bool", T: "bool"},
 				{
@@ -371,32 +376,38 @@ variadic = enum("a","b","c")
 		),
 	)
 	var test struct {
-		First    *Type `spec:"first"`
-		Second   *Type `spec:"second"`
-		Third    *Type `spec:"third"`
-		Varchar  *Type `spec:"sized"`
-		Variadic *Type `spec:"variadic"`
+		Parent struct {
+			Name  string `spec:",name"`
+			Child struct {
+				Name     string `spec:",name"`
+				First    *Type  `spec:"first"`
+				Second   *Type  `spec:"second"`
+				Third    *Type  `spec:"third"`
+				Varchar  *Type  `spec:"sized"`
+				Variadic *Type  `spec:"variadic"`
+			} `spec:"child"`
+		} `spec:"parent"`
 	}
 	err := s.EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
-	require.EqualValues(t, "int", test.First.T)
-	require.EqualValues(t, "bool", test.Second.T)
+	require.EqualValues(t, "int", test.Parent.Child.First.T)
+	require.EqualValues(t, "bool", test.Parent.Child.Second.T)
 
-	require.EqualValues(t, "varchar", test.Varchar.T)
-	require.Len(t, test.Varchar.Attrs, 1)
-	i, err := test.Varchar.Attrs[0].Int()
+	require.EqualValues(t, "varchar", test.Parent.Child.Varchar.T)
+	require.Len(t, test.Parent.Child.Varchar.Attrs, 1)
+	i, err := test.Parent.Child.Varchar.Attrs[0].Int()
 	require.NoError(t, err)
 	require.EqualValues(t, 255, i)
 
-	require.EqualValues(t, "enum", test.Variadic.T)
-	require.Len(t, test.Variadic.Attrs, 1)
-	vs, err := test.Variadic.Attrs[0].Strings()
+	require.EqualValues(t, "enum", test.Parent.Child.Variadic.T)
+	require.Len(t, test.Parent.Child.Variadic.Attrs, 1)
+	vs, err := test.Parent.Child.Variadic.Attrs[0].Strings()
 	require.NoError(t, err)
 	require.EqualValues(t, []string{"a", "b", "c"}, vs)
 
-	require.EqualValues(t, "int", test.Third.T)
-	require.Len(t, test.Third.Attrs, 1)
-	i, err = test.Third.Attrs[0].Int()
+	require.EqualValues(t, "int", test.Parent.Child.Third.T)
+	require.Len(t, test.Parent.Child.Third.Attrs, 1)
+	i, err = test.Parent.Child.Third.Attrs[0].Int()
 	require.NoError(t, err)
 	require.EqualValues(t, 10, i)
 
@@ -406,7 +417,7 @@ variadic = enum("a","b","c")
 }
 
 func TestEmptyStrSQL(t *testing.T) {
-	s := New(WithTypes(nil))
+	s := New(WithTypes("", nil))
 	h := `x = sql("")`
 	err := s.EvalBytes([]byte(h), &struct{}{}, nil)
 	require.ErrorContains(t, err, "empty expression")
@@ -414,7 +425,7 @@ func TestEmptyStrSQL(t *testing.T) {
 
 func TestOptionalArgs(t *testing.T) {
 	s := New(
-		WithTypes([]*TypeSpec{
+		WithTypes("block", []*TypeSpec{
 			{
 				T:    "float",
 				Name: "float",
@@ -425,32 +436,38 @@ func TestOptionalArgs(t *testing.T) {
 			},
 		}),
 	)
-	f := `arg_0 = float
-arg_1 = float(10)
-arg_2 = float(10,2)
+	f := `
+block "name" {
+  arg_0 = float
+  arg_1 = float(10)
+  arg_2 = float(10,2)
+}
 `
 	var test struct {
-		Arg0 *Type `spec:"arg_0"`
-		Arg1 *Type `spec:"arg_1"`
-		Arg2 *Type `spec:"arg_2"`
+		Block struct {
+			Name string `spec:",name"`
+			Arg0 *Type  `spec:"arg_0"`
+			Arg1 *Type  `spec:"arg_1"`
+			Arg2 *Type  `spec:"arg_2"`
+		} `spec:"block"`
 	}
 	err := s.EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
-	require.Nil(t, test.Arg0.Attrs)
+	require.Nil(t, test.Block.Arg0.Attrs)
 
-	require.Len(t, test.Arg1.Attrs, 1)
-	require.Equal(t, "precision", test.Arg1.Attrs[0].K)
-	i, err := test.Arg1.Attrs[0].Int()
+	require.Len(t, test.Block.Arg1.Attrs, 1)
+	require.Equal(t, "precision", test.Block.Arg1.Attrs[0].K)
+	i, err := test.Block.Arg1.Attrs[0].Int()
 	require.NoError(t, err)
 	require.EqualValues(t, 10, i)
 
-	require.Len(t, test.Arg2.Attrs, 2)
-	require.Equal(t, "precision", test.Arg2.Attrs[0].K)
-	i, err = test.Arg2.Attrs[0].Int()
+	require.Len(t, test.Block.Arg2.Attrs, 2)
+	require.Equal(t, "precision", test.Block.Arg2.Attrs[0].K)
+	i, err = test.Block.Arg2.Attrs[0].Int()
 	require.NoError(t, err)
 	require.EqualValues(t, 10, i)
-	require.Equal(t, "scale", test.Arg2.Attrs[1].K)
-	i, err = test.Arg2.Attrs[1].Int()
+	require.Equal(t, "scale", test.Block.Arg2.Attrs[1].K)
+	i, err = test.Block.Arg2.Attrs[1].Int()
 	require.NoError(t, err)
 	require.EqualValues(t, 2, i)
 }

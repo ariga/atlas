@@ -161,6 +161,9 @@ func stdFuncs() map[string]function.Function {
 		"urlsetpath":      urlSetPathFunc,
 		"values":          stdlib.ValuesFunc,
 		"zipmap":          stdlib.ZipmapFunc,
+		// A patch from the past. Should be moved
+		// to specific scopes in the future.
+		"sql": rawExprImpl(),
 	}
 }
 
