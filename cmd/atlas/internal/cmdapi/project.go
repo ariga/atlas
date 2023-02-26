@@ -5,7 +5,6 @@
 package cmdapi
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -13,11 +12,6 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/schemahcl"
-	"ariga.io/atlas/sql/sqlclient"
-
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -256,100 +250,4 @@ func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 
 func init() {
 	schemahcl.Register("env", &Env{})
-}
-
-// sqlsrc represents an SQL data-source.
-type sqlsrc struct {
-	ctx   *hcl.EvalContext
-	block *hclsyntax.Block
-}
-
-// exec executes the source block for getting the data.
-func (s *sqlsrc) exec() (cty.Value, error) {
-	var (
-		in struct {
-			URL    string   `hcl:"url"`
-			Query  string   `hcl:"query"`
-			Remain hcl.Body `hcl:",remain"`
-			Args   []any
-		}
-		values []cty.Value
-	)
-	if diags := gohcl.DecodeBody(s.block.Body, s.ctx, &in); diags.HasErrors() {
-		return cty.NilVal, s.errorf("decoding body: %v", diags)
-	}
-	attrs, diags := in.Remain.JustAttributes()
-	if diags.HasErrors() {
-		return cty.NilVal, s.errorf("getting attributes: %v", diags)
-	}
-	if at, ok := attrs["args"]; ok {
-		switch v, diags := at.Expr.Value(s.ctx); {
-		case diags.HasErrors():
-			return cty.NilVal, s.errorf(`evaluating "args": %w`, diags)
-		case !v.CanIterateElements():
-			return cty.NilVal, s.errorf(`attribute "args" must be a list, got: %s`, v.Type())
-		default:
-			for it := v.ElementIterator(); it.Next(); {
-				switch _, v := it.Element(); v.Type() {
-				case cty.String:
-					in.Args = append(in.Args, v.AsString())
-				case cty.Number:
-					f, _ := v.AsBigFloat().Float64()
-					in.Args = append(in.Args, f)
-				case cty.Bool:
-					in.Args = append(in.Args, v.True())
-				default:
-					return cty.NilVal, s.errorf(`attribute "args" must be a list of strings, numbers or booleans, got: %s`, v.Type())
-				}
-			}
-		}
-		delete(attrs, "args")
-	}
-	if len(attrs) > 0 {
-		return cty.NilVal, s.errorf("unexpected attributes: %v", attrs)
-	}
-	c, err := sqlclient.Open(context.Background(), in.URL)
-	if err != nil {
-		return cty.NilVal, s.errorf("opening connection: %w", err)
-	}
-	defer c.Close()
-	rows, err := c.QueryContext(context.Background(), in.Query, in.Args...)
-	if err != nil {
-		return cty.NilVal, s.errorf("executing query: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var v any
-		if err := rows.Scan(&v); err != nil {
-			return cty.NilVal, s.errorf("scanning row: %w", err)
-		}
-		switch v := v.(type) {
-		case bool:
-			values = append(values, cty.BoolVal(v))
-		case int64:
-			values = append(values, cty.NumberIntVal(v))
-		case float64:
-			values = append(values, cty.NumberFloatVal(v))
-		case string:
-			values = append(values, cty.StringVal(v))
-		case []byte:
-			values = append(values, cty.StringVal(string(v)))
-		default:
-			return cty.NilVal, s.errorf("unsupported row type: %T", v)
-		}
-	}
-	obj := map[string]cty.Value{
-		"count":  cty.NumberIntVal(int64(len(values))),
-		"values": cty.ListValEmpty(cty.NilType),
-		"value":  cty.NilVal,
-	}
-	if len(values) > 0 {
-		obj["value"] = values[0]
-		obj["values"] = cty.ListVal(values)
-	}
-	return cty.ObjectVal(obj), nil
-}
-
-func (s *sqlsrc) errorf(format string, args ...any) error {
-	return fmt.Errorf("data.sql.%s: %w", s.block.Labels[1], fmt.Errorf(format, args...))
 }
