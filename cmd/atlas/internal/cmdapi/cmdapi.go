@@ -560,8 +560,7 @@ func sqlStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 		if err != nil {
 			return nil, err
 		}
-		err = migrate.WriteSumFile(dir, sum)
-		if err != nil {
+		if err = migrate.WriteSumFile(dir, sum); err != nil {
 			return nil, err
 		}
 	// A migration directory.
