@@ -24,6 +24,10 @@ variable "name" {
 	default = "hello"
 }
 
+locals {
+	envName = atlas.env
+}
+
 lint {
 	destructive {
 		error = true
@@ -38,7 +42,7 @@ EOS
 env "local" {
 	url = "mysql://root:pass@localhost:3306/"
 	dev = "docker://mysql/8"
-	src = "./app.hcl"
+	src = "${local.envName}/app.hcl"
 	schemas = ["hello", "world"]
 	migration {
 		dir = "file://migrations"
@@ -113,7 +117,7 @@ env "multi" {
 					Attrs: []*schemahcl.Attr{
 						schemahcl.BoolAttr("bool", true),
 						schemahcl.IntAttr("integer", 42),
-						schemahcl.StringAttr("src", "./app.hcl"),
+						schemahcl.StringAttr("src", "local/app.hcl"),
 						schemahcl.StringAttr("str", "hello"),
 					},
 				},
@@ -121,7 +125,7 @@ env "multi" {
 		}, env)
 		sources, err := env.Sources()
 		require.NoError(t, err)
-		require.EqualValues(t, []string{"./app.hcl"}, sources)
+		require.EqualValues(t, []string{"local/app.hcl"}, sources)
 	})
 	t.Run("multi", func(t *testing.T) {
 		envs, err := LoadEnv("multi")
