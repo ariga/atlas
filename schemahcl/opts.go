@@ -70,6 +70,18 @@ func WithScopedEnums(path string, enums ...string) Option {
 	}
 }
 
+// WithVariables registers a list of variables to be injected into the context.
+func WithVariables(vars map[string]cty.Value) Option {
+	return func(c *Config) {
+		c.newCtx = func() *hcl.EvalContext {
+			return stdTypes(&hcl.EvalContext{
+				Functions: stdFuncs(),
+				Variables: vars,
+			})
+		}
+	}
+}
+
 // WithDataSource registers a data source name and its corresponding handler.
 // e.g., the example below registers a data source named "text" that returns
 // the string defined in the data source block.

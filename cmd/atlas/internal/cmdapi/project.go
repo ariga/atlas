@@ -12,22 +12,23 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/schemahcl"
+
 	"github.com/zclconf/go-cty/cty"
 )
 
 const projectFileName = "file://atlas.hcl"
 
 type loadConfig struct {
-	inputVals map[string]cty.Value
+	inputValues map[string]cty.Value
 }
 
 // LoadOption configures the LoadEnv function.
 type LoadOption func(*loadConfig)
 
 // WithInput is a LoadOption that sets the input values for the LoadEnv function.
-func WithInput(vals map[string]cty.Value) LoadOption {
+func WithInput(values map[string]cty.Value) LoadOption {
 	return func(config *loadConfig) {
-		config.inputVals = vals
+		config.inputValues = values
 	}
 }
 
@@ -197,11 +198,6 @@ func (e *Env) asMap() (map[string]string, error) {
 	return m, nil
 }
 
-var hclState = schemahcl.New(append(
-	cmdext.DataSources,
-	schemahcl.WithScopedEnums("env.migration.format", formatAtlas, formatFlyway, formatLiquibase, formatGoose, formatGolangMigrate),
-)...)
-
 // LoadEnv reads the project file in path, and loads
 // the environment instances with the provided name.
 func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
@@ -223,8 +219,8 @@ func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 		}
 		return nil, err
 	}
-	project := &Project{Lint: &Lint{}}
-	if err := hclState.EvalFiles([]string{path}, project, cfg.inputVals); err != nil {
+	project, err := parseConfig(path, name, cfg.inputValues)
+	if err != nil {
 		return nil, err
 	}
 	envs := make(map[string][]*Env)
@@ -246,6 +242,28 @@ func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 		return nil, fmt.Errorf("env %q not defined in project file", name)
 	}
 	return selected, nil
+}
+
+func parseConfig(path, env string, values map[string]cty.Value) (*Project, error) {
+	opts := append(
+		cmdext.DataSources,
+		schemahcl.WithScopedEnums(
+			"env.migration.format",
+			formatAtlas, formatFlyway,
+			formatLiquibase, formatGoose,
+			formatGolangMigrate,
+		),
+		schemahcl.WithVariables(map[string]cty.Value{
+			"atlas": cty.ObjectVal(map[string]cty.Value{
+				"env": cty.StringVal(env),
+			}),
+		}),
+	)
+	p := &Project{Lint: &Lint{}}
+	if err := schemahcl.New(opts...).EvalFiles([]string{path}, p, values); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func init() {
