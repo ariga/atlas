@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -21,6 +22,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func TestRuntimeVarSrc(t *testing.T) {
@@ -156,4 +158,41 @@ func TestEntLoader_MigrateDiff(t *testing.T) {
 		_, ok := cmdext.States.Differ([]string{"ent://../migrate/ent/schema"})
 		require.False(t, ok, "skipping schemas without globalid")
 	})
+}
+
+func TestTemplateDir(t *testing.T) {
+	var (
+		v struct {
+			Dir string `spec:"dir"`
+		}
+		dir   = t.TempDir()
+		state = schemahcl.New(cmdext.DataSources...)
+	)
+	err := os.WriteFile(filepath.Join(dir, "1.sql"), []byte("create table {{ .Schema }}.t(c int);"), 0644)
+	require.NoError(t, err)
+	err = state.EvalBytes([]byte(`
+variable "path" {
+  type = string
+}
+
+data "template_dir" "tenant" {
+  path = var.path
+  vars = {
+    Schema = "a8m"
+  }
+}
+
+dir = data.template_dir.tenant.url
+`), &v, map[string]cty.Value{
+		"path": cty.StringVal(dir),
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, v.Dir)
+	d := migrate.OpenMemDir(strings.TrimPrefix(v.Dir, "mem://"))
+	require.NoError(t, migrate.Validate(d))
+	files, err := d.Files()
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+	require.Equal(t, "1.sql", files[0].Name())
+	require.Equal(t, "create table a8m.t(c int);", string(files[0].Bytes()))
 }
