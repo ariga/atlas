@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 )
@@ -210,9 +211,39 @@ func (f LocalFile) Directive(name string) (ds []string) {
 	return ds
 }
 
-// MemDir provides an in-memory Dir implementation.
-type MemDir struct {
-	files map[string]File
+type (
+	// MemDir provides an in-memory Dir implementation.
+	MemDir struct {
+		files map[string]File
+	}
+	// An opened MemDir.
+	openedMem struct {
+		dir    *MemDir
+		numUse int
+	}
+)
+
+// A list of the opened memory-based directories.
+var memDirs struct {
+	sync.Mutex
+	opened map[string]*openedMem
+}
+
+// OpenMemDir opens an in-memory directory and registers it in the process namespace
+// with the given name. Hence, calling OpenMemDir with the same name will return the
+// same directory. The directory is deleted when the last reference of it is closed.
+func OpenMemDir(name string) *MemDir {
+	memDirs.Lock()
+	defer memDirs.Unlock()
+	if m, ok := memDirs.opened[name]; ok {
+		m.numUse++
+		return m.dir
+	}
+	if memDirs.opened == nil {
+		memDirs.opened = make(map[string]*openedMem)
+	}
+	memDirs.opened[name] = &openedMem{dir: &MemDir{}, numUse: 1}
+	return memDirs.opened[name].dir
 }
 
 // Open implements fs.FS.
@@ -224,6 +255,26 @@ func (d *MemDir) Open(name string) (fs.File, error) {
 	return &memFile{
 		ReadCloser: io.NopCloser(bytes.NewReader(f.Bytes())),
 	}, nil
+}
+
+// Close implements the io.Closer interface.
+func (d *MemDir) Close() error {
+	memDirs.Lock()
+	defer memDirs.Unlock()
+	var opened string
+	for name, m := range memDirs.opened {
+		switch {
+		case m.dir != d:
+		case opened != "":
+			return fmt.Errorf("dir was opened with different names: %q and %q", opened, name)
+		default:
+			opened = name
+			if m.numUse--; m.numUse == 0 {
+				delete(memDirs.opened, name)
+			}
+		}
+	}
+	return nil
 }
 
 // WriteFile adds a new file in-memory.

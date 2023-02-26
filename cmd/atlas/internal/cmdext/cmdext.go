@@ -7,12 +7,16 @@
 package cmdext
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
+	"text/template"
 	"time"
 
 	"ariga.io/atlas/schemahcl"
@@ -41,6 +45,7 @@ import (
 var DataSources = []schemahcl.Option{
 	schemahcl.WithDataSource("sql", QuerySrc),
 	schemahcl.WithDataSource("runtimevar", RuntimeVarSrc),
+	schemahcl.WithDataSource("template_dir", TemplateDir),
 }
 
 // RuntimeVarSrc exposes the gocloud.dev/runtimevar as a schemahcl datasource.
@@ -195,6 +200,109 @@ func QuerySrc(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 		obj["values"] = cty.ListVal(values)
 	}
 	return cty.ObjectVal(obj), nil
+}
+
+// TemplateDir implements migrate.Dir interface for template directories.
+//
+//	data "template_dir" "name" {
+//	  path = "path/to/directory"
+//	  vars = {
+//	    Env  = atlas.env
+//	    Seed = var.seed
+//	  }
+//	}
+//
+//	env "dev" {
+//	  url = "driver://path?query=param"
+//	  migration {
+//	    dir = data.template_dir.name.url
+//	  }
+//	}
+func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+	var (
+		args struct {
+			Path   string   `hcl:"path"`
+			Remain hcl.Body `hcl:",remain"`
+		}
+		vars   = make(map[string]any)
+		errorf = blockError("data.template_dir", block)
+	)
+	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+		return cty.NilVal, errorf("decoding body: %v", diags)
+	}
+	attrs, diags := args.Remain.JustAttributes()
+	if diags.HasErrors() {
+		return cty.NilVal, errorf("getting attributes: %v", diags)
+	}
+	if vs, ok := attrs["vars"]; ok {
+		switch vs, diags := vs.Expr.Value(ctx); {
+		case diags.HasErrors():
+			return cty.NilVal, errorf(`evaluating "vars": %w`, diags)
+		case !vs.CanIterateElements():
+			return cty.NilVal, errorf(`attribute "vars" must be a map, got: %s`, vs.Type())
+		default:
+			for it := vs.ElementIterator(); it.Next(); {
+				k, v := it.Element()
+				switch v.Type() {
+				case cty.String:
+					vars[k.AsString()] = v.AsString()
+				case cty.Number:
+					f, _ := v.AsBigFloat().Float64()
+					vars[k.AsString()] = f
+				case cty.Bool:
+					vars[k.AsString()] = v.True()
+				default:
+					return cty.NilVal, errorf(`attribute "vars" must be a map of strings, numbers or booleans, got: %s`, v.Type())
+				}
+			}
+		}
+		delete(attrs, "vars")
+	}
+	if len(attrs) > 0 {
+		return cty.NilVal, errorf("unexpected attributes: %v", attrs)
+	}
+	t := template.New("template_dir")
+	err := filepath.Walk(args.Path, func(path string, d os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("walk path %s: %w", path, err)
+		}
+		if !d.IsDir() {
+			_, err = t.ParseFiles(path)
+		}
+		return err
+	})
+	if err != nil {
+		return cty.NilVal, errorf(err.Error())
+	}
+	dir := migrate.OpenMemDir(args.Path)
+	// Only top-level (template) files are treated as migrations.
+	matches, err := fs.Glob(os.DirFS(args.Path), "*.sql")
+	if err != nil {
+		return cty.NilVal, errorf("globbing templates: %w", err)
+	}
+	for _, m := range matches {
+		var b bytes.Buffer
+		if err := t.ExecuteTemplate(&b, m, vars); err != nil {
+			return cty.NilVal, errorf("executing template %q: %w", m, err)
+		}
+		if err := dir.WriteFile(m, b.Bytes()); err != nil {
+			return cty.NilVal, errorf("writing file %q: %w", m, err)
+		}
+	}
+	sum, err := dir.Checksum()
+	if err != nil {
+		return cty.NilVal, err
+	}
+	b, err := sum.MarshalText()
+	if err != nil {
+		return cty.NilVal, err
+	}
+	if err := dir.WriteFile(migrate.HashFileName, b); err != nil {
+		return cty.NilVal, err
+	}
+	return cty.ObjectVal(map[string]cty.Value{
+		"url": cty.StringVal(fmt.Sprintf("mem://%s", args.Path)),
+	}), nil
 }
 
 func blockError(name string, b *hclsyntax.Block) func(string, ...any) error {

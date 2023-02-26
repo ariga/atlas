@@ -226,6 +226,44 @@ func TestMemDir(t *testing.T) {
 	require.Len(t, files, 1) // 1.sql
 }
 
+func TestOpenMemDir(t *testing.T) {
+	dev1 := migrate.OpenMemDir("dev")
+	require.NoError(t, dev1.WriteFile("1.sql", []byte("create table t1(c int);")))
+	// Open the same dir.
+	dev2 := migrate.OpenMemDir("dev")
+	files2, err := dev2.Files()
+	require.NoError(t, err)
+	require.Len(t, files2, 1)
+	require.NoError(t, dev2.WriteFile("2.sql", []byte("create table t2(c int);")))
+	files1, err := dev1.Files()
+	require.NoError(t, err)
+	require.Len(t, files1, 2)
+	files2, err = dev2.Files()
+	require.NoError(t, err)
+	require.Len(t, files2, 2)
+	// Open a new dir.
+	etc := migrate.OpenMemDir("etc")
+	files, err := etc.Files()
+	require.NoError(t, err)
+	require.Empty(t, files)
+
+	// Closing dir and opening it should not
+	// clean it if there are active references.
+	require.NoError(t, dev1.Close())
+	dev1 = migrate.OpenMemDir("dev")
+	files1, err = dev1.Files()
+	require.NoError(t, err)
+	require.Len(t, files1, 2)
+
+	// Cleanup directory on close.
+	require.NoError(t, dev1.Close())
+	require.NoError(t, dev2.Close())
+	dev1 = migrate.OpenMemDir("dev")
+	files1, err = dev1.Files()
+	require.NoError(t, err)
+	require.Empty(t, files1)
+}
+
 func TestLocalFile_Directive(t *testing.T) {
 	f := migrate.NewLocalFile("1.sql", []byte(`-- atlas:lint ignore
 alter table users drop column id;
