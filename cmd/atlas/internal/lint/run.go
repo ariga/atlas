@@ -204,10 +204,10 @@ type (
 
 		// Steps of the analysis. Added in verbose mode.
 		Steps []struct {
-			Name   string `json:"Name,omitempty"`   // Step name.
-			Text   string `json:"Text,omitempty"`   // Step description.
-			Error  string `json:"Error,omitempty"`  // Error that cause the execution to halt.
-			Result any    `json:"Result,omitempty"` // Result of the step. For example, a diagnostic.
+			Name   string      `json:"Name,omitempty"`   // Step name.
+			Text   string      `json:"Text,omitempty"`   // Step description.
+			Error  string      `json:"Error,omitempty"`  // Error that cause the execution to halt.
+			Result *FileReport `json:"Result,omitempty"` // Result of the step. For example, a diagnostic.
 		}
 
 		// Schema versions found by the runner.
@@ -264,12 +264,12 @@ func NewSummaryReport(c *sqlclient.Client, dir migrate.Dir) *SummaryReport {
 }
 
 // StepResult appends step result to the summary.
-func (f *SummaryReport) StepResult(name, text string, result any) {
+func (f *SummaryReport) StepResult(name, text string, result *FileReport) {
 	f.Steps = append(f.Steps, struct {
-		Name   string `json:"Name,omitempty"`
-		Text   string `json:"Text,omitempty"`
-		Error  string `json:"Error,omitempty"`
-		Result any    `json:"Result,omitempty"`
+		Name   string      `json:"Name,omitempty"`
+		Text   string      `json:"Text,omitempty"`
+		Error  string      `json:"Error,omitempty"`
+		Result *FileReport `json:"Result,omitempty"`
 	}{
 		Name:   name,
 		Text:   text,
@@ -280,10 +280,10 @@ func (f *SummaryReport) StepResult(name, text string, result any) {
 // StepError appends step error to the summary.
 func (f *SummaryReport) StepError(name, text string, err error) error {
 	f.Steps = append(f.Steps, struct {
-		Name   string `json:"Name,omitempty"`
-		Text   string `json:"Text,omitempty"`
-		Error  string `json:"Error,omitempty"`
-		Result any    `json:"Result,omitempty"`
+		Name   string      `json:"Name,omitempty"`
+		Text   string      `json:"Text,omitempty"`
+		Error  string      `json:"Error,omitempty"`
+		Result *FileReport `json:"Result,omitempty"`
 	}{
 		Name:  name,
 		Text:  text,
