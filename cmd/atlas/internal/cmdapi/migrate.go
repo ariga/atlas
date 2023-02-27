@@ -1280,12 +1280,16 @@ func dir(u string, create bool) (migrate.Dir, error) {
 
 // dirURL returns a migrate.Dir to use as migration directory. For now only local directories are supported.
 func dirURL(u *url.URL, create bool) (migrate.Dir, error) {
-	if u.Scheme != "file" {
-		return nil, fmt.Errorf("unsupported driver %q", u.Scheme)
-	}
 	path := filepath.Join(u.Host, u.Path)
-	if path == "" {
-		path = "migrations"
+	switch u.Scheme {
+	case "mem":
+		return migrate.OpenMemDir(path), nil
+	case "file":
+		if path == "" {
+			path = "migrations"
+		}
+	default:
+		return nil, fmt.Errorf("unsupported driver %q", u.Scheme)
 	}
 	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(path) }
 	switch f := u.Query().Get("format"); f {
