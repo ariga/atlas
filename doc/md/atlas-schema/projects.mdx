@@ -13,31 +13,104 @@ Project files provide a convenient way to describe and interact with multiple
 environments when working with Atlas. A project file is a file named
 `atlas.hcl` and contains one or more `env` blocks. For example:
 
+<Tabs>
+<TabItem value="mysql" label="MySQL" default>
+
 ```hcl
 // Define an environment named "local"
 env "local" {
   // Declare where the schema definition resides.
-  // Also supported:
-  //   src = "./dir/with/schema"
-  //   src = ["multi.hcl", "file.hcl"]
+  // Also supported: ["multi.hcl", "file.hcl"].
   src = "./project/schema.hcl"
 
-  // Define the URL of the database which is managed in
-  // this environment.
-  url = "mysql://localhost:3306"
+  // Define the URL of the database which is managed
+  // in this environment.
+  url = "mysql://user:pass@localhost:3306/schema"
 
   // Define the URL of the Dev Database for this environment
   // See: https://atlasgo.io/concepts/dev-database
-  dev = "mysql://localhost:3307"
-
-  // The schemas in the database that are managed by Atlas.
-  schemas = ["users", "admin"]
+  dev = "docker://mysql/8/schema"
 }
 
 env "dev" {
   // ... a different env
 }
 ```
+
+</TabItem>
+<TabItem value="mariadb" label="MariaDB">
+
+```hcl
+// Define an environment named "local"
+env "local" {
+  // Declare where the schema definition resides.
+  // Also supported: ["multi.hcl", "file.hcl"].
+  src = "./project/schema.hcl"
+
+  // Define the URL of the database which is managed
+  // in this environment.
+  url = "maria://user:pass@localhost:3306/schema"
+
+  // Define the URL of the Dev Database for this environment
+  // See: https://atlasgo.io/concepts/dev-database
+  dev = "docker://maria/latest/schema"
+}
+
+env "dev" {
+  // ... a different env
+}
+```
+
+</TabItem>
+<TabItem value="postgres" label="PostgreSQL">
+
+```hcl
+// Define an environment named "local"
+env "local" {
+  // Declare where the schema definition resides.
+  // Also supported: ["multi.hcl", "file.hcl"].
+  src = "./project/schema.hcl"
+
+  // Define the URL of the database which is managed
+  // in this environment.
+  url = "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+
+  // Define the URL of the Dev Database for this environment
+  // See: https://atlasgo.io/concepts/dev-database
+  dev = "docker://postgres/15"
+}
+
+env "dev" {
+  // ... a different env
+}
+```
+
+</TabItem>
+<TabItem value="sqlite" label="SQLite">
+
+```hcl
+// Define an environment named "local"
+env "local" {
+  // Declare where the schema definition resides.
+  // Also supported: ["multi.hcl", "file.hcl"].
+  src = "./project/schema.hcl"
+
+  // Define the URL of the database which is managed
+  // in this environment.
+  url = "sqlite://file.db?_fk=1"
+
+  // Define the URL of the Dev Database for this environment
+  // See: https://atlasgo.io/concepts/dev-database
+  dev = "sqlite://file?mode=memory&_fk=1"
+}
+
+env "dev" {
+  // ... a different env
+}
+```
+
+</TabItem>
+</Tabs>
 
 Once defined, a project's environment can be worked against using the `--env` flag.
 For example:
@@ -61,7 +134,8 @@ env "local" {
         // URL where the migration directory resides. Only filesystem directories
         // are currently supported but more options will be added in the future.
         dir = "file://migrations"
-        // Format of the migration directory: atlas | flyway | liquibase | goose | golang-migrate
+        // An optional format of the migration directory:
+        // atlas (default) | flyway | liquibase | goose | golang-migrate | dbmate
         format = atlas
     }
 }
@@ -79,7 +153,7 @@ Will run the `migrate validate` command against the Dev Database defined in the
 Project files may pass [input values](input-variables) to variables defined in
 the Atlas schema of the environment. To do this simply provide additional attributes
 to the environment block:
-```hcl
+```hcl title="atlas.hcl"
 env "local" {
   url = "sqlite://test?mode=memory&_fk=1"
   src = "schema.hcl"
@@ -91,7 +165,7 @@ env "local" {
 
 These values can then be consumed by variables defined in the schema file:
 
-```hcl
+```hcl title="schema.hcl"
 variable "tenant" {
   type = string
 }
@@ -175,7 +249,7 @@ locals {
 ### Data Sources
 
 Data sources enable users to retrieve information stored in an external service or database. The currently supported
-data sources are: [`sql`](#data-source-sql) and [`runtimevar`](#data-source-runtimevar).
+data sources are: [`sql`](#data-source-sql), [`runtimevar`](#data-source-runtimevar) and [`template_dir`](#data-source-template_dir).
 
 #### Data source: `sql`
 
@@ -309,6 +383,44 @@ env "dev" {
 
 </TabItem>
 </Tabs>
+
+#### Data source: `template_dir`
+
+The `template_dir` data source renders a migration directory from a template directory. It does this by parsing the
+entire directory as [Go templates](https://golang.org/pkg/text/template), executing top-level (template) files that
+have the `.sql` file extension, and generating an in-memory migration directory from them.
+
+##### Arguments {#data-source-template_dir-arguments}
+
+- `path` - A path to the template directory.
+
+##### Attributes {#data-source-template_dir-attributes}
+
+- `url` - A [URL](../concepts/url.mdx) to the generated migration directory.
+
+```hcl title="atlas.hcl" {6-14}
+variable "path" {
+  type        = string
+  description = "A path to the template directory"
+}
+
+data "template_dir" "migrations" {
+  path = var.path
+  vars = {
+    Key1 = "value1"
+    Key2 = "value2"
+    // Pass the --env value as a template variable.
+    Env  = atlas.env
+  }
+}
+
+env "dev" {
+  url = var.url
+  migration {
+    dir = data.template_dir.migrations.url
+  }
+}
+```
 
 ### Environments
 

@@ -553,14 +553,14 @@ data "template_dir" "migrations" {
 }
 
 env "dev" {
-  url = "sqlite://file://${atlas.env}?mode=memory&_fk=1"
+  url = "sqlite://${atlas.env}?mode=memory&_fk=1"
   migration {
     dir = data.template_dir.migrations.url
   }
 }
 
 env "prod" {
-  url = "sqlite://file://${atlas.env}?mode=memory&_fk=1"
+  url = "sqlite://${atlas.env}?mode=memory&_fk=1"
   migration {
     dir = data.template_dir.migrations.url
   }
