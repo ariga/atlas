@@ -537,6 +537,56 @@ env "local" {
 		// Empty list is expanded to zero blocks.
 		require.EqualError(t, err, `env "local" not defined in project file`)
 	})
+
+	t.Run("TemplateDir", func(t *testing.T) {
+		var (
+			h = `
+variable "path" {
+  type = string
+}
+
+data "template_dir" "migrations" {
+  path = var.path
+  vars = {
+    Env = atlas.env
+  }
+}
+
+env "dev" {
+  url = "sqlite://file://${atlas.env}?mode=memory&_fk=1"
+  migration {
+    dir = data.template_dir.migrations.url
+  }
+}
+
+env "prod" {
+  url = "sqlite://file://${atlas.env}?mode=memory&_fk=1"
+  migration {
+    dir = data.template_dir.migrations.url
+  }
+}
+`
+			p    = t.TempDir()
+			path = filepath.Join(p, "atlas.hcl")
+		)
+		err := os.WriteFile(path, []byte(h), 0600)
+		require.NoError(t, err)
+		for _, e := range []string{"dev", "prod"} {
+			cmd := migrateCmd()
+			cmd.AddCommand(migrateApplyCmd())
+			s, err := runCmd(
+				cmd, "apply",
+				"-c", "file://"+path,
+				"--env", e,
+				"--var", "path=testdata/templatedir",
+			)
+			require.NoError(t, err)
+			require.Contains(t, s, "Migrating to version 2 (2 migrations in total):")
+			require.Contains(t, s, fmt.Sprintf("create table %s1 (c text);", e))
+			require.Contains(t, s, fmt.Sprintf("create table %s2 (c text);", e))
+			require.Contains(t, s, fmt.Sprintf("create table users_%s2 (c text);", e))
+		}
+	})
 }
 
 func TestMigrate_ApplyTxMode(t *testing.T) {
