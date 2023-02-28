@@ -7,10 +7,12 @@
 package cmdext
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/url"
 	"os"
@@ -275,7 +277,7 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 		return cty.NilVal, errorf(err.Error())
 	}
 	dir := migrate.OpenMemDir(args.Path)
-	// Only top-level (template) files are treated as migrations.
+	// Only top-level (template) fileNames are treated as migrations.
 	matches, err := fs.Glob(os.DirFS(args.Path), "*.sql")
 	if err != nil {
 		return cty.NilVal, errorf("globbing templates: %w", err)
@@ -458,4 +460,92 @@ func dirFormatter(dir migrate.Dir) migrate.Formatter {
 	default:
 		return migrate.DefaultFormatter
 	}
+}
+
+// ArchiveDir returns a tar archive of the given directory.
+func ArchiveDir(dir migrate.Dir) ([]byte, error) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	defer tw.Close()
+
+	sumf, err := dir.Checksum()
+	if err != nil {
+		return nil, err
+	}
+	sumt, err := sumf.MarshalText()
+	if err != nil {
+		return nil, err
+	}
+	if err := append2Tar(tw, migrate.HashFileName, sumt); err != nil {
+		return nil, err
+	}
+	files, err := dir.Files()
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range files {
+		if err := append2Tar(tw, f.Name(), f.Bytes()); err != nil {
+			return nil, err
+		}
+	}
+	return buf.Bytes(), nil
+}
+
+// UnarchiveDir extracts the tar archive into the given directory. If the archive contains
+// a file named "atlas.sum", it will be used to verify the checksum of the directory.
+func UnarchiveDir(arc []byte, dir migrate.Dir) error {
+	tr := tar.NewReader(bytes.NewReader(arc))
+	var sumf []byte
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		switch h.Name {
+		case migrate.HashFileName:
+			sumf, err = io.ReadAll(tr)
+			if err != nil {
+				return err
+			}
+		default:
+			data, err := io.ReadAll(tr)
+			if err != nil {
+				return err
+			}
+			if err := dir.WriteFile(h.Name, data); err != nil {
+				return err
+			}
+		}
+	}
+	if sumf != nil {
+		calcSum, err := dir.Checksum()
+		if err != nil {
+			return err
+		}
+		sumt, err := calcSum.MarshalText()
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(sumf, sumt) {
+			return fmt.Errorf("checksum mismatch: %s != %s", sumf, sumt)
+		}
+	}
+	return nil
+}
+
+func append2Tar(tw *tar.Writer, name string, data []byte) error {
+	if err := tw.WriteHeader(&tar.Header{
+		Name: name,
+		Mode: 0600,
+		Size: int64(len(data)),
+	}); err != nil {
+		return err
+	}
+	if _, err := tw.Write(data); err != nil {
+		return err
+	}
+	return nil
 }

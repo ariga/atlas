@@ -5,8 +5,11 @@
 package cmdext_test
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -195,4 +198,44 @@ dir = data.template_dir.tenant.url
 	require.Len(t, files, 1)
 	require.Equal(t, "1.sql", files[0].Name())
 	require.Equal(t, "create table a8m.t(c int);", string(files[0].Bytes()))
+}
+
+func TestDirTar(t *testing.T) {
+	d := migrate.OpenMemDir("")
+	defer d.Close()
+
+	err := d.WriteFile("1.sql", []byte("create table t(c int);"))
+	require.NoError(t, err)
+
+	b, err := cmdext.ArchiveDir(d)
+	require.NoError(t, err)
+
+	f, err := fileNames(bytes.NewReader(b))
+	require.NoError(t, err)
+	require.Equal(t, []string{"atlas.sum", "1.sql"}, f)
+
+	extract := migrate.OpenMemDir("extract")
+	err = cmdext.UnarchiveDir(b, extract)
+	require.NoError(t, err)
+	files, err := extract.Files()
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+	require.Equal(t, "1.sql", files[0].Name())
+	require.Equal(t, "create table t(c int);", string(files[0].Bytes()))
+}
+
+func fileNames(r io.Reader) ([]string, error) {
+	var out []string
+	tr := tar.NewReader(r)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break // End of archive
+		}
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, hdr.Name)
+	}
+	return out, nil
 }
