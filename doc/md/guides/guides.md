@@ -54,9 +54,17 @@ Welcome to the Atlas Guides.
 
 [Optimal data alignment (AR101)](postgres/ar-101.md)
 
+[Descending Indexes](postgres/descending-indexes.md)
+
+[Functional Indexes](postgres/functional-indexes.md)
+
 ### SQLite
 
 [Partial Indexes](sqlite/partial-indexes.md)
+
+[Descending Indexes](sqlite/descending-indexes.md)
+
+[Functional Indexes](sqlite/functional-indexes.md)
 
 ## Migration tools
 
