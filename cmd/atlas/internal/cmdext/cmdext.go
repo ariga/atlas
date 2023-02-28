@@ -277,7 +277,7 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 		return cty.NilVal, errorf(err.Error())
 	}
 	dir := migrate.OpenMemDir(args.Path)
-	// Only top-level (template) fileNames are treated as migrations.
+	// Only top-level (template) files are treated as migrations.
 	matches, err := fs.Glob(os.DirFS(args.Path), "*.sql")
 	if err != nil {
 		return cty.NilVal, errorf("globbing templates: %w", err)
