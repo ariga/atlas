@@ -5,7 +5,7 @@ slug: /guides/postgres/functional-indexes
 ---
 
 ### What are functional key parts?​​
-A functional index is an index in a database that is based on the result of a function applied to one or more columns of a single table. Functional key parts can index expression values. Hence, functional key parts enable indexing values which are not stored directly in the table itself.
+A functional index is an index in a database that is based on the result of a function applied to one or more columns in a table. Functional key parts can index expression values. Hence, functional key parts enable indexing values that are not stored directly in the table itself.
 
 ### When are functional indexes helpful?​
 Functional indexes are helpful in a PostgreSQL database when the query retrieves data based on the result of a function. This is particularly useful when the function requires high computational power to execute. 
@@ -375,6 +375,6 @@ Amazing! Our new index sci_math_avg_idx with the expression `(science + mathemat
 In this guide, we demonstrated how using functional indexes with an appropriate expression becomes a very crucial skill in optimizing query performance with combinations of certain expressions, functions and/or conditions.
 
 ## Need More Help?​​
-[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
+[Join the Atlas Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
 
 [Sign up](https://www.getrevue.co/profile/ariga) to our newsletter to stay up to date about [Atlas](https://atlasgo.io/), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud/).

@@ -5,7 +5,7 @@ slug: /guides/sqlite/functional-indexes
 ---
 
 ### What are functional key parts?​​
-A functional index is an index in a database that is based on the result of a function applied to one or more columns of a single table. Functional key parts can index expression values. Hence, functional key parts enable indexing values which are not stored directly in the table itself.
+A functional index is an index in a database that is based on the result of a function applied to one or more columns of a table. Functional key parts can index expression values. Hence, functional key parts enable indexing values that are not stored directly in the table itself.
 
 ### When are functional indexes helpful?​
 Functional indexes are helpful in SQLite databases when the query retrieves data based on the result of a function. It can be useful when the function requires high computational power to execute.

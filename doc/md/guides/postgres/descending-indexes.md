@@ -5,7 +5,7 @@ slug: /guides/postgres/descending-indexes
 ---
 
 ### What are descending indexes?​
-Descending indexes are indexes where key values are stored in descending order. Descending indexes can be helpful in PostgreSQL when queries involve ordering the results in descending order and/or filtering out null values.
+Descending indexes are indexes where key parts are stored in descending order. Descending indexes can be helpful in PostgreSQL when queries involve ordering the results in descending order and/or filtering out null values.
 
 ### When are descending indexes helpful?​
 For example, if a query uses an `ORDER BY` clause to sort the results of a query in descending order, then a descending index can improve the performance of that query significantly. 
@@ -277,6 +277,6 @@ Amazing! Our new descending index is now created!
 In this guide, we demonstrated how to create and use descending indexes in PostgreSQL to optimize queries with the `ORDER BY` clause, and how we can use Atlas to easily manage descending indexes in a PostgreSQL database.
 
 ## Need More Help?​​
-[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
+[Join the Atlas Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
 
 [Sign up](https://www.getrevue.co/profile/ariga) to our newsletter to stay up to date about [Atlas](https://atlasgo.io/), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud/).
