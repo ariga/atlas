@@ -345,6 +345,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "{\"Pending\":[\"CREATE TABLE `t1` (`id` int NULL)\"]}", s)
 	})
+
 	t.Run("AutoApprove", func(t *testing.T) {
 		db := openSQLite(t, "")
 		cmd := schemaCmd()
