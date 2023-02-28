@@ -3,26 +3,64 @@ title: Dev Database
 id: dev-database
 slug: /concepts/dev-database
 ---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 ## Introduction
 
 Atlas uses the concept of "Dev Database" to provide extra safety and correctness to the migration process.
-a development database (a twin environment) to validate schemas, simulate migrations and calculate the state of the
-migration directory by replaying the historical changes. Let's go over a few examples to explain the benefits of using a
-dev/twin database. For a one-time use Atlas can spin up an ephemeral local docker container for you with a special
-[docker driver](concepts/url.mdx).
+A development database (a twin environment) to validate both SQL and HCL schemas, simulate migrations and calculate the
+state of the migration directory by replaying the historical changes. Let's go over a few examples to explain the
+benefits of using a dev database. For a one-time use Atlas can spin up an ephemeral local docker container for you with
+a special [docker driver](concepts/url.mdx).
 
-:::info
 
-Atlas cleans up after itself! You can use the same instance of a "Dev Database" for multiple environments, as long 
-as they are not accessed concurrently.
+<Tabs>
+<TabItem value="mysql" label="MySQL" default>
 
-:::
+```shell
+# When working on a single database schema.
+--dev-url "docker://mysql/8/schema"
+
+# When working on multiple database schemas.
+--dev-url "docker://mysql/8"
+```
+</TabItem>
+<TabItem value="mariadb" label="MariaDB">
+
+```shell
+# When working on a single database schema.
+--dev-url "docker://maria/latest/schema"
+
+# When working on multiple database schemas.
+--dev-url "docker://maria/latest"
+```
+
+</TabItem>
+<TabItem value="postgres" label="PostgreSQL">
+
+```shell
+# Every PostgreSQL database is created with the "public" schema.
+--dev-url "docker://postgres/15"
+```
+
+</TabItem>
+<TabItem value="sqlite" label="SQLite">
+
+```shell
+# Atlas supports working with an in-memory database in SQLite.
+--dev-url "sqlite://file?mode=memory&_fk=1"
+```
+
+</TabItem>
+</Tabs>
 
 ## Validation
 
 Suppose we want to the add the following `CHECK` constraint to the table below:
 
-```hcl title="test.hcl" {6-8}
+```hcl title="schema.hcl" {6-8}
 table "t" {
   schema = schema.test
   column "c" {
@@ -38,7 +76,9 @@ After running [`schema apply`](reference.md#atlas-schema-apply), we get the foll
 constraint is invalid, as column `d` does not exist.
 
 ```shell
-$ atlas schema apply --url "mysql://root:pass@:3308/test" -f test.hcl
+atlas schema apply \
+  --url "mysql://root:pass@:3308/test" \
+  --to "schema.hcl"
 ```
 ```text
 -- Planned Changes:
@@ -59,8 +99,10 @@ avoided using the `--dev-url` option. Passing this to `schema apply` will first 
 successfully.
 
 ```shell
-$ atlas schema apply --url "mysql://root:pass@:3308/test" -f test.hcl
-  --dev-url="mysql://root:pass@:3308/test"
+atlas schema apply \
+  --url "mysql://root:pass@:3308/test" \
+  --to "schema.hcl" \
+  --dev-url "docker://mysql/8/test"
 ```
 ```text
 Error: create "t" table: Error 3820: Check constraint 'ck' refers to non-existing column 'd'.
@@ -82,7 +124,7 @@ in-depth example).
 
 Let's see it in action, by adding an index-expression to our schema.
 
-```hcl title="test.hcl" {6-10}
+```hcl title="schema.hcl" {6-10}
 table "t" {
   schema = schema.test
   column "c" {
@@ -97,7 +139,9 @@ table "t" {
 ```
 
 ```shell
-$ atlas schema apply --url "mysql://root:pass@:3308/test" -f test.hcl
+atlas schema apply \
+  --url "mysql://root:pass@:3308/test" \
+  --to "schema.hcl"
 ```
 ```text
 -- Planned Changes:
@@ -109,7 +153,7 @@ ALTER TABLE `test`.`t` ADD INDEX `i` ((upper(concat('c', c))))
 We added a new index-expression to our schema, but using `schema inspect` will show our index in its normal form.
 
 ```shell
-$ atlas schema inspect --url "mysql://root:pass@:3308/test"
+atlas schema inspect --url "mysql://root:pass@:3308/test"
 ```
 ```hcl {7-11}
 table "t" {
@@ -128,7 +172,9 @@ table "t" {
 
 Therefore, running `schema apply` again will suggest unnecessary schema changes.
 ```shell
-$ atlas schema apply --url "mysql://root:pass@:3308/test" -f test.hcl
+atlas schema apply \
+  --url "mysql://root:pass@:3308/test" \
+  --to "schema.hcl"
 ```
 ```text
 -- Planned Changes:
@@ -142,8 +188,10 @@ ALTER TABLE `test`.`t` ADD INDEX `i` ((upper(concat('c', c))))
 Similarly to the previous example, we will use the `--dev-url` option to solve this.
 
 ```shell
-$ atlas schema apply --url "mysql://root:pass@:3308/test" -f test.hcl
-  --dev-url="mysql://root:pass@:3307/test"
+atlas schema apply \
+  --url "mysql://root:pass@:3308/test" \
+  --to "schema.hcl" \
+  --dev-url "docker://mysql/8/test"
 ```
 ```text
 Schema is synced, no changes to be made
