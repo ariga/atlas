@@ -122,6 +122,30 @@ atlas schema apply --env local
 Will run the `schema apply` command against the database that is defined for the `local`
 environment.
 
+:::info Unlabeled `env` blocks
+It is possible to define an `env` block whose name is dynamically set during command execution using the `--env` flag.
+This is useful when multiple environments share the same configuration and the arguments are dynamically set during
+execution:
+
+```hcl {2}
+env {
+  name = atlas.env
+  url = var.url
+  log {
+    migrate {
+      apply = format(
+        "{{ json . | json_merge %q }}",
+        jsonencode({
+          EnvName : atlas.Env
+        })
+      )
+    }
+  }
+}
+```
+
+:::
+
 ### Projects with Versioned Migrations
 
 Environments may declare a `migration` block to configure how versioned migrations

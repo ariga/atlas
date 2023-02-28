@@ -157,3 +157,24 @@ env "multi" {
 		require.ErrorContains(t, err, `no such file or directory`)
 	})
 }
+
+func TestUnnamedEnv(t *testing.T) {
+	h := `
+env {
+  name = atlas.env
+  log {
+    schema {
+      apply = "env: ${atlas.env}"
+    }
+  }
+}`
+	path := filepath.Join(t.TempDir(), "atlas.hcl")
+	err := os.WriteFile(path, []byte(h), 0600)
+	require.NoError(t, err)
+	GlobalFlags.ConfigURL = "file://" + path
+	envs, err := LoadEnv("local")
+	require.NoError(t, err)
+	require.Len(t, envs, 1)
+	require.Equal(t, "local", envs[0].Name)
+	require.Equal(t, "env: local", envs[0].Log.Schema.Apply)
+}
