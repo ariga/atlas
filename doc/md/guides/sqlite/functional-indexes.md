@@ -329,6 +329,6 @@ Amazing! Our new index `sci_math_avg_idx` with the expression `(science + mathem
 In this guide, we demonstrated how using functional indexes with an appropriate expression becomes a very crucial skill in optimizing query performance with combinations of certain expressions, functions and/or conditions.
 
 ## Need More Help?​​
-[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
+[Join the Atlas Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
 
 [Sign up](https://www.getrevue.co/profile/ariga) to our newsletter to stay up to date about [Atlas](https://atlasgo.io/), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud/).
