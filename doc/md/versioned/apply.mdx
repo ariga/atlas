@@ -59,6 +59,8 @@ CREATE INDEX CONCURRENTLY name_idx ON users (name);
 
 ### Existing Databases
 
+#### Baseline migration
+
 If you have an existing database project and want to switch over to Atlas Versioned Migrations, you need to provide
 Atlas with a starting point. The first step is to create a migration file reflecting the current schema state. This can
 be easily done:
@@ -76,6 +78,7 @@ values={[
 ```shell
 atlas migrate diff my_baseline \
   --dir "file://migrations" \
+  --dev-url "docker://mysql/8/my_schema" \
   --to "mysql://root:pass@localhost:3306/my_schema"
 ```
 
@@ -85,6 +88,7 @@ atlas migrate diff my_baseline \
 ```shell
 atlas migrate diff my_baseline \
   --dir "file://migrations" \
+  --dev-url "docker://mariadb/latest/my_schema" \
   --to "maria://root:pass@localhost:3306/my_schema"
 ```
 
@@ -94,6 +98,7 @@ atlas migrate diff my_baseline \
 ```shell
 atlas migrate diff my_baseline \
   --dir "file://migrations" \
+  --dev-url "docker://postgres/15" \
   --to "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
 ```
 
@@ -103,21 +108,16 @@ atlas migrate diff my_baseline \
 ```shell
 atlas migrate diff my_baseline \
   --dir "file://migrations" \
+  --dev-url "sqlite://file?mode=memory" \
   --to "sqlite://file.db"
 ```
 
 </TabItem>
 </Tabs>
 
-<Tabs
-defaultValue="baseline"
-values={[
-{label: '1_baseline.sql', value: 'baseline'},
-{label: '2_add_pets_table.sql', value: 'first_version'},
-]}>
-<TabItem value="baseline">
+Atlas will generate a "baseline" file from the database schema. For example:
 
-```sql
+```sql title="20220811074144_baseline.sql"
 CREATE TABLE `users` (
     `id` bigint(20) NOT NULL AUTO_INCREMENT,
     `age` bigint(20) NOT NULL,
@@ -127,32 +127,30 @@ CREATE TABLE `users` (
 )
 ```
 
-</TabItem>
-<TabItem value="first_version">
+Regardless of whether you added additional migration files after the baseline, you need to specify the baseline version
+during your first migration execution. Atlas will mark this version as already applied and proceed with the next version
+after it. For example:
 
-```sql
-CREATE TABLE `pets` (
-    `id` bigint(20) NOT NULL AUTO_INCREMENT,
-    `name` varchar(255) COLLATE utf8mb4_bin NOT NULL,
-    PRIMARY KEY (`id`)
-)
+```shell
+atlas migrate apply \
+  --url "mysql://root:pass@localhost:3306/example" \
+  --dir "file://migrations" \
+  --baseline "20220811074144"
 ```
 
-</TabItem>
-</Tabs>
+#### Allow Dirty
 
-On your first migration execution attempt, you can then specify a baseline version. Atlas will mark this version as
-already applied and proceed with the next version:
-* `--baseline 1` will skip all files including version 1 (`1_baseline.sql`) and proceed with the next version
-(`2_add_pets_table`).
+If your database contains resources but no revision information yet, Atlas will refuse to execute migration files. One
+way to override that behavior is by using the `--baseline` flag. However, in cases where existing tables are not managed
+by Atlas at all and should not be part of a baseline file, you can run the first migration execution with the
+`--allow-dirty` flag to operate on a non-clean database.
 
-If your database does contain resources but no revision information yet, Atlas will refuse to execute migration files.
-One way to override that behavior is by using the `--baseline` flag above. However, e.g. in cases where the existing
-tables are not managed by Atlas at all and should not be part of a baseline file, you can run the initial migration
-attempt by providing the following flag:
-* `--allow-dirty` to allow starting migration execution on a non-clean database.
-
-`--allow-dirty` and `--baseline` are mutually exclusive.
+```shell
+atlas migrate apply \
+  --url "mysql://root:pass@localhost:3306/example" \
+  --dir "file://migrations" \
+  --allow-dirty
+```
 
 ### Dry Run
 

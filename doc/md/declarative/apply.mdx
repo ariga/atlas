@@ -23,7 +23,7 @@ A desired state can be specified using a database URL, an HCL or SQL schema, or 
 * `--url` (`-u` accepted as well) - the [URL](/concepts/url) of the database to be inspected.
 * `--to` - a list of [URLs](/concepts/url) to the desired state: can be a database URL, an HCL or
   SQL schema, or a migration directory.
-* `--dev-url` - a [URL](/concepts/url) to the [_Dev-Database_](../concepts/dev.md).
+* `--dev-url` - a [URL](/concepts/url) to the [_Dev-Database_](../concepts/dev.mdx).
 * `--schema` (optional, may be supplied multiple times) - schemas to inspect within the target database.
 * `--exclude` (optional, may be supplied multiple times) - filter out resources matching the given glob pattern.
 * `--log` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
@@ -52,7 +52,7 @@ This means in certain situations it may appear to Atlas as if some diff exists
 between the desired and inspected schemas, whereas in reality there is none.
 
 To overcome these situations, users may use the `--dev-url` flag to provide
-Atlas with a connection string to a [_Dev-Database_](../concepts/dev.md).
+Atlas with a connection string to a [_Dev-Database_](../concepts/dev.mdx).
 This database is used to normalize the schema prior to planning migrations and
 for simulating changes to ensure their applicability before execution.
 

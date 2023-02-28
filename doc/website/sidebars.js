@@ -58,10 +58,10 @@ module.exports = {
             label: 'Concepts',
             collapsed: false,
             items: [
-                {type: 'doc', id: 'concepts/workflows', label: 'Declarative vs Versioned'},
                 {type: 'doc', id: 'concepts/concepts-url', label: 'URLs'},
                 {type: 'doc', id: 'concepts/dev-database', label: 'Dev Database'},
                 {type: 'doc', id: 'concepts/migration-directory-integrity', label: 'Directory Integrity'},
+                {type: 'doc', id: 'concepts/workflows', label: 'Declarative vs Versioned'},
             ],
         },
         {
