@@ -589,9 +589,11 @@ func ArchiveDir(dir Dir) ([]byte, error) {
 // UnarchiveDir extracts the tar archive into the given directory. If the archive contains
 // a file named "atlas.sum", it will be used to verify the checksum of the directory.
 func UnarchiveDir(arc []byte) (Dir, error) {
-	tr := tar.NewReader(bytes.NewReader(arc))
-	var sum bool
-	md := &MemDir{}
+	var (
+		md  = &MemDir{}
+		sum bool
+		tr  = tar.NewReader(bytes.NewReader(arc))
+	)
 	for {
 		h, err := tr.Next()
 		if err == io.EOF {
