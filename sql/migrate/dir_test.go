@@ -5,6 +5,8 @@
 package migrate_test
 
 import (
+	"archive/tar"
+	"bytes"
 	_ "embed"
 	"io"
 	"os"
@@ -298,4 +300,43 @@ alter table pets drop column id;
 	require.Empty(t, f.Directive("lint"))
 	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:lint ignore\n\n"))
 	require.Equal(t, []string{"ignore"}, f.Directive("lint"), "double newline as directive separator")
+}
+
+func TestDirTar(t *testing.T) {
+	d := migrate.OpenMemDir("")
+	defer d.Close()
+
+	err := d.WriteFile("1.sql", []byte("create table t(c int);"))
+	require.NoError(t, err)
+
+	b, err := migrate.ArchiveDir(d)
+	require.NoError(t, err)
+
+	f, err := fileNames(bytes.NewReader(b))
+	require.NoError(t, err)
+	require.Equal(t, []string{"atlas.sum", "1.sql"}, f)
+
+	dir, err := migrate.UnarchiveDir(b)
+	require.NoError(t, err)
+	files, err := dir.Files()
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+	require.Equal(t, "1.sql", files[0].Name())
+	require.Equal(t, "create table t(c int);", string(files[0].Bytes()))
+}
+
+func fileNames(r io.Reader) ([]string, error) {
+	var out []string
+	tr := tar.NewReader(r)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break // End of archive
+		}
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, hdr.Name)
+	}
+	return out, nil
 }

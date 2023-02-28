@@ -12,7 +12,6 @@ import (
 	"context"
 	"errors"
 
-	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/cmd/atlas/internal/lint"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -23,11 +22,6 @@ import (
 type (
 	FileReport    = lint.FileReport
 	SummaryReport = lint.SummaryReport
-)
-
-var (
-	ArchiveDir   = cmdext.ArchiveDir
-	UnarchiveDir = cmdext.UnarchiveDir
 )
 
 // ErrEmptyReport is returned when the report is empty.
