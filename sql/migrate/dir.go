@@ -563,16 +563,18 @@ func ArchiveDir(dir Dir) ([]byte, error) {
 	tw := tar.NewWriter(&buf)
 	defer tw.Close()
 
-	sumf, err := dir.Checksum()
-	if err != nil {
+	sumF, err := dir.Open(HashFileName)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	}
-	sumt, err := sumf.MarshalText()
-	if err != nil {
-		return nil, err
-	}
-	if err := append2Tar(tw, HashFileName, sumt); err != nil {
-		return nil, err
+	if sumF != nil {
+		sumB, err := io.ReadAll(sumF)
+		if err != nil {
+			return nil, err
+		}
+		if err := append2Tar(tw, HashFileName, sumB); err != nil {
+			return nil, err
+		}
 	}
 	files, err := dir.Files()
 	if err != nil {
@@ -586,13 +588,11 @@ func ArchiveDir(dir Dir) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// UnarchiveDir extracts the tar archive into the given directory. If the archive contains
-// a file named "atlas.sum", it will be used to verify the checksum of the directory.
+// UnarchiveDir extracts the tar archive into the given directory.
 func UnarchiveDir(arc []byte) (Dir, error) {
 	var (
-		md  = &MemDir{}
-		sum bool
-		tr  = tar.NewReader(bytes.NewReader(arc))
+		md = &MemDir{}
+		tr = tar.NewReader(bytes.NewReader(arc))
 	)
 	for {
 		h, err := tr.Next()
@@ -607,14 +607,6 @@ func UnarchiveDir(arc []byte) (Dir, error) {
 			return nil, err
 		}
 		if err := md.WriteFile(h.Name, data); err != nil {
-			return nil, err
-		}
-		if h.Name == HashFileName {
-			sum = true
-		}
-	}
-	if sum {
-		if err := Validate(md); err != nil {
 			return nil, err
 		}
 	}

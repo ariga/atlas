@@ -311,8 +311,19 @@ func TestDirTar(t *testing.T) {
 
 	b, err := migrate.ArchiveDir(d)
 	require.NoError(t, err)
-
 	f, err := fileNames(bytes.NewReader(b))
+	require.NoError(t, err)
+	require.Equal(t, []string{"1.sql"}, f)
+
+	// With sumfile.
+	checksum, err := d.Checksum()
+	require.NoError(t, err)
+	err = migrate.WriteSumFile(d, checksum)
+	require.NoError(t, err)
+
+	b, err = migrate.ArchiveDir(d)
+	require.NoError(t, err)
+	f, err = fileNames(bytes.NewReader(b))
 	require.NoError(t, err)
 	require.Equal(t, []string{"atlas.sum", "1.sql"}, f)
 
