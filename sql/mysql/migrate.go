@@ -225,31 +225,33 @@ func (s *state) addTable(add *schema.AddTable) error {
 		return fmt.Errorf("table %q has no columns", add.T.Name)
 	}
 	b.Wrap(func(b *sqlx.Builder) {
-		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
+		b.IndentIn()
+		defer func() { b.IndentOut().NL() }()
+		b.MapIndent(add.T.Columns, func(i int, b *sqlx.Builder) {
 			if err := s.column(b, add.T, add.T.Columns[i]); err != nil {
 				errs = append(errs, err.Error())
 			}
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
-			b.Comma().P("PRIMARY KEY")
+			b.Comma().NL().P("PRIMARY KEY")
 			indexTypeParts(b, pk)
 		}
 		if len(add.T.Indexes) > 0 {
 			b.Comma()
 		}
-		b.MapComma(add.T.Indexes, func(i int, b *sqlx.Builder) {
+		b.MapIndent(add.T.Indexes, func(i int, b *sqlx.Builder) {
 			idx := add.T.Indexes[i]
 			index(b, idx)
 		})
 		if len(add.T.ForeignKeys) > 0 {
 			b.Comma()
-			if err := s.fks(b, add.T.ForeignKeys...); err != nil {
+			if err := s.fks(b.MapIndentErr, add.T.ForeignKeys...); err != nil {
 				errs = append(errs, err.Error())
 			}
 		}
 		for _, attr := range add.T.Attrs {
 			if c, ok := attr.(*schema.Check); ok {
-				b.Comma()
+				b.Comma().NL()
 				s.check(b, c)
 			}
 		}
@@ -407,7 +409,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				reverse = append(reverse, &schema.ModifyPrimaryKey{From: change.To, To: change.From, Change: change.Change})
 			case *schema.AddForeignKey:
 				b.P("ADD")
-				if err := s.fks(b, change.F); err != nil {
+				if err := s.fks(b.MapCommaErr, change.F); err != nil {
 					return err
 				}
 				reverse = append(reverse, &schema.DropForeignKey{F: change.F})
@@ -603,8 +605,8 @@ func indexTypeParts(b *sqlx.Builder, idx *schema.Index) {
 	})
 }
 
-func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) error {
-	return b.MapCommaErr(fks, func(i int, b *sqlx.Builder) error {
+func (s *state) fks(commaF func(any, func(int, *sqlx.Builder) error) error, fks ...*schema.ForeignKey) error {
+	return commaF(fks, func(i int, b *sqlx.Builder) error {
 		fk := fks[i]
 		if fk.Symbol != "" {
 			b.P("CONSTRAINT").Ident(fk.Symbol)
@@ -724,7 +726,7 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 
 // Build instantiates a new builder and writes the given phrase to it.
 func (s *state) Build(phrases ...string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteChar: '`', Schema: s.SchemaQualifier}
+	b := &sqlx.Builder{QuoteChar: '`', Schema: s.SchemaQualifier, Indent: s.Indent}
 	return b.P(phrases...)
 }
 
