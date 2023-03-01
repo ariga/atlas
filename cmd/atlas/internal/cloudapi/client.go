@@ -43,11 +43,12 @@ func (c *Client) GetDir(ctx context.Context, input DirInput) (migrate.Dir, error
 	if err := c.client.MakeRequest(
 		ctx,
 		&graphql.Request{
-			Query: `query getDir($input: DirInput!) {
-						dir(input: $input) {
-							content
-						}
-					}`,
+			Query: `
+				query getDir($input: DirInput!) {
+					dir(input: $input) {
+						content
+					}
+				}`,
 			Variables: struct {
 				Input DirInput `json:"input"`
 			}{
