@@ -224,9 +224,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 	if len(add.T.Columns) == 0 {
 		return fmt.Errorf("table %q has no columns", add.T.Name)
 	}
-	b.Wrap(func(b *sqlx.Builder) {
-		b.IndentIn()
-		defer func() { b.IndentOut().NL() }()
+	b.WrapIndent(func(b *sqlx.Builder) {
 		b.MapIndent(add.T.Columns, func(i int, b *sqlx.Builder) {
 			if err := s.column(b, add.T, add.T.Columns[i]); err != nil {
 				errs = append(errs, err.Error())

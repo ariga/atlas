@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"strconv"
+	"strings"
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
@@ -447,3 +448,129 @@ func TestDefaultPlan(t *testing.T) {
 	})
 	require.EqualError(t, err, `create "t1" table: cannot execute statements without a database connection. use Open to create a new Driver`)
 }
+
+func TestIndentedPlan(t *testing.T) {
+	tests := []struct {
+		T   *schema.Table
+		Cmd string
+	}{
+		{
+			T: schema.NewTable("t1").
+				AddColumns(schema.NewIntColumn("a", "int")),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL",
+				")",
+			),
+		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL,",
+				"  `b` int NOT NULL",
+				")",
+			),
+		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				).
+				SetPrimaryKey(
+					schema.NewPrimaryKey(schema.NewIntColumn("id", "int")),
+				),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL,",
+				"  `b` int NOT NULL,",
+				"  `id` int NOT NULL,",
+				"  PRIMARY KEY (`id`)",
+				")",
+			),
+		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				).
+				AddForeignKeys(
+					schema.NewForeignKey("fk1").
+						AddColumns(schema.NewIntColumn("a", "int")).
+						SetRefTable(schema.NewTable("t2")).
+						AddRefColumns(schema.NewIntColumn("a", "int")),
+					schema.NewForeignKey("fk2").
+						AddColumns(schema.NewIntColumn("a", "int")).
+						SetRefTable(schema.NewTable("t2")).
+						AddRefColumns(schema.NewIntColumn("a", "int")),
+				),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL,",
+				"  `b` int NOT NULL,",
+				"  CONSTRAINT `fk1` FOREIGN KEY (`a`) REFERENCES `t2` (`a`),",
+				"  CONSTRAINT `fk2` FOREIGN KEY (`a`) REFERENCES `t2` (`a`)",
+				")",
+			),
+		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				).
+				SetPrimaryKey(
+					schema.NewPrimaryKey(schema.NewIntColumn("id", "int")),
+				).
+				AddForeignKeys(
+					schema.NewForeignKey("fk1").
+						AddColumns(schema.NewIntColumn("a", "int")).
+						SetRefTable(schema.NewTable("t2")).
+						AddRefColumns(schema.NewIntColumn("a", "int")),
+					schema.NewForeignKey("fk2").
+						AddColumns(schema.NewIntColumn("a", "int")).
+						SetRefTable(schema.NewTable("t2")).
+						AddRefColumns(schema.NewIntColumn("a", "int")),
+				).
+				AddChecks(
+					schema.NewCheck().SetName("ck1").SetExpr("a > 0"),
+					schema.NewCheck().SetName("ck2").SetExpr("a > 0"),
+				),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL,",
+				"  `b` int NOT NULL,",
+				"  `id` int NOT NULL,",
+				"  PRIMARY KEY (`id`),",
+				"  CONSTRAINT `fk1` FOREIGN KEY (`a`) REFERENCES `t2` (`a`),",
+				"  CONSTRAINT `fk2` FOREIGN KEY (`a`) REFERENCES `t2` (`a`),",
+				"  CONSTRAINT `ck1` CHECK (a > 0),",
+				"  CONSTRAINT `ck2` CHECK (a > 0)",
+				`)`,
+			),
+		},
+	}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			db, mk, err := sqlmock.New()
+			require.NoError(t, err)
+			mock{mk}.systemVars("3.36.0")
+			drv, err := Open(db)
+			require.NoError(t, err)
+			plan, err := drv.PlanChanges(context.Background(), "wantPlan", []schema.Change{&schema.AddTable{T: tt.T}}, func(opts *migrate.PlanOptions) {
+				opts.Indent = "  "
+			})
+			require.NoError(t, err)
+			require.Len(t, plan.Changes, 1)
+			require.Equal(t, tt.Cmd, plan.Changes[0].Cmd)
+		})
+	}
+}
+
+func join(lines ...string) string { return strings.Join(lines, "\n") }

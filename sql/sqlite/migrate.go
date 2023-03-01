@@ -105,15 +105,15 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
 	}
-	b.Wrap(func(b *sqlx.Builder) {
-		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
+	b.WrapIndent(func(b *sqlx.Builder) {
+		b.MapIndent(add.T.Columns, func(i int, b *sqlx.Builder) {
 			if err := s.column(b, add.T.Columns[i]); err != nil {
 				errs = append(errs, err.Error())
 			}
 		})
 		// Primary keys with auto-increment are inlined on the column definition.
 		if pk := add.T.PrimaryKey; pk != nil && !autoincPK(pk) {
-			b.Comma().P("PRIMARY KEY")
+			b.Comma().NL().P("PRIMARY KEY")
 			s.indexParts(b, pk.Parts)
 		}
 		if len(add.T.ForeignKeys) > 0 {
@@ -122,7 +122,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		}
 		for _, attr := range add.T.Attrs {
 			if c, ok := attr.(*schema.Check); ok {
-				b.Comma()
+				b.Comma().NL()
 				check(b, c)
 			}
 		}
@@ -332,7 +332,7 @@ func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 }
 
 func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
-	b.MapComma(fks, func(i int, b *sqlx.Builder) {
+	b.MapIndent(fks, func(i int, b *sqlx.Builder) {
 		fk := fks[i]
 		if fk.Symbol != "" {
 			b.P("CONSTRAINT").Ident(fk.Symbol)
@@ -548,7 +548,7 @@ func autoincPK(pk *schema.Index) bool {
 
 // Build instantiates a new builder and writes the given phrase to it.
 func (s *state) Build(phrases ...string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteChar: '`', Schema: s.SchemaQualifier}
+	b := &sqlx.Builder{QuoteChar: '`', Schema: s.SchemaQualifier, Indent: s.Indent}
 	return b.P(phrases...)
 }
 
