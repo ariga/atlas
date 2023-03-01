@@ -5,6 +5,7 @@
 package migrate
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
 	"crypto/sha256"
@@ -555,3 +556,73 @@ func (m *memFile) Mode() fs.FileMode          { return 0 }
 func (m *memFile) ModTime() time.Time         { return time.Time{} }
 func (m *memFile) IsDir() bool                { return false }
 func (m *memFile) Sys() interface{}           { return nil }
+
+// ArchiveDir returns a tar archive of the given directory.
+func ArchiveDir(dir Dir) ([]byte, error) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	defer tw.Close()
+
+	sumF, err := dir.Open(HashFileName)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	if sumF != nil {
+		sumB, err := io.ReadAll(sumF)
+		if err != nil {
+			return nil, err
+		}
+		if err := append2Tar(tw, HashFileName, sumB); err != nil {
+			return nil, err
+		}
+	}
+	files, err := dir.Files()
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range files {
+		if err := append2Tar(tw, f.Name(), f.Bytes()); err != nil {
+			return nil, err
+		}
+	}
+	return buf.Bytes(), nil
+}
+
+// UnarchiveDir extracts the tar archive into the given directory.
+func UnarchiveDir(arc []byte) (Dir, error) {
+	var (
+		md = &MemDir{}
+		tr = tar.NewReader(bytes.NewReader(arc))
+	)
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		data, err := io.ReadAll(tr)
+		if err != nil {
+			return nil, err
+		}
+		if err := md.WriteFile(h.Name, data); err != nil {
+			return nil, err
+		}
+	}
+	return md, nil
+}
+
+func append2Tar(tw *tar.Writer, name string, data []byte) error {
+	if err := tw.WriteHeader(&tar.Header{
+		Name: name,
+		Mode: 0600,
+		Size: int64(len(data)),
+	}); err != nil {
+		return err
+	}
+	if _, err := tw.Write(data); err != nil {
+		return err
+	}
+	return nil
+}
