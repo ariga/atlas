@@ -152,14 +152,14 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		b.P("IF NOT EXISTS")
 	}
 	b.Table(add.T)
-	b.Wrap(func(b *sqlx.Builder) {
-		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
+	b.WrapIndent(func(b *sqlx.Builder) {
+		b.MapIndent(add.T.Columns, func(i int, b *sqlx.Builder) {
 			if err := s.column(b, add.T, add.T.Columns[i]); err != nil {
 				errs = append(errs, err.Error())
 			}
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
-			b.Comma().P("PRIMARY KEY")
+			b.Comma().NL().P("PRIMARY KEY")
 			if err := s.index(b, pk); err != nil {
 				errs = append(errs, err.Error())
 			}
@@ -170,7 +170,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		}
 		for _, attr := range add.T.Attrs {
 			if c, ok := attr.(*schema.Check); ok {
-				b.Comma()
+				b.Comma().NL()
 				check(b, c)
 			}
 		}
@@ -1054,7 +1054,7 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
 }
 
 func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
-	b.MapComma(fks, func(i int, b *sqlx.Builder) {
+	b.MapIndent(fks, func(i int, b *sqlx.Builder) {
 		fk := fks[i]
 		if fk.Symbol != "" {
 			b.P("CONSTRAINT").Ident(fk.Symbol)
@@ -1086,7 +1086,7 @@ func (s *state) append(c ...*migrate.Change) {
 
 // Build instantiates a new builder and writes the given phrase to it.
 func (s *state) Build(phrases ...string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteChar: '"', Schema: s.SchemaQualifier}
+	b := &sqlx.Builder{QuoteChar: '"', Schema: s.SchemaQualifier, Indent: s.Indent}
 	return b.P(phrases...)
 }
 
