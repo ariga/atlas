@@ -6,7 +6,10 @@ package cmdext_test
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -198,4 +201,51 @@ dir = data.template_dir.tenant.url
 	require.Len(t, files, 1)
 	require.Equal(t, "1.sql", files[0].Name())
 	require.Equal(t, "create table a8m.t(c int);", string(files[0].Bytes()))
+}
+
+func TestRemoteDir(t *testing.T) {
+	var (
+		v struct {
+			Dir string `spec:"dir"`
+		}
+		state = schemahcl.New(cmdext.DataSources...)
+		token string
+		srv   = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token = r.Header.Get("Authorization")
+			d := migrate.MemDir{}
+			if err := d.WriteFile("1.sql", []byte("create table t(c int);")); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			arch, err := migrate.ArchiveDir(&d)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(arch))
+		}))
+	)
+	defer srv.Close()
+
+	err := state.EvalBytes([]byte(`
+variable "backend" {
+  type = string
+}
+
+data "remote_dir" "hello" {
+  name  = "atlas" 
+  token = "123" 
+  url = var.backend
+}
+
+dir = data.remote_dir.hello.url
+`), &v, map[string]cty.Value{"backend": cty.StringVal(srv.URL)})
+	require.NoError(t, err)
+	require.Equal(t, "Bearer 123", token)
+
+	md := migrate.OpenMemDir(v.Dir)
+	defer md.Close()
+	files, err := md.Files()
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+	require.Equal(t, "1.sql", files[0].Name())
+	require.Equal(t, "create table t(c int);", string(files[0].Bytes()))
 }
