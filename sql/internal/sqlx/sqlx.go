@@ -362,6 +362,16 @@ func (b *Builder) Wrap(f func(b *Builder)) *Builder {
 	return b
 }
 
+// WrapIndent is like Wrap but with extra level of indentation.
+func (b *Builder) WrapIndent(f func(b *Builder)) *Builder {
+	return b.Wrap(func(b *Builder) {
+		b.IndentIn()
+		f(b)
+		b.IndentOut()
+		b.NL()
+	})
+}
+
 // Clone returns a duplicate of the builder.
 func (b *Builder) Clone() *Builder {
 	return &Builder{
