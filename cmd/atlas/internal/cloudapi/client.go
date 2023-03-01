@@ -1,12 +1,14 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package cloudapi
 
 import (
 	"context"
-	"encoding/base64"
 	"net/http"
 	"time"
 
-	"ariga.io/atlas/cmd/atlas/internal/cloudapi/graphql"
 	"ariga.io/atlas/sql/migrate"
 )
 
@@ -14,14 +16,14 @@ const UserAgent = "atlas-cli"
 
 // Client is a client for the Atlas Cloud API.
 type Client struct {
-	client   graphql.Client
+	client   gqlClient
 	endpoint string
 }
 
 // New creates a new Client for the Atlas Cloud API.
 func New(endpoint, token string) *Client {
 	return &Client{
-		client: graphql.NewClient(endpoint, &http.Client{
+		client: newGQLClient(endpoint, &http.Client{
 			Transport: &roundTripper{
 				token: token,
 			},
@@ -30,16 +32,21 @@ func New(endpoint, token string) *Client {
 	}
 }
 
-// GetDir retrieves a directory from the Atlas Cloud API.
-func (c *Client) GetDir(ctx context.Context, input DirInput) (migrate.Dir, error) {
+// DirInput is the input type for retrieving a single directory.
+type DirInput struct {
+	Name string `json:"name"`
+}
+
+// Dir retrieves a directory from the Atlas Cloud API.
+func (c *Client) Dir(ctx context.Context, input DirInput) (migrate.Dir, error) {
 	var payload struct {
 		Dir struct {
-			Content string `json:"content"`
+			Content []byte `json:"content"`
 		} `json:"dir"`
 	}
 	if err := c.client.MakeRequest(
 		ctx,
-		&graphql.Request{
+		&Request{
 			Query: `
 				query getDir($input: DirInput!) {
 					dir(input: $input) {
@@ -52,16 +59,12 @@ func (c *Client) GetDir(ctx context.Context, input DirInput) (migrate.Dir, error
 				Input: input,
 			},
 		},
-		&graphql.Response{
+		&Response{
 			Data: &payload,
 		}); err != nil {
 		return nil, err
 	}
-	dec, err := base64.StdEncoding.DecodeString(payload.Dir.Content)
-	if err != nil {
-		return nil, err
-	}
-	return migrate.UnarchiveDir(dec)
+	return migrate.UnarchiveDir(payload.Dir.Content)
 }
 
 // roundTripper is a http.RoundTripper that adds the Authorization header.
@@ -69,14 +72,10 @@ type roundTripper struct {
 	token string
 }
 
+// RoundTrip implements http.RoundTripper.
 func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("Authorization", "Bearer "+r.token)
 	req.Header.Set("User-Agent", UserAgent)
 	req.Header.Set("Content-Type", "application/json")
 	return http.DefaultTransport.RoundTrip(req)
-}
-
-// DirInput is the input type for retrieving a single directory.
-type DirInput struct {
-	Name string `json:"name"`
 }

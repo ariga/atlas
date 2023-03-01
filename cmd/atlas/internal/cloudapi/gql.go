@@ -1,25 +1,22 @@
-// The code in this package is taken verbatim from https://github.com/Khan/genqlient/blob/main/graphql/client.go
-// to avoid a dependency on genqlient.
+// The code in this file is a slightly modified version of https://github.com/Khan/genqlient/blob/main/graphql/client.go.
+// It is copied here to avoid a dependency on genqlient.
 
-package graphql
+package cloudapi
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"strings"
 
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-// Client is the interface that the generated code calls into to actually make
+// GQLClient is the interface that the generated code calls into to actually make
 // requests.
-type Client interface {
+type gqlClient interface {
 	// MakeRequest must make a request to the client's GraphQL API.
 	//
 	// ctx is the context that should be used to make this request.  If context
@@ -46,10 +43,9 @@ type Client interface {
 type client struct {
 	httpClient Doer
 	endpoint   string
-	method     string
 }
 
-// NewClient returns a [Client] which makes requests to the given endpoint,
+// newGQLClient returns a [Client] which makes requests to the given endpoint,
 // suitable for most users.
 //
 // The client makes POST requests to the given GraphQL endpoint using standard
@@ -61,36 +57,11 @@ type client struct {
 // example.
 //
 // [example/main.go]: https://github.com/Khan/genqlient/blob/main/example/main.go#L12-L20
-func NewClient(endpoint string, httpClient Doer) Client {
-	return newClient(endpoint, httpClient, http.MethodPost)
-}
-
-// NewClientUsingGet returns a [Client] which makes GET requests to the given
-// endpoint suitable for most users who wish to make GET requests instead of
-// POST.
-//
-// The client makes GET requests to the given GraphQL endpoint using a GET
-// query, with the query, operation name and variables encoded as URL
-// parameters.  It will use the given [http.Client], or [http.DefaultClient] if
-// a nil client is passed.
-//
-// The client does not support mutations, and will return an error if passed a
-// request that attempts one.
-//
-// The typical method of adding authentication headers is to wrap the client's
-// [http.Transport] to add those headers.  See [example/main.go] for an
-// example.
-//
-// [example/main.go]: https://github.com/Khan/genqlient/blob/main/example/main.go#L12-L20
-func NewClientUsingGet(endpoint string, httpClient Doer) Client {
-	return newClient(endpoint, httpClient, http.MethodGet)
-}
-
-func newClient(endpoint string, httpClient Doer, method string) Client {
+func newGQLClient(endpoint string, httpClient Doer) gqlClient {
 	if httpClient == nil || httpClient == (*http.Client)(nil) {
 		httpClient = http.DefaultClient
 	}
-	return &client{httpClient, endpoint, method}
+	return &client{httpClient, endpoint}
 }
 
 // Doer encapsulates the methods from [*http.Client] needed by [Client].
@@ -140,11 +111,8 @@ type Response struct {
 func (c *client) MakeRequest(ctx context.Context, req *Request, resp *Response) error {
 	var httpReq *http.Request
 	var err error
-	if c.method == http.MethodGet {
-		httpReq, err = c.createGetRequest(req)
-	} else {
-		httpReq, err = c.createPostRequest(req)
-	}
+
+	httpReq, err = c.createPostRequest(req)
 
 	if err != nil {
 		return err
@@ -187,55 +155,9 @@ func (c *client) createPostRequest(req *Request) (*http.Request, error) {
 	}
 
 	httpReq, err := http.NewRequest(
-		c.method,
+		"POST",
 		c.endpoint,
 		bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-
-	return httpReq, nil
-}
-
-func (c *client) createGetRequest(req *Request) (*http.Request, error) {
-	parsedURL, err := url.Parse(c.endpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	queryParams := parsedURL.Query()
-	queryUpdated := false
-
-	if req.Query != "" {
-		if strings.HasPrefix(strings.TrimSpace(req.Query), "mutation") {
-			return nil, errors.New("client does not support mutations")
-		}
-		queryParams.Set("query", req.Query)
-		queryUpdated = true
-	}
-
-	if req.OpName != "" {
-		queryParams.Set("operationName", req.OpName)
-		queryUpdated = true
-	}
-
-	if req.Variables != nil {
-		variables, variablesErr := json.Marshal(req.Variables)
-		if variablesErr != nil {
-			return nil, variablesErr
-		}
-		queryParams.Set("variables", string(variables))
-		queryUpdated = true
-	}
-
-	if queryUpdated {
-		parsedURL.RawQuery = queryParams.Encode()
-	}
-
-	httpReq, err := http.NewRequest(
-		c.method,
-		parsedURL.String(),
-		http.NoBody)
 	if err != nil {
 		return nil, err
 	}
