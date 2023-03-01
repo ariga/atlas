@@ -155,7 +155,7 @@ func (c *client) createPostRequest(req *Request) (*http.Request, error) {
 	}
 
 	httpReq, err := http.NewRequest(
-		"POST",
+		http.MethodPost,
 		c.endpoint,
 		bytes.NewReader(body))
 	if err != nil {
