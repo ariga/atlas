@@ -99,6 +99,9 @@ type (
 		// PlanWithSchemaQualifier allows setting a custom schema to prefix
 		// tables and other resources. An empty string indicates no qualifier.
 		SchemaQualifier *string
+		// Indent is the string to use for indentation.
+		// If empty, no indentation is used.
+		Indent string
 	}
 
 	// PlanOption allows configuring a drivers' plan using functional arguments.

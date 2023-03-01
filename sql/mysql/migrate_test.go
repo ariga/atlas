@@ -7,6 +7,7 @@ package mysql
 import (
 	"context"
 	"strconv"
+	"strings"
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
@@ -1094,6 +1095,217 @@ func TestDefaultPlan(t *testing.T) {
 	require.EqualError(t, err, `create "t1" table: cannot execute statements without a database connection. use Open to create a new Driver`)
 }
 
+func TestIndentedPlan(t *testing.T) {
+	tests := []struct {
+		T   *schema.Table
+		Cmd string
+	}{
+		{
+			T: schema.NewTable("t1").
+				SetSchema(schema.New("s1")).
+				AddColumns(schema.NewIntColumn("a", "int")),
+			Cmd: join(
+				"CREATE TABLE `s1`.`t1` (",
+				"  `a` int NOT NULL",
+				")",
+			),
+		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL,",
+				"  `b` int NOT NULL",
+				")",
+			),
+		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				).
+				SetPrimaryKey(
+					schema.NewPrimaryKey(schema.NewIntColumn("id", "int")),
+				),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL,",
+				"  `b` int NOT NULL,",
+				"  `id` int NOT NULL,",
+				"  PRIMARY KEY (`id`)",
+				")",
+			),
+		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				).
+				AddIndexes(
+					schema.NewIndex("idx").
+						AddColumns(
+							schema.NewIntColumn("a", "int"),
+							schema.NewIntColumn("b", "int"),
+						),
+				),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL,",
+				"  `b` int NOT NULL,",
+				"  INDEX `idx` (`a`, `b`)",
+				")",
+			),
+		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				).
+				SetPrimaryKey(
+					schema.NewPrimaryKey(schema.NewIntColumn("id", "int")),
+				).
+				AddIndexes(
+					schema.NewIndex("idx").
+						AddColumns(
+							schema.NewIntColumn("a", "int"),
+							schema.NewIntColumn("b", "int"),
+						),
+				),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL,",
+				"  `b` int NOT NULL,",
+				"  `id` int NOT NULL,",
+				"  PRIMARY KEY (`id`),",
+				"  INDEX `idx` (`a`, `b`)",
+				")",
+			),
+		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				).
+				AddIndexes(
+					schema.NewIndex("idx1").
+						AddColumns(
+							schema.NewIntColumn("a", "int"),
+							schema.NewIntColumn("b", "int"),
+						),
+					schema.NewIndex("idx2").
+						AddColumns(
+							schema.NewIntColumn("a", "int"),
+							schema.NewIntColumn("b", "int"),
+						),
+				),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL,",
+				"  `b` int NOT NULL,",
+				"  INDEX `idx1` (`a`, `b`),",
+				"  INDEX `idx2` (`a`, `b`)",
+				")",
+			),
+		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				).
+				AddIndexes(
+					schema.NewIndex("idx1").
+						AddColumns(
+							schema.NewIntColumn("a", "int"),
+							schema.NewIntColumn("b", "int"),
+						),
+					schema.NewIndex("idx2").
+						AddColumns(
+							schema.NewIntColumn("a", "int"),
+							schema.NewIntColumn("b", "int"),
+						),
+				).
+				AddForeignKeys(
+					schema.NewForeignKey("fk1").
+						AddColumns(schema.NewIntColumn("a", "int")).
+						SetRefTable(schema.NewTable("t2")).
+						AddRefColumns(schema.NewIntColumn("a", "int")),
+					schema.NewForeignKey("fk2").
+						AddColumns(schema.NewIntColumn("a", "int")).
+						SetRefTable(schema.NewTable("t2")).
+						AddRefColumns(schema.NewIntColumn("a", "int")),
+				),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL,",
+				"  `b` int NOT NULL,",
+				"  INDEX `idx1` (`a`, `b`),",
+				"  INDEX `idx2` (`a`, `b`),",
+				"  CONSTRAINT `fk1` FOREIGN KEY (`a`) REFERENCES `t2` (`a`),",
+				"  CONSTRAINT `fk2` FOREIGN KEY (`a`) REFERENCES `t2` (`a`)",
+				")",
+			),
+		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				).
+				SetPrimaryKey(
+					schema.NewPrimaryKey(schema.NewIntColumn("id", "int")),
+				).
+				AddForeignKeys(
+					schema.NewForeignKey("fk1").
+						AddColumns(schema.NewIntColumn("a", "int")).
+						SetRefTable(schema.NewTable("t2")).
+						AddRefColumns(schema.NewIntColumn("a", "int")),
+					schema.NewForeignKey("fk2").
+						AddColumns(schema.NewIntColumn("a", "int")).
+						SetRefTable(schema.NewTable("t2")).
+						AddRefColumns(schema.NewIntColumn("a", "int")),
+				).
+				AddChecks(
+					schema.NewCheck().SetName("ck1").SetExpr("a > 0"),
+					schema.NewCheck().SetName("ck2").SetExpr("a > 0"),
+				).
+				SetComment("Comment"),
+			Cmd: join(
+				"CREATE TABLE `t1` (",
+				"  `a` int NOT NULL,",
+				"  `b` int NOT NULL,",
+				"  `id` int NOT NULL,",
+				"  PRIMARY KEY (`id`),",
+				"  CONSTRAINT `fk1` FOREIGN KEY (`a`) REFERENCES `t2` (`a`),",
+				"  CONSTRAINT `fk2` FOREIGN KEY (`a`) REFERENCES `t2` (`a`),",
+				"  CONSTRAINT `ck1` CHECK (a > 0),",
+				"  CONSTRAINT `ck2` CHECK (a > 0)",
+				`) COMMENT "Comment"`,
+			),
+		},
+	}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			db, _, err := newMigrate("8.0.16")
+			require.NoError(t, err)
+			plan, err := db.PlanChanges(context.Background(), "wantPlan", []schema.Change{&schema.AddTable{T: tt.T}}, func(opts *migrate.PlanOptions) {
+				opts.Indent = "  "
+			})
+			require.NoError(t, err)
+			require.Len(t, plan.Changes, 1)
+			require.Equal(t, tt.Cmd, plan.Changes[0].Cmd)
+		})
+	}
+}
+
 func newMigrate(version string) (migrate.PlanApplier, *mock, error) {
 	db, m, err := sqlmock.New()
 	if err != nil {
@@ -1107,3 +1319,5 @@ func newMigrate(version string) (migrate.PlanApplier, *mock, error) {
 	}
 	return drv, mk, nil
 }
+
+func join(lines ...string) string { return strings.Join(lines, "\n") }
