@@ -19,6 +19,7 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.1
+	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/zclconf/go-cty v1.8.0
 	gocloud.dev v0.27.0
 	golang.org/x/exp v0.0.0-20220428152302-39d4317da171
