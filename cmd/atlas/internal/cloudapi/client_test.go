@@ -15,8 +15,8 @@ import (
 func TestClient(t *testing.T) {
 	var (
 		dir = migrate.MemDir{}
+		err = dir.WriteFile("1.sql", []byte("create table foo (id int)"))
 	)
-	err := dir.WriteFile("1.sql", []byte("create table foo (id int)"))
 	require.NoError(t, err)
 	ad, err := migrate.ArchiveDir(&dir)
 	require.NoError(t, err)

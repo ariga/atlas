@@ -10,9 +10,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 )
 
-const (
-	UserAgent = "atlas-cli"
-)
+const UserAgent = "atlas-cli"
 
 // Client is a client for the Atlas Cloud API.
 type Client struct {
@@ -39,7 +37,6 @@ func (c *Client) GetDir(ctx context.Context, input DirInput) (migrate.Dir, error
 			Content string `json:"content"`
 		} `json:"dir"`
 	}
-
 	if err := c.client.MakeRequest(
 		ctx,
 		&graphql.Request{
@@ -67,7 +64,7 @@ func (c *Client) GetDir(ctx context.Context, input DirInput) (migrate.Dir, error
 	return migrate.UnarchiveDir(dec)
 }
 
-// roundTripper is a http.RoundTripper that adds the authorization header.
+// roundTripper is a http.RoundTripper that adds the Authorization header.
 type roundTripper struct {
 	token string
 }
@@ -79,7 +76,7 @@ func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	return http.DefaultTransport.RoundTrip(req)
 }
 
-// Input type for retrieving a single directory.
+// DirInput is the input type for retrieving a single directory.
 type DirInput struct {
 	Name string `json:"name"`
 }
