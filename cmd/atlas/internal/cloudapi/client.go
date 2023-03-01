@@ -12,7 +12,10 @@ import (
 	"ariga.io/atlas/sql/migrate"
 )
 
-const UserAgent = "atlas-cli"
+const (
+	UserAgent       = "atlas-cli"
+	DefaultEndpoint = "https://api.atlasgo.cloud/api/query"
+)
 
 // Client is a client for the Atlas Cloud API.
 type Client struct {

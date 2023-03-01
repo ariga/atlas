@@ -19,11 +19,13 @@ import (
 	"text/template"
 	"time"
 
+	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
+	"github.com/google/uuid"
 
 	"entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
@@ -46,6 +48,7 @@ var DataSources = []schemahcl.Option{
 	schemahcl.WithDataSource("sql", QuerySrc),
 	schemahcl.WithDataSource("runtimevar", RuntimeVarSrc),
 	schemahcl.WithDataSource("template_dir", TemplateDir),
+	schemahcl.WithDataSource("remote_dir", RemoteDir),
 }
 
 // RuntimeVarSrc exposes the gocloud.dev/runtimevar as a schemahcl datasource.
@@ -460,4 +463,52 @@ func dirFormatter(dir migrate.Dir) migrate.Formatter {
 	default:
 		return migrate.DefaultFormatter
 	}
+}
+
+// RemoteDir is a data source that reads a remote migration directory.
+func RemoteDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+	var (
+		args struct {
+			Name  string  `hcl:"name"`
+			URL   *string `hcl:"url"`
+			Token string  `hcl:"token"`
+		}
+		errorf = blockError("data.remote_dir", block)
+	)
+	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+		return cty.NilVal, errorf("decoding body: %v", diags)
+	}
+	endpoint := cloudapi.DefaultEndpoint
+	if args.URL != nil {
+		endpoint = *args.URL
+	}
+	url, err := memdir(endpoint, args.Token, args.Name)
+	if err != nil {
+		return cty.NilVal, errorf("reading remote dir: %v", err)
+	}
+	return cty.ObjectVal(map[string]cty.Value{
+		"url": cty.StringVal(url),
+	}), nil
+}
+
+func memdir(url, token, dirName string) (string, error) {
+	client := cloudapi.New(url, token)
+	dir, err := client.Dir(context.Background(), cloudapi.DirInput{
+		Name: dirName,
+	})
+	if err != nil {
+		return "", err
+	}
+	memDirURL := "mem://" + uuid.New().String()
+	md := migrate.OpenMemDir(memDirURL)
+	remoteFiles, err := dir.Files()
+	if err != nil {
+		return "", err
+	}
+	for _, f := range remoteFiles {
+		if err := md.WriteFile(f.Name(), f.Bytes()); err != nil {
+			return "", err
+		}
+	}
+	return memDirURL, nil
 }
