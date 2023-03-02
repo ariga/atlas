@@ -40,6 +40,8 @@ accepted by different schema migration tools:
 * [golang-migrate](https://github.com/golang-migrate/migrate)
 * [goose](https://github.com/pressly/goose)
 * [dbmate](https://github.com/amacneil/dbmate)
+* [Liquibase](https://liquibase.org)
+* [Flyway](https://flywaydb.org)
 
 ### Usage
 
@@ -90,7 +92,7 @@ jobs:
       - uses: ariga/atlas-action@v0
         with:
           dir: path/to/migrations
-          dir-format: golang-migrate # Or: atlas, goose, dbmate
+          dir-format: atlas # Or: golang-migrate, liquibase, flyway, goose, dbmate
           dev-url: mysql://root:pass@localhost:3307/test
 ```
 
@@ -134,7 +136,7 @@ jobs:
       - uses: ariga/atlas-action@v0
         with:
           dir: path/to/migrations
-          dir-format: golang-migrate # Or: atlas, goose, dbmate
+          dir-format: atlas # Or: golang-migrate, liquibase, flyway, goose, dbmate
           dev-url: maria://root:pass@localhost:4306/test
 ```
 
@@ -177,7 +179,7 @@ jobs:
       - uses: ariga/atlas-action@v0
         with:
           dir: path/to/migrations
-          dir-format: golang-migrate # Or: atlas, goose, dbmate
+          dir-format: atlas # Or: golang-migrate, liquibase, flyway, goose, dbmate
           dev-url: postgres://postgres:pass@localhost:5430/test?sslmode=disable
 ```
 
@@ -195,7 +197,7 @@ Sets the directory that contains the migration scripts to analyze.
 #### `dir-format`
 
 Sets the format of the migration directory. Options: `atlas` (default),
-`golang-migrate`, `goose` or `dbmate`. Coming soon: `flyway`, `liquibase`.
+`golang-migrate`, `goose` or `dbmate`, `flyway`, `liquibase`.
 
 #### `dev-url`
 
