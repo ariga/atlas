@@ -27,6 +27,7 @@ SQL schema, or a migration directory.
 * `--dev-url` - a [URL](/concepts/url) to the [_Dev-Database_](../concepts/dev.mdx).
 * `--schema` (optional, may be supplied multiple times) - schemas to inspect within the target database.
 * `--exclude` (optional, may be supplied multiple times) - filter out resources matching the given glob pattern.
+* `--format` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
 
 ## Examples
 
@@ -427,6 +428,19 @@ atlas schema diff \
 
 </TabItem>
 </Tabs>
+
+### Indented SQL
+
+The `schema diff` command outputs a list of SQL statements without indentation by default. If you would like to view
+the SQL statements with indentation, use the `--format` flag. For example:
+
+```shell {1}
+# Indent SQL statements with 2 spaces.
+atlas schema diff \
+  --from "mysql://user:pass@localhost:3306/example" \
+  --to "mysql://user:pass@remote:3306/example" \
+  --format '{{ sql . "  " }}'
+```
 
 ## Reference
 

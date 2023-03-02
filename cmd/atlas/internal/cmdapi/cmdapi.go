@@ -55,7 +55,7 @@ var (
 		Use:   "version",
 		Short: "Prints this Atlas CLI version information.",
 		Run: func(cmd *cobra.Command, args []string) {
-			v, u := parse(version)
+			v, u := parseV(version)
 			cmd.Printf("atlas version %s\n%s\n", v, u)
 		},
 	}
@@ -111,8 +111,8 @@ func inputValuesFromEnv(cmd *cobra.Command, env *Env) error {
 	return nil
 }
 
-// parse returns a user facing version and release notes url
-func parse(version string) (string, string) {
+// parseV returns a user facing version and release notes url
+func parseV(version string) (string, string) {
 	u := "https://github.com/ariga/atlas/releases/latest"
 	if ok := semver.IsValid(version); !ok {
 		return "- development", u

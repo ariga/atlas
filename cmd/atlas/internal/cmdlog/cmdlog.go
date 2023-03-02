@@ -457,22 +457,6 @@ Schema is synced, no changes to be made.
 {{ end -}}
 `))
 
-// SchemaDiffTemplate holds the default template of the 'schema apply --dry-run' command.
-var SchemaDiffTemplate = template.Must(template.
-	New("diff").
-	Funcs(ApplyTemplateFuncs).
-	Parse(`{{- with .Changes.Pending -}}
-{{- range . -}}
-{{- if .Comment -}}
-{{- printf "-- %s%s\n" (slice .Comment 0 1 | upper ) (slice .Comment 1) -}}
-{{- end -}}
-{{- printf "%s;\n" .Cmd -}}
-{{- end -}}
-{{- else -}}
-Schemas are synced, no changes to be made.
-{{ end -}}
-`))
-
 type (
 	// SchemaApply contains a summary of a 'schema apply' execution on a database.
 	SchemaApply struct {
@@ -533,9 +517,10 @@ type SchemaInspect struct {
 
 var (
 	// InspectTemplateFuncs are global functions available in inspect report templates.
-	InspectTemplateFuncs = merge(ApplyTemplateFuncs, template.FuncMap{
-		"sql": sqlEncode,
-	})
+	InspectTemplateFuncs = template.FuncMap{
+		"sql":  sqlInspect,
+		"json": jsonEncode,
+	}
 
 	// SchemaInspectTemplate holds the default template of the 'schema inspect' command.
 	SchemaInspectTemplate = template.Must(template.New("inspect").
@@ -654,7 +639,7 @@ func (s *SchemaInspect) MarshalJSON() ([]byte, error) {
 	return json.Marshal(realm)
 }
 
-func sqlEncode(report *SchemaInspect) (string, error) {
+func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 	if report.Error != nil {
 		return report.Error.Error(), nil
 	}
@@ -668,10 +653,47 @@ func sqlEncode(report *SchemaInspect) (string, error) {
 			changes = append(changes, &schema.AddTable{T: t})
 		}
 	}
-	plan, err := report.Driver.PlanChanges(context.Background(), "plan", changes, func(o *migrate.PlanOptions) {
+	return fmtPlan(report.Client, changes, indent)
+}
+
+// SchemaDiff contains a summary of the 'schema diff' command.
+type SchemaDiff struct {
+	*sqlclient.Client
+	Changes []schema.Change
+}
+
+var (
+	// SchemaDiffFuncs are global functions available in diff report templates.
+	SchemaDiffFuncs = template.FuncMap{
+		"sql": sqlDiff,
+	}
+	// SchemaDiffTemplate holds the default template of the 'schema diff' command.
+	SchemaDiffTemplate = template.Must(template.
+				New("schema_diff").
+				Funcs(SchemaDiffFuncs).
+				Parse(`{{- with .Changes -}}
+{{ sql $ }}
+{{- else -}}
+Schemas are synced, no changes to be made.
+{{ end -}}
+`))
+)
+
+func sqlDiff(diff *SchemaDiff, indent ...string) (string, error) {
+	return fmtPlan(diff.Client, diff.Changes, indent)
+}
+
+func fmtPlan(client *sqlclient.Client, changes schema.Changes, indent []string) (string, error) {
+	if len(indent) > 1 {
+		return "", fmt.Errorf("unexpected number of arguments: %d", len(indent))
+	}
+	plan, err := client.PlanChanges(context.Background(), "plan", changes, func(o *migrate.PlanOptions) {
 		// Disable tables qualifier in schema-mode.
-		if report.URL.Schema != "" {
+		if client.URL.Schema != "" {
 			o.SchemaQualifier = new(string)
+		}
+		if len(indent) > 0 {
+			o.Indent = indent[0]
 		}
 	})
 	if err != nil {

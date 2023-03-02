@@ -311,16 +311,19 @@ func (d *MemDir) Checksum() (HashFile, error) {
 }
 
 var (
-	// templateFuncs contains the template.FuncMap for the DefaultFormatter.
-	templateFuncs = template.FuncMap{"now": func() string { return time.Now().UTC().Format("20060102150405") }}
+	// templateFunc contains the template.FuncMap for the DefaultFormatter.
+	templateFuncs = template.FuncMap{
+		"upper": strings.ToUpper,
+		"now":   func() string { return time.Now().UTC().Format("20060102150405") },
+	}
 	// DefaultFormatter is a default implementation for Formatter.
 	DefaultFormatter = TemplateFormatter{
 		{
 			N: template.Must(template.New("").Funcs(templateFuncs).Parse(
 				"{{ with .Version }}{{ . }}{{ else }}{{ now }}{{ end }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 			)),
-			C: template.Must(template.New("").Parse(
-				`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
+			C: template.Must(template.New("").Funcs(templateFuncs).Parse(
+				`{{ range .Changes }}{{ with .Comment }}{{ printf "-- %s%s\n" (slice . 0 1 | upper ) (slice . 1) }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
 			)),
 		},
 	}

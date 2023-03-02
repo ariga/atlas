@@ -46,6 +46,16 @@ func TestSchema_Diff(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, "-- Create \"t1\" table\nCREATE TABLE `t1` (`id` int NULL);\n", s)
 
+	// Format indentation one table.
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", openSQLite(t, "create table t1 (id int);"),
+		"--format", `{{ sql . "  " }}`,
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "-- Create \"t1\" table\nCREATE TABLE `t1` (\n  `id` int NULL\n);\n", s)
+
 	// No changes.
 	s, err = runCmd(
 		schemaDiffCmd(),
@@ -54,6 +64,16 @@ func TestSchema_Diff(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.EqualValues(t, "Schemas are synced, no changes to be made.\n", s)
+
+	// Format no changes.
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", openSQLite(t, ""),
+		"--format", `{{ sql . " " }}`,
+	)
+	require.NoError(t, err)
+	require.Empty(t, s)
 
 	// Desired state from migration directory requires dev database.
 	_, err = runCmd(
@@ -202,7 +222,15 @@ table "tbl" {
 			p   = t.TempDir()
 			cp  = filepath.Join(p, "atlas.hcl")
 			sp  = filepath.Join(p, "schema.hcl")
-			cfg = fmt.Sprintf(`env "local" { dev = "%s" }`, openSQLite(t, ""))
+			cfg = fmt.Sprintf(`
+env "local" {
+  dev = "%s"
+  format {
+    schema {
+      diff = "{{ sql . \"\t\" }}"
+    }
+  }
+}`, openSQLite(t, ""))
 		)
 		require.NoError(t, os.WriteFile(cp, []byte(cfg), 0600))
 		require.NoError(t, os.WriteFile(sp, []byte(`
@@ -225,7 +253,7 @@ table "users" {
 			"--from", openSQLite(t, ""),
 		)
 		require.NoError(t, err)
-		require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL);\n", s)
+		require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (\n\t`id` int NOT NULL\n);\n", s)
 	})
 }
 

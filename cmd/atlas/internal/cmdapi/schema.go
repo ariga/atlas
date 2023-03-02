@@ -182,14 +182,15 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 	cmd.SilenceUsage = true
 	switch {
 	case len(changes) == 0:
-		return format.Execute(cmd.OutOrStderr(), &cmdlog.SchemaApply{})
+		return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaApply{})
 	case flags.logFormat != "" && flags.autoApprove:
 		var (
 			applied int
 			plan    *migrate.Plan
 			cause   *cmdlog.StmtError
+			out     = cmd.OutOrStdout()
 		)
-		if plan, err = client.PlanChanges(cmd.Context(), "", changes); err != nil {
+		if plan, err = client.PlanChanges(ctx, "", changes); err != nil {
 			return err
 		}
 		if err = client.ApplyChanges(ctx, changes); err == nil {
@@ -200,7 +201,7 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 			cause = &cmdlog.StmtError{Text: err.Error()}
 		}
 		apply := cmdlog.NewSchemaApply(cmdlog.NewEnv(client, nil), plan.Changes[:applied], plan.Changes[applied:], cause)
-		if err1 := format.Execute(cmd.OutOrStderr(), apply); err1 != nil {
+		if err1 := format.Execute(out, apply); err1 != nil {
 			if err != nil {
 				err1 = fmt.Errorf("%w: %v", err, err1)
 			}
@@ -299,6 +300,7 @@ type schemaDiffFlags struct {
 	devURL  string
 	schemas []string
 	exclude []string
+	format  string
 }
 
 // schemaDiffCmd represents the 'atlas schema diff' subcommand.
@@ -314,7 +316,7 @@ SQL statements to migrate the "from" database to the schema of the "to" database
 The database states can be read from a connected database, an HCL project or a migration directory.`,
 			Example: `  atlas schema diff --from mysql://user:pass@localhost:3306/test --to file://schema.hcl
   atlas schema diff --from mysql://user:pass@localhost:3306 --to file://schema_1.hcl --to file://schema_2.hcl
-  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations`,
+  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations --format '{{ sql . "  " }}'`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
 				return schemaFlagsFromEnv(cmd)
 			},
@@ -329,6 +331,7 @@ The database states can be read from a connected database, an HCL project or a m
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagExclude(cmd.Flags(), &flags.exclude)
+	addFlagFormat(cmd.Flags(), &flags.format)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagFrom))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
 	return cmd
@@ -375,11 +378,20 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 		// an error already. If we land in this case, we can assume both states are database connections.
 		c = to.Closer.(*sqlclient.Client)
 	}
-	diff, err := computeDiff(ctx, c, from, to)
+	format := cmdlog.SchemaDiffTemplate
+	if v := flags.format; v != "" {
+		if format, err = template.New("format").Funcs(cmdlog.SchemaDiffFuncs).Parse(v); err != nil {
+			return fmt.Errorf("parse log format: %w", err)
+		}
+	}
+	changes, err := computeDiff(ctx, c, from, to)
 	if err != nil {
 		return err
 	}
-	return summary(cmd, c, diff, cmdlog.SchemaDiffTemplate)
+	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaDiff{
+		Client:  c,
+		Changes: changes,
+	})
 }
 
 type schemaInspectFlags struct {
@@ -555,6 +567,10 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	switch cmd.Name() {
 	case "apply":
 		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Apply); err != nil {
+			return err
+		}
+	case "diff":
+		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Diff); err != nil {
 			return err
 		}
 	}

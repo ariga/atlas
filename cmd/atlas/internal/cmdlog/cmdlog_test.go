@@ -126,7 +126,7 @@ func TestSchemaInspect_EncodeSQL(t *testing.T) {
 		tmpl = template.Must(template.New("format").Funcs(cmdlog.InspectTemplateFuncs).Parse(`{{ sql . }}`))
 	)
 	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{Client: client, Realm: realm}))
-	require.Equal(t, "-- create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL, `name` text NOT NULL);\n", b.String())
+	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL, `name` text NOT NULL);\n", b.String())
 	b.Reset()
 	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{Error: errors.New("failure")}))
 	require.Equal(t, "failure", b.String())

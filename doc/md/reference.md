@@ -118,7 +118,7 @@ directory state to the desired schema. The desired state can be another connecte
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://schema.hcl
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
-  atlas migrate diff --env dev
+  atlas migrate diff --env dev --format '{{ sql . "  " }}'
 ```
 #### Flags
 ```
@@ -129,6 +129,7 @@ directory state to the desired schema. The desired state can be another connecte
       --revisions-schema string   name of the schema the revisions table resides in
   -s, --schema strings            set schema names
       --lock-timeout duration     set how long to wait for the database lock (default 10s)
+      --format string             Go template to use to format the output
       --qualifier string          qualify tables with custom qualifier when working on a single schema
       --edit                      edit the generated migration file(s)
 
@@ -447,7 +448,7 @@ The database states can be read from a connected database, an HCL project or a m
 ```
   atlas schema diff --from mysql://user:pass@localhost:3306/test --to file://schema.hcl
   atlas schema diff --from mysql://user:pass@localhost:3306 --to file://schema_1.hcl --to file://schema_2.hcl
-  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations
+  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations --format '{{ sql . "  " }}'
 ```
 #### Flags
 ```
@@ -456,6 +457,7 @@ The database states can be read from a connected database, an HCL project or a m
       --dev-url string    [driver://username:password@address/dbname?param=value] select a dev database using the URL format
   -s, --schema strings    set schema names
       --exclude strings   list of glob patterns used to filter resources from applying
+      --format string     Go template to use to format the output
 
 ```
 

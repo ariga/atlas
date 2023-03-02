@@ -864,6 +864,63 @@ func TestMigrate_Diff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, files, 2)
 	})
+
+	t.Run("Format", func(t *testing.T) {
+		for f, out := range map[string]string{
+			"{{sql .}}":            "CREATE TABLE `t` (`c` int NULL);",
+			`{{- sql . "  " -}}`:   "CREATE TABLE `t` (\n  `c` int NULL\n);",
+			"{{ sql . \"\t\" }}":   "CREATE TABLE `t` (\n\t`c` int NULL\n);",
+			"{{sql $ \"  \t  \"}}": "CREATE TABLE `t` (\n  \t  `c` int NULL\n);",
+		} {
+			p := t.TempDir()
+			d, err := migrate.NewLocalDir(p)
+			require.NoError(t, err)
+			// Works with indentation.
+			s, err = runCmd(
+				migrateDiffCmd(),
+				"name",
+				"--dir", "file://"+p,
+				"--dev-url", openSQLite(t, ""),
+				"--to", openSQLite(t, "create table t (c int);"),
+				"--format", f,
+			)
+			require.NoError(t, err)
+			require.Zero(t, s)
+			files, err := d.Files()
+			require.NoError(t, err)
+			require.Len(t, files, 1)
+			require.Equal(t, "-- Create \"t\" table\n"+out+"\n", string(files[0].Bytes()))
+		}
+
+		// Invalid use of sql.
+		s, err = runCmd(
+			migrateDiffCmd(),
+			"name",
+			"--dir", "file://"+p,
+			"--dev-url", openSQLite(t, ""),
+			"--to", openSQLite(t, "create table t (c int);"),
+			"--format", `{{ if . }}{{ sql . "  " }}{{ end }}`,
+		)
+		require.EqualError(t, err, `'sql' can only be used to indent statements. got: {{if .}}{{sql . "  "}}{{end}}`)
+
+		// Valid template.
+		p := t.TempDir()
+		d, err := migrate.NewLocalDir(p)
+		require.NoError(t, err)
+		s, err = runCmd(
+			migrateDiffCmd(),
+			"name",
+			"--dir", "file://"+p,
+			"--dev-url", openSQLite(t, ""),
+			"--to", openSQLite(t, "create table t (c int);"),
+			"--format", `{{ range .Changes }}{{ .Cmd }}{{ end }}`,
+		)
+		require.NoError(t, err)
+		files, err := d.Files()
+		require.NoError(t, err)
+		require.Len(t, files, 1)
+		require.Equal(t, "CREATE TABLE `t` (`c` int NULL)", string(files[0].Bytes()))
+	})
 }
 
 func TestMigrate_StatusJSON(t *testing.T) {
