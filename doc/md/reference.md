@@ -86,7 +86,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
 ```
   -u, --url string                [driver://username:password@address/dbname?param=value] select a resource using the URL format
       --dir string                select migration directory using URL format (default "file://migrations")
-      --log string                Go template to use to format the output
+      --format string             Go template to use to format the output
       --revisions-schema string   name of the schema the revisions table resides in
       --dry-run                   print SQL without executing it
       --lock-timeout duration     set how long to wait for the database lock (default 10s)
@@ -199,14 +199,14 @@ atlas migrate lint [flags]
   atlas migrate lint --env dev
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --latest 1
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --git-base master
-  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --log '{{ json .Files }}'
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --format '{{ json .Files }}'
 ```
 #### Flags
 ```
       --dev-url string      [driver://username:password@address/dbname?param=value] select a dev database using the URL format
       --dir string          select migration directory using URL format (default "file://migrations")
       --dir-format string   select migration file format (default "atlas")
-      --log string          custom logging using a Go template
+      --format string       Go template to use to format the output
       --latest uint         run analysis on the latest N migration files
       --git-base string     run analysis against the base Git branch
       --git-dir string      path to the repository working directory (default ".")
@@ -291,7 +291,7 @@ atlas migrate status [flags]
 #### Flags
 ```
   -u, --url string                [driver://username:password@address/dbname?param=value] select a resource using the URL format
-      --log string                Go template to use to format the output
+      --format string             Go template to use to format the output
       --dir string                select migration directory using URL format (default "file://migrations")
       --dir-format string         select migration file format (default "atlas")
       --revisions-schema string   name of the schema the revisions table resides in
@@ -395,7 +395,7 @@ migration.
       --dev-url string    [driver://username:password@address/dbname?param=value] select a dev database using the URL format
       --dry-run           print SQL without executing it
       --auto-approve      apply changes without prompting for approval
-      --log string        custom logging using a Go template
+      --format string     Go template to use to format the output
 
 ```
 
@@ -516,7 +516,7 @@ flag.
   -u, --url string        [driver://username:password@address/dbname?param=value] select a resource using the URL format
   -s, --schema strings    set schema names
       --exclude strings   list of glob patterns used to filter resources from applying
-      --log string        Go template to use to format the output
+      --format string     Go template to use to format the output
 
 ```
 

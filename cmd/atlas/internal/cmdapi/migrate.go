@@ -110,6 +110,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	addFlagURL(cmd.Flags(), &flags.url)
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
 	addFlagLog(cmd.Flags(), &flags.logFormat)
+	addFlagFormat(cmd.Flags(), &flags.logFormat)
 	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)
 	addFlagDryRun(cmd.Flags(), &flags.dryRun)
 	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
@@ -118,6 +119,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file, all]")
 	cmd.Flags().BoolVarP(&flags.allowDirty, flagAllowDirty, "", false, "allow start working on a non-clean database")
 	cmd.MarkFlagsMutuallyExclusive(flagFrom, flagBaseline)
+	cmd.MarkFlagsMutuallyExclusive(flagLog, flagFormat)
 	return cmd
 }
 
@@ -598,7 +600,7 @@ func migrateLintCmd() *cobra.Command {
 			Example: `  atlas migrate lint --env dev
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --latest 1
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --git-base master
-  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --log '{{ json .Files }}'`,
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --format '{{ json .Files }}'`,
 			PreRunE: func(cmd *cobra.Command, args []string) error {
 				if err := migrateFlagsFromEnv(cmd); err != nil {
 					return err
@@ -614,11 +616,13 @@ func migrateLintCmd() *cobra.Command {
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
 	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
-	cmd.Flags().StringVarP(&flags.logFormat, flagLog, "", "", "custom logging using a Go template")
+	addFlagLog(cmd.Flags(), &flags.logFormat)
+	addFlagFormat(cmd.Flags(), &flags.logFormat)
 	cmd.Flags().UintVarP(&flags.latest, flagLatest, "", 0, "run analysis on the latest N migration files")
 	cmd.Flags().StringVarP(&flags.gitBase, flagGitBase, "", "", "run analysis against the base Git branch")
 	cmd.Flags().StringVarP(&flags.gitDir, flagGitDir, "", ".", "path to the repository working directory")
 	cobra.CheckErr(cmd.MarkFlagRequired(flagDevURL))
+	cmd.MarkFlagsMutuallyExclusive(flagLog, flagFormat)
 	return cmd
 }
 
@@ -973,9 +977,11 @@ func migrateStatusCmd() *cobra.Command {
 	cmd.Flags().SortFlags = false
 	addFlagURL(cmd.Flags(), &flags.url)
 	addFlagLog(cmd.Flags(), &flags.logFormat)
+	addFlagFormat(cmd.Flags(), &flags.logFormat)
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
 	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
 	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)
+	cmd.MarkFlagsMutuallyExclusive(flagLog, flagFormat)
 	return cmd
 }
 
@@ -1505,7 +1511,10 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 	}
 	switch cmd.Name() {
 	case "apply":
-		if err := maySetFlag(cmd, flagLog, env.Log.Migrate.Apply); err != nil {
+		if err := maySetFlag(cmd, flagLog, env.Format.Migrate.Apply); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, flagFormat, env.Format.Migrate.Apply); err != nil {
 			return err
 		}
 		if err := maySetFlag(cmd, flagLockTimeout, env.Migration.LockTimeout); err != nil {
@@ -1516,10 +1525,16 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 			return err
 		}
 	case "lint":
-		if err := maySetFlag(cmd, flagLog, env.Log.Migrate.Lint); err != nil {
+		if err := maySetFlag(cmd, flagLog, env.Format.Migrate.Lint); err != nil {
 			return err
 		}
-		if err := maySetFlag(cmd, flagLog, env.Lint.Log); err != nil {
+		if err := maySetFlag(cmd, flagFormat, env.Format.Migrate.Lint); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, flagLog, env.Lint.Format); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, flagFormat, env.Lint.Format); err != nil {
 			return err
 		}
 		if err := maySetFlag(cmd, flagLatest, strconv.Itoa(env.Lint.Latest)); err != nil {
@@ -1532,7 +1547,10 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 			return err
 		}
 	case "status":
-		if err := maySetFlag(cmd, flagLog, env.Log.Migrate.Status); err != nil {
+		if err := maySetFlag(cmd, flagLog, env.Format.Migrate.Status); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, flagFormat, env.Format.Migrate.Status); err != nil {
 			return err
 		}
 	}

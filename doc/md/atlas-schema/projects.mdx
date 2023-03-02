@@ -131,7 +131,7 @@ execution:
 env {
   name = atlas.env
   url = var.url
-  log {
+  format {
     migrate {
       apply = format(
         "{{ json . | json_merge %q }}",
@@ -469,7 +469,7 @@ set or map item. See the example [below](#multi-environment-example).
   - `lock_timeout` - An optional timeout to wait for a database lock to be released. Defaults to `10s`. 
   - `revisions_schema` - An optional name to control the schema that the revisions table resides in.
 
-- `log` - A block defines the logging configuration of the env per command.
+- `format` - A block defines the logging configuration of the env per command (previously named `log`).
   - `migrate`
     - `apply` - Set custom logging for `migrate apply`.
     - `lint` - Set custom logging for `migrate lint`.
@@ -478,7 +478,7 @@ set or map item. See the example [below](#multi-environment-example).
     - `apply` - Set custom logging for `schema apply`.
 
 - `lint` - A block defines the migration linting configuration of the env.
-  - `log` - Override the `--log` flag by setting a custom logging for `migrate lint`.
+  - `format` - Override the `--format` flag by setting a custom logging for `migrate lint` (previously named `log`).
   - `lastest` - A number configures the `--latest` option.
   - `git.base` - A run analysis against the base Git branch.
   - `git.dir` - A path to the repository working directory.
@@ -499,7 +499,7 @@ env "prod" {
   migration {
     dir = "file://migrations"
   }
-  log {
+  format {
     migrate {
       apply = format(
         "{{ json . | json_merge %q }}",
@@ -520,7 +520,7 @@ env "prod" {
   for_each = toset(data.sql.tenants.values)
   url      = urlsetpath(var.url, each.value)
   src      = "schema.hcl"
-  log {
+  format {
     schema {
       apply = format(
         "{{ json . | json_merge %q }}",
@@ -565,8 +565,8 @@ lint {
     // on exit (code 1). Setting `error` to false disables this behavior.
     error = false
   }
-  // Custom logging can be enabled using the `log` attribute.
-  log = <<EOS
+  // Custom logging can be enabled using the `format` attribute (previously named `log`).
+  format = <<EOS
 {{- range $f := .Files }}
 	{{- json $f }}
 {{- end }}

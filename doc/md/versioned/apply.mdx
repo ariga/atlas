@@ -612,7 +612,7 @@ env "prod" {
   migration {
     dir = "file://migrations"
   }
-  log {
+  format {
     migrate {
       apply = format(
         "{{ json . | json_merge %q }}",

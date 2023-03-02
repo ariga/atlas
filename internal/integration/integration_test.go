@@ -276,7 +276,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 	require.True(t, ok)
 }
 
-func testCLISchemaInspect(t T, h string, dsn string, eval schemahcl.Evaluator, args ...string) {
+func testCLISchemaInspect(t T, h string, url string, eval schemahcl.Evaluator, args ...string) {
 	require.NoError(t, initCLI())
 	t.dropTables("users")
 	var expected schema.Schema
@@ -287,8 +287,8 @@ func testCLISchemaInspect(t T, h string, dsn string, eval schemahcl.Evaluator, a
 		"run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"inspect",
-		"-d",
-		dsn,
+		"-u",
+		url,
 	}
 	runArgs = append(runArgs, args...)
 	cmd := exec.Command("go", runArgs...)
@@ -339,7 +339,7 @@ func initCLI() error {
 	return err
 }
 
-func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, eval schemahcl.Evaluator) {
+func testCLIMultiSchemaApply(t T, h string, url string, schemas []string, eval schemahcl.Evaluator) {
 	err := initCLI()
 	f := filepath.Join(t.TempDir(), "schema.hcl")
 	err = os.WriteFile(f, []byte(h), 0644)
@@ -353,8 +353,8 @@ func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, eval s
 		"apply",
 		"-f",
 		f,
-		"-d",
-		dsn,
+		"-u",
+		url,
 		"-s",
 		strings.Join(schemas, ","),
 	)
@@ -369,7 +369,7 @@ func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, eval s
 	require.Contains(t, stdout.String(), `-- Add new schema named "test2"`)
 }
 
-func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, eval schemahcl.Evaluator) {
+func testCLIMultiSchemaInspect(t T, h string, url string, schemas []string, eval schemahcl.Evaluator) {
 	err := initCLI()
 	require.NoError(t, err)
 	var expected schema.Realm
@@ -379,8 +379,8 @@ func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, eval
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"inspect",
-		"-d",
-		dsn,
+		"-u",
+		url,
 		"-s",
 		strings.Join(schemas, ","),
 	)
@@ -395,7 +395,7 @@ func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, eval
 	require.Equal(t, expected, actual)
 }
 
-func testCLISchemaApply(t T, h string, dsn string, args ...string) {
+func testCLISchemaApply(t T, h string, url string, args ...string) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -407,11 +407,11 @@ func testCLISchemaApply(t T, h string, dsn string, args ...string) {
 		"schema",
 		"apply",
 		"-u",
-		dsn,
+		url,
 		"-f",
 		f,
 		"--dev-url",
-		dsn,
+		url,
 	}
 	runArgs = append(runArgs, args...)
 	cmd := exec.Command("go", runArgs...)
@@ -430,7 +430,7 @@ func testCLISchemaApply(t T, h string, dsn string, args ...string) {
 	require.NotNil(t, u)
 }
 
-func testCLISchemaApplyDry(t T, h string, dsn string) {
+func testCLISchemaApplyDry(t T, h string, url string) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -440,8 +440,8 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
-		"-d",
-		dsn,
+		"-u",
+		url,
 		"-f",
 		f,
 		"--dry-run",
@@ -463,7 +463,7 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 	require.False(t, ok, "expected users table not to be created")
 }
 
-func testCLISchemaApplyAutoApprove(t T, h string, dsn string, args ...string) {
+func testCLISchemaApplyAutoApprove(t T, h string, url string, args ...string) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -474,8 +474,8 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string, args ...string) {
 		"run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
-		"-d",
-		dsn,
+		"-u",
+		url,
 		"-f",
 		f,
 		"--auto-approve",
@@ -565,7 +565,7 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 	require.NotContains(t, string(out), two)
 }
 
-func testCLISchemaDiff(t T, dsn string) {
+func testCLISchemaDiff(t T, url string) {
 	err := initCLI()
 
 	require.NoError(t, err)
@@ -574,9 +574,9 @@ func testCLISchemaDiff(t T, dsn string) {
 		"schema",
 		"diff",
 		"--from",
-		dsn,
+		url,
 		"--to",
-		dsn,
+		url,
 	)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr

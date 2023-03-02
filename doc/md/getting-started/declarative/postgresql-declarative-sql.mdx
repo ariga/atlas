@@ -57,7 +57,7 @@ The following command will inspect the current state of the schema `example` and
 ```console
 atlas schema inspect \
   --url "postgres://postgres:pass@localhost:5432/example?search_path=public&sslmode=disable" \
-  --log "{{ sql . }}" > schema.sql
+  --format "{{ sql . }}" > schema.sql
 ```
 
 ```sql title="schema.sql"
@@ -149,7 +149,7 @@ You can inspect the latest state of the database again and verify that the chang
 ```console
 atlas schema inspect \
   --url "postgres://postgres:pass@localhost:5432/example?search_path=public&sslmode=disable" \
-  --log "{{ sql . }}"
+  --format "{{ sql . }}"
 ```
 ```sql
 -- create "customers" table

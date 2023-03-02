@@ -202,12 +202,12 @@ const (
 	flagDirURL         = "dir"
 	flagDirFormat      = "dir-format"
 	flagDryRun         = "dry-run"
-	flagDSN            = "dsn" // deprecated in favor of flagURL
 	flagEnv            = "env"
 	flagExclude        = "exclude"
 	flagFile           = "file"
 	flagFrom           = "from"
 	flagFromShort      = "f"
+	flagFormat         = "format"
 	flagGitBase        = "git-base"
 	flagGitDir         = "git-dir"
 	flagLatest         = "latest"
@@ -267,11 +267,6 @@ func addFlagDevURL(set *pflag.FlagSet, target *string) {
 	)
 }
 
-func addFlagDSN(set *pflag.FlagSet, target *string) {
-	set.StringVarP(target, flagDSN, "d", "", "")
-	cobra.CheckErr(set.MarkHidden(flagDSN))
-}
-
 func addFlagDryRun(set *pflag.FlagSet, target *bool) {
 	set.BoolVar(target, flagDryRun, false, "print SQL without executing it")
 }
@@ -287,6 +282,13 @@ func addFlagExclude(set *pflag.FlagSet, target *[]string) {
 
 func addFlagLog(set *pflag.FlagSet, target *string) {
 	set.StringVar(target, flagLog, "", "Go template to use to format the output")
+	// Use MarkHidden instead of MarkDeprecated to avoid
+	// spam users' system logs with deprecation warnings.
+	cobra.CheckErr(set.MarkHidden(flagLog))
+}
+
+func addFlagFormat(set *pflag.FlagSet, target *string) {
+	set.StringVar(target, flagFormat, "", "Go template to use to format the output")
 }
 
 func addFlagRevisionSchema(set *pflag.FlagSet, target *string) {
@@ -339,18 +341,6 @@ func addFlagURLs(set *pflag.FlagSet, target *[]string, args ...string) {
 
 func addFlagToURLs(set *pflag.FlagSet, target *[]string) {
 	set.StringSliceVarP(target, flagTo, "", nil, "[driver://username:password@address/dbname?param=value] select a desired state using the URL format")
-}
-
-func dsn2url(cmd *cobra.Command) error {
-	dsnF, urlF := cmd.Flag(flagDSN), cmd.Flag(flagURL)
-	switch {
-	case dsnF == nil:
-	case dsnF.Changed && urlF.Changed:
-		return errors.New(`both flags "url" and "dsn" were set`)
-	case dsnF.Changed && !urlF.Changed:
-		return cmd.Flags().Set(flagURL, dsnF.Value.String())
-	}
-	return nil
 }
 
 // maySetFlag sets the flag with the provided name to envVal if such a flag exists

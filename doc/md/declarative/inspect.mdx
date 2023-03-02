@@ -25,7 +25,7 @@ parameters:
 * `--schema` (optional, may be supplied multiple times) - schemas to inspect within
  the target database.
 * `--exclude` (optional) - filter out resources matching the given glob pattern.
-* `--log` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
+* `--format` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
 
 ## Examples
 
@@ -192,10 +192,10 @@ atlas schema inspect -u "mysql://localhost" --exclude "public.*.c1"
 ### SQL Format
 
 By default, the output of `schema inspect` is in the Atlas DDL. However, you can use SQL to describe the desired schema
-in all commands that are supported by Atlas DDL. To output the schema in SQL format, use the `--log` flag as follows:
+in all commands that are supported by Atlas DDL. To output the schema in SQL format, use the `--format` flag as follows:
 
 ```shell
-atlas schema inspect -u "mysql://localhost" --log "{{ sql . }}"
+atlas schema inspect -u "mysql://localhost" --format "{{ sql . }}"
 ```
 
 ### JSON Format
@@ -204,7 +204,7 @@ Atlas can output a JSON document that represents the database schema. This repre
 like `jq` to analyze the schema programmatically.
 
 ```shell
-atlas schema inspect -u '<url>' --log '{{ json . }}'
+atlas schema inspect -u '<url>' --format '{{ json . }}'
 ```
 
 ### Visualize schemas
