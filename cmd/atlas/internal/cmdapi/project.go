@@ -64,8 +64,8 @@ type (
 		// Lint of the environment.
 		Lint *Lint `spec:"lint"`
 
-		// Log of the environment.
-		Log Log `spec:"log"`
+		// Format of the environment.
+		Format Format `spec:"format"`
 		schemahcl.DefaultExtension
 	}
 
@@ -80,8 +80,8 @@ type (
 
 	// Lint represents the configuration of migration linting.
 	Lint struct {
-		// Log configures the --log option.
-		Log string `spec:"log"`
+		// Format configures the --format option.
+		Format string `spec:"log"`
 		// Latest configures the --latest option.
 		Latest int `spec:"latest"`
 		Git    struct {
@@ -93,8 +93,8 @@ type (
 		schemahcl.DefaultExtension
 	}
 
-	// Log represents a logging configuration of an environment.
-	Log struct {
+	// Format represents the output formatting configuration of an environment.
+	Format struct {
 		Migrate struct {
 			// Apply configures the logging for 'migrate apply'.
 			Apply string `spec:"apply"`
@@ -110,6 +110,15 @@ type (
 		schemahcl.DefaultExtension
 	}
 )
+
+// support backward compatibility with the 'log' attribute.
+func (e *Env) remainedLog() error {
+	r, ok := e.Remain().Resource("log")
+	if ok {
+		return r.As(&e.Format)
+	}
+	return nil
+}
 
 // Extend allows extending environment blocks with
 // a global one. For example:
@@ -140,8 +149,8 @@ func (l *Lint) Extend(global *Lint) *Lint {
 	if l == nil {
 		return global
 	}
-	if l.Log == "" {
-		l.Log = global.Log
+	if l.Format == "" {
+		l.Format = global.Format
 	}
 	l.Extra = global.Extra
 	switch {
@@ -160,6 +169,23 @@ func (l *Lint) Extend(global *Lint) *Lint {
 		l.Latest = global.Latest
 	}
 	return l
+}
+
+// support backward compatibility with the 'log' attribute.
+func (l *Lint) remainedLog() error {
+	at, ok := l.Remain().Attr("log")
+	if !ok {
+		return nil
+	}
+	if l.Format != "" {
+		return fmt.Errorf("cannot use both 'log' and 'format' in the same lint block")
+	}
+	s, err := at.String()
+	if err != nil {
+		return err
+	}
+	l.Format = s
+	return nil
 }
 
 // Sources returns the paths containing the Atlas schema.
@@ -223,6 +249,9 @@ func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := project.Lint.remainedLog(); err != nil {
+		return nil, err
+	}
 	envs := make(map[string][]*Env)
 	for _, e := range project.Envs {
 		if e.Name == "" {
@@ -234,7 +263,13 @@ func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 		if e.Migration == nil {
 			e.Migration = &Migration{}
 		}
+		if err := e.remainedLog(); err != nil {
+			return nil, err
+		}
 		e.Lint = e.Lint.Extend(project.Lint)
+		if err := e.Lint.remainedLog(); err != nil {
+			return nil, err
+		}
 		envs[e.Name] = append(envs[e.Name], e)
 	}
 	selected, ok := envs[name]

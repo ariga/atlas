@@ -62,7 +62,7 @@ To get the JSON representation of your database schema, you can use the `atlas s
 custom logging format:
 
 ```shell
-atlas schema inspect -u '<url>' --log '{{ json . }}'
+atlas schema inspect -u '<url>' --format '{{ json . }}'
 ```
 
 This will output the schema as a JSON document:
@@ -96,7 +96,7 @@ Once your schema is represented as a JSON document, you can use `jq` to analyze 
 the tables that contain a foreign key, run:
 
 ```shell
-atlas schema inspect -u '<url>' --log '{{ json . }}' | jq '.schemas[].tables[] | select(.foreign_keys | length > 0) | .name'
+atlas schema inspect -u '<url>' --format '{{ json . }}' | jq '.schemas[].tables[] | select(.foreign_keys | length > 0) | .name'
 ```
 
 This will output:

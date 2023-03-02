@@ -252,7 +252,7 @@ env "local" {
   url      = urlsetpath(var.url, each.value)
   // Emit JSON logs to stdout and add the
   // tenant name to each log line.
-  log {
+  format {
     migrate {
       apply = format(
         "{{ json . | json_merge %q }}",

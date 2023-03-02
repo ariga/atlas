@@ -508,6 +508,7 @@ env "local" {
 				Tenant string
 				cmdlog.MigrateApply
 			}
+			fmt.Println(s)
 			require.NoError(t, json.Unmarshal([]byte(s), &r))
 			require.Empty(t, r.Pending)
 			require.Empty(t, r.Applied)
@@ -871,7 +872,7 @@ func TestMigrate_StatusJSON(t *testing.T) {
 		migrateStatusCmd(),
 		"--dir", "file://"+p,
 		"-u", openSQLite(t, ""),
-		"--log", "{{ json .Env.Driver }}",
+		"--format", "{{ json .Env.Driver }}",
 	)
 	require.NoError(t, err)
 	require.Equal(t, `"sqlite3"`, s)
@@ -1138,7 +1139,7 @@ func TestMigrate_Lint(t *testing.T) {
 		"--dir", "file://"+p,
 		"--dev-url", openSQLite(t, ""),
 		"--latest", "1",
-		"--log", "{{ range .Files }}{{ .Name }}{{ end }}",
+		"--log", "{{ range .Files }}{{ .Name }}{{ end }}", // Backward compatibility with old flag name.
 	)
 	require.Error(t, err)
 	require.Equal(t, "2.sql", s)
@@ -1151,7 +1152,7 @@ func TestMigrate_Lint(t *testing.T) {
 		"--dir", "file://"+p+"?format="+formatGolangMigrate,
 		"--dev-url", openSQLite(t, ""),
 		"--latest", "2",
-		"--log", "{{ range .Files }}{{ .Name }}:{{ len .Reports }}{{ end }}",
+		"--format", "{{ range .Files }}{{ .Name }}:{{ len .Reports }}{{ end }}",
 	)
 	require.NoError(t, err)
 	require.Equal(t, "1.up.sql:0", s)
@@ -1160,7 +1161,7 @@ func TestMigrate_Lint(t *testing.T) {
 		"--dir", "file://"+p+"?format="+formatGolangMigrate,
 		"--dev-url", openSQLite(t, ""),
 		"--latest", "2",
-		"--log", "{{ range .Files }}{{ .Name }}:{{ len .Reports }}{{ end }}",
+		"--format", "{{ range .Files }}{{ .Name }}:{{ len .Reports }}{{ end }}",
 		"--dir-format", formatGolangMigrate,
 	)
 	require.NoError(t, err)

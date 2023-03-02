@@ -87,7 +87,7 @@ type for the `id` column is `int`, and `varchar(100)` for the `name` column.
 To inspect our locally-running MySQL instance, use the `-u` flag and write the output to a file named `schema.sql`:
 
 ```shell
-atlas schema inspect -u "mysql://root:pass@localhost:3306/example" --log '{{ sql . }}' > schema.sql
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" --format '{{ sql . }}' > schema.sql
 ```
 
 Open the `schema.sql` file to view the inspected SQL schema that describes our database.
@@ -222,7 +222,7 @@ atlas schema inspect -u "mysql://root:pass@localhost:3306/example"
 <TabItem value="sql" label="SQL">
 
 ```shell
-atlas schema inspect -u "mysql://root:pass@localhost:3306/example" --log '{{ sql . }}'
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" --format '{{ sql . }}'
 ```
 </TabItem>
 </Tabs>

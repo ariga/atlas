@@ -328,7 +328,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"-u", db,
 			"--to", openSQLite(t, ""),
 			"--dry-run",
-			"--log", "{{ json .Changes }}",
+			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
 		require.Equal(t, "{}", s)
@@ -340,7 +340,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"-u", db,
 			"--to", openSQLite(t, "create table t1 (id int);"),
 			"--dry-run",
-			"--log", "{{ json .Changes }}",
+			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
 		require.Equal(t, "{\"Pending\":[\"CREATE TABLE `t1` (`id` int NULL)\"]}", s)
@@ -355,7 +355,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"-u", db,
 			"--to", openSQLite(t, "create table t1 (id int);"),
 			"--auto-approve",
-			"--log", "{{ json .Changes }}",
+			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
 		require.Equal(t, "{\"Applied\":[\"CREATE TABLE `t1` (`id` int NULL)\"]}", s)
@@ -367,7 +367,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"-u", db,
 			"--to", openSQLite(t, "create table t1 (id int);"),
 			"--auto-approve",
-			"--log", "{{ json .Changes }}",
+			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
 		require.Equal(t, "{}", s)
@@ -379,7 +379,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"-u", db,
 			"--to", openSQLite(t, "create table t2 (id int);"),
 			"--auto-approve",
-			"--log", "{{ json .Changes }}",
+			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
 		require.Equal(t, "{\"Applied\":[\"PRAGMA foreign_keys = off\",\"DROP TABLE `t1`\",\"CREATE TABLE `t2` (`id` int NULL)\",\"PRAGMA foreign_keys = on\"]}", s)
@@ -397,7 +397,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"-u", db,
 			"--to", openSQLite(t, "create table t2 (id int, c int);create unique index t2_id on t2 (id);"),
 			"--auto-approve",
-			"--log", "{{ json .Changes }}\n",
+			"--format", "{{ json .Changes }}\n",
 		)
 		require.EqualError(t, err, `create index "t2_id" to table: "t2": UNIQUE constraint failed: t2.id`)
 		var out struct {
@@ -553,7 +553,7 @@ func TestSchema_InspectLog(t *testing.T) {
 	s, err := runCmd(
 		cmd, "inspect",
 		"-u", db,
-		"--log", "{{ json . }}",
+		"--format", "{{ json . }}",
 	)
 	require.NoError(t, err)
 	require.Equal(t, `{"schemas":[{"name":"main","tables":[{"name":"t1","columns":[{"name":"id","type":"INTEGER","null":true}],"primary_key":{"parts":[{"column":"id"}]}},{"name":"t2","columns":[{"name":"name","type":"TEXT","null":true}]}]}]}`, s)

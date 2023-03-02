@@ -123,7 +123,7 @@ values={[
 ```shell
 atlas schema inspect \
   --url "mysql://root:pass@localhost:3306/example" \
-  --log "{{ sql . }}"
+  --format "{{ sql . }}"
 ```
 
 </TabItem>
@@ -132,7 +132,7 @@ atlas schema inspect \
 ```shell
 atlas schema inspect \
   --url "maria://root:pass@:3306/example" \
-  --log "{{ sql . }}"
+  --format "{{ sql . }}"
 ```
 
 </TabItem>
@@ -141,7 +141,7 @@ atlas schema inspect \
 ```shell
 atlas schema inspect \
   --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable" \
-  --log "{{ sql . }}"
+  --format "{{ sql . }}"
 ```
 
 </TabItem>
@@ -150,7 +150,7 @@ atlas schema inspect \
 ```shell
 atlas schema inspect \
   --url "sqlite://file.db" \
-  --log "{{ sql . }}"
+  --format "{{ sql . }}"
 ```
 
 </TabItem>

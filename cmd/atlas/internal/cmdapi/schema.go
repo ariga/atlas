@@ -58,7 +58,6 @@ type schemaApplyFlags struct {
 	dryRun      bool     // Only show SQL on screen instead of applying it.
 	autoApprove bool     // Don't prompt for approval before applying SQL.
 	logFormat   string   // Log format.
-	dsn         string   // Deprecated: DSN is an alias for URL.
 }
 
 // schemaApplyCmd represents the 'atlas schema apply' subcommand.
@@ -89,9 +88,6 @@ migration.`,
   atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" --to file://schema.hcl
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" --to file://schema.hcl
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" --to file://schema.hcl`,
-			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				return dsn2url(cmd)
-			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				if GlobalFlags.SelectedEnv == "" {
 					return schemaApplyRun(cmd, args, flags)
@@ -108,12 +104,13 @@ migration.`,
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagDryRun(cmd.Flags(), &flags.dryRun)
 	addFlagAutoApprove(cmd.Flags(), &flags.autoApprove)
-	cmd.Flags().StringVarP(&flags.logFormat, flagLog, "", "", "custom logging using a Go template")
-	addFlagDSN(cmd.Flags(), &flags.dsn)
+	addFlagLog(cmd.Flags(), &flags.logFormat)
+	addFlagFormat(cmd.Flags(), &flags.logFormat)
 	// Hidden support for the deprecated -f flag.
 	cmd.Flags().StringSliceVarP(&flags.paths, flagFile, "f", nil, "[paths...] file or directory containing HCL or SQL files")
 	cobra.CheckErr(cmd.Flags().MarkHidden(flagFile))
 	cmd.MarkFlagsMutuallyExclusive(flagFile, flagTo)
+	cmd.MarkFlagsMutuallyExclusive(flagLog, flagFormat)
 	return cmd
 }
 
@@ -124,7 +121,7 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 	case len(flags.paths) == 0 && len(flags.toURLs) == 0:
 		return errors.New(`one of flag(s) "file" or "to" is required`)
 	case flags.logFormat != "" && !flags.dryRun && !flags.autoApprove:
-		return errors.New(`--log can only be used with --dry-run or --auto-approve`)
+		return errors.New(`--log and --format can only be used with --dry-run or --auto-approve`)
 	}
 	// If the old -f flag is given convert them to the URL format. If both are given,
 	// cobra would throw an error since they are marked as mutually exclusive.
@@ -238,10 +235,7 @@ As a safety feature, 'atlas schema clean' will ask for confirmation before attem
 			Example: `  atlas schema clean -u mysql://user:pass@localhost:3306/dbname
   atlas schema clean -u mysql://user:pass@localhost:3306/`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				if err := schemaFlagsFromEnv(cmd); err != nil {
-					return err
-				}
-				return dsn2url(cmd)
+				return schemaFlagsFromEnv(cmd)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return schemaCleanRun(cmd, args, flags)
@@ -322,10 +316,7 @@ The database states can be read from a connected database, an HCL project or a m
   atlas schema diff --from mysql://user:pass@localhost:3306 --to file://schema_1.hcl --to file://schema_2.hcl
   atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				if err := schemaFlagsFromEnv(cmd); err != nil {
-					return err
-				}
-				return dsn2url(cmd)
+				return schemaFlagsFromEnv(cmd)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return schemaDiffRun(cmd, args, flags)
@@ -396,7 +387,6 @@ type schemaInspectFlags struct {
 	logFormat string   // Format of the log output.
 	schemas   []string // Schemas to take into account when diffing.
 	exclude   []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
-	dsn       string   // Deprecated: DSN is an alias for URL.
 }
 
 // schemaInspectCmd represents the 'atlas schema inspect' subcommand.
@@ -424,10 +414,7 @@ flag.
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
   atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				if err := schemaFlagsFromEnv(cmd); err != nil {
-					return err
-				}
-				return dsn2url(cmd)
+				return schemaFlagsFromEnv(cmd)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return schemaInspectRun(cmd, args, flags)
@@ -439,8 +426,9 @@ flag.
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagExclude(cmd.Flags(), &flags.exclude)
 	addFlagLog(cmd.Flags(), &flags.logFormat)
-	addFlagDSN(cmd.Flags(), &flags.dsn)
+	addFlagFormat(cmd.Flags(), &flags.logFormat)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
+	cmd.MarkFlagsMutuallyExclusive(flagLog, flagFormat)
 	return cmd
 }
 
@@ -566,7 +554,7 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	}
 	switch cmd.Name() {
 	case "apply":
-		if err := maySetFlag(cmd, flagLog, env.Log.Schema.Apply); err != nil {
+		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Apply); err != nil {
 			return err
 		}
 	}

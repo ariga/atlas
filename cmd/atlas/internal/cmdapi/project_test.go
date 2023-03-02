@@ -32,6 +32,7 @@ lint {
 	destructive {
 		error = true
 	}
+	// Backwards compatibility with old attribute.
 	log = <<EOS
 {{- range $f := .Files }}
 	{{- $f.Name }}
@@ -53,7 +54,6 @@ env "local" {
 	lint {
 		latest = 1
 	}
-	
 	bool = true
 	integer = 42
 	str = var.name
@@ -98,7 +98,7 @@ env "multi" {
 			},
 			Lint: &Lint{
 				Latest: 1,
-				Log:    "{{- range $f := .Files }}\n\t{{- $f.Name }}\n{{- end }}\n",
+				Format: "{{- range $f := .Files }}\n\t{{- $f.Name }}\n{{- end }}\n",
 				DefaultExtension: schemahcl.DefaultExtension{
 					Extra: schemahcl.Resource{
 						Children: []*schemahcl.Resource{
@@ -176,5 +176,5 @@ env {
 	require.NoError(t, err)
 	require.Len(t, envs, 1)
 	require.Equal(t, "local", envs[0].Name)
-	require.Equal(t, "env: local", envs[0].Log.Schema.Apply)
+	require.Equal(t, "env: local", envs[0].Format.Schema.Apply)
 }

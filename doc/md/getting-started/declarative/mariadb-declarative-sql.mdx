@@ -57,7 +57,7 @@ The following command will inspect the current state of the schema `example` and
 ```console
 atlas schema inspect \
   --url "mysql://root:pass@localhost:3306/example" \
-  --log "{{ sql . }}" > schema.sql
+  --format "{{ sql . }}" > schema.sql
 ```
 
 ```sql title="schema.sql"
@@ -149,7 +149,7 @@ You can inspect the latest state of the database again and verify that the chang
 ```console
 atlas schema inspect \
   --url "mysql://root:pass@localhost:3306/example" \
-  --log "{{ sql . }}"
+  --format "{{ sql . }}"
 ```
 ```sql
 -- create "customers" table
