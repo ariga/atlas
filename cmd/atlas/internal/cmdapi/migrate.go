@@ -1511,9 +1511,6 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 	}
 	switch cmd.Name() {
 	case "apply":
-		if err := maySetFlag(cmd, flagLog, env.Format.Migrate.Apply); err != nil {
-			return err
-		}
 		if err := maySetFlag(cmd, flagFormat, env.Format.Migrate.Apply); err != nil {
 			return err
 		}
@@ -1525,13 +1522,7 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 			return err
 		}
 	case "lint":
-		if err := maySetFlag(cmd, flagLog, env.Format.Migrate.Lint); err != nil {
-			return err
-		}
 		if err := maySetFlag(cmd, flagFormat, env.Format.Migrate.Lint); err != nil {
-			return err
-		}
-		if err := maySetFlag(cmd, flagLog, env.Lint.Format); err != nil {
 			return err
 		}
 		if err := maySetFlag(cmd, flagFormat, env.Lint.Format); err != nil {
@@ -1547,9 +1538,6 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 			return err
 		}
 	case "status":
-		if err := maySetFlag(cmd, flagLog, env.Format.Migrate.Status); err != nil {
-			return err
-		}
 		if err := maySetFlag(cmd, flagFormat, env.Format.Migrate.Status); err != nil {
 			return err
 		}
@@ -1601,7 +1589,7 @@ func cmdEnvsRun[F any](
 		b := bytes.TrimLeft(w.Bytes(), " \t\r")
 		// In case a custom logging was configured, ensure there is
 		// a newline separator between the different environments.
-		if cmd.Flags().Changed(flagLog) && bytes.LastIndexByte(b, '\n') != len(b)-1 && i != len(envs)-1 {
+		if cmd.Flags().Changed(flagFormat) && bytes.LastIndexByte(b, '\n') != len(b)-1 && i != len(envs)-1 {
 			cmd.Println()
 		}
 		reset()

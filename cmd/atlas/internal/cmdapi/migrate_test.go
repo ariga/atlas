@@ -508,6 +508,7 @@ env "local" {
 				Tenant string
 				cmdlog.MigrateApply
 			}
+			fmt.Println(s)
 			require.NoError(t, json.Unmarshal([]byte(s), &r))
 			require.Empty(t, r.Pending)
 			require.Empty(t, r.Applied)
