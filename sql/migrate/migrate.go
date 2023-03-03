@@ -303,6 +303,16 @@ func PlanWithSchemaQualifier(q string) PlannerOption {
 	}
 }
 
+// PlanWithIndent allows generating SQL statements with indentation.
+// An empty string indicates no indentation.
+func PlanWithIndent(indent string) PlannerOption {
+	return func(p *Planner) {
+		p.opts = append(p.opts, func(o *PlanOptions) {
+			o.Indent = indent
+		})
+	}
+}
+
 // PlanFormat sets the Formatter of a Planner.
 func PlanFormat(fmt Formatter) PlannerOption {
 	return func(p *Planner) {

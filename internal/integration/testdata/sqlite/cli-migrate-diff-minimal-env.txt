@@ -16,5 +16,5 @@ table "users" {
 schema "main" {
 }
 -- diff.sql --
--- create "users" table
+-- Create "users" table
 CREATE TABLE `users` (`id` int NOT NULL);

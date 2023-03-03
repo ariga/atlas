@@ -37,6 +37,7 @@ creating our `users` table:
 * `--dir` the URL to the migration directory, by default it is `file://migrations`.
 * `--to` the URL of the desired state, an [HCL](/atlas-schema/sql-resources) or SQL schema definition, or a database [URL](../concepts/url).
 * `--dev-url` a [URL](/concepts/url) to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
+* `--format` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
 
 <Tabs
 defaultValue="docker"
@@ -772,6 +773,20 @@ CREATE TABLE "market"."users" ("name" integer NOT NULL);
 
 As you can see, Atlas generates statements for creating the `auth` and `market` schemas,
 and added them as qualifiers in the created tables.
+
+### Indented SQL
+
+The `migrate diff` command generates a list of SQL statements without indentation by default. If you would like to
+generate the SQL statements with indentation, use the `--format` flag. For example:
+
+```shell {1}
+# Indent SQL statements with 2 spaces.
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "docker://mysql/8/test" \
+  --format '{{ sql . "  " }}'
+```
 
 ### Reference
 

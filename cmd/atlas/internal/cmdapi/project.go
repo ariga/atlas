@@ -96,16 +96,20 @@ type (
 	// Format represents the output formatting configuration of an environment.
 	Format struct {
 		Migrate struct {
-			// Apply configures the logging for 'migrate apply'.
+			// Apply configures the formatting for 'migrate apply'.
 			Apply string `spec:"apply"`
-			// Lint configures the logging for 'migrate lint'.
+			// Lint configures the formatting for 'migrate lint'.
 			Lint string `spec:"lint"`
-			// Status configures the logging for 'migrate status'.
+			// Status configures the formatting for 'migrate status'.
 			Status string `spec:"status"`
+			// Apply configures the formatting for 'migrate diff'.
+			Diff string `spec:"diff"`
 		} `spec:"migrate"`
 		Schema struct {
-			// Apply configures the logging for 'schema apply'.
+			// Apply configures the formatting for 'schema apply'.
 			Apply string `spec:"apply"`
+			// Apply configures the formatting for 'schema diff'.
+			Diff string `spec:"diff"`
 		} `spec:"schema"`
 		schemahcl.DefaultExtension
 	}

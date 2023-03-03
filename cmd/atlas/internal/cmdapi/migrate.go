@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"text/template/parse"
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
@@ -265,7 +266,7 @@ func reportApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdlog.MigrateA
 	if v := flags.logFormat; v != "" {
 		f, err = template.New("format").Funcs(cmdlog.ApplyTemplateFuncs).Parse(v)
 		if err != nil {
-			return fmt.Errorf("parse log format: %w", err)
+			return fmt.Errorf("parse format: %w", err)
 		}
 	}
 	if err = f.Execute(cmd.OutOrStdout(), r); err != nil {
@@ -284,6 +285,7 @@ type migrateDiffFlags struct {
 	devURL            string
 	schemas           []string
 	lockTimeout       time.Duration
+	format            string
 	revisionSchema    string // revision schema name
 	qualifier         string // optional table qualifier
 }
@@ -301,7 +303,7 @@ directory state to the desired schema. The desired state can be another connecte
 			Example: `  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://schema.hcl
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
-  atlas migrate diff --env dev`,
+  atlas migrate diff --env dev --format '{{ sql . "  " }}'`,
 			Args: cobra.MaximumNArgs(1),
 			PreRunE: func(cmd *cobra.Command, args []string) error {
 				if err := migrateFlagsFromEnv(cmd); err != nil {
@@ -325,6 +327,7 @@ directory state to the desired schema. The desired state can be another connecte
 	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
+	addFlagFormat(cmd.Flags(), &flags.format)
 	cmd.Flags().StringVar(&flags.qualifier, flagQualifier, "", "qualify tables with custom qualifier when working on a single schema")
 	cmd.Flags().BoolVarP(&flags.edit, flagEdit, "", false, "edit the generated migration file(s)")
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
@@ -360,13 +363,16 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 	if flags.edit {
 		dir = &editDir{dir}
 	}
+	var name, indent string
+	if len(args) > 0 {
+		name = args[0]
+	}
 	f, err := formatter(u)
 	if err != nil {
 		return err
 	}
-	var name string
-	if len(args) > 0 {
-		name = args[0]
+	if f, indent, err = mayIndent(u, f, flags.format); err != nil {
+		return err
 	}
 	// If there is a state-loader that requires a custom
 	// 'migrate diff' handling, offload it the work.
@@ -391,7 +397,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 		return err
 	}
 	defer desired.Close()
-	opts := []migrate.PlannerOption{migrate.PlanFormat(f)}
+	opts := []migrate.PlannerOption{migrate.PlanFormat(f), migrate.PlanWithIndent(indent)}
 	if dev.URL.Schema != "" {
 		// Disable tables qualifier in schema-mode.
 		opts = append(opts, migrate.PlanWithSchemaQualifier(flags.qualifier))
@@ -414,6 +420,54 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 		// Write the plan to a new file.
 		return pl.WritePlan(plan)
 	}
+}
+
+func mayIndent(dir *url.URL, f migrate.Formatter, format string) (migrate.Formatter, string, error) {
+	if format == "" {
+		return f, "", nil
+	}
+	reject := errors.New(`'sql' can only be used to indent statements`)
+	t, err := template.New("format").
+		// The "sql" is a dummy function to detect if the
+		// template was used to indent the SQL statements.
+		Funcs(template.FuncMap{"sql": func(...any) (string, error) { return "", reject }}).
+		Parse(format)
+	if err != nil {
+		return nil, "", fmt.Errorf("parse format: %w", err)
+	}
+	indent, ok := func() (string, bool) {
+		if len(t.Tree.Root.Nodes) != 1 {
+			return "", false
+		}
+		n, ok := t.Tree.Root.Nodes[0].(*parse.ActionNode)
+		if !ok || len(n.Pipe.Cmds) != 1 || len(n.Pipe.Cmds[0].Args) < 2 || len(n.Pipe.Cmds[0].Args) > 3 {
+			return "", false
+		}
+		args := n.Pipe.Cmds[0].Args
+		if args[0].String() != "sql" || args[1].String() != "." && args[1].String() != "$" {
+			return "", false
+		}
+		d := `""` // empty string as arg.
+		if len(args) == 3 {
+			d = args[2].String()
+		}
+		return d, true
+	}()
+	if ok {
+		if indent, err = strconv.Unquote(indent); err != nil {
+			return nil, "", fmt.Errorf("parse indent: %w", err)
+		}
+		return f, indent, nil
+	}
+	// If the template is not an indent, it cannot contain the "sql" function.
+	if err := t.Execute(io.Discard, &migrate.Plan{}); err != nil && errors.Is(err, reject) {
+		return nil, "", fmt.Errorf("%v. got: %v", reject, t.Root.String())
+	}
+	tfs := f.(migrate.TemplateFormatter)
+	if len(tfs) != 1 {
+		return nil, "", fmt.Errorf("cannot use format with: %q", dir.Query().Get("format"))
+	}
+	return migrate.TemplateFormatter{{N: tfs[0].N, C: t}}, "", nil
 }
 
 // maskNoPlan masks ErrNoPlan errors.
@@ -659,7 +713,7 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 	if f := flags.logFormat; f != "" {
 		format, err = template.New("format").Funcs(lint.TemplateFuncs).Parse(f)
 		if err != nil {
-			return fmt.Errorf("parse log format: %w", err)
+			return fmt.Errorf("parse format: %w", err)
 		}
 	}
 	env, err := selectEnv(GlobalFlags.SelectedEnv)
@@ -1009,7 +1063,7 @@ func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) 
 	format := cmdlog.MigrateStatusTemplate
 	if f := flags.logFormat; f != "" {
 		if format, err = template.New("format").Funcs(cmdlog.StatusTemplateFuncs).Parse(f); err != nil {
-			return fmt.Errorf("parse log format: %w", err)
+			return fmt.Errorf("parse format: %w", err)
 		}
 	}
 	return format.Execute(cmd.OutOrStdout(), report)
@@ -1271,7 +1325,7 @@ func (tx *tx) modeFor(f migrate.File) (string, error) {
 }
 
 func operatorVersion() string {
-	v, _ := parse(version)
+	v, _ := parseV(version)
 	return "Atlas CLI " + v
 }
 
@@ -1519,6 +1573,9 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 		}
 	case "diff":
 		if err := maySetFlag(cmd, flagLockTimeout, env.Migration.LockTimeout); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, flagFormat, env.Format.Migrate.Diff); err != nil {
 			return err
 		}
 	case "lint":

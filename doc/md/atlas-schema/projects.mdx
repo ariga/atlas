@@ -469,13 +469,14 @@ set or map item. See the example [below](#multi-environment-example).
   - `lock_timeout` - An optional timeout to wait for a database lock to be released. Defaults to `10s`. 
   - `revisions_schema` - An optional name to control the schema that the revisions table resides in.
 
-- `format` - A block defines the logging configuration of the env per command (previously named `log`).
+- `format` - A block defines the formatting configuration of the env per command (previously named `log`).
   - `migrate`
-    - `apply` - Set custom logging for `migrate apply`.
-    - `lint` - Set custom logging for `migrate lint`.
-    - `status` - Set custom logging for `migrate status`.
+    - `apply` - Set custom formatting for `migrate apply`.
+    - `lint` - Set custom formatting for `migrate lint`.
+    - `status` - Set custom formatting for `migrate status`.
   - `schema`
-    - `apply` - Set custom logging for `schema apply`.
+    - `apply` - Set custom formatting for `schema apply`.
+    - `diff` - Set custom formatting for `schema diff`.
 
 - `lint` - A block defines the migration linting configuration of the env.
   - `format` - Override the `--format` flag by setting a custom logging for `migrate lint` (previously named `log`).

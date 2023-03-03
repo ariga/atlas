@@ -812,9 +812,9 @@ table "posts" {
 		require.Equal(t,
 			`-- Add new schema named "other"
 CREATE SCHEMA "other";
--- create "users" table
+-- Create "users" table
 CREATE TABLE "public"."users" ("id" integer NOT NULL);
--- create "posts" table
+-- Create "posts" table
 CREATE TABLE "other"."posts" ("id" integer NOT NULL);
 `, string(b))
 		require.Equal(t, "The migration directory is synced with the desired state, no changes to be made", diff("no_change"))
@@ -834,7 +834,7 @@ table "other" "users" {
 		b, err = os.ReadFile(filepath.Join(dir, "migrations", files[1].Name()))
 		require.NoError(t, err)
 		require.Equal(t,
-			`-- create "users" table
+			`-- Create "users" table
 CREATE TABLE "other"."users" ("id" integer NOT NULL);
 `, string(b))
 	})

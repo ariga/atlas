@@ -28,7 +28,7 @@ table "users" {
 }
 
 -- 1.sql --
--- create "users" table
+-- Create "users" table
 CREATE TABLE "users" ("id" bigint NOT NULL, PRIMARY KEY ("id"));
 
 -- 2.hcl --
@@ -52,5 +52,5 @@ table "users" {
 }
 
 -- 2.sql --
--- modify "users" table
+-- Modify "users" table
 ALTER TABLE "users" ADD COLUMN "create_time" timestamp(4) NOT NULL DEFAULT CURRENT_TIMESTAMP(4);
