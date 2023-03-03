@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v3.0.1
       - name: Install Atlas
         run: |
-          curl -sSf https://atlasgo.sh | sh -s -- -y
+          curl -sSf https://atlasgo.sh | sh 
       - run: |
           atlas migrate apply --dir file://migrations/ -u 'mysql://root:pass@localhost:3306/dev'
       - run: |
@@ -98,7 +98,7 @@ jobs:
       maria107:
         image: mariadb:10.7
         env:
-          MYSQL_DATABASE: test
+          MYSQL_DATABASE: dev
           MYSQL_ROOT_PASSWORD: pass
         ports:
           - 3306:3306
@@ -113,7 +113,7 @@ jobs:
       - uses: actions/checkout@v3.0.1
       - name: Install Atlas
         run: |
-          curl -sSf https://atlasgo.sh | sh -s -- -y
+          curl -sSf https://atlasgo.sh | sh 
       - run: |
           atlas migrate apply --dir file://migrations/ -u 'maria://root:pass@localhost:3306/dev'
       - run: |
@@ -147,7 +147,7 @@ jobs:
       - uses: actions/checkout@v3.0.1
       - name: Install Atlas
         run: |
-          curl -sSf https://atlasgo.sh | sh -s -- -y
+          curl -sSf https://atlasgo.sh | sh 
       - run: |
           atlas migrate apply --dir file://migrations/ -u 'postgres://postgres:pass@localhost:5432/test?sslmode=disable'
       - run: |
@@ -205,7 +205,7 @@ Next, we install Atlas:
 ```yaml
      - name: Install Atlas
        run: |
-         curl -sSf https://atlasgo.sh | sh -s -- -y
+         curl -sSf https://atlasgo.sh | sh 
 ```
 
 Finally, we apply our migrations to the database:
