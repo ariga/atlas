@@ -20,8 +20,8 @@ migrations against it, so you can verify that the application works as expected 
 On a high-level, the process of setting up integration tests with GitHub Actions looks like this:
 
 * Spin up a database to run tests against. 
-* When the datbase is ready, Install Atlas on the GitHub Actions runner.
-* With Atlas installed, use it to apply all existing migrations on this database prior to the tests running.
+* When the database is ready, install Atlas on the GitHub Actions runner.
+* With Atlas installed, use it to apply all existing migrations on this database prior to running the tests.
 * Integration tests are provided a connection string to the migrated, local database.
 
 ## Example
@@ -222,7 +222,7 @@ After these steps finish running, we are finally ready to run our integration te
      echo "Run your tests here!"
 ```
 
-Of course, you can replace the `echo` command with your own integration tests, you will probably
+Of course, you can replace the `echo` command with your own integration tests. You will probably
 need to provide the tests with the database connection string.
 
 ## Wrapping up
