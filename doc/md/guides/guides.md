@@ -85,3 +85,5 @@ Importing from [`pressly/goose`](migration-tools/goose-import.md)
 
 [Integration tests with docker-compose](testing/docker-compose.md)
 
+[Integration tests with GitHub Actions](testing/github-actions.mdx)
+

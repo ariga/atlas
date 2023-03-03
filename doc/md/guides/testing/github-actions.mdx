@@ -1,0 +1,234 @@
+---
+id: testing-github-actions
+title: Integration tests with GitHub Actions
+slug: /guides/testing/github-actions
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+When developing an application that uses a database, it's important to test your application
+against a real database. As good as your unit tests may be, some issues can only be caught
+by running proper integration tests.
+
+If you use Atlas to manage your database schema, it only makes sense to use Atlas to
+prepare your database for integration tests as well. One way to achieve this is by
+using GitHub Actions to create a test environment for your tests to run against. 
+GitHub Actions allows you to easily spin up a test database and run your
+migrations against it, so you can verify that the application works as expected with the updated schema.
+
+On a high-level, the process of setting up integration tests with GitHub Actions looks like this:
+
+* Spin up a database to run tests against. 
+* When the database is ready, install Atlas on the GitHub Actions runner.
+* With Atlas installed, use it to apply all existing migrations on this database prior to running the tests.
+* Integration tests are provided a connection string to the migrated, local database.
+
+## Example
+
+Suppose your project has the following directory structure:
+
+```
+.
+|-- atlas.hcl
+`-- migrations
+    |-- 20221109072034_init.sql
+    |-- 20221109085340_add_blogposts.sql
+    |-- 20221109090118_tags.sql
+    |-- 20221109091847_add_post_summary.sql
+    |-- 20221109092230_add_comments.sql
+    |-- 20221109092842_summary_required.sql
+    |-- 20221109093612_drop_comments.sql
+    `-- atlas.sum
+```
+
+Create a new workflow file in `.github/workflows/integration-tests.yml`:
+
+<Tabs
+defaultValue="mysql"
+values={[
+    {label: 'MySQL', value: 'mysql'},
+    {label: 'MariaDB', value: 'maria'},
+    {label: 'PostgreSQL', value: 'postgres'},
+]}>
+<TabItem value="mysql">
+
+```yaml
+name: Integration Test (MySQL)
+on:
+  push:
+jobs:
+  integration:
+    services:
+      mysql:
+        image: mysql:8.0.29
+        env:
+          MYSQL_ROOT_PASSWORD: pass
+          MYSQL_DATABASE: dev
+        ports:
+          - "3306:3306"
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.0.1
+      - name: Install Atlas
+        run: |
+          curl -sSf https://atlasgo.sh | sh 
+      - run: |
+          atlas migrate apply --dir file://migrations/ -u 'mysql://root:pass@localhost:3306/dev'
+      - run: |
+          echo "Run your tests here!"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```yaml
+name: Integration Test (MariaDB)
+on:
+  push:
+jobs:
+  integration:
+    services:
+      maria107:
+        image: mariadb:10.7
+        env:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.0.1
+      - name: Install Atlas
+        run: |
+          curl -sSf https://atlasgo.sh | sh 
+      - run: |
+          atlas migrate apply --dir file://migrations/ -u 'maria://root:pass@localhost:3306/dev'
+      - run: |
+          echo "Run your tests here!"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```yaml
+name: Integration Test (Postgres)
+on:
+  push:
+jobs:
+  integration:
+    services:
+      postgres10:
+        image: postgres:10
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.0.1
+      - name: Install Atlas
+        run: |
+          curl -sSf https://atlasgo.sh | sh 
+      - run: |
+          atlas migrate apply --dir file://migrations/ -u 'postgres://postgres:pass@localhost:5432/test?sslmode=disable'
+      - run: |
+          echo "Run your tests here!"
+```
+
+</TabItem>
+</Tabs>
+
+Let's break down what's happening here, line by line.
+
+We start by declaring a new workflow, and setting it to run whenever code is pushed to the repository:
+
+```yaml
+name: Integration Test (MySQL)
+on:
+  push:
+```
+
+Next, we declare a new job called `integration`. We use the `services` keyword to declare
+a service that we want to run as part of this job. In this case, we want to run a MySQL
+database. We also declare a healthcheck for the database, so that GitHub Actions will
+wait for the database to be ready before running the next step:
+
+```yaml
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0.29
+        env:
+          MYSQL_ROOT_PASSWORD: pass
+          MYSQL_DATABASE: dev
+        ports:
+          - "3306:3306"
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+
+```
+
+After this setup, we are ready to run our workflow. We start by checking out the code:
+
+```yaml
+    steps:
+      - uses: actions/checkout@v3.0.1
+```
+
+Next, we install Atlas:
+
+```yaml
+     - name: Install Atlas
+       run: |
+         curl -sSf https://atlasgo.sh | sh 
+```
+
+Finally, we apply our migrations to the database:
+
+```yaml
+     - run: |
+         atlas migrate apply --dir file://migrations/ -u 'mysql://root:pass@localhost:3306/dev'
+```
+
+After these steps finish running, we are finally ready to run our integration tests:
+
+```yaml
+ - run: |
+     echo "Run your tests here!"
+```
+
+Of course, you can replace the `echo` command with your own integration tests. You will probably
+need to provide the tests with the database connection string.
+
+## Wrapping up
+
+In conclusion, using GitHub Actions to set up your integration tests allows you to easily spin up a test database and
+apply your migrations to it. This ensures that your application is tested against an up-to-date database schema, and
+allows you to catch any issues that may arise when running against a real database.
+
+Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT).

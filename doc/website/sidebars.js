@@ -142,6 +142,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/testing/integration-docker-compose',
                     label: 'With docker-compose'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/testing/testing-github-actions',
+                    label: 'With Github Actions'
                 }
             ]
         },
