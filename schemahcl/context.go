@@ -80,12 +80,13 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 		value func() (cty.Value, error)
 	}
 	var (
-		nodes  = make(map[[3]string]*node)
-		blocks = make(hclsyntax.Blocks, 0, len(body.Blocks))
+		initblk []*node
+		nodes   = make(map[[3]string]*node)
+		blocks  = make(hclsyntax.Blocks, 0, len(body.Blocks))
 	)
 	for _, b := range body.Blocks {
-		switch b := b; b.Type {
-		case dataBlock:
+		switch b := b; {
+		case b.Type == dataBlock:
 			if len(b.Labels) < 2 {
 				return fmt.Errorf("data block %q must have exactly 2 labels", b.Type)
 			}
@@ -101,7 +102,7 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 				value: func() (cty.Value, error) { return h(ctx, b) },
 				edges: func() []hcl.Traversal { return bodyVars(b.Body) },
 			}
-		case localsBlock:
+		case b.Type == localsBlock:
 			for k, v := range b.Body.Attributes {
 				k, v := k, v
 				// Local references are combined from
@@ -119,6 +120,22 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 					},
 				}
 			}
+		case s.config.initblk[b.Type] != nil:
+			if len(b.Labels) != 0 {
+				return fmt.Errorf("init block %q cannot have labels", b.Type)
+			}
+			addr := [3]string{b.Type, "", ""}
+			if nodes[addr] != nil {
+				return fmt.Errorf("duplicate init block %q", b.Type)
+			}
+			h := s.config.initblk[b.Type]
+			n := &node{
+				addr:  addr,
+				value: func() (cty.Value, error) { return h(ctx, b) },
+				edges: func() []hcl.Traversal { return bodyVars(b.Body) },
+			}
+			nodes[addr] = n
+			initblk = append(initblk, n)
 		default:
 			blocks = append(blocks, b)
 		}
@@ -134,8 +151,8 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 		}
 		if progress[n] {
 			addr := n.addr[:]
-			if addr[2] == "" {
-				addr = addr[:2]
+			for len(addr) > 0 && addr[len(addr)-1] == "" {
+				addr = addr[:len(addr)-1]
 			}
 			return fmt.Errorf("cyclic reference to %q", strings.Join(addr, "."))
 		}
@@ -147,6 +164,8 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 				addr = [3]string{localRef, e[1].(hcl.TraverseAttr).Name, ""}
 			case root == dataBlock && len(e) > 2:
 				addr = [3]string{dataBlock, e[1].(hcl.TraverseAttr).Name, e[2].(hcl.TraverseAttr).Name}
+			case s.config.initblk[root] != nil && len(e) == 1:
+				addr = [3]string{root, "", ""}
 			}
 			// Unrecognized reference.
 			if nodes[addr] == nil {
@@ -181,8 +200,17 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 			}
 			locals[n.addr[1]] = v
 			ctx.Variables[localRef] = cty.ObjectVal(locals)
+		default:
+			ctx.Variables[n.addr[0]] = v
 		}
 		return nil
+	}
+	// Evaluate init-blocks first,
+	// to give them higher precedence.
+	for _, n := range initblk {
+		if err := visit(n); err != nil {
+			return err
+		}
 	}
 	for _, n := range nodes {
 		if err := visit(n); err != nil {

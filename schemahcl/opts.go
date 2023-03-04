@@ -18,11 +18,11 @@ import (
 type (
 	// Config configures an unmarshaling.
 	Config struct {
-		types     []*TypeSpec
-		newCtx    func() *hcl.EvalContext
-		pathVars  map[string]map[string]cty.Value
-		pathFuncs map[string]map[string]function.Function
-		datasrc   map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
+		types            []*TypeSpec
+		newCtx           func() *hcl.EvalContext
+		pathVars         map[string]map[string]cty.Value
+		pathFuncs        map[string]map[string]function.Function
+		datasrc, initblk map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
 	}
 	// Option configures a Config.
 	Option func(*Config)
@@ -96,7 +96,7 @@ func WithVariables(vars map[string]cty.Value) Option {
 //			return cty.NilVal, diags
 //		}
 //		return cty.ObjectVal(map[string]cty.Value{"output": v}), nil
-//	}),
+//	})
 //
 //	data "text" "hello" {
 //	  value = "hello world"
@@ -107,6 +107,29 @@ func WithDataSource(name string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty
 			c.datasrc = make(map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error))
 		}
 		c.datasrc[name] = h
+	}
+}
+
+// WithInitBlock registers a block that evaluates (first) to a cty.Value,
+// has no labels, and can be defined only once. For example:
+//
+//	WithInitBlock("atlas", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, hcl.Diagnostics) {
+//		attrs, diags := b.Body.JustAttributes()
+//		if diags.HasErrors() {
+//			return cty.NilVal, diags
+//		}
+//		v, diags := attrs["modules"].Expr.Value(ctx)
+//		if diags.HasErrors() {
+//			return cty.NilVal, diags
+//		}
+//		return cty.ObjectVal(map[string]cty.Value{"modules": v}), nil
+//	})
+func WithInitBlock(name string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)) Option {
+	return func(c *Config) {
+		if c.initblk == nil {
+			c.initblk = make(map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error))
+		}
+		c.initblk[name] = h
 	}
 }
 
