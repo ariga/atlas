@@ -324,10 +324,11 @@ type (
 
 	// MigrateDiffOptions for external migration differ.
 	MigrateDiffOptions struct {
-		Name string
-		To   []string
-		Dir  migrate.Dir
-		Dev  *sqlclient.Client
+		Name   string
+		Indent string
+		To     []string
+		Dir    migrate.Dir
+		Dev    *sqlclient.Client
 	}
 	// MigrateDiffer allows external sources to implement custom migration differs.
 	MigrateDiffer interface {
@@ -405,11 +406,12 @@ func (l EntLoader) MigrateDiff(ctx context.Context, opts *MigrateDiffOptions) er
 	}
 	m, err := entschema.NewMigrate(
 		sql.OpenDB(opts.Dev.Name, opts.Dev.DB),
+		entschema.WithDir(opts.Dir),
+		entschema.WithErrNoPlan(true),
 		entschema.WithFormatter(dirFormatter(opts.Dir)),
 		entschema.WithGlobalUniqueID(true),
-		entschema.WithDir(opts.Dir),
+		entschema.WithIndent(opts.Indent),
 		entschema.WithMigrationMode(entschema.ModeReplay),
-		entschema.WithErrNoPlan(true),
 	)
 	if err != nil {
 		return fmt.Errorf("creating migrate reader: %w", err)

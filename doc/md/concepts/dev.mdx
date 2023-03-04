@@ -42,6 +42,9 @@ a special [docker driver](concepts/url.mdx).
 
 ```shell
 # Every PostgreSQL database is created with the "public" schema.
+--dev-url "docker://postgres/15/test?search_path=public"
+
+# When working on multiple database schemas.
 --dev-url "docker://postgres/15"
 ```
 
