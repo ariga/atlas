@@ -16,7 +16,6 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/predicate"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
-
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 )

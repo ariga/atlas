@@ -128,15 +128,18 @@ func TestEntLoader_MigrateDiff(t *testing.T) {
 		dir, err := migrate.NewLocalDir(t.TempDir())
 		require.NoError(t, err)
 		err = d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
-			Name: "boring",
-			Dev:  drv,
-			Dir:  dir,
-			To:   []string{"ent://../migrate/ent/schema?globalid=1"},
+			Name:   "boring",
+			Indent: "\t",
+			Dev:    drv,
+			Dir:    dir,
+			To:     []string{"ent://../migrate/ent/schema?globalid=1"},
 		})
 		require.NoError(t, err)
 		files, err := dir.Files()
 		require.NoError(t, err)
 		require.True(t, strings.HasSuffix(files[0].Name(), "_boring.sql"))
+		// Statements were generated with indentation.
+		require.Contains(t, string(files[0].Bytes()), "CREATE TABLE `atlas_schema_revisions` (\n\t")
 	})
 
 	t.Run("OtherFormat", func(t *testing.T) {

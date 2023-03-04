@@ -378,10 +378,11 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 	// 'migrate diff' handling, offload it the work.
 	if d, ok := cmdext.States.Differ(flags.desiredURLs); ok {
 		err := d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
-			To:   flags.desiredURLs,
-			Name: name,
-			Dir:  dir,
-			Dev:  dev,
+			To:     flags.desiredURLs,
+			Name:   name,
+			Indent: indent,
+			Dir:    dir,
+			Dev:    dev,
 		})
 		return maskNoPlan(cmd, err)
 	}

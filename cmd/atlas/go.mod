@@ -3,8 +3,8 @@ module ariga.io/atlas/cmd/atlas
 go 1.18
 
 require (
-	ariga.io/atlas v0.9.1
-	entgo.io/ent v0.11.9-0.20230216195651-bd6f26aa7cd7
+	ariga.io/atlas v0.9.2-0.20230303073438-03a4779a6338
+	entgo.io/ent v0.11.10-0.20230304080653-f16451eab831
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220816024939-bc8df83d7b9d
 	github.com/auxten/postgresql-parser v1.0.1
 	github.com/fatih/color v1.13.0
@@ -18,12 +18,12 @@ require (
 	github.com/pingcap/tidb/parser v0.0.0-20220817134052-9709249e523a
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/zclconf/go-cty v1.8.0
 	gocloud.dev v0.27.0
 	golang.org/x/exp v0.0.0-20220428152302-39d4317da171
-	golang.org/x/mod v0.7.0
+	golang.org/x/mod v0.8.0
 )
 
 require (
@@ -88,12 +88,12 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
-	golang.org/x/net v0.2.0 // indirect
+	golang.org/x/net v0.6.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
-	golang.org/x/tools v0.3.1-0.20221202221704-aa9f4b2f3d57 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/tools v0.6.1-0.20230222164832-25d2519c8696 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/api v0.91.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
