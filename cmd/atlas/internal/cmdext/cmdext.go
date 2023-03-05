@@ -407,6 +407,8 @@ func (l EntLoader) MigrateDiff(ctx context.Context, opts *MigrateDiffOptions) er
 	m, err := entschema.NewMigrate(
 		sql.OpenDB(opts.Dev.Name, opts.Dev.DB),
 		entschema.WithDir(opts.Dir),
+		entschema.WithDropColumn(true),
+		entschema.WithDropIndex(true),
 		entschema.WithErrNoPlan(true),
 		entschema.WithFormatter(dirFormatter(opts.Dir)),
 		entschema.WithGlobalUniqueID(true),
