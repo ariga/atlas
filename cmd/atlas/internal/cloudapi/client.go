@@ -12,10 +12,8 @@ import (
 	"ariga.io/atlas/sql/migrate"
 )
 
-const (
-	UserAgent       = "atlas-cli"
-	DefaultEndpoint = "https://api.atlasgo.cloud/api/query"
-)
+// defaultURL for Atlas Cloud.
+const defaultURL = "https://api.atlasgo.cloud/query"
 
 // Client is a client for the Atlas Cloud API.
 type Client struct {
@@ -25,6 +23,9 @@ type Client struct {
 
 // New creates a new Client for the Atlas Cloud API.
 func New(endpoint, token string) *Client {
+	if endpoint == "" {
+		endpoint = defaultURL
+	}
 	return &Client{
 		client: newGQLClient(endpoint, &http.Client{
 			Transport: &roundTripper{
@@ -78,7 +79,7 @@ type roundTripper struct {
 // RoundTrip implements http.RoundTripper.
 func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("Authorization", "Bearer "+r.token)
-	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set("User-Agent", "atlas-cli")
 	req.Header.Set("Content-Type", "application/json")
 	return http.DefaultTransport.RoundTrip(req)
 }

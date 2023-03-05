@@ -203,13 +203,44 @@ dir = data.template_dir.tenant.url
 	require.Equal(t, "create table a8m.t(c int);", string(files[0].Bytes()))
 }
 
+func TestAtlasConfig(t *testing.T) {
+	var (
+		v struct {
+			Env       string   `spec:"env"`
+			HasClient bool     `spec:"has_client"`
+			CloudKeys []string `spec:"cloud_keys"`
+		}
+		state = schemahcl.New(append(cmdext.DataSources, schemahcl.WithVariables(map[string]cty.Value{
+			"atlas": cty.ObjectVal(map[string]cty.Value{
+				"env": cty.StringVal("dev"),
+			}),
+		}))...)
+	)
+	err := state.EvalBytes([]byte(`
+atlas {
+  cloud {
+    url = "url"
+    token = "token"
+  }
+}
+
+env = atlas.env
+has_client = atlas.cloud != null
+cloud_keys = keys(atlas.cloud)
+`), &v, map[string]cty.Value{})
+	require.NoError(t, err)
+	require.Equal(t, "dev", v.Env)
+	require.True(t, v.HasClient)
+	require.Equal(t, []string{"client"}, v.CloudKeys, "token and url should not be exported")
+}
+
 func TestRemoteDir(t *testing.T) {
 	var (
 		v struct {
 			Dir string `spec:"dir"`
 		}
-		state = schemahcl.New(cmdext.DataSources...)
 		token string
+		state = schemahcl.New(cmdext.DataSources...)
 		srv   = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token = r.Header.Get("Authorization")
 			d := migrate.MemDir{}
@@ -226,22 +257,34 @@ func TestRemoteDir(t *testing.T) {
 	defer srv.Close()
 
 	err := state.EvalBytes([]byte(`
-variable "backend" {
+data "remote_dir" "hello" {
+  name  = "atlas"
+}
+`), &v, map[string]cty.Value{"cloud_url": cty.StringVal(srv.URL)})
+	require.EqualError(t, err, "data.remote_dir.hello: missing atlas cloud config")
+
+	err = state.EvalBytes([]byte(`
+variable "cloud_url" {
   type = string
 }
 
+atlas {
+  cloud {
+    token = "token"
+    url = var.cloud_url
+  }
+}
+
 data "remote_dir" "hello" {
-  name  = "atlas" 
-  token = "123" 
-  url = var.backend
+  name  = "atlas"
 }
 
 dir = data.remote_dir.hello.url
-`), &v, map[string]cty.Value{"backend": cty.StringVal(srv.URL)})
+`), &v, map[string]cty.Value{"cloud_url": cty.StringVal(srv.URL)})
 	require.NoError(t, err)
-	require.Equal(t, "Bearer 123", token)
+	require.Equal(t, "Bearer token", token)
 
-	md := migrate.OpenMemDir(v.Dir)
+	md := migrate.OpenMemDir(strings.TrimPrefix(v.Dir, "mem://"))
 	defer md.Close()
 	files, err := md.Files()
 	require.NoError(t, err)
