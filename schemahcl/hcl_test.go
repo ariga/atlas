@@ -5,9 +5,11 @@
 package schemahcl
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -478,6 +480,51 @@ func TestDataLocalsRefs(t *testing.T) {
 				}
 				return cty.ObjectVal(map[string]cty.Value{"output": v}), nil
 			}),
+			WithInitBlock("atlas", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+				org, diags := b.Body.Attributes["org"].Expr.Value(ctx)
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				if len(b.Body.Blocks) != 1 || b.Body.Blocks[0].Type != "auth" {
+					return cty.NilVal, errors.New("expected auth block")
+				}
+				attrs, diags := b.Body.Blocks[0].Body.JustAttributes()
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				host, diags := attrs["host"].Expr.Value(ctx)
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				return cty.ObjectVal(map[string]cty.Value{
+					"org": org,
+					"auth": cty.ObjectVal(map[string]cty.Value{
+						"host": host,
+					}),
+				}), nil
+			}),
+			WithDataSource("remote_dir", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+				attrs, diags := b.Body.JustAttributes()
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				host, diags := attrs["host"].Expr.Value(ctx)
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				org, diags := (&hclsyntax.ScopeTraversalExpr{
+					Traversal: hcl.Traversal{
+						hcl.TraverseRoot{Name: "atlas", SrcRange: b.Range()},
+						hcl.TraverseAttr{Name: "org", SrcRange: b.Range()},
+					},
+				}).Value(ctx)
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				return cty.ObjectVal(map[string]cty.Value{
+					"url": cty.StringVal("atlas://" + path.Join(host.AsString(), org.AsString(), b.Labels[1])),
+				}), nil
+			}),
 		}
 		doc struct {
 			Values []string `spec:"vs"`
@@ -495,6 +542,7 @@ locals {
   // locals can reference data sources.
   c = "local-c-ref-data-a: ${data.text.a.output}"
   d = "local-d"
+  host = "atlasgo.io"
 }
 
 data "sql" "tenants" {
@@ -519,6 +567,17 @@ data "text" "b" {
   value = "data-text-b-ref-local-d: ${local.d}"
 }
 
+atlas {
+  org = "ent"
+  auth {
+    host = local.host
+  }
+}
+
+data "remote_dir" "migrations" {
+  host = atlas.auth.host
+}
+
 vs = [
   local.a,
   local.b,
@@ -526,6 +585,7 @@ vs = [
   data.sql.tenants.output,
   data.text.a.output,
   data.text.b.output,
+  data.remote_dir.migrations.url,
 ]
 `)
 	)
@@ -537,6 +597,7 @@ vs = [
 		"data-sql-tenants",
 		"data-text-a-ref-data-sql-tenants: data-sql-tenants",
 		"data-text-b-ref-local-d: local-d",
+		"atlas://atlasgo.io/ent/migrations",
 	}, doc.Values)
 
 	b = []byte(`locals { a = local.a }`)
