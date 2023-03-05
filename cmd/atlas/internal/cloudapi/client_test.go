@@ -26,7 +26,7 @@ func TestClient(t *testing.T) {
 	require.NoError(t, err)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "Bearer atlas", r.Header.Get("Authorization"))
-		require.Equal(t, UserAgent, r.Header.Get("User-Agent"))
+		require.Equal(t, "atlas-cli", r.Header.Get("User-Agent"))
 		fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(ad))
 	}))
 	client := New(srv.URL, "atlas")
