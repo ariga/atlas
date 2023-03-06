@@ -1,0 +1,55 @@
+only postgres15
+
+atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected1.txt
+
+atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected2.txt
+
+atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected3.txt
+
+-- migrations1/1.sql --
+CREATE TABLE users (id int);
+
+-- migrations1/2.sql --
+ALTER TABLE users RENAME TO atlas_users;
+
+-- expected1.txt --
+2.sql: backwards-incompatible changes detected:
+
+	L1: Renaming table "users" to "atlas_users"
+
+-- migrations2/1.sql --
+CREATE TABLE users (id int);
+
+-- migrations2/2.sql --
+ALTER TABLE users RENAME COLUMN id TO uid;
+
+-- expected2.txt --
+2.sql: backwards-incompatible changes detected:
+
+	L1: Renaming column "id" to "uid"
+
+-- migrations3/1.sql --
+CREATE TABLE "users" (id int);
+CREATE TABLE posts (id int);
+CREATE TABLE cards (id int);
+
+-- migrations3/2.sql --
+ALTER TABLE "users" RENAME TO "atlas_users";
+CREATE VIEW "users" AS SELECT * FROM "atlas_users";
+ALTER TABLE posts RENAME COLUMN id TO uid;
+/*
+Although it is recommended to add the renamed column as generated,
+adding it as a regular column is considered backwards compatible.
+*/
+ALTER TABLE posts ADD COLUMN id int DEFAULT 0;
+ALTER TABLE cards RENAME COLUMN id TO cid;
+ALTER TABLE cards ADD COLUMN name text;
+
+-- expected3.txt --
+2.sql: backwards-incompatible changes detected:
+
+	L9: Renaming column "id" to "cid"
+

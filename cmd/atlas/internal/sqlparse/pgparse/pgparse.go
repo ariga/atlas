@@ -50,6 +50,25 @@ func (p *Parser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.C
 	})
 }
 
+// CreateViewAfter checks if the view was created after the position with the given name to a table.
+func (p *Parser) CreateViewAfter(f migrate.File, old, new string, pos int) (bool, error) {
+	return parseutil.MatchStmtAfter(f, pos, func(s *migrate.Stmt) (bool, error) {
+		stmt, err := parser.ParseOne(s.Text)
+		if err != nil {
+			return false, err
+		}
+		v, ok := stmt.AST.(*tree.CreateView)
+		if !ok || v.AsSource == nil || v.Name.String() != old {
+			return false, nil
+		}
+		sc, ok := v.AsSource.Select.(*tree.SelectClause)
+		if !ok || len(sc.From.Tables) != 1 {
+			return false, nil
+		}
+		return tree.AsString(sc.From.Tables[0]) == new, nil
+	})
+}
+
 // FixChange fixes the changes according to the given statement.
 func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Changes, error) {
 	stmt, err := parser.ParseOne(s)

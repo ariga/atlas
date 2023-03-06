@@ -1,0 +1,49 @@
+only mysql8
+
+atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected1.txt
+
+atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected2.txt
+
+atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected3.txt
+
+-- migrations1/1.sql --
+CREATE TABLE users (id int);
+
+-- migrations1/2.sql --
+ALTER TABLE users RENAME TO Users;
+
+-- expected1.txt --
+2.sql: backwards-incompatible changes detected:
+
+	L1: Renaming table "users" to "Users"
+
+-- migrations2/1.sql --
+CREATE TABLE users (id int);
+
+-- migrations2/2.sql --
+ALTER TABLE users RENAME COLUMN id TO uid;
+
+-- expected2.txt --
+2.sql: backwards-incompatible changes detected:
+
+	L1: Renaming column "id" to "uid"
+
+-- migrations3/1.sql --
+CREATE TABLE users (id int);
+CREATE TABLE posts (id int);
+CREATE TABLE cards (id int);
+
+-- migrations3/2.sql --
+ALTER TABLE users RENAME TO Users;
+CREATE VIEW users AS SELECT * FROM Users;
+ALTER TABLE posts RENAME COLUMN id TO uid, ADD COLUMN id int AS (uid);
+ALTER TABLE cards RENAME COLUMN id TO cid, ADD COLUMN name varchar(255);
+
+-- expected3.txt --
+2.sql: backwards-incompatible changes detected:
+
+	L4: Renaming column "id" to "cid"
+

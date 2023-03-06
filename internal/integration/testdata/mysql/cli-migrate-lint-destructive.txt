@@ -24,6 +24,7 @@ ALTER TABLE users RENAME COLUMN id TO oid;
 CREATE TABLE users (id int);
 
 -- migrations2/2.sql --
+-- atlas:nolint incompatible
 /* Rename table mixed with rename column is not a destructive change. */
 ALTER TABLE users RENAME TO user, RENAME COLUMN id TO oid;
 
