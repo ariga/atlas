@@ -195,6 +195,11 @@ module.exports = {
                     id: 'guides/mysql/mysql-ds-103',
                     label: 'Column Drop (DS103)'
                 },
+                {
+                    type: 'doc',
+                    id: 'guides/mysql/mysql-cd-101',
+                    label: 'Constraint Drop (CD101)'
+                },
             ],
         },
         {
