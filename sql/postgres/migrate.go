@@ -32,9 +32,9 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 			Name:          name,
 			Transactional: true,
 		},
-		created: make(map[string]*schema.EnumType),
-		altered: make(map[string]*schema.EnumType),
-		dropped: make(map[string]*schema.EnumType),
+		createdE: make(map[string]*schema.EnumType),
+		alteredE: make(map[string]*schema.EnumType),
+		droppedE: make(map[string]*schema.EnumType),
 	}
 	for _, o := range opts {
 		o(&s.PlanOptions)
@@ -62,9 +62,10 @@ type state struct {
 	conn
 	migrate.Plan
 	migrate.PlanOptions
+	droppedT []*schema.Table
 	// Track the enums that were created, altered and
 	// dropped, in this phase to avoid duplicate updates.
-	created, altered, dropped map[string]*schema.EnumType
+	createdE, alteredE, droppedE map[string]*schema.EnumType
 }
 
 // Exec executes the changes on the database. An error is returned
@@ -201,19 +202,20 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 // dropTable builds and executes the query for dropping a table from a schema.
 func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
 	cmd := &changeGroup{}
+	s.droppedT = append(s.droppedT, drop.T)
 	for _, e := range s.enumTypes(drop.T) {
-		if err := s.mayDropEnum(cmd, drop.T.Schema, e, drop.T); err != nil {
+		if err := s.mayDropEnum(cmd, drop.T.Schema, e); err != nil {
 			return err
 		}
 	}
 	rs := &state{
 		conn:        s.conn,
 		PlanOptions: s.PlanOptions,
-		altered:     s.altered,
+		alteredE:    s.alteredE,
 		// Enums that were dropped above, were
 		// also created in the reverse commands.
-		created: s.dropped,
-		dropped: s.created,
+		createdE: s.droppedE,
+		droppedE: s.createdE,
 	}
 	if err := rs.addTable(ctx, &schema.AddTable{T: drop.T}); err != nil {
 		return fmt.Errorf("calculate reverse for drop table %q: %w", drop.T.Name, err)
@@ -756,13 +758,13 @@ func (s *state) mayAddEnums(ctx context.Context, t *schema.Table, columns ...*sc
 			continue
 		}
 		name := s.enumIdent(t.Schema, e)
-		if prev, ok := s.created[name]; ok {
+		if prev, ok := s.createdE[name]; ok {
 			if !sqlx.ValuesEqual(prev.Values, e.Values) {
 				return fmt.Errorf("enum type %s has inconsistent desired state: %q != %q", name, prev.Values, e.Values)
 			}
 			continue
 		}
-		s.created[name] = e
+		s.createdE[name] = e
 		create, drop := s.createDropEnum(t.Schema, e)
 		s.append(&migrate.Change{
 			Cmd:     create,
@@ -783,13 +785,13 @@ func (s *state) alterEnum(t *schema.Table, from, to *schema.EnumType) error {
 		}
 	}
 	name := s.enumIdent(t.Schema, from)
-	if prev, ok := s.altered[name]; ok {
+	if prev, ok := s.alteredE[name]; ok {
 		if !sqlx.ValuesEqual(prev.Values, to.Values) {
 			return fmt.Errorf("enum type %s has inconsistent desired state: %q != %q", name, prev.Values, to.Values)
 		}
 		return nil
 	}
-	s.altered[name] = to
+	s.alteredE[name] = to
 	for _, v := range to.Values[len(from.Values):] {
 		s.append(&migrate.Change{
 			Cmd:     s.Build("ALTER TYPE").P(name, "ADD VALUE", quote(v)).String(),
@@ -815,9 +817,9 @@ func (s *state) enumExists(ctx context.Context, ns *schema.Schema, e *schema.Enu
 
 // mayDropEnum drops dangling enum types from the schema. An optional
 // "dropped" list can be provided to skip while searching for usage.
-func (s *state) mayDropEnum(cmd *changeGroup, ns *schema.Schema, e *schema.EnumType, dropped ...*schema.Table) error {
+func (s *state) mayDropEnum(cmd *changeGroup, ns *schema.Schema, e *schema.EnumType) error {
 	name := s.enumIdent(ns, e)
-	if _, ok := s.dropped[name]; ok {
+	if _, ok := s.droppedE[name]; ok {
 		return nil
 	}
 	schemas := []*schema.Schema{ns}
@@ -828,7 +830,7 @@ func (s *state) mayDropEnum(cmd *changeGroup, ns *schema.Schema, e *schema.EnumT
 	for i := range schemas {
 		for _, t := range schemas[i].Tables {
 			// Skip dropped tables.
-			if containsT(dropped, t) {
+			if containsT(s.droppedT, t) {
 				continue
 			}
 			for _, c := range t.Columns {
@@ -841,7 +843,7 @@ func (s *state) mayDropEnum(cmd *changeGroup, ns *schema.Schema, e *schema.EnumT
 			}
 		}
 	}
-	s.dropped[name] = e
+	s.droppedE[name] = e
 	create, drop := s.createDropEnum(ns, e)
 	cmd.after = append(cmd.after, &migrate.Change{
 		Cmd:     drop,
