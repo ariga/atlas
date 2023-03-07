@@ -7,6 +7,7 @@ package cloudapi
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -25,6 +26,15 @@ func TestClient(t *testing.T) {
 	ad, err := migrate.ArchiveDir(&dir)
 	require.NoError(t, err)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		di := struct {
+			Variables struct {
+				DirInput DirInput `json:"input"`
+			} `json:"variables"`
+		}{}
+		err := json.NewDecoder(r.Body).Decode(&di)
+		require.NoError(t, err)
+		require.Equal(t, "foo", di.Variables.DirInput.Name)
+		require.Equal(t, "x", di.Variables.DirInput.Tag)
 		require.Equal(t, "Bearer atlas", r.Header.Get("Authorization"))
 		require.Equal(t, "atlas-cli", r.Header.Get("User-Agent"))
 		fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(ad))
@@ -33,6 +43,7 @@ func TestClient(t *testing.T) {
 	defer srv.Close()
 	gd, err := client.Dir(context.Background(), DirInput{
 		Name: "foo",
+		Tag:  "x",
 	})
 	gcheck, err := gd.Checksum()
 	require.NoError(t, err)

@@ -354,8 +354,8 @@ var clientType = cty.Capsule("client", reflect.TypeOf(cloudapi.Client{}))
 func RemoteDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
-			Name string  `hcl:"name"`
-			URL  *string `hcl:"url"`
+			Name string `hcl:"name"`
+			Tag  string `hcl:"tag,optional"`
 		}
 		errorf = blockError("data.remote_dir", block)
 	)
@@ -375,7 +375,7 @@ func RemoteDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) 
 		return cty.NilVal, errorf("getting atlas client: %v", diags)
 	}
 	client := cv.EncapsulatedValue().(*cloudapi.Client)
-	u, err := memdir(client, args.Name)
+	u, err := memdir(client, args.Name, args.Tag)
 	if err != nil {
 		return cty.NilVal, errorf("reading remote dir: %v", err)
 	}
@@ -384,10 +384,12 @@ func RemoteDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) 
 	}), nil
 }
 
-func memdir(client *cloudapi.Client, dirName string) (string, error) {
-	dir, err := client.Dir(context.Background(), cloudapi.DirInput{
+func memdir(client *cloudapi.Client, dirName string, tag string) (string, error) {
+	input := cloudapi.DirInput{
 		Name: dirName,
-	})
+		Tag:  tag,
+	}
+	dir, err := client.Dir(context.Background(), input)
 	if err != nil {
 		return "", err
 	}
