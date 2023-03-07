@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/url"
 	"os"
@@ -391,7 +392,8 @@ func memdir(client *cloudapi.Client, dirName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	md := migrate.OpenMemDir(dirName)
+	mdn := "mem://" + dirName
+	md := migrate.OpenMemDir(mdn)
 	files, err := dir.Files()
 	if err != nil {
 		return "", err
@@ -401,7 +403,16 @@ func memdir(client *cloudapi.Client, dirName string) (string, error) {
 			return "", err
 		}
 	}
-	return "mem://" + dirName, nil
+	if hf, err := dir.Open(migrate.HashFileName); err == nil {
+		b, err := io.ReadAll(hf)
+		if err != nil {
+			return "", err
+		}
+		if err := md.WriteFile(migrate.HashFileName, b); err != nil {
+			return "", err
+		}
+	}
+	return mdn, nil
 }
 
 func blockError(name string, b *hclsyntax.Block) func(string, ...any) error {
