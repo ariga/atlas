@@ -393,7 +393,6 @@ func memdir(client *cloudapi.Client, dirName string, tag *string) (string, error
 		input.Tag = *tag
 	}
 	dir, err := client.Dir(context.Background(), input)
-
 	if err != nil {
 		return "", err
 	}
