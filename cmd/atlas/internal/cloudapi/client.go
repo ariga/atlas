@@ -39,6 +39,7 @@ func New(endpoint, token string) *Client {
 // DirInput is the input type for retrieving a single directory.
 type DirInput struct {
 	Name string `json:"name"`
+	Tag  string `json:"tag,omitempty"`
 }
 
 // Dir retrieves a directory from the Atlas Cloud API.
