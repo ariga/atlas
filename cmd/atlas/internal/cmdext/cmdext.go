@@ -354,9 +354,8 @@ var clientType = cty.Capsule("client", reflect.TypeOf(cloudapi.Client{}))
 func RemoteDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
-			Name string  `hcl:"name"`
-			URL  *string `hcl:"url"`
-			Tag  *string `hcl:"tag"`
+			Name string `hcl:"name"`
+			Tag  string `hcl:"tag,optional"`
 		}
 		errorf = blockError("data.remote_dir", block)
 	)
@@ -385,12 +384,10 @@ func RemoteDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) 
 	}), nil
 }
 
-func memdir(client *cloudapi.Client, dirName string, tag *string) (string, error) {
+func memdir(client *cloudapi.Client, dirName string, tag string) (string, error) {
 	input := cloudapi.DirInput{
 		Name: dirName,
-	}
-	if tag != nil {
-		input.Tag = *tag
+		Tag:  tag,
 	}
 	dir, err := client.Dir(context.Background(), input)
 	if err != nil {
