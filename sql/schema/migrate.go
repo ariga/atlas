@@ -322,6 +322,24 @@ func (c Changes) IndexDropTable(name string) int {
 	})
 }
 
+// LastIndexAddTable returns the index of the last AddTable in the changes
+// with the given name, or -1 if there is no such change in the Changes.
+func (c Changes) LastIndexAddTable(name string) int {
+	return c.rsearch(func(c Change) bool {
+		a, ok := c.(*AddTable)
+		return ok && a.T.Name == name
+	})
+}
+
+// LastIndexDropTable returns the index of the last DropTable in the changes
+// with the given name, or -1 if there is no such change in the Changes.
+func (c Changes) LastIndexDropTable(name string) int {
+	return c.rsearch(func(c Change) bool {
+		a, ok := c.(*DropTable)
+		return ok && a.T.Name == name
+	})
+}
+
 // IndexAddColumn returns the index of the first AddColumn in the changes
 // with the given name, or -1 if there is no such change in the Changes.
 func (c Changes) IndexAddColumn(name string) int {
@@ -385,6 +403,17 @@ Loop:
 // search returns the index of the first call to f that returns true, or -1.
 func (c Changes) search(f func(Change) bool) int {
 	for i := range c {
+		if f(c[i]) {
+			return i
+		}
+	}
+	return -1
+}
+
+// rsearch is the reversed version of search. It returns the
+// index of the last call to f that returns true, or -1.
+func (c Changes) rsearch(f func(Change) bool) int {
+	for i := len(c) - 1; i >= 0; i-- {
 		if f(c[i]) {
 			return i
 		}

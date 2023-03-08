@@ -143,3 +143,59 @@ UPDATE t1 SET c = 2 WHERE c IS NULL;
 		})
 	}
 }
+
+func TestCreateViewAfter(t *testing.T) {
+	for i, tt := range []struct {
+		file        string
+		pos         int
+		wantCreated bool
+		wantErr     bool
+	}{
+		{
+			file: `
+ALTER TABLE old RENAME TO new;
+CREATE VIEW old AS SELECT * FROM new;
+`,
+			pos:         1,
+			wantCreated: true,
+		},
+		{
+			file: `
+ALTER TABLE old RENAME TO new;
+CREATE VIEW old AS SELECT * FROM users;
+`,
+			pos: 1,
+		},
+		{
+			file: `
+ALTER TABLE old RENAME TO new;
+CREATE VIEW old AS SELECT * FROM new JOIN new;
+`,
+			pos: 1,
+		},
+		{
+			file: `
+ALTER TABLE old RENAME TO new;
+CREATE VIEW old AS SELECT * FROM new;
+`,
+			pos: 100,
+		},
+		{
+			file: `
+ALTER TABLE old RENAME TO new;
+CREATE VIEW old AS SELECT a, b, c FROM new;
+`,
+			wantCreated: true,
+		},
+	} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			var (
+				p sqliteparse.FileParser
+				f = migrate.NewLocalFile("file", []byte(tt.file))
+			)
+			created, err := p.CreateViewAfter(f, "old", "new", tt.pos)
+			require.Equal(t, err != nil, tt.wantErr, err)
+			require.Equal(t, created, tt.wantCreated)
+		})
+	}
+}

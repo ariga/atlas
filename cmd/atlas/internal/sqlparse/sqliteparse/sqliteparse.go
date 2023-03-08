@@ -7,6 +7,7 @@ package sqliteparse
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parseutil"
@@ -92,8 +93,8 @@ func (s *Stmt) RenameColumn() (*parseutil.Rename, bool) {
 		return nil, false
 	}
 	return &parseutil.Rename{
-		From: alter.old_column_name.GetText(),
-		To:   alter.new_column_name.GetText(),
+		From: unquote(alter.old_column_name.GetText()),
+		To:   unquote(alter.new_column_name.GetText()),
 	}, true
 }
 
@@ -107,8 +108,8 @@ func (s *Stmt) RenameTable() (*parseutil.Rename, bool) {
 		return nil, false
 	}
 	return &parseutil.Rename{
-		From: alter.Table_name(0).GetText(),
-		To:   alter.new_table_name.GetText(),
+		From: unquote(alter.Table_name(0).GetText()),
+		To:   unquote(alter.new_table_name.GetText()),
 	}, true
 }
 
@@ -126,6 +127,18 @@ func (s *Stmt) TableUpdate(t *schema.Table) (*Update_stmtContext, bool) {
 		return nil, false
 	}
 	return u, true
+}
+
+// CreateView reports if the statement is a CREATE VIEW command with the given name.
+func (s *Stmt) CreateView(name string) (*Create_view_stmtContext, bool) {
+	if s.stmt.GetChildCount() != 1 {
+		return nil, false
+	}
+	v, ok := s.stmt.GetChild(0).(*Create_view_stmtContext)
+	if !ok || unquote(v.View_name().GetText()) != name {
+		return nil, false
+	}
+	return v, true
 }
 
 // FileParser implements the sqlparse.Parser
@@ -175,6 +188,29 @@ func (p *FileParser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *sche
 	})
 }
 
+// CreateViewAfter checks if a view was created after the position with the given name to a table.
+func (p *FileParser) CreateViewAfter(f migrate.File, old, new string, pos int) (bool, error) {
+	return parseutil.MatchStmtAfter(f, pos, func(s *migrate.Stmt) (bool, error) {
+		stmt, err := ParseStmt(s.Text)
+		if err != nil {
+			return false, err
+		}
+		v, ok := stmt.CreateView(old)
+		if !ok {
+			return false, nil
+		}
+		sc, ok := v.Select_stmt().(*Select_stmtContext)
+		if !ok {
+			return false, nil
+		}
+		idx := slices.IndexFunc(sc.Select_core(0).GetChildren(), func(t antlr.Tree) bool {
+			ts, ok := t.(*Table_or_subqueryContext)
+			return ok && unquote(ts.GetText()) == new
+		})
+		return idx != -1, nil
+	})
+}
+
 // FixChange fixes the changes according to the given statement.
 func (p *FileParser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Changes, error) {
 	stmt, err := ParseStmt(s)
@@ -214,8 +250,12 @@ func isnull(t antlr.Tree) bool {
 }
 
 func unquote(s string) string {
-	if len(s) < 2 || s[0] != '`' || s[len(s)-1] != '`' {
-		return s
+	switch {
+	case len(s) < 2:
+	case s[0] == '`' && s[len(s)-1] == '`', s[0] == '"' && s[len(s)-1] == '"':
+		if u, err := strconv.Unquote(s); err == nil {
+			return u
+		}
 	}
-	return s[1 : len(s)-1]
+	return s
 }

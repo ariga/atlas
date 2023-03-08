@@ -50,7 +50,7 @@ func (p *Parser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.C
 	})
 }
 
-// CreateViewAfter checks if the view was created after the position with the given name to a table.
+// CreateViewAfter checks if a view was created after the position with the given name to a table.
 func (p *Parser) CreateViewAfter(f migrate.File, old, new string, pos int) (bool, error) {
 	return parseutil.MatchStmtAfter(f, pos, func(s *migrate.Stmt) (bool, error) {
 		stmt, err := parser.ParseOne(s.Text)
