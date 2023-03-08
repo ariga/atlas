@@ -258,6 +258,13 @@ func TestRemoteDir(t *testing.T) {
 			if err := d.WriteFile("1.sql", []byte("create table t(c int);")); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
+			sum, err := d.Checksum()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			if err := migrate.WriteSumFile(&d, sum); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 			arch, err := migrate.ArchiveDir(&d)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -300,7 +307,6 @@ dir = data.remote_dir.hello.url
 	require.NoError(t, err)
 	require.Equal(t, "Bearer token", token)
 	require.Equal(t, "xyz", tag)
-
 	md := migrate.OpenMemDir(strings.TrimPrefix(v.Dir, "mem://"))
 	defer md.Close()
 	files, err := md.Files()
@@ -308,4 +314,7 @@ dir = data.remote_dir.hello.url
 	require.Len(t, files, 1)
 	require.Equal(t, "1.sql", files[0].Name())
 	require.Equal(t, "create table t(c int);", string(files[0].Bytes()))
+	require.NoError(t, migrate.Validate(md))
+	_, err = md.Open(migrate.HashFileName)
+	require.NoError(t, err)
 }

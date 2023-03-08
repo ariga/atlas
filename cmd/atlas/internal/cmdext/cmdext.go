@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/url"
 	"os"
@@ -400,6 +401,15 @@ func memdir(client *cloudapi.Client, dirName string, tag string) (string, error)
 	}
 	for _, f := range files {
 		if err := md.WriteFile(f.Name(), f.Bytes()); err != nil {
+			return "", err
+		}
+	}
+	if hf, err := dir.Open(migrate.HashFileName); err == nil {
+		b, err := io.ReadAll(hf)
+		if err != nil {
+			return "", err
+		}
+		if err := md.WriteFile(migrate.HashFileName, b); err != nil {
 			return "", err
 		}
 	}
