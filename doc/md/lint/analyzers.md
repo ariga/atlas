@@ -88,30 +88,53 @@ lint {
 }
 ```
 
+### Backward Incompatible Changes
+
+Backward-incompatible changes, which are also known as breaking changes, are schema changes that are not compatible
+with the previous version of the schema, and have the potential to break the contract with applications that rely on
+the old schema. For instance, renaming a column from `email_address` to `email` can cause errors during deployment
+(migration) phase if applications running the previous version of the schema reference the old column name in their
+queries.
+
+By default, breaking changes are reported but not cause migration linting to fail. Users can change this by
+configuring the `incompatible` analyzer in the [`atlas.hcl`](../atlas-schema/projects#configure-migration-linting) file:
+
+```hcl title="atlas.hcl" {2-4}
+lint {
+  incompatible {
+    error = true
+  }
+}
+```
+
 ## Checks
 
 The following schema change checks are provided by Atlas:
 
-| **Check**                          | **Short Description**                                                       |
-|------------------------------------|-----------------------------------------------------------------------------|
-| [**DS1**](#destructive-changes)    | Destructive changes                                                         |
-| [DS101](#DS101)                    | Schema was dropped                                                          |
-| [DS102](#DS102)                    | Table was dropped                                                           |
-| [DS103](#DS103)                    | Non-virtual column was dropped                                              |
-| [**MF1**](#data-dependent-changes) | Changes that might fail                                                     |
-| [MF101](#MF101)                    | Add unique index to existing column                                         |
-| [MF102](#MF102)                    | Modifying non-unique index to unique                                        |
-| [MF103](#MF103)                    | Adding a non-nullable column to an existing table                           |
-| [MF104](#MF104)                    | Modifying a nullable column to non-nullable                                 |
-| **CD1**                            | Constraint deletion changes                                                 |
-| [CD101](#CD101)                    | Foreign-key constraint was dropped                                          |
-| **MY**                             | MySQL and MariaDB specific checks                                           |
-| [MY101](#MY101)                    | Adding a non-nullable column without a `DEFAULT` value to an existing table |
-| [MY102](#MY102)                    | Adding a column with an inline `REFERENCES` clause has no actual effect     |
-| **LT**                             | SQLite specific checks                                                      |
-| [LT101](#LT101)                    | Modifying a nullable column to non-nullable without a `DEFAULT` value       |
-| **AR**                             | Atlas cloud checks                                                          |
-| [AR101](#AR101)                    | Creating table with non-optimal data alignment                              |
+| **Check**                                 | **Short Description**                                                        |
+|-------------------------------------------|------------------------------------------------------------------------------|
+| [**DS1**](#destructive-changes)           | Destructive changes                                                          |
+| [DS101](#DS101)                           | Schema was dropped                                                           |
+| [DS102](#DS102)                           | Table was dropped                                                            |
+| [DS103](#DS103)                           | Non-virtual column was dropped                                               |
+| [**MF1**](#data-dependent-changes)        | Changes that might fail                                                      |
+| [MF101](#MF101)                           | Add unique index to existing column                                          |
+| [MF102](#MF102)                           | Modifying non-unique index to unique                                         |
+| [MF103](#MF103)                           | Adding a non-nullable column to an existing table                            |
+| [MF104](#MF104)                           | Modifying a nullable column to non-nullable                                  |
+| [MF101](#MF101)                           | Add unique index to existing column                                          |
+| [**BC1**](#backward-incompatible-changes) | Backward incompatible changes                                                |
+| [BC101](#BC101)                           | Renaming a table                                                             |
+| [BC102](#BC102)                           | Renaming a column                                                            |
+| **CD1**                                   | Constraint deletion changes                                                  |
+| [CD101](#CD101)                           | Foreign-key constraint was dropped                                           |
+| **MY**                                    | MySQL and MariaDB specific checks                                            |
+| [MY101](#MY101)                           | Adding a non-nullable column without a `DEFAULT` value to an existing table  |
+| [MY102](#MY102)                           | Adding a column with an inline `REFERENCES` clause has no actual effect      |
+| **LT**                                    | SQLite specific checks                                                       |
+| [LT101](#LT101)                           | Modifying a nullable column to non-nullable without a `DEFAULT` value        |
+| **AR**                                    | Atlas cloud checks                                                           |
+| [AR101](#AR101)                           | Creating table with non-optimal data alignment                               |
 
 #### DS101 {#DS101}
 
@@ -176,6 +199,77 @@ The solution, in this case, is to backfill `NULL` values with a default value:
 UPDATE t SET c = 0 WHERE c IS NULL;
 ALTER TABLE t MODIFY COLUMN c int NOT NULL;
 ```
+
+#### BC101 {#BC101}
+
+Renaming a table is a backward-incompatible change that can cause errors during deployment (migration) phase if
+applications running the previous version of the schema refer to the old name in their statements. For example:
+
+```sql
+ALTER TABLE `users` RENAME TO `Users`;
+```
+
+Unlike other checks, there is no single correct way to resolve this one. Here are some possible solutions:
+
+1. It's likely that this change was introduced when you renamed one of the entities in your ORM, and the linter
+helped you catch the potential problem this could cause. In such cases, most ORM frameworks allow you to rename the
+entity while still pointing to its previous table name. e.g., here is how you can do it in
+[Ent](https://entgo.io/docs/schema-annotations#custom-table-name) and in [GORM](https://gorm.io/docs/conventions.html#TableName).
+
+2. If renaming is desired but the previous version of the application uses the old table name, a temporary `VIEW`
+can be created to mimic the previous schema version in the deployment phase. However, the downside of this solution is
+that mutations using the old table name will fail. Yet, if Atlas detects a consecutive statement with a
+`CREATE VIEW <old_name>`, it will ignore this check.
+  ```sql
+  ALTER TABLE `users` RENAME TO `Users`;
+  CREATE VIEW `users` AS SELECT * FROM `Users`;
+  ```
+
+3. If renaming the table is desired and no clients depend on it yet, or if it is acceptable to return errors during
+migration phase when traffic is minimal, you can configure Atlas to ignore this check with the following directive:
+  ```sql
+  -- atlas:nolint BC101
+  ALTER TABLE `users` RENAME TO `Users`;
+  ```
+
+
+#### BC102 {#BC102}
+
+Renaming a column is a backward-incompatible change that can cause errors during deployment (migration) phase if
+applications running the previous version of the schema refer to the old column name in their statements. For example:
+
+```sql
+ALTER TABLE `users` RENAME COLUMN `user_name` TO `name`;
+```
+
+Unlike other checks, there is no single correct way to resolve this one. Here are some possible solutions:
+
+1. It's likely that this change was introduced when you renamed a field in one of the entities in your ORM, and the
+  linter helped you catch the potential problem this could cause. In such cases, most ORM frameworks allow you to rename
+  a field while still pointing to its previous column name. e.g., in [Ent](https://entgo.io/docs/schema-fields#storage-key)
+  you can configure it using the [`StorageKey`](https://entgo.io/docs/schema-fields#storage-key) option, and in
+  [GORM](https://gorm.io/docs/models.html#Fields-Tags) you can set it by adding the `column` struct tag.
+
+2. If renaming is desired but the previous version of the application uses the old column name, a temporary `VIRTUAL`
+   [generated column](/atlas-schema/sql-resources#generated-columns) can be created to mimic the previous schema version
+   in the deployment phase. However, the downside of this solution is that mutations using the old column name will fail.
+   Yet, if Atlas detects a consecutive command with such a column, it will ignore this check.
+  ```sql
+  -- For MySQL or MariaDB:
+  ALTER TABLE `posts` RENAME COLUMN `id` TO `uid`, ADD COLUMN `id` int AS (`uid`);
+
+  -- SQLite:
+  ALTER TABLE `posts` RENAME COLUMN `id` TO `uid`;
+  ALTER TABLE `posts` ADD COLUMN `id` int AS (`uid`);
+  ```
+
+3. If renaming the column is desired and no clients depend on it yet, or if it is acceptable to return errors during
+   the migration phase when traffic is minimal, you can configure Atlas to ignore this check with the following directive:
+  ```sql
+  -- atlas:nolint BC102
+  ALTER TABLE `posts` RENAME COLUMN `id` TO `uid`;
+  ```
+
 
 #### CD101 {#CD101}
 
