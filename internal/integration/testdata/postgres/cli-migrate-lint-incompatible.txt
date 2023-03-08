@@ -16,7 +16,7 @@ CREATE TABLE users (id int);
 ALTER TABLE users RENAME TO atlas_users;
 
 -- expected1.txt --
-2.sql: backwards-incompatible changes detected:
+2.sql: backward incompatible changes detected:
 
 	L1: Renaming table "users" to "atlas_users"
 
@@ -27,7 +27,7 @@ CREATE TABLE users (id int);
 ALTER TABLE users RENAME COLUMN id TO uid;
 
 -- expected2.txt --
-2.sql: backwards-incompatible changes detected:
+2.sql: backward incompatible changes detected:
 
 	L1: Renaming column "id" to "uid"
 
@@ -49,7 +49,7 @@ ALTER TABLE cards RENAME COLUMN id TO cid;
 ALTER TABLE cards ADD COLUMN name text;
 
 -- expected3.txt --
-2.sql: backwards-incompatible changes detected:
+2.sql: backward incompatible changes detected:
 
 	L9: Renaming column "id" to "cid"
 
