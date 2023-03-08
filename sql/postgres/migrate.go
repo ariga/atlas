@@ -225,6 +225,9 @@ func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
 		b.P("IF EXISTS")
 	}
 	b.Table(drop.T)
+	if sqlx.Has(drop.Extra, &Cascade{}) {
+		b.P("CASCADE")
+	}
 	cmd.main = &migrate.Change{
 		Cmd:     b.String(),
 		Source:  drop,

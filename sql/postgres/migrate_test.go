@@ -328,6 +328,7 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.DropTable{T: schema.NewTable("posts").AddColumns(schema.NewIntColumn("id", "int"))},
+				&schema.DropTable{T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "int")), Extra: []schema.Clause{&Cascade{}}},
 			},
 			wantPlan: &migrate.Plan{
 				Reversible:    true,
@@ -336,6 +337,10 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     `DROP TABLE "posts"`,
 						Reverse: `CREATE TABLE "posts" ("id" integer NOT NULL)`,
+					},
+					{
+						Cmd:     `DROP TABLE "users" CASCADE`,
+						Reverse: `CREATE TABLE "users" ("id" integer NOT NULL)`,
 					},
 				},
 			},
