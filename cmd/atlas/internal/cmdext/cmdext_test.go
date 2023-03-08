@@ -290,7 +290,7 @@ dir = data.remote_dir.hello.url
 `), &v, map[string]cty.Value{"cloud_url": cty.StringVal(srv.URL)})
 	require.NoError(t, err)
 	require.Equal(t, "Bearer token", token)
-	md := migrate.OpenMemDir(v.Dir)
+	md := migrate.OpenMemDir(strings.TrimPrefix(v.Dir, "mem://"))
 	defer md.Close()
 	files, err := md.Files()
 	require.NoError(t, err)
