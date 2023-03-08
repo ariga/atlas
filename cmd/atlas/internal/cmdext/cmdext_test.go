@@ -7,6 +7,7 @@ package cmdext_test
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
@@ -240,9 +242,18 @@ func TestRemoteDir(t *testing.T) {
 			Dir string `spec:"dir"`
 		}
 		token string
+		tag   string
 		state = schemahcl.New(cmdext.DataSources...)
 		srv   = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token = r.Header.Get("Authorization")
+			di := struct {
+				Variables struct {
+					DirInput cloudapi.DirInput `json:"input"`
+				} `json:"variables"`
+			}{}
+			err := json.NewDecoder(r.Body).Decode(&di)
+			require.NoError(t, err)
+			tag = di.Variables.DirInput.Tag
 			d := migrate.MemDir{}
 			if err := d.WriteFile("1.sql", []byte("create table t(c int);")); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -275,6 +286,10 @@ variable "cloud_url" {
   type = string
 }
 
+variable "tag" {
+  type = string
+}
+
 atlas {
   cloud {
     token = "token"
@@ -284,12 +299,14 @@ atlas {
 
 data "remote_dir" "hello" {
   name  = "atlas"
+  tag = var.tag
 }
 
 dir = data.remote_dir.hello.url
-`), &v, map[string]cty.Value{"cloud_url": cty.StringVal(srv.URL)})
+`), &v, map[string]cty.Value{"cloud_url": cty.StringVal(srv.URL), "tag": cty.StringVal("xyz")})
 	require.NoError(t, err)
 	require.Equal(t, "Bearer token", token)
+	require.Equal(t, "xyz", tag)
 	md := migrate.OpenMemDir(strings.TrimPrefix(v.Dir, "mem://"))
 	defer md.Close()
 	files, err := md.Files()
