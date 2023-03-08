@@ -871,6 +871,12 @@ type (
 		C     *schema.Column
 		Attrs []schema.Attr
 	}
+
+	// Cascade describes that a CASCADE clause should be added to the DROP [TABLE|SCHEMA]
+	// operation. Note, this clause is automatically added to DROP SCHEMA by the planner.
+	Cascade struct {
+		schema.Clause
+	}
 )
 
 // IsUnique reports if the type is unique constraint.

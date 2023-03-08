@@ -196,7 +196,7 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 			if err != nil {
 				return err
 			}
-			return d.ApplyChanges(ctx, changes)
+			return d.ApplyChanges(ctx, withCascade(changes))
 		}, nil
 	}
 	// Not bound to a schema.
@@ -213,7 +213,7 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 		if err != nil {
 			return err
 		}
-		return d.ApplyChanges(ctx, changes)
+		return d.ApplyChanges(ctx, withCascade(changes))
 	}
 	// Postgres is considered clean, if there are no schemas or the public schema has no tables.
 	if len(realm.Schemas) == 0 {
@@ -226,6 +226,15 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 		return restore, nil
 	}
 	return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
+}
+
+func withCascade(changes schema.Changes) schema.Changes {
+	for _, c := range changes {
+		if d, ok := c.(*schema.DropTable); ok {
+			d.Extra = append(d.Extra, &Cascade{})
+		}
+	}
+	return changes
 }
 
 // CheckClean implements migrate.CleanChecker.
