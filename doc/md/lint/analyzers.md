@@ -201,7 +201,7 @@ ALTER TABLE t MODIFY COLUMN c int NOT NULL;
 
 #### BC101 {#BC101}
 
-Renaming a table is a backward-incompatible change that can cause errors during deployment (migration) phase if
+Renaming a table is a backward-incompatible change that can cause errors during deployment (migration) if
 applications running the previous version of the schema refer to the old name in their statements. For example:
 
 ```sql
