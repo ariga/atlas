@@ -155,7 +155,7 @@ func (p *Parser) ColumnHasReferences(stmt *migrate.Stmt, c1 *schema.Column) (boo
 	return false, nil
 }
 
-// CreateViewAfter checks if the view was created after the position with the given name to a table.
+// CreateViewAfter checks if a view was created after the position with the given name to a table.
 func (p *Parser) CreateViewAfter(f migrate.File, old, new string, pos int) (bool, error) {
 	pr := parser.New()
 	return parseutil.MatchStmtAfter(f, pos, func(s *migrate.Stmt) (bool, error) {

@@ -64,8 +64,8 @@ func RenameIndex(modify *schema.ModifyTable, r *Rename) {
 
 // RenameTable patches DROP/ADD table commands to RENAME.
 func RenameTable(changes schema.Changes, r *Rename) schema.Changes {
-	i := changes.IndexDropTable(r.From)
-	j := changes.IndexAddTable(r.To)
+	i := changes.LastIndexDropTable(r.From)
+	j := changes.LastIndexAddTable(r.To)
 	if i != -1 && j != -1 {
 		changes[max(i, j)] = &schema.RenameTable{
 			From: changes[i].(*schema.DropTable).T,
