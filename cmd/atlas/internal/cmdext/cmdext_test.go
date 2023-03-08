@@ -258,11 +258,11 @@ func TestRemoteDir(t *testing.T) {
 			if err := d.WriteFile("1.sql", []byte("create table t(c int);")); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
-			checksum, err := d.Checksum()
+			sum, err := d.Checksum()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
-			if err := migrate.WriteSumFile(&d, checksum); err != nil {
+			if err := migrate.WriteSumFile(&d, sum); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 			arch, err := migrate.ArchiveDir(&d)
