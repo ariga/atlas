@@ -234,7 +234,7 @@ migration phase when traffic is minimal, you can configure Atlas to ignore this 
 
 #### BC102 {#BC102}
 
-Renaming a column is a backward-incompatible change that can cause errors during deployment (migration) phase if
+Renaming a column is a backward-incompatible change that can cause errors during deployment (migration) if
 applications running the previous version of the schema refer to the old column name in their statements. For example:
 
 ```sql
