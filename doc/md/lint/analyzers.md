@@ -95,7 +95,7 @@ the old schema. For instance, renaming a column from `email_address` to `email` 
 (migration) phase if applications running the previous version of the schema reference the old column name in their
 queries.
 
-By default, breaking changes are reported but not cause migration linting to fail. Users can change this by
+By default, detected breaking changes are reported but do not cause migration linting to fail. Users can change this by
 configuring the `incompatible` analyzer in the [`atlas.hcl`](../atlas-schema/projects#configure-migration-linting) file:
 
 ```hcl title="atlas.hcl" {2-4}
