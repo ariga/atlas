@@ -90,8 +90,7 @@ lint {
 
 ### Backward Incompatible Changes
 
-Backward-incompatible changes, which are also known as breaking changes, are schema changes that are not compatible
-with the previous version of the schema, and have the potential to break the contract with applications that rely on
+Backward-incompatible changes, also known as breaking changes, are schema changes that have the potential to break the contract with applications that rely on
 the old schema. For instance, renaming a column from `email_address` to `email` can cause errors during deployment
 (migration) phase if applications running the previous version of the schema reference the old column name in their
 queries.
