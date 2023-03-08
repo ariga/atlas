@@ -25,8 +25,9 @@ type Parser struct{}
 
 // ColumnFilledBefore checks if the column was filled before the given position.
 func (p *Parser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.Column, pos int) (bool, error) {
+	pr := parser.New()
 	return parseutil.MatchStmtBefore(f, pos, func(s *migrate.Stmt) (bool, error) {
-		stmt, err := parser.New().ParseOneStmt(s.Text, "", "")
+		stmt, err := pr.ParseOneStmt(s.Text, "", "")
 		if err != nil {
 			return false, err
 		}
@@ -70,8 +71,9 @@ func (p *Parser) ColumnFilledAfter(f migrate.File, t *schema.Table, c *schema.Co
 	default:
 		stmts = stmts[i:]
 	}
+	pr := parser.New()
 	for _, s := range stmts {
-		stmt, err := parser.New().ParseOneStmt(s.Text, "", "")
+		stmt, err := pr.ParseOneStmt(s.Text, "", "")
 		if err != nil {
 			return false, err
 		}
@@ -151,6 +153,31 @@ func (p *Parser) ColumnHasReferences(stmt *migrate.Stmt, c1 *schema.Column) (boo
 		}) != -1, nil
 	}
 	return false, nil
+}
+
+// CreateViewAfter checks if the view was created after the position with the given name to a table.
+func (p *Parser) CreateViewAfter(f migrate.File, old, new string, pos int) (bool, error) {
+	pr := parser.New()
+	return parseutil.MatchStmtAfter(f, pos, func(s *migrate.Stmt) (bool, error) {
+		stmt, err := pr.ParseOneStmt(s.Text, "", "")
+		if err != nil {
+			return false, err
+		}
+		v, ok := stmt.(*ast.CreateViewStmt)
+		if !ok || v.ViewName.Name.O != old {
+			return false, nil
+		}
+		sc, ok := v.Select.(*ast.SelectStmt)
+		if !ok || sc.From == nil || sc.From.TableRefs == nil || sc.From.TableRefs.Left == nil || sc.From.TableRefs.Right != nil {
+			return false, nil
+		}
+		t, ok := sc.From.TableRefs.Left.(*ast.TableSource)
+		if !ok || t.Source == nil {
+			return false, nil
+		}
+		name, ok := t.Source.(*ast.TableName)
+		return ok && name.Name.O == new, nil
+	})
 }
 
 // FixChange fixes the changes according to the given statement.

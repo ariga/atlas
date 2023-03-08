@@ -13,6 +13,7 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/condrop"
 	"ariga.io/atlas/sql/sqlcheck/datadepend"
 	"ariga.io/atlas/sql/sqlcheck/destructive"
+	"ariga.io/atlas/sql/sqlcheck/incompatible"
 )
 
 func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err error) {
@@ -44,6 +45,10 @@ func init() {
 		dd, err := datadepend.New(r, datadepend.Handler{
 			AddNotNull: addNotNull,
 		})
-		return []sqlcheck.Analyzer{ds, dd, cd}, nil
+		bc, err := incompatible.New(r)
+		if err != nil {
+			return nil, err
+		}
+		return []sqlcheck.Analyzer{ds, dd, cd, bc}, nil
 	})
 }

@@ -18,6 +18,7 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/condrop"
 	"ariga.io/atlas/sql/sqlcheck/datadepend"
 	"ariga.io/atlas/sql/sqlcheck/destructive"
+	"ariga.io/atlas/sql/sqlcheck/incompatible"
 )
 
 var (
@@ -211,6 +212,10 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
-		return []sqlcheck.Analyzer{ds, dd, cd, sqlcheck.AnalyzerFunc(inlineRefs)}, nil
+		bc, err := incompatible.New(r)
+		if err != nil {
+			return nil, err
+		}
+		return []sqlcheck.Analyzer{ds, dd, cd, bc, sqlcheck.AnalyzerFunc(inlineRefs)}, nil
 	})
 }

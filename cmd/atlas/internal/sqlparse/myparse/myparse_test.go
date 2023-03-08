@@ -129,6 +129,22 @@ func TestFixChange_RenameTable(t *testing.T) {
 	)
 	changes, err = p.FixChange(
 		nil,
+		"RENAME TABLE `s1`.`t1` TO `s1`.`t2`;",
+		schema.Changes{
+			&schema.DropTable{T: schema.NewTable("t1")},
+			&schema.AddTable{T: schema.NewTable("t2")},
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.RenameTable{From: schema.NewTable("t1"), To: schema.NewTable("t2")},
+		},
+		changes,
+	)
+	changes, err = p.FixChange(
+		nil,
 		"RENAME TABLE t1 TO t2, t3 TO t4",
 		schema.Changes{
 			&schema.DropTable{T: schema.NewTable("t1")},
@@ -312,6 +328,62 @@ UPDATE t SET c = CONCAT('tenant_', d) WHERE c = 0;
 			filled, err := p.ColumnFilledAfter(f, schema.NewTable("t"), schema.NewColumn("c"), tt.pos, tt.matchValue)
 			require.Equal(t, err != nil, tt.wantErr, err)
 			require.Equal(t, filled, tt.wantFilled)
+		})
+	}
+}
+
+func TestCreateViewAfter(t *testing.T) {
+	for i, tt := range []struct {
+		file        string
+		pos         int
+		wantCreated bool
+		wantErr     bool
+	}{
+		{
+			file: `
+ALTER TABLE old RENAME TO new;
+CREATE VIEW old AS SELECT * FROM new;
+`,
+			pos:         1,
+			wantCreated: true,
+		},
+		{
+			file: `
+ALTER TABLE old RENAME TO new;
+CREATE VIEW old AS SELECT * FROM users;
+`,
+			pos: 1,
+		},
+		{
+			file: `
+ALTER TABLE old RENAME TO new;
+CREATE VIEW old AS SELECT * FROM new JOIN new;
+`,
+			pos: 1,
+		},
+		{
+			file: `
+ALTER TABLE old RENAME TO new;
+CREATE VIEW old AS SELECT * FROM new;
+`,
+			pos: 100,
+		},
+		{
+			file: `
+ALTER TABLE old RENAME TO new;
+CREATE VIEW old AS SELECT a, b, c FROM new;
+`,
+			wantCreated: true,
+		},
+	} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			var (
+				p myparse.Parser
+				f = migrate.NewLocalFile("file", []byte(tt.file))
+			)
+			created, err := p.CreateViewAfter(f, "old", "new", tt.pos)
+			require.Equal(t, err != nil, tt.wantErr, err)
+			require.Equal(t, created, tt.wantCreated)
 		})
 	}
 }

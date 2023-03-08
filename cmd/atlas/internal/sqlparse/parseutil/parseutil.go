@@ -20,16 +20,31 @@ type Rename struct {
 // RenameColumn patches DROP/ADD column commands to RENAME.
 func RenameColumn(modify *schema.ModifyTable, r *Rename) {
 	changes := schema.Changes(modify.Changes)
-	i := changes.IndexDropColumn(r.From)
-	j := changes.IndexAddColumn(r.To)
-	if i != -1 && j != -1 {
+	switch i, j := changes.IndexDropColumn(r.From), changes.IndexAddColumn(r.To); {
+	case j == -1:
+	// Rename column.
+	case i != -1:
 		changes[max(i, j)] = &schema.RenameColumn{
 			From: changes[i].(*schema.DropColumn).C,
 			To:   changes[j].(*schema.AddColumn).C,
 		}
 		changes.RemoveIndex(min(i, j))
-		modify.Changes = changes
+	// Rename column and add the previous name back.
+	default:
+		if i = changes.IndexModifyColumn(r.From); i == -1 {
+			// ADD COLUMN must come after the RENAME.
+			return
+		}
+		modify := changes[i].(*schema.ModifyColumn)
+		changes[min(i, j)] = &schema.RenameColumn{
+			From: modify.From,
+			To:   changes[j].(*schema.AddColumn).C,
+		}
+		changes[max(i, j)] = &schema.AddColumn{
+			C: modify.To,
+		}
 	}
+	modify.Changes = changes
 }
 
 // RenameIndex patches DROP/ADD index commands to RENAME.
@@ -73,6 +88,31 @@ func MatchStmtBefore(f migrate.File, pos int, p func(*migrate.Stmt) (bool, error
 	if i != -1 {
 		stmts = stmts[:i]
 	}
+	for _, s := range stmts {
+		m, err := p(s)
+		if err != nil {
+			return false, err
+		}
+		if m {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// MatchStmtAfter reports if the file contains any statement that matches the predicate after the given position.
+func MatchStmtAfter(f migrate.File, pos int, p func(*migrate.Stmt) (bool, error)) (bool, error) {
+	stmts, err := f.StmtDecls()
+	if err != nil {
+		return false, err
+	}
+	i := slices.IndexFunc(stmts, func(s *migrate.Stmt) bool {
+		return s.Pos > pos
+	})
+	if i == -1 {
+		return false, nil
+	}
+	stmts = stmts[i:]
 	for _, s := range stmts {
 		m, err := p(s)
 		if err != nil {

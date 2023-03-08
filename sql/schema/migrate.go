@@ -304,8 +304,8 @@ type (
 // Changes is a list of changes allow for searching and mutating changes.
 type Changes []Change
 
-// IndexAddTable returns the index of the first AddTable in the changes with
-// the given name, or -1 if there is no such change in the Changes.
+// IndexAddTable returns the index of the first AddTable in the changes
+// with the given name, or -1 if there is no such change in the Changes.
 func (c Changes) IndexAddTable(name string) int {
 	return c.search(func(c Change) bool {
 		a, ok := c.(*AddTable)
@@ -313,8 +313,8 @@ func (c Changes) IndexAddTable(name string) int {
 	})
 }
 
-// IndexDropTable returns the index of the first DropTable in the changes with
-// the given name, or -1 if there is no such change in the Changes.
+// IndexDropTable returns the index of the first DropTable in the changes
+// with the given name, or -1 if there is no such change in the Changes.
 func (c Changes) IndexDropTable(name string) int {
 	return c.search(func(c Change) bool {
 		a, ok := c.(*DropTable)
@@ -322,8 +322,8 @@ func (c Changes) IndexDropTable(name string) int {
 	})
 }
 
-// IndexAddColumn returns the index of the first AddColumn in the changes with
-// the given name, or -1 if there is no such change in the Changes.
+// IndexAddColumn returns the index of the first AddColumn in the changes
+// with the given name, or -1 if there is no such change in the Changes.
 func (c Changes) IndexAddColumn(name string) int {
 	return c.search(func(c Change) bool {
 		a, ok := c.(*AddColumn)
@@ -331,8 +331,8 @@ func (c Changes) IndexAddColumn(name string) int {
 	})
 }
 
-// IndexDropColumn returns the index of the first DropColumn in the changes with
-// the given name, or -1 if there is no such change in the Changes.
+// IndexDropColumn returns the index of the first DropColumn in the changes
+// with the given name, or -1 if there is no such change in the Changes.
 func (c Changes) IndexDropColumn(name string) int {
 	return c.search(func(c Change) bool {
 		d, ok := c.(*DropColumn)
@@ -340,8 +340,17 @@ func (c Changes) IndexDropColumn(name string) int {
 	})
 }
 
-// IndexAddIndex returns the index of the first AddIndex in the changes with
-// the given name, or -1 if there is no such change in the Changes.
+// IndexModifyColumn returns the index of the first ModifyColumn in the changes
+// with the given name, or -1 if there is no such change in the Changes.
+func (c Changes) IndexModifyColumn(name string) int {
+	return c.search(func(c Change) bool {
+		a, ok := c.(*ModifyColumn)
+		return ok && a.From.Name == name
+	})
+}
+
+// IndexAddIndex returns the index of the first AddIndex in the changes
+// with the given name, or -1 if there is no such change in the Changes.
 func (c Changes) IndexAddIndex(name string) int {
 	return c.search(func(c Change) bool {
 		a, ok := c.(*AddIndex)
@@ -349,8 +358,8 @@ func (c Changes) IndexAddIndex(name string) int {
 	})
 }
 
-// IndexDropIndex returns the index of the first DropIndex in the changes with
-// the given name, or -1 if there is no such change in the Changes.
+// IndexDropIndex returns the index of the first DropIndex in the changes
+// with the given name, or -1 if there is no such change in the Changes.
 func (c Changes) IndexDropIndex(name string) int {
 	return c.search(func(c Change) bool {
 		a, ok := c.(*DropIndex)

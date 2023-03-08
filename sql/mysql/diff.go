@@ -488,7 +488,9 @@ func (*diff) generatedChanged(from, to *schema.Column) (bool, error) {
 	if !fromHas && !toHas || fromHas && toHas && sqlx.MayWrap(fromX.Expr) == sqlx.MayWrap(toX.Expr) && storedOrVirtual(fromX.Type) == storedOrVirtual(toX.Type) {
 		return false, nil
 	}
-	return true, checkChangeGenerated(from, to)
+	// Checking validity of the change is done
+	// by the planner (checkChangeGenerated).
+	return true, nil
 }
 
 // equalIntValues report if the 2 int default values are ~equal.
