@@ -1228,45 +1228,27 @@ create table atlas_types_sanity
 				},
 				{
 					Name: "tSmallSerial",
-					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false}, Raw: "smallint", Null: false},
-					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tSmallSerial_seq\"'::regclass)",
-					},
+					Type: &schema.ColumnType{Type: &postgres.SerialType{T: "smallserial", SequenceName: "atlas_types_sanity_tSmallSerial_seq"}, Raw: "smallserial", Null: false},
 				},
 				{
 					Name: "tSerial",
-					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer", Unsigned: false}, Raw: "integer", Null: false},
-					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tSerial_seq\"'::regclass)",
-					},
+					Type: &schema.ColumnType{Type: &postgres.SerialType{T: "serial", SequenceName: "atlas_types_sanity_tSerial_seq"}, Raw: "serial", Null: false},
 				},
 				{
 					Name: "tBigSerial",
-					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
-					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tBigSerial_seq\"'::regclass)",
-					},
+					Type: &schema.ColumnType{Type: &postgres.SerialType{T: "bigserial", SequenceName: "atlas_types_sanity_tBigSerial_seq"}, Raw: "bigserial", Null: false},
 				},
 				{
 					Name: "tSerial2",
-					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false}, Raw: "smallint", Null: false},
-					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tSerial2_seq\"'::regclass)",
-					},
+					Type: &schema.ColumnType{Type: &postgres.SerialType{T: "smallserial", SequenceName: "atlas_types_sanity_tSerial2_seq"}, Raw: "smallserial", Null: false},
 				},
 				{
 					Name: "tSerial4",
-					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer", Unsigned: false}, Raw: "integer", Null: false},
-					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tSerial4_seq\"'::regclass)",
-					},
+					Type: &schema.ColumnType{Type: &postgres.SerialType{T: "serial", SequenceName: "atlas_types_sanity_tSerial4_seq"}, Raw: "serial", Null: false},
 				},
 				{
 					Name: "tSerial8",
-					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
-					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tSerial8_seq\"'::regclass)",
-					},
+					Type: &schema.ColumnType{Type: &postgres.SerialType{T: "bigserial", SequenceName: "atlas_types_sanity_tSerial8_seq"}, Raw: "bigserial", Null: false},
 				},
 				{
 					Name: "tArray",
