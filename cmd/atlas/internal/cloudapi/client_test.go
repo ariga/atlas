@@ -45,6 +45,7 @@ func TestClient(t *testing.T) {
 		Name: "foo",
 		Tag:  "x",
 	})
+	require.NoError(t, err)
 	gcheck, err := gd.Checksum()
 	require.NoError(t, err)
 	dcheck, err := dir.Checksum()
