@@ -449,6 +449,8 @@ func ExprValue(expr schema.Expr) (cty.Value, error) {
 				return cty.NilVal, err
 			}
 			return cty.StringVal(s), nil
+		case strings.ToLower(x.V) == "true", strings.ToLower(x.V) == "false":
+			return cty.BoolVal(strings.ToLower(x.V) == "true"), nil
 		case x.V == "true", x.V == "false":
 			return cty.BoolVal(x.V == "true"), nil
 		case strings.Contains(x.V, "."):
