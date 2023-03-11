@@ -47,19 +47,47 @@ const DriverName = "sqlite3"
 func init() {
 	sqlclient.Register(
 		DriverName,
-		sqlclient.DriverOpener(Open),
+		sqlclient.OpenerFunc(func(ctx context.Context, u *url.URL) (*sqlclient.Client, error) {
+			if u.Scheme == "libsql" {
+				ur := &sqlclient.URL{URL: u, DSN: "wss://" + strings.TrimPrefix(u.String(), u.Scheme+"://"), Schema: mainFile}
+				db, err := sql.Open("libsql", ur.DSN)
+				if err != nil {
+					return nil, err
+				}
+				mdr, err := Open(db)
+				if err != nil {
+					if cerr := db.Close(); cerr != nil {
+						err = fmt.Errorf("%w: %v", err, cerr)
+					}
+					return nil, err
+				}
+				return &sqlclient.Client{
+					Name:   DriverName,
+					DB:     db,
+					URL:    ur,
+					Driver: mdr,
+				}, nil
+			}
+			return sqlclient.DriverOpener(Open).Open(ctx, u)
+		}),
 		sqlclient.RegisterTxOpener(OpenTx),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("sqlite"),
-		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
-			uc := &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), u.Scheme+"://"), Schema: mainFile}
-			if mode := u.Query().Get("mode"); mode == "memory" {
-				// The "file:" prefix is mandatory for memory modes.
-				uc.DSN = "file:" + uc.DSN
-			}
-			return uc
-		})),
+		sqlclient.RegisterFlavours("sqlite", "libsql"),
+		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(parseUrl)),
 	)
+}
+
+func parseUrl(u *url.URL) *sqlclient.URL {
+	if u.Scheme == "libsql" {
+		uc := &sqlclient.URL{URL: u, DSN: "wss://" + strings.TrimPrefix(u.String(), u.Scheme+"://"), Schema: mainFile}
+		return uc
+	}
+	uc := &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), u.Scheme+"://"), Schema: mainFile}
+	if mode := u.Query().Get("mode"); mode == "memory" {
+		// The "file:" prefix is mandatory for memory modes.
+		uc.DSN = "file:" + uc.DSN
+	}
+	return uc
 }
 
 // Open opens a new SQLite driver.

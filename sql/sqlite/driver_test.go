@@ -6,6 +6,7 @@ package sqlite
 
 import (
 	"context"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,6 +19,14 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
+
+func TestParser_ParseURL(t *testing.T) {
+	u, err := url.Parse("libsql://awesome-db-url.com?authToken=secret-token")
+	require.NoError(t, err)
+	ac := parseUrl(u)
+	require.Equal(t, "secret-token", ac.Query().Get("authToken"))
+	require.Equal(t, "wss://awesome-db-url.com?authToken=secret-token", ac.DSN)
+}
 
 func TestDriver_LockAcquired(t *testing.T) {
 	drv := &Driver{}
