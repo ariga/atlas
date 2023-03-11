@@ -52,4 +52,5 @@ func init() {
 	Register(mysql.DriverName, &myparse.Parser{})
 	Register(postgres.DriverName, &pgparse.Parser{})
 	Register(sqlite.DriverName, &sqliteparse.FileParser{})
+	Register(sqlite.LibsqlDriverName, &sqliteparse.FileParser{})
 }
