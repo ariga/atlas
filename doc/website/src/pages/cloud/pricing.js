@@ -1,18 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import Layout from '@theme/Layout';
 
 export default function Hello() {
-    let loaded = false;
-    useEffect(() => {
-        if (!loaded) {
-            console.log('Hello from pricing.js');
-            loaded = true;
-        }
-        return () => {
-            console.log('Goodbye from pricing.js');
-            loaded=false
-        }
-    })
+
     return (
         <Layout>
             <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"/>
