@@ -7,15 +7,16 @@ tags: [schema, migration, linting]
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-It's been two months since v0.9.0, and it's time to release a new version and share with you what we've accomplished so
-far, as well as what's to come in the upcoming weeks. Besides the many improvements and bug fixes in v0.10.0, we
-added two major integrations to Atlas that I want to share with you: schema loaders and cloud-based migration linting.
+It's been two months since the release of v0.9.0, so we figured it's about time to release a new version and share with
+you what we've accomplished so far, as well as what's to come in the upcoming weeks. Besides the many improvements and
+bug fixes in v0.10.0, we added two major features to Atlas that I want to share with you: schema loaders and the Community
+Preview of Atlas Cloud.
 
 ## Schema Loaders
 
 In our previous post, we discussed our motivation for developing an infrastructure to load desired states from external
-sources (not just SQL and HCL), and we highlighted the importance of schema loaders. I'm happy to share that we've made
-significant progress on this front! We started by integrating with the [Ent framework](https://entgo.io), and with the
+sources (not just SQL and HCL), and we highlighted the importance of schema loaders. Today, I'm happy to share that we've made
+significant progress on this front. We started by creating a schema loader for the [Ent framework](https://entgo.io), and with the
 release of v0.10.0, Ent users can now use their `ent/schema` package as the desired state in all the different Atlas
 commands.
 
@@ -45,20 +46,25 @@ atlas schema diff \
 </TabItem>
 </Tabs>
 
-I'm personally very excited about this integration because it has proven to work well for the Ent community, and this
-is just the beginning. We are ready to expand support for additional frameworks and languages. In the upcoming weeks,
-you can expect to see additional integrations, such as GORM, Sequelize, and more. With these superpowers of Atlas,
-users will be able to manage their entire projects using a single tool - Atlas!
+I'm really eager to see this initiative come to fruition because it has proven to work well for the Ent community.
+We are now ready to expand support for additional frameworks and languages. In the upcoming weeks,
+you can expect to see additional integrations, such as GORM, Sequelize, and more. With these new superpowers,
+users will be able to manage their all of their database schemas using a single tool - Atlas!
 
-## Migration Directory Linting
+## Atlas Cloud Community Preview
 
-Another exciting capability that was added to Atlas - the ability to connect remote migration directories stored in GitHub
+We are also super thrilled to announce the Community Preview of [Atlas Cloud](https://atlasgo.cloud)! Atlas Cloud is a
+cloud-based service that provides teams with an end-to-end solution for managing database schema changes.
+As part of the Community Preview, we are offering a free "Community" plan for all users which you can use to
+manage up to 5 migration directories for your team or personal projects.
+
+One important feature that was recently added to Atlas is the ability to connect remote migration directories stored in GitHub
 to Atlas Cloud. This new functionality empowers users to easily audit and view their migration history and get migration
 linting checks on their PRs, such as destructive or backwards incompatible changes detection.
 
 Let's walk through a simple guide on how to set it up to a project with just a few clicks:
 
-1\. Login to [atlasgo.cloud](https://auth.atlasgo.cloud/login) and create yourself a new workspace (organization) for
+1\. Login to [atlasgo.cloud](https://auth.atlasgo.cloud/login) and create a new workspace (organization) for
 your projects:
 
 [![](https://atlasgo.io/uploads/images/blog-v010/create-org.png)](https://auth.atlasgo.cloud/login)
@@ -84,11 +90,11 @@ presents:
 </TabItem>
 </Tabs>
 
-4\. Now, every new change made to the migration directory will be reflected in Atlas Cloud. But what about the changes
-themselves? Here's where the magic happens. Once the directory is connected, any pull request that modifies this
-directory will be checked and reviewed by Atlas!
+4\. From this point on, every change made to the migration directory will be reflected in Atlas Cloud. But what about the changes
+themselves? Here's where the magic happens. Once a directory is connected, any pull request that modifies it will be
+automatically checked and reviewed by Atlas!
 
-Let's create a sample migration change, open a pull request, and see what it looks like in action:
+Let's create a sample migration change, open a pull request, and see it in action:
 
 <Tabs>
 <TabItem value="PR Status">
