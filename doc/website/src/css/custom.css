@@ -262,3 +262,7 @@ div[class^='announcementBar_'] {
   color: white;
   text-decoration: none;
 }
+
+.pricing-section {
+  background-image: url("https://atlasgo.io/uploads/pricing/cloud-bg.svg");
+}

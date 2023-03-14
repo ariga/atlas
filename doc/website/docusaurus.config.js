@@ -110,6 +110,13 @@ module.exports = {
           ]
         },
         {
+          "title": "Cloud",
+            "items": [
+              {"label": "Getting started", "to": "/cloud/getting-started"},
+              {"label": "Pricing", "to": "/cloud/pricing"},
+            ]
+        },
+        {
           "title": "Legal",
           "items": [
             {"label": "Privacy Policy", "to": "https://ariga.io/legal/privacy"},
