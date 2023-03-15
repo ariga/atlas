@@ -1,0 +1,126 @@
+---
+title: "Announcing Atlas v0.10: Cloud Community Preview"
+authors: a8m
+tags: [schema, migration, linting]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+It's been two months since v0.9.0, and it's time to release a new version and share with you what we've accomplished so
+far, as well as what's to come in the upcoming weeks. Besides the many improvements and bug fixes in v0.10.0, we
+added two major integrations to Atlas that I want to share with you: schema loaders and cloud-based migration linting.
+
+## Schema Loaders
+
+In our previous post, we discussed our motivation for developing an infrastructure to load desired states from external
+sources (not just SQL and HCL), and we highlighted the importance of schema loaders. I'm happy to share that we've made
+significant progress on this front! We started by integrating with the [Ent framework](https://entgo.io), and with the
+release of v0.10.0, Ent users can now use their `ent/schema` package as the desired state in all the different Atlas
+commands.
+
+Using the new integration, users can compare an `ent/schema` package with any other state, apply it onto a database,
+generate migrations from it, and much more. Here are two examples:
+
+<Tabs>
+<TabItem value="Migrate Diff">
+
+```shell {3}
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "ent://path/to/schema" \
+  --dev-url "sqlite://dev?mode=memory&_fk=1"
+```
+
+</TabItem>
+<TabItem value="Schema Diff">
+
+```shell {3}
+atlas schema diff \
+  --from "file://migrations" \
+  --to "ent://path/to/schema" \
+  --dev-url "sqlite://dev?mode=memory&_fk=1"
+```
+
+</TabItem>
+</Tabs>
+
+I'm personally very excited about this integration because it has proven to work well for the Ent community, and this
+is just the beginning. We are ready to expand support for additional frameworks and languages. In the upcoming weeks,
+you can expect to see additional integrations, such as GORM, Sequelize, and more. With these superpowers of Atlas,
+users will be able to manage their entire projects using a single tool - Atlas!
+
+## Migration Directory Linting
+
+Another exciting capability that was added to Atlas - the ability to connect remote migration directories stored in GitHub
+to Atlas Cloud. This new functionality empowers users to easily audit and view their migration history and get migration
+linting checks on their PRs, such as destructive or backwards incompatible changes detection.
+
+Let's walk through a simple guide on how to set it up to a project with just a few clicks:
+
+1\. Login to [atlasgo.cloud](https://auth.atlasgo.cloud/login) and create yourself a new workspace (organization) for
+your projects:
+
+[![](https://atlasgo.io/uploads/images/blog-v010/create-org.png)](https://auth.atlasgo.cloud/login)
+
+2\. Once created, go to `/dirs/configure` and connect your migration directory stored in GitHub to Atlas Cloud:
+
+![](https://atlasgo.io/uploads/images/blog-v010/configure-dir.png)
+
+3\. After connecting your directory, you'll see an extensive overview of your migration history and the schema it
+presents:
+
+<Tabs>
+<TabItem value="Schema Visualization">
+
+![](https://atlasgo.io/uploads/images/blog-v010/view-dir-erd.png)
+
+</TabItem>
+
+<TabItem value="Schema Definition">
+
+![](https://atlasgo.io/uploads/images/blog-v010/view-dir-sql.png)
+
+</TabItem>
+</Tabs>
+
+4\. Now, every new change made to the migration directory will be reflected in Atlas Cloud. But what about the changes
+themselves? Here's where the magic happens. Once the directory is connected, any pull request that modifies this
+directory will be checked and reviewed by Atlas!
+
+Let's create a sample migration change, open a pull request, and see what it looks like in action:
+
+<Tabs>
+<TabItem value="PR Status">
+
+![](https://atlasgo.io/uploads/images/blog-v010/pr-check.png)
+
+</TabItem>
+
+<TabItem value="Code Annotations">
+
+![](https://atlasgo.io/uploads/images/blog-v010/annotations.png)
+
+</TabItem>
+<TabItem value="Report Summary">
+
+![](https://atlasgo.io/uploads/images/blog-v010/report.png)
+
+</TabItem>
+</Tabs>
+
+Wonderful! However, that's not all. There is another detailed and visualized report available in Atlas Cloud that has been
+specifically created for this CI run. Go to the migration directory page, click on the ___CI Runs___ button to check it out.
+
+![](https://atlasgo.io/uploads/images/blog-v010/ci.png)
+
+A big thanks to [@giautm](https://github.com/giautm), [@masseelch](https://github.com/masseelch) and
+[@yonidavidson](https://github.com/yonidavidson) for building this feature for Atlas!
+
+## What next?
+
+Well, this is just the beginning of Atlas Cloud! In the upcoming weeks, we will be rolling out several new major
+features that we have been working on lately, including schema drift detection, managed migration deployments,
+and much more. If any of these features sound interesting to you, please do not hesitate to [contact us](https://atlasgo.cloud/pricing).
+
+We would love to hear from you [on our Discord server](https://discord.gg/zZ6sWVg6NT) :heart:.
