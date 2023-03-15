@@ -74,7 +74,7 @@ To verify Atlas can find your migrations directory and that its [integrity](/con
 is intact run:
 
 ```text
-docker run --rm migrations my-image migrate validate 
+docker run --rm my-image migrate validate 
 ```
 
 If no issues are found, no errors will be printed out.
