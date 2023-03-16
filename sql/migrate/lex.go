@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -90,6 +91,9 @@ func newLex(input string) (*lex, error) {
 	return l, nil
 }
 
+// Dollar-quoted string as defined by the PostgreSQL scanner.
+var reDollarQuote = regexp.MustCompile(`^\$([A-Za-zÈ-ÿ_][\wÈ-ÿ]*)*\$`)
+
 func (l *lex) stmt() (*Stmt, error) {
 	var (
 		depth int
@@ -132,6 +136,10 @@ Scan:
 			l.addPos(len(l.delim) - l.width)
 			text = l.input[:l.pos]
 			break Scan
+		case r == '$' && reDollarQuote.MatchString(l.input[l.pos-1:]):
+			if err := l.skipDollarQuote(); err != nil {
+				return nil, err
+			}
 		case r == '#':
 			l.comment("#", "\n")
 		case r == '-' && l.next() == '-':
@@ -173,6 +181,27 @@ func (l *lex) skipQuote(quote rune) error {
 		case r == '\\':
 			l.next()
 		case r == quote:
+			return nil
+		}
+	}
+}
+
+func (l *lex) skipDollarQuote() error {
+	m := reDollarQuote.FindString(l.input[l.pos-1:])
+	if m == "" {
+		return fmt.Errorf("unexpected dollar quote at position %d", l.pos)
+	}
+	l.addPos(len(m) - 1)
+	for {
+		switch r := l.next(); {
+		case r == eos:
+			// Fail only if a delimiter was not set.
+			if l.delim == "" {
+				return errors.New("unclosed dollar-quoted string")
+			}
+			return nil
+		case r == '$' && strings.HasPrefix(l.input[l.pos-1:], m):
+			l.addPos(len(m) - 1)
 			return nil
 		}
 	}
