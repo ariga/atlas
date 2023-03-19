@@ -547,7 +547,6 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"--dev-url", openSQLite(t, ""),
 			"--to", "file://testdata/sqlite",
 			"--to", "file://testdata/sqlite2",
-			"--auto-approve",
 		)
 		require.EqualError(t, err, `the provided SQL state must be either a single schema file or a migration directory, but 2 paths were found`)
 
@@ -556,7 +555,6 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"-u", openSQLite(t, ""),
 			"--dev-url", openSQLite(t, ""),
 			"--to", "file://"+t.TempDir(),
-			"--auto-approve",
 		)
 		require.ErrorContains(t, err, `contains neither SQL nor HCL files`)
 
@@ -568,9 +566,16 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"-u", openSQLite(t, ""),
 			"--dev-url", openSQLite(t, ""),
 			"--to", "file://"+p,
-			"--auto-approve",
 		)
 		require.EqualError(t, err, `ambiguous schema: both SQL and HCL files found: "schema.hcl", "schema.sql"`)
+
+		_, err = runCmd(
+			schemaApplyCmd(),
+			"-u", openSQLite(t, ""),
+			"--dev-url", openSQLite(t, ""),
+			"--to", "testdata/sqlite",
+		)
+		require.EqualError(t, err, "missing scheme. Did you mean file://testdata/sqlite?")
 	})
 }
 
