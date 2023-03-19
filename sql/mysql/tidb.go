@@ -237,7 +237,7 @@ func (i *tinspect) setFKs(s *schema.Schema, t *schema.Table) error {
 }
 
 // columns from the matched regex above.
-func columns(schema *schema.Schema, s string) []string {
+func columns(_ *schema.Schema, s string) []string {
 	names := strings.Split(s, ",")
 	for i := range names {
 		names[i] = strings.Trim(strings.TrimSpace(names[i]), "`\"")

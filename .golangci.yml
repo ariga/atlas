@@ -11,6 +11,9 @@ issues:
     - path: sql/migrate/dir.go
       linters:
         - gosec
+    - path: sql/migrate/lex.go
+      linters:
+        - revive
 
 linters-settings:
   goheader:

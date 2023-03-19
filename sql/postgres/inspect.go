@@ -167,10 +167,7 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 	if err := rows.Close(); err != nil {
 		return err
 	}
-	if err := i.enumValues(ctx, s); err != nil {
-		return err
-	}
-	return nil
+	return i.enumValues(ctx, s)
 }
 
 // addColumn scans the current row and adds a new column from it to the table.

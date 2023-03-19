@@ -1435,6 +1435,14 @@ func selectScheme(urls []string) (string, error) {
 	for _, u := range urls {
 		parts := strings.SplitN(u, "://", 2)
 		switch current := parts[0]; {
+		case len(parts) == 1:
+			ex := filepath.Ext(u)
+			switch f, err := os.Stat(u); {
+			case err != nil:
+			case f.IsDir(), ex == extSQL, ex == extHCL:
+				return "", fmt.Errorf("missing scheme. Did you mean file://%s?", u)
+			}
+			return "", errors.New("missing scheme. See: https://atlasgo.io/url")
 		case scheme == "":
 			scheme = current
 		case scheme != current:
@@ -1484,7 +1492,7 @@ func parseHCLPaths(paths ...string) (*hclparse.Parser, error) {
 // mayParse will parse the file in path if it is an HCL file. If the file is an Atlas
 // project file an error is returned.
 func mayParse(p *hclparse.Parser, path string) error {
-	if n := filepath.Base(path); filepath.Ext(n) != ".hcl" {
+	if n := filepath.Base(path); filepath.Ext(n) != extHCL {
 		return nil
 	}
 	switch f, diag := p.ParseHCLFile(path); {

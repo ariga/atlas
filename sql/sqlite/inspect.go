@@ -102,10 +102,7 @@ func (i *inspect) inspectTable(ctx context.Context, t *schema.Table) error {
 	if err := i.fks(ctx, t); err != nil {
 		return err
 	}
-	if err := fillChecks(t); err != nil {
-		return err
-	}
-	return nil
+	return fillChecks(t)
 }
 
 // columns queries and appends the columns of the given table.
