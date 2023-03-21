@@ -2,6 +2,10 @@
 title: Migration Analyzers
 slug: /lint/analyzers
 ---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 The database is often the most critical component in software architectures. Being a stateful component, it cannot be
 easily rebuilt, scaled-out or fixed by a restart. Outages that involve damage to data or simply unavailability of the database
 are notoriously hard to manage and recover from, often taking long hours of careful work by a team's most senior
@@ -106,34 +110,97 @@ lint {
 }
 ```
 
+### Naming Conventions Policy
+
+In database schema design, maintaining consistency and readability through naming conventions is a widely common
+practice. Atlas provides an analyzer that can help enforce naming conventions on a variety of schema resources,
+including tables, columns, and indexes.
+
+Users can enable this by configuring the `naming` analyzer in their
+[`atlas.hcl`](../atlas-schema/projects#configure-migration-linting) file:
+
+<Tabs>
+<TabItem value="Global policy">
+
+```hcl title="atlas.hcl"
+lint {
+  naming {
+    match   = "^[a-z]+$"
+    message = "must be lowercase"
+  }
+}
+```
+
+</TabItem>
+<TabItem value="Resource-specific policy">
+
+```hcl title="atlas.hcl"
+lint {
+  naming {
+    match   = "^[a-z]+$"
+    message = "must be lowercase"
+    // highlight-start
+    index {
+      match   = "^[a-z]+_idx$"
+      message = "must be lowercase and end with _idx"
+    }
+    // highlight-end
+    // schema, table, column, foreign_key and check are also supported.
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+By default, detected naming violations are reported but do not cause migration linting to fail. Users can change this by
+configuring the `naming` analyzer in the [`atlas.hcl`](../atlas-schema/projects#configure-migration-linting) file:
+
+```hcl title="atlas.hcl" {2-6}
+lint {
+  naming {
+    error   = true
+    match   = "^[a-z]+$"
+    message = "must be lowercase"
+  }
+}
+```
+
 ## Checks
 
 The following schema change checks are provided by Atlas:
 
-| **Check**                                 | **Short Description**                                                        |
-|-------------------------------------------|------------------------------------------------------------------------------|
-| [**DS1**](#destructive-changes)           | Destructive changes                                                          |
-| [DS101](#DS101)                           | Schema was dropped                                                           |
-| [DS102](#DS102)                           | Table was dropped                                                            |
-| [DS103](#DS103)                           | Non-virtual column was dropped                                               |
-| [**MF1**](#data-dependent-changes)        | Changes that might fail                                                      |
-| [MF101](#MF101)                           | Add unique index to existing column                                          |
-| [MF102](#MF102)                           | Modifying non-unique index to unique                                         |
-| [MF103](#MF103)                           | Adding a non-nullable column to an existing table                            |
-| [MF104](#MF104)                           | Modifying a nullable column to non-nullable                                  |
-| [MF101](#MF101)                           | Add unique index to existing column                                          |
-| [**BC1**](#backward-incompatible-changes) | Backward incompatible changes                                                |
-| [BC101](#BC101)                           | Renaming a table                                                             |
-| [BC102](#BC102)                           | Renaming a column                                                            |
-| **CD1**                                   | Constraint deletion changes                                                  |
-| [CD101](#CD101)                           | Foreign-key constraint was dropped                                           |
-| **MY**                                    | MySQL and MariaDB specific checks                                            |
-| [MY101](#MY101)                           | Adding a non-nullable column without a `DEFAULT` value to an existing table  |
-| [MY102](#MY102)                           | Adding a column with an inline `REFERENCES` clause has no actual effect      |
-| **LT**                                    | SQLite specific checks                                                       |
-| [LT101](#LT101)                           | Modifying a nullable column to non-nullable without a `DEFAULT` value        |
-| **AR**                                    | Atlas cloud checks                                                           |
-| [AR101](#AR101)                           | Creating table with non-optimal data alignment                               |
+| **Check**                                 | **Short Description**                                                           |
+|-------------------------------------------|---------------------------------------------------------------------------------|
+| **AR**                                    | Atlas cloud checks                                                              |
+| [AR101](#AR101)                           | Creating table with non-optimal data alignment                                  |
+| **BC**                                    | **[Backward incompatible changes](#backward-incompatible-changes)**             |
+| [BC101](#BC101)                           | Renaming a table                                                                |
+| [BC102](#BC102)                           | Renaming a column                                                               |
+| **CD**                                    | Constraint deletion changes                                                     |
+| [CD101](#CD101)                           | Foreign-key constraint was dropped                                              |
+| **DS**                                    | **[Destructive changes](#destructive-changes)**                                 |
+| [DS101](#DS101)                           | Schema was dropped                                                              |
+| [DS102](#DS102)                           | Table was dropped                                                               |
+| [DS103](#DS103)                           | Non-virtual column was dropped                                                  |
+| **LT**                                    | SQLite specific checks                                                          |
+| [LT101](#LT101)                           | Modifying a nullable column to non-nullable without a `DEFAULT` value           |
+| **MF**                                    | **[Data-dependent changes](#data-dependent-changes)** (changes that might fail) |
+| [MF101](#MF101)                           | Add unique index to existing column                                             |
+| [MF102](#MF102)                           | Modifying non-unique index to unique                                            |
+| [MF103](#MF103)                           | Adding a non-nullable column to an existing table                               |
+| [MF104](#MF104)                           | Modifying a nullable column to non-nullable                                     |
+| [MF101](#MF101)                           | Add unique index to existing column                                             |
+| **MY**                                    | MySQL and MariaDB specific checks                                               |
+| [MY101](#MY101)                           | Adding a non-nullable column without a `DEFAULT` value to an existing table     |
+| [MY102](#MY102)                           | Adding a column with an inline `REFERENCES` clause has no actual effect         |
+| **NM**                                    | **[Naming Conventions](#naming-conventions-policy)**                            |
+| [NM101](#NM101)                           | Schema name violates the naming convention                                      |
+| [NM102](#NM102)                           | Table name violates the naming convention                                       |
+| [NM103](#NM103)                           | Column name violates the naming convention                                      |
+| [NM104](#NM104)                           | Index name violates the naming convention                                       |
+| [NM105](#NM105)                           | Foreign-key constraint name violates the naming convention                      |
+| [NM106](#NM106)                           | Check constraint name violates the naming convention                            |
 
 #### DS101 {#DS101}
 
@@ -341,7 +408,7 @@ PRAGMA foreign_keys = on;
 Creating a table with optimal data alignment may help minimize the amount of required disk space.
 For example consider the next Postgres table on a 64-bit system:
 
-```postgresql
+```sql
 CREATE TABLE accounts (
     id bigint PRIMARY KEY,
     premium boolean,
@@ -356,7 +423,7 @@ In total 9 bytes of padding are allocated for each row.
 
 Compared to same table with different ordering which only takes 16 bytes in memory with 1 byte of padding:
 
-```postgresql
+```sql
 CREATE TABLE accounts (
     id bigint PRIMARY KEY,
     balance integer,
@@ -364,3 +431,21 @@ CREATE TABLE accounts (
     premium boolean
 );
 ```
+
+#### NM101 {#NM101}
+A schema has been given a name that violates the naming convention.
+
+#### NM102 {#NM102}
+A table has been given a name that violates the naming convention.
+
+#### NM103 {#NM103}
+A column has been given a name that violates the naming convention.
+
+#### NM104 {#NM104}
+An index has been given a name that violates the naming convention.
+
+#### NM105 {#NM105}
+A foreign-key constraint has been given a name that violates the naming convention.
+
+#### NM106 {#NM106}
+A check constraint has been given a name that violates the naming convention.

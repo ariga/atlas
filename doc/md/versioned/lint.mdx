@@ -96,7 +96,7 @@ ALTER TABLE `t4` DROP COLUMN `c4`, ADD COLUMN `d4` varchar(255) NOT NULL;
 
 <TabItem value="by-check">
 
-Using `--atlas:nolint [checks...]` excludes reporting specific [checks](../lint/analyzers.md#checks) for the annotated
+Using `--atlas:nolint [checks...]` excludes reporting specific [checks](../lint/analyzers.mdx#checks) for the annotated
 statement.
 
 ```sql
@@ -111,7 +111,7 @@ ALTER TABLE `t1` DROP COLUMN `c1`, ADD COLUMN `d1` varchar(255) NOT NULL;
 <TabItem value="file-level">
 
 The `--atlas:nolint` directive can be used to exclude the whole file (given at top) from analysis, or to exclude specific
-statements in the file from specific [checks](../lint/analyzers.md#checks) or analyzers.
+statements in the file from specific [checks](../lint/analyzers.mdx#checks) or analyzers.
 
 ```sql
 //highlight-next-line
