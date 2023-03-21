@@ -1,0 +1,27 @@
+atlas migrate lint --env local --latest=1 > got.txt
+cmp got.txt expected.txt
+
+-- atlas.hcl --
+env "local" {
+  dev = "URL"
+}
+lint {
+  naming {
+    match   = "^[a-z]+$"
+    message = "must be lowercase"
+    index {
+      match   = "^[a-z]+_idx$"
+      message = "must be lowercase and end with _idx"
+    }
+  }
+}
+-- migrations/1.sql --
+CREATE TABLE Users (id int, name varchar(255));
+CREATE INDEX users_name ON Users (name);
+
+-- expected.txt --
+1.sql: naming violations detected:
+
+	L1: Table named "Users" violates the naming policy: must be lowercase
+	L2: Index named "users_name" violates the naming policy: must be lowercase and end with _idx
+

@@ -19,6 +19,7 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/datadepend"
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 	"ariga.io/atlas/sql/sqlcheck/incompatible"
+	"ariga.io/atlas/sql/sqlcheck/naming"
 )
 
 var (
@@ -216,6 +217,10 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
-		return []sqlcheck.Analyzer{ds, dd, cd, bc, sqlcheck.AnalyzerFunc(inlineRefs)}, nil
+		nm, err := naming.New(r)
+		if err != nil {
+			return nil, err
+		}
+		return []sqlcheck.Analyzer{ds, dd, cd, bc, nm, sqlcheck.AnalyzerFunc(inlineRefs)}, nil
 	})
 }

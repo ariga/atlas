@@ -17,6 +17,7 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/datadepend"
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 	"ariga.io/atlas/sql/sqlcheck/incompatible"
+	"ariga.io/atlas/sql/sqlcheck/naming"
 	"ariga.io/atlas/sql/sqlite"
 )
 
@@ -73,6 +74,10 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+		nm, err := naming.New(r)
+		if err != nil {
+			return nil, err
+		}
 		return []sqlcheck.Analyzer{
 			sqlcheck.AnalyzerFunc(func(ctx context.Context, p *sqlcheck.Pass) error {
 				var changes []*sqlcheck.Change
@@ -115,7 +120,7 @@ func init() {
 				p.File.Changes = changes
 				return nil
 			}),
-			ds, dd, cd, bc,
+			ds, dd, cd, bc, nm,
 		}, nil
 	})
 }
