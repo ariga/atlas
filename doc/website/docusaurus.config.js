@@ -127,8 +127,8 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-2', // Increment on change
-      content: `️🚀 Read the latest updates in <a target="_blank" rel="noopener noreferrer" href="https://atlasnewsletter.substack.com/archive">our newsletter!</a>`, 
+      id: 'announcementBar-3', // Increment on change
+      content: `Atlas v0.10 is now available! Check out the <a href="/blog/2023/03/13/atlas-v010">latest blog post</a> 🚀`,
       isCloseable: true,
     },
   },
