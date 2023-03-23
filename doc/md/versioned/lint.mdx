@@ -148,6 +148,51 @@ format the output of the `lint` command.
 
 ### Examples
 
+Analyze the latest migration file using the `docker` driver:
+
+<Tabs>
+<TabItem value="MySQL">
+
+```shell
+atlas migrate lint \
+  --latest 1 \
+  --dir "file://migrations" \
+  --dev-url "docker://mysql/8/test"
+```
+
+</TabItem>
+<TabItem value="MariaDB">
+
+```shell
+atlas migrate lint \
+  --latest 1 \
+  --dir "file://migrations" \
+  --dev-url "docker://mariadb/latest/test"
+```
+
+</TabItem>
+<TabItem value="PostgreSQL">
+
+```shell
+atlas migrate lint \
+  --latest 1 \
+  --dir "file://migrations" \
+  --dev-url "docker://postgres/15/test?search_path=public"
+```
+
+</TabItem>
+<TabItem value="SQLite">
+
+```shell
+atlas migrate lint \
+  --latest 1 \
+  --dir "file://migrations" \
+  --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+</Tabs>
+
 Analyze all changes relative to the `master` Git branch:
 ```shell
 atlas migrate lint \
@@ -155,13 +200,7 @@ atlas migrate lint \
   --dev-url "mysql://root:pass@localhost:3306/dev" \
   --git-base "master"
 ```
-Analyze the latest 2 migration files:
-```shell
-atlas migrate lint \
-  --dir "file://my/project/migrations" \
-  --dev-url "mysql://root:pass@localhost:3306/dev" \
-  --latest 2
-```
+
 Format output as JSON:
 ```shell
 atlas migrate lint \
