@@ -29,7 +29,7 @@ docker run -p 3306:3306 --name iloveatlas -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_D
 ```
 Great! Now we have an instance of MySQL database running.
 
-As an extra measure of safety, we will run another identical database which will serve as a [Dev Database](https://atlasgo.io/concepts/dev-database). In short, the dev-db helps to catch errors that can only be detected when applying the schema. It is also useful to format the schema in a correct and predictable way. Read more about it [here](https://atlasgo.io/cli/dev-database).
+As an extra measure of safety, we will run another identical database which will serve as a [Dev Database](https://atlasgo.io/concepts/dev-database). In short, the dev-db helps to catch errors that can only be detected when applying the schema. It is also useful to format the schema in a correct and predictable way. Read more about it [here](https://atlasgo.io/concepts/dev-database).
 Run a second instance of MySQL on another port, to serve as a dev-db:
 
 ```shell
