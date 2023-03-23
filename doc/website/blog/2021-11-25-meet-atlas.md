@@ -41,7 +41,7 @@ provide a solid foundation for managing databases in a way that's akin to infras
 to capture an organization's data topology - including relational database schemas.
 This language is currently described in an HCL syntax (similar to TerraForm),
 but will support more syntaxes such as JSON and TypeScript in the future. The Atlas DDL currently supports
-defining schemas for [SQL](https://atlasgo.io/sql-hcl) databases such as MySQL, Postgres, SQLite and MariaDB, but in the future, we plan to add support for other types of databases. For example: 
+defining schemas for [SQL](https://atlasgo.io/atlas-schema/sql-resources) databases such as MySQL, Postgres, SQLite and MariaDB, but in the future, we plan to add support for other types of databases. For example: 
 ```hcl
 table "users" {
   schema = "default"

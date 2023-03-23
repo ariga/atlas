@@ -252,7 +252,7 @@ and `apply` commands, consult the [CLI Reference Docs](https://atlasgo.io/cli-re
 #### What's next for multi-schema support?
 
 I hope you agree that multi-schema support is a great improvement to the Atlas CLI, but there is
-more to come in this area. In our previous [blogpost](https://atlasgo.io/blog/2022-01-01-atlas-v030/) we have shared that
+more to come in this area. In our previous [blogpost](https://atlasgo.io/blog/2022/01/19/atlas-v030) we have shared that
 Atlas also has a [Management UI](https://atlasgo.io/ui/intro) (-w option in the CLI) and multi-schema
 support is not present there yet - stay tuned for updates on multi-schema support for the UI in an upcoming release!
 
