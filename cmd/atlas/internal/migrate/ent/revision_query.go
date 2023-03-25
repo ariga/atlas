@@ -23,7 +23,7 @@ import (
 type RevisionQuery struct {
 	config
 	ctx        *QueryContext
-	order      []OrderFunc
+	order      []revision.OrderOption
 	inters     []Interceptor
 	predicates []predicate.Revision
 	// intermediate query (i.e. traversal path).
@@ -57,7 +57,7 @@ func (rq *RevisionQuery) Unique(unique bool) *RevisionQuery {
 }
 
 // Order specifies how the records should be ordered.
-func (rq *RevisionQuery) Order(o ...OrderFunc) *RevisionQuery {
+func (rq *RevisionQuery) Order(o ...revision.OrderOption) *RevisionQuery {
 	rq.order = append(rq.order, o...)
 	return rq
 }
@@ -251,7 +251,7 @@ func (rq *RevisionQuery) Clone() *RevisionQuery {
 	return &RevisionQuery{
 		config:     rq.config,
 		ctx:        rq.ctx.Clone(),
-		order:      append([]OrderFunc{}, rq.order...),
+		order:      append([]revision.OrderOption{}, rq.order...),
 		inters:     append([]Interceptor{}, rq.inters...),
 		predicates: append([]predicate.Revision{}, rq.predicates...),
 		// clone intermediate query.

@@ -8,6 +8,7 @@ package revision
 
 import (
 	"ariga.io/atlas/sql/migrate"
+	"entgo.io/ent/dialect/sql"
 )
 
 const (
@@ -79,3 +80,61 @@ var (
 	// TotalValidator is a validator for the "total" field. It is called by the builders before save.
 	TotalValidator func(int) error
 )
+
+// OrderOption defines the ordering options for the Revision queries.
+type OrderOption func(*sql.Selector)
+
+// ByID orders the results by the id field.
+func ByID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByDescription orders the results by the description field.
+func ByDescription(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDescription, opts...).ToFunc()
+}
+
+// ByType orders the results by the type field.
+func ByType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldType, opts...).ToFunc()
+}
+
+// ByApplied orders the results by the applied field.
+func ByApplied(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldApplied, opts...).ToFunc()
+}
+
+// ByTotal orders the results by the total field.
+func ByTotal(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTotal, opts...).ToFunc()
+}
+
+// ByExecutedAt orders the results by the executed_at field.
+func ByExecutedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldExecutedAt, opts...).ToFunc()
+}
+
+// ByExecutionTime orders the results by the execution_time field.
+func ByExecutionTime(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldExecutionTime, opts...).ToFunc()
+}
+
+// ByError orders the results by the error field.
+func ByError(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldError, opts...).ToFunc()
+}
+
+// ByErrorStmt orders the results by the error_stmt field.
+func ByErrorStmt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldErrorStmt, opts...).ToFunc()
+}
+
+// ByHash orders the results by the hash field.
+func ByHash(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldHash, opts...).ToFunc()
+}
+
+// ByOperatorVersion orders the results by the operator_version field.
+func ByOperatorVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOperatorVersion, opts...).ToFunc()
+}

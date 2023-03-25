@@ -14,6 +14,7 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 )
 
@@ -44,6 +45,7 @@ type Revision struct {
 	PartialHashes []string `json:"partial_hashes,omitempty"`
 	// OperatorVersion holds the value of the "operator_version" field.
 	OperatorVersion string `json:"operator_version,omitempty"`
+	selectValues    sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -60,7 +62,7 @@ func (*Revision) scanValues(columns []string) ([]any, error) {
 		case revision.FieldExecutedAt:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Revision", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -148,9 +150,17 @@ func (r *Revision) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				r.OperatorVersion = value.String
 			}
+		default:
+			r.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// Value returns the ent.Value that was dynamically selected and assigned to the Revision.
+// This includes values selected through modifiers, order, etc.
+func (r *Revision) Value(name string) (ent.Value, error) {
+	return r.selectValues.Get(name)
 }
 
 // Update returns a builder for updating this Revision.
