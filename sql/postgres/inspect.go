@@ -830,7 +830,7 @@ type (
 	// build or drop the index concurrently without blocking the current table.
 	// https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
 	Concurrently struct {
-		schema.Attr
+		schema.Clause
 	}
 
 	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.

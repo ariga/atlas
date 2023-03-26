@@ -534,13 +534,24 @@ func TestPlanChanges(t *testing.T) {
 							},
 							&schema.AddIndex{
 								I: &schema.Index{
-									Name: "concurrently",
+									Name: "add_con",
 									Parts: []*schema.IndexPart{
 										{C: users.Columns[0]},
 									},
-									Attrs: []schema.Attr{
-										&Concurrently{},
+								},
+								Extra: []schema.Clause{
+									&Concurrently{},
+								},
+							},
+							&schema.DropIndex{
+								I: &schema.Index{
+									Name: "drop_con",
+									Parts: []*schema.IndexPart{
+										{C: users.Columns[0]},
 									},
+								},
+								Extra: []schema.Clause{
+									&Concurrently{},
 								},
 							},
 							&schema.AddIndex{
@@ -565,6 +576,10 @@ func TestPlanChanges(t *testing.T) {
 				Transactional: true,
 				Changes: []*migrate.Change{
 					{
+						Cmd:     `DROP INDEX CONCURRENTLY "drop_con"`,
+						Reverse: `CREATE INDEX CONCURRENTLY "drop_con" ON "users" ("id")`,
+					},
+					{
 						Cmd:     `ALTER TABLE "users" ADD COLUMN "name" character varying(255) NOT NULL DEFAULT 'logged_in', ADD COLUMN "last" character varying(255) NOT NULL DEFAULT 'logged_in', ADD CONSTRAINT "name_not_empty" CHECK ("name" <> ''), DROP CONSTRAINT "id_nonzero", DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK (("id") % 2 = 0)`,
 						Reverse: `ALTER TABLE "users" DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK ("id" % 2 = 0), ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0), DROP CONSTRAINT "name_not_empty", DROP COLUMN "last", DROP COLUMN "name"`,
 					},
@@ -581,8 +596,8 @@ func TestPlanChanges(t *testing.T) {
 						Reverse: `DROP INDEX "include_key"`,
 					},
 					{
-						Cmd:     `CREATE INDEX CONCURRENTLY "concurrently" ON "users" ("id")`,
-						Reverse: `DROP INDEX CONCURRENTLY "concurrently"`,
+						Cmd:     `CREATE INDEX CONCURRENTLY "add_con" ON "users" ("id")`,
+						Reverse: `DROP INDEX CONCURRENTLY "add_con"`,
 					},
 					{
 						Cmd:     `CREATE INDEX "operator_class" ON "users" USING BRIN ("id" int8_bloom_ops, "id", "id" int8_minmax_multi_ops(values_per_range=8))`,

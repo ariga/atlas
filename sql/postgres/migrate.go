@@ -192,8 +192,11 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 		Reverse: s.Build("DROP TABLE").Table(add.T).String(),
 	})
-	if err := s.addIndexes(add.T, add.T.Indexes...); err != nil {
-		return err
+	for _, idx := range add.T.Indexes {
+		// Indexes do not need to be created concurrently on new tables.
+		if err := s.addIndexes(add.T, &schema.AddIndex{I: idx}); err != nil {
+			return err
+		}
 	}
 	s.addComments(add.T)
 	return nil
@@ -252,9 +255,10 @@ func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
 // modifyTable builds the statements that bring the table into its modified state.
 func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
 	var (
-		alter       []schema.Change
-		addI, dropI []*schema.Index
-		changes     []*migrate.Change
+		alter   []schema.Change
+		addI    []*schema.AddIndex
+		dropI   []*schema.DropIndex
+		changes []*migrate.Change
 	)
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
@@ -270,14 +274,14 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			if c := (schema.Comment{}); sqlx.Has(change.I.Attrs, &c) {
 				changes = append(changes, s.indexComment(modify.T, change.I, c.Text, ""))
 			}
-			addI = append(addI, change.I)
+			addI = append(addI, change)
 		case *schema.DropIndex:
 			// Unlike DROP INDEX statements that are executed separately,
 			// DROP CONSTRAINT are added to the ALTER TABLE statement below.
 			if isUniqueConstraint(change.I) {
 				alter = append(alter, change)
 			} else {
-				dropI = append(dropI, change.I)
+				dropI = append(dropI, change)
 			}
 		case *schema.ModifyIndex:
 			k := change.Change
@@ -293,8 +297,8 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				}
 			}
 			// Index modification requires rebuilding the index.
-			addI = append(addI, change.To)
-			dropI = append(dropI, change.From)
+			addI = append(addI, &schema.AddIndex{I: change.To})
+			dropI = append(dropI, &schema.DropIndex{I: change.From})
 		case *schema.RenameIndex:
 			changes = append(changes, &migrate.Change{
 				Source:  change,
@@ -729,15 +733,19 @@ func (s *state) indexComment(t *schema.Table, idx *schema.Index, to, from string
 	}
 }
 
-func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) error {
+func (s *state) dropIndexes(t *schema.Table, drops ...*schema.DropIndex) error {
+	adds := make([]*schema.AddIndex, len(drops))
+	for i, d := range drops {
+		adds[i] = &schema.AddIndex{I: d.I, Extra: d.Extra}
+	}
 	rs := &state{conn: s.conn, PlanOptions: s.PlanOptions}
-	if err := rs.addIndexes(t, indexes...); err != nil {
+	if err := rs.addIndexes(t, adds...); err != nil {
 		return err
 	}
-	for i, idx := range indexes {
+	for i, add := range adds {
 		s.append(&migrate.Change{
 			Cmd:     rs.Changes[i].Reverse.(string),
-			Comment: fmt.Sprintf("drop index %q from table: %q", idx.Name, t.Name),
+			Comment: fmt.Sprintf("drop index %q from table: %q", add.I.Name, t.Name),
 			Reverse: rs.Changes[i].Cmd,
 		})
 	}
@@ -856,14 +864,14 @@ func (s *state) mayDropEnum(cmd *changeGroup, ns *schema.Schema, e *schema.EnumT
 	return nil
 }
 
-func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
-	for _, idx := range indexes {
-		b := s.Build("CREATE")
+func (s *state) addIndexes(t *schema.Table, adds ...*schema.AddIndex) error {
+	for _, add := range adds {
+		b, idx := s.Build("CREATE"), add.I
 		if idx.Unique {
 			b.P("UNIQUE")
 		}
 		b.P("INDEX")
-		if c := (Concurrently{}); sqlx.Has(idx.Attrs, &c) {
+		if sqlx.Has(add.Extra, &Concurrently{}) {
 			b.P("CONCURRENTLY")
 		}
 		if idx.Name != "" {
@@ -878,7 +886,7 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
 			Comment: fmt.Sprintf("create index %q to table: %q", idx.Name, t.Name),
 			Reverse: func() string {
 				b := s.Build("DROP INDEX")
-				if c := (Concurrently{}); sqlx.Has(idx.Attrs, &c) {
+				if sqlx.Has(add.Extra, &Concurrently{}) {
 					b.P("CONCURRENTLY")
 				}
 				// Unlike MySQL, the DROP command is not attached to ALTER TABLE.
@@ -1050,7 +1058,7 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
 	}
 	for _, attr := range idx.Attrs {
 		switch attr.(type) {
-		case *schema.Comment, *IndexType, *IndexInclude, *Concurrently, *Constraint, *IndexPredicate, *IndexStorageParams:
+		case *schema.Comment, *IndexType, *IndexInclude, *Constraint, *IndexPredicate, *IndexStorageParams:
 		default:
 			return fmt.Errorf("postgres: unexpected index attribute: %T", attr)
 		}

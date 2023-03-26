@@ -109,12 +109,14 @@ type (
 
 	// AddIndex describes an index creation change.
 	AddIndex struct {
-		I *Index
+		I     *Index
+		Extra []Clause // Extra clauses and options.
 	}
 
 	// DropIndex describes an index removal change.
 	DropIndex struct {
-		I *Index
+		I     *Index
+		Extra []Clause // Extra clauses and options.
 	}
 
 	// ModifyIndex describes an index modification.
