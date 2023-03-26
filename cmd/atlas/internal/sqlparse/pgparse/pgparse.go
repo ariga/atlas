@@ -9,6 +9,7 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parseutil"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/auxten/postgresql-parser/pkg/sql/parser"
@@ -98,6 +99,22 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 			From: stmt.Name.String(),
 			To:   stmt.NewName.String(),
 		})
+	case *tree.CreateIndex:
+		modify, err := expectModify(changes)
+		if err != nil {
+			return nil, err
+		}
+		i := schema.Changes(modify.Changes).IndexAddIndex(stmt.Name.String())
+		if i == -1 {
+			return nil, fmt.Errorf("AddIndex %q command not found", stmt.Name)
+		}
+		add := modify.Changes[i].(*schema.AddIndex)
+		if slices.IndexFunc(add.Extra, func(c schema.Clause) bool {
+			_, ok := c.(*postgres.Concurrently)
+			return ok
+		}) == -1 {
+			add.Extra = append(add.Extra, &postgres.Concurrently{})
+		}
 	}
 	return changes, nil
 }

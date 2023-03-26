@@ -10,6 +10,7 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/pgparse"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
@@ -78,6 +79,77 @@ func TestFixChange_RenameIndexes(t *testing.T) {
 			&schema.ModifyTable{
 				Changes: schema.Changes{
 					&schema.RenameIndex{From: schema.NewIndex("i1"), To: schema.NewIndex("i2")},
+				},
+			},
+		},
+		changes,
+	)
+}
+
+func TestFixChange_CreateIndexCon(t *testing.T) {
+	var p pgparse.Parser
+	changes, err := p.FixChange(
+		nil,
+		"CREATE INDEX CONCURRENTLY i1 ON t1 (c1)",
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.AddIndex{I: schema.NewIndex("i1")},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	// Should add the "Concurrently" clause to the AddIndex command.
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.AddIndex{
+						I: schema.NewIndex("i1"),
+						Extra: []schema.Clause{
+							&postgres.Concurrently{},
+						},
+					},
+				},
+			},
+		},
+		changes,
+	)
+	changes, err = p.FixChange(
+		nil,
+		"CREATE INDEX CONCURRENTLY i1 ON t1 (c1)",
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.AddIndex{
+						I: schema.NewIndex("i1"),
+						Extra: []schema.Clause{
+							&postgres.Concurrently{},
+						},
+					},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	// The "Concurrently" clause should not be added if it already exists.
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.AddIndex{
+						I: schema.NewIndex("i1"),
+						Extra: []schema.Clause{
+							&postgres.Concurrently{},
+						},
+					},
 				},
 			},
 		},
