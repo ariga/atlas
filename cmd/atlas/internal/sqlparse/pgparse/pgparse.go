@@ -112,7 +112,7 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 		if slices.IndexFunc(add.Extra, func(c schema.Clause) bool {
 			_, ok := c.(*postgres.Concurrently)
 			return ok
-		}) == -1 {
+		}) == -1 && stmt.Concurrently {
 			add.Extra = append(add.Extra, &postgres.Concurrently{})
 		}
 	}

@@ -90,6 +90,35 @@ func TestFixChange_CreateIndexCon(t *testing.T) {
 	var p pgparse.Parser
 	changes, err := p.FixChange(
 		nil,
+		"CREATE INDEX i1 ON t1 (c1)",
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.AddIndex{I: schema.NewIndex("i1")},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	// No changes.
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.AddIndex{
+						I: schema.NewIndex("i1"),
+					},
+				},
+			},
+		},
+		changes,
+	)
+
+	changes, err = p.FixChange(
+		nil,
 		"CREATE INDEX CONCURRENTLY i1 ON t1 (c1)",
 		schema.Changes{
 			&schema.ModifyTable{
@@ -119,6 +148,7 @@ func TestFixChange_CreateIndexCon(t *testing.T) {
 		},
 		changes,
 	)
+
 	changes, err = p.FixChange(
 		nil,
 		"CREATE INDEX CONCURRENTLY i1 ON t1 (c1)",
