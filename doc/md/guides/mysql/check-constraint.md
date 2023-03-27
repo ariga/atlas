@@ -150,7 +150,7 @@ Atlas is an open-source project which allows us to manage our database using a s
 If you are just getting started, install the latest version of Atlas using the guide to [setting up Atlas](https://atlasgo.io/getting-started/).
 :::
 
-For the example, let's create a database `check_constraint` from MySQL terminal from the following command:
+For the example, let's create a database `check_constraint` from MySQL terminal with the following command:
 
 ```sql
 CREATE DATABASE check_constraint;
