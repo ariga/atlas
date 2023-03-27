@@ -1,0 +1,52 @@
+only postgres15
+
+# Ignore tables that were created in the same file.
+atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1 > got.txt
+cmp got.txt empty.txt
+
+atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected2.txt
+
+atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected3.txt
+
+atlas migrate lint --dir file://migrations4 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected4.txt
+
+-- empty.txt --
+-- migrations1/1.sql --
+CREATE TABLE t(c int);
+CREATE INDEX i ON t(c);
+
+-- migrations2/1.sql --
+CREATE TABLE t(c int);
+CREATE INDEX i1 ON t(c);
+-- migrations2/2.sql --
+DROP INDEX i1;
+CREATE INDEX i2 ON t(c);
+-- expected2.txt --
+2.sql: concurrent index violations detected:
+
+	L1: Dropping index "i1" non-concurrently causes write locks on the "t" table
+	L2: Creating index "i2" non-concurrently causes write locks on the "t" table
+
+-- migrations3/1.sql --
+CREATE TABLE t(c int);
+-- migrations3/2.sql --
+CREATE INDEX CONCURRENTLY i ON t(c);
+-- expected3.txt --
+2.sql: concurrent index violations detected:
+
+	L1: Indexes cannot be created or deleted within a transaction. Add the `atlas:txmode none` directive to the header to prevent this file from running in a transaction
+
+-- migrations4/1.sql --
+CREATE TABLE t(c int);
+-- migrations4/2.sql --
+CREATE INDEX CONCURRENTLY i2 ON t(c);
+CREATE INDEX i1 ON t(c);
+-- expected4.txt --
+2.sql: concurrent index violations detected:
+
+	L1: Indexes cannot be created or deleted within a transaction. Add the `atlas:txmode none` directive to the header to prevent this file from running in a transaction
+	L2: Creating index "i1" non-concurrently causes write locks on the "t" table
+
