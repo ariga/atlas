@@ -166,6 +166,45 @@ lint {
 }
 ```
 
+### Concurrent Index Policy (PostgreSQL)
+
+Schema changes like `CREATE INDEX` or `DROP INDEX` can cause the database to lock the table against write operations.
+Luckily, PostgreSQL provides the
+[`CONCURRENTLY`](https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY) option that
+may be more resource-intensive, but allows normal database operations to continue while the index is built or dropped.
+
+Atlas provides an analyzer that identifies non-concurrent index creation or deletion for tables not created within the
+same file, and recommends executing them concurrently.
+
+Additionally, since indexes cannot be created or deleted concurrently within a transaction, Atlas ensures the
+`atlas:txmode none` directive exists in the file header to prevent this file from running in a transaction. This check
+can be disabled along with the other ones as follows:
+
+```hcl title="atlas.hcl"
+lint {
+  concurrent_index {
+    // highlight-start
+    check_create = false // `true` by default.
+    check_drop   = false // `true` by default.
+    check_txmode = false // `true` by default.
+    // highlight-end
+  }
+}
+```
+
+By default, detected concurrent index violations are reported but do not cause migration linting to fail. Users can
+change this by configuring the `concurrent_index` analyzer in the
+[`atlas.hcl`](../atlas-schema/projects#configure-migration-linting) file:
+
+```hcl title="atlas.hcl"
+lint {
+  concurrent_index {
+    // highlight-next-line
+    error = true
+  }
+}
+```
+
 ## Checks
 
 The following schema change checks are provided by Atlas:
@@ -201,6 +240,10 @@ The following schema change checks are provided by Atlas:
 | [NM104](#NM104)                           | Index name violates the naming convention                                       |
 | [NM105](#NM105)                           | Foreign-key constraint name violates the naming convention                      |
 | [NM106](#NM106)                           | Check constraint name violates the naming convention                            |
+| **PG1**                                   | **[Concurrent Indexes](#concurrent-index-policy-postgresql)**                   |
+| [PG101](#PG101)                           | Missing the `CONCURRENTLY` in index creation                                    |
+| [PG102](#PG102)                           | Missing the `CONCURRENTLY` in index deletion                                    |
+| [PG103](#PG103)                           | Missing `atlas:txmode none` directive in file header                            |
 
 #### DS101 {#DS101}
 
@@ -449,3 +492,13 @@ A foreign-key constraint has been given a name that violates the naming conventi
 
 #### NM106 {#NM106}
 A check constraint has been given a name that violates the naming convention.
+
+#### PG101 {#PG101}
+Creating an index non-concurrently locks the table against write operations.
+
+#### PG102 {#PG102}
+Dropping an index non-concurrently locks the table against write operations.
+
+#### PG103 {#PG103}
+Indexes cannot be created or deleted concurrently within a transaction. Add the `atlas:txmode none` directive to the
+header to prevent this file from running in a transaction.
