@@ -106,10 +106,10 @@ func (*ConcurrentIndex) Name() string {
 
 var (
 	// codeCreateNoCon is a PostgreSQL specific code for reporting
-	// indexes creation without the CONCURRENTLY clause.
+	// indexes creation without the CONCURRENTLY option.
 	codeCreateNoCon = sqlcheck.Code("PG101")
 	// codeDropNoCon is a PostgreSQL specific code for reporting
-	// indexes deletion without the CONCURRENTLY clause.
+	// indexes deletion without the CONCURRENTLY option.
 	codeDropNoCon = sqlcheck.Code("PG102")
 	// codeNoTxNone is a PostgreSQL specific code for reporting indexes
 	// creation or deletion concurrently without the txmode directive set
@@ -177,7 +177,7 @@ func (a *ConcurrentIndex) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 		diags = append([]sqlcheck.Diagnostic{{
 			Pos:  0,
 			Code: codeNoTxNone,
-			Text: "Indexes cannot be created or deleted within a transaction. Add the `atlas:txmode none` " +
+			Text: "Indexes cannot be created or deleted concurrently within a transaction. Add the `atlas:txmode none` " +
 				"directive to the header to prevent this file from running in a transaction",
 		}}, diags...)
 	}

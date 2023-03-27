@@ -100,7 +100,7 @@ concurrent_index {
 		})
 		require.NoError(t, err)
 		require.Len(t, report.Diagnostics, 1)
-		require.Equal(t, report.Diagnostics[0].Text, "Indexes cannot be created or deleted within a transaction. Add the `atlas:txmode none` directive to the header to prevent this file from running in a transaction")
+		require.Equal(t, report.Diagnostics[0].Text, "Indexes cannot be created or deleted concurrently within a transaction. Add the `atlas:txmode none` directive to the header to prevent this file from running in a transaction")
 	})
 
 	t.Run("MixedReport", func(t *testing.T) {
@@ -152,7 +152,7 @@ concurrent_index {
 		})
 		require.EqualError(t, err, "concurrent index violations detected")
 		require.Len(t, report.Diagnostics, 2)
-		require.Equal(t, report.Diagnostics[0].Text, "Indexes cannot be created or deleted within a transaction. Add the `atlas:txmode none` directive to the header to prevent this file from running in a transaction")
+		require.Equal(t, report.Diagnostics[0].Text, "Indexes cannot be created or deleted concurrently within a transaction. Add the `atlas:txmode none` directive to the header to prevent this file from running in a transaction")
 		require.Equal(t, report.Diagnostics[1].Text, `Dropping index "i2" non-concurrently causes write locks on the "Users" table`)
 	})
 }
