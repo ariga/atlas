@@ -197,7 +197,7 @@ table "people"  {
     }
     column "full_name"  {
         type  = varchar(255)
-        as  = "CONCAT(first_name," ",last_name)"
+        as  = sql("CONCAT(first_name," ",last_name)")
     }
 }
 ```
