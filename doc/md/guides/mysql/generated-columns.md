@@ -177,7 +177,7 @@ table "people"  {
     column "full_name"  {
         type  = varchar(255)
         as  {
-            expr  = "first_name + ' ' + last_name"
+            expr  = "CONCAT(first_name, ' ', last_name)"
             type  = VIRTUAL
         }
     }
@@ -197,7 +197,7 @@ table "people"  {
     }
     column "full_name"  {
         type  = varchar(255)
-        as  = "first_name + ' ' + last_name"
+        as  = "CONCAT(first_name," ",last_name)"
     }
 }
 ```
