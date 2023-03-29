@@ -12,7 +12,7 @@ In this article, we'll explore the basics of check constraints in PostgreSQL, in
 
 ### What is the `check` constraint in PostgreSQL?
 
-A check constraint allows you to specify a Boolean expression that must result in `TRUE` in order to `INSERT` each row in a table. This expression can refer to one or more columns in the table, and can be used to enforce various kinds of data constraints, such as requiring a certain range of values or making sure that certain fields are not equal to range of values. The constraint ensures that the inserted or updated value in a column must follow certain criteria.
+A check constraint allows you to specify a Boolean expression that must result in `TRUE` in order to insert each row in a table. This expression can refer to one or more columns in the table, and can be used to enforce various kinds of data constraints, such as requiring a certain range of values or making sure that certain fields are not equal to range of values. The constraint ensures that the inserted or updated value in a column must follow certain criteria.
 
 ### When do we need check constraints?
 
@@ -33,7 +33,7 @@ The expression defines a list of values that the column can have.
 
 The condition for an expression can be any valid PostgreSQL expression. If the condition is not met, the insert or update operation will fail.
 
-### How to use check constraint in a PostgreSQL schema
+### How to use check constraints in a PostgreSQL schema
 
 To add a CHECK constraint to an existing table in PostgreSQL, use the `ALTER TABLE` statement:
 
@@ -55,7 +55,7 @@ INSERT INTO example (id, value) VALUES (1, -1);
 -- This will trigger an "ERROR: new row for relation "example" violates check constraint "positive_value"" error
 ```
 
-Here is an example on how to add CHECK constraint to multiple columns:
+Here is an example on how to add a CHECK constraint to multiple columns:
 
 ```sql title=Example
 CREATE TABLE example (
@@ -236,7 +236,7 @@ We have added three table definitions in our HCL schema file. Now, it is time to
 atlas schema apply --url "postgres://postgres:pass@localhost:5432/check_constraint?sslmode=disable" --to "file://schema.hcl"
 ```
 
-Atlas generates the necessary SQL statements to add the new tables we defined in our HCL file, to the database schema. Press Enter while the `Apply` option is highlighted to apply the changes:
+Atlas generates the necessary SQL statements to add the new tables we defined in our HCL file to the database schema. Press Enter while the `Apply` option is highlighted to apply the changes:
 
 ```console title=Output
 -- Planned Changes:

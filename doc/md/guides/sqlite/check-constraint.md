@@ -6,13 +6,13 @@ slug: /guides/sqlite/check-constraint
 
 ### Introduction
 
-CHECK constraints are critical for maintaining data integrity in SQLite. By using CHECK constraint, we can define rules for valid data entry and prevent the insertion of incorrect, inconsistent, or unwanted data into a table. 
+CHECK constraints are critical for maintaining data integrity in SQLite. By using CHECK constrainst, we can define rules for valid data entry and prevent the insertion of incorrect, inconsistent, or unwanted data into a table. 
 
 In this article, we'll explore the basics of CHECK constraints in SQLite, including how to define and use them, and some best practices for working with them. We will also see how we can manage CHECK constraints in a SQLite schema easily using [Atlas](https://atlasgo.io/), an open-source schema management tool.
 
 ### What is the `CHECK` constraint in SQLite?
 
-A CHECK constraint allows you to specify a boolean expression that must result in `TRUE` in order to `INSERT` a row in a table. This expression can refer to one or more columns in the table, and can be used to enforce various kinds of data constraints, such as requiring a certain range of values or making sure that certain fields are not null. The constraint ensures that the inserted or updated values in a column must follow certain criteria.
+A CHECK constraint allows you to specify a boolean expression that must result in `TRUE` in order to insert a row in a table. This expression can refer to one or more columns in the table, and can be used to enforce various kinds of data constraints, such as requiring a certain range of values or making sure that certain fields are not null. The constraint ensures that the inserted or updated values in a column must follow certain criteria.
 
 ### When do we need `CHECK` constraints?
 
@@ -54,7 +54,7 @@ INSERT INTO example (id, value) VALUES (1, -1);
 -- This will trigger an "CHECK constraint failed" error
 ```
 
-Here is an example on how to add CHECK constraint to multiple columns:
+Here is an example on how to add CHECK constraints to multiple columns:
 
 ```sql title=Example
 -- Create the example table with the specified CHECK constraints
@@ -178,13 +178,13 @@ schema "main" {
 }
 ```
 
-After removing both the constraint definitions from the table and saving the changes, let’s apply the changes to the database by using `atlas schema apply` command:
+After removing both of the constraint definitions from the table and saving the changes, let’s apply the changes to the database by using `atlas schema apply` command:
 
 ```console
 atlas schema apply --url "sqlite://example.db" --to "file://schema.hcl"
 ```
 
-Dropping check constraints is not a straightforward process and requires complex workarounds. However, the Atlas simplified this process for us by automatically planning the removal of check constraints.
+Dropping check constraints is not a straightforward process and requires complex workarounds. However, Atlas simplified this process for us by automatically planning the removal of check constraints.
 
 You can review the planned changes, and then press Enter while the `Apply` option is highlighted in order to apply the changes.
 

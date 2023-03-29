@@ -150,7 +150,7 @@ Atlas is an open-source project which allows us to manage our database using a s
 If you are just getting started, install the latest version of Atlas using the guide to [setting up Atlas](https://atlasgo.io/getting-started/).
 :::
 
-For the example, let's create a database `check_constraint` from MySQL terminal with the following command:
+For the example, let's create a database `check_constraint` from the MySQL terminal with the following command:
 
 ```sql
 CREATE DATABASE check_constraint;
@@ -170,7 +170,7 @@ schema "check_constraint" {
 
 There are no tables in our schema yet, so let’s create tables by adding the following table definitions to the schema.
 
-To create a table with `CHECK` constraint that ensures a column contains only positive integers, we can add the following block in `schema.hcl`:
+To create a table with a `CHECK` constraint that ensures a column contains only positive integers, we can add the following block in `schema.hcl`:
 
 ```hcl title="schema.hcl" {6-19}
 schema "check_constraint" {
@@ -194,7 +194,7 @@ table "users" {
 }
 ```
 
-To create a table with `CHECK` constraint that ensures a column contains only values within a certain range, we can add the following block in `schema.hcl`:
+To create a table with a `CHECK` constraint that ensures a column contains only values within a certain range, we can add the following block in `schema.hcl`:
 
 ```hcl title="schema.hcl" {21-34}
 schema "check_constraint" {
@@ -233,7 +233,7 @@ table "blog_posts" {
 }
 ```
 
-To create a table with `CHECK` constraint that ensures a column contains a value that matches a specific pattern, we can add the following block in `schema.hcl`:
+To create a table with a `CHECK` constraint that ensures a column contains a value that matches a specific pattern, we can add the following block in `schema.hcl`:
 
 ```hcl title="schema.hcl" {36-49}
 schema "check_constraint" {
