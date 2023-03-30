@@ -1015,11 +1015,11 @@ func (s *state) partAttrs(b *sqlx.Builder, idx *schema.Index, p *schema.IndexPar
 			// Defaults when DESC is specified.
 			case p.Desc && attr.NullsFirst:
 			case p.Desc && attr.NullsLast:
-				b.P("NULL LAST")
+				b.P("NULLS LAST")
 			// Defaults when DESC is not specified.
 			case !p.Desc && attr.NullsLast:
 			case !p.Desc && attr.NullsFirst:
-				b.P("NULL FIRST")
+				b.P("NULLS FIRST")
 			}
 		// Handled above.
 		case *IndexOpClass, *schema.Collation:
