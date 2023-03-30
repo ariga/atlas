@@ -440,18 +440,18 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				func() schema.Change {
+					dropC, addC := schema.NewStringColumn("email", "text"), schema.NewStringColumn("name", "text")
 					users := schema.NewTable("users").
-						AddColumns(
-							schema.NewStringColumn("id", "varchar(255)"),
-							schema.NewStringColumn("name", "varchar(255)"),
-						)
-					users.SetPrimaryKey(schema.NewPrimaryKey(users.Columns[:1]...))
+						AddColumns(schema.NewStringColumn("id", "text"), addC, schema.NewStringColumn("last", "text"))
+					users.SetPrimaryKey(schema.NewPrimaryKey(addC))
 					return &schema.ModifyTable{
 						T: users,
 						Changes: []schema.Change{
+							&schema.DropColumn{C: dropC},
+							&schema.AddColumn{C: addC},
 							&schema.ModifyPrimaryKey{
-								From: schema.NewPrimaryKey(users.Columns[:1]...).
-									AddAttrs(&IndexInclude{Columns: users.Columns[1:]}),
+								From: schema.NewPrimaryKey(dropC).
+									AddAttrs(&IndexInclude{Columns: users.Columns[2:]}),
 								To: users.PrimaryKey,
 							},
 						},
@@ -463,8 +463,8 @@ func TestPlanChanges(t *testing.T) {
 				Transactional: true,
 				Changes: []*migrate.Change{
 					{
-						Cmd:     `ALTER TABLE "users" DROP CONSTRAINT "users_pkey" , ADD PRIMARY KEY ("id")`,
-						Reverse: `ALTER TABLE "users" DROP CONSTRAINT "users_pkey" , ADD PRIMARY KEY ("id") INCLUDE ("name")`,
+						Cmd:     `ALTER TABLE "users" DROP CONSTRAINT "users_pkey", DROP COLUMN "email", ADD COLUMN "name" text NOT NULL, ADD PRIMARY KEY ("name")`,
+						Reverse: `ALTER TABLE "users" DROP CONSTRAINT "users_pkey", DROP COLUMN "name", ADD COLUMN "email" text NOT NULL, ADD PRIMARY KEY ("email") INCLUDE ("last")`,
 					},
 				},
 			},
@@ -580,8 +580,8 @@ func TestPlanChanges(t *testing.T) {
 						Reverse: `CREATE INDEX CONCURRENTLY "drop_con" ON "users" ("id")`,
 					},
 					{
-						Cmd:     `ALTER TABLE "users" ADD COLUMN "name" character varying(255) NOT NULL DEFAULT 'logged_in', ADD COLUMN "last" character varying(255) NOT NULL DEFAULT 'logged_in', ADD CONSTRAINT "name_not_empty" CHECK ("name" <> ''), DROP CONSTRAINT "id_nonzero", DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK (("id") % 2 = 0)`,
-						Reverse: `ALTER TABLE "users" DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK ("id" % 2 = 0), ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0), DROP CONSTRAINT "name_not_empty", DROP COLUMN "last", DROP COLUMN "name"`,
+						Cmd:     `ALTER TABLE "users" DROP CONSTRAINT "id_nonzero", ADD COLUMN "name" character varying(255) NOT NULL DEFAULT 'logged_in', ADD COLUMN "last" character varying(255) NOT NULL DEFAULT 'logged_in', ADD CONSTRAINT "name_not_empty" CHECK ("name" <> ''), DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK (("id") % 2 = 0)`,
+						Reverse: `ALTER TABLE "users" DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK ("id" % 2 = 0), DROP CONSTRAINT "name_not_empty", DROP COLUMN "last", DROP COLUMN "name", ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0)`,
 					},
 					{
 						Cmd:     `CREATE INDEX "id_key" ON "users" ("id" DESC) WHERE success`,

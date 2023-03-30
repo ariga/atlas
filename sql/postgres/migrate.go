@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -283,6 +284,14 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			} else {
 				dropI = append(dropI, change)
 			}
+		case *schema.ModifyPrimaryKey:
+			// Primary key modification needs to be split into "Drop" and "Add"
+			// because the new key may include columns that have not been added yet.
+			alter = append(alter, &schema.DropPrimaryKey{
+				P: change.From,
+			}, &schema.AddPrimaryKey{
+				P: change.To,
+			})
 		case *schema.ModifyIndex:
 			k := change.Change
 			if change.Change.Is(schema.ChangeComment) {
@@ -391,6 +400,10 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		reverse    []schema.Change
 		reversible = true
 	)
+	// Constraints drop should be executed first.
+	sort.SliceStable(changes, func(i, j int) bool {
+		return dropConst(changes[i]) && !dropConst(changes[j])
+	})
 	build := func(alter *changeGroup, changes []schema.Change) (string, error) {
 		b := s.Build("ALTER TABLE").Table(t)
 		err := b.MapCommaErr(changes, func(i int, b *sqlx.Builder) error {
@@ -448,13 +461,6 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			case *schema.DropPrimaryKey:
 				b.P("DROP CONSTRAINT").Ident(pkName(t, change.P))
 				reverse = append(reverse, &schema.AddPrimaryKey{P: change.P})
-			case *schema.ModifyPrimaryKey:
-				b.P("DROP CONSTRAINT").Ident(pkName(t, change.From))
-				b.P(", ADD PRIMARY KEY")
-				if err := s.index(b, change.To); err != nil {
-					return err
-				}
-				reverse = append(reverse, &schema.ModifyPrimaryKey{From: change.To, To: change.From, Change: change.Change})
 			case *schema.AddForeignKey:
 				b.P("ADD")
 				s.fks(b, change.F)
@@ -1324,4 +1330,14 @@ func pkName(t *schema.Table, pk *schema.Index) string {
 	// The default naming for primary-key constraints is <Table>_pkey.
 	// See: the ChooseIndexName function in PostgreSQL for more reference.
 	return t.Name + "_pkey"
+}
+
+// dropConst indicates if the given change is a constraint drop.
+func dropConst(c schema.Change) bool {
+	switch c.(type) {
+	case *schema.DropIndex, *schema.DropPrimaryKey, *schema.DropCheck, *schema.DropForeignKey:
+		return true
+	default:
+		return false
+	}
 }
