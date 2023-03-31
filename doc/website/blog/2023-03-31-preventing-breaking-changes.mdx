@@ -1,0 +1,119 @@
+---
+title: "Preventing breaking changes to your database with Atlas"
+authors: rotemtam
+tags: [ci, linting, devops, dora-metrics]
+---
+
+As applications evolve, database schema changes become inevitable. However, some types
+of changes can break the contract between the backend server and the database, leading
+to errors during deployment and application downtime. Ensuring that these breaking changes
+are detected and prevented is crucial for maintaining system stability and delivering
+a seamless user experience. In this post, we will explore how Atlas can help you prevent
+breaking schema changes from impacting your application.
+
+**What are breaking changes?**
+
+Backward-incompatible changes, also known as breaking changes, are schema changes that
+have the potential to break the contract with applications that rely on the old schema.
+Applications today are expected to be highly-available, which means that we cannot
+shut them down for maintenance, and must continuously serve traffic, 24/7.
+
+The common strategy for dealing with this requirement is called a "rolling deployment"
+where we deploy new versions of the application in stages, gradually increasing the
+percentage of traffic served by the new version. This means that during the deployment phase
+of a new version we will always have old and new code running side by side.
+
+This means, for example, that renaming a column from `email_address` to `email` will cause older
+versions of the application to fail when they try to access the column using the old name.
+This is a breaking change, and it can cause downtime if not detected and prevented.
+
+**Manually enforcing backward-compatability**
+
+Preventing breaking changes in production is crucial to maintaining a highly-available
+system. To enforce backward-compatibility most teams rely on two things:
+
+1. **GitOps:** Making sure every change to the database is checked in to
+  source control system, and using automated schema migration tools to apply the change.
+2. **Manual code-review:** Carefully reviewing every schema change to make sure it
+  will not break the contract between the backend and the database.
+
+Checking-in database artifacts into source control is a well established technique -
+in fact it's one of the first princples mentioned in the seminal
+[Evolutionary Database Design](https://martinfowler.com/articles/evodb.html#AllDatabaseArtifactsAreVersionControlledWithApplicationCode)
+(Fowler and Sadalage, 2016).
+
+However, let's consider the impact of relying on human review for changes using
+the widely accepted [DORA Metrics](https://cloud.google.com/blog/products/devops-sre/using-the-four-keys-to-measure-your-devops-performance)
+for assessing DevOps performance:
+
+1. **Lead time increases** - Lead time measures the time it takes to get a commit to production.
+  If a change needs the careful attention and approval of an expert reviewer that reviewer becomes a bottleneck.
+
+2. **Change failure rate increases** - measures the percentage of deployments causing a failure in
+  production. Relying on humans to routinely evaluate and verify every change against dozens of rules and
+  policies is naturally error-prone, especially if they are busy and under constant pressure to deliver
+  (which expert reviewers almost always are).
+
+3. **Deployment frequency decreases** -  How often an organization successfully releases to production.
+  When engineers learn that a certain type of change gets queued up in slow review cycles there is a tendency
+  to batch changes together, decreasing the frequency of deployments and increasing their riskiness.
+
+This pattern is not unique to database changes, in fact it looks exactly the same for any high
+risk change. Since the emergence of the DevOps movement manual verification of changes is gradually
+being replaced by automation in many fields, can the same be done for database changes?
+
+**Automated detection of schema changes with Atlas**
+
+Atlas provides support for a process called _migration linting_, which many teams use to
+automatically verify the safety of schema changes against a predefined set of policies.
+Unlike most available SQL linters, Atlas's linter is focused on the _semantic_ level,
+rather than the syntactic level, which involves formatting and coding style standards.
+The linter analyzes the _meaning_ of the changes and their potential impact, rather
+than how the changes are written.
+
+Atlas's `migrate lint` command exposes this mechanism, making the automatic detection of
+breaking schema changes simple and straightforward.
+
+Suppose we wanted to run the following migration:
+
+```sql
+ALTER TABLE `users` RENAME TO `Users`;
+```
+
+Renaming a table is a backward-incompatible change that can cause errors during deployment
+(migration) if applications running the previous version of the schema refer to the old name
+in their statements. To check if our latest migration file contains any dangerous changes we run:
+
+```
+atlas migrate lint --dev-url docker://mysql/8/dev --latest 1
+```
+
+Atlas prints:
+
+```
+20230330203525.sql: backward incompatible changes detected:
+
+	L1: Renaming table "users" to "Users"
+```
+
+Amazing! Atlas detected our breaking change automatically. In addition to breaking changes
+Atlas supports many other safety checks that you can apply to your schema changes.
+
+Linting can be used during development from the developer's workstation to detect issues
+locally, but it really shines when you connect it to your project's *continuous integration*
+pipeline, allowing you to *prevent* such changes from ever reaching production.
+Setting up CI for schema changes takes less than a minute using [Atlas Cloud](https://atlasgo.cloud)
+or a little longer using our [GitHub Action](https://github.com/ariga/atlas-action).
+
+![](https://user-images.githubusercontent.com/1522681/229139140-c107d56d-810b-4229-8ea6-cbba1735e4b9.png)
+
+**Wrapping up**
+
+Detecting and preventing breaking changes in your database schema is essential for
+maintaining a high-quality user experience and ensuring system stability. Atlas provides
+you with a practical and efficient solution to analyze and detect potential breaking changes
+before they impact your application.
+
+### What's next?
+
+Have questions or feedback? Feel free to reach out [on our Discord server](https://discord.gg/zZ6sWVg6NT).
