@@ -9,13 +9,14 @@ import TabItem from '@theme/TabItem';
 
 It's been only two weeks since the release of v0.10.0, but we are already back with more exciting features we want to
 share with you. Besides some more improvements and bug fixes, we added two new SQL analyzers to Atlas and the capability
-to have Atlas Cloud pick up a linting configuration file (`atlas.hcl`) from your repository.
+to have Atlas Cloud pick up a [linting configuration file](/atlas-schema/projects#configure-migration-linting) from your
+repository.
 
 ## Concurrent Index Policy (Postgres)
 
 One of the Analyzers we added in this release is the
 [Concurrent Index Policy](/lint/analyzers#concurrent-index-policy-postgresql) Analyzer for Postgres. When creating or
-dropping indexes Postgres will lock the table against writes. Dependent on the size of the data that lock might be in
+dropping indexes Postgres will lock the table against writes. Depending on the amount of data this lock might be in
 place longer than just a few moments, up to several hours. Therefore, Postgres provides the `CONCURRENLTY` option
 which will cause the index to be built without keeping a lock for the whole time it is built. While consuming more
 resources, this option oftentimes is preferred, and we are happy to present to you, that Atlas Linting engine is now
@@ -24,13 +25,13 @@ capable of detecting statements that create or drop an index without using the `
 ## Naming Conventions Policy
 
 Keeping consistency when naming database schema resources is a widely common practice. Atlas now has an analyzer that
-can detect names not compliant to a given naming policy and will warn you in such cases. You can configure both a global
-or a resource specific policy. Read on to learn how to configure this analyzer or have a look at the
+can detect names that don't comply with a given naming policy and will warn you in such cases. You can configure both a
+global or a resource specific policy. Read on to learn how to configure this analyzer or have a look at the
 [documentation](/lint/analyzers#naming-conventions-policy).
 
 ## Cloud Linting Configuration
 
-In our last post, [@a8m](https://github.com/a8m) presented the Atlas Cloud community preview and how to connect a
+In our last post, [@a8m](https://github.com/a8m) introduced the Community Preview for Atlas Cloud and how to connect a
 migration directory in your GitHub repository to Atlas Cloud with just a few clicks. As of then, the Atlas Cloud Linting
 reports that are added to your PR's used the default linting configuration. In this post, I will show you how to
 add configuration to the linting by making use of both the new analyzers I mentioned above.
@@ -117,7 +118,7 @@ at the file annotations Atlas adds to your changes:
 
 ## What next?
 
-This is just a small feature we added to Atlas Cloud! In the upcoming weeks, we will be rolling out several new major
+I sure hope the new analyzers will be useful to you. In the upcoming weeks, we will be rolling out several new major
 features that we have been working on lately, including schema drift detection, managed migration deployments,
 and much more. If any of these features sound interesting to you, please do not hesitate to
 [contact us](https://atlasgo.cloud/pricing).
