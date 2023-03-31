@@ -15,11 +15,17 @@ breaking schema changes from impacting your application.
 
 Backward-incompatible changes, also known as breaking changes, are schema changes that
 have the potential to break the contract with applications that rely on the old schema.
-As applications today are expected to be highly-available, which means that we cannot
-shut them down for maintenance, during the deployment phase of a new version we will
-always have old and new code serving traffic side by side. This means, for example, that
-renaming a column from `email_address` to `email` will cause errors applications running
-the previous version of the schema reference the old column name in their queries.
+Applications today are expected to be highly-available, which means that we cannot
+shut them down for maintenance, and must continuously serve traffic, 24/7.
+
+The common strategy for dealing with this requirement is called a "rolling deployment"
+where we deploy new versions of the application in stages, gradually increasing the
+percentage of traffic served by the new version. This means that during the deployment phase
+of a new version we will always have old and new code running side by side.
+
+This means, for example, that renaming a column from `email_address` to `email` will cause older
+versions of the application to fail when they try to access the column using the old name.
+This is a breaking change, and it can cause downtime if not detected and prevented.
 
 **Manually enforcing backward-compatability**
 
