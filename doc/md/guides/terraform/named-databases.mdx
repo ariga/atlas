@@ -56,8 +56,8 @@ resource "google_sql_database_instance" "main" {
 </TabItem>
 </Tabs>
 
-One of the common things IaC pipelines need to achieve when preparing the infrastructure for
-the deployment of applications is to ensure the required schemas (named databases) exist on the
+When preparing the infrastructure for
+the deployment of applications, IaC need to ensure the required schemas (named databases) exist on the
 database instance in which tables and other database resources will be created.
 
 This can be done manually by connecting to the database instance and running a command such as:
@@ -73,7 +73,7 @@ aim to eliminate all manual provisioning steps and replace them with automation.
 
 To achieve the same goal, Terraform users may use the
 [Atlas Terraform Provider](https://registry.terraform.io/providers/ariga/atlas/latest/docs)
-which allows teams to provision database resources as part of thei IaC pipelines. Let's see how.
+which allows teams to provision database resources as part of their IaC pipelines. Let's see how.
 
 Start by adding the Atlas provider as a dependency of your Terraform project:
 
@@ -91,8 +91,8 @@ terraform {
 ```
 
 When storing schema definitions, many database engines perform some form of normalization.
-That is, despite us providing a specific definition of some aspect of the schema, the database
-will store it in another, equivalent form. This means in certain situations it may appear to
+Meaning, despite us providing a specific definition of some aspect of the schema, the database
+will store it in another, equivalent form. Therefore, in certain situations it may appear to
 Atlas as if some diff exists between the desired and inspected schemas, whereas in reality
 there is none.
 
@@ -102,7 +102,7 @@ This database is used to normalize the schema prior to planning migrations and f
 changes to ensure their applicability before execution.
 
 Before running `terraform apply` for this project, make sure you have a locally running,
-*empty* database, you can use Docker to spin one up:
+*empty* database. You can use Docker to spin one up:
 
 ```shell
 docker run --rm --name devdb -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=pass mysql:8
@@ -123,7 +123,7 @@ data "atlas_schema" "db" {
 }
 ```
 
-The `src` attributes defines the desired schema we wish to apply to our
+The `src` attribute defines the desired schema we wish to apply to our
 target database. Next let's see how we can apply this schema to our target
 database:
 
