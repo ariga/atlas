@@ -40,18 +40,19 @@ add configuration to the linting by making use of both the new analyzers I menti
 <TabItem value="New Migration Directory">
 
 When connecting a new migration directory, Atlas Cloud will scan the repository for an existing `atlas.hcl` file
-and propose to you to use that file on migration linting.
+and propose to you to use that file on migration linting. If you don't have such a file, you can configure it manually
+as described in the next tab.
 
-[![](https://user-images.githubusercontent.com/12862103/228925926-56a20694-83a0-407d-884f-b57a7bf4170a.png)](https://auth.atlasgo.cloud/login)
+[![](https://atlasgo.io/uploads/blog/lint-config/configre-dir.png)](https://auth.atlasgo.cloud/login)
 
 </TabItem>
 <TabItem value="Connected Migration Directory">
 
 For an already connected migration directory, you can head over to the migration directory in Atlas Cloud
-and connect an `atlas.hcl` file living in the same repository as your migration files.
+and connect an `atlas.hcl` file living in the same repository as your migration files or create one manually
+in the _Linting Config_ tab.
 
-TODO - CHANGE IMAGE
-[![](https://user-images.githubusercontent.com/12862103/228926214-1c93ce38-f95b-40ab-87bb-5b6598020f35.png)](https://auth.atlasgo.cloud/login)
+[![](https://atlasgo.io/uploads/blog/lint-config/configure-existing.png)](https://auth.atlasgo.cloud/login)
 
 </TabItem>
 </Tabs>
@@ -106,7 +107,7 @@ CREATE INDEX email_idx ON users (email);
 After adding the above `atlas.hcl` configuration file and the new migration, create a Pull Request on GitHub and observe
 Atlas Cloud doing its magic wizardry:
 
-[![](https://user-images.githubusercontent.com/12862103/229103992-eee0ae24-feca-45f1-9e8b-b48859574a08.png)](https://auth.atlasgo.cloud/login)
+[![](https://atlasgo.io/uploads/blog/lint-config/atlas-report.png)](https://auth.atlasgo.cloud/login)
 
 Wonderful! As you can see, Atlas Cloud found the two issues with this simple statement. Since the Concurrent Index
 Analyzer is configured to error on violations, merging the PR is blocked (if you have this policy set on GitHub).
@@ -114,7 +115,7 @@ Analyzer is configured to error on violations, merging the PR is blocked (if you
 In addition to the comment on the Pull Request, you can find more detailed reporting in the Checks tab or have a look
 at the file annotations Atlas adds to your changes:
 
-[![](https://user-images.githubusercontent.com/12862103/229107746-db96c538-1fc8-4a0e-a4ad-11655205a98f.png)](https://auth.atlasgo.cloud/login)
+[![](https://atlasgo.io/uploads/blog/lint-config/inline-comment.png)](https://auth.atlasgo.cloud/login)
 
 ## What next?
 
