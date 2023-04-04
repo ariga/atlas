@@ -176,9 +176,9 @@ module.exports = {
                     label: 'CHECK Constraint'
                 },
                 {
-                  type: 'doc',
-                  id: 'guides/mysql/generated-columns',
-                  label: 'Generated Columns'
+                    type: 'doc',
+                    id: 'guides/mysql/generated-columns',
+                    label: 'Generated Columns'
                 },
                 {
                     type: 'doc',
@@ -201,6 +201,18 @@ module.exports = {
                     label: 'Constraint Drop (CD101)'
                 },
             ],
+        },
+        {
+            type: 'category',
+            label: 'Terraform',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/terraform/named-databases',
+                    label: 'Named Databases'
+                }
+            ]
         },
         {
             type: 'category',
@@ -273,12 +285,12 @@ module.exports = {
             items: [
                 {
                     type: 'doc',
-                    id:'guides/migration-tools/golang-migrate',
+                    id: 'guides/migration-tools/golang-migrate',
                     label: 'golang-migrate'
                 },
                 {
                     type: 'doc',
-                    id:'guides/migration-tools/goose-import',
+                    id: 'guides/migration-tools/goose-import',
                     label: 'Importing from goose'
                 }
             ]
@@ -290,17 +302,17 @@ module.exports = {
             items: [
                 {
                     type: 'doc',
-                    id:'guides/orms/gorm',
+                    id: 'guides/orms/gorm',
                     label: 'GORM'
                 },
                 {
                     type: 'doc',
-                    id:'guides/frameworks/sqlc-declarative',
+                    id: 'guides/frameworks/sqlc-declarative',
                     label: 'Declarative migrations for sqlc'
                 },
                 {
                     type: 'doc',
-                    id:'guides/frameworks/sqlc-versioned',
+                    id: 'guides/frameworks/sqlc-versioned',
                     label: 'Versioned migrations for sqlc'
                 }
             ]
@@ -312,7 +324,7 @@ module.exports = {
             items: [
                 {
                     type: 'doc',
-                    id:'guides/cloud/explore-inspection',
+                    id: 'guides/cloud/explore-inspection',
                     label: 'How to inspect a local database in the Cloud'
                 }
             ]

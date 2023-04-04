@@ -242,10 +242,10 @@ atlas schema inspect -u "sqlite://telecom_data.db" | grep -A5 index
 
 Amazing! Our new descending index is now created!
 
-## Wrapping up​
+## Wrapping up
 In this guide, we demonstrated how to create and use descending indexes in SQLite to optimize queries with the ORDER BY clause, and how we can use Atlas to easily manage descending indexes in a SQLite database.
 
-## Need More Help?​​
+## Need More Help?
 [Join the Atlas Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
 
 [Sign up](https://www.getrevue.co/profile/ariga) to our newsletter to stay up to date about [Atlas](https://atlasgo.io/), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud/).

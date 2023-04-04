@@ -76,6 +76,9 @@ Importing from [`pressly/goose`](migration-tools/goose-import.md)
 
 [GORM](orms/gorm.md)
 
+## Terraform 
+
+[Provisioning schemas (named databases)](terraform/named-databases.mdx)
 
 ## Cloud
 

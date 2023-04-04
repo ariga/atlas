@@ -1,0 +1,244 @@
+---
+id: named-databases
+title: Provisioning schemas (named databases) with Terraform using Atlas
+slug: /guides/terraform/named-databases
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+[Terraform](https://www.terraform.io/) is an Infrastructure as Code (IaC) tool that allows teams
+to automate and manage their infrastructure through code. It streamlines the process of provisioning,
+updating, and maintaining infrastructure resources while reducing human error.
+
+Many teams rely on managed SQL databases, such as [Amazon RDS](https://aws.amazon.com/rds/) on
+AWS or [Cloud SQL](https://cloud.google.com/sql) on GCP, and use the relevant Terraform provider
+([AWS](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance),
+[GCP](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/sql_database_instance))
+to provision these databases. For example:
+
+<Tabs
+defaultValue="AWS"
+values={[
+    {label: 'RDS (AWS)', value: 'AWS'},
+    {label: 'Cloud SQL (GCP)', value: 'GCP'},
+]}>
+<TabItem value="AWS">
+
+```hcl
+resource "aws_db_instance" "default" {
+  allocated_storage    = 10
+  db_name              = "mydb"
+  engine               = "mysql"
+  engine_version       = "8.0"
+  instance_class       = "db.t3.micro"
+  username             = "foo"
+  password             = "foobarbaz"
+  parameter_group_name = "default.mysql8.0"
+  skip_final_snapshot  = true
+}
+```
+
+</TabItem>
+<TabItem value={"GCP"}>
+
+```hcl
+resource "google_sql_database_instance" "main" {
+  name             = "main-instance"
+  database_version = "POSTGRES_14"
+  region           = "us-central1"
+
+  settings {
+    tier = "db-f1-micro"
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+When preparing the infrastructure for
+the deployment of applications, IaC need to ensure the required schemas (named databases) exist on the
+database instance in which tables and other database resources will be created.
+
+This can be done manually by connecting to the database instance and running a command such as:
+
+```sql
+CREATE SCHEMA "users";
+CREATE SCHEMA "products";
+CREATE SCHEMA "admin";
+```
+
+Such manual interactions with infrastructure is undesired in the context of IaC pipelines which
+aim to eliminate all manual provisioning steps and replace them with automation.
+
+To achieve the same goal, Terraform users may use the
+[Atlas Terraform Provider](https://registry.terraform.io/providers/ariga/atlas/latest/docs)
+which allows teams to provision database resources as part of their IaC pipelines. Let's see how.
+
+Start by adding the Atlas provider as a dependency of your Terraform project:
+
+```hcl
+terraform {
+  required_providers {
+    // highlight-start
+    atlas = {
+      source = "ariga/atlas"
+      version = "~> 0.4.5"
+    }
+    // highlight-end
+  }
+}
+```
+
+When storing schema definitions, many database engines perform some form of normalization.
+Meaning, despite us providing a specific definition of some aspect of the schema, the database
+will store it in another, equivalent form. Therefore, in certain situations it may appear to
+Atlas as if some diff exists between the desired and inspected schemas, whereas in reality
+there is none.
+
+To overcome these situations, we use the `atlas_schema` data source to provide Atlas
+with a connection string to a [_Dev-Database_](https://atlasgo.io/concepts/dev-database).
+This database is used to normalize the schema prior to planning migrations and for simulating
+changes to ensure their applicability before execution.
+
+Before running `terraform apply` for this project, make sure you have a locally running,
+*empty* database. You can use Docker to spin one up:
+
+```shell
+docker run --rm --name devdb -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=pass mysql:8
+```
+
+Next, normalize the schema definition containing three schemas:
+`users`, `products` and `admin`:
+
+```hcl
+// Load (and normalize) the desired schema from an SQL file.
+data "atlas_schema" "db" {
+  src = <<EOF
+  schema "users" {}
+  schema "products" {}
+  schema "admin" {}
+  EOF
+  dev_db_url = "mysql://root:pass@:3306/"
+}
+```
+
+The `src` attribute defines the desired schema we wish to apply to our
+target database. Next let's see how we can apply this schema to our target
+database:
+
+```hcl
+// Sync the state of the target database with the desired state.
+resource "atlas_schema" "db" {
+  hcl = data.atlas_schema.db.hcl
+  url = "mysql://root:pass@localhost:3306/"
+  exclude = [  "users.*", "products.*", "admin.*" ]
+  dev_db_url = "mysql://root:pass@:3306/"
+}
+```
+
+Let's unpack what's going on here:
+* `hcl` - sets the normalized schema from the data source as the desired state for the database.
+* `url` - is the connection string to the target database that we want to manage. To learn how to
+  construct the connection string from an existing managed database see
+  [this guide](https://atlasgo.io/guides/mysql/terraform#connect-everything-together).
+* `exclude` - tells Atlas to ignore any sub-resources inside the three schemas `users`,
+  `products`, and `admin`. This way if tables are later created under these schemas they
+  will not be dropped by Terraform in future `terraform apply` runs.
+
+### See it in action
+
+Since we added a new provider to our project, let's first re-initialize the project:
+```shell
+terraform init
+```
+
+Finally, let's run `apply`:
+
+```shell
+terraform apply
+data.atlas_schema.db: Reading...
+data.atlas_schema.db: Read complete after 0s [id=e9CBNHJqQOfAb7WRlAt83w]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # atlas_schema.market will be created
+  + resource "atlas_schema" "market" {
+      + exclude = [
+          + "users.*",
+          + "products.*",
+          + "admin.*",
+        ]
+      + hcl     = <<-EOT
+            schema "admin" {
+              charset = "utf8mb4"
+              collate = "utf8mb4_0900_ai_ci"
+            }
+            schema "products" {
+              charset = "utf8mb4"
+              collate = "utf8mb4_0900_ai_ci"
+            }
+            schema "users" {
+              charset = "utf8mb4"
+              collate = "utf8mb4_0900_ai_ci"
+            }
+        EOT
+      + id      = (known after apply)
+      + url     = (sensitive value)
+    }
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+│ Warning: Atlas Plan
+│
+│   with atlas_schema.market,
+│   on main.tf line 23, in resource "atlas_schema" "market":
+│   23: resource "atlas_schema" "market" {
+│
+│ The following SQL statements will be executed:
+│
+│
+│ -- add new schema named "admin"
+│ CREATE DATABASE `admin`
+│ -- add new schema named "products"
+│ CREATE DATABASE `products`
+│ -- add new schema named "users"
+│ CREATE DATABASE `users`
+│
+╵
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+```
+
+We type `yes` to apply our plan:
+```shell
+Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+```
+
+Let's re-run apply, to make sure everything is in order:
+```
+terraform apply
+data.atlas_schema.db: Reading...
+data.atlas_schema.db: Read complete after 0s [id=e9CBNHJqQOfAb7WRlAt83w]
+atlas_schema.market: Refreshing state... [id=mysql://localhost:3306/]
+
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration and found no differences, so no changes are needed.
+
+Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
+```
+
+Great! Everything is in sync.
+
+### Wrapping up
+
+In this guide, we demonstrated how to use Terraform and the Atlas Terraform Provider
+to provision empty schemas (named databases) in existing DB instances as part
+of your Infrastructure-as-Code pipelines.
+
+Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT).
