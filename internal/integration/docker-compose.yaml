@@ -37,6 +37,18 @@ services:
     ports:
       - "3308:3306"
 
+  postgres-ext-postgis:
+    container_name: atlas-integration-postgres-ext-postgis
+    platform: linux/amd64
+    image: postgis/postgis:latest
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_PASSWORD: pass
+    healthcheck:
+      test: pg_isready -U postgres
+    ports:
+      - "5429:5432"
+
   postgres10:
     container_name: atlas-integration-postgres10
     platform: linux/amd64

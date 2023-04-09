@@ -324,6 +324,36 @@ jobs:
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="maria103" -timeout 15m ./...
 
+  integration-postgres-ext-postgis:
+    runs-on: ubuntu-latest
+    services:
+      postgres-ext-postgis:
+        image: postgis/postgis:latest
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5429:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for postgres-ext-postgis
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres" -version="postgres-ext-postgis" -timeout 15m ./...
+
   integration-postgres10:
     runs-on: ubuntu-latest
     services:

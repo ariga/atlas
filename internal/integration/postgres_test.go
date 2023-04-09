@@ -36,12 +36,13 @@ type pgTest struct {
 }
 
 var pgTests = map[string]*pgTest{
-	"postgres10": {port: 5430},
-	"postgres11": {port: 5431},
-	"postgres12": {port: 5432},
-	"postgres13": {port: 5433},
-	"postgres14": {port: 5434},
-	"postgres15": {port: 5435},
+	"postgres-ext-postgis": {port: 5429},
+	"postgres10":           {port: 5430},
+	"postgres11":           {port: 5431},
+	"postgres12":           {port: 5432},
+	"postgres13":           {port: 5433},
+	"postgres14":           {port: 5434},
+	"postgres15":           {port: 5435},
 }
 
 func pgRun(t *testing.T, fn func(*pgTest)) {
