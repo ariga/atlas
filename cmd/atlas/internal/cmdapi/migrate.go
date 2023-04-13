@@ -1614,6 +1614,10 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 		return err
 	}
 	for i, s := range srcs {
+		if u, err := url.Parse(s); err == nil && u.Scheme != "" {
+			// Already is a URL.
+			continue
+		}
 		if s, err = filepath.Abs(s); err != nil {
 			return fmt.Errorf("finding abs path to source: %q: %w", s, err)
 		}
