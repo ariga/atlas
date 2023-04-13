@@ -448,30 +448,27 @@ flag.
 
 func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) error {
 	var (
-		c   *sqlclient.Client
 		ctx = cmd.Context()
+		dev *sqlclient.Client
 	)
 	if flags.devURL != "" {
 		var err error
-		c, err = sqlclient.Open(ctx, flags.devURL)
+		dev, err = sqlclient.Open(ctx, flags.devURL)
 		if err != nil {
 			return err
 		}
-		defer c.Close()
+		defer dev.Close()
 	}
 	r, err := stateReader(ctx, &stateReaderConfig{
 		urls:    []string{flags.url},
-		dev:     c,
+		dev:     dev,
 		vars:    GlobalFlags.Vars,
 		schemas: flags.schemas,
 		exclude: flags.exclude,
 	})
-	if c == nil {
-		c, err = sqlclient.Open(ctx, flags.url)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
+	client, ok := r.Closer.(*sqlclient.Client)
+	if !ok && dev != nil {
+		client = dev
 	}
 	s, err := r.ReadState(ctx)
 	if err != nil {
@@ -484,7 +481,7 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 		}
 	}
 	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaInspect{
-		Client: c,
+		Client: client,
 		Realm:  s,
 		Error:  err,
 	})
