@@ -466,6 +466,10 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 		schemas: flags.schemas,
 		exclude: flags.exclude,
 	})
+	if err != nil {
+		return err
+	}
+	defer r.Close()
 	client, ok := r.Closer.(*sqlclient.Client)
 	if !ok && dev != nil {
 		client = dev
