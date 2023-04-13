@@ -395,7 +395,8 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 }
 
 type schemaInspectFlags struct {
-	url       string   // URL of database to apply the changes on.
+	url       string   // URL of resource to inspect.
+	devURL    string   // URL of the dev database.
 	logFormat string   // Format of the log output.
 	schemas   []string // Schemas to take into account when diffing.
 	exclude   []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
@@ -435,6 +436,7 @@ flag.
 	)
 	cmd.Flags().SortFlags = false
 	addFlagURL(cmd.Flags(), &flags.url)
+	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagExclude(cmd.Flags(), &flags.exclude)
 	addFlagLog(cmd.Flags(), &flags.logFormat)
@@ -445,19 +447,36 @@ flag.
 }
 
 func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) error {
-	client, err := sqlclient.Open(cmd.Context(), flags.url)
+	var (
+		c   *sqlclient.Client
+		ctx = cmd.Context()
+	)
+	if flags.devURL != "" {
+		var err error
+		c, err = sqlclient.Open(ctx, flags.devURL)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+	}
+	r, err := stateReader(ctx, &stateReaderConfig{
+		urls:    []string{flags.url},
+		dev:     c,
+		vars:    GlobalFlags.Vars,
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+	})
+	if c == nil {
+		c, err = sqlclient.Open(ctx, flags.url)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+	}
+	s, err := r.ReadState(ctx)
 	if err != nil {
 		return err
 	}
-	defer client.Close()
-	schemas := flags.schemas
-	if client.URL.Schema != "" {
-		schemas = append(schemas, client.URL.Schema)
-	}
-	s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
-		Schemas: schemas,
-		Exclude: flags.exclude,
-	})
 	format := cmdlog.SchemaInspectTemplate
 	if v := flags.logFormat; v != "" {
 		if format, err = template.New("format").Funcs(cmdlog.InspectTemplateFuncs).Parse(v); err != nil {
@@ -465,7 +484,7 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 		}
 	}
 	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaInspect{
-		Client: client,
+		Client: c,
 		Realm:  s,
 		Error:  err,
 	})
