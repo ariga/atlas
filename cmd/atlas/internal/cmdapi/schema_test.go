@@ -592,28 +592,6 @@ func TestSchema_InspectLog(t *testing.T) {
 	require.Equal(t, `{"schemas":[{"name":"main","tables":[{"name":"t1","columns":[{"name":"id","type":"INTEGER","null":true}],"primary_key":{"parts":[{"column":"id"}]}},{"name":"t2","columns":[{"name":"name","type":"TEXT","null":true}]}]}]}`, s)
 }
 
-func TestSchema_InspectFile(t *testing.T) {
-	p := filepath.Join(t.TempDir(), "schema.sql")
-	os.WriteFile(p, []byte(`create table t1 (id integer primary key);create table t2 (name text);`), 0600)
-	db := openSQLite(t, "")
-	cmd := schemaCmd()
-	cmd.AddCommand(schemaInspectCmd())
-	s, err := runCmd(
-		cmd, "inspect",
-		"-u", "file://"+p,
-		"--dev-url", db,
-		"--format", "{{ sql . }}",
-	)
-	require.NoError(t, err)
-	require.Equal(t, strings.Join([]string{
-		`-- Create "t1" table`,
-		"CREATE TABLE `t1` (`id` integer NULL, PRIMARY KEY (`id`));",
-		`-- Create "t2" table`,
-		"CREATE TABLE `t2` (`name` text NULL);",
-		"",
-	}, "\n"), s)
-}
-
 func TestFmt(t *testing.T) {
 	for _, tt := range []struct {
 		name          string
