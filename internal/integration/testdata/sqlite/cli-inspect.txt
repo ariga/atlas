@@ -4,20 +4,16 @@ apply 1.hcl
 atlas schema inspect -u URL > inspected.hcl
 cmp inspected.hcl 1.hcl
 
-# test exclude flag on schema.
-atlas schema inspect -u URL --exclude "main" > inspected.hcl
-cmp inspected.hcl empty.hcl
-
 # test exclude flag on table.
-atlas schema inspect -u URL --exclude "*.users" > inspected.hcl
+atlas schema inspect -u URL --exclude "users" > inspected.hcl
 cmp inspected.hcl notable.hcl
 
 # test exclude flag on column.
-atlas schema inspect -u URL --exclude "main.*.[ab]*" > inspected.hcl
+atlas schema inspect -u URL --exclude "*.[ab]*" > inspected.hcl
 cmp inspected.hcl id.hcl
 
 # test exclude flag on column.
-atlas schema inspect -u URL --exclude "*.*.*" > inspected.hcl
+atlas schema inspect -u URL --exclude "*.*" > inspected.hcl
 cmp inspected.hcl nocolumn.hcl
 
 
