@@ -470,13 +470,13 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 		return err
 	}
 	defer r.Close()
-	client, ok := r.Closer.(*sqlclient.Client)
-	if !ok && dev != nil {
-		client = dev
-	}
 	s, err := r.ReadState(ctx)
 	if err != nil {
 		return err
+	}
+	client, ok := r.Closer.(*sqlclient.Client)
+	if !ok && dev != nil {
+		client = dev
 	}
 	format := cmdlog.SchemaInspectTemplate
 	if v := flags.logFormat; v != "" {
