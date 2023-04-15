@@ -470,10 +470,6 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 		return err
 	}
 	defer r.Close()
-	s, err := r.ReadState(ctx)
-	if err != nil {
-		return err
-	}
 	client, ok := r.Closer.(*sqlclient.Client)
 	if !ok && dev != nil {
 		client = dev
@@ -484,6 +480,7 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
+	s, err := r.ReadState(ctx)
 	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaInspect{
 		Client: client,
 		Realm:  s,
