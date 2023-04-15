@@ -395,7 +395,8 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 }
 
 type schemaInspectFlags struct {
-	url       string   // URL of database to apply the changes on.
+	url       string   // URL of resource to inspect.
+	devURL    string   // URL of the dev database.
 	logFormat string   // Format of the log output.
 	schemas   []string // Schemas to take into account when diffing.
 	exclude   []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
@@ -435,6 +436,7 @@ flag.
 	)
 	cmd.Flags().SortFlags = false
 	addFlagURL(cmd.Flags(), &flags.url)
+	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagExclude(cmd.Flags(), &flags.exclude)
 	addFlagLog(cmd.Flags(), &flags.logFormat)
@@ -445,25 +447,40 @@ flag.
 }
 
 func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) error {
-	client, err := sqlclient.Open(cmd.Context(), flags.url)
+	var (
+		ctx = cmd.Context()
+		dev *sqlclient.Client
+	)
+	if flags.devURL != "" {
+		var err error
+		dev, err = sqlclient.Open(ctx, flags.devURL)
+		if err != nil {
+			return err
+		}
+		defer dev.Close()
+	}
+	r, err := stateReader(ctx, &stateReaderConfig{
+		urls:    []string{flags.url},
+		dev:     dev,
+		vars:    GlobalFlags.Vars,
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+	})
 	if err != nil {
 		return err
 	}
-	defer client.Close()
-	schemas := flags.schemas
-	if client.URL.Schema != "" {
-		schemas = append(schemas, client.URL.Schema)
+	defer r.Close()
+	client, ok := r.Closer.(*sqlclient.Client)
+	if !ok && dev != nil {
+		client = dev
 	}
-	s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
-		Schemas: schemas,
-		Exclude: flags.exclude,
-	})
 	format := cmdlog.SchemaInspectTemplate
 	if v := flags.logFormat; v != "" {
 		if format, err = template.New("format").Funcs(cmdlog.InspectTemplateFuncs).Parse(v); err != nil {
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
+	s, err := r.ReadState(ctx)
 	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaInspect{
 		Client: client,
 		Realm:  s,

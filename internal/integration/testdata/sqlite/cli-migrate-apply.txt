@@ -48,18 +48,18 @@ stderr 'unknown tx-mode "invalid"'
 
 ! atlas migrate apply --url URL --tx-mode all
 stderr 'executing statement "THIS IS A FAILING STATEMENT;" from version "3"'
-atlas schema inspect --url URL --exclude $db.atlas_schema_revisions
+atlas schema inspect --url URL --exclude atlas_schema_revisions
 cmp stdout empty.hcl
 
 # Apply one migration, after rolling everything back, the first revision must still exist.
 atlas migrate apply --url URL 1
-atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users
+atlas schema inspect --url URL --exclude atlas_schema_revisions --exclude users
 cmp stdout empty.hcl
 cmpshow users users.sql
 
 ! atlas migrate apply --url URL --tx-mode all
 stderr 'executing statement "THIS IS A FAILING STATEMENT;" from version "3"'
-atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users
+atlas schema inspect --url URL --exclude atlas_schema_revisions --exclude users
 cmp stdout empty.hcl
 
 # If the broken migration is gone, we can apply everything without any problems.
@@ -69,7 +69,7 @@ atlas migrate hash
 atlas migrate apply --url URL --revisions-schema $db
 cmpshow users users.sql
 cmpshow pets pets.sql
-atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users --exclude $db.pets
+atlas schema inspect --url URL --exclude atlas_schema_revisions --exclude users --exclude pets
 cmp stdout empty.hcl
 
 clearSchema
@@ -81,12 +81,12 @@ atlas migrate hash
 
 ! atlas migrate apply --url URL --tx-mode file
 stderr 'executing statement "THIS IS A FAILING STATEMENT;" from version "3"'
-atlas schema inspect --url URL --exclude $db.atlas_schema_revisions
+atlas schema inspect --url URL --exclude atlas_schema_revisions
 cmpshow users users.sql
 cmpshow pets pets.sql
 
 # Table "broken" does not exist since we rolled back that migration.
-atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users --exclude $db.pets
+atlas schema inspect --url URL --exclude atlas_schema_revisions --exclude users --exclude pets
 cmp stdout empty.hcl
 
 # If the broken migration is gone, we can apply everything without any problems.
@@ -96,7 +96,7 @@ atlas migrate hash
 atlas migrate apply --url URL --revisions-schema $db
 cmpshow users users.sql
 cmpshow pets pets.sql
-atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users --exclude $db.pets
+atlas schema inspect --url URL --exclude atlas_schema_revisions --exclude users --exclude pets
 cmp stdout empty.hcl
 
 clearSchema
@@ -108,12 +108,12 @@ atlas migrate hash
 
 ! atlas migrate apply --url URL --tx-mode none
 stderr 'executing statement "THIS IS A FAILING STATEMENT;" from version "3"'
-atlas schema inspect --url URL --exclude $db.atlas_schema_revisions
+atlas schema inspect --url URL --exclude atlas_schema_revisions
 cmpshow users users.sql
 cmpshow pets pets.sql
 
 # Table "broken" does exist since we do not have transactions.
-atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users --exclude $db.pets
+atlas schema inspect --url URL --exclude atlas_schema_revisions --exclude users --exclude pets
 cmp stdout broken.hcl
 
 -- migrations/1_first.sql --

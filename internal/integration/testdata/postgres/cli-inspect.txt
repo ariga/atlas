@@ -2,7 +2,7 @@ apply 1.hcl
 
 # test url flag
 atlas schema inspect -u URL > inspected.hcl
-cmp inspected.hcl 1.hcl
+cmp inspected.hcl script_cli_inspect.hcl
 
 # test exclude flag on table.
 atlas schema inspect -u URL --exclude "users" > inspected.hcl
@@ -19,7 +19,7 @@ cmp inspected.hcl nocolumn.hcl
 
 -- 1.hcl --
 table "users" {
-  schema = schema.main
+  schema = schema.$db
   column "id" {
     null = false
     type = int
@@ -38,28 +38,55 @@ table "users" {
   }
   column "ac" {
     null = false
-    type = uint64
+    type = int4
   }
 }
-schema "main" {
+schema "$db" {
+}
+
+-- script_cli_inspect.hcl --
+table "users" {
+  schema = schema.script_cli_inspect
+  column "id" {
+    null = false
+    type = integer
+  }
+  column "a" {
+    null = false
+    type = integer
+  }
+  column "b" {
+    null = false
+    type = integer
+  }
+  column "ab" {
+    null = false
+    type = integer
+  }
+  column "ac" {
+    null = false
+    type = integer
+  }
+}
+schema "script_cli_inspect" {
 }
 -- empty.hcl --
 -- notable.hcl --
-schema "main" {
+schema "script_cli_inspect" {
 }
 -- id.hcl --
 table "users" {
-  schema = schema.main
+  schema = schema.script_cli_inspect
   column "id" {
     null = false
-    type = int
+    type = integer
   }
 }
-schema "main" {
+schema "script_cli_inspect" {
 }
 -- nocolumn.hcl --
 table "users" {
-  schema = schema.main
+  schema = schema.script_cli_inspect
 }
-schema "main" {
+schema "script_cli_inspect" {
 }
