@@ -508,14 +508,12 @@ env "local" {
 				Tenant string
 				cmdlog.MigrateApply
 			}
-			fmt.Println(s)
 			require.NoError(t, json.Unmarshal([]byte(s), &r))
 			require.Empty(t, r.Pending)
 			require.Empty(t, r.Applied)
 			require.NotEmpty(t, r.Tenant)
 			require.Equal(t, "sqlite3", r.Driver)
 		}
-
 		_, err = db.Exec("INSERT INTO `tenants` (`name`) VALUES (NULL)")
 		require.NoError(t, err)
 		_, err = runCmd(
@@ -920,6 +918,49 @@ func TestMigrate_Diff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, files, 1)
 		require.Equal(t, "CREATE TABLE `t` (`c` int NULL)", string(files[0].Bytes()))
+	})
+
+	t.Run("ProjectFile", func(t *testing.T) {
+		p := t.TempDir()
+		h := `
+variable "schema" {
+  type = string
+}
+
+variable "dir" {
+  type = string
+}
+
+env "local" {
+  src = "file://${var.schema}"
+  dev = "sqlite://ci?mode=memory&_fk=1"
+  migration {
+    dir = "file://${var.dir}"
+  }
+}
+`
+		pathC := filepath.Join(p, "atlas.hcl")
+		require.NoError(t, os.WriteFile(pathC, []byte(h), 0600))
+		pathS := filepath.Join(p, "schema.sql")
+		require.NoError(t, os.WriteFile(pathS, []byte(`CREATE TABLE t(c int);`), 0600))
+		pathD := t.TempDir()
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateDiffCmd())
+		s, err := runCmd(
+			cmd, "diff",
+			"-c", "file://"+pathC,
+			"--env", "local",
+			"--var", "schema="+pathS,
+			"--var", "dir="+pathD,
+		)
+		require.NoError(t, err)
+		require.Empty(t, s)
+		d, err := migrate.NewLocalDir(pathD)
+		require.NoError(t, err)
+		files, err := d.Files()
+		require.NoError(t, err)
+		require.Len(t, files, 1)
+		require.Equal(t, "-- Create \"t\" table\nCREATE TABLE `t` (`c` int NULL);\n", string(files[0].Bytes()))
 	})
 }
 

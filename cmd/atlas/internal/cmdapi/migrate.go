@@ -1614,6 +1614,9 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 		return err
 	}
 	for i, s := range srcs {
+		if isURL(s) {
+			continue
+		}
 		if s, err = filepath.Abs(s); err != nil {
 			return fmt.Errorf("finding abs path to source: %q: %w", s, err)
 		}
@@ -1626,6 +1629,13 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 		return err
 	}
 	return nil
+}
+
+// isURL returns true if the given string
+// is an Atlas URL with a scheme.
+func isURL(s string) bool {
+	u, err := url.Parse(s)
+	return err == nil && u.Scheme != ""
 }
 
 // cmdEnvsRun executes a given command on each of the configured environment.
