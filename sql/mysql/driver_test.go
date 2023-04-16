@@ -19,11 +19,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParser_ParseURLParseTime(t *testing.T) {
-	u, err := url.Parse("mysql://user:pass@localhost:3306/my_db?foo=bar")
-	require.NoError(t, err)
-	ac := parser{}.ParseURL(u)
-	require.Equal(t, "true", ac.Query().Get("parseTime"))
+func TestParser_ParseURL(t *testing.T) {
+	t.Run("ParseTime", func(t *testing.T) {
+		u, err := url.Parse("mysql://user:pass@localhost:3306/my_db?foo=bar")
+		require.NoError(t, err)
+		ac := parser{}.ParseURL(u)
+		require.Equal(t, "true", ac.Query().Get("parseTime"))
+	})
+	t.Run("UnixDSN", func(t *testing.T) {
+		for u, d := range map[string]string{
+			"mysql+unix:///path/to/socket":                                    "unix(/path/to/socket)/?parseTime=true",
+			"mysql+unix://user:pass@/path/to/socket":                          "user:pass@unix(/path/to/socket)/?parseTime=true",
+			"mysql+unix://user@/path/to/socket?database=dbname":               "user@unix(/path/to/socket)/dbname?parseTime=true",
+			"maria+unix:///path/to/file.socket?database=test&tls=skip-verify": "unix(/path/to/file.socket)/test?parseTime=true&tls=skip-verify",
+		} {
+			u1, err := url.Parse(u)
+			require.NoError(t, err)
+			p := parser{}.ParseURL(u1)
+			require.Equal(t, d, p.DSN)
+		}
+	})
 }
 
 func TestDriver_LockAcquired(t *testing.T) {
