@@ -37,6 +37,16 @@ mysql://user:pass@localhost
 mysql://user:pass@localhost:3306/database
 ```
 
+Connecting using Unix Sockets:
+
+```
+mysql+unix:///tmp/mysql.sock
+
+mysql+unix://user:pass@/tmp/mysql.sock
+
+mysql+unix://user@/tmp/mysql.sock?database=dbname
+```
+
 </TabItem>
 <TabItem value="maria">
 
@@ -46,6 +56,16 @@ maria://localhost
 maria://user:pass@localhost
 
 maria://user:pass@localhost:3306/database
+```
+
+Connecting using Unix Sockets:
+
+```
+maria+unix:///tmp/mysql.sock
+
+maria+unix://user:pass@/tmp/mysql.sock
+
+maria+unix://user@/tmp/mysql.sock?database=dbname
 ```
 
 </TabItem>

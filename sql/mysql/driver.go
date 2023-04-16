@@ -47,7 +47,7 @@ func init() {
 		DriverName,
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("maria", "mariadb"),
+		sqlclient.RegisterFlavours("mysql+unix", "maria", "maria+unix", "mariadb", "mariadb+unix"),
 		sqlclient.RegisterURLParser(parser{}),
 	)
 }
@@ -253,7 +253,10 @@ func (parser) ChangeSchema(u *url.URL, s string) *url.URL {
 // dsn returns the MySQL standard DSN for opening
 // the sql.DB from the user provided URL.
 func dsn(u *url.URL) string {
-	var b strings.Builder
+	var (
+		b      strings.Builder
+		values = u.Query()
+	)
 	b.WriteString(u.User.Username())
 	if p, ok := u.User.Password(); ok {
 		b.WriteByte(':')
@@ -262,19 +265,32 @@ func dsn(u *url.URL) string {
 	if b.Len() > 0 {
 		b.WriteByte('@')
 	}
-	if u.Host != "" {
-		b.WriteString("tcp(")
-		b.WriteString(u.Host)
-		b.WriteByte(')')
-	}
-	if u.Path != "" {
+	switch {
+	case strings.HasSuffix(u.Scheme, "+unix"):
+		b.WriteString("unix(")
+		// The path is always absolute, and
+		// therefore the host should be empty.
 		b.WriteString(u.Path)
-	} else {
-		b.WriteByte('/')
+		b.WriteString(")/")
+		if name := values.Get("database"); name != "" {
+			b.WriteString(name)
+			values.Del("database")
+		}
+	default:
+		if u.Host != "" {
+			b.WriteString("tcp(")
+			b.WriteString(u.Host)
+			b.WriteByte(')')
+		}
+		if u.Path != "" {
+			b.WriteString(u.Path)
+		} else {
+			b.WriteByte('/')
+		}
 	}
-	if u.RawQuery != "" {
+	if p := values.Encode(); p != "" {
 		b.WriteByte('?')
-		b.WriteString(u.RawQuery)
+		b.WriteString(p)
 	}
 	return b.String()
 }
