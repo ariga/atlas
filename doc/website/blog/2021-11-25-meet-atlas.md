@@ -37,7 +37,7 @@ known as [infrastructure-as-code](https://en.wikipedia.org/wiki/Infrastructure_a
 Atlas is at the core of Ariga's platform. In this post, I would like to share with you the work we've done so far to
 provide a solid foundation for managing databases in a way that's akin to infrastructure-as-code practices.
 
-* The [Atlas DDL](https://atlasgo.io/ddl) (Data-definition Language): we have created the Atlas DDL, a new configuration language designed
+* The [Atlas DDL](/guides/ddl) (Data-definition Language): we have created the Atlas DDL, a new configuration language designed
 to capture an organization's data topology - including relational database schemas.
 This language is currently described in an HCL syntax (similar to TerraForm),
 but will support more syntaxes such as JSON and TypeScript in the future. The Atlas DDL currently supports
