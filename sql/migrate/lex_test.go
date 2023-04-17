@@ -146,6 +146,11 @@ func TestLex_Errors(t *testing.T) {
 			err:  "1:1: unclosed '('",
 		},
 		{
+			name: "unclosed parentheses at 1:3",
+			stmt: "()(unclosed parentheses",
+			err:  "1:3: unclosed '('",
+		},
+		{
 			name: "unexpected parentheses at 1:5",
 			stmt: "1234)6789",
 			err:  "1:5: unexpected ')'",

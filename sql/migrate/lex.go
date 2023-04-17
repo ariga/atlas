@@ -96,8 +96,8 @@ var reDollarQuote = regexp.MustCompile(`^\$([A-Za-zÈ-ÿ_][\wÈ-ÿ]*)*\$`)
 
 func (l *lex) stmt() (*Stmt, error) {
 	var (
-		depth []int // pos of each opening parentheses
-		text  string
+		depth, openingPos int
+		text              string
 	)
 	l.skipSpaces()
 Scan:
@@ -105,8 +105,8 @@ Scan:
 		switch r := l.next(); {
 		case r == eos:
 			switch {
-			case len(depth) > 0:
-				return nil, l.error(depth[0], "unclosed '('")
+			case depth > 0:
+				return nil, l.error(openingPos, "unclosed '('")
 			case l.pos > 0:
 				text = l.input
 				break Scan
@@ -114,12 +114,15 @@ Scan:
 				return nil, io.EOF
 			}
 		case r == '(':
-			depth = append(depth, l.pos)
+			if depth == 0 {
+				openingPos = l.pos
+			}
+			depth++
 		case r == ')':
-			if len(depth) == 0 {
+			if depth == 0 {
 				return nil, l.error(l.pos, "unexpected ')'")
 			}
-			depth = depth[:len(depth)-1]
+			depth--
 		case r == '\'', r == '"', r == '`':
 			if err := l.skipQuote(r); err != nil {
 				return nil, err
@@ -132,7 +135,7 @@ Scan:
 				return nil, err
 			}
 		// Delimiters take precedence over comments.
-		case len(depth) == 0 && strings.HasPrefix(l.input[l.pos-l.width:], l.delim):
+		case depth == 0 && strings.HasPrefix(l.input[l.pos-l.width:], l.delim):
 			l.addPos(len(l.delim) - l.width)
 			text = l.input[:l.pos]
 			break Scan
