@@ -565,7 +565,6 @@ func ArchiveDir(dir Dir) ([]byte, error) {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
 	defer tw.Close()
-
 	sumF, err := dir.Open(HashFileName)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err

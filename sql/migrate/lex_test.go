@@ -105,3 +105,62 @@ cmd7;
 	require.Equal(t, "cmd7;", stmts[7].Text)
 	require.Equal(t, []string{""}, stmts[7].Directive("nolint"))
 }
+
+func TestLex_Errors(t *testing.T) {
+	for _, tt := range []struct {
+		name, stmt, err string
+	}{
+		{
+			name: "unclosed single at 1:1",
+			stmt: "'this quote is unclosed at 1:1",
+			err:  "1:1: unclosed quote '\\''",
+		},
+		{
+			name: "unclosed single at 1:6",
+			stmt: "12345'this quote is unclosed at pos 7",
+			err:  "1:6: unclosed quote '\\''",
+		},
+		{
+			name: "unclosed single at EOS",
+			stmt: "unclosed '",
+			err:  "1:10: unclosed quote '\\''",
+		},
+		{
+			name: "unclosed double at 1:1",
+			stmt: "\"unclosed double",
+			err:  "1:1: unclosed quote '\"'",
+		},
+		{
+			name: "unclosed double at 2:2",
+			stmt: "unclosed double at 2:2\n \"",
+			err:  "2:2: unclosed quote '\"'",
+		},
+		{
+			name: "unclosed double at 5:5",
+			stmt: "unclosed double at 2:2\n\n\n\n1234\"",
+			err:  "5:5: unclosed quote '\"'",
+		},
+		{
+			name: "unclosed parentheses at 1:1",
+			stmt: "(unclosed parentheses",
+			err:  "1:1: unclosed '('",
+		},
+		{
+			name: "unclosed parentheses at 1:3",
+			stmt: "()(unclosed parentheses",
+			err:  "1:3: unclosed '('",
+		},
+		{
+			name: "unexpected parentheses at 1:5",
+			stmt: "1234)6789",
+			err:  "1:5: unexpected ')'",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			l, err := newLex(tt.stmt)
+			require.NoError(t, err)
+			_, err = l.stmt()
+			require.EqualError(t, err, tt.err)
+		})
+	}
+}
