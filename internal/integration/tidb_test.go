@@ -14,12 +14,6 @@ import (
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
-	entschema "entgo.io/ent/dialect/sql/schema"
-	"entgo.io/ent/entc/integration/ent"
-	"entgo.io/ent/entc/integration/ent/migrate"
-
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 )
@@ -654,45 +648,6 @@ schema "test" {
 `
 	tidbRun(t, func(t *myTest) {
 		testHCLIntegration(t, full, empty)
-	})
-}
-
-func TestTiDB_Ent_EntEngine(t *testing.T) {
-	tidbRun(t, func(t *myTest) {
-		testEntIntegration(t, dialect.MySQL, t.db, migrate.WithForeignKeys(false))
-	})
-}
-
-func TestTiDB_Ent_AtlasEngine(t *testing.T) {
-	tidbRun(t, func(t *myTest) {
-		ctx := context.Background()
-		drv := entsql.OpenDB(dialect.MySQL, t.db)
-		client := ent.NewClient(ent.Driver(drv))
-		require.NoError(t, client.Schema.Create(ctx, entschema.WithAtlas(true)))
-		sanity(client)
-		realm := t.loadRealm()
-		ensureNoChange(t, realm.Schemas[0].Tables...)
-
-		// Drop tables.
-		changes := make([]schema.Change, len(realm.Schemas[0].Tables))
-		for i, t := range realm.Schemas[0].Tables {
-			changes[i] = &schema.DropTable{T: t}
-		}
-		t.migrate(changes...)
-
-		// Add tables.
-		for i, t := range realm.Schemas[0].Tables {
-			changes[i] = &schema.AddTable{T: t}
-		}
-		t.migrate(changes...)
-		ensureNoChange(t, realm.Schemas[0].Tables...)
-		sanity(client)
-
-		// Drop tables.
-		for i, t := range realm.Schemas[0].Tables {
-			changes[i] = &schema.DropTable{T: t}
-		}
-		t.migrate(changes...)
 	})
 }
 

@@ -18,14 +18,10 @@ import (
 	"sync"
 	"testing"
 	"text/template"
-	"time"
 
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-	entsql "entgo.io/ent/dialect/sql"
-	entschema "entgo.io/ent/dialect/sql/schema"
-	"entgo.io/ent/entc/integration/ent"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/stretchr/testify/require"
 )
@@ -97,37 +93,6 @@ func testRelation(t T) {
 		&schema.AddTable{T: postsT},
 	)
 	ensureNoChange(t, postsT, usersT)
-}
-
-func testEntIntegration(t T, dialect string, db *sql.DB, opts ...entschema.MigrateOption) {
-	ctx := context.Background()
-	drv := entsql.OpenDB(dialect, db)
-	client := ent.NewClient(ent.Driver(drv))
-	require.NoError(t, client.Schema.Create(ctx, opts...))
-	sanity(client)
-	realm := t.loadRealm()
-	ensureNoChange(t, realm.Schemas[0].Tables...)
-
-	// Drop tables.
-	changes := make([]schema.Change, len(realm.Schemas[0].Tables))
-	for i, t := range realm.Schemas[0].Tables {
-		changes[i] = &schema.DropTable{T: t}
-	}
-	t.migrate(changes...)
-
-	// Add tables.
-	for i, t := range realm.Schemas[0].Tables {
-		changes[i] = &schema.AddTable{T: t}
-	}
-	t.migrate(changes...)
-	ensureNoChange(t, realm.Schemas[0].Tables...)
-	sanity(client)
-
-	// Drop tables.
-	for i, t := range realm.Schemas[0].Tables {
-		changes[i] = &schema.DropTable{T: t}
-	}
-	t.migrate(changes...)
 }
 
 func testImplicitIndexes(t T, db *sql.DB) {
@@ -595,28 +560,6 @@ func ensureNoChange(t T, tables ...*schema.Table) {
 		changes := t.diff(tt, tables[i])
 		require.Emptyf(t, changes, "changes should be empty for table %s, but instead was %#v", tt.Name, changes)
 	}
-}
-
-func sanity(c *ent.Client) {
-	ctx := context.Background()
-	u := c.User.Create().
-		SetName("foo").
-		SetAge(20).
-		AddPets(
-			c.Pet.Create().SetName("pedro").SaveX(ctx),
-			c.Pet.Create().SetName("xabi").SaveX(ctx),
-		).
-		AddFiles(
-			c.File.Create().SetName("a").SetSize(10).SaveX(ctx),
-			c.File.Create().SetName("b").SetSize(20).SaveX(ctx),
-		).
-		SaveX(ctx)
-	c.Group.Create().
-		SetName("Github").
-		SetExpire(time.Now()).
-		AddUsers(u).
-		SetInfo(c.GroupInfo.Create().SetDesc("desc").SaveX(ctx)).
-		SaveX(ctx)
 }
 
 func testAdvisoryLock(t *testing.T, l schema.Locker) {
