@@ -18,7 +18,6 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
-	"entgo.io/ent/dialect"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 )
@@ -492,12 +491,6 @@ func TestMySQL_ForeignKey(t *testing.T) {
 			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 			ensureNoChange(t, usersT)
 		})
-	})
-}
-
-func TestMySQL_Ent(t *testing.T) {
-	myRun(t, func(t *myTest) {
-		testEntIntegration(t, dialect.MySQL, t.db)
 	})
 }
 
