@@ -75,6 +75,71 @@ func (c *Client) Dir(ctx context.Context, input DirInput) (migrate.Dir, error) {
 	}
 	return migrate.UnarchiveDir(payload.Dir.Content)
 }
+
+type (
+	// ReportDeploymentInput represents an input type for a reporting deployments.
+	ReportDeploymentInput struct {
+		ProjectName    string              `json:"projectName"`
+		EnvName        string              `json:"envName"`
+		DirName        string              `json:"dirName"`
+		Target         DeployedTargetInput `json:"target"`
+		StartTime      time.Time           `json:"startTime"`
+		EndTime        time.Time           `json:"endTime"`
+		FromVersion    string              `json:"fromVersion"`
+		ToVersion      string              `json:"toVersion"`
+		CurrentVersion string              `json:"currentVersion"`
+		Error          *string             `json:"error,omitempty"`
+		Files          []DeployedFileInput `json:"files"`
+	}
+
+	// DeployedTargetInput represents the input type for a deployed target.
+	DeployedTargetInput struct {
+		ID     string `json:"id"`
+		Schema string `json:"schema"`
+		URL    string `json:"url"` // URL string without userinfo.
+	}
+
+	// DeployedFileInput represents the input type for a deployed file.
+	DeployedFileInput struct {
+		Name      string          `json:"name"`
+		Content   string          `json:"content"`
+		StartTime time.Time       `json:"startTime"`
+		EndTime   time.Time       `json:"endTime"`
+		Skipped   int             `json:"skipped"`
+		Applied   int             `json:"applied"`
+		Error     *StmtErrorInput `json:"error,omitempty"`
+	}
+
+	// StmtErrorInput represents the input type for a statement error.
+	StmtErrorInput struct {
+		Stmt string `json:"stmt"`
+		Text string `json:"text"`
+	}
+)
+
+// ReportDeployment reports a deployment to the Atlas Cloud API.
+func (c *Client) ReportDeployment(ctx context.Context, input ReportDeploymentInput) error {
+	var (
+		payload struct {
+			ReportDeployment struct {
+				Success bool `json:"success"`
+			} `json:"reportDeployment"`
+		}
+		query = `
+		mutation reportDeployment($input: DirInput!) {
+		   reportDeployment(input: $input) {
+		     success
+		   }
+		}`
+		vars = struct {
+			Input ReportDeploymentInput `json:"input"`
+		}{
+			Input: input,
+		}
+	)
+	return c.post(ctx, query, vars, &payload)
+}
+
 func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 	body, err := json.Marshal(struct {
 		Query     string `json:"query"`

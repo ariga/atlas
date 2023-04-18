@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestClient(t *testing.T) {
+func TestClient_Dir(t *testing.T) {
 	var (
 		dir = migrate.MemDir{}
 		err = dir.WriteFile("1.sql", []byte("create table foo (id int)"))
@@ -26,15 +26,15 @@ func TestClient(t *testing.T) {
 	ad, err := migrate.ArchiveDir(&dir)
 	require.NoError(t, err)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		di := struct {
+		var input struct {
 			Variables struct {
 				DirInput DirInput `json:"input"`
 			} `json:"variables"`
-		}{}
-		err := json.NewDecoder(r.Body).Decode(&di)
+		}
+		err := json.NewDecoder(r.Body).Decode(&input)
 		require.NoError(t, err)
-		require.Equal(t, "foo", di.Variables.DirInput.Name)
-		require.Equal(t, "x", di.Variables.DirInput.Tag)
+		require.Equal(t, "foo", input.Variables.DirInput.Name)
+		require.Equal(t, "x", input.Variables.DirInput.Tag)
 		require.Equal(t, "Bearer atlas", r.Header.Get("Authorization"))
 		require.Equal(t, "atlas-cli", r.Header.Get("User-Agent"))
 		fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(ad))
@@ -51,4 +51,26 @@ func TestClient(t *testing.T) {
 	dcheck, err := dir.Checksum()
 	require.NoError(t, err)
 	require.Equal(t, dcheck.Sum(), gcheck.Sum())
+}
+
+func TestClient_ReportDeployment(t *testing.T) {
+	const project, env = "atlas", "dev"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var input struct {
+			Variables struct {
+				Input ReportDeploymentInput `json:"input"`
+			} `json:"variables"`
+		}
+		err := json.NewDecoder(r.Body).Decode(&input)
+		require.NoError(t, err)
+		require.Equal(t, env, input.Variables.Input.EnvName)
+		require.Equal(t, project, input.Variables.Input.ProjectName)
+	}))
+	client := New(srv.URL, "atlas")
+	defer srv.Close()
+	err := client.ReportDeployment(context.Background(), ReportDeploymentInput{
+		EnvName:     env,
+		ProjectName: project,
+	})
+	require.NoError(t, err)
 }
