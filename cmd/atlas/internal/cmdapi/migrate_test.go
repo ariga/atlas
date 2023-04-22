@@ -685,13 +685,16 @@ func TestMigrate_ApplyTxModeDirective(t *testing.T) {
 	)
 	require.EqualError(t, err, `cannot set txmode directive to "none" in "20220925094021_second.sql" when txmode "all" is set globally`)
 
-	_, err = runCmd(
+	s, err := runCmd(
 		migrateApplyCmd(),
 		"--dir", "file://testdata/sqlitetx4",
 		"--url", "sqlite://txmode?mode=memory&_fk=1",
 		"--tx-mode", txModeAll,
+		"--log", "{{ .Error }}",
 	)
 	require.EqualError(t, err, `unknown txmode "unknown" found in file directive "20220925094021_second.sql"`)
+	// Errors should be attached to the report.
+	require.Equal(t, s, `unknown txmode "unknown" found in file directive "20220925094021_second.sql"`)
 }
 
 func TestMigrate_ApplyBaseline(t *testing.T) {
