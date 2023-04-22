@@ -156,6 +156,8 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		return err
 	}
 	defer client.Close()
+	// Prevent usage printing after input validation.
+	cmd.SilenceUsage = true
 	// Acquire a lock.
 	if l, ok := client.Driver.(schema.Locker); ok {
 		unlock, err := l.Lock(cmd.Context(), applyLockValue, flags.lockTimeout)
@@ -227,11 +229,12 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	for _, f := range pending {
 		drv, rrw, err = mux.driverFor(cmd.Context(), f)
 		if err != nil {
-			return err
+			report.Error = err.Error()
+			break
 		}
 		ex, err = migrate.NewExecutor(drv, migrationDir, rrw, opts...)
 		if err != nil {
-			return err
+			return fmt.Errorf("unexpected exectuor creation error: %w", err)
 		}
 		if err = mux.mayRollback(ex.Execute(cmd.Context(), f)); err != nil {
 			report.Error = err.Error()
