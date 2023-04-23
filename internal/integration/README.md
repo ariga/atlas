@@ -44,10 +44,10 @@ go test -run='MySQL_Executor/mysql56' ./...
 If you'd like to run the above for Postgres 10, change the name respectively:
 
 ```shell
-# Run TestMySQL_Executor for all mysql versions
+# Run TestPostgres_Executor for all postgres versions
 go test -run='Postgres_Executor' ./... 
 
-# Run TestMySQL_Executor for postgres 10 only
+# Run TestPostgres_Executor for postgres 10 only
 go test -run='Postgres_Executor/postgres10' ./...
 ```
 
