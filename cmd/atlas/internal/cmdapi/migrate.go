@@ -124,11 +124,25 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	return cmd
 }
 
+func (f *migrateApplyFlags) migrateOptions() (opts []migrate.ExecutorOption) {
+	if f.allowDirty {
+		opts = append(opts, migrate.WithAllowDirty(true))
+	}
+	if v := f.baselineVersion; v != "" {
+		opts = append(opts, migrate.WithBaselineVersion(v))
+	}
+	if v := f.fromVersion; v != "" {
+		opts = append(opts, migrate.WithFromVersion(v))
+	}
+	return
+}
+
 // migrateApplyCmd represents the 'atlas migrate apply' subcommand.
 func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags) error {
 	var (
 		count int
 		err   error
+		ctx   = cmd.Context()
 	)
 	if len(args) > 0 {
 		if count, err = strconv.Atoi(args[0]); err != nil {
@@ -151,7 +165,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	if flags.url == "" {
 		return errors.New(`required flag "url" not set`)
 	}
-	client, err := sqlclient.Open(cmd.Context(), flags.url)
+	client, err := sqlclient.Open(ctx, flags.url)
 	if err != nil {
 		return err
 	}
@@ -160,7 +174,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	cmd.SilenceUsage = true
 	// Acquire a lock.
 	if l, ok := client.Driver.(schema.Locker); ok {
-		unlock, err := l.Lock(cmd.Context(), applyLockValue, flags.lockTimeout)
+		unlock, err := l.Lock(ctx, applyLockValue, flags.lockTimeout)
 		if err != nil {
 			return fmt.Errorf("acquiring database lock: %w", err)
 		}
@@ -171,32 +185,20 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		return err
 	}
 	var rrw migrate.RevisionReadWriter
-	rrw, err = entRevisions(cmd.Context(), client, flags.revisionSchema)
-	if err != nil {
+	if rrw, err = entRevisions(ctx, client, flags.revisionSchema); err != nil {
 		return err
 	}
-	if err := rrw.(*cmdmigrate.EntRevisions).Migrate(cmd.Context()); err != nil {
+	if err := rrw.(*cmdmigrate.EntRevisions).Migrate(ctx); err != nil {
 		return err
 	}
 	// Determine pending files.
-	opts := []migrate.ExecutorOption{
-		migrate.WithOperatorVersion(operatorVersion()),
-	}
-	if flags.allowDirty {
-		opts = append(opts, migrate.WithAllowDirty(true))
-	}
-	if v := flags.baselineVersion; v != "" {
-		opts = append(opts, migrate.WithBaselineVersion(v))
-	}
-	if v := flags.fromVersion; v != "" {
-		opts = append(opts, migrate.WithFromVersion(v))
-	}
 	report := cmdlog.NewMigrateApply(client, migrationDir)
+	opts := append(flags.migrateOptions(), migrate.WithOperatorVersion(operatorVersion()))
 	ex, err := migrate.NewExecutor(client.Driver, migrationDir, rrw, opts...)
 	if err != nil {
 		return err
 	}
-	pending, err := ex.Pending(cmd.Context())
+	pending, err := ex.Pending(ctx)
 	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return err
 	}
@@ -208,7 +210,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		count = l
 	}
 	pending = pending[:count]
-	applied, err := rrw.ReadRevisions(cmd.Context())
+	applied, err := rrw.ReadRevisions(ctx)
 	if err != nil {
 		return err
 	}
@@ -227,7 +229,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		drv migrate.Driver
 	)
 	for _, f := range pending {
-		drv, rrw, err = mux.driverFor(cmd.Context(), f)
+		drv, rrw, err = mux.driverFor(ctx, f)
 		if err != nil {
 			report.Error = err.Error()
 			break
@@ -236,7 +238,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		if err != nil {
 			return fmt.Errorf("unexpected exectuor creation error: %w", err)
 		}
-		if err = mux.mayRollback(ex.Execute(cmd.Context(), f)); err != nil {
+		if err = mux.mayRollback(ex.Execute(ctx, f)); err != nil {
 			report.Error = err.Error()
 			break
 		}

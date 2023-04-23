@@ -53,12 +53,12 @@ func TestClient_Dir(t *testing.T) {
 	require.Equal(t, dcheck.Sum(), gcheck.Sum())
 }
 
-func TestClient_ReportDeployment(t *testing.T) {
+func TestClient_ReportMigration(t *testing.T) {
 	const project, env = "atlas", "dev"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var input struct {
 			Variables struct {
-				Input ReportDeploymentInput `json:"input"`
+				Input ReportMigrationInput `json:"input"`
 			} `json:"variables"`
 		}
 		err := json.NewDecoder(r.Body).Decode(&input)
@@ -68,7 +68,7 @@ func TestClient_ReportDeployment(t *testing.T) {
 	}))
 	client := New(srv.URL, "atlas")
 	defer srv.Close()
-	err := client.ReportDeployment(context.Background(), ReportDeploymentInput{
+	err := client.ReportMigration(context.Background(), ReportMigrationInput{
 		EnvName:     env,
 		ProjectName: project,
 	})

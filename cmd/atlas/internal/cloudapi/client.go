@@ -77,8 +77,8 @@ func (c *Client) Dir(ctx context.Context, input DirInput) (migrate.Dir, error) {
 }
 
 type (
-	// ReportDeploymentInput represents an input type for a reporting deployments.
-	ReportDeploymentInput struct {
+	// ReportMigrationInput represents an input type for a reporting migration deployments.
+	ReportMigrationInput struct {
 		ProjectName    string              `json:"projectName"`
 		EnvName        string              `json:"envName"`
 		DirName        string              `json:"dirName"`
@@ -117,22 +117,22 @@ type (
 	}
 )
 
-// ReportDeployment reports a deployment to the Atlas Cloud API.
-func (c *Client) ReportDeployment(ctx context.Context, input ReportDeploymentInput) error {
+// ReportMigration reports a migration deployment to the Atlas Cloud API.
+func (c *Client) ReportMigration(ctx context.Context, input ReportMigrationInput) error {
 	var (
 		payload struct {
-			ReportDeployment struct {
+			ReportMigration struct {
 				Success bool `json:"success"`
-			} `json:"reportDeployment"`
+			} `json:"reportMigration"`
 		}
 		query = `
-		mutation reportDeployment($input: DirInput!) {
-		   reportDeployment(input: $input) {
+		mutation ReportMigration($input: DirInput!) {
+		   reportMigration(input: $input) {
 		     success
 		   }
 		}`
 		vars = struct {
-			Input ReportDeploymentInput `json:"input"`
+			Input ReportMigrationInput `json:"input"`
 		}{
 			Input: input,
 		}
