@@ -25,27 +25,13 @@ The following are some examples of when you can use `CHECK` constraints:
 - An employee’s joining date must not precede their DOB.
 - The value of an employee’s salary must be a positive integer.
 
-The `CHECK` constraint is commonly used along with the NOT NULL constraint for ensuring that a column contains only valid data and doesn’t contain any NULL values.
-
 ## Syntax
 
 ```sql
 CHECK (expression)
 ```
 
-The expression defines list of values that the column can have. You can have multiple expressions in a single `CHECK` constraint.
-
-If you want to specify multiple expressions, you need to use the OR keyword between each expression. For example:
-
-```sql
-CHECK (expression_1 OR expression_2)
-```
-
-You can use the AND keyword between each expression to make the `CHECK` constraint more restrictive. For example:
-
-```sql
-CHECK (expression_1 AND expression_2)
-```
+The expression defines list of values that the column can have.
 
 The condition for an expression can be any valid MySQL expression. If the condition is not met, the insert or update operation will fail.
 
@@ -164,7 +150,13 @@ Atlas is an open-source project which allows us to manage our database using a s
 If you are just getting started, install the latest version of Atlas using the guide to [setting up Atlas](https://atlasgo.io/getting-started/).
 :::
 
-We will first use the `atlas schema inspect command` to get an [HCL](https://atlasgo.io/guides/ddl#hcl) representation of the table we created earlier (without any indexes) by using the Atlas CLI:
+For the example, let's create a database `check_constraint` from the MySQL terminal with the following command:
+
+```sql
+CREATE DATABASE check_constraint;
+```
+
+Now, we will use the `atlas schema inspect` command to get an [HCL](https://atlasgo.io/guides/ddl#hcl) representation of the database we created:
 
 ```console title="Terminal"
 atlas schema inspect -u "mysql://root:@localhost:3306/check_constraint" > schema.hcl
@@ -177,9 +169,15 @@ schema "check_constraint" {
 ```
 
 There are no tables in our schema yet, so let’s create tables by adding the following table definitions to the schema.
-To create a `CHECK` constraint that ensures a column contains only positive integers, you can use the following syntax:
 
-```hcl title="schema.hcl"
+To create a table with a `CHECK` constraint that ensures a column contains only positive integers, we can add the following block in `schema.hcl`:
+
+```hcl title="schema.hcl" {6-19}
+schema "check_constraint" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+
 table "users" {
   schema = schema.check_constraint
   column "id" {
@@ -196,9 +194,29 @@ table "users" {
 }
 ```
 
-To create a `CHECK` constraint that ensures a column contains only values within a certain range, you can use the following syntax:
+To create a table with a `CHECK` constraint that ensures a column contains only values within a certain range, we can add the following block in `schema.hcl`:
 
-```hcl title="schema.hcl"
+```hcl title="schema.hcl" {21-34}
+schema "check_constraint" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+
+table "users" {
+  schema = schema.check_constraint
+  column "id" {
+    null = false
+    type = int
+  }
+  column "value" {
+    null = true
+    type = int
+  }
+  check "user_id" {
+    expr = "value > 0"
+  }
+}
+
 table "blog_posts" {
   schema = schema.check_constraint
   column "id" {
@@ -215,9 +233,44 @@ table "blog_posts" {
 }
 ```
 
-To create a `CHECK` constraint that ensures a column contains a value that matches a specific pattern, you can use the following syntax:
+To create a table with a `CHECK` constraint that ensures a column contains a value that matches a specific pattern, we can add the following block in `schema.hcl`:
 
-```hcl title="schema.hcl"
+```hcl title="schema.hcl" {36-49}
+schema "check_constraint" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+
+table "users" {
+  schema = schema.check_constraint
+  column "id" {
+    null = false
+    type = int
+  }
+  column "value" {
+    null = true
+    type = int
+  }
+  check "user_id" {
+    expr = "value > 0"
+  }
+}
+
+table "blog_posts" {
+  schema = schema.check_constraint
+  column "id" {
+    null = false
+    type = int
+  }
+  column "value" {
+    null = true
+    type = int
+  }
+  check "post_id" {
+    expr = "value BETWEEN 1 AND 10"
+  }
+}
+
 table "friends" {
   schema = schema.check_constraint
   column "id" {
@@ -244,7 +297,7 @@ atlas schema apply -u "mysql://root:password@localhost:3306/check_constraint" -f
 If you get `Error: pulling image: exit status 1` error, ensure that Docker Desktop is up and running.
 :::
 
-Atlas generates the necessary SQL statements to add the new index to the database schema. 
+Atlas generates the necessary SQL statements to add the tables to the database schema. 
 
 ```console title="Output"
 -- Planned Changes:
@@ -292,6 +345,6 @@ In this guide, we have demonstrated how to configure our columns to accept and s
 
 ## Need More Help?​
 
-[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling. 
+[Join the Atlas Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling. 
 
 [Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud).

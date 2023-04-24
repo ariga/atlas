@@ -253,6 +253,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/postgres/functional-indexes',
                     label: 'Functional Indexes'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/postgres/check-constraint',
+                    label: 'Check Constraint'
                 }
             ],
         },
@@ -275,6 +280,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/sqlite/functional-indexes',
                     label: 'Functional Indexes'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/sqlite/check-constraint',
+                    label: 'CHECK Constraint'
                 }
             ],
         },

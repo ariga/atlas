@@ -58,6 +58,8 @@ Welcome to the Atlas Guides.
 
 [Functional Indexes](postgres/functional-indexes.md)
 
+[Check Constraint](postgres/check-constraint.md)
+
 ### SQLite
 
 [Partial Indexes](sqlite/partial-indexes.md)
@@ -65,6 +67,8 @@ Welcome to the Atlas Guides.
 [Descending Indexes](sqlite/descending-indexes.md)
 
 [Functional Indexes](sqlite/functional-indexes.md)
+
+[CHECK Constraint](sqlite/check-constraint.md)
 
 ## Migration tools
 
