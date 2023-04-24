@@ -67,6 +67,7 @@ type (
 		// Format of the environment.
 		Format Format `spec:"format"`
 		schemahcl.DefaultExtension
+		cfg *cmdext.AtlasConfig
 	}
 
 	// Migration represents the migration directory for the Env.
@@ -284,8 +285,10 @@ func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 }
 
 func parseConfig(path, env string, values map[string]cty.Value) (*Project, error) {
+	cfg := &cmdext.AtlasConfig{}
 	opts := append(
 		cmdext.DataSources,
+		cfg.InitBlock(),
 		schemahcl.WithScopedEnums(
 			"env.migration.format",
 			formatAtlas, formatFlyway,
@@ -301,6 +304,9 @@ func parseConfig(path, env string, values map[string]cty.Value) (*Project, error
 	p := &Project{Lint: &Lint{}}
 	if err := schemahcl.New(opts...).EvalFiles([]string{path}, p, values); err != nil {
 		return nil, err
+	}
+	for _, e := range p.Envs {
+		e.cfg = cfg
 	}
 	return p, nil
 }

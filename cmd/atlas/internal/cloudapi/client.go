@@ -126,7 +126,7 @@ func (c *Client) ReportMigration(ctx context.Context, input ReportMigrationInput
 			} `json:"reportMigration"`
 		}
 		query = `
-		mutation ReportMigration($input: DirInput!) {
+		mutation ReportMigration($input: ReportMigrationInput!) {
 		   reportMigration(input: $input) {
 		     success
 		   }

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"testing"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/schemahcl"
 
 	"github.com/stretchr/testify/require"
@@ -122,6 +123,7 @@ env "multi" {
 					},
 				},
 			},
+			cfg: &cmdext.AtlasConfig{},
 		}, env)
 		sources, err := env.Sources()
 		require.NoError(t, err)
