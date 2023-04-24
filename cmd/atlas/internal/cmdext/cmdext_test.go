@@ -208,21 +208,26 @@ dir = data.template_dir.tenant.url
 func TestAtlasConfig(t *testing.T) {
 	var (
 		v struct {
-			Env       string   `spec:"env"`
-			HasClient bool     `spec:"has_client"`
-			CloudKeys []string `spec:"cloud_keys"`
+			Env       string    `spec:"env"`
+			HasClient bool      `spec:"has_client"`
+			CloudKeys []string  `spec:"cloud_keys"`
+			Atlas     cty.Value `spec:"atlas"`
 		}
-		state = schemahcl.New(append(cmdext.DataSources, schemahcl.WithVariables(map[string]cty.Value{
+		cfg   = &cmdext.AtlasConfig{}
+		state = schemahcl.New(append(cmdext.DataSources, cfg.InitBlock(), schemahcl.WithVariables(map[string]cty.Value{
 			"atlas": cty.ObjectVal(map[string]cty.Value{
 				"env": cty.StringVal("dev"),
 			}),
 		}))...)
 	)
+	require.Nil(t, cfg.Client)
+	require.Empty(t, cfg.Project)
 	err := state.EvalBytes([]byte(`
 atlas {
   cloud {
     url = "url"
     token = "token"
+    project = "atlasgo.io"
   }
 }
 
@@ -233,7 +238,10 @@ cloud_keys = keys(atlas.cloud)
 	require.NoError(t, err)
 	require.Equal(t, "dev", v.Env)
 	require.True(t, v.HasClient)
-	require.Equal(t, []string{"client"}, v.CloudKeys, "token and url should not be exported")
+	require.Equal(t, []string{"client", "project"}, v.CloudKeys, "token and url should not be exported")
+	// Config options should be populated from the init block.
+	require.NotNil(t, cfg.Client)
+	require.Equal(t, "atlasgo.io", cfg.Project)
 }
 
 func TestRemoteDir(t *testing.T) {
@@ -241,10 +249,10 @@ func TestRemoteDir(t *testing.T) {
 		v struct {
 			Dir string `spec:"dir"`
 		}
-		token string
-		tag   string
-		state = schemahcl.New(cmdext.DataSources...)
-		srv   = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token, tag string
+		cfg        = &cmdext.AtlasConfig{}
+		state      = schemahcl.New(append(cmdext.DataSources, cfg.InitBlock())...)
+		srv        = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token = r.Header.Get("Authorization")
 			di := struct {
 				Variables struct {
