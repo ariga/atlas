@@ -90,9 +90,11 @@ migration.`,
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" --to file://schema.hcl`,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				if GlobalFlags.SelectedEnv == "" {
-					return schemaApplyRun(cmd, args, flags)
+					return schemaApplyRun(cmd, flags)
 				}
-				return cmdEnvsRun(schemaApplyRun, setSchemaEnvFlags, cmd, args, &flags)
+				return cmdEnvsRun(setSchemaEnvFlags, cmd, func(*Env) error {
+					return schemaApplyRun(cmd, flags)
+				})
 			},
 		}
 	)
@@ -114,7 +116,7 @@ migration.`,
 	return cmd
 }
 
-func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) error {
+func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags) error {
 	switch {
 	case flags.url == "":
 		return errors.New(`required flag(s) "url" not set`)
