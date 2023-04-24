@@ -193,7 +193,7 @@ func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
 const revisionID = ".atlas_cloud_identifier"
 
 // ID returns the identifier of the connected revisions table.
-func (r *EntRevisions) ID(ctx context.Context, operatorV string) (uuid.UUID, error) {
+func (r *EntRevisions) ID(ctx context.Context, operatorV string) (string, error) {
 	err := r.ec.Revision.Create().
 		SetID(revisionID).                // identifier key
 		SetDescription(uuid.NewString()). // actual revision identifier
@@ -205,17 +205,17 @@ func (r *EntRevisions) ID(ctx context.Context, operatorV string) (uuid.UUID, err
 		Ignore().
 		Exec(ctx)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("upsert revision-table id: %w", err)
+		return "", fmt.Errorf("upsert revision-table id: %w", err)
 	}
 	rev, err := r.ec.Revision.Get(ctx, revisionID)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("read revision-table id: %w", err)
+		return "", fmt.Errorf("read revision-table id: %w", err)
 	}
 	id, err := uuid.Parse(rev.Description)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("parse revision-table id: %w", err)
+		return "", fmt.Errorf("parse revision-table id: %w", err)
 	}
-	return id, nil
+	return id.String(), nil
 }
 
 var _ migrate.RevisionReadWriter = (*EntRevisions)(nil)
