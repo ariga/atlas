@@ -348,7 +348,8 @@ type (
 // NewMigrateApply returns an MigrateApply.
 func NewMigrateApply(client *sqlclient.Client, dir migrate.Dir) *MigrateApply {
 	return &MigrateApply{
-		Env: NewEnv(client, dir),
+		Env:   NewEnv(client, dir),
+		Start: time.Now(),
 	}
 }
 
@@ -356,7 +357,11 @@ func NewMigrateApply(client *sqlclient.Client, dir migrate.Dir) *MigrateApply {
 func (a *MigrateApply) Log(e migrate.LogEntry) {
 	switch e := e.(type) {
 	case migrate.LogExecution:
-		a.Start = time.Now()
+		// Do not set start time if it
+		// was set by the constructor.
+		if a.Start.IsZero() {
+			a.Start = time.Now()
+		}
 		a.Current = e.From
 		a.Target = e.To
 		a.Pending = e.Files
@@ -384,9 +389,11 @@ func (a *MigrateApply) Log(e migrate.LogEntry) {
 			}
 		}
 	case migrate.LogDone:
-		f := a.Applied[len(a.Applied)-1]
-		f.End = time.Now()
-		a.End = f.End
+		n := time.Now()
+		if l := len(a.Applied); l > 0 {
+			a.Applied[l-1].End = n
+		}
+		a.End = n
 	}
 }
 

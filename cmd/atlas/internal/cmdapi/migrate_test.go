@@ -860,11 +860,15 @@ env {
 		require.NotEmpty(t, report.Target.ID)
 		_, err = uuid.Parse(report.Target.ID)
 		require.NoError(t, err, "target id is not a valid uuid")
+		require.False(t, report.StartTime.IsZero())
+		require.False(t, report.EndTime.IsZero())
 		require.Equal(t, cloudapi.ReportMigrationInput{
 			ProjectName:  "example",
 			DirName:      "migrations",
 			EnvName:      "local",
 			AtlasVersion: "Atlas CLI - development",
+			StartTime:    report.StartTime,
+			EndTime:      report.EndTime,
 			Files:        []cloudapi.DeployedFileInput{},
 			Target: cloudapi.DeployedTargetInput{
 				ID:     report.Target.ID, // generated uuid
