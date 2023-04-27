@@ -82,6 +82,7 @@ type (
 		ProjectName    string              `json:"projectName"`
 		EnvName        string              `json:"envName"`
 		DirName        string              `json:"dirName"`
+		AtlasVersion   string              `json:"atlasVersion"`
 		Target         DeployedTargetInput `json:"target"`
 		StartTime      time.Time           `json:"startTime"`
 		EndTime        time.Time           `json:"endTime"`

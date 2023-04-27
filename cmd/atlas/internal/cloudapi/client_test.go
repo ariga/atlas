@@ -18,11 +18,8 @@ import (
 )
 
 func TestClient_Dir(t *testing.T) {
-	var (
-		dir = migrate.MemDir{}
-		err = dir.WriteFile("1.sql", []byte("create table foo (id int)"))
-	)
-	require.NoError(t, err)
+	var dir migrate.MemDir
+	require.NoError(t, dir.WriteFile("1.sql", []byte("create table foo (id int)")))
 	ad, err := migrate.ArchiveDir(&dir)
 	require.NoError(t, err)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

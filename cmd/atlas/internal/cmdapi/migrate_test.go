@@ -7,10 +7,13 @@ package cmdapi
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
@@ -20,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	migrate2 "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/sql/migrate"
@@ -28,7 +32,9 @@ import (
 	"ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite/sqlitecheck"
+
 	"github.com/fatih/color"
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
@@ -772,6 +778,146 @@ env "local" {
 		)
 		require.NoError(t, err)
 		require.Contains(t, s, "Migrating to version 20220318104615 from 1 (2 migrations in total)")
+	})
+}
+
+func TestMigrate_ApplyCloudReport(t *testing.T) {
+	var (
+		dir    migrate.MemDir
+		status int
+		report cloudapi.ReportMigrationInput
+		srv    = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var m struct {
+				Query     string `json:"query"`
+				Variables struct {
+					Input json.RawMessage `json:"input"`
+				} `json:"variables"`
+			}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&m))
+			switch {
+			case strings.Contains(m.Query, "query"):
+				// Checksum before archiving.
+				hf, err := dir.Checksum()
+				require.NoError(t, err)
+				ht, err := hf.MarshalText()
+				require.NoError(t, err)
+				require.NoError(t, dir.WriteFile(migrate.HashFileName, ht))
+				// Archive and send.
+				arc, err := migrate.ArchiveDir(&dir)
+				require.NoError(t, err)
+				fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(arc))
+			case strings.Contains(m.Query, "mutation"):
+				if status != 0 {
+					w.WriteHeader(status)
+				}
+				require.NoError(t, json.Unmarshal(m.Variables.Input, &report))
+			default:
+				t.Fatalf("unexpected query: %s", m.Query)
+			}
+		}))
+		h = `
+variable "cloud_url" {
+  type = string
+}
+
+atlas {
+  cloud {
+    token   = "token"
+    url     = var.cloud_url
+    project = "example"
+  }
+}
+
+data "remote_dir" "migrations" {
+  name = "migrations"
+}
+
+env {
+  name = atlas.env
+  migration {
+    dir = data.remote_dir.migrations.url
+  }
+}
+`
+		u    = openSQLite(t, "")
+		p    = t.TempDir()
+		path = filepath.Join(p, "atlas.hcl")
+	)
+	require.NoError(t, os.WriteFile(path, []byte(h), 0600))
+
+	t.Run("NoPendingFiles", func(t *testing.T) {
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--url", u,
+			"--var", "cloud_url="+srv.URL,
+		)
+		require.NoError(t, err)
+		require.Equal(t, "No migration files to execute\n", s)
+		require.NotEmpty(t, report.Target.ID)
+		_, err = uuid.Parse(report.Target.ID)
+		require.NoError(t, err, "target id is not a valid uuid")
+		require.Equal(t, cloudapi.ReportMigrationInput{
+			ProjectName:  "example",
+			DirName:      "migrations",
+			EnvName:      "local",
+			AtlasVersion: "Atlas CLI - development",
+			Files:        []cloudapi.DeployedFileInput{},
+			Target: cloudapi.DeployedTargetInput{
+				ID:     report.Target.ID, // generated uuid
+				Schema: "main",
+				URL:    u,
+			},
+		}, report)
+	})
+
+	t.Run("WithFiles", func(t *testing.T) {
+		require.NoError(t, dir.WriteFile("1.sql", []byte("create table foo (id int)")))
+		require.NoError(t, dir.WriteFile("2.sql", []byte("create table bar (id int)")))
+
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--url", u,
+			"--var", "cloud_url="+srv.URL,
+		)
+		require.NoError(t, err)
+		// Reporting does not affect the output.
+		require.True(t, strings.HasPrefix(s, "Migrating to version 2 (2 migrations in total):"))
+		require.True(t, strings.HasSuffix(s, "  -- 2 migrations \n  -- 2 sql statements\n"))
+		require.Equal(t, "", report.FromVersion, "from empty database")
+		require.Equal(t, "2", report.ToVersion)
+		require.Equal(t, "2", report.CurrentVersion)
+		require.Len(t, report.Files, 2)
+		for i, n := range []string{"1.sql", "2.sql"} {
+			require.Equal(t, n, report.Files[i].Name)
+			require.Equal(t, 1, report.Files[i].Applied)
+			require.Zero(t, report.Files[i].Skipped)
+			require.Nil(t, report.Files[i].Error)
+		}
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		status = http.StatusInternalServerError
+		require.NoError(t, dir.WriteFile("3.sql", []byte("create table baz (id int)")))
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--url", u,
+			"--var", "cloud_url="+srv.URL,
+		)
+		require.EqualError(t, err, "unexpected status code: 500")
+		// Reporting error should not affect the migration execution.
+		require.True(t, strings.HasSuffix(s, "  -- 1 migrations \n  -- 1 sql statements\nError: unexpected status code: 500\n"))
 	})
 }
 
