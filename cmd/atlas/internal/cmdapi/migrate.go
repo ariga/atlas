@@ -208,7 +208,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		return err
 	}
 	// Determine pending files.
-	opts := append(flags.migrateOptions(), migrate.WithOperatorVersion(operatorVersion()))
+	opts := append(flags.migrateOptions(), migrate.WithOperatorVersion(operatorVersion()), migrate.WithLogger(report))
 	ex, err := migrate.NewExecutor(client.Driver, migrationDir, rrw, opts...)
 	if err != nil {
 		return err
@@ -217,7 +217,15 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return err
 	}
-	if errors.Is(err, migrate.ErrNoPendingFiles) {
+	noPending := errors.Is(err, migrate.ErrNoPendingFiles)
+	// Get the pending files before obtaining applied revisions,
+	// as the Executor may write a baseline revision in the table.
+	applied, err := rrw.ReadRevisions(ctx)
+	if err != nil {
+		return err
+	}
+	if noPending {
+		migrate.LogNoPendingFiles(report, applied)
 		return mr.Done(cmd, flags)
 	}
 	if l := len(pending); count == 0 || count >= l {
@@ -225,14 +233,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		count = l
 	}
 	pending = pending[:count]
-	applied, err := rrw.ReadRevisions(ctx)
-	if err != nil {
-		return err
-	}
-	opts = append(opts, migrate.WithLogger(report))
-	if err := migrate.LogIntro(report, applied, pending); err != nil {
-		return err
-	}
+	migrate.LogIntro(report, applied, pending)
 	var (
 		mux = tx{
 			dryRun: flags.dryRun,

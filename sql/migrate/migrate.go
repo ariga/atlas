@@ -756,9 +756,7 @@ func (e *Executor) exec(ctx context.Context, files []File) error {
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
 	}
-	if err := LogIntro(e.log, revs, files); err != nil {
-		return err
-	}
+	LogIntro(e.log, revs, files)
 	for _, m := range files {
 		if err := e.Execute(ctx, m); err != nil {
 			return err
@@ -951,14 +949,22 @@ func (NopLogger) Log(LogEntry) {}
 
 // LogIntro gathers some meta information from the migration files and stored
 // revisions to log some general information prior to actual execution.
-func LogIntro(l Logger, revs []*Revision, files []File) error {
-	last := files[len(files)-1]
-	e := LogExecution{To: last.Version(), Files: files}
+func LogIntro(l Logger, revs []*Revision, files []File) {
+	e := LogExecution{Files: files}
 	if len(revs) > 0 {
 		e.From = revs[len(revs)-1].Version
 	}
+	if len(files) > 0 {
+		e.To = files[len(files)-1].Version()
+	}
 	l.Log(e)
-	return nil
+}
+
+// LogNoPendingFiles starts a new LogExecution and LogDone
+// to indicate that there are no pending files to be executed.
+func LogNoPendingFiles(l Logger, revs []*Revision) {
+	LogIntro(l, revs, nil)
+	l.Log(LogDone{})
 }
 
 func wrap(err1, err2 error) error {
