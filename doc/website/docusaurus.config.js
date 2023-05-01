@@ -112,8 +112,8 @@ module.exports = {
         {
           "title": "Atlas Cloud",
           "items": [
-            {"label": "Meet Atlas Cloud", "to": "https://atlasgo.cloud/"},
-            {"label": "Live demo", "to": "https://gh.atlasgo.cloud/dirs"},
+            {"label": "Discover Atlas Cloud", "to": "https://atlasgo.cloud/"},
+            {"label": "Live Demo", "to": "https://gh.atlasgo.cloud/dirs"},
             {"label": "Sign Up", "to": "https://auth.atlasgo.cloud/signup"},
           ]
         },
@@ -124,9 +124,6 @@ module.exports = {
             {"label": "Terms of Service", "to": "https://ariga.io/legal/tos"},
           ]
         },
-
-
-
       ],
       copyright: `
       Copyright © ${new Date().getFullYear()} The Atlas Authors.
