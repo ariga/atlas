@@ -7,6 +7,7 @@ package schema
 import (
 	"context"
 	"errors"
+	"reflect"
 	"time"
 )
 
@@ -264,23 +265,73 @@ func (k ChangeKind) Is(c ChangeKind) bool {
 	return k == c || k&c != 0
 }
 
-// Differ is the interface implemented by the different
-// drivers for comparing and diffing schema top elements.
-type Differ interface {
-	// RealmDiff returns a diff report for migrating a realm
-	// (or a database) from state "from" to state "to". An error
-	// is returned if such step is not possible.
-	RealmDiff(from, to *Realm) ([]Change, error)
+type (
+	// Differ is the interface implemented by the different
+	// drivers for comparing and diffing schema top elements.
+	Differ interface {
+		// RealmDiff returns a diff report for migrating a realm
+		// (or a database) from state "from" to state "to". An error
+		// is returned if such step is not possible.
+		RealmDiff(from, to *Realm, opts ...DiffOption) ([]Change, error)
 
-	// SchemaDiff returns a diff report for migrating a schema
-	// from state "from" to state "to". An error is returned
-	// if such step is not possible.
-	SchemaDiff(from, to *Schema) ([]Change, error)
+		// SchemaDiff returns a diff report for migrating a schema
+		// from state "from" to state "to". An error is returned
+		// if such step is not possible.
+		SchemaDiff(from, to *Schema, opts ...DiffOption) ([]Change, error)
 
-	// TableDiff returns a diff report for migrating a table
-	// from state "from" to state "to". An error is returned
-	// if such step is not possible.
-	TableDiff(from, to *Table) ([]Change, error)
+		// TableDiff returns a diff report for migrating a table
+		// from state "from" to state "to". An error is returned
+		// if such step is not possible.
+		TableDiff(from, to *Table, opts ...DiffOption) ([]Change, error)
+	}
+
+	// DiffOptions defines the standard and per-driver configuration
+	// for the schema diffing process.
+	DiffOptions struct {
+		// SkipChanges defines a list of change types to skip.
+		SkipChanges []Change
+	}
+
+	// DiffOption allows configuring the DiffOptions using functional options.
+	DiffOption func(*DiffOptions)
+)
+
+// NewDiffOptions creates a new DiffOptions from the given configuration.
+func NewDiffOptions(opts ...DiffOption) *DiffOptions {
+	o := &DiffOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+	return o
+}
+
+// DiffSkipChanges returns a DiffOption that skips the given change types.
+// For example, in order to skip all destructive changes, use:
+//
+//	DiffSkipChanges(&DropSchema{}, &DropTable{}, &DropColumn{}, &DropIndex{}, &DropForeignKey{})
+func DiffSkipChanges(changes ...Change) DiffOption {
+	return func(o *DiffOptions) {
+		o.SkipChanges = append(o.SkipChanges, changes...)
+	}
+}
+
+// Skipped reports whether the given change should be skipped.
+func (o *DiffOptions) Skipped(c Change) bool {
+	for _, s := range o.SkipChanges {
+		if reflect.TypeOf(c) == reflect.TypeOf(s) {
+			return true
+		}
+	}
+	return false
+}
+
+// AddOrSkip adds the given change to the list of changes if it is not skipped.
+func (o *DiffOptions) AddOrSkip(changes Changes, c Change) Changes {
+	if !o.Skipped(c) {
+		return append(changes, c)
+	}
+	return changes
+
 }
 
 // ErrLocked is returned on Lock calls which have failed to obtain the lock.
