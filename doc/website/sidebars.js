@@ -130,6 +130,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/deploying/fly-io',
                     label: 'Fly.io'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/cloud-sql-via-github-actions',
+                    label: 'GCP CloudSQL (GH Actions)'
                 }
             ]
         },

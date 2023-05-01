@@ -20,6 +20,8 @@ Welcome to the Atlas Guides.
 
 [Deploying schema migrations to Kubernetes with Init Containers](deploying/init.md)
 
+[Deploying to CloudSQL with GitHub Actions](deploying/cloud-sql-via-github-actions.md)
+
 [Using Atlas with Fly.io](/guides/deploying/fly-io)
 
 ## Databases

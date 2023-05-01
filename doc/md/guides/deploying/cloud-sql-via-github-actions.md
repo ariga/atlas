@@ -1,7 +1,7 @@
 ---
 id: cloud-sql-via-github-actions
 slug: /guides/deploying/cloud-sql-via-github-actions
-title: Deploying Schema Migrations to Google Cloud SQL Using Atlas
+title: Deploying schema migrations to Google CloudSQL using Atlas
 ---
 
 ## In this article
