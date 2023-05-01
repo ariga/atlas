@@ -65,7 +65,7 @@ type (
 
 		// FromSpec is an optional function that can be attached
 		// to the type spec and allows converting the schema spec
-		// type to a schema type (from document to databse).
+		// type to a schema type (from document to database).
 		FromSpec func(*Type) (schema.Type, error)
 
 		// ToSpec is an optional function that can be attached

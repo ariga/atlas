@@ -76,16 +76,19 @@ type (
 
 // RealmDiff implements the schema.Differ for Realm objects and returns a list of changes
 // that need to be applied in order to move a database from the current state to the desired.
-func (d *Diff) RealmDiff(from, to *schema.Realm) ([]schema.Change, error) {
-	var changes []schema.Change
+func (d *Diff) RealmDiff(from, to *schema.Realm, options ...schema.DiffOption) ([]schema.Change, error) {
+	var (
+		changes schema.Changes
+		opts    = schema.NewDiffOptions(options...)
+	)
 	// Drop or modify schema.
 	for _, s1 := range from.Schemas {
 		s2, ok := to.Schema(s1.Name)
 		if !ok {
-			changes = append(changes, &schema.DropSchema{S: s1})
+			changes = opts.AddOrSkip(changes, &schema.DropSchema{S: s1})
 			continue
 		}
-		change, err := d.SchemaDiff(s1, s2)
+		change, err := d.schemaDiff(s1, s2, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -96,9 +99,9 @@ func (d *Diff) RealmDiff(from, to *schema.Realm) ([]schema.Change, error) {
 		if _, ok := from.Schema(s1.Name); ok {
 			continue
 		}
-		changes = append(changes, &schema.AddSchema{S: s1})
+		changes = opts.AddOrSkip(changes, &schema.AddSchema{S: s1})
 		for _, t := range s1.Tables {
-			changes = append(changes, &schema.AddTable{T: t})
+			changes = opts.AddOrSkip(changes, &schema.AddTable{T: t})
 		}
 	}
 	return changes, nil
@@ -106,14 +109,18 @@ func (d *Diff) RealmDiff(from, to *schema.Realm) ([]schema.Change, error) {
 
 // SchemaDiff implements the schema.Differ interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
-func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
+func (d *Diff) SchemaDiff(from, to *schema.Schema, opts ...schema.DiffOption) ([]schema.Change, error) {
+	return d.schemaDiff(from, to, schema.NewDiffOptions(opts...))
+}
+
+func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]schema.Change, error) {
 	if from.Name != to.Name {
 		return nil, fmt.Errorf("mismatched schema names: %q != %q", from.Name, to.Name)
 	}
 	var changes []schema.Change
 	// Drop or modify attributes (collations, charset, etc).
 	if change := d.SchemaAttrDiff(from, to); len(change) > 0 {
-		changes = append(changes, &schema.ModifySchema{
+		changes = opts.AddOrSkip(changes, &schema.ModifySchema{
 			S:       to,
 			Changes: change,
 		})
@@ -123,16 +130,16 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 	for _, t1 := range from.Tables {
 		switch t2, err := d.findTable(to, t1.Name); {
 		case schema.IsNotExistError(err):
-			changes = append(changes, &schema.DropTable{T: t1})
+			changes = opts.AddOrSkip(changes, &schema.DropTable{T: t1})
 		case err != nil:
 			return nil, err
 		default:
-			change, err := d.tableDiff(t1, t2)
+			change, err := d.tableDiff(t1, t2, opts)
 			if err != nil {
 				return nil, err
 			}
 			if len(change) > 0 {
-				changes = append(changes, &schema.ModifyTable{
+				changes = opts.AddOrSkip(changes, &schema.ModifyTable{
 					T:       t2,
 					Changes: change,
 				})
@@ -143,7 +150,7 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 	for _, t1 := range to.Tables {
 		switch _, err := d.findTable(from, t1.Name); {
 		case schema.IsNotExistError(err):
-			changes = append(changes, &schema.AddTable{T: t1})
+			changes = opts.AddOrSkip(changes, &schema.AddTable{T: t1})
 		case err != nil:
 			return nil, err
 		}
@@ -153,15 +160,15 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 
 // TableDiff implements the schema.TableDiffer interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
-func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
+func (d *Diff) TableDiff(from, to *schema.Table, opts ...schema.DiffOption) ([]schema.Change, error) {
 	if from.Name != to.Name {
 		return nil, fmt.Errorf("mismatched table names: %q != %q", from.Name, to.Name)
 	}
-	return d.tableDiff(from, to)
+	return d.tableDiff(from, to, schema.NewDiffOptions(opts...))
 }
 
 // tableDiff implements the table diffing but skips the table name check.
-func (d *Diff) tableDiff(from, to *schema.Table) ([]schema.Change, error) {
+func (d *Diff) tableDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]schema.Change, error) {
 	// tableDiff can be called with non-identical
 	// names without affecting the diff process.
 	if name := from.Name; name != to.Name {
@@ -186,7 +193,7 @@ func (d *Diff) tableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	for _, c1 := range from.Columns {
 		c2, ok := to.Column(c1.Name)
 		if !ok {
-			changes = append(changes, &schema.DropColumn{C: c1})
+			changes = opts.AddOrSkip(changes, &schema.DropColumn{C: c1})
 			continue
 		}
 		change, err := d.ColumnChange(from, c1, c2)
@@ -194,7 +201,7 @@ func (d *Diff) tableDiff(from, to *schema.Table) ([]schema.Change, error) {
 			return nil, err
 		}
 		if change != schema.NoChange {
-			changes = append(changes, &schema.ModifyColumn{
+			changes = opts.AddOrSkip(changes, &schema.ModifyColumn{
 				From:   c1,
 				To:     c2,
 				Change: change,
@@ -204,23 +211,25 @@ func (d *Diff) tableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	// Add columns.
 	for _, c1 := range to.Columns {
 		if _, ok := from.Column(c1.Name); !ok {
-			changes = append(changes, &schema.AddColumn{C: c1})
+			changes = opts.AddOrSkip(changes, &schema.AddColumn{
+				C: c1,
+			})
 		}
 	}
 
 	// Primary-key and index changes.
-	changes = append(changes, d.pkDiff(from, to)...)
-	changes = append(changes, d.indexDiff(from, to)...)
+	changes = append(changes, d.pkDiff(from, to, opts)...)
+	changes = append(changes, d.indexDiff(from, to, opts)...)
 
 	// Drop or modify foreign-keys.
 	for _, fk1 := range from.ForeignKeys {
 		fk2, ok := to.ForeignKey(fk1.Symbol)
 		if !ok {
-			changes = append(changes, &schema.DropForeignKey{F: fk1})
+			changes = opts.AddOrSkip(changes, &schema.DropForeignKey{F: fk1})
 			continue
 		}
 		if change := d.fkChange(fk1, fk2); change != schema.NoChange {
-			changes = append(changes, &schema.ModifyForeignKey{
+			changes = opts.AddOrSkip(changes, &schema.ModifyForeignKey{
 				From:   fk1,
 				To:     fk2,
 				Change: change,
@@ -230,7 +239,7 @@ func (d *Diff) tableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	// Add foreign-keys.
 	for _, fk1 := range to.ForeignKeys {
 		if _, ok := from.ForeignKey(fk1.Symbol); !ok {
-			changes = append(changes, &schema.AddForeignKey{F: fk1})
+			changes = opts.AddOrSkip(changes, &schema.AddForeignKey{F: fk1})
 		}
 	}
 	return changes, nil
@@ -238,17 +247,17 @@ func (d *Diff) tableDiff(from, to *schema.Table) ([]schema.Change, error) {
 
 // pkDiff returns the schema changes (if any) for migrating table
 // primary-key from current state to the desired state.
-func (d *Diff) pkDiff(from, to *schema.Table) (changes []schema.Change) {
+func (d *Diff) pkDiff(from, to *schema.Table, opts *schema.DiffOptions) (changes []schema.Change) {
 	switch pk1, pk2 := from.PrimaryKey, to.PrimaryKey; {
 	case pk1 == nil && pk2 != nil:
-		changes = append(changes, &schema.AddPrimaryKey{P: pk2})
+		changes = opts.AddOrSkip(changes, &schema.AddPrimaryKey{P: pk2})
 	case pk1 != nil && pk2 == nil:
-		changes = append(changes, &schema.DropPrimaryKey{P: pk1})
+		changes = opts.AddOrSkip(changes, &schema.DropPrimaryKey{P: pk1})
 	case pk1 != nil && pk2 != nil:
 		change := d.indexChange(pk1, pk2)
 		change &= ^schema.ChangeUnique
 		if change != schema.NoChange {
-			changes = append(changes, &schema.ModifyPrimaryKey{
+			changes = opts.AddOrSkip(changes, &schema.ModifyPrimaryKey{
 				From:   pk1,
 				To:     pk2,
 				Change: change,
@@ -260,7 +269,7 @@ func (d *Diff) pkDiff(from, to *schema.Table) (changes []schema.Change) {
 
 // indexDiff returns the schema changes (if any) for migrating table
 // indexes from current state to the desired state.
-func (d *Diff) indexDiff(from, to *schema.Table) []schema.Change {
+func (d *Diff) indexDiff(from, to *schema.Table, opts *schema.DiffOptions) []schema.Change {
 	var (
 		changes []schema.Change
 		exists  = make(map[*schema.Index]bool)
@@ -271,7 +280,7 @@ func (d *Diff) indexDiff(from, to *schema.Table) []schema.Change {
 		// Found directly.
 		if ok {
 			if change := d.indexChange(idx1, idx2); change != schema.NoChange {
-				changes = append(changes, &schema.ModifyIndex{
+				changes = opts.AddOrSkip(changes, &schema.ModifyIndex{
 					From:   idx1,
 					To:     idx2,
 					Change: change,
@@ -288,7 +297,7 @@ func (d *Diff) indexDiff(from, to *schema.Table) []schema.Change {
 			}
 		}
 		// Not found.
-		changes = append(changes, &schema.DropIndex{I: idx1})
+		changes = opts.AddOrSkip(changes, &schema.DropIndex{I: idx1})
 	}
 	// Add indexes.
 	for _, idx := range to.Indexes {
@@ -296,7 +305,7 @@ func (d *Diff) indexDiff(from, to *schema.Table) []schema.Change {
 			continue
 		}
 		if _, ok := from.Index(idx.Name); !ok {
-			changes = append(changes, &schema.AddIndex{I: idx})
+			changes = opts.AddOrSkip(changes, &schema.AddIndex{I: idx})
 		}
 	}
 	return changes
