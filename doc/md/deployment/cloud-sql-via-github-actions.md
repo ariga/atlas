@@ -3,7 +3,6 @@ id: cloud-sql-via-github-actions
 slug: /guides/deploying/cloud-sql-via-github-actions
 title: Deploying Schema Migrations to Google Cloud SQL Using Atlas
 ---
-Learn the basics of deploying schema migrations to a Google Cloud SQL instance using Atlas.
 
 ## In this article
 * [Overview](#overview)
@@ -21,7 +20,6 @@ Learn the basics of deploying schema migrations to a Google Cloud SQL instance u
 * [Wrapping Up](#wrapping-up)
 
 ## Overview
-Database schema migrations are a crucial part of any database management system, allowing developers to modify and update their database schema while maintaining the integrity and consistency of their data. Schema migrations are especially difficult in agile development and continuous deployment models. This is because when writing or changing code for an application, oftentimes the database will need to change the schema to support that code. Some migrations can be simple, like adding a column to the existing table or a new one. But sometimes, it could be difficult when it involves changing data types of existing columns or denormalizing existing tables.
 
 In this guide, we demonstrate how to handle database schema changes when working with Cloud SQL. Within the framework of this topic, we are going to introduce how to set up a GitHub Actions workflow to automatically deploy database schema changes to a Cloud SQL instance. This approach is meant to enhance automation, version control, CI/CD, DevOps practices, and scalability, contributing to more efficient and reliable database management.
 
@@ -29,11 +27,6 @@ Before diving into the practical implementation, let's first look at some of the
 
 ## What is Cloud SQL?
 Cloud SQL is a fully-managed database service that makes it easy to set up, maintain, manage, and administer your relational databases in the cloud. With Cloud SQL, you can deploy your databases in a highly available and scalable manner, with automatic failover and load balancing, so that your applications can handle a large number of concurrent requests and traffic spikes. You can also choose from different machine types and storage sizes to meet your specific performance and storage requirements.
-
-### Key Features
-* **Relational database, built for scale:** Everything you would expect from a relational database—schemas, SQL queries, and ACID transactions—ready to scale globally.
-* **99.95% availability:** Cloud SQL delivers a very high level of availability—and provides transparent, synchronous replication across region and multi-region configurations.
-* **Security and compliance:** Cloud SQL provides multiple layers of security, including encryption at rest and in transit, network isolation, and IAM-based access control.
 
 ## What is Cloud SQL Auth Proxy?
 The Cloud SQL Auth Proxy is a utility for ensuring simple, secure connections to your Cloud SQL instances. It provides a convenient way to control access to your database using Identity and Access Management (IAM) permissions while ensuring a secure connection to your Cloud SQL instance. Like most proxy tools, it serves as the intermediary authority on connection authorizations. Using the Cloud SQL Auth proxy is the recommended method for connecting to a Cloud SQL instance.
