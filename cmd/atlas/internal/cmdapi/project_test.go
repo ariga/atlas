@@ -62,6 +62,11 @@ env "local" {
 	lint {
 		latest = 1
 	}
+	diff {
+		skip {
+			drop_column = true
+		}
+	}
 	bool = true
 	integer = 42
 	str = var.name
@@ -106,7 +111,7 @@ env "multi" {
 			},
 			Diff: &Diff{
 				SkipChanges: &SkipChanges{
-					DropSchema: true,
+					DropColumn: true,
 				},
 			},
 			Lint: &Lint{
