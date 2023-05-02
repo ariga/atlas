@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"strings"
 
-	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/schemahcl/internal/schema"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
 )

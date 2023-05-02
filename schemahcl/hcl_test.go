@@ -340,7 +340,7 @@ func TestMultiFile(t *testing.T) {
 	}
 	var (
 		paths   []string
-		testDir = "testdata/"
+		testDir = "internal/testdata/"
 	)
 	dir, err := os.ReadDir(testDir)
 	require.NoError(t, err)

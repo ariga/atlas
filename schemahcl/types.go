@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"strings"
 
-	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/schemahcl/internal/schema"
 
 	"github.com/go-openapi/inflect"
 )
@@ -103,7 +103,7 @@ func (r *TypeRegistry) Register(specs ...*TypeSpec) error {
 		if _, exists := r.findT(s.T); exists {
 			return fmt.Errorf("specutil: type with T of %q already registered", s.T)
 		}
-		if _, exists := r.findName(s.Name); exists {
+		if _, exists := r.ByName(s.Name); exists {
 			return fmt.Errorf("specutil: type with name of %q already registered", s.T)
 		}
 		r.r = append(r.r, s)
@@ -150,8 +150,8 @@ func NewRegistry(opts ...TypeRegistryOption) *TypeRegistry {
 	return r
 }
 
-// findName searches the registry for types that have the provided name.
-func (r *TypeRegistry) findName(name string) (*TypeSpec, bool) {
+// ByName searches the registry for types that have the provided name.
+func (r *TypeRegistry) ByName(name string) (*TypeSpec, bool) {
 	for _, current := range r.r {
 		if current.Name == name {
 			return current, true
