@@ -441,6 +441,92 @@ func TestSchema_ApplyLog(t *testing.T) {
 	})
 }
 
+func TestSchema_ApplySkip(t *testing.T) {
+	var (
+		p   = t.TempDir()
+		cfg = filepath.Join(p, "atlas.hcl")
+		src = filepath.Join(p, "schema.hcl")
+	)
+	err := os.WriteFile(src, []byte(`
+schema "main" {}
+
+table "users" {
+  schema = schema.main
+  column "id" {
+    type = int
+  }
+}
+`), 0600)
+	require.NoError(t, err)
+	err = os.WriteFile(cfg, []byte(`
+variable "schema" {
+  type = string
+}
+
+variable "destructive" {
+  type = bool
+  default = false
+}
+
+env "local" {
+  src = var.schema
+  dev_url = "sqlite://dev?mode=memory&_fk=1"
+}
+
+diff {
+  skip {
+    drop_table = !var.destructive
+  }
+}
+`), 0600)
+	require.NoError(t, err)
+
+	// Skip destructive changes.
+	cmd := schemaCmd()
+	cmd.AddCommand(schemaApplyCmd())
+	s, err := runCmd(
+		cmd, "apply",
+		"-u", openSQLite(t, "create table pets (id int);"),
+		"-c", "file://"+cfg,
+		"--var", "schema=file://"+src,
+		"--env", "local",
+		"--auto-approve",
+	)
+	require.NoError(t, err)
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	require.Equal(t, []string{
+		"-- Planned Changes:",
+		`-- Create "users" table`,
+		"CREATE TABLE `users` (`id` int NOT NULL);",
+	}, lines)
+
+	// Apply destructive changes.
+	cmd = schemaCmd()
+	cmd.AddCommand(schemaApplyCmd())
+	s, err = runCmd(
+		cmd, "apply",
+		"-u", openSQLite(t, "create table pets (id int);"),
+		"-c", "file://"+cfg,
+		"--var", "schema=file://"+src,
+		"--var", "destructive=true",
+		"--env", "local",
+		"--auto-approve",
+	)
+	require.NoError(t, err)
+	lines = strings.Split(strings.TrimSpace(s), "\n")
+	require.Equal(t, []string{
+		"-- Planned Changes:",
+		"-- Disable the enforcement of foreign-keys constraints",
+		"PRAGMA foreign_keys = off;",
+		`-- Drop "pets" table`,
+		"DROP TABLE `pets`;",
+		`-- Create "users" table`,
+		"CREATE TABLE `users` (`id` int NOT NULL);",
+		"-- Enable back the enforcement of foreign-keys constraints",
+		"PRAGMA foreign_keys = on;",
+	}, lines)
+}
+
 func TestSchema_ApplySources(t *testing.T) {
 	var (
 		p   = t.TempDir()
