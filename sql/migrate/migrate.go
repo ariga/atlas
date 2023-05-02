@@ -168,11 +168,12 @@ type (
 	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed Dir to write
 	// those changes to versioned migration files.
 	Planner struct {
-		drv  Driver       // driver to use
-		dir  Dir          // where migration files are stored and read from
-		fmt  Formatter    // how to format a plan to migration files
-		sum  bool         // whether to create a sum file for the migration directory
-		opts []PlanOption // driver options
+		drv      Driver              // driver to use
+		dir      Dir                 // where migration files are stored and read from
+		fmt      Formatter           // how to format a plan to migration files
+		sum      bool                // whether to create a sum file for the migration directory
+		planOpts []PlanOption        // plan options
+		diffOpts []schema.DiffOption // diff options
 	}
 
 	// PlannerOption allows managing a Planner using functional arguments.
@@ -297,7 +298,7 @@ func NewPlanner(drv Driver, dir Dir, opts ...PlannerOption) *Planner {
 // schema and returns an error otherwise.
 func PlanWithSchemaQualifier(q string) PlannerOption {
 	return func(p *Planner) {
-		p.opts = append(p.opts, func(o *PlanOptions) {
+		p.planOpts = append(p.planOpts, func(o *PlanOptions) {
 			o.SchemaQualifier = &q
 		})
 	}
@@ -307,9 +308,16 @@ func PlanWithSchemaQualifier(q string) PlannerOption {
 // An empty string indicates no indentation.
 func PlanWithIndent(indent string) PlannerOption {
 	return func(p *Planner) {
-		p.opts = append(p.opts, func(o *PlanOptions) {
+		p.planOpts = append(p.planOpts, func(o *PlanOptions) {
 			o.Indent = indent
 		})
+	}
+}
+
+// PlanWithDiffOptions allows setting custom diff options.
+func PlanWithDiffOptions(opts ...schema.DiffOption) PlannerOption {
+	return func(p *Planner) {
+		p.diffOpts = append(p.diffOpts, opts...)
 	}
 }
 
@@ -372,7 +380,7 @@ func (p *Planner) plan(ctx context.Context, name string, to StateReader, realmSc
 	var changes []schema.Change
 	switch {
 	case realmScope:
-		changes, err = p.drv.RealmDiff(current, desired)
+		changes, err = p.drv.RealmDiff(current, desired, p.diffOpts...)
 	default:
 		switch n, m := len(current.Schemas), len(desired.Schemas); {
 		case n == 0:
@@ -390,7 +398,7 @@ func (p *Planner) plan(ctx context.Context, name string, to StateReader, realmSc
 			if s1.Name != s2.Name {
 				s1.Name = s2.Name
 			}
-			changes, err = p.drv.SchemaDiff(&s1, &s2)
+			changes, err = p.drv.SchemaDiff(&s1, &s2, p.diffOpts...)
 		}
 	}
 	if err != nil {
@@ -399,7 +407,7 @@ func (p *Planner) plan(ctx context.Context, name string, to StateReader, realmSc
 	if len(changes) == 0 {
 		return nil, ErrNoPlan
 	}
-	return p.drv.PlanChanges(ctx, name, changes, p.opts...)
+	return p.drv.PlanChanges(ctx, name, changes, p.planOpts...)
 }
 
 // WritePlan writes the given Plan to the Dir based on the configured Formatter.

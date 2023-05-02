@@ -455,7 +455,11 @@ directory state to the desired schema. The desired state can be another connecte
 				return checkDir(cmd, flags.dirURL, true)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return migrateDiffRun(cmd, args, flags)
+				env, err := selectEnv(GlobalFlags.SelectedEnv)
+				if err != nil {
+					return err
+				}
+				return migrateDiffRun(cmd, args, flags, env)
 			},
 		}
 	)
@@ -475,7 +479,7 @@ directory state to the desired schema. The desired state can be another connecte
 	return cmd
 }
 
-func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) error {
+func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, env *Env) error {
 	ctx := cmd.Context()
 	dev, err := sqlclient.Open(ctx, flags.devURL)
 	if err != nil {
@@ -538,7 +542,11 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 		return err
 	}
 	defer desired.Close()
-	opts := []migrate.PlannerOption{migrate.PlanFormat(f), migrate.PlanWithIndent(indent)}
+	opts := []migrate.PlannerOption{
+		migrate.PlanFormat(f),
+		migrate.PlanWithIndent(indent),
+		migrate.PlanWithDiffOptions(env.DiffOptions()...),
+	}
 	if dev.URL.Schema != "" {
 		// Disable tables qualifier in schema-mode.
 		opts = append(opts, migrate.PlanWithSchemaQualifier(flags.qualifier))
@@ -1683,11 +1691,11 @@ func formatter(u *url.URL) (migrate.Formatter, error) {
 }
 
 func migrateFlagsFromEnv(cmd *cobra.Command) error {
-	activeEnv, err := selectEnv(GlobalFlags.SelectedEnv)
+	env, err := selectEnv(GlobalFlags.SelectedEnv)
 	if err != nil {
 		return err
 	}
-	return setMigrateEnvFlags(cmd, activeEnv)
+	return setMigrateEnvFlags(cmd, env)
 }
 
 func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {

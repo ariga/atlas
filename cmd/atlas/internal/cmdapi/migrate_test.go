@@ -1084,23 +1084,33 @@ variable "dir" {
   type = string
 }
 
+variable "destructive" {
+  type = bool
+  default = false
+}
+
 env "local" {
   src = "file://${var.schema}"
   dev = "sqlite://ci?mode=memory&_fk=1"
   migration {
     dir = "file://${var.dir}"
   }
+  diff {
+    skip {
+      drop_column = !var.destructive
+    }
+  }
 }
 `
 		pathC := filepath.Join(p, "atlas.hcl")
 		require.NoError(t, os.WriteFile(pathC, []byte(h), 0600))
 		pathS := filepath.Join(p, "schema.sql")
-		require.NoError(t, os.WriteFile(pathS, []byte(`CREATE TABLE t(c int);`), 0600))
+		require.NoError(t, os.WriteFile(pathS, []byte(`CREATE TABLE t(c1 int, c2 int);`), 0600))
 		pathD := t.TempDir()
 		cmd := migrateCmd()
 		cmd.AddCommand(migrateDiffCmd())
 		s, err := runCmd(
-			cmd, "diff",
+			cmd, "diff", "initial",
 			"-c", "file://"+pathC,
 			"--env", "local",
 			"--var", "schema="+pathS,
@@ -1113,7 +1123,41 @@ env "local" {
 		files, err := d.Files()
 		require.NoError(t, err)
 		require.Len(t, files, 1)
-		require.Equal(t, "-- Create \"t\" table\nCREATE TABLE `t` (`c` int NULL);\n", string(files[0].Bytes()))
+		require.Equal(t, "-- Create \"t\" table\nCREATE TABLE `t` (`c1` int NULL, `c2` int NULL);\n", string(files[0].Bytes()))
+
+		// Drop column should be skipped.
+		require.NoError(t, os.WriteFile(pathS, []byte(`CREATE TABLE t(c1 int);`), 0600))
+		cmd = migrateCmd()
+		cmd.AddCommand(migrateDiffCmd())
+		s, err = runCmd(
+			cmd, "diff", "no_change",
+			"-c", "file://"+pathC,
+			"--env", "local",
+			"--var", "schema="+pathS,
+			"--var", "dir="+pathD,
+		)
+		require.NoError(t, err)
+		require.Equal(t, "The migration directory is synced with the desired state, no changes to be made\n", s)
+		files, err = d.Files()
+		require.NoError(t, err)
+		require.Len(t, files, 1)
+
+		// Column is dropped when destructive is true.
+		cmd = migrateCmd()
+		cmd.AddCommand(migrateDiffCmd())
+		s, err = runCmd(
+			cmd, "diff", "second",
+			"-c", "file://"+pathC,
+			"--env", "local",
+			"--var", "schema="+pathS,
+			"--var", "dir="+pathD,
+			"--var", "destructive=true",
+		)
+		require.NoError(t, err)
+		require.Empty(t, s)
+		files, err = d.Files()
+		require.NoError(t, err)
+		require.Len(t, files, 2)
 	})
 }
 
