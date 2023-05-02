@@ -12,6 +12,7 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -39,6 +40,12 @@ lint {
 	{{- $f.Name }}
 {{- end }}
 EOS
+}
+
+diff {
+  skip {
+    drop_schema = true
+  }
 }
 
 env "local" {
@@ -97,6 +104,11 @@ env "multi" {
 				LockTimeout:     "1s",
 				RevisionsSchema: "revisions",
 			},
+			Diff: &Diff{
+				SkipChanges: &SkipChanges{
+					DropSchema: true,
+				},
+			},
 			Lint: &Lint{
 				Latest: 1,
 				Format: "{{- range $f := .Files }}\n\t{{- $f.Name }}\n{{- end }}\n",
@@ -154,7 +166,7 @@ env "multi" {
 		require.EqualError(t, err, `env "home" not defined in project file`)
 	})
 	t.Run("wrong dir", func(t *testing.T) {
-		GlobalFlags.ConfigURL = projectFileName
+		GlobalFlags.ConfigURL = defaultConfigPath
 		_, err = LoadEnv("home")
 		require.ErrorContains(t, err, `no such file or directory`)
 	})
@@ -179,4 +191,23 @@ env {
 	require.Len(t, envs, 1)
 	require.Equal(t, "local", envs[0].Name)
 	require.Equal(t, "env: local", envs[0].Format.Schema.Apply)
+}
+
+func TestDiff_Options(t *testing.T) {
+	d := &Diff{}
+	require.Len(t, d.Options(), 0)
+	d.SkipChanges = &SkipChanges{}
+	require.Len(t, d.Options(), 0)
+
+	d.SkipChanges = &SkipChanges{DropSchema: true}
+	require.Len(t, d.Options(), 1)
+	opts := schema.NewDiffOptions(d.Options()...)
+	require.True(t, opts.Skipped(&schema.DropSchema{}))
+	require.False(t, opts.Skipped(&schema.DropTable{}))
+
+	d.SkipChanges = &SkipChanges{DropSchema: true, DropTable: true}
+	require.Len(t, d.Options(), 1)
+	opts = schema.NewDiffOptions(d.Options()...)
+	require.True(t, opts.Skipped(&schema.DropSchema{}))
+	require.True(t, opts.Skipped(&schema.DropTable{}))
 }

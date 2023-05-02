@@ -90,10 +90,10 @@ migration.`,
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" --to file://schema.hcl`,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				if GlobalFlags.SelectedEnv == "" {
-					return schemaApplyRun(cmd, flags)
+					return schemaApplyRun(cmd, flags, nil)
 				}
-				return cmdEnvsRun(setSchemaEnvFlags, cmd, func(*Env) error {
-					return schemaApplyRun(cmd, flags)
+				return cmdEnvsRun(setSchemaEnvFlags, cmd, func(e *Env) error {
+					return schemaApplyRun(cmd, flags, e)
 				})
 			},
 		}
@@ -116,7 +116,7 @@ migration.`,
 	return cmd
 }
 
-func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags) error {
+func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error {
 	switch {
 	case flags.url == "":
 		return errors.New(`required flag(s) "url" not set`)
@@ -175,7 +175,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags) error {
 		return err
 	}
 	defer to.Close()
-	changes, err := computeDiff(ctx, client, from, to)
+	changes, err := computeDiff(ctx, client, from, to, env.DiffOptions()...)
 	if err != nil {
 		return err
 	}
@@ -596,7 +596,7 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	return nil
 }
 
-func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateReadCloser) ([]schema.Change, error) {
+func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateReadCloser, opts ...schema.DiffOption) ([]schema.Change, error) {
 	current, err := from.ReadState(ctx)
 	if err != nil {
 		return nil, err
@@ -609,7 +609,7 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateR
 	switch {
 	// Compare realm if the desired state is an HCL file or both connections are not bound to a schema.
 	case from.hcl, to.hcl, from.schema == "" && to.schema == "":
-		diff, err = differ.RealmDiff(current, desired)
+		diff, err = differ.RealmDiff(current, desired, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -619,7 +619,7 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateR
 		// SchemaDiff checks for name equality which is irrelevant in the case
 		// the user wants to compare their contents, reset them to allow the comparison.
 		current.Schemas[0].Name, desired.Schemas[0].Name = "", ""
-		diff, err = differ.SchemaDiff(current.Schemas[0], desired.Schemas[0])
+		diff, err = differ.SchemaDiff(current.Schemas[0], desired.Schemas[0], opts...)
 		if err != nil {
 			return nil, err
 		}

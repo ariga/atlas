@@ -227,7 +227,7 @@ const (
 func addGlobalFlags(set *pflag.FlagSet) {
 	set.StringVar(&GlobalFlags.SelectedEnv, flagEnv, "", "set which env from the config file to use")
 	set.Var(&GlobalFlags.Vars, flagVar, "input variables")
-	set.StringVarP(&GlobalFlags.ConfigURL, flagConfig, "c", projectFileName, "select config (project) file using URL format")
+	set.StringVarP(&GlobalFlags.ConfigURL, flagConfig, "c", defaultConfigPath, "select config (project) file using URL format")
 }
 
 func addFlagAutoApprove(set *pflag.FlagSet, target *bool) {
