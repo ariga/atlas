@@ -323,7 +323,11 @@ The database states can be read from a connected database, an HCL project or a m
 				return schemaFlagsFromEnv(cmd)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return schemaDiffRun(cmd, args, flags)
+				env, err := selectEnv(GlobalFlags.SelectedEnv)
+				if err != nil {
+					return err
+				}
+				return schemaDiffRun(cmd, args, flags, env)
 			},
 		}
 	)
@@ -339,7 +343,7 @@ The database states can be read from a connected database, an HCL project or a m
 	return cmd
 }
 
-func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error {
+func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *Env) error {
 	var (
 		ctx = cmd.Context()
 		c   *sqlclient.Client
@@ -386,7 +390,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	changes, err := computeDiff(ctx, c, from, to)
+	changes, err := computeDiff(ctx, c, from, to, env.DiffOptions()...)
 	if err != nil {
 		return err
 	}
@@ -553,11 +557,11 @@ func selectEnv(name string) (*Env, error) {
 }
 
 func schemaFlagsFromEnv(cmd *cobra.Command) error {
-	activeEnv, err := selectEnv(GlobalFlags.SelectedEnv)
+	env, err := selectEnv(GlobalFlags.SelectedEnv)
 	if err != nil {
 		return err
 	}
-	return setSchemaEnvFlags(cmd, activeEnv)
+	return setSchemaEnvFlags(cmd, env)
 }
 
 func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {

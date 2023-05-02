@@ -255,6 +255,63 @@ table "users" {
 		require.NoError(t, err)
 		require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (\n\t`id` int NOT NULL\n);\n", s)
 	})
+
+	t.Run("SkipChanges", func(t *testing.T) {
+		var (
+			p   = t.TempDir()
+			cfg = filepath.Join(p, "atlas.hcl")
+		)
+		err = os.WriteFile(cfg, []byte(`
+variable "destructive" {
+  type = bool
+  default = false
+}
+
+env "local" {
+  diff {
+    skip {
+      drop_table = !var.destructive
+    }
+  }
+}
+`), 0600)
+		require.NoError(t, err)
+
+		// Skip destructive changes.
+		cmd := schemaCmd()
+		cmd.AddCommand(schemaDiffCmd())
+		s, err := runCmd(
+			cmd, "diff",
+			"-c", "file://"+cfg,
+			"--from", openSQLite(t, "create table users (id int);"),
+			"--to", openSQLite(t, ""),
+			"--env", "local",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "Schemas are synced, no changes to be made.\n", s)
+
+		// Apply destructive changes.
+		cmd = schemaCmd()
+		cmd.AddCommand(schemaDiffCmd())
+		s, err = runCmd(
+			cmd, "diff",
+			"-c", "file://"+cfg,
+			"--from", openSQLite(t, "create table users (id int);"),
+			"--to", openSQLite(t, ""),
+			"--env", "local",
+			"--var", "destructive=true",
+		)
+		require.NoError(t, err)
+		lines := strings.Split(strings.TrimSpace(s), "\n")
+		require.Equal(t, []string{
+			"-- Disable the enforcement of foreign-keys constraints",
+			"PRAGMA foreign_keys = off;",
+			`-- Drop "users" table`,
+			"DROP TABLE `users`;",
+			"-- Enable back the enforcement of foreign-keys constraints",
+			"PRAGMA foreign_keys = on;",
+		}, lines)
+	})
 }
 
 func TestSchema_Apply(t *testing.T) {
