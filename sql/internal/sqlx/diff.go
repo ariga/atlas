@@ -72,6 +72,12 @@ type (
 	TableFinder interface {
 		FindTable(*schema.Schema, string) (*schema.Table, error)
 	}
+
+	// ChangesAnnotator is an optional interface allows DiffDriver to annotate
+	// changes with additional driver-specific attributes before they are returned.
+	ChangesAnnotator interface {
+		AnnotateChanges([]schema.Change, *schema.DiffOptions) error
+	}
 )
 
 // RealmDiff implements the schema.Differ for Realm objects and returns a list of changes
@@ -104,13 +110,18 @@ func (d *Diff) RealmDiff(from, to *schema.Realm, options ...schema.DiffOption) (
 			changes = opts.AddOrSkip(changes, &schema.AddTable{T: t})
 		}
 	}
-	return changes, nil
+	return d.mayAnnotate(changes, opts)
 }
 
 // SchemaDiff implements the schema.Differ interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
-func (d *Diff) SchemaDiff(from, to *schema.Schema, opts ...schema.DiffOption) ([]schema.Change, error) {
-	return d.schemaDiff(from, to, schema.NewDiffOptions(opts...))
+func (d *Diff) SchemaDiff(from, to *schema.Schema, options ...schema.DiffOption) ([]schema.Change, error) {
+	opts := schema.NewDiffOptions(options...)
+	changes, err := d.schemaDiff(from, to, opts)
+	if err != nil {
+		return nil, err
+	}
+	return d.mayAnnotate(changes, opts)
 }
 
 func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]schema.Change, error) {
@@ -160,11 +171,16 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 
 // TableDiff implements the schema.TableDiffer interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
-func (d *Diff) TableDiff(from, to *schema.Table, opts ...schema.DiffOption) ([]schema.Change, error) {
+func (d *Diff) TableDiff(from, to *schema.Table, options ...schema.DiffOption) ([]schema.Change, error) {
+	opts := schema.NewDiffOptions(options...)
 	if from.Name != to.Name {
 		return nil, fmt.Errorf("mismatched table names: %q != %q", from.Name, to.Name)
 	}
-	return d.tableDiff(from, to, schema.NewDiffOptions(opts...))
+	changes, err := d.tableDiff(from, to, opts)
+	if err != nil {
+		return nil, err
+	}
+	return d.mayAnnotate(changes, opts)
 }
 
 // tableDiff implements the table diffing but skips the table name check.
@@ -240,6 +256,16 @@ func (d *Diff) tableDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]sc
 	for _, fk1 := range to.ForeignKeys {
 		if _, ok := from.ForeignKey(fk1.Symbol); !ok {
 			changes = opts.AddOrSkip(changes, &schema.AddForeignKey{F: fk1})
+		}
+	}
+	return changes, nil
+}
+
+func (d *Diff) mayAnnotate(changes []schema.Change, opts *schema.DiffOptions) ([]schema.Change, error) {
+	r, ok := d.DiffDriver.(ChangesAnnotator)
+	if ok {
+		if err := r.AnnotateChanges(changes, opts); err != nil {
+			return nil, err
 		}
 	}
 	return changes, nil

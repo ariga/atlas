@@ -200,18 +200,18 @@ env {
 
 func TestDiff_Options(t *testing.T) {
 	d := &Diff{}
-	require.Len(t, d.Options(), 0)
+	require.Len(t, d.Options(), 1)
 	d.SkipChanges = &SkipChanges{}
-	require.Len(t, d.Options(), 0)
+	require.Len(t, d.Options(), 1)
 
 	d.SkipChanges = &SkipChanges{DropSchema: true}
-	require.Len(t, d.Options(), 1)
+	require.Len(t, d.Options(), 2)
 	opts := schema.NewDiffOptions(d.Options()...)
 	require.True(t, opts.Skipped(&schema.DropSchema{}))
 	require.False(t, opts.Skipped(&schema.DropTable{}))
 
 	d.SkipChanges = &SkipChanges{DropSchema: true, DropTable: true}
-	require.Len(t, d.Options(), 1)
+	require.Len(t, d.Options(), 2)
 	opts = schema.NewDiffOptions(d.Options()...)
 	require.True(t, opts.Skipped(&schema.DropSchema{}))
 	require.True(t, opts.Skipped(&schema.DropTable{}))
