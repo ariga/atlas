@@ -522,11 +522,12 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	// 'migrate diff' handling, offload it the work.
 	if d, ok := cmdext.States.Differ(flags.desiredURLs); ok {
 		err := d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
-			To:     flags.desiredURLs,
-			Name:   name,
-			Indent: indent,
-			Dir:    dir,
-			Dev:    dev,
+			To:      flags.desiredURLs,
+			Name:    name,
+			Indent:  indent,
+			Dir:     dir,
+			Dev:     dev,
+			Options: env.DiffOptions(),
 		})
 		return maskNoPlan(cmd, err)
 	}
@@ -744,8 +745,8 @@ func migrateImportRun(cmd *cobra.Command, _ []string, flags migrateImportFlags) 
 	if _, ok := src.(*sqltool.FlywayDir); ok {
 		sqltool.SetRepeatableVersion(ff)
 	}
-	// Extract the statements for each of the migration files, add them to a plan to format with the
-	// migrate.DefaultFormatter.
+	// Extract the statements for each of the migration files,
+	// add them to a plan to format with the DefaultFormatter.
 	for _, f := range ff {
 		stmts, err := f.StmtDecls()
 		if err != nil {

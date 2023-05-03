@@ -3,8 +3,8 @@ module ariga.io/atlas/cmd/atlas
 go 1.20
 
 require (
-	ariga.io/atlas v0.10.2-0.20230427182402-87a07dfb83bf
-	entgo.io/ent v0.12.3
+	ariga.io/atlas v0.10.2-0.20230502203727-939293626ab2
+	entgo.io/ent v0.12.4-0.20230503082810-f251400818ea
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220816024939-bc8df83d7b9d
 	github.com/auxten/postgresql-parser v1.0.1
 	github.com/fatih/color v1.13.0
