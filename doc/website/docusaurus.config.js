@@ -74,6 +74,11 @@ module.exports = {
           label: 'Blog',
           position: 'left'
         },
+        {
+          to: 'https://atlasgo.cloud/',
+          label: 'Cloud',
+          position: 'left',
+        },
       ],
     },
     //
