@@ -21,6 +21,7 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	_ "ariga.io/atlas/sql/sqlite"
 	"ariga.io/atlas/sql/sqltool"
@@ -165,6 +166,28 @@ func TestEntLoader_MigrateDiff(t *testing.T) {
 	t.Run("Invalid", func(t *testing.T) {
 		_, ok := cmdext.States.Differ([]string{"ent://../migrate/ent/schema"})
 		require.False(t, ok, "skipping schemas without globalid")
+	})
+
+	t.Run("SkipChanges", func(t *testing.T) {
+		dir, err := migrate.NewLocalDir(t.TempDir())
+		require.NoError(t, err)
+		err = d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
+			Name: "skipped",
+			Dev:  drv,
+			Dir:  dir,
+			To:   []string{"ent://../migrate/ent/schema?globalid=1"},
+			Options: []schema.DiffOption{
+				schema.DiffSkipChanges(&schema.AddTable{}),
+			},
+		})
+		require.NoError(t, err)
+		files, err := dir.Files()
+		require.NoError(t, err)
+		require.Equal(t, strings.Join([]string{
+			"-- Add pk ranges for ('atlas_schema_revisions') tables",
+			"INSERT INTO `ent_types` (`type`) VALUES ('atlas_schema_revisions');",
+		}, "\n"), strings.TrimSpace(string(files[0].Bytes())))
+		require.True(t, strings.HasSuffix(files[0].Name(), "_skipped.sql"))
 	})
 }
 
