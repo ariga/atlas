@@ -290,6 +290,10 @@ type (
 	DiffOptions struct {
 		// SkipChanges defines a list of change types to skip.
 		SkipChanges []Change
+
+		// Extra defines per-driver configuration. If not
+		// nil, should be set to schemahcl.Extension.
+		Extra any // avoid circular dependency with schemahcl.
 	}
 
 	// DiffOption allows configuring the DiffOptions using functional options.

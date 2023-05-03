@@ -803,6 +803,5 @@ func TestSkipChanges(t *testing.T) {
 		require.Len(t, changes, 1)
 		require.Len(t, changes[0].(*schema.ModifyTable).Changes, 1)
 		require.IsType(t, &schema.DropColumn{}, changes[0].(*schema.ModifyTable).Changes[0])
-
 	})
 }

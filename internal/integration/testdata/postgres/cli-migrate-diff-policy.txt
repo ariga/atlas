@@ -1,0 +1,50 @@
+only postgres15
+
+atlas migrate --env dev diff --dev-url URL --to file://./1.hcl first
+cmpmig 0 1.sql
+
+atlas migrate --env dev diff --dev-url URL --to file://./2.hcl second
+cmpmig 1 2.sql
+
+-- atlas.hcl --
+env "dev" {
+  diff {
+    concurrent_index {
+      add  = true
+      drop = true
+    }
+  }
+}
+
+-- 1.hcl --
+schema "script_cli_migrate_diff_policy" {}
+
+table "users" {
+  schema = schema.script_cli_migrate_diff_policy
+  column "id" {
+    null = false
+    type = bigint
+  }
+}
+
+-- 1.sql --
+-- Create "users" table
+CREATE TABLE "users" ("id" bigint NOT NULL);
+
+-- 2.hcl --
+schema "script_cli_migrate_diff_policy" {}
+
+table "users" {
+  schema = schema.script_cli_migrate_diff_policy
+  column "id" {
+    null = false
+    type = bigint
+  }
+  index "users_idx" {
+    columns = [column.id]
+  }
+}
+
+-- 2.sql --
+-- Create index "users_idx" to table: "users"
+CREATE INDEX CONCURRENTLY "users_idx" ON "users" ("id");

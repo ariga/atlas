@@ -256,6 +256,10 @@ func (d *Diff) Extend(global *Diff) *Diff {
 
 // Options converts the diff policy into options.
 func (d *Diff) Options() (opts []schema.DiffOption) {
+	// Per-driver configuration.
+	opts = append(opts, func(opts *schema.DiffOptions) {
+		opts.Extra = d.DefaultExtension
+	})
 	if d.SkipChanges == nil {
 		return
 	}
