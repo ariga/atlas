@@ -125,14 +125,23 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, diff.Files)
 
+	diff, err = l.LoadChanges(ctx, []migrate.File{
+		testFile{name: "base.sql", content: "---\n\nCREATE INVALID users (id INT);\n"},
+	}, nil)
+	require.Error(t, err)
+	require.Nil(t, diff)
+	fr := err.(*lint.FileError)
+	require.Equal(t, `executing statement: near "INVALID": syntax error`, fr.Err.Error())
+	require.Equal(t, 5, fr.Pos)
+
 	base := []migrate.File{
-		testFile{name: "base.sql", content: "CREATE TABLE users (id INT)"},
+		testFile{name: "base.sql", content: "CREATE TABLE users (id INT);"},
 	}
 	files := []migrate.File{
-		testFile{name: "1.sql", content: "CREATE TABLE t1 (id INT)\nINSERT INTO t1 (id) VALUES (1)"},
-		testFile{name: "2.sql", content: "CREATE TABLE t2 (id INT)\nDROP TABLE users"},
-		testFile{name: "3.sql", content: "CREATE TABLE t3 (id INT)\nDROP TABLE t3"},
-		testFile{name: "4.sql", content: "ALTER TABLE t2 RENAME id TO oid"},
+		testFile{name: "1.sql", content: "CREATE TABLE t1 (id INT);\nINSERT INTO t1 (id) VALUES (1);"},
+		testFile{name: "2.sql", content: "CREATE TABLE t2 (id INT);\nDROP TABLE users;"},
+		testFile{name: "3.sql", content: "CREATE TABLE t3 (id INT);\nDROP TABLE t3;"},
+		testFile{name: "4.sql", content: "ALTER TABLE t2 RENAME id TO oid;"},
 	}
 	diff, err = l.LoadChanges(ctx, base, files)
 	require.NoError(t, err)
@@ -142,19 +151,19 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	require.Equal(t, files[0], diff.Files[0].File)
 	require.Len(t, diff.Files[0].Changes, 2)
 	require.Zero(t, diff.Files[0].Changes[0].Stmt.Pos)
-	require.Equal(t, "CREATE TABLE t1 (id INT)", diff.Files[0].Changes[0].Stmt.Text)
+	require.Equal(t, "CREATE TABLE t1 (id INT);", diff.Files[0].Changes[0].Stmt.Text)
 	require.IsType(t, (*schema.AddTable)(nil), diff.Files[0].Changes[0].Changes[0])
-	require.Equal(t, "INSERT INTO t1 (id) VALUES (1)", diff.Files[0].Changes[1].Stmt.Text)
+	require.Equal(t, "INSERT INTO t1 (id) VALUES (1);", diff.Files[0].Changes[1].Stmt.Text)
 	require.Empty(t, diff.Files[0].Changes[1].Changes)
 
 	// File 2.
 	require.Equal(t, files[1], diff.Files[1].File)
 	require.Len(t, diff.Files[1].Changes, 2)
 	require.Zero(t, diff.Files[1].Changes[0].Stmt.Pos)
-	require.Equal(t, "CREATE TABLE t2 (id INT)", diff.Files[1].Changes[0].Stmt.Text)
+	require.Equal(t, "CREATE TABLE t2 (id INT);", diff.Files[1].Changes[0].Stmt.Text)
 	require.IsType(t, (*schema.AddTable)(nil), diff.Files[1].Changes[0].Changes[0])
 	require.Zero(t, diff.Files[1].Changes[0].Stmt.Pos)
-	require.Equal(t, "DROP TABLE users", diff.Files[1].Changes[1].Stmt.Text)
+	require.Equal(t, "DROP TABLE users;", diff.Files[1].Changes[1].Stmt.Text)
 	require.IsType(t, (*schema.DropTable)(nil), diff.Files[1].Changes[1].Changes[0])
 
 	// File 3.
@@ -214,16 +223,9 @@ func (f testFile) Bytes() []byte {
 }
 
 func (f testFile) Stmts() ([]string, error) {
-	return strings.Split(string(f.Bytes()), "\n"), nil
+	return strings.Split(f.content, "\n"), nil
 }
 
 func (f testFile) StmtDecls() (stmts []*migrate.Stmt, err error) {
-	s, err := f.Stmts()
-	if err != nil {
-		return nil, err
-	}
-	for _, s := range s {
-		stmts = append(stmts, &migrate.Stmt{Text: s})
-	}
-	return
+	return migrate.Stmts(f.content)
 }

@@ -30,10 +30,10 @@ func TestRunner_Run(t *testing.T) {
 		Dev: c,
 		ChangeDetector: testDetector{
 			base: []migrate.File{
-				testFile{name: "1.sql", content: "CREATE TABLE users (id INT)"},
+				testFile{name: "1.sql", content: "CREATE TABLE users (id INT);"},
 			},
 			feat: []migrate.File{
-				testFile{name: "2.sql", content: "CREATE TABLE pets (id INT)\nDROP TABLE users"},
+				testFile{name: "2.sql", content: "CREATE TABLE pets (id INT);\nDROP TABLE users;"},
 			},
 		},
 		Analyzers: []sqlcheck.Analyzer{
@@ -50,8 +50,8 @@ func TestRunner_Run(t *testing.T) {
 	require.Len(t, passes, 1)
 	changes := passes[0].File.Changes
 	require.Len(t, changes, 2)
-	require.Equal(t, "CREATE TABLE pets (id INT)", changes[0].Stmt.Text)
-	require.Equal(t, "DROP TABLE users", changes[1].Stmt.Text)
+	require.Equal(t, "CREATE TABLE pets (id INT);", changes[0].Stmt.Text)
+	require.Equal(t, "DROP TABLE users;", changes[1].Stmt.Text)
 	require.Equal(t, `2.sql: Report 1:
 
 	L1: Diagnostic 1
@@ -93,10 +93,10 @@ sqlite3, migrations
 Steps:
 {"Name":"Detect New Migration Files","Text":"Found 1 new migration files (from 2 total)"}
 {"Name":"Replay Migration Files","Text":"Loaded 1 changes on dev database"}
-{"Name":"Analyze 2.sql","Text":"1 reports were found in analysis","Result":{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1","Code":""},{"Pos":2,"Text":"Diagnostic 2","Code":""}]}]}}
+{"Name":"Analyze 2.sql","Text":"1 reports were found in analysis","Result":{"Name":"2.sql","Text":"CREATE TABLE pets (id INT);\nDROP TABLE users;","Reports":[{"Text":"Report 2","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1","Code":""},{"Pos":2,"Text":"Diagnostic 2","Code":""}]}]}}
 
 Files:
-{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1","Code":""},{"Pos":2,"Text":"Diagnostic 2","Code":""}]}]}
+{"Name":"2.sql","Text":"CREATE TABLE pets (id INT);\nDROP TABLE users;","Reports":[{"Text":"Report 2","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1","Code":""},{"Pos":2,"Text":"Diagnostic 2","Code":""}]}]}
 
 
 Current Schema:
