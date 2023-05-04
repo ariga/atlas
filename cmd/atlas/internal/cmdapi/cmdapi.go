@@ -440,7 +440,11 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 			if err != nil {
 				return nil, err
 			}
-			return &stateReadCloser{StateReader: sr}, nil
+			rc := &stateReadCloser{StateReader: sr}
+			if config.dev != nil && config.dev.URL.Schema != "" {
+				rc.schema = config.dev.URL.Schema
+			}
+			return rc, nil
 		}
 		// All other schemes are database (or docker) connections.
 		c, err := sqlclient.Open(ctx, config.urls[0]) // call to selectScheme already checks for len > 0
