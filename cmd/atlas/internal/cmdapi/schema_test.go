@@ -515,7 +515,7 @@ schema "hello" {}
 		"-u", openSQLite(t, ""),
 		"-f", src,
 	)
-	require.EqualError(t, err, `schema mismatch: "main" <> "hello"`)
+	require.EqualError(t, err, `mismatched HCL and database schemas: "main" <> "hello"`)
 }
 
 func TestSchema_ApplySkip(t *testing.T) {
