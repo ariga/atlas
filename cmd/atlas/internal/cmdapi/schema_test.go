@@ -498,6 +498,26 @@ func TestSchema_ApplyLog(t *testing.T) {
 	})
 }
 
+func TestSchema_ApplySchemaMismatch(t *testing.T) {
+	var (
+		p   = t.TempDir()
+		src = filepath.Join(p, "schema.hcl")
+	)
+	// SQLite always has a schema called "main".
+	err := os.WriteFile(src, []byte(`
+schema "hello" {}
+`), 0600)
+	require.NoError(t, err)
+	cmd := schemaCmd()
+	cmd.AddCommand(schemaApplyCmd())
+	_, err = runCmd(
+		cmd, "apply",
+		"-u", openSQLite(t, ""),
+		"-f", src,
+	)
+	require.EqualError(t, err, `mismatched HCL and database schemas: "main" <> "hello"`)
+}
+
 func TestSchema_ApplySkip(t *testing.T) {
 	var (
 		p   = t.TempDir()

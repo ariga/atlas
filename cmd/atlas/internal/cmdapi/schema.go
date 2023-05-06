@@ -611,6 +611,9 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateR
 	}
 	var diff []schema.Change
 	switch {
+	// In case an HCL file is compared against a specific database schema (not a realm).
+	case to.hcl && len(desired.Schemas) == 1 && from.schema != "" && desired.Schemas[0].Name != from.schema:
+		return nil, fmt.Errorf("mismatched HCL and database schemas: %q <> %q", from.schema, desired.Schemas[0].Name)
 	// Compare realm if the desired state is an HCL file or both connections are not bound to a schema.
 	case from.hcl, to.hcl, from.schema == "" && to.schema == "":
 		diff, err = differ.RealmDiff(current, desired, opts...)
