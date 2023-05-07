@@ -136,7 +136,7 @@ module.exports = {
     },
     announcementBar: {
       id: 'announcementBar-3', // Increment on change
-      content: `Atlas v0.10 is now available! Check out the <a href="/blog/2023/03/13/atlas-v010">latest blog post</a> 🚀`,
+      content: `Find out whats new on Atlas! Read the new edition of the <a href="https://atlasnewsletter.substack.com/p/atlas-issue-6-schema-change-management">Atlas newsletter</a> 🚀`,
       isCloseable: true,
     },
   },
