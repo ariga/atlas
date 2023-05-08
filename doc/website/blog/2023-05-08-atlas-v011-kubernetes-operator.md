@@ -14,15 +14,15 @@ within your Kubernetes cluster.
 
 ## Introduction
 
-Today, we are excited to announce the release of [Atlas v0.11.0](https://github.com/ariga/atlas/releases/tag/v0.11.0), 
-which introduces the [Atlas Kubernetes Operator](/integrations/kubernetes/operator). This release is a major 
+Today, we are excited to announce the release of [Atlas v0.11.0](https://github.com/ariga/atlas/releases/tag/v0.11.0),
+which introduces the [Atlas Kubernetes Operator](/integrations/kubernetes/operator). This release is a major
 milestone in our mission to make Atlas the most robust and modern way to manage your database schemas. With the Atlas Kubernetes
 Operator, you can now manage your database schemas with Atlas from within your Kubernetes cluster.
 
-In this release, we also introduce a new concept to Atlas - 
+In this release, we also introduce a new concept to Atlas -
 ["Diff Policies"](https://atlasgo.io/declarative/apply#diff-policy) - which allow you to customize the
-way Atlas plans database migrations for you. This concept is directly related to the Kubernetes Operator, and we will explain how 
-below. 
+way Atlas plans database migrations for you. This concept is directly related to the Kubernetes Operator, and we will explain how
+below.
 
 ### What are Kubernetes Operators?
 
@@ -32,8 +32,8 @@ is responsible for reconciling the actual state of the cluster with the desired 
 focus on the desired state of their cluster, and let Kubernetes handle the complexities of how to get there.
 
 This works out incredibly well for stateless components, such as containers, network configuration and access
-policies. The benefit of stateless components is that they can be replaced at any time, and Kubernetes can 
-simply create a new instance of the component with the desired configuration. For stateful resources, such as databases, 
+policies. The benefit of stateless components is that they can be replaced at any time, and Kubernetes can
+simply create a new instance of the component with the desired configuration. For stateful resources, such as databases,
  this is not the case. Throwing away a running database and creating a new one with the desired configuration
 is not an option.
 
@@ -62,7 +62,7 @@ and `DROP` statements).
 One of the common objections to applying declarative workflows to databases is that there are often
 multiple ways to achieve the same desired state. For example, if you are running a Postgres database, you may want
 to add an index to a table. Depending on your circumstances, you may want to add this index with or without the `CONCURRENTLY`
-option. When using a declarative workflow, you supply _where_ you want to go, but not _how_ to get there. 
+option. When using a declarative workflow, you supply _where_ you want to go, but not _how_ to get there.
 
 To address this concern, we have introduced the concept of "diff policies" to Atlas. Diff policies allow you
 to customize the way Atlas plans database schema changes for you. For example, you can define a diff policy that
@@ -70,7 +70,7 @@ will always add the `CONCURRENTLY` option to `CREATE INDEX` statements. You can 
 will skip certain kinds of changes (for example `DROP COLUMN`) altogether.
 
 Diff policies can be defined in the `atlas.hcl` file you use to configure Atlas. For example:
-    
+
 ```hcl
 env "local" {
   diff {
@@ -91,7 +91,14 @@ of this below.
 ### Demo time!
 
 Let's see the Atlas Kubernetes Operator in action. In this demo, we will use the Atlas Kubernetes Operator to manage
-a MySQL database running in a Kubernetes cluster. 
+a MySQL database running in a Kubernetes cluster.
+
+The Atlas Kubernetes Operator is available as a Helm Chart. To install the chart with the release
+name `atlas-operator`:
+
+```bash
+helm install atlas-operator oci://ghcr.io/ariga/charts/atlas-operator
+```
 
 After installing the
 operator, follow these steps to get started:
@@ -102,9 +109,9 @@ operator, follow these steps to get started:
   ```bash
   kubectl apply -f https://raw.githubusercontent.com/ariga/atlas-operator/master/config/integration/mysql.yaml
   ```
-  
+
   Result:
-  
+
   ```bash
   deployment.apps/mysql created
   service/mysql created
@@ -139,7 +146,7 @@ operator, follow these steps to get started:
   ```bash
   kubectl apply -f schema.yaml
   ```
-  
+
   Result:
   ```bash
   atlasschema.db.atlasgo.io/atlasschema-mysql created
@@ -150,9 +157,9 @@ operator, follow these steps to get started:
   ```bash
   kubectl exec -it $(kubectl get pods -l app=mysql -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -ppass -e "describe myapp.users"
   ```
-  
+
   Result:
-  
+
   ```bash
   +-----------+--------------+------+-----+---------+----------------+
   | Field     | Type         | Null | Key | Default | Extra          |
@@ -163,7 +170,7 @@ operator, follow these steps to get started:
   | short_bio | varchar(255) | NO   |     | NULL    |                |
   +-----------+--------------+------+-----+---------+----------------+
   ```
-  
+
   Hooray! We applied our desired schema to our target database.
 
 ### Diff policies in action
@@ -184,7 +191,7 @@ spec:
 +  policy:
 +    diff:
 +      skip:
-+        drop_column: true 
++        drop_column: true
   schema:
     sql: |
       create table users (
@@ -232,7 +239,7 @@ As you can see, the `short_bio` column was not dropped. This is because we defin
 ### Linting policies
 
 An alternative way to prevent the operator from dropping columns is to use a linting policy. Linting policies allow
-you to define rules that will be used to validate the changes to the schema before they are applied to the database. 
+you to define rules that will be used to validate the changes to the schema before they are applied to the database.
 Let's see how we can define a policy that prevents the operator from applying destructive changes to the schema.
 Edit the `schema.yaml` file:
 
@@ -253,7 +260,7 @@ spec:
 +         error: true
 -    diff:
 -      skip:
--        drop_column: true 
+-        drop_column: true
   schema:
     sql: |
       create table users (
@@ -297,11 +304,11 @@ destructive changes detected:
 
 Hooray! We have successfully prevented the operator from applying destructive changes to our database.
 
-### Conclusion 
+### Conclusion
 
 In this post, we have presented the Atlas Operator and demonstrated how you can use it to manage your database schema.
 We also covered diffing and linting policies and showed how you can use them to customize the way the operator manages
-your database. 
+your database.
 
 #### How can we make Atlas better?
 
