@@ -67,7 +67,7 @@ option. When using a declarative workflow, you supply _where_ you want to go, bu
 To address this concern, we have introduced the concept of "diff policies" to Atlas. Diff policies allow you
 to customize the way Atlas plans database schema changes for you. For example, you can define a diff policy that
 will always add the `CONCURRENTLY` option to `CREATE INDEX` statements. You can also define a diff policy that
-a policy that will skip certain kinds of changes (for example `DROP COLUMN`) altogether.
+will skip certain kinds of changes (for example `DROP COLUMN`) altogether.
 
 Diff policies can be defined in the `atlas.hcl` file you use to configure Atlas. For example:
     
