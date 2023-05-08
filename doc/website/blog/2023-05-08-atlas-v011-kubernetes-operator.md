@@ -61,7 +61,7 @@ and `DROP` statements).
 
 One of the common objections to applying declarative workflows to databases is that there are often
 multiple ways to achieve the same desired state. For example, if you are running a Postgres database, you may want
-to add an index to a table. Depending on your circumstances, you may want to add this index with our without the `CONCURRENTLY`
+to add an index to a table. Depending on your circumstances, you may want to add this index with or without the `CONCURRENTLY`
 option. When using a declarative workflow, you supply _where_ you want to go, but not _how_ to get there. 
 
 To address this concern, we have introduced the concept of "diff policies" to Atlas. Diff policies allow you
