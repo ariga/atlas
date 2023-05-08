@@ -484,6 +484,8 @@ set or map item. See the example [below](#multi-environment-example).
   - `git.base` - A run analysis against the base Git branch.
   - `git.dir` - A path to the repository working directory.
 
+- `diff` - A block defines the schema diffing policy.
+
 ##### Multi Environment Example
 
 Atlas adopts the `for_each` meta-argument that [Terraform uses](https://www.terraform.io/language/meta-arguments/for_each)
@@ -594,5 +596,30 @@ env "ci" {
 }
 ```
 
+## Configure Diff Policy
+
+Project files may define `diff` blocks to configure how schema diffing runs in a specific environment or globally.
 
 
+```hcl
+diff {
+  skip {
+    // By default, none of the changes are skipped.
+    drop_schema = true
+    drop_table  = true
+  }
+  concurrent_index {
+    create = true
+    drop   = true
+  }
+}
+
+env "local" {
+  // Define a specific schema diffing policy for this environment.
+  diff {
+    skip {
+      drop_schema = true
+    }
+  }
+}
+```

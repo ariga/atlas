@@ -56,6 +56,54 @@ Atlas with a connection string to a [_Dev-Database_](../concepts/dev.mdx).
 This database is used to normalize the schema prior to planning migrations and
 for simulating changes to ensure their applicability before execution.
 
+## Diff Policy
+
+Atlas allows configuring the schema diffing policy in [project configuration](../atlas-schema/projects.mdx) to fine-tune
+or modify suggested changes before applying them to the database:
+
+<Tabs>
+<TabItem label="Skip Destructive" value="skip">
+
+```hcl title="atlas.hcl"
+variable "destructive" {
+  type    = bool
+  default = false
+}
+
+env "local" {
+  diff {
+    skip {
+      drop_schema = !var.destructive
+      drop_table  = !var.destructive
+    }
+  }
+}
+```
+
+The usage is as follows:
+
+```go
+atlas schema apply --env "local" --var "destructive=true"
+```
+
+</TabItem>
+<TabItem label="Concurrent Indexes" value="concurrent_indexes">
+
+```hcl title="atlas.hcl"
+env "local" {
+  diff {
+    // By default, indexes are not created or dropped concurrently.
+    concurrent_index {
+      create = true
+      drop   = true
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
 ## Examples
 
 ### HCL schema
