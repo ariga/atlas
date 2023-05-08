@@ -197,7 +197,7 @@ spec:
 ```
 In the example above we added a `policy` section to our `AtlasSchema` resource. In this section, we defined a `diff`
 policy that will skip `DROP COLUMN` statements. In addition, we dropped the `short_bio` column from our schema.
-In addition, we dropped the `short_bio` column from our schema. Let's apply the updated schema:
+Let's apply the updated schema:
 
 ```bash
 kubectl apply -f schema.yaml
