@@ -33,7 +33,7 @@ focus on the desired state of their cluster, and let Kubernetes handle the compl
 
 This works out incredibly well for stateless components, such as containers, network configuration and access
 policies. The benefit of stateless components is that they can be replaced at any time, and Kubernetes can 
-simply create a new instance of the component with the desired configuration. For stateful resources, such as databases 
+simply create a new instance of the component with the desired configuration. For stateful resources, such as databases, 
 however, this is not the case. Throwing away a running database and creating a new one with the desired configuration
 is not an option.
 
