@@ -141,7 +141,7 @@ module.exports = {
     },
     announcementBar: {
       id: 'announcementBar-3', // Increment on change
-      content: `Atlas v0.10 is now available! Check out the <a href="/blog/2023/03/13/atlas-v010">latest blog post</a> 🚀`,
+      content: `Announcing v0.11.0! Manage database schemas with Kubernetes and Atlas, Read it <a href="https://atlasgo.io/blog/2023/05/08/atlas-v011-kubernetes-operator"> here!</a> 🚀`,
       isCloseable: true,
     },
   },
