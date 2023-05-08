@@ -93,7 +93,7 @@ of this below.
 Let's see the Atlas Kubernetes Operator in action. In this demo, we will use the Atlas Kubernetes Operator to manage
 a MySQL database running in a Kubernetes cluster. 
 
-In this example, we will create a MySQL database and apply a schema to it. After installing the
+After installing the
 operator, follow these steps to get started:
 
 1. Create a MySQL database and a secret with an [Atlas URL](https://atlasgo.io/concepts/url)
