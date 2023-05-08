@@ -21,7 +21,7 @@ Operator, you can now manage your database schemas with Atlas from within your K
 
 In this release, we also introduce a new concept to Atlas - 
 ["Diff Policies"](https://atlasgo.io/declarative/apply#diff-policy) - which allow you to customize the
-way Atlas plans database migrations for you. This concept is directly related to the Kubernetes Operator, and we how 
+way Atlas plans database migrations for you. This concept is directly related to the Kubernetes Operator, and we will explain how 
 below. 
 
 ### What are Kubernetes Operators?
