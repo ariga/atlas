@@ -317,6 +317,9 @@ type AtlasConfig struct {
 	Project string           // Optional project.
 }
 
+// DefaultProjectName is the default name for projects.
+const DefaultProjectName = "default"
+
 // InitBlock returns the handler for the "atlas" init block.
 //
 //	atlas {
@@ -337,6 +340,9 @@ func (c *AtlasConfig) InitBlock() schemahcl.Option {
 		}
 		if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
 			return cty.NilVal, fmt.Errorf("atlas.cloud: decoding body: %v", diags)
+		}
+		if args.Cloud.Project == "" {
+			args.Cloud.Project = DefaultProjectName
 		}
 		c.Project = args.Cloud.Project
 		c.Client = cloudapi.New(args.Cloud.URL, args.Cloud.Token)

@@ -265,6 +265,17 @@ cloud_keys = keys(atlas.cloud)
 	// Config options should be populated from the init block.
 	require.NotNil(t, cfg.Client)
 	require.Equal(t, "atlasgo.io", cfg.Project)
+
+	err = state.EvalBytes([]byte(`
+atlas {
+  cloud {
+    url = "url"
+    token = "token"
+  }
+}
+`), &v, map[string]cty.Value{})
+	require.NoError(t, err)
+	require.Equal(t, cmdext.DefaultProjectName, cfg.Project)
 }
 
 func TestRemoteDir(t *testing.T) {
