@@ -40,7 +40,7 @@ and `DROP` statements).
 
 ### Installation
 
-The Atlas Kubernetes Operator is available as a Helm chart. To install the chart with the release name `atlas-operator`:
+The Atlas Kubernetes Operator is available as a Helm Chart. To install the chart with the release name `atlas-operator`:
 
 ```bash
 helm install atlas-operator oci://ghcr.io/ariga/charts/atlas-operator
@@ -93,7 +93,7 @@ type: Opaque
 stringData:
   url: "mysql://user:pass@your.db.com:3306/"
 ```
-
+This defines a database-bound connection.
 </TabItem>
 <TabItem value="postgres-schema">
 
@@ -106,7 +106,7 @@ type: Opaque
 stringData:
   url: "postgres://user:pass@your.db.com:5432/?search_path=myapp&sslmode=disable"
 ```
-This defines a schema-bound connection to a schema called `myapp`.
+This defines a schema-bound connection to a schema called `myapp` to the default database (usually `postgres`).
 
 </TabItem>
 <TabItem value="postgres-db">
