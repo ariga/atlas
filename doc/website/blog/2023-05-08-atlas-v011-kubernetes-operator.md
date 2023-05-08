@@ -202,7 +202,7 @@ Let's apply the updated schema:
 ```bash
 kubectl apply -f schema.yaml
 ```
-Next wait for the operator to reconcile the desired state with the actual state of the database:
+Next, wait for the operator to reconcile the desired state with the actual state of the database:
 
 ```bash
 kubectl wait --for=condition=Ready atlasschema/atlasschema-mysql
