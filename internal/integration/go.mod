@@ -7,7 +7,7 @@ replace ariga.io/atlas => ../../
 replace ariga.io/atlas/cmd/atlas => ../../cmd/atlas
 
 require (
-	ariga.io/atlas v0.10.2-0.20230502203727-939293626ab2
+	ariga.io/atlas v0.10.2-0.20230508104407-ca9e095759fb
 	entgo.io/ent v0.12.4-0.20230503082810-f251400818ea
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/hashicorp/hcl/v2 v2.13.0
@@ -20,7 +20,7 @@ require (
 )
 
 require (
-	ariga.io/atlas/cmd/atlas v0.10.2-0.20230502203727-939293626ab2 // indirect
+	ariga.io/atlas/cmd/atlas v0.10.2-0.20230508104407-ca9e095759fb // indirect
 	cloud.google.com/go v0.103.0 // indirect
 	cloud.google.com/go/compute v1.7.0 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
