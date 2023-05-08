@@ -59,7 +59,7 @@ and `DROP` statements).
 
 ### Diffing policies
 
-One of the common objections to applying declarative workflows to databases is that it is that there are often
+One of the common objections to applying declarative workflows to databases is that there are often
 multiple ways to achieve the same desired state. For example, if you are running a Postgres database, you may want
 to add an index to a table. Depending on your circumstances, you may want to add this index with our without the `CONCURRENTLY`
 option. When using a declarative workflow, you supply _where_ you want to go, but not _how_ to get there. 
