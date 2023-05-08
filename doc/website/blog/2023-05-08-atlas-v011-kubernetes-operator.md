@@ -16,7 +16,7 @@ within your Kubernetes cluster.
 
 Today, we are excited to announce the release of [Atlas v0.11.0](https://github.com/ariga/atlas/releases/tag/v0.11.0), 
 which introduces the [Atlas Kubernetes Operator](/integrations/kubernetes/operator). This release is a major 
-milestone in our mission to make Atlas the most robust and modern to manage your database schemas. With the Atlas Kubernetes
+milestone in our mission to make Atlas the most robust and modern way to manage your database schemas. With the Atlas Kubernetes
 Operator, you can now manage your database schemas with Atlas from within your Kubernetes cluster.
 
 In this release, we also introduce a new concept to Atlas - 
