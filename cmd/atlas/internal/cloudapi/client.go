@@ -91,6 +91,7 @@ type (
 		CurrentVersion string              `json:"currentVersion"`
 		Error          *string             `json:"error,omitempty"`
 		Files          []DeployedFileInput `json:"files"`
+		Log            string              `json:"log"`
 	}
 
 	// DeployedTargetInput represents the input type for a deployed target.
