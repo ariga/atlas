@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
@@ -317,6 +318,15 @@ func TestChecksum(t *testing.T) {
 				"v3/V3_1__fourth_migration.sql",
 				"R__views.sql",
 			},
+		},
+		{
+			name: "flyway non-local directory",
+			dir: func() migrate.Dir {
+				return &sqltool.FlywayDir{fstest.MapFS{
+					"/testdir": &fstest.MapFile{Data: []byte("testfile")},
+				}}
+			}(),
+			files: []string{},
 		},
 		{
 			name: "liquibase",

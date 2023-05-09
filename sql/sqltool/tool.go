@@ -312,12 +312,17 @@ func NewFlywayDir(path string) (*FlywayDir, error) {
 // and filename.
 func (d *FlywayDir) Files() ([]migrate.File, error) {
 	var ff flywayFiles
-	if err := fs.WalkDir(d, "", func(path string, e fs.DirEntry, err error) error {
+	if err := fs.WalkDir(d, ".", func(path string, e fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if path != "" && e.IsDir() {
-			h, err := hidden(path)
+			fullPath := path
+			if d, ok := d.FS.(*migrate.LocalDir); ok {
+				fullPath = filepath.Join(d.Path(), path)
+			}
+
+			h, err := hidden(fullPath)
 			if err != nil {
 				return err
 			}
