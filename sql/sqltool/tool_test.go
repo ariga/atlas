@@ -207,14 +207,15 @@ func TestScanners(t *testing.T) {
 				require.NoError(t, err)
 				return d
 			}(),
-			versions:     []string{"2", "3", ""},
-			descriptions: []string{"baseline", "third_migration", "views"},
+			versions:     []string{"2", "3", "3_1", ""},
+			descriptions: []string{"baseline", "third_migration", "fourth_migration", "views"},
 			stmts: [][]string{
 				{
 					"CREATE TABLE post\n(\n    id    int NOT NULL,\n    title text,\n    body  text,\n    created_at TIMESTAMP NOT NULL\n    PRIMARY KEY (id)\n);",
 					"INSERT INTO post (title, created_at) VALUES (\n'This is\nmy multiline\n\nvalue', NOW());",
 				},
 				{"ALTER TABLE tbl_2 ADD col_1 INTEGER NOT NULL;"},
+				{"ALTER TABLE tbl_2 ADD col_2 INTEGER NOT NULL;"},
 				{"CREATE VIEW `my_view` AS SELECT * FROM `post`;"},
 			},
 		},
@@ -325,7 +326,6 @@ func TestChecksum(t *testing.T) {
 				fs := fstest.MapFS{
 					"testdata/V1_initial.sql": &fstest.MapFile{Data: []byte("testdata")},
 				}
-
 				return &sqltool.FlywayDir{&fs}
 			}(),
 			files: []string{
