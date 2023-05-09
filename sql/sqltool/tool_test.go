@@ -322,11 +322,15 @@ func TestChecksum(t *testing.T) {
 		{
 			name: "flyway non-local directory",
 			dir: func() migrate.Dir {
-				return &sqltool.FlywayDir{fstest.MapFS{
-					"/testdir": &fstest.MapFile{Data: []byte("testfile")},
-				}}
+				fs := fstest.MapFS{
+					"data/V1_initial.sql": &fstest.MapFile{Data: []byte("testdata")},
+				}
+
+				return &sqltool.FlywayDir{&fs}
 			}(),
-			files: []string{},
+			files: []string{
+				"data/V1_initial.sql",
+			},
 		},
 		{
 			name: "liquibase",
