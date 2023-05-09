@@ -323,13 +323,13 @@ func TestChecksum(t *testing.T) {
 			name: "flyway non-local directory",
 			dir: func() migrate.Dir {
 				fs := fstest.MapFS{
-					"data/V1_initial.sql": &fstest.MapFile{Data: []byte("testdata")},
+					"testdata/V1_initial.sql": &fstest.MapFile{Data: []byte("testdata")},
 				}
 
 				return &sqltool.FlywayDir{&fs}
 			}(),
 			files: []string{
-				"data/V1_initial.sql",
+				"testdata/V1_initial.sql",
 			},
 		},
 		{
