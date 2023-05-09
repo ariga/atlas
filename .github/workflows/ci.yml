@@ -16,7 +16,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v4
       with:
         go-version: '1.20'
     - uses: actions/checkout@v2
@@ -28,15 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2.4.0
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.5
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Install stringer
         run: go install golang.org/x/tools/cmd/stringer@latest
       - name: run "go generate ./..."
@@ -60,15 +54,9 @@ jobs:
         go: [ '1.19', '1.20' ]
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go }}
-      - uses: actions/cache@v2.1.5
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run sql tests
         run: go test -race ./...
         working-directory: sql
@@ -83,15 +71,9 @@ jobs:
         go: [ '1.20' ]
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go }}
-      - uses: actions/cache@v2.1.5
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run cli tests
         run: go test -race ./...
         working-directory: cmd/atlas
@@ -100,15 +82,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for HCL
         working-directory: internal/integration/hclsqlspec
         run: go test -race -count=2 -v ./...
@@ -119,15 +95,9 @@ jobs:
       - uses: actions/checkout@v2.3.4
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Checkout origin/master
         run: git checkout origin/master
       - name: Create revisions from master
@@ -156,15 +126,9 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for mysql56
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="mysql56" -timeout 15m ./...
@@ -187,15 +151,9 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for mysql57
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="mysql57" -timeout 15m ./...
@@ -218,15 +176,9 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for mysql8
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="mysql8" -timeout 15m ./...
@@ -249,15 +201,9 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for maria107
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="maria107" -timeout 15m ./...
@@ -280,15 +226,9 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for maria102
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="maria102" -timeout 15m ./...
@@ -311,15 +251,9 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for maria103
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="maria103" -timeout 15m ./...
@@ -341,15 +275,9 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for postgres10
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres10" -timeout 15m ./...
@@ -371,15 +299,9 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for postgres11
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres11" -timeout 15m ./...
@@ -401,15 +323,9 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for postgres12
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres12" -timeout 15m ./...
@@ -431,15 +347,9 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for postgres13
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres13" -timeout 15m ./...
@@ -461,15 +371,9 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for postgres14
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres14" -timeout 15m ./...
@@ -491,15 +395,9 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for postgres15
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres15" -timeout 15m ./...
@@ -515,15 +413,9 @@ jobs:
         
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for tidb5
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="TiDB" -version="tidb5" -timeout 15m ./...
@@ -539,15 +431,9 @@ jobs:
         
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for tidb6
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="TiDB" -version="tidb6" -timeout 15m ./...
@@ -557,15 +443,9 @@ jobs:
     
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for sqlite
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="SQLite.*" -version="sqlite" -timeout 15m ./...
@@ -581,15 +461,9 @@ jobs:
         
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v2.1.6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run integration tests for cockroach
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Cockroach" -version="cockroach" -timeout 15m ./...
