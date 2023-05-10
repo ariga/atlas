@@ -318,8 +318,8 @@ func (d *FlywayDir) Files() ([]migrate.File, error) {
 		}
 		if path != "." && e.IsDir() {
 			fullPath := path
-			if l, ok := d.FS.(*migrate.LocalDir); ok {
-				fullPath = filepath.Join(l.Path(), path)
+			if p, ok := d.FS.(interface{ Path() string }); ok {
+				fullPath = filepath.Join(p.Path(), path)
 			}
 			h, err := hidden(fullPath)
 			if err != nil {
@@ -358,6 +358,9 @@ func (d *FlywayDir) Files() ([]migrate.File, error) {
 
 // Checksum implements Dir.Checksum. By default, it calls Files() and creates a checksum from them.
 func (d *FlywayDir) Checksum() (migrate.HashFile, error) {
+	if d, ok := d.FS.(migrate.Dir); ok {
+		return d.Checksum()
+	}
 	files, err := d.Files()
 	if err != nil {
 		return nil, err
@@ -367,7 +370,7 @@ func (d *FlywayDir) Checksum() (migrate.HashFile, error) {
 
 // WriteFile implements Dir.WriteFile.
 func (d *FlywayDir) WriteFile(name string, b []byte) error {
-	if d, ok := d.FS.(*migrate.LocalDir); ok {
+	if d, ok := d.FS.(migrate.Dir); ok {
 		return d.WriteFile(name, b)
 	}
 	return errors.New("sql/sqltool: cannot write to non-local directory")
