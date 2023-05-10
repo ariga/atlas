@@ -9,14 +9,16 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/schema"
 
 	"github.com/zclconf/go-cty/cty"
 )
 
-const projectFileName = "file://atlas.hcl"
+const defaultConfigPath = "file://atlas.hcl"
 
 type loadConfig struct {
 	inputValues map[string]cty.Value
@@ -36,7 +38,8 @@ type (
 	// Project represents an atlas.hcl project file.
 	Project struct {
 		Envs []*Env `spec:"env"`  // List of environments
-		Lint *Lint  `spec:"lint"` // Optional global lint config
+		Lint *Lint  `spec:"lint"` // Optional global lint policy
+		Diff *Diff  `spec:"diff"` // Optional global diff policy
 	}
 
 	// Env represents an Atlas environment.
@@ -61,12 +64,17 @@ type (
 		// Migration containing the migration configuration of the env.
 		Migration *Migration `spec:"migration"`
 
-		// Lint of the environment.
+		// Diff policy of the environment.
+		Diff *Diff `spec:"diff"`
+
+		// Lint policy of the environment.
 		Lint *Lint `spec:"lint"`
 
 		// Format of the environment.
 		Format Format `spec:"format"`
+
 		schemahcl.DefaultExtension
+		cfg *cmdext.AtlasConfig
 	}
 
 	// Migration represents the migration directory for the Env.
@@ -91,6 +99,32 @@ type (
 			Base string `spec:"base"`
 		} `spec:"git"`
 		schemahcl.DefaultExtension
+	}
+
+	// Diff represents the schema diffing policy.
+	Diff struct {
+		// SkipChanges configures the skip changes policy.
+		SkipChanges *SkipChanges `spec:"skip"`
+		schemahcl.DefaultExtension
+	}
+
+	// SkipChanges represents the skip changes policy.
+	SkipChanges struct {
+		AddSchema        bool `spec:"add_schema"`
+		DropSchema       bool `spec:"drop_schema"`
+		ModifySchema     bool `spec:"modify_schema"`
+		AddTable         bool `spec:"add_table"`
+		DropTable        bool `spec:"drop_table"`
+		ModifyTable      bool `spec:"modify_table"`
+		AddColumn        bool `spec:"add_column"`
+		DropColumn       bool `spec:"drop_column"`
+		ModifyColumn     bool `spec:"modify_column"`
+		AddIndex         bool `spec:"add_index"`
+		DropIndex        bool `spec:"drop_index"`
+		ModifyIndex      bool `spec:"modify_index"`
+		AddForeignKey    bool `spec:"add_foreign_key"`
+		DropForeignKey   bool `spec:"drop_foreign_key"`
+		ModifyForeignKey bool `spec:"modify_foreign_key"`
 	}
 
 	// Format represents the output formatting configuration of an environment.
@@ -192,6 +226,73 @@ func (l *Lint) remainedLog() error {
 	return nil
 }
 
+// Extend allows extending environment blocks with
+// a global one. For example:
+//
+//	diff {
+//	  skip {
+//	    drop_schema = true
+//	  }
+//	}
+//
+//	env "local" {
+//	  ...
+//	  diff {
+//	    concurrent_index {
+//	      create = true
+//	      drop = true
+//	    }
+//	  }
+//	}
+func (d *Diff) Extend(global *Diff) *Diff {
+	if d == nil {
+		return global
+	}
+	if d.SkipChanges == nil {
+		d.SkipChanges = global.SkipChanges
+	}
+	return d
+}
+
+// Options converts the diff policy into options.
+func (d *Diff) Options() (opts []schema.DiffOption) {
+	// Per-driver configuration.
+	opts = append(opts, func(opts *schema.DiffOptions) {
+		opts.Extra = d.DefaultExtension
+	})
+	if d.SkipChanges == nil {
+		return
+	}
+	var (
+		changes schema.Changes
+		rv      = reflect.ValueOf(d.SkipChanges).Elem()
+	)
+	for _, c := range []schema.Change{
+		&schema.AddSchema{}, &schema.DropSchema{}, &schema.ModifySchema{},
+		&schema.AddTable{}, &schema.DropTable{}, &schema.ModifyTable{},
+		&schema.AddColumn{}, &schema.DropColumn{}, &schema.ModifyColumn{},
+		&schema.AddIndex{}, &schema.DropIndex{}, &schema.ModifyIndex{},
+		&schema.AddForeignKey{}, &schema.DropForeignKey{}, &schema.ModifyForeignKey{},
+	} {
+		if rt := reflect.TypeOf(c).Elem(); rv.FieldByName(rt.Name()).Bool() {
+			changes = append(changes, c)
+		}
+	}
+	if len(changes) > 0 {
+		opts = append(opts, schema.DiffSkipChanges(changes...))
+	}
+	return opts
+}
+
+// DiffOptions returns the diff options configured for the environment,
+// or nil if no environment or diff policy were set.
+func (e *Env) DiffOptions() []schema.DiffOption {
+	if e == nil || e.Diff == nil {
+		return nil
+	}
+	return e.Diff.Options()
+}
+
 // Sources returns the paths containing the Atlas schema.
 func (e *Env) Sources() ([]string, error) {
 	attr, exists := e.Attr("src")
@@ -270,6 +371,7 @@ func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 		if err := e.remainedLog(); err != nil {
 			return nil, err
 		}
+		e.Diff = e.Diff.Extend(project.Diff)
 		e.Lint = e.Lint.Extend(project.Lint)
 		if err := e.Lint.remainedLog(); err != nil {
 			return nil, err
@@ -284,8 +386,10 @@ func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 }
 
 func parseConfig(path, env string, values map[string]cty.Value) (*Project, error) {
+	cfg := &cmdext.AtlasConfig{}
 	opts := append(
 		cmdext.DataSources,
+		cfg.InitBlock(),
 		schemahcl.WithScopedEnums(
 			"env.migration.format",
 			formatAtlas, formatFlyway,
@@ -298,9 +402,12 @@ func parseConfig(path, env string, values map[string]cty.Value) (*Project, error
 			}),
 		}),
 	)
-	p := &Project{Lint: &Lint{}}
+	p := &Project{Lint: &Lint{}, Diff: &Diff{}}
 	if err := schemahcl.New(opts...).EvalFiles([]string{path}, p, values); err != nil {
 		return nil, err
+	}
+	for _, e := range p.Envs {
+		e.cfg = cfg
 	}
 	return p, nil
 }

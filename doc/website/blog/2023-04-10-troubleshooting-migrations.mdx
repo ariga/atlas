@@ -1,0 +1,275 @@
+---
+title: "Troubleshooting schema migration issues with Atlas"
+authors: rotemtam
+tags: [schema, migration, troubleshooting, mttr]
+---
+
+Database schema migrations are an essential part of software development, allowing teams to
+evolve and refine their application's data model over time. However, with schema changes, it's
+not always smooth sailing, and migration failures can be disruptive and challenging to resolve.
+
+As much as we'd like to believe that our schema migrations will be executed flawlessly,
+the reality is that things can and do go wrong. Whether it's due to human error, unforeseen
+complications, or technical constraints, migration failures can be a significant source
+of frustration for development teams. Anticipating and preparing for these issues is
+essential to minimize their impact on your project.
+
+In this blog post, we'll explore the common causes of migration failures and demonstrate how
+Atlas can help you quickly recover from such failures and easily get back on track.
+
+### Atlas: Optimized for MTTR
+
+MTTR (mean-time-to-recovery) is a widely accepted metric for measuring the performance
+of teams delivering software. MTTR measures the mean time it takes to restore service
+when a production issue occurs. In the context of schema migrations, this would mean
+measuring how long it takes a team to detect, triage and resolve failures of schema migrations.
+
+Contrary to existing tools, Atlas was designed with failure in mind and comes with some
+useful features to help your team get out of the mud if (and when) a schema migration
+fails. By utilizing these features, your team can greatly reduce MTTR for
+schema change related failures.
+
+### Why do migrations fail?
+
+Let's begin our discussion of troubleshooting schema migration failures by mentioning
+the common causes for migration failures.
+
+1. Syntax errors - A surprisingly common cause for migration failures is syntax errors in the
+  migration script: the migration tool tries to execute a statement and the database rejects it,
+  causing the migration to fail. For example, adding an unnecessary comma at the end of a list:
+
+  ```
+  mysql> create table users (   id int,   name varchar(255), );
+
+  ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ')' at line 1
+  ```
+
+2. Schema dependent changes - Incorrect assumptions about the current state of the target
+  database can lead to failed migrations when those assumptions are not met.
+  For example, trying to create a table that was already created:
+```
+mysql> create table users (   id int,   name varchar(255) );
+ERROR 1050 (42S01): Table 'users' already exists
+```
+
+3. Data-dependent changes - If migrations manipulate data or modify
+constraints, the operation may fail depending on existing data in the target database.
+  For example, adding a `NOT NULL` constraint to a column may fail if that column contains null values:
+  ```
+  mysql> alter table users modify bio varchar(100) not null;
+  ERROR 1138 (22004): Invalid use of NULL value
+  ```
+
+4. Lost connection - In some cases, and depending on the state of the target database
+  and network connectivity, the client executing the migration commands against the
+  database may lose the connection to the database, causing the migration to fail:
+  ```
+  mysql> create table t1 (c int);
+  No connection. Trying to reconnect...
+  ERROR 2003 (HY000): Can't connect to MySQL server on '0.0.0.0:3306' (61)
+  ERROR:
+  Can't connect to the server
+  ```
+
+### Troubleshooting failures with Atlas
+
+In the next section, we review the capabilities that Atlas provides operators to
+troubleshoot and resolve migration failures:
+
+* Status observability - how to understand the current state of the system after a failure.
+* Statement level granularity - how to recover from partial migration failures.
+* Declarative roll-forward - how to use Atlas to automatically create a recovery plan from a failure.
+
+#### Status observability
+
+The first step to solving any failure is being able to triage the issue at hand. To assist
+operators in diagnosing the current status of a target database, Atlas provides the
+`migrate status` command which can be used to understand the current situation. For
+instance, suppose we tried to run the following migration which contains a
+`drop table` statement for a non-existing table:
+
+```sql
+create table users (
+  id int,
+  name varchar(255)
+);
+
+drop table non_existing;
+```
+The migration will fail with the following error:
+```
+Error 1051 (42S02): Unknown table 'test.non_existing'
+```
+In many cases, the migration will not be applied from our workstation, so we may not
+have access to the execution logs. To check the migration status, we can run the
+`migrate status` command:
+
+```
+atlas migrate status -u mysql://root:pass@/test
+```
+
+Atlas will print:
+
+```
+Migration Status: PENDING
+  -- Current Version: 20230409114917 (1 statements applied)
+  -- Next Version:    20230409114917 (1 statements left)
+  -- Executed Files:  2 (last one partially)
+  -- Pending Files:   1
+
+Last migration attempt had errors:
+  -- SQL:   drop table non_existing;
+  -- ERROR: Error 1051 (42S02): Unknown table 'test.non_existing'
+```
+
+Observe that Atlas prints out some useful information:
+
+* `Migration Status: PENDING` - There are pending migrations.
+* `-- Executed Files:  2 (last one partially)` - the last file was _partially_ applied.
+* The last migration failed with an error: `ERROR: Error 1051 (42S02): Unknown table 'test.non_existing'`
+
+#### Statement-level granularity
+
+As we saw in the example above, in cases where migrations partially fail (only some
+statements succeed) our database schema will be in a *limbo state* of sorts, it's
+neither in the previous nor the next version. To keep implementations simple, in
+the past many migration tools have opted to treat migration files as *opaque blobs*,
+meaning they cannot provide any assistance in cases of partial failures.
+
+Atlas, on the other hand, parses the migration files prior to executing
+them and can therefore provide information about failures on the statement
+(rather than the file) level. This is great for observability, but it is even
+more meaningful when trying to resolve issues.
+
+Consider a situation similar to the one we presented above, where a migration fails
+halfway because of a constraint violation:
+
+```sql
+CREATE TABLE biographies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    bio TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+ALTER TABLE users modify bio varchar(100) not null;
+```
+In cases where the `users.bio` column already contains null values,
+this migration will partially fail:
+
+```
+  -- migrating version 20230409123337
+    -> CREATE TABLE biographies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    bio TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+    -> alter table users modify bio varchar(100) not null;
+    Error 1138 (22004): Invalid use of NULL value
+```
+This can be solved by *backfilling* the table with non-null values in the relevant column. To do this, we can update our migration script to contain this `UPDATE` statement:
+```sql
+CREATE TABLE biographies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    bio TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+// highlight-next-line
+update users set bio='' where bio is null;
+
+alter table users modify bio varchar(100) not null;
+```
+
+Here's the good part: because Atlas operates at the statement level and remembers
+that we've already successfully applied the first `CREATE TABLE` statement, it will
+resume from where it stopped. If we run:
+
+```
+atlas migrate apply -u mysql://root:pass@/test
+```
+Atlas runs to completion:
+```
+Migrating to version 20230409123337 from 20230409123337 (1 migrations in total):
+
+  -- migrating version 20230409123337
+    -> update users set bio='' where bio is null;
+    -> alter table users modify bio varchar(100) not null;
+  -- ok (48.440861ms)
+
+  -------------------------
+  -- 56.051791ms
+  -- 1 migrations
+  -- 2 sql statements
+```
+
+#### Declarative roll-forward
+
+One of the things people experienced with existing tools immediately notice when
+they start working with Atlas is the absence of *down migrations*. Many migration
+tools expect users to plan a *down migration* parallel to every migration, which
+contains the statements needed to roll back the schema changes for a version.
+In theory, this is done to allow users to seamlessly return to a previous version
+in case things go wrong with the new one.
+
+Our decision to omit down migrations from Atlas and deserves its own lengthy
+discussion, but limited to the examples we just showed it is easy to demonstrate
+that attempting to execute down migrations in cases of partial failures may fail
+themselves, since they rely on the database being at the state where all
+statements executed successfully.
+
+Instead of down migrations, Atlas provides an alternative strategy for reverting
+to a previous version. As you may know, one of Atlas's core features is its support
+for *declarative migrations* - the ability to automatically plan schema changes
+from the current state of a database to some desired state (similar to Terraform,
+but for databases).
+
+Suppose we want to revert the database to a known version. This can happen in cases
+where the database was somehow manually modified in a way that's preventing us from
+making progress, or if we simply want to revert to a previous version. Using Atlas's
+`schema apply`, we can automatically plan this change:
+
+```
+atlas schema apply \
+  --url "mysql://root:pass@localhost:3306/example" \
+  --to "file://migrations?version=targetVersion" \
+  --dev-url "docker://mysql/8/example" \
+  --exclude "atlas_schema_revisions"
+```
+
+Atlas plans the change for us:
+
+```sql
+-- Planned Changes:
+-- Drop "biographies" table
+DROP TABLE `biographies`;
+-- Modify "users" table
+ALTER TABLE `users` MODIFY COLUMN `bio` varchar(100) NULL;
+✔ Apply
+```
+
+Let's unpack this command:
+* `url` - is the URL of the target database that we want to modify.
+* `to` - describes the desired state, in this case the migration directory at
+  `file://migrations` at version `targetVersion` - omitting this query parameter
+  will set the desired state at the most recent revision.
+* `dev-url` - Atlas requires a connection to an empty *dev-database,* which it uses to
+  normalize the desired schema. Using the `docker://` URL scheme tells Atlas to spin
+  up and use a fresh Docker container for this purpose.
+* `exclude` - tells Atlas to ignore `atlas_schema_revision` which is a metadata table
+  maintained by Atlas and not described in the migration directory. Adding this
+  argument prevents Atlas from accidentally producing a plan that drops this table.
+
+### Wrapping up
+
+This blog post discussed the common causes of database schema migration failures
+and demonstrated how Atlas is equipped to handle them. Atlas offers features such as status
+observability, statement-level granularity, and declarative roll-forward capabilities,
+which enable development teams to efficiently recover from migration failures,
+reduce MTTR, and minimize disruption to their services.
+
+#### How can we make Atlas better?
+
+We would love to hear from you [on our Discord server](https://discord.gg/zZ6sWVg6NT) :heart:.

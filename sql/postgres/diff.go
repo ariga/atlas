@@ -13,6 +13,7 @@ import (
 	"strings"
 	"unicode"
 
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 )
@@ -224,6 +225,48 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 		to = schema.NoAction
 	}
 	return from != to
+}
+
+// DiffOptions defines PostgreSQL specific schema diffing process.
+type DiffOptions struct {
+	ConcurrentIndex struct {
+		Add  bool `spec:"add"`
+		Drop bool `spec:"drop"`
+	} `spec:"concurrent_index"`
+}
+
+// AnnotateChanges implements the sqlx.ChangeAnnotator interface.
+func (*diff) AnnotateChanges(changes []schema.Change, opts *schema.DiffOptions) error {
+	var extra DiffOptions
+	switch ex := opts.Extra.(type) {
+	case nil:
+		return nil
+	case schemahcl.DefaultExtension:
+		if err := ex.Extra.As(&extra); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("postgres: unexpected DiffOptions.Extra type %T", opts.Extra)
+	}
+	for _, c := range changes {
+		m, ok := c.(*schema.ModifyTable)
+		if !ok {
+			continue
+		}
+		for i := range m.Changes {
+			switch c := m.Changes[i].(type) {
+			case *schema.AddIndex:
+				if extra.ConcurrentIndex.Add {
+					c.Extra = append(c.Extra, &Concurrently{})
+				}
+			case *schema.DropIndex:
+				if extra.ConcurrentIndex.Drop {
+					c.Extra = append(c.Extra, &Concurrently{})
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {

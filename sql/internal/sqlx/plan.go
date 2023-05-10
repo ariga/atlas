@@ -252,6 +252,13 @@ func dependencies(changes []schema.Change) (map[string][]*schema.Table, error) {
 					if c.To.RefTable != change.T {
 						deps[change.T.Name] = append(deps[change.T.Name], c.To.RefTable)
 					}
+				case *schema.DropForeignKey:
+					if err := checkFK(c.F); err != nil {
+						return nil, err
+					}
+					if isDropped(changes, c.F.RefTable) {
+						deps[c.F.RefTable.Name] = append(deps[c.F.RefTable.Name], c.F.Table)
+					}
 				}
 			}
 		}

@@ -6,7 +6,9 @@ package migrate
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
@@ -16,6 +18,7 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
+	"github.com/google/uuid"
 )
 
 type (
@@ -81,6 +84,9 @@ func (r *EntRevisions) Ident() *migrate.TableIdent {
 //
 // ReadRevision will not return results only saved in cache.
 func (r *EntRevisions) ReadRevision(ctx context.Context, v string) (*migrate.Revision, error) {
+	if v == revisionID {
+		return nil, errors.New("cannot read revision-table identifier as revision")
+	}
 	rev, err := r.ec.Revision.Get(ctx, v)
 	if err != nil && !ent.IsNotFound(err) {
 		return nil, err
@@ -95,7 +101,10 @@ func (r *EntRevisions) ReadRevision(ctx context.Context, v string) (*migrate.Rev
 //
 // ReadRevisions will not return results only saved to cache.
 func (r *EntRevisions) ReadRevisions(ctx context.Context) ([]*migrate.Revision, error) {
-	revs, err := r.ec.Revision.Query().Order(ent.Asc(revision.FieldID)).All(ctx)
+	revs, err := r.ec.Revision.Query().
+		Where(revision.IDNEQ(revisionID)).
+		Order(revision.ByID()).
+		All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +117,10 @@ func (r *EntRevisions) ReadRevisions(ctx context.Context) ([]*migrate.Revision, 
 
 // CurrentRevision returns the current (latest) revision in the revisions table.
 func (r *EntRevisions) CurrentRevision(ctx context.Context) (*migrate.Revision, error) {
-	rev, err := r.ec.Revision.Query().Order(ent.Desc(revision.FieldID)).First(ctx)
+	rev, err := r.ec.Revision.Query().
+		Where(revision.IDNEQ(revisionID)).
+		Order(revision.ByID(sql.OrderDesc())).
+		First(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +129,9 @@ func (r *EntRevisions) CurrentRevision(ctx context.Context) (*migrate.Revision, 
 
 // WriteRevision writes a revision to the revisions table.
 func (r *EntRevisions) WriteRevision(ctx context.Context, rev *migrate.Revision) error {
+	if rev.Version == revisionID {
+		return errors.New("writing the revision-table identifier is not allowed")
+	}
 	return r.ec.Revision.Create().
 		SetRevision(rev).
 		OnConflict(sql.ConflictColumns(revision.FieldID)).
@@ -126,6 +141,9 @@ func (r *EntRevisions) WriteRevision(ctx context.Context, rev *migrate.Revision)
 
 // DeleteRevision deletes a revision from the revisions table.
 func (r *EntRevisions) DeleteRevision(ctx context.Context, v string) error {
+	if v == revisionID {
+		return errors.New("deleting the revision-table identifier is not allowed")
+	}
 	return r.ec.Revision.DeleteOneID(v).Exec(ctx)
 }
 
@@ -168,6 +186,36 @@ func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
 		}
 	}
 	return c.Schema.Create(ctx, entschema.WithDropColumn(true))
+}
+
+// revisionID holds the column "id" ("version") of the revision that holds the identifier of the
+// connected revisions table. The "." prefix ensures the is it lower than any other revisions.
+const revisionID = ".atlas_cloud_identifier"
+
+// ID returns the identifier of the connected revisions table.
+func (r *EntRevisions) ID(ctx context.Context, operatorV string) (string, error) {
+	err := r.ec.Revision.Create().
+		SetID(revisionID).                // identifier key
+		SetDescription(uuid.NewString()). // actual revision identifier
+		SetOperatorVersion(operatorV).    // operator version
+		SetExecutedAt(time.Now()).        // when it was set
+		SetExecutionTime(0).              // dummy values
+		SetHash("").
+		OnConflict(sql.ConflictColumns(revision.FieldID)).
+		Ignore().
+		Exec(ctx)
+	if err != nil {
+		return "", fmt.Errorf("upsert revision-table id: %w", err)
+	}
+	rev, err := r.ec.Revision.Get(ctx, revisionID)
+	if err != nil {
+		return "", fmt.Errorf("read revision-table id: %w", err)
+	}
+	id, err := uuid.Parse(rev.Description)
+	if err != nil {
+		return "", fmt.Errorf("parse revision-table id: %w", err)
+	}
+	return id.String(), nil
 }
 
 var _ migrate.RevisionReadWriter = (*EntRevisions)(nil)

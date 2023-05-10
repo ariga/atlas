@@ -516,6 +516,7 @@ flag.
 #### Flags
 ```
   -u, --url string        [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --dev-url string    [driver://username:password@address/dbname?param=value] select a dev database using the URL format
   -s, --schema strings    set schema names
       --exclude strings   list of glob patterns used to filter resources from applying
       --format string     Go template to use to format the output

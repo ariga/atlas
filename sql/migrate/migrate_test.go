@@ -573,11 +573,11 @@ func (m *mockDriver) InspectRealm(context.Context, *schema.InspectRealmOption) (
 	return &m.realm, nil
 }
 
-func (m *mockDriver) SchemaDiff(_, _ *schema.Schema) ([]schema.Change, error) {
+func (m *mockDriver) SchemaDiff(_, _ *schema.Schema, _ ...schema.DiffOption) ([]schema.Change, error) {
 	return m.changes, nil
 }
 
-func (m *mockDriver) RealmDiff(_, _ *schema.Realm) ([]schema.Change, error) {
+func (m *mockDriver) RealmDiff(_, _ *schema.Realm, _ ...schema.DiffOption) ([]schema.Change, error) {
 	return m.changes, nil
 }
 

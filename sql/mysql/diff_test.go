@@ -731,3 +731,77 @@ func TestDefaultDiff(t *testing.T) {
 	require.Len(t, changes, 1)
 	require.IsType(t, &schema.DropTable{}, changes[0])
 }
+
+func TestSkipChanges(t *testing.T) {
+	t.Run("DropSchema", func(t *testing.T) {
+		from, to := schema.NewRealm(schema.New("public")), schema.NewRealm()
+		changes, err := DefaultDiff.RealmDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		changes, err = DefaultDiff.RealmDiff(from, to, schema.DiffSkipChanges(&schema.DropSchema{}))
+		require.NoError(t, err)
+		require.Empty(t, changes)
+	})
+
+	t.Run("DropTable", func(t *testing.T) {
+		from, to := schema.NewRealm(schema.New("public").AddTables(schema.NewTable("users"))), schema.NewRealm(schema.New("public"))
+		changes, err := DefaultDiff.RealmDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		changes, err = DefaultDiff.SchemaDiff(from.Schemas[0], to.Schemas[0])
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+
+		changes, err = DefaultDiff.RealmDiff(from, to, schema.DiffSkipChanges(&schema.DropTable{}))
+		require.NoError(t, err)
+		require.Empty(t, changes)
+		changes, err = DefaultDiff.SchemaDiff(from.Schemas[0], to.Schemas[0], schema.DiffSkipChanges(&schema.DropTable{}))
+		require.NoError(t, err)
+		require.Empty(t, changes)
+	})
+
+	t.Run("ModifyTable", func(t *testing.T) {
+		from := schema.NewRealm(
+			schema.New("public").AddTables(
+				schema.NewTable("users").
+					AddColumns(schema.NewIntColumn("id", "int")).
+					AddIndexes(schema.NewIndex("users_id_idx").AddColumns(schema.NewIntColumn("id", "int"))),
+			),
+		)
+		to := schema.NewRealm(schema.New("public").AddTables(schema.NewTable("users")))
+		changes, err := DefaultDiff.RealmDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		require.Len(t, changes[0].(*schema.ModifyTable).Changes, 2)
+		changes, err = DefaultDiff.SchemaDiff(from.Schemas[0], to.Schemas[0])
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		require.Len(t, changes[0].(*schema.ModifyTable).Changes, 2)
+
+		changes, err = DefaultDiff.RealmDiff(from, to, schema.DiffSkipChanges(&schema.ModifyTable{}))
+		require.NoError(t, err)
+		require.Empty(t, changes)
+		changes, err = DefaultDiff.SchemaDiff(from.Schemas[0], to.Schemas[0], schema.DiffSkipChanges(&schema.ModifyTable{}))
+		require.NoError(t, err)
+		require.Empty(t, changes)
+
+		changes, err = DefaultDiff.RealmDiff(from, to, schema.DiffSkipChanges(&schema.DropColumn{}, &schema.DropIndex{}))
+		require.NoError(t, err)
+		require.Empty(t, changes)
+		changes, err = DefaultDiff.SchemaDiff(from.Schemas[0], to.Schemas[0], schema.DiffSkipChanges(&schema.DropColumn{}, &schema.DropIndex{}))
+		require.NoError(t, err)
+		require.Empty(t, changes)
+
+		// Ignore partial table changes.
+		changes, err = DefaultDiff.RealmDiff(from, to, schema.DiffSkipChanges(&schema.DropColumn{}))
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		require.Len(t, changes[0].(*schema.ModifyTable).Changes, 1)
+		require.IsType(t, &schema.DropIndex{}, changes[0].(*schema.ModifyTable).Changes[0])
+		changes, err = DefaultDiff.SchemaDiff(from.Schemas[0], to.Schemas[0], schema.DiffSkipChanges(&schema.DropIndex{}))
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		require.Len(t, changes[0].(*schema.ModifyTable).Changes, 1)
+		require.IsType(t, &schema.DropColumn{}, changes[0].(*schema.ModifyTable).Changes[0])
+	})
+}

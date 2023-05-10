@@ -774,7 +774,59 @@ CREATE TABLE "market"."users" ("name" integer NOT NULL);
 As you can see, Atlas generates statements for creating the `auth` and `market` schemas,
 and added them as qualifiers in the created tables.
 
-### Indented SQL
+
+## Diff Policy
+
+Atlas allows configuring the schema diffing policy in [project configuration](../atlas-schema/projects.mdx) to fine-tune
+or modify suggested changes before they are written to the migration directory:
+
+<Tabs>
+<TabItem label="Skip Destructive" value="skip">
+
+```hcl title="atlas.hcl"
+variable "destructive" {
+  type    = bool
+  default = false
+}
+
+env "local" {
+  migration {
+    dir = "file://migrations"
+  }
+  diff {
+    skip {
+      drop_schema = !var.destructive
+      drop_table  = !var.destructive
+    }
+  }
+}
+```
+
+The usage is as follows:
+
+```go
+atlas migrate diff --env "local" --var "destructive=true"
+```
+
+</TabItem>
+<TabItem label="Concurrent Indexes" value="concurrent_indexes">
+
+```hcl title="atlas.hcl"
+env "local" {
+  diff {
+    // By default, indexes are not created or dropped concurrently.
+    concurrent_index {
+      create = true
+      drop   = true
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Indented SQL
 
 The `migrate diff` command generates a list of SQL statements without indentation by default. If you would like to
 generate the SQL statements with indentation, use the `--format` flag. For example:
@@ -788,6 +840,6 @@ atlas migrate diff create_users \
   --format '{{ sql . "  " }}'
 ```
 
-### Reference
+## Reference
 
 [CLI Command Reference](/cli-reference#atlas-migrate-diff)

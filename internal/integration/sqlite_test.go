@@ -20,7 +20,6 @@ import (
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlite"
 
-	"entgo.io/ent/dialect"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
@@ -62,12 +61,6 @@ func TestSQLite_AddDropTable(t *testing.T) {
 func TestSQLite_Relation(t *testing.T) {
 	liteRun(t, func(t *liteTest) {
 		testRelation(t)
-	})
-}
-
-func TestSQLite_Ent(t *testing.T) {
-	liteRun(t, func(t *liteTest) {
-		testEntIntegration(t, dialect.SQLite, t.db)
 	})
 }
 

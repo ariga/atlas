@@ -29,6 +29,55 @@ SQL schema, or a migration directory.
 * `--exclude` (optional, may be supplied multiple times) - filter out resources matching the given glob pattern.
 * `--format` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
 
+
+## Diff Policy
+
+Atlas allows configuring the schema diffing policy in [project configuration](../atlas-schema/projects.mdx) to fine-tune
+or modify suggested changes before they are printed:
+
+<Tabs>
+<TabItem label="Skip Destructive" value="skip">
+
+```hcl title="atlas.hcl"
+variable "destructive" {
+  type    = bool
+  default = false
+}
+
+env "local" {
+  diff {
+    skip {
+      drop_schema = !var.destructive
+      drop_table  = !var.destructive
+    }
+  }
+}
+```
+
+The usage is as follows:
+
+```go
+atlas schema diff --env "local" --var "destructive=true"
+```
+
+</TabItem>
+<TabItem label="Concurrent Indexes" value="concurrent_indexes">
+
+```hcl title="atlas.hcl"
+env "local" {
+  diff {
+    // By default, indexes are not created or dropped concurrently.
+    concurrent_index {
+      create = true
+      drop   = true
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
 ## Examples
 
 ### Compare databases
@@ -78,7 +127,6 @@ atlas schema diff \
 
 </TabItem>
 </Tabs>
-
 
 ### Compare database schemas
 

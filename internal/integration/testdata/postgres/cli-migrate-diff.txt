@@ -20,7 +20,6 @@ table "users" {
   column "id" {
     null = false
     type = bigint
-    auto_increment = true
   }
   primary_key  {
     columns = [column.id]
@@ -39,7 +38,6 @@ table "users" {
   column "id" {
     null = false
     type = bigint
-    auto_increment = true
   }
   column "create_time" {
     null    = false

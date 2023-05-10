@@ -50,7 +50,6 @@ var DataSources = []schemahcl.Option{
 	schemahcl.WithDataSource("runtimevar", RuntimeVarSrc),
 	schemahcl.WithDataSource("template_dir", TemplateDir),
 	schemahcl.WithDataSource("remote_dir", RemoteDir),
-	schemahcl.WithInitBlock("atlas", AtlasConfig),
 }
 
 // RuntimeVarSrc exposes the gocloud.dev/runtimevar as a schemahcl datasource.
@@ -310,43 +309,61 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	}), nil
 }
 
-// AtlasConfig is the handler for the "atlas" init block.
+// AtlasConfig exposes non-sensitive information returned by the "atlas" init-block.
+// By invoking AtlasInitBlock() a new config is returned that is set by the init block
+// defined and executed on schemahcl Eval functions.
+type AtlasConfig struct {
+	Client  *cloudapi.Client // Client attached to Atlas Cloud.
+	Project string           // Optional project.
+}
+
+// DefaultProjectName is the default name for projects.
+const DefaultProjectName = "default"
+
+// InitBlock returns the handler for the "atlas" init block.
 //
 //	atlas {
 //	  cloud {
-//	    token = data.runtimevar.token	// User token.
-//	    url   = var.cloud_url			// Optional URL.
+//	    token   = data.runtimevar.token  // User token.
+//	    url     = var.cloud_url          // Optional URL.
+//	    project = var.project            // Optional project. If set, cloud reporting is enabled.
 //	  }
 //	}
-func AtlasConfig(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
-	var args struct {
-		Cloud struct {
-			Token string `hcl:"token"`
-			URL   string `hcl:"url,optional"`
-		} `hcl:"cloud,block"`
-	}
-	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
-		return cty.NilVal, fmt.Errorf("atlas.cloud: decoding body: %v", diags)
-	}
-	cloud := cty.ObjectVal(map[string]cty.Value{
-		"client": cty.CapsuleVal(
-			clientType,
-			cloudapi.New(args.Cloud.URL, args.Cloud.Token),
-		),
+func (c *AtlasConfig) InitBlock() schemahcl.Option {
+	return schemahcl.WithInitBlock("atlas", func(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+		var args struct {
+			Cloud struct {
+				Token   string `hcl:"token"`
+				URL     string `hcl:"url,optional"`
+				Project string `hcl:"project,optional"`
+			} `hcl:"cloud,block"`
+		}
+		if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+			return cty.NilVal, fmt.Errorf("atlas.cloud: decoding body: %v", diags)
+		}
+		if args.Cloud.Project == "" {
+			args.Cloud.Project = DefaultProjectName
+		}
+		c.Project = args.Cloud.Project
+		c.Client = cloudapi.New(args.Cloud.URL, args.Cloud.Token)
+		cloud := cty.ObjectVal(map[string]cty.Value{
+			"client":  cty.CapsuleVal(clientType, c.Client),
+			"project": cty.StringVal(args.Cloud.Project),
+		})
+		av, diags := (&hclsyntax.ScopeTraversalExpr{
+			Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "atlas", SrcRange: block.Range()}},
+		}).Value(ctx)
+		switch {
+		case !diags.HasErrors():
+			m := av.AsValueMap()
+			m["cloud"] = cloud
+			return cty.ObjectVal(m), nil
+		case len(diags) == 1 && diags[0].Summary == "Unknown variable":
+			return cty.ObjectVal(map[string]cty.Value{"cloud": cloud}), nil
+		default:
+			return cty.NilVal, fmt.Errorf("atlas.cloud: getting config: %v", diags)
+		}
 	})
-	av, diags := (&hclsyntax.ScopeTraversalExpr{
-		Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "atlas", SrcRange: block.Range()}},
-	}).Value(ctx)
-	switch {
-	case !diags.HasErrors():
-		m := av.AsValueMap()
-		m["cloud"] = cloud
-		return cty.ObjectVal(m), nil
-	case len(diags) == 1 && diags[0].Summary == "Unknown variable":
-		return cty.ObjectVal(map[string]cty.Value{"cloud": cloud}), nil
-	default:
-		return cty.NilVal, fmt.Errorf("atlas.cloud: getting config: %v", diags)
-	}
 }
 
 var clientType = cty.Capsule("client", reflect.TypeOf(cloudapi.Client{}))
@@ -435,11 +452,12 @@ type (
 
 	// MigrateDiffOptions for external migration differ.
 	MigrateDiffOptions struct {
-		Name   string
-		Indent string
-		To     []string
-		Dir    migrate.Dir
-		Dev    *sqlclient.Client
+		Name    string
+		Indent  string
+		To      []string
+		Dir     migrate.Dir
+		Dev     *sqlclient.Client
+		Options []schema.DiffOption
 	}
 	// MigrateDiffer allows external sources to implement custom migration differs.
 	MigrateDiffer interface {
@@ -525,6 +543,7 @@ func (l EntLoader) MigrateDiff(ctx context.Context, opts *MigrateDiffOptions) er
 		entschema.WithGlobalUniqueID(true),
 		entschema.WithIndent(opts.Indent),
 		entschema.WithMigrationMode(entschema.ModeReplay),
+		entschema.WithDiffOptions(opts.Options...),
 	)
 	if err != nil {
 		return fmt.Errorf("creating migrate reader: %w", err)

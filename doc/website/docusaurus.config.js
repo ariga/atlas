@@ -74,6 +74,11 @@ module.exports = {
           label: 'Blog',
           position: 'left'
         },
+        {
+          to: 'https://atlasgo.cloud/',
+          label: 'Cloud',
+          position: 'left',
+        },
       ],
     },
     //
@@ -110,12 +115,20 @@ module.exports = {
           ]
         },
         {
+          "title": "Atlas Cloud",
+          "items": [
+            {"label": "Discover Atlas Cloud", "to": "https://atlasgo.cloud/"},
+            {"label": "Live Demo", "to": "https://gh.atlasgo.cloud/dirs"},
+            {"label": "Sign Up", "to": "https://auth.atlasgo.cloud/signup"},
+          ]
+        },
+        {
           "title": "Legal",
           "items": [
             {"label": "Privacy Policy", "to": "https://ariga.io/legal/privacy"},
             {"label": "Terms of Service", "to": "https://ariga.io/legal/tos"},
           ]
-        }
+        },
       ],
       copyright: `
       Copyright © ${new Date().getFullYear()} The Atlas Authors.
@@ -128,7 +141,7 @@ module.exports = {
     },
     announcementBar: {
       id: 'announcementBar-3', // Increment on change
-      content: `Atlas v0.10 is now available! Check out the <a href="/blog/2023/03/13/atlas-v010">latest blog post</a> 🚀`,
+      content: `Announcing v0.11.0! Manage database schemas with Kubernetes and Atlas, Read it <a href="https://atlasgo.io/blog/2023/05/08/atlas-v011-kubernetes-operator"> here!</a> 🚀`,
       isCloseable: true,
     },
   },

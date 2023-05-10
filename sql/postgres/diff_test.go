@@ -5,12 +5,13 @@
 package postgres
 
 import (
+	"context"
 	"testing"
 
-	"github.com/DATA-DOG/go-sqlmock"
-
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -535,4 +536,30 @@ func TestDefaultDiff(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, changes, 1)
 	require.IsType(t, &schema.DropTable{}, changes[0])
+}
+
+func TestDiff_AnnotateChanges(t *testing.T) {
+	var cfg struct {
+		schemahcl.DefaultExtension
+	}
+	// language=hcl
+	err := schemahcl.New().EvalBytes([]byte(`
+concurrent_index {
+  add  = true
+  drop = true
+}
+`), &cfg, nil)
+	require.NoError(t, err)
+	from := schema.New("public").AddTables(schema.NewTable("users").AddIndexes(schema.NewIndex("users_pkey_old").AddColumns(schema.NewIntColumn("id", "int"))))
+	to := schema.New("public").AddTables(schema.NewTable("users").AddIndexes(schema.NewIndex("users_pkey_new").AddColumns(schema.NewIntColumn("id", "int"))))
+	changes, err := DefaultDiff.SchemaDiff(from, to, func(opts *schema.DiffOptions) { opts.Extra = cfg.DefaultExtension })
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	plan, err := DefaultPlan.PlanChanges(context.Background(), "changes", changes)
+	require.NoError(t, err)
+	require.Len(t, plan.Changes, 2)
+	require.Equal(t, `DROP INDEX CONCURRENTLY "public"."users_pkey_old"`, plan.Changes[0].Cmd)
+	require.Equal(t, `CREATE INDEX CONCURRENTLY "users_pkey_old" ON "public"."users" ("id")`, plan.Changes[0].Reverse)
+	require.Equal(t, `CREATE INDEX CONCURRENTLY "users_pkey_new" ON "public"."users" ("id")`, plan.Changes[1].Cmd)
+	require.Equal(t, `DROP INDEX CONCURRENTLY "public"."users_pkey_new"`, plan.Changes[1].Reverse)
 }

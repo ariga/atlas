@@ -90,9 +90,11 @@ migration.`,
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" --to file://schema.hcl`,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				if GlobalFlags.SelectedEnv == "" {
-					return schemaApplyRun(cmd, args, flags)
+					return schemaApplyRun(cmd, flags, nil)
 				}
-				return cmdEnvsRun(schemaApplyRun, setSchemaEnvFlags, cmd, args, &flags)
+				return cmdEnvsRun(setSchemaEnvFlags, cmd, func(e *Env) error {
+					return schemaApplyRun(cmd, flags, e)
+				})
 			},
 		}
 	)
@@ -114,7 +116,7 @@ migration.`,
 	return cmd
 }
 
-func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) error {
+func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error {
 	switch {
 	case flags.url == "":
 		return errors.New(`required flag(s) "url" not set`)
@@ -126,7 +128,7 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 	// If the old -f flag is given convert them to the URL format. If both are given,
 	// cobra would throw an error since they are marked as mutually exclusive.
 	for _, p := range flags.paths {
-		if !strings.Contains(p, "://") {
+		if !isURL(p) {
 			p = "file://" + p
 		}
 		flags.toURLs = append(flags.toURLs, p)
@@ -173,7 +175,7 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 		return err
 	}
 	defer to.Close()
-	changes, err := computeDiff(ctx, client, from, to)
+	changes, err := computeDiff(ctx, client, from, to, env.DiffOptions()...)
 	if err != nil {
 		return err
 	}
@@ -321,7 +323,11 @@ The database states can be read from a connected database, an HCL project or a m
 				return schemaFlagsFromEnv(cmd)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return schemaDiffRun(cmd, args, flags)
+				env, err := selectEnv(GlobalFlags.SelectedEnv)
+				if err != nil {
+					return err
+				}
+				return schemaDiffRun(cmd, args, flags, env)
 			},
 		}
 	)
@@ -337,7 +343,7 @@ The database states can be read from a connected database, an HCL project or a m
 	return cmd
 }
 
-func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error {
+func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *Env) error {
 	var (
 		ctx = cmd.Context()
 		c   *sqlclient.Client
@@ -384,7 +390,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	changes, err := computeDiff(ctx, c, from, to)
+	changes, err := computeDiff(ctx, c, from, to, env.DiffOptions()...)
 	if err != nil {
 		return err
 	}
@@ -395,7 +401,8 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 }
 
 type schemaInspectFlags struct {
-	url       string   // URL of database to apply the changes on.
+	url       string   // URL of resource to inspect.
+	devURL    string   // URL of the dev database.
 	logFormat string   // Format of the log output.
 	schemas   []string // Schemas to take into account when diffing.
 	exclude   []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
@@ -435,6 +442,7 @@ flag.
 	)
 	cmd.Flags().SortFlags = false
 	addFlagURL(cmd.Flags(), &flags.url)
+	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagExclude(cmd.Flags(), &flags.exclude)
 	addFlagLog(cmd.Flags(), &flags.logFormat)
@@ -445,25 +453,40 @@ flag.
 }
 
 func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) error {
-	client, err := sqlclient.Open(cmd.Context(), flags.url)
+	var (
+		ctx = cmd.Context()
+		dev *sqlclient.Client
+	)
+	if flags.devURL != "" {
+		var err error
+		dev, err = sqlclient.Open(ctx, flags.devURL)
+		if err != nil {
+			return err
+		}
+		defer dev.Close()
+	}
+	r, err := stateReader(ctx, &stateReaderConfig{
+		urls:    []string{flags.url},
+		dev:     dev,
+		vars:    GlobalFlags.Vars,
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+	})
 	if err != nil {
 		return err
 	}
-	defer client.Close()
-	schemas := flags.schemas
-	if client.URL.Schema != "" {
-		schemas = append(schemas, client.URL.Schema)
+	defer r.Close()
+	client, ok := r.Closer.(*sqlclient.Client)
+	if !ok && dev != nil {
+		client = dev
 	}
-	s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
-		Schemas: schemas,
-		Exclude: flags.exclude,
-	})
 	format := cmdlog.SchemaInspectTemplate
 	if v := flags.logFormat; v != "" {
 		if format, err = template.New("format").Funcs(cmdlog.InspectTemplateFuncs).Parse(v); err != nil {
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
+	s, err := r.ReadState(ctx)
 	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaInspect{
 		Client: client,
 		Realm:  s,
@@ -534,11 +557,11 @@ func selectEnv(name string) (*Env, error) {
 }
 
 func schemaFlagsFromEnv(cmd *cobra.Command) error {
-	activeEnv, err := selectEnv(GlobalFlags.SelectedEnv)
+	env, err := selectEnv(GlobalFlags.SelectedEnv)
 	if err != nil {
 		return err
 	}
-	return setSchemaEnvFlags(cmd, activeEnv)
+	return setSchemaEnvFlags(cmd, env)
 }
 
 func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
@@ -577,7 +600,7 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	return nil
 }
 
-func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateReadCloser) ([]schema.Change, error) {
+func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateReadCloser, opts ...schema.DiffOption) ([]schema.Change, error) {
 	current, err := from.ReadState(ctx)
 	if err != nil {
 		return nil, err
@@ -588,9 +611,12 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateR
 	}
 	var diff []schema.Change
 	switch {
+	// In case an HCL file is compared against a specific database schema (not a realm).
+	case to.hcl && len(desired.Schemas) == 1 && from.schema != "" && desired.Schemas[0].Name != from.schema:
+		return nil, fmt.Errorf("mismatched HCL and database schemas: %q <> %q", from.schema, desired.Schemas[0].Name)
 	// Compare realm if the desired state is an HCL file or both connections are not bound to a schema.
 	case from.hcl, to.hcl, from.schema == "" && to.schema == "":
-		diff, err = differ.RealmDiff(current, desired)
+		diff, err = differ.RealmDiff(current, desired, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -600,7 +626,7 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateR
 		// SchemaDiff checks for name equality which is irrelevant in the case
 		// the user wants to compare their contents, reset them to allow the comparison.
 		current.Schemas[0].Name, desired.Schemas[0].Name = "", ""
-		diff, err = differ.SchemaDiff(current.Schemas[0], desired.Schemas[0])
+		diff, err = differ.SchemaDiff(current.Schemas[0], desired.Schemas[0], opts...)
 		if err != nil {
 			return nil, err
 		}

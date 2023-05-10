@@ -59,6 +59,16 @@ func IDLTE(id string) predicate.Revision {
 	return predicate.Revision(sql.FieldLTE(FieldID, id))
 }
 
+// IDEqualFold applies the EqualFold predicate on the ID field.
+func IDEqualFold(id string) predicate.Revision {
+	return predicate.Revision(sql.FieldEqualFold(FieldID, id))
+}
+
+// IDContainsFold applies the ContainsFold predicate on the ID field.
+func IDContainsFold(id string) predicate.Revision {
+	return predicate.Revision(sql.FieldContainsFold(FieldID, id))
+}
+
 // Description applies equality check predicate on the "description" field. It's identical to DescriptionEQ.
 func Description(v string) predicate.Revision {
 	return predicate.Revision(sql.FieldEQ(FieldDescription, v))

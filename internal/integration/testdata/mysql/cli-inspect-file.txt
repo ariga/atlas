@@ -1,0 +1,38 @@
+only mysql8
+
+# inspect without dev-db will failed
+! atlas schema inspect -u file://a.sql
+stderr 'Error: --dev-url cannot be empty'
+
+# inspect file to HCL
+atlas schema inspect -u file://a.sql --dev-url URL > inspected.hcl
+cmp inspected.hcl script_cli_inspect.hcl
+
+# inspect file to SQL
+atlas schema inspect -u file://a.sql --dev-url URL --format '{{ sql . }}' > inspected.sql
+cmp inspected.sql script_cli_inspect.sql
+
+-- a.sql --
+create table users (
+  id int NOT NULL,
+  PRIMARY KEY (id)
+)
+
+-- script_cli_inspect.hcl --
+table "users" {
+  schema = schema.script_cli_inspect_file
+  column "id" {
+    null = false
+    type = int
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+schema "script_cli_inspect_file" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+-- script_cli_inspect.sql --
+-- Create "users" table
+CREATE TABLE `users` (`id` int NOT NULL, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;

@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	"text/template/parse"
 	"time"
 
+	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/cmd/atlas/internal/lint"
@@ -34,6 +36,7 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -80,6 +83,19 @@ type migrateApplyFlags struct {
 	txMode          string // (none, file, all)
 }
 
+func (f *migrateApplyFlags) migrateOptions() (opts []migrate.ExecutorOption) {
+	if f.allowDirty {
+		opts = append(opts, migrate.WithAllowDirty(true))
+	}
+	if v := f.baselineVersion; v != "" {
+		opts = append(opts, migrate.WithBaselineVersion(v))
+	}
+	if v := f.fromVersion; v != "" {
+		opts = append(opts, migrate.WithFromVersion(v))
+	}
+	return
+}
+
 func migrateApplyCmd() *cobra.Command {
 	var (
 		flags migrateApplyFlags
@@ -99,11 +115,17 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
   atlas migrate apply --env dev 1
   atlas migrate apply --dry-run --env dev 1`,
 			Args: cobra.MaximumNArgs(1),
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: func(cmd *cobra.Command, args []string) (err error) {
 				if GlobalFlags.SelectedEnv == "" {
-					return migrateApplyRun(cmd, args, flags)
+					return migrateApplyRun(cmd, args, flags, &MigrateReport{}) // nop reporter
 				}
-				return cmdEnvsRun(migrateApplyRun, setMigrateEnvFlags, cmd, args, &flags)
+				set := NewMigrateReportSet()
+				defer func() {
+					err = errors.Join(err, set.Flush(cmd.Context()))
+				}()
+				return cmdEnvsRun(setMigrateEnvFlags, cmd, func(env *Env) error {
+					return migrateApplyRun(cmd, args, flags, set.ReportFor(env))
+				})
 			},
 		}
 	)
@@ -125,10 +147,10 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 }
 
 // migrateApplyCmd represents the 'atlas migrate apply' subcommand.
-func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags) error {
+func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags, mr *MigrateReport) (err error) {
 	var (
 		count int
-		err   error
+		ctx   = cmd.Context()
 	)
 	if len(args) > 0 {
 		if count, err = strconv.Atoi(args[0]); err != nil {
@@ -151,14 +173,16 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	if flags.url == "" {
 		return errors.New(`required flag "url" not set`)
 	}
-	client, err := sqlclient.Open(cmd.Context(), flags.url)
+	client, err := sqlclient.Open(ctx, flags.url)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
+	// Prevent usage printing after input validation.
+	cmd.SilenceUsage = true
 	// Acquire a lock.
 	if l, ok := client.Driver.(schema.Locker); ok {
-		unlock, err := l.Lock(cmd.Context(), applyLockValue, flags.lockTimeout)
+		unlock, err := l.Lock(ctx, applyLockValue, flags.lockTimeout)
 		if err != nil {
 			return fmt.Errorf("acquiring database lock: %w", err)
 		}
@@ -169,51 +193,47 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		return err
 	}
 	var rrw migrate.RevisionReadWriter
-	rrw, err = entRevisions(cmd.Context(), client, flags.revisionSchema)
-	if err != nil {
+	if rrw, err = entRevisions(ctx, client, flags.revisionSchema); err != nil {
 		return err
 	}
-	if err := rrw.(*cmdmigrate.EntRevisions).Migrate(cmd.Context()); err != nil {
+	if err := rrw.(*cmdmigrate.EntRevisions).Migrate(ctx); err != nil {
+		return err
+	}
+	// Setup reporting info.
+	report := cmdlog.NewMigrateApply(client, migrationDir)
+	mr.Init(client, report, rrw.(*cmdmigrate.EntRevisions))
+	// If cloud reporting is enabled, and we cannot obtain the current
+	// target identifier, abort and report it to the user.
+	if err := mr.RecordTargetID(cmd.Context()); err != nil {
 		return err
 	}
 	// Determine pending files.
-	opts := []migrate.ExecutorOption{
-		migrate.WithOperatorVersion(operatorVersion()),
-	}
-	if flags.allowDirty {
-		opts = append(opts, migrate.WithAllowDirty(true))
-	}
-	if v := flags.baselineVersion; v != "" {
-		opts = append(opts, migrate.WithBaselineVersion(v))
-	}
-	if v := flags.fromVersion; v != "" {
-		opts = append(opts, migrate.WithFromVersion(v))
-	}
-	report := cmdlog.NewMigrateApply(client, migrationDir)
+	opts := append(flags.migrateOptions(), migrate.WithOperatorVersion(operatorVersion()), migrate.WithLogger(report))
 	ex, err := migrate.NewExecutor(client.Driver, migrationDir, rrw, opts...)
 	if err != nil {
 		return err
 	}
-	pending, err := ex.Pending(cmd.Context())
+	pending, err := ex.Pending(ctx)
 	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return err
 	}
-	if errors.Is(err, migrate.ErrNoPendingFiles) {
-		return reportApply(cmd, flags, report)
+	noPending := errors.Is(err, migrate.ErrNoPendingFiles)
+	// Get the pending files before obtaining applied revisions,
+	// as the Executor may write a baseline revision in the table.
+	applied, err := rrw.ReadRevisions(ctx)
+	if err != nil {
+		return err
+	}
+	if noPending {
+		migrate.LogNoPendingFiles(report, applied)
+		return mr.Done(cmd, flags)
 	}
 	if l := len(pending); count == 0 || count >= l {
 		// Cannot apply more than len(pending) migration files.
 		count = l
 	}
 	pending = pending[:count]
-	applied, err := rrw.ReadRevisions(cmd.Context())
-	if err != nil {
-		return err
-	}
-	opts = append(opts, migrate.WithLogger(report))
-	if err := migrate.LogIntro(report, applied, pending); err != nil {
-		return err
-	}
+	migrate.LogIntro(report, applied, pending)
 	var (
 		mux = tx{
 			dryRun: flags.dryRun,
@@ -225,40 +245,160 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		drv migrate.Driver
 	)
 	for _, f := range pending {
-		drv, rrw, err = mux.driverFor(cmd.Context(), f)
-		if err != nil {
-			return err
+		if drv, rrw, err = mux.driverFor(ctx, f); err != nil {
+			break
 		}
-		ex, err = migrate.NewExecutor(drv, migrationDir, rrw, opts...)
-		if err != nil {
-			return err
+		if ex, err = migrate.NewExecutor(drv, migrationDir, rrw, opts...); err != nil {
+			return fmt.Errorf("unexpected exectuor creation error: %w", err)
 		}
-		if err = mux.mayRollback(ex.Execute(cmd.Context(), f)); err != nil {
-			report.Error = err.Error()
+		if err = mux.mayRollback(ex.Execute(ctx, f)); err != nil {
 			break
 		}
 		if err = mux.mayCommit(); err != nil {
-			report.Error = err.Error()
 			break
 		}
 	}
 	if err == nil {
-		if err = mux.commit(); err != nil {
-			report.Error = err.Error()
-		} else {
+		if err = mux.commit(); err == nil {
 			report.Log(migrate.LogDone{})
 		}
 	}
-	if err2 := reportApply(cmd, flags, report); err2 != nil {
-		if err != nil {
-			err2 = fmt.Errorf("%w: %v", err, err2)
-		}
-		err = err2
+	if err != nil {
+		report.Error = err.Error()
 	}
+	return errors.Join(err, mr.Done(cmd, flags))
+}
+
+type (
+	// MigrateReport responsible for reporting 'migrate apply' reports.
+	MigrateReport struct {
+		id     string // target id
+		env    *Env   // nil, if no env set
+		client *sqlclient.Client
+		log    *cmdlog.MigrateApply
+		rrw    *cmdmigrate.EntRevisions
+		done   func(*cloudapi.ReportMigrationInput)
+	}
+	// MigrateReportSet is a set of reports.
+	MigrateReportSet struct {
+		id      string
+		reports []struct {
+			e *Env
+			r *cloudapi.ReportMigrationInput
+		}
+	}
+)
+
+// NewMigrateReportSet returns a new MigrateReportSet with a unique id set.
+func NewMigrateReportSet() *MigrateReportSet {
+	return &MigrateReportSet{id: uuid.NewString()}
+}
+
+// ReportFor returns a new MigrateReport for the given environment.
+func (s *MigrateReportSet) ReportFor(e *Env) *MigrateReport {
+	return &MigrateReport{
+		env: e,
+		done: func(r *cloudapi.ReportMigrationInput) {
+			s.reports = append(s.reports, struct {
+				e *Env
+				r *cloudapi.ReportMigrationInput
+			}{e: e, r: r})
+		},
+	}
+}
+
+// Flush report the migration deployment to the cloud.
+// The current implementation is simplistic and sends each
+// report separately without marking them as part of a group.
+func (s *MigrateReportSet) Flush(ctx context.Context) error {
+	var errs []error
+	for _, r := range s.reports {
+		client := r.e.cfg.Client
+		if err := client.ReportMigration(ctx, *r.r); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// Init the report if the necessary dependencies.
+func (r *MigrateReport) Init(c *sqlclient.Client, l *cmdlog.MigrateApply, rrw *cmdmigrate.EntRevisions) {
+	r.client, r.log, r.rrw = c, l, rrw
+}
+
+// RecordTargetID asks the revisions-table to allow or provide
+// the target identifier if cloud reporting is enabled.
+func (r *MigrateReport) RecordTargetID(ctx context.Context) error {
+	if r.CloudEnabled() {
+		id, err := r.rrw.ID(ctx, operatorVersion())
+		if err != nil {
+			return err
+		}
+		r.id = id
+	}
+	return nil
+}
+
+// Done closes and flushes this report.
+func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error {
+	err := logApply(cmd, flags, r.log)
+	if !r.CloudEnabled() {
+		return err
+	}
+	var ver string
+	switch rev, err1 := r.rrw.CurrentRevision(cmd.Context()); {
+	case ent.IsNotFound(err1):
+	case err1 != nil:
+		return errors.Join(err, err1)
+	default:
+		ver = rev.Version
+	}
+	r.done(&cloudapi.ReportMigrationInput{
+		ProjectName:  r.env.cfg.Project,
+		EnvName:      r.env.Name,
+		DirName:      path.Base(flags.dirURL),
+		AtlasVersion: operatorVersion(),
+		Target: cloudapi.DeployedTargetInput{
+			ID:     r.id,
+			Schema: r.client.URL.Schema,
+			URL:    r.client.URL.Redacted(),
+		},
+		StartTime:      r.log.Start,
+		EndTime:        r.log.End,
+		FromVersion:    r.log.Current,
+		ToVersion:      r.log.Target,
+		CurrentVersion: ver,
+		Error: func() *string {
+			if r.log.Error != "" {
+				return &r.log.Error
+			}
+			return nil
+		}(),
+		Files: func() []cloudapi.DeployedFileInput {
+			files := make([]cloudapi.DeployedFileInput, len(r.log.Applied))
+			for i, f := range r.log.Applied {
+				files[i] = cloudapi.DeployedFileInput{
+					Name:      f.Name(),
+					Content:   string(f.Bytes()),
+					StartTime: f.Start,
+					EndTime:   f.End,
+					Skipped:   f.Skipped,
+					Applied:   len(f.Applied),
+					Error:     (*cloudapi.StmtErrorInput)(f.Error),
+				}
+			}
+			return files
+		}(),
+	})
 	return err
 }
 
-func reportApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdlog.MigrateApply) error {
+// CloudEnabled reports if cloud reporting is enabled.
+func (r *MigrateReport) CloudEnabled() bool {
+	return r.env != nil && r.env.cfg != nil && r.env.cfg.Client != nil && r.env.cfg.Project != ""
+}
+
+func logApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdlog.MigrateApply) error {
 	var (
 		err error
 		f   = cmdlog.MigrateApplyTemplate
@@ -315,7 +455,11 @@ directory state to the desired schema. The desired state can be another connecte
 				return checkDir(cmd, flags.dirURL, true)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return migrateDiffRun(cmd, args, flags)
+				env, err := selectEnv(GlobalFlags.SelectedEnv)
+				if err != nil {
+					return err
+				}
+				return migrateDiffRun(cmd, args, flags, env)
 			},
 		}
 	)
@@ -335,7 +479,7 @@ directory state to the desired schema. The desired state can be another connecte
 	return cmd
 }
 
-func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) error {
+func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, env *Env) error {
 	ctx := cmd.Context()
 	dev, err := sqlclient.Open(ctx, flags.devURL)
 	if err != nil {
@@ -378,11 +522,12 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 	// 'migrate diff' handling, offload it the work.
 	if d, ok := cmdext.States.Differ(flags.desiredURLs); ok {
 		err := d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
-			To:     flags.desiredURLs,
-			Name:   name,
-			Indent: indent,
-			Dir:    dir,
-			Dev:    dev,
+			To:      flags.desiredURLs,
+			Name:    name,
+			Indent:  indent,
+			Dir:     dir,
+			Dev:     dev,
+			Options: env.DiffOptions(),
 		})
 		return maskNoPlan(cmd, err)
 	}
@@ -398,7 +543,11 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 		return err
 	}
 	defer desired.Close()
-	opts := []migrate.PlannerOption{migrate.PlanFormat(f), migrate.PlanWithIndent(indent)}
+	opts := []migrate.PlannerOption{
+		migrate.PlanFormat(f),
+		migrate.PlanWithIndent(indent),
+		migrate.PlanWithDiffOptions(env.DiffOptions()...),
+	}
 	if dev.URL.Schema != "" {
 		// Disable tables qualifier in schema-mode.
 		opts = append(opts, migrate.PlanWithSchemaQualifier(flags.qualifier))
@@ -596,8 +745,8 @@ func migrateImportRun(cmd *cobra.Command, _ []string, flags migrateImportFlags) 
 	if _, ok := src.(*sqltool.FlywayDir); ok {
 		sqltool.SetRepeatableVersion(ff)
 	}
-	// Extract the statements for each of the migration files, add them to a plan to format with the
-	// migrate.DefaultFormatter.
+	// Extract the statements for each of the migration files,
+	// add them to a plan to format with the DefaultFormatter.
 	for _, f := range ff {
 		stmts, err := f.StmtDecls()
 		if err != nil {
@@ -1543,11 +1692,11 @@ func formatter(u *url.URL) (migrate.Formatter, error) {
 }
 
 func migrateFlagsFromEnv(cmd *cobra.Command) error {
-	activeEnv, err := selectEnv(GlobalFlags.SelectedEnv)
+	env, err := selectEnv(GlobalFlags.SelectedEnv)
 	if err != nil {
 		return err
 	}
-	return setMigrateEnvFlags(cmd, activeEnv)
+	return setMigrateEnvFlags(cmd, env)
 }
 
 func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
@@ -1614,6 +1763,9 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 		return err
 	}
 	for i, s := range srcs {
+		if isURL(s) {
+			continue
+		}
 		if s, err = filepath.Abs(s); err != nil {
 			return fmt.Errorf("finding abs path to source: %q: %w", s, err)
 		}
@@ -1628,11 +1780,18 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 	return nil
 }
 
+// isURL returns true if the given string
+// is an Atlas URL with a scheme.
+func isURL(s string) bool {
+	u, err := url.Parse(s)
+	return err == nil && u.Scheme != ""
+}
+
 // cmdEnvsRun executes a given command on each of the configured environment.
-func cmdEnvsRun[F any](
-	run func(*cobra.Command, []string, F) error,
-	set func(*cobra.Command, *Env) error,
-	cmd *cobra.Command, args []string, flags *F,
+func cmdEnvsRun(
+	setFlags func(*cobra.Command, *Env) error,
+	cmd *cobra.Command,
+	runCmd func(*Env) error,
 ) error {
 	envs, err := LoadEnv(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
 	if err != nil {
@@ -1646,10 +1805,10 @@ func cmdEnvsRun[F any](
 	cmd.SetOut(io.MultiWriter(out, &w))
 	defer cmd.SetOut(out)
 	for i, e := range envs {
-		if err := set(cmd, e); err != nil {
+		if err := setFlags(cmd, e); err != nil {
 			return err
 		}
-		if err := run(cmd, args, *flags); err != nil {
+		if err := runCmd(e); err != nil {
 			return err
 		}
 		b := bytes.TrimLeft(w.Bytes(), " \t\r")

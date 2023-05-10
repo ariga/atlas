@@ -436,6 +436,6 @@ type mockDriver struct {
 	changes schema.Changes
 }
 
-func (d mockDriver) TableDiff(_, _ *schema.Table) ([]schema.Change, error) {
+func (d mockDriver) TableDiff(_, _ *schema.Table, _ ...schema.DiffOption) ([]schema.Change, error) {
 	return d.changes, nil
 }

@@ -91,6 +91,20 @@ func TestDetachCycles(t *testing.T) {
 	users.ForeignKeys = nil
 	workplaces.ForeignKeys = nil
 	require.Equal(t, deletion, planned[2:])
+
+	// Delete associated table and foreign-key.
+	users.AddForeignKeys(
+		schema.NewForeignKey("workplace").AddColumns(users.Columns[1:2]...).SetRefTable(workplaces).AddRefColumns(workplaces.Columns[:1]...),
+	)
+	changes = []schema.Change{&schema.DropTable{T: workplaces}, &schema.ModifyTable{
+		T: users,
+		Changes: []schema.Change{
+			&schema.DropForeignKey{F: users.ForeignKeys[0]},
+		},
+	}}
+	planned, err = DetachCycles(changes)
+	require.NoError(t, err)
+	require.Equal(t, []schema.Change{changes[1], changes[0]}, planned)
 }
 
 func TestCheckChangesScope(t *testing.T) {

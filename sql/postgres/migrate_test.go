@@ -1413,6 +1413,36 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Foreign keys should be dropped before the tables they reference.
+		{
+			changes: func() []schema.Change {
+				usersT := schema.NewTable("users").SetSchema(schema.New("public")).AddColumns(schema.NewIntColumn("id", "int"))
+				postsT := schema.NewTable("posts").SetSchema(schema.New("public")).
+					AddColumns(schema.NewIntColumn("id", "int"), schema.NewIntColumn("author_id", "int"))
+				postsT.AddForeignKeys(schema.NewForeignKey("author").AddColumns(postsT.Columns[1]).SetRefTable(usersT).AddRefColumns(usersT.Columns...))
+				return []schema.Change{
+					&schema.DropTable{T: usersT},
+					&schema.ModifyTable{T: postsT, Changes: []schema.Change{&schema.DropForeignKey{F: postsT.ForeignKeys[0]}}},
+				}
+			}(),
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "posts" DROP CONSTRAINT "author"`,
+						Reverse: `ALTER TABLE "posts" ADD CONSTRAINT "author" FOREIGN KEY ("author_id") REFERENCES "users" ("id")`,
+					},
+					{
+						Cmd:     `DROP TABLE "users"`,
+						Reverse: `CREATE TABLE "users" ("id" integer NOT NULL)`,
+					},
+				},
+			},
+		},
 		// Empty qualifier in multi-schema mode should fail.
 		{
 			changes: []schema.Change{

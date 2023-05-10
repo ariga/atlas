@@ -191,13 +191,13 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 	}()
 	// Bring the dev environment to the base point.
 	for _, f := range base {
-		stmt, err := f.Stmts()
+		stmt, err := f.StmtDecls()
 		if err != nil {
 			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 		}
 		for _, s := range stmt {
-			if _, err := d.Dev.ExecContext(ctx, s); err != nil {
-				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %q: %w", s, err)}
+			if _, err := d.Dev.ExecContext(ctx, s.Text); err != nil {
+				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err), Pos: s.Pos}
 			}
 		}
 	}
@@ -221,7 +221,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 		start := current
 		for _, s := range stmts {
 			if _, err := d.Dev.ExecContext(ctx, s.Text); err != nil {
-				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err)}
+				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err), Pos: s.Pos}
 			}
 			target, err := d.inspect(ctx)
 			if err != nil {
@@ -288,7 +288,8 @@ func (d *DevLoader) lock(ctx context.Context) (schema.UnlockFunc, error) {
 // FileError represents an error that occurred while processing a file.
 type FileError struct {
 	File string
-	Err  error
+	Err  error // Atlas or database error.
+	Pos  int   // Position error, if known.
 }
 
 func (e FileError) Error() string { return e.Err.Error() }
