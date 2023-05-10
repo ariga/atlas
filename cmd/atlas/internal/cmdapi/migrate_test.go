@@ -907,7 +907,7 @@ env {
 		}
 	})
 
-	t.Run("Error", func(t *testing.T) {
+	t.Run("PrintError", func(t *testing.T) {
 		status = http.StatusInternalServerError
 		require.NoError(t, dir.WriteFile("3.sql", []byte("create table baz (id int)")))
 		cmd := migrateCmd()
@@ -919,9 +919,23 @@ env {
 			"--url", u,
 			"--var", "cloud_url="+srv.URL,
 		)
-		require.EqualError(t, err, "unexpected status code: 500")
+		require.NoError(t, err)
 		// Reporting error should not affect the migration execution.
 		require.True(t, strings.HasSuffix(s, "  -- 1 migrations \n  -- 1 sql statements\nError: unexpected status code: 500\n"))
+
+		// Custom logging.
+		cmd = migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err = runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--url", u,
+			"--var", "cloud_url="+srv.URL,
+			"--format", "{{ .Env.Driver }}",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "sqlite3\nError: unexpected status code: 500\n", s)
 	})
 }
 
