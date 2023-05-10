@@ -373,7 +373,7 @@ func (d *FlywayDir) WriteFile(name string, b []byte) error {
 	if d, ok := d.FS.(migrate.Dir); ok {
 		return d.WriteFile(name, b)
 	}
-	return errors.New("sql/sqltool: cannot write to non-local directory")
+	return errors.New("sql/sqltool: write not supported")
 }
 
 // Desc implements File.Desc.
