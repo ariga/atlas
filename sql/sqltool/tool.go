@@ -318,8 +318,8 @@ func (d *FlywayDir) Files() ([]migrate.File, error) {
 		}
 		if path != "." && e.IsDir() {
 			fullPath := path
-			if d, ok := d.FS.(*migrate.LocalDir); ok {
-				fullPath = filepath.Join(d.Path(), path)
+			if l, ok := d.FS.(*migrate.LocalDir); ok {
+				fullPath = filepath.Join(l.Path(), path)
 			}
 			h, err := hidden(fullPath)
 			if err != nil {
