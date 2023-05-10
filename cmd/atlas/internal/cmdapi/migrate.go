@@ -120,9 +120,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 					return migrateApplyRun(cmd, args, flags, &MigrateReport{}) // nop reporter
 				}
 				set := NewMigrateReportSet()
-				defer func() {
-					err = errors.Join(err, set.Flush(cmd.Context()))
-				}()
+				defer set.Flush(cmd)
 				return cmdEnvsRun(setMigrateEnvFlags, cmd, func(env *Env) error {
 					return migrateApplyRun(cmd, args, flags, set.ReportFor(env))
 				})
@@ -310,15 +308,21 @@ func (s *MigrateReportSet) ReportFor(e *Env) *MigrateReport {
 // Flush report the migration deployment to the cloud.
 // The current implementation is simplistic and sends each
 // report separately without marking them as part of a group.
-func (s *MigrateReportSet) Flush(ctx context.Context) error {
-	var errs []error
+//
+// Note that reporting errors are logged, but not cause Atlas to fail.
+func (s *MigrateReportSet) Flush(cmd *cobra.Command) {
 	for _, r := range s.reports {
 		client := r.e.cfg.Client
-		if err := client.ReportMigration(ctx, *r.r); err != nil {
-			errs = append(errs, err)
+		if err := client.ReportMigration(cmd.Context(), *r.r); err != nil {
+			txt := fmt.Sprintf("Error: %s", strings.TrimRight(err.Error(), "\n"))
+			// Ensure errors are printed in new lines.
+			if cmd.Flags().Changed(flagFormat) {
+				txt = "\n" + txt
+			}
+			cmd.PrintErrln(txt)
 		}
 	}
-	return errors.Join(errs...)
+	return
 }
 
 // Init the report if the necessary dependencies.
