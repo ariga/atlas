@@ -345,11 +345,14 @@ func (r *MigrateReport) RecordTargetID(ctx context.Context) error {
 
 // Done closes and flushes this report.
 func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error {
-	err := logApply(cmd, flags, r.log)
 	if !r.CloudEnabled() {
-		return err
+		return logApply(cmd, cmd.OutOrStdout(), flags, r.log)
 	}
-	var ver string
+	var (
+		ver  string
+		clog bytes.Buffer
+		err  = logApply(cmd, io.MultiWriter(cmd.OutOrStdout(), &clog), flags, r.log)
+	)
 	switch rev, err1 := r.rrw.CurrentRevision(cmd.Context()); {
 	case ent.IsNotFound(err1):
 	case err1 != nil:
@@ -393,6 +396,7 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 			}
 			return files
 		}(),
+		Log: clog.String(),
 	})
 	return err
 }
@@ -402,7 +406,7 @@ func (r *MigrateReport) CloudEnabled() bool {
 	return r.env != nil && r.env.cfg != nil && r.env.cfg.Client != nil && r.env.cfg.Project != ""
 }
 
-func logApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdlog.MigrateApply) error {
+func logApply(cmd *cobra.Command, w io.Writer, flags migrateApplyFlags, r *cmdlog.MigrateApply) error {
 	var (
 		err error
 		f   = cmdlog.MigrateApplyTemplate
@@ -413,7 +417,7 @@ func logApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdlog.MigrateAppl
 			return fmt.Errorf("parse format: %w", err)
 		}
 	}
-	if err = f.Execute(cmd.OutOrStdout(), r); err != nil {
+	if err = f.Execute(w, r); err != nil {
 		return fmt.Errorf("execute log template: %w", err)
 	}
 	// In case a custom logging was configured, avoid reporting errors twice.

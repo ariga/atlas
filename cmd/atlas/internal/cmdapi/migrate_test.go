@@ -875,6 +875,7 @@ env {
 				Schema: "main",
 				URL:    u,
 			},
+			Log: "No migration files to execute\n",
 		}, report)
 	})
 
