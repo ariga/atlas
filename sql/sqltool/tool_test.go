@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
@@ -206,14 +207,15 @@ func TestScanners(t *testing.T) {
 				require.NoError(t, err)
 				return d
 			}(),
-			versions:     []string{"2", "3", ""},
-			descriptions: []string{"baseline", "third_migration", "views"},
+			versions:     []string{"2", "3", "3_1", ""},
+			descriptions: []string{"baseline", "third_migration", "fourth_migration", "views"},
 			stmts: [][]string{
 				{
 					"CREATE TABLE post\n(\n    id    int NOT NULL,\n    title text,\n    body  text,\n    created_at TIMESTAMP NOT NULL\n    PRIMARY KEY (id)\n);",
 					"INSERT INTO post (title, created_at) VALUES (\n'This is\nmy multiline\n\nvalue', NOW());",
 				},
 				{"ALTER TABLE tbl_2 ADD col_1 INTEGER NOT NULL;"},
+				{"ALTER TABLE tbl_2 ADD col_2 INTEGER NOT NULL;"},
 				{"CREATE VIEW `my_view` AS SELECT * FROM `post`;"},
 			},
 		},
@@ -318,6 +320,27 @@ func TestChecksum(t *testing.T) {
 				"V1__initial.sql",
 				"V2__second_migration.sql",
 				"V3__third_migration.sql",
+			},
+		},
+		{
+			name: "flyway non-local directory",
+			dir: func() migrate.Dir {
+				fs := fstest.MapFS{
+					"U1__initial.sql":               &fstest.MapFile{Data: []byte("U1__initial")},
+					"V1__initial.sql":               &fstest.MapFile{Data: []byte("V1__initial")},
+					"R__views.sql":                  &fstest.MapFile{Data: []byte("R__views")},
+					"B2__baseline.sql":              &fstest.MapFile{Data: []byte("B2__baseline")},
+					"V2__second_migration.sql":      &fstest.MapFile{Data: []byte("V2__second_migration")},
+					"V3__third_migration.sql":       &fstest.MapFile{Data: []byte("V3__third_migration")},
+					"v3/V3_1__fourth_migration.sql": &fstest.MapFile{Data: []byte("V3__1_fourth_migration")},
+				}
+				return &sqltool.FlywayDir{&fs}
+			}(),
+			files: []string{
+				"B2__baseline.sql",
+				"V3__third_migration.sql",
+				"v3/V3_1__fourth_migration.sql",
+				"R__views.sql",
 			},
 		},
 		{
