@@ -295,6 +295,22 @@ func TestChecksum(t *testing.T) {
 			},
 		},
 		{
+			name: "golang-migrate non-local directory",
+			dir: func() migrate.Dir {
+				fs := fstest.MapFS{
+					"1_initial.down.sql":          &fstest.MapFile{Data: []byte("1_initial.down")},
+					"1_initial.up.sql":            &fstest.MapFile{Data: []byte("1_initial.up")},
+					"2_second_migration.down.sql": &fstest.MapFile{Data: []byte("2_second_migration.down")},
+					"2_second_migration.up.sql":   &fstest.MapFile{Data: []byte("2_second_migration.up")},
+				}
+				return &sqltool.GolangMigrateDir{&fs}
+			}(),
+			files: []string{
+				"1_initial.up.sql",
+				"2_second_migration.up.sql",
+			},
+		},
+		{
 			name: "goose",
 			dir: func() migrate.Dir {
 				d, err := sqltool.NewGooseDir("testdata/goose")
