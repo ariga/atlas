@@ -161,10 +161,10 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 	defer rows.Close()
 	for rows.Next() {
 		var (
-			autoinc                                             sql.NullInt64
-			tSchema, name, charset, collation, comment, options sql.NullString
+			autoinc                                                     sql.NullInt64
+			tSchema, name, charset, collation, comment, options, engine sql.NullString
 		)
-		if err := rows.Scan(&tSchema, &name, &charset, &collation, &autoinc, &comment, &options); err != nil {
+		if err := rows.Scan(&tSchema, &name, &charset, &collation, &autoinc, &comment, &options, &engine); err != nil {
 			return fmt.Errorf("scan table information: %w", err)
 		}
 		if !sqlx.ValidString(tSchema) || !sqlx.ValidString(name) {
@@ -194,6 +194,11 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		if sqlx.ValidString(options) {
 			t.Attrs = append(t.Attrs, &CreateOptions{
 				V: options.String,
+			})
+		}
+		if sqlx.ValidString(engine) {
+			t.Attrs = append(t.Attrs, &Engine{
+				V: engine.String,
 			})
 		}
 		if autoinc.Valid {
@@ -701,7 +706,8 @@ SELECT
 	t1.TABLE_COLLATION,
 	t1.AUTO_INCREMENT,
 	t1.TABLE_COMMENT,
-	t1.CREATE_OPTIONS
+	t1.CREATE_OPTIONS,
+	t1.ENGINE
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
 	LEFT JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
@@ -721,7 +727,8 @@ SELECT
 	t1.TABLE_COLLATION,
 	t1.AUTO_INCREMENT,
 	t1.TABLE_COMMENT,
-	t1.CREATE_OPTIONS
+	t1.CREATE_OPTIONS,
+	t1.ENGINE
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
 	JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
@@ -798,6 +805,12 @@ type (
 	CreateStmt struct {
 		schema.Attr
 		S string
+	}
+
+	// Engine attribute describes the storage engine used to create a table.
+	Engine struct {
+		schema.Attr
+		V string // InnoDB, MyISAM, etc.
 	}
 
 	// OnUpdate attribute for columns with "ON UPDATE CURRENT_TIMESTAMP" as a default.
