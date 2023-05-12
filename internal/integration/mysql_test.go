@@ -917,6 +917,7 @@ create table atlas_types_sanity
 				Attrs: []schema.Attr{
 					&schema.Charset{V: "latin1"},
 					&schema.Collation{V: "latin1_swedish_ci"},
+					&mysql.Engine{V: "InnoDB"},
 				},
 				Schema: realm.Schemas[0],
 				Columns: []*schema.Column{
@@ -1267,12 +1268,14 @@ create table atlas_types_sanity
 						return []schema.Attr{
 							&schema.Charset{V: "latin1"},
 							&schema.Collation{V: "latin1_swedish_ci"},
+							&mysql.Engine{V: "InnoDB"},
 							&schema.Check{Name: "tJSON", Expr: "json_valid(`tJSON`)"},
 						}
 					}
 					return []schema.Attr{
 						&schema.Charset{V: "latin1"},
 						&schema.Collation{V: "latin1_swedish_ci"},
+						&mysql.Engine{V: "InnoDB"},
 					}
 				}(),
 				Schema: realm.Schemas[0],

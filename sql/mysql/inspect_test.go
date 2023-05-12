@@ -42,11 +42,11 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(queryTable).
 					WithArgs("public").
 					WillReturnRows(sqltest.Rows(`
-+--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
-| TABLE_SCHEMA | TABLE_NAME   | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT | CREATE_OPTIONS     |
-+--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
-| public       | users        | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       | COMPRESSION="ZLIB" |
-+--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
++--------------+--------------+--------------------+--------------------+----------------+---------------+-------------------+------------------+
+| TABLE_SCHEMA | TABLE_NAME   | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT | CREATE_OPTIONS    |      ENGINE      |
++--------------+--------------+--------------------+--------------------+----------------+---------------+-------------------+------------------+
+| public       | users        | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       | COMPRESSION="ZLIB"|       InnoDB     |
++--------------+--------------+--------------------+--------------------+----------------+---------------+-------------------+------------------+
 `))
 				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
@@ -84,6 +84,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					&schema.Collation{V: "utf8mb4_0900_ai_ci"},
 					&schema.Comment{Text: "Comment"},
 					&CreateOptions{V: `COMPRESSION="ZLIB"`},
+					&Engine{V: "InnoDB"},
 					&CreateStmt{S: "CREATE TABLE users (id bigint NOT NULL AUTO_INCREMENT) ENGINE=InnoDB AUTO_INCREMENT=55834574848 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"},
 					&AutoIncrement{V: 55834574848},
 				}, t.Attrs)
@@ -100,11 +101,11 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(queryTable).
 					WithArgs("public").
 					WillReturnRows(sqltest.Rows(`
-+--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
-| TABLE_SCHEMA | TABLE_NAME   | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT | CREATE_OPTIONS     |
-+--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
-| public       | users        | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       | COMPRESSION="ZLIB" |
-+--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
++--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+------------------+
+| TABLE_SCHEMA | TABLE_NAME   | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT | CREATE_OPTIONS     |      ENGINE      |
++--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+------------------+
+| public       | users        | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       | COMPRESSION="ZLIB" |       InnoDB     |
++--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+------------------+
 `))
 				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
@@ -1069,9 +1070,9 @@ func (m mock) noFKs() {
 }
 
 func (m mock) tableExists(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema", "table_name", "table_collation", "character_set", "auto_increment", "table_comment", "create_options"})
+	rows := sqlmock.NewRows([]string{"table_schema", "table_name", "table_collation", "character_set", "auto_increment", "table_comment", "create_options", "engine"})
 	if exists {
-		rows.AddRow(schema, table, nil, nil, nil, nil, nil)
+		rows.AddRow(schema, table, nil, nil, nil, nil, nil, nil)
 	}
 	m.ExpectQuery(queryTable).
 		WithArgs(schema).
@@ -1079,9 +1080,9 @@ func (m mock) tableExists(schema, table string, exists bool) {
 }
 
 func (m mock) tables(schema string, tables ...string) {
-	rows := sqlmock.NewRows([]string{"schema", "table", "charset", "collate", "inc", "comment", "options"})
+	rows := sqlmock.NewRows([]string{"schema", "table", "charset", "collate", "inc", "comment", "options", "engine"})
 	for _, t := range tables {
-		rows.AddRow(schema, t, nil, nil, nil, nil, nil)
+		rows.AddRow(schema, t, nil, nil, nil, nil, nil, nil)
 	}
 	m.ExpectQuery(queryTable).
 		WithArgs(schema).
