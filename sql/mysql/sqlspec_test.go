@@ -545,8 +545,8 @@ func TestMarshalSpec_TableEngine(t *testing.T) {
 	s := schema.New("a8m").
 		AddTables(
 			// InnoDB (default) is not printed.
-			schema.NewTable("repos").AddAttrs(&Engine{V: EngineInnoDB}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
-			schema.NewTable("stars").AddAttrs(&Engine{V: "INNODB"}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
+			schema.NewTable("repos").AddAttrs(&Engine{V: EngineInnoDB, Default: true}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
+			schema.NewTable("stars").AddAttrs(&Engine{V: "INNODB", Default: true}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
 			schema.NewTable("prs").AddAttrs(&Engine{V: EngineMyISAM}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
 			schema.NewTable("issues").AddAttrs(&Engine{V: "MYISAM"}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
 			schema.NewTable("commits").AddAttrs(&Engine{V: "MyRocks"}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
