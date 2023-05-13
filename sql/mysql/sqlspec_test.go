@@ -541,6 +541,62 @@ schema "test" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestMarshalSpec_TableEngine(t *testing.T) {
+	s := schema.New("a8m").
+		AddTables(
+			// InnoDB (default) is not printed.
+			schema.NewTable("repos").AddAttrs(&Engine{V: EngineInnoDB}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
+			schema.NewTable("stars").AddAttrs(&Engine{V: "INNODB"}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
+			schema.NewTable("prs").AddAttrs(&Engine{V: EngineMyISAM}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
+			schema.NewTable("issues").AddAttrs(&Engine{V: "MYISAM"}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
+			schema.NewTable("commits").AddAttrs(&Engine{V: "MyRocks"}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "repos" {
+  schema = schema.a8m
+  column "id" {
+    null = false
+    type = bigint
+  }
+}
+table "stars" {
+  schema = schema.a8m
+  column "id" {
+    null = false
+    type = bigint
+  }
+}
+table "prs" {
+  schema = schema.a8m
+  engine = MyISAM
+  column "id" {
+    null = false
+    type = bigint
+  }
+}
+table "issues" {
+  schema = schema.a8m
+  engine = MyISAM
+  column "id" {
+    null = false
+    type = bigint
+  }
+}
+table "commits" {
+  schema = schema.a8m
+  engine = "MyRocks"
+  column "id" {
+    null = false
+    type = bigint
+  }
+}
+schema "a8m" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
 func TestUnmarshalSpec_IndexParts(t *testing.T) {
 	var (
 		s schema.Schema

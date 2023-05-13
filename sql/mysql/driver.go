@@ -363,6 +363,12 @@ const (
 	IndexTypeFullText = "FULLTEXT"
 	IndexTypeSpatial  = "SPATIAL"
 
+	EngineInnoDB = "InnoDB"
+	EngineMyISAM = "MyISAM"
+	EngineMemory = "Memory"
+	EngineCSV    = "CSV"
+	EngineNDB    = "NDB" // NDBCLUSTER
+
 	currentTS     = "current_timestamp"
 	defaultGen    = "default_generated"
 	autoIncrement = "auto_increment"
