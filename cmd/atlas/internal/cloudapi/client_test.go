@@ -71,3 +71,48 @@ func TestClient_ReportMigration(t *testing.T) {
 	})
 	require.NoError(t, err)
 }
+
+func TestClient_ReportMigrationSet(t *testing.T) {
+	const (
+		planned               = 2
+		id, log, project, env = "deployment-set-1", "started deployment", "atlas", "dev"
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var input struct {
+			Variables struct {
+				Input ReportMigrationSetInput `json:"input"`
+			} `json:"variables"`
+		}
+		err := json.NewDecoder(r.Body).Decode(&input)
+		require.NoError(t, err)
+		require.Equal(t, id, input.Variables.Input.ID)
+		require.Equal(t, log, input.Variables.Input.Log)
+		require.Equal(t, planned, input.Variables.Input.Planned)
+		require.Equal(t, env, input.Variables.Input.Completed[0].EnvName)
+		require.Equal(t, project, input.Variables.Input.Completed[0].ProjectName)
+		require.Equal(t, "dir-1", input.Variables.Input.Completed[0].DirName)
+		require.Equal(t, env, input.Variables.Input.Completed[1].EnvName)
+		require.Equal(t, project, input.Variables.Input.Completed[1].ProjectName)
+		require.Equal(t, "dir-2", input.Variables.Input.Completed[1].DirName)
+	}))
+	client := New(srv.URL, "atlas")
+	defer srv.Close()
+	err := client.ReportMigrationSet(context.Background(), ReportMigrationSetInput{
+		ID:      id,
+		Log:     log,
+		Planned: planned,
+		Completed: []ReportMigrationInput{
+			{
+				EnvName:     env,
+				ProjectName: project,
+				DirName:     "dir-1",
+			},
+			{
+				EnvName:     env,
+				ProjectName: project,
+				DirName:     "dir-2",
+			},
+		},
+	})
+	require.NoError(t, err)
+}
