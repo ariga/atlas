@@ -705,7 +705,7 @@ create table atlas_types_sanity
 				Attrs: []schema.Attr{
 					&schema.Charset{V: "latin1"},
 					&schema.Collation{V: "latin1_bin"},
-					&mysql.Engine{V: "InnoDB"},
+					&mysql.Engine{V: "InnoDB", Default: true},
 				},
 				Schema: realm.Schemas[0],
 				Columns: []*schema.Column{
@@ -970,7 +970,7 @@ create table atlas_types_sanity
 					return []schema.Attr{
 						&schema.Charset{V: "latin1"},
 						&schema.Collation{V: "latin1_bin"},
-						&mysql.Engine{V: "InnoDB"},
+						&mysql.Engine{V: "InnoDB", Default: true},
 					}
 				}(),
 				Schema: realm.Schemas[0],
@@ -1008,7 +1008,7 @@ create table atlas_types_sanity
 					return []schema.Attr{
 						&schema.Collation{V: "utf8mb4_bin"},
 						&schema.Charset{V: "utf8mb4"},
-						&mysql.Engine{V: "InnoDB"},
+						&mysql.Engine{V: "InnoDB", Default: true},
 					}
 				}(),
 				Columns: []*schema.Column{
