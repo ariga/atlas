@@ -40,6 +40,7 @@ type (
 		Envs []*Env `spec:"env"`  // List of environments
 		Lint *Lint  `spec:"lint"` // Optional global lint policy
 		Diff *Diff  `spec:"diff"` // Optional global diff policy
+		cfg  *cmdext.AtlasConfig
 	}
 
 	// Env represents an Atlas environment.
@@ -329,60 +330,59 @@ func (e *Env) asMap() (map[string]string, error) {
 	return m, nil
 }
 
-// LoadEnv reads the project file in path, and loads
-// the environment instances with the provided name.
-func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
+// EnvByName parses and returns the project configuration with selected environments.
+func EnvByName(name string, opts ...LoadOption) (*Project, []*Env, error) {
 	cfg := &loadConfig{}
 	for _, f := range opts {
 		f(cfg)
 	}
 	u, err := url.Parse(GlobalFlags.ConfigURL)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if u.Scheme != "file" {
-		return nil, fmt.Errorf("unsupported project file driver %q", u.Scheme)
+		return nil, nil, fmt.Errorf("unsupported project file driver %q", u.Scheme)
 	}
 	path := filepath.Join(u.Host, u.Path)
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
 			err = fmt.Errorf("project file %q was not found: %w", path, err)
 		}
-		return nil, err
+		return nil, nil, err
 	}
 	project, err := parseConfig(path, name, cfg.inputValues)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := project.Lint.remainedLog(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	envs := make(map[string][]*Env)
 	for _, e := range project.Envs {
 		if e.Name == "" {
-			return nil, fmt.Errorf("all envs must have names on file %q", path)
+			return nil, nil, fmt.Errorf("all envs must have names on file %q", path)
 		}
 		if _, err := e.Sources(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if e.Migration == nil {
 			e.Migration = &Migration{}
 		}
 		if err := e.remainedLog(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		e.Diff = e.Diff.Extend(project.Diff)
 		e.Lint = e.Lint.Extend(project.Lint)
 		if err := e.Lint.remainedLog(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		envs[e.Name] = append(envs[e.Name], e)
 	}
 	selected, ok := envs[name]
 	if !ok {
-		return nil, fmt.Errorf("env %q not defined in project file", name)
+		return nil, nil, fmt.Errorf("env %q not defined in project file", name)
 	}
-	return selected, nil
+	return project, selected, nil
 }
 
 func parseConfig(path, env string, values map[string]cty.Value) (*Project, error) {
@@ -402,7 +402,7 @@ func parseConfig(path, env string, values map[string]cty.Value) (*Project, error
 			}),
 		}),
 	)
-	p := &Project{Lint: &Lint{}, Diff: &Diff{}}
+	p := &Project{Lint: &Lint{}, Diff: &Diff{}, cfg: cfg}
 	if err := schemahcl.New(opts...).EvalFiles([]string{path}, p, values); err != nil {
 		return nil, err
 	}

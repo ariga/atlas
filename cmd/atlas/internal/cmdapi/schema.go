@@ -92,7 +92,11 @@ migration.`,
 				if GlobalFlags.SelectedEnv == "" {
 					return schemaApplyRun(cmd, flags, nil)
 				}
-				return cmdEnvsRun(setSchemaEnvFlags, cmd, func(e *Env) error {
+				_, envs, err := EnvByName(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
+				if err != nil {
+					return err
+				}
+				return cmdEnvsRun(envs, setSchemaEnvFlags, cmd, func(e *Env) error {
 					return schemaApplyRun(cmd, flags, e)
 				})
 			},
@@ -546,7 +550,7 @@ func selectEnv(name string) (*Env, error) {
 	if name == "" {
 		return env, nil
 	}
-	envs, err := LoadEnv(name, WithInput(GlobalFlags.Vars))
+	_, envs, err := EnvByName(name, WithInput(GlobalFlags.Vars))
 	if err != nil {
 		return nil, err
 	}

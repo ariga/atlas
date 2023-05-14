@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
@@ -80,10 +81,12 @@ type (
 	// ReportMigrationSetInput represents the input type for reporting a set of migration deployments.
 	ReportMigrationSetInput struct {
 		ID        string                 `json:"id"`
-		Log       string                 `json:"log"`
-		Error     *string                `json:"error,omitempty"`
 		Planned   int                    `json:"planned"`
-		Completed []ReportMigrationInput `json:"completed"`
+		StartTime time.Time              `json:"startTime"`
+		EndTime   time.Time              `json:"endTime"`
+		Error     *string                `json:"error,omitempty"`
+		Log       []ReportStep           `json:"log,omitempty"`
+		Completed []ReportMigrationInput `json:"completed,omitempty"`
 	}
 
 	// ReportMigrationInput represents an input type for reporting a migration deployments.
@@ -125,6 +128,20 @@ type (
 	StmtErrorInput struct {
 		Stmt string `json:"stmt"`
 		Text string `json:"text"`
+	}
+
+	// ReportStep is top-level step in a report.
+	ReportStep struct {
+		Text      string          `json:"text"`
+		StartTime time.Time       `json:"startTime"`
+		EndTime   time.Time       `json:"endTime"`
+		Error     bool            `json:"error,omitempty"`
+		Log       []ReportStepLog `json:"log,omitempty"`
+	}
+	// ReportStepLog is a log entry in a step.
+	ReportStepLog struct {
+		Text     string          `json:"text,omitempty"`
+		Children []ReportStepLog `json:"children,omitempty"`
 	}
 )
 
@@ -224,4 +241,13 @@ func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("User-Agent", "atlas-cli")
 	req.Header.Set("Content-Type", "application/json")
 	return http.DefaultTransport.RoundTrip(req)
+}
+
+// RedactedURL returns a URL string with the userinfo redacted.
+func RedactedURL(s string) (string, error) {
+	u, err := url.Parse(s)
+	if err != nil {
+		return "", err
+	}
+	return u.Redacted(), nil
 }

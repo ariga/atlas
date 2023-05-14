@@ -18,7 +18,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func TestLoadEnv(t *testing.T) {
+func TestEnvByName(t *testing.T) {
 	d := t.TempDir()
 	h := `
 variable "name" {
@@ -91,7 +91,7 @@ env "multi" {
 	require.NoError(t, err)
 	GlobalFlags.ConfigURL = "file://" + path
 	t.Run("ok", func(t *testing.T) {
-		envs, err := LoadEnv("local")
+		_, envs, err := EnvByName("local")
 		require.NoError(t, err)
 		require.Len(t, envs, 1)
 		env := envs[0]
@@ -147,7 +147,7 @@ env "multi" {
 		require.EqualValues(t, []string{"local/app.hcl"}, sources)
 	})
 	t.Run("multi", func(t *testing.T) {
-		envs, err := LoadEnv("multi")
+		_, envs, err := EnvByName("multi")
 		require.NoError(t, err)
 		require.Len(t, envs, 1)
 		srcs, err := envs[0].Sources()
@@ -155,7 +155,7 @@ env "multi" {
 		require.EqualValues(t, []string{"./a.hcl", "./b.hcl"}, srcs)
 	})
 	t.Run("with input", func(t *testing.T) {
-		envs, err := LoadEnv("local", WithInput(map[string]cty.Value{
+		_, envs, err := EnvByName("local", WithInput(map[string]cty.Value{
 			"name": cty.StringVal("goodbye"),
 		}))
 		require.NoError(t, err)
@@ -167,12 +167,12 @@ env "multi" {
 		require.EqualValues(t, "goodbye", val)
 	})
 	t.Run("wrong env", func(t *testing.T) {
-		_, err = LoadEnv("home")
+		_, _, err = EnvByName("home")
 		require.EqualError(t, err, `env "home" not defined in project file`)
 	})
 	t.Run("wrong dir", func(t *testing.T) {
 		GlobalFlags.ConfigURL = defaultConfigPath
-		_, err = LoadEnv("home")
+		_, _, err = EnvByName("home")
 		require.ErrorContains(t, err, `no such file or directory`)
 	})
 }
@@ -191,7 +191,7 @@ env {
 	err := os.WriteFile(path, []byte(h), 0600)
 	require.NoError(t, err)
 	GlobalFlags.ConfigURL = "file://" + path
-	envs, err := LoadEnv("local")
+	_, envs, err := EnvByName("local")
 	require.NoError(t, err)
 	require.Len(t, envs, 1)
 	require.Equal(t, "local", envs[0].Name)
