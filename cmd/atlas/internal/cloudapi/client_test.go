@@ -86,7 +86,7 @@ func TestClient_ReportMigrationSet(t *testing.T) {
 		err := json.NewDecoder(r.Body).Decode(&input)
 		require.NoError(t, err)
 		require.Equal(t, id, input.Variables.Input.ID)
-		require.Equal(t, log, input.Variables.Input.Log)
+		require.Equal(t, []ReportStep{{Text: log}}, input.Variables.Input.Log)
 		require.Equal(t, planned, input.Variables.Input.Planned)
 		require.Equal(t, env, input.Variables.Input.Completed[0].EnvName)
 		require.Equal(t, project, input.Variables.Input.Completed[0].ProjectName)
@@ -99,8 +99,8 @@ func TestClient_ReportMigrationSet(t *testing.T) {
 	defer srv.Close()
 	err := client.ReportMigrationSet(context.Background(), ReportMigrationSetInput{
 		ID:      id,
-		Log:     log,
 		Planned: planned,
+		Log:     []ReportStep{{Text: log}},
 		Completed: []ReportMigrationInput{
 			{
 				EnvName:     env,

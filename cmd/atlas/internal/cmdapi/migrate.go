@@ -119,10 +119,14 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 				if GlobalFlags.SelectedEnv == "" {
 					return migrateApplyRun(cmd, args, flags, &MigrateReport{}) // nop reporter
 				}
-				set := NewMigrateReportSet()
+				project, envs, err := EnvByName(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
+				if err != nil {
+					return err
+				}
+				set := NewReportProvider(project, envs)
 				defer set.Flush(cmd)
-				return cmdEnvsRun(setMigrateEnvFlags, cmd, func(env *Env) error {
-					return migrateApplyRun(cmd, args, flags, set.ReportFor(env))
+				return cmdEnvsRun(envs, setMigrateEnvFlags, cmd, func(env *Env) error {
+					return migrateApplyRun(cmd, args, flags, set.ReportFor(flags, env))
 				})
 			},
 		}
@@ -279,28 +283,83 @@ type (
 	}
 	// MigrateReportSet is a set of reports.
 	MigrateReportSet struct {
-		id      string
-		reports []struct {
-			e *Env
-			r *cloudapi.ReportMigrationInput
-		}
+		cloudapi.ReportMigrationSetInput
+		client *cloudapi.Client
+		done   int // number of done migrations
 	}
 )
 
-// NewMigrateReportSet returns a new MigrateReportSet with a unique id set.
-func NewMigrateReportSet() *MigrateReportSet {
-	return &MigrateReportSet{id: uuid.NewString()}
+// NewReportProvider returns a new ReporterProvider.
+func NewReportProvider(project *Project, envs []*Env) *MigrateReportSet {
+	s := &MigrateReportSet{
+		client: project.cfg.Client,
+		ReportMigrationSetInput: cloudapi.ReportMigrationSetInput{
+			ID:        uuid.NewString(),
+			StartTime: time.Now(),
+			Planned:   len(envs),
+		},
+	}
+	s.Step("Start migration for %d targets", len(envs))
+	for _, e := range envs {
+		s.StepLog(s.RedactedURL(e.URL))
+	}
+	return s
+}
+
+// RedactedURL returns the redacted URL of the given environment at index i.
+func (*MigrateReportSet) RedactedURL(u string) string {
+	u, err := cloudapi.RedactedURL(u)
+	if err != nil {
+		return fmt.Sprintf("Error: redacting URL: %v", err)
+	}
+	return u
+}
+
+// Step starts a new reporting step.
+func (s *MigrateReportSet) Step(format string, args ...interface{}) {
+	if len(s.Log) > 0 && s.Log[len(s.Log)-1].EndTime.IsZero() {
+		s.Log[len(s.Log)-1].EndTime = time.Now()
+	}
+	s.Log = append(s.Log, cloudapi.ReportStep{
+		StartTime: time.Now(),
+		Text:      fmt.Sprintf(format, args...),
+	})
+}
+
+// StepLog logs a line to the current reporting step.
+func (s *MigrateReportSet) StepLog(format string, args ...interface{}) {
+	if len(s.Log) == 0 {
+		s.Step("Unnamed step") // Unexpected.
+	}
+	s.Log[len(s.Log)-1].Log = append(s.Log[len(s.Log)-1].Log, cloudapi.ReportStepLog{
+		Text: fmt.Sprintf(format, args...),
+	})
+}
+
+// StepLogError logs a line to the current reporting step.
+func (s *MigrateReportSet) StepLogError(text string) {
+	if !strings.HasPrefix(text, "Error") {
+		text = "Error: " + text
+	}
+	s.StepLog(text)
+	s.Error = &text
+	s.Log[len(s.Log)-1].Error = true
 }
 
 // ReportFor returns a new MigrateReport for the given environment.
-func (s *MigrateReportSet) ReportFor(e *Env) *MigrateReport {
+func (s *MigrateReportSet) ReportFor(flags migrateApplyFlags, e *Env) *MigrateReport {
+	s.Step("Run migration: %d", s.done+1)
+	s.StepLog("Target URL: %s", s.RedactedURL(e.URL))
+	s.StepLog("Migration directory: %s", s.RedactedURL(flags.dirURL))
 	return &MigrateReport{
 		env: e,
 		done: func(r *cloudapi.ReportMigrationInput) {
-			s.reports = append(s.reports, struct {
-				e *Env
-				r *cloudapi.ReportMigrationInput
-			}{e: e, r: r})
+			s.done++
+			s.Log[len(s.Log)-1].EndTime = time.Now()
+			if r.Error != nil && *r.Error != "" {
+				s.StepLogError(*r.Error)
+			}
+			s.Completed = append(s.Completed, *r)
 		},
 	}
 }
@@ -311,18 +370,28 @@ func (s *MigrateReportSet) ReportFor(e *Env) *MigrateReport {
 //
 // Note that reporting errors are logged, but not cause Atlas to fail.
 func (s *MigrateReportSet) Flush(cmd *cobra.Command) {
-	for _, r := range s.reports {
-		client := r.e.cfg.Client
-		if err := client.ReportMigration(cmd.Context(), *r.r); err != nil {
-			txt := fmt.Sprintf("Error: %s", strings.TrimRight(err.Error(), "\n"))
-			// Ensure errors are printed in new lines.
-			if cmd.Flags().Changed(flagFormat) {
-				txt = "\n" + txt
-			}
-			cmd.PrintErrln(txt)
-		}
+	var err error
+	switch {
+	// Skip reporting if set is empty,
+	// or there is no cloud connectivity.
+	case s.Planned == 0, s.client == nil:
+		return
+	// Single migration.
+	case s.Planned == 1 && len(s.Completed) == 1:
+		err = s.client.ReportMigration(cmd.Context(), s.Completed[0])
+	// Multi environment migration (e.g., multi-tenancy).
+	case s.Planned > 1:
+		s.EndTime = time.Now()
+		err = s.client.ReportMigrationSet(cmd.Context(), s.ReportMigrationSetInput)
 	}
-	return
+	if err != nil {
+		txt := fmt.Sprintf("Error: %s", strings.TrimRight(err.Error(), "\n"))
+		// Ensure errors are printed in new lines.
+		if cmd.Flags().Changed(flagFormat) {
+			txt = "\n" + txt
+		}
+		cmd.PrintErrln(txt)
+	}
 }
 
 // Init the report if the necessary dependencies.
@@ -1797,14 +1866,11 @@ func isURL(s string) bool {
 
 // cmdEnvsRun executes a given command on each of the configured environment.
 func cmdEnvsRun(
+	envs []*Env,
 	setFlags func(*cobra.Command, *Env) error,
 	cmd *cobra.Command,
 	runCmd func(*Env) error,
 ) error {
-	envs, err := LoadEnv(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
-	if err != nil {
-		return err
-	}
 	var (
 		w     bytes.Buffer
 		out   = cmd.OutOrStdout()

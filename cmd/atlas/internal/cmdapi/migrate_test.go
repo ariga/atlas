@@ -843,6 +843,7 @@ env {
 		p    = t.TempDir()
 		path = filepath.Join(p, "atlas.hcl")
 	)
+	t.Cleanup(srv.Close)
 	require.NoError(t, os.WriteFile(path, []byte(h), 0600))
 
 	t.Run("NoPendingFiles", func(t *testing.T) {
@@ -937,6 +938,155 @@ env {
 		)
 		require.NoError(t, err)
 		require.Equal(t, "sqlite3\nError: unexpected status code: 500\n", s)
+	})
+}
+
+func TestMigrate_ApplyCloudReportSet(t *testing.T) {
+	var (
+		dir    migrate.MemDir
+		status int
+		report cloudapi.ReportMigrationSetInput
+		srv    = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var m struct {
+				Query     string `json:"query"`
+				Variables struct {
+					Input json.RawMessage `json:"input"`
+				} `json:"variables"`
+			}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&m))
+			switch {
+			case strings.Contains(m.Query, "query"):
+				// Checksum before archiving.
+				hf, err := dir.Checksum()
+				require.NoError(t, err)
+				ht, err := hf.MarshalText()
+				require.NoError(t, err)
+				require.NoError(t, dir.WriteFile(migrate.HashFileName, ht))
+				// Archive and send.
+				arc, err := migrate.ArchiveDir(&dir)
+				require.NoError(t, err)
+				fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(arc))
+			case strings.Contains(m.Query, "mutation"):
+				if status != 0 {
+					w.WriteHeader(status)
+				}
+				require.NoError(t, json.Unmarshal(m.Variables.Input, &report))
+			default:
+				t.Fatalf("unexpected query: %s", m.Query)
+			}
+		}))
+		h = `
+variable "cloud_url" {
+  type = string
+}
+
+atlas {
+  cloud {
+    token   = "token"
+    url     = var.cloud_url
+    project = "example"
+  }
+}
+
+data "remote_dir" "migration_set" {
+  name = "migration_set"
+}
+
+variable "urls" {
+  type    = list(string)
+  default = []
+}
+
+env {
+  name = atlas.env
+  for_each = toset(var.urls)
+  url = each.value
+  migration {
+    dir = data.remote_dir.migration_set.url
+  }
+}
+`
+		p    = t.TempDir()
+		path = filepath.Join(p, "atlas.hcl")
+	)
+	t.Cleanup(srv.Close)
+	require.NoError(t, os.WriteFile(path, []byte(h), 0600))
+
+	t.Run("MultipleEnvs", func(t *testing.T) {
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--var", fmt.Sprintf("urls=%s", openSQLite(t, "")),
+			"--var", fmt.Sprintf("urls=%s", openSQLite(t, "")),
+			"--var", "cloud_url="+srv.URL,
+		)
+		require.NoError(t, err)
+		require.Equal(t, "No migration files to execute\nNo migration files to execute\n", s)
+		require.NotEmpty(t, report.ID)
+		_, err = uuid.Parse(report.ID)
+		require.NoError(t, err, "set id is not a valid uuid")
+		require.False(t, report.StartTime.IsZero())
+		require.False(t, report.EndTime.IsZero())
+		require.Equal(t, 2, report.Planned)
+		require.Len(t, report.Completed, 2)
+		require.Nil(t, report.Error)
+
+		// Verify summary log.
+		require.Len(t, report.Log, 3)
+		top := report.Log[0]
+		require.Equal(t, top.Text, "Start migration for 2 targets")
+		require.Contains(t, top.Log[0].Text, "sqlite://file")
+		require.Contains(t, top.Log[1].Text, "sqlite://file")
+		require.Equal(t, report.Log[1].Text, "Run migration: 1")
+		require.Contains(t, report.Log[1].Log[0].Text, "Target URL: sqlite://file")
+		require.Contains(t, report.Log[1].Log[1].Text, "Migration directory: mem://migration_set")
+		require.Equal(t, report.Log[2].Text, "Run migration: 2")
+		require.Contains(t, report.Log[2].Log[0].Text, "Target URL: sqlite://file")
+		require.Contains(t, report.Log[2].Log[1].Text, "Migration directory: mem://migration_set")
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		require.NoError(t, dir.WriteFile("1.sql", []byte("create table foo (id int)")))
+		require.NoError(t, dir.WriteFile("2.sql", []byte("create table bar (id int)")))
+
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--var", fmt.Sprintf("urls=%s", openSQLite(t, "create table bar (id int)")),
+			"--var", fmt.Sprintf("urls=%s", openSQLite(t, "create table bar (id int)")),
+			"--var", "cloud_url="+srv.URL,
+			"--allow-dirty",
+		)
+		require.EqualError(t, err, `sql/migrate: execute: executing statement "create table bar (id int)" from version "2": table bar already exists`)
+		require.Contains(t, s, "Migrating to version 2 (2 migrations in total):")
+		require.Contains(t, s, "Error: sql/migrate:")
+		require.NotEmpty(t, report.ID)
+		_, err = uuid.Parse(report.ID)
+		require.NoError(t, err, "set id is not a valid uuid")
+		require.False(t, report.StartTime.IsZero())
+		require.False(t, report.EndTime.IsZero())
+		require.Equal(t, 2, report.Planned)
+		require.Len(t, report.Completed, 1)
+		require.NotNil(t, report.Error)
+		require.Equal(t, `Error: sql/migrate: execute: executing statement "create table bar (id int)" from version "2": table bar already exists`, *report.Error)
+
+		// Verify summary log.
+		require.Len(t, report.Log, 2)
+		top := report.Log[0]
+		require.Equal(t, top.Text, "Start migration for 2 targets")
+		require.Contains(t, top.Log[0].Text, "sqlite://file")
+		require.Contains(t, top.Log[1].Text, "sqlite://file")
+		require.Equal(t, report.Log[1].Text, "Run migration: 1")
+		require.True(t, report.Log[1].Error)
+		require.Contains(t, report.Log[1].Log[0].Text, "Target URL: sqlite://file")
+		require.Contains(t, report.Log[1].Log[1].Text, "Migration directory: mem://migration_set")
+		require.Equal(t, `Error: sql/migrate: execute: executing statement "create table bar (id int)" from version "2": table bar already exists`, report.Log[1].Log[2].Text)
 	})
 }
 
