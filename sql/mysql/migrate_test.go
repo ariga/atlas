@@ -230,6 +230,33 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
+				&schema.AddTable{
+					T: schema.NewTable("users").
+						AddColumns(schema.NewIntColumn("id", "int")).
+						AddAttrs(&Engine{V: EngineInnoDB, Default: true}),
+				},
+				&schema.AddTable{
+					T: schema.NewTable("pets").
+						AddColumns(schema.NewIntColumn("id", "int")).
+						AddAttrs(&Engine{V: EngineMyISAM, Default: false}),
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE TABLE `users` (`id` int NOT NULL)",
+						Reverse: "DROP TABLE `users`",
+					},
+					{
+						Cmd:     "CREATE TABLE `pets` (`id` int NOT NULL) ENGINE MyISAM",
+						Reverse: "DROP TABLE `pets`",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
 				func() schema.Change {
 					users := &schema.Table{
 						Name: "users",

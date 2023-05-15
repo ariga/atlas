@@ -650,6 +650,10 @@ func (s *state) tableAttr(b *sqlx.Builder, c schema.Change, attrs ...schema.Attr
 			if _, ok := c.(*schema.ModifyAttr); ok || a.V > 1 {
 				b.P("AUTO_INCREMENT", strconv.FormatInt(a.V, 10))
 			}
+		case *Engine:
+			if !a.Default {
+				b.P("ENGINE", a.V)
+			}
 		case *schema.Check:
 			// Ignore CHECK constraints as they are not real attributes,
 			// and handled on CREATE or ALTER.
