@@ -87,6 +87,14 @@ func NewGolangMigrateDir(path string) (*GolangMigrateDir, error) {
 	return &GolangMigrateDir{dir}, nil
 }
 
+// Path returns the local path used for opening this dir.
+func (d *GolangMigrateDir) Path() string {
+	if dir, ok := d.FS.(dirPath); ok {
+		return dir.Path()
+	}
+	return ""
+}
+
 // Files implements Scanner.Files. It looks for all files with up.sql suffix and orders them by filename.
 func (d *GolangMigrateDir) Files() ([]migrate.File, error) {
 	names, err := fs.Glob(d, "*.up.sql")
@@ -327,6 +335,14 @@ func NewFlywayDir(path string) (*FlywayDir, error) {
 	return &FlywayDir{dir}, nil
 }
 
+// Path returns the local path used for opening this dir.
+func (d *FlywayDir) Path() string {
+	if dir, ok := d.FS.(dirPath); ok {
+		return dir.Path()
+	}
+	return ""
+}
+
 // Files implements Scanner.Files. It looks for all files with .sql suffix. The given directory is recursively scanned
 // for non-hidden subdirectories. All found files will be ordered by migration type (Baseline, Versioned, Repeatable)
 // and filename.
@@ -338,7 +354,7 @@ func (d *FlywayDir) Files() ([]migrate.File, error) {
 		}
 		if path != "." && e.IsDir() {
 			fullPath := path
-			if p, ok := d.FS.(interface{ Path() string }); ok {
+			if p, ok := d.FS.(dirPath); ok {
 				fullPath = filepath.Join(p.Path(), path)
 			}
 			h, err := hidden(fullPath)
@@ -590,3 +606,15 @@ func reverse(changes []*migrate.Change) []*migrate.Change {
 	}
 	return rev
 }
+
+type dirPath interface {
+	Path() string
+}
+
+var (
+	_ dirPath = (*DBMateDir)(nil)
+	_ dirPath = (*FlywayDir)(nil)
+	_ dirPath = (*GolangMigrateDir)(nil)
+	_ dirPath = (*GooseDir)(nil)
+	_ dirPath = (*LiquibaseDir)(nil)
+)
