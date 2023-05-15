@@ -597,6 +597,58 @@ schema "a8m" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestUnmarshalSpec_TableEngine(t *testing.T) {
+	var (
+		s schema.Schema
+		f = `table "repos" {
+  schema = schema.a8m
+  engine = InnoDB
+  column "id" {
+    null = false
+    type = bigint
+  }
+}
+table "stars" {
+  schema = schema.a8m
+  engine = "INNODB"
+  column "id" {
+    null = false
+    type = bigint
+  }
+}
+table "prs" {
+  schema = schema.a8m
+  engine = MyISAM
+  column "id" {
+    null = false
+    type = bigint
+  }
+}
+table "issues" {
+  schema = schema.a8m
+  engine = "MYISAM"
+  column "id" {
+    null = false
+    type = bigint
+  }
+}
+table "commits" {
+  schema = schema.a8m
+  engine = "MyRocks"
+  column "id" {
+    null = false
+    type = bigint
+  }
+}
+schema "a8m" {}
+`
+	)
+	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+	for i, e := range []string{EngineInnoDB, "INNODB", EngineMyISAM, "MYISAM", "MyRocks"} {
+		require.EqualValues(t, e, s.Tables[i].Attrs[0].(*Engine).V)
+	}
+}
+
 func TestUnmarshalSpec_IndexParts(t *testing.T) {
 	var (
 		s schema.Schema
