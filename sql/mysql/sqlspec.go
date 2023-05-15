@@ -118,6 +118,13 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 		}
 		t.AddAttrs(&AutoIncrement{V: v})
 	}
+	if attr, ok := spec.Attr("engine"); ok {
+		v, err := attr.String()
+		if err != nil {
+			return nil, err
+		}
+		t.AddAttrs(&Engine{V: v})
+	}
 	return t, err
 }
 
