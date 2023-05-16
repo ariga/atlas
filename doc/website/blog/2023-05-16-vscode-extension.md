@@ -1,5 +1,5 @@
 ---
-title: "Announcing the Atlas HCL VSCode Extension
+title: "Announcing the Atlas HCL VSCode Extension"
 authors: datdao
 tags: [vscode, hcl]
 ---
