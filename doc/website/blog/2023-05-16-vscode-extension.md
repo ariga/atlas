@@ -22,7 +22,7 @@ efficient way that has many benefits to using plain SQL.
 ## What is the Atlas HCL VSCode Extension?
 
 To make it easier for users to define schemas using Atlas HCL, we're happy to announce the release of the official
-[Atlas HCL VSCode Extension]((https://marketplace.visualstudio.com/items?itemName=Ariga.atlas-hcl)). 
+[Atlas HCL VSCode Extension](https://marketplace.visualstudio.com/items?itemName=Ariga.atlas-hcl). 
 This extension provides a rich set of features that will help users define schemas using Atlas HCL.
 
 In this post, we'll take a closer look at the features of this extension
