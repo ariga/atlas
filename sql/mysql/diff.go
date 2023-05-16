@@ -68,6 +68,9 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	if change := d.collationChange(from.Attrs, from.Schema.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
+	if change := d.engineChange(from.Attrs, to.Attrs); change != noChange {
+		changes = append(changes, change)
+	}
 	if !d.SupportsCheck() && sqlx.Has(to.Attrs, &schema.Check{}) {
 		return nil, fmt.Errorf("version %q does not support CHECK constraints", d.V)
 	}
@@ -270,6 +273,35 @@ func (*diff) collationChange(from, top, to []schema.Attr) schema.Change {
 		return &schema.ModifyAttr{
 			From: &fromC,
 			To:   &toC,
+		}
+	}
+	return noChange
+}
+
+// engineChange returns the schema change for migrating the table engine in case
+// it was changed.
+func (*diff) engineChange(from, to []schema.Attr) schema.Change {
+	var fromE, toE Engine
+	switch fromHas, toHas := sqlx.Has(from, &fromE), sqlx.Has(to, &toE); {
+	// Both engines are defined but different.
+	case fromHas && toHas && strings.ToLower(fromE.V) != strings.ToLower(toE.V):
+		return &schema.ModifyAttr{
+			From: &fromE,
+			To:   &toE,
+		}
+	// If the engine attribute has been removed from the desired state (e.g., HCL), and the current state
+	// is not the default, we change the engine to InnoDB (the default for MySQL, unless configured otherwise).
+	case fromHas && !toHas && !fromE.Default && strings.ToLower(fromE.V) != strings.ToLower(EngineInnoDB):
+		return &schema.ModifyAttr{
+			From: &fromE,
+			To:   &Engine{V: EngineInnoDB, Default: true},
+		}
+	// In case the engine attribute was added to the desired state (e.g., HCL)
+	// and it is not the default, we modify the engine to the desired value.
+	case !fromHas && toHas && !toE.Default && strings.ToLower(fromE.V) != strings.ToLower(EngineInnoDB):
+		return &schema.ModifyAttr{
+			From: &Engine{V: EngineInnoDB, Default: true},
+			To:   &toE,
 		}
 	}
 	return noChange

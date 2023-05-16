@@ -48,6 +48,72 @@ func TestDiff_TableDiff(t *testing.T) {
 				},
 			},
 		},
+		// Attributes are specified and the same.
+		{
+			name: "no engine changes",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Engine{V: EngineInnoDB}}},
+			to:   &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Engine{V: EngineInnoDB}}},
+		},
+		// Attributes are specified and represent the same engine.
+		{
+			name: "no engine changes",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Engine{V: EngineInnoDB}}},
+			to:   &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Engine{V: "INNODB"}}},
+		},
+		// Attribute was dropped from the desired state, but the current state if the default (assumed one).
+		{
+			name: "no engine changes",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Engine{V: EngineInnoDB}}},
+			to:   &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
+		},
+		// Attribute was dropped from the desired state, but the current state if the default (explicitly specific as default).
+		{
+			name: "no engine changes",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Engine{V: EngineMyISAM, Default: true}}},
+			to:   &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
+		},
+		// The current state has no engine specified (unlikely case), and the desired state is set to the default (assumed one).
+		{
+			name: "no engine changes",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
+			to:   &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Engine{V: EngineInnoDB, Default: true}}},
+		},
+		// Attributes are specified, but they do not represent the same engine.
+		{
+			name: "engine changed",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Engine{V: EngineInnoDB}}},
+			to:   &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Engine{V: EngineMyISAM}}},
+			wantChanges: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Engine{V: EngineInnoDB},
+					To:   &Engine{V: EngineMyISAM},
+				},
+			},
+		},
+		// The desired state has no engine specified, and the current state is not the default.
+		{
+			name: "engine changed",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Engine{V: EngineMyISAM}}},
+			to:   &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
+			wantChanges: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Engine{V: EngineMyISAM},
+					To:   &Engine{V: EngineInnoDB, Default: true}, // Assume InnoDB is the default.
+				},
+			},
+		},
+		// The current state has no engine specified (unlikely case), and the desired state is not the default.
+		{
+			name: "engine changed",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
+			to:   &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Engine{V: EngineMyISAM}}},
+			wantChanges: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Engine{V: EngineInnoDB, Default: true}, // Assume InnoDB is the default.
+					To:   &Engine{V: EngineMyISAM},
+				},
+			},
+		},
 		{
 			name: "add collation",
 			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Charset{V: "latin1"}}},
