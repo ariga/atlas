@@ -1,0 +1,99 @@
+only mysql8
+
+# InnoDB as the default storage engine.
+apply 1.hcl
+cmphcl 1.inspect.hcl
+
+# Change the InnoDB (default storage engine) to MyISAM.
+apply 2.hcl
+cmphcl 2.inspect.hcl
+
+# Drop MyISAM changes the engine to the default (InnoDB).
+apply 3.hcl
+cmphcl 3.inspect.hcl
+
+-- 1.hcl --
+schema "script_table_engine" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    engine = InnoDB
+    column "name" {
+      null = false
+      type = varchar(255)
+    }
+    charset = "$charset"
+    collate = "$collate"
+}
+
+-- 1.inspect.hcl --
+table "users" {
+  schema = schema.script_table_engine
+  column "name" {
+    null = false
+    type = varchar(255)
+  }
+}
+schema "script_table_engine" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+-- 2.hcl --
+schema "script_table_engine" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    engine = MyISAM
+    column "name" {
+      null = false
+      type = varchar(255)
+    }
+    charset = "$charset"
+    collate = "$collate"
+}
+-- 2.inspect.hcl --
+table "users" {
+  schema = schema.script_table_engine
+  engine = MyISAM
+  column "name" {
+    null = false
+    type = varchar(255)
+  }
+}
+schema "script_table_engine" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+-- 3.hcl --
+schema "script_table_engine" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "name" {
+      null = false
+      type = varchar(255)
+    }
+    charset = "$charset"
+    collate = "$collate"
+}
+-- 3.inspect.hcl --
+table "users" {
+  schema = schema.script_table_engine
+  column "name" {
+    null = false
+    type = varchar(255)
+  }
+}
+schema "script_table_engine" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
