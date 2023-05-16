@@ -35,7 +35,16 @@ module.exports = {
             collapsed: false,
             items: [
                 {type: 'doc', id: 'versioned/diff', label: 'Generating Migrations'},
-                {type: 'doc', id: 'versioned/lint', label: 'Migration Linting'},
+                {
+                    type: 'category', label: 'Migration Linting',
+                    link: {
+                        type: 'doc',
+                        id: 'versioned/lint',
+                    },
+                    items: [
+                        {type: 'doc', id: 'lint/analyzers', label: 'Analyzers and Checks'},
+                    ]
+                },
                 {type: 'doc', id: 'versioned/new', label: 'Manual Migrations'},
                 {type: 'doc', id: 'versioned/apply', label: 'Applying Migrations'},
                 {type: 'doc', id: 'versioned/troubleshoot', label: 'Migration Troubleshooting'},
