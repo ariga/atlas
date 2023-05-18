@@ -198,6 +198,53 @@ env {
 	require.Equal(t, "env: local", envs[0].Format.Schema.Apply)
 }
 
+func TestPartialParse(t *testing.T) {
+	h := `
+data "remote_dir" "ignored" {
+  name = "ignored"
+}
+
+locals {
+  a = "b"
+  ignored = data.remote_dir.ignored.url
+}
+
+env {
+  name = atlas.env
+  log {
+    schema {
+      diff  = local.a
+      apply = "env: ${atlas.env}"
+    }
+  }
+  a = local.a
+}
+
+env "dev" {
+  a = local.a
+}`
+	path := filepath.Join(t.TempDir(), "atlas.hcl")
+	err := os.WriteFile(path, []byte(h), 0600)
+	require.NoError(t, err)
+	GlobalFlags.ConfigURL = "file://" + path
+	_, envs, err := EnvByName("unnamed")
+	require.NoError(t, err)
+	require.Len(t, envs, 1)
+	require.Equal(t, "unnamed", envs[0].Name)
+	require.Equal(t, "b", envs[0].Format.Schema.Diff)
+	require.Equal(t, "env: unnamed", envs[0].Format.Schema.Apply)
+	_, envs, err = EnvByName("dev")
+	require.NoError(t, err)
+	require.Len(t, envs, 2)
+	for _, e := range envs {
+		attr, ok := e.Extra.Attr("a")
+		require.True(t, ok)
+		v, err := attr.String()
+		require.NoError(t, err)
+		require.Equal(t, "b", v)
+	}
+}
+
 func TestDiff_Options(t *testing.T) {
 	d := &Diff{}
 	require.Len(t, d.Options(), 1)

@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -611,4 +613,78 @@ variable "name" {
 }`
 	err = New().EvalBytes([]byte(h), &struct{}{}, nil)
 	require.EqualError(t, err, `invalid type "boring" for variable "name". Valid types are: string, number, bool, list, map, or set`)
+}
+
+func TestDynamicRefs(t *testing.T) {
+	var (
+		h = `
+variable "name" {
+  type = string
+}
+
+locals {
+  name = "a8m"
+}
+
+data "remote_dir" "example1" {
+  name = "ent"
+}
+
+data "remote_dir" "example2" {
+  name = "atlas"
+}
+
+data "template_dir" "example1" {
+  name = "atlas"
+}
+
+env "var_only" {
+  v = var.name
+}
+
+env "local_only" {
+  v = local.name
+}
+
+env "data_only" {
+  v = data.remote_dir.example1.url
+}
+
+env "var_local" {
+  v = "${var.name}-${local.name}"
+}
+
+env "var_data" {
+  v = "${var.name}-${data.remote_dir.example1.url}"
+}
+
+env "all" {
+  v = "${var.name}-${local.name}-${data.remote_dir.example1.url}-${data.remote_dir.example2.url}-${data.template_dir.example1.url}"
+}
+`
+		zero1, zero2 = make(map[string]bool), make(map[string]map[string]bool)
+	)
+	for name, vars := range map[string]Variables{
+		"var_only":   {Var: map[string]bool{"name": true}, Local: zero1, Data: zero2},
+		"local_only": {Var: zero1, Local: map[string]bool{"name": true}, Data: zero2},
+		"data_only":  {Var: zero1, Local: zero1, Data: map[string]map[string]bool{"remote_dir": {"example1": true}}},
+		"var_local":  {Var: map[string]bool{"name": true}, Local: map[string]bool{"name": true}, Data: zero2},
+		"var_data":   {Var: map[string]bool{"name": true}, Local: zero1, Data: map[string]map[string]bool{"remote_dir": {"example1": true}}},
+		"all":        {Var: map[string]bool{"name": true}, Local: map[string]bool{"name": true}, Data: map[string]map[string]bool{"remote_dir": {"example1": true, "example2": true}, "template_dir": {"example1": true}}},
+	} {
+		parser := hclparse.NewParser()
+		fi, diags := parser.ParseHCL([]byte(h), "test")
+		require.False(t, diags.HasErrors())
+		env := func() *hclsyntax.Body {
+			for _, b := range fi.Body.(*hclsyntax.Body).Blocks {
+				if b.Type == "env" && b.Labels[0] == name {
+					return b.Body
+				}
+			}
+			require.Failf(t, "env %q block not found", name)
+			return nil
+		}()
+		got := DynamicRefs(env)
+		require.Equal(t, vars, *got)
+	}
 }

@@ -90,7 +90,7 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 		for _, b := range body.Blocks {
 			switch {
 			// Variable blocks are not reachable by reference.
-			case b.Type == varBlock:
+			case b.Type == BlockVariable:
 				continue
 			// Semi-evaluate blocks with the for_each meta argument.
 			case b.Body != nil && b.Body.Attributes[forEachAttr] != nil:
@@ -222,7 +222,7 @@ func (s *State) resource(ctx *hcl.EvalContext, file *hcl.File) (*Resource, error
 	}
 	for _, blk := range body.Blocks {
 		// variable blocks may be included in the document but are skipped in unmarshaling.
-		if blk.Type == varBlock {
+		if blk.Type == BlockVariable {
 			continue
 		}
 		ctx, err := setBlockVars(ctx.NewChild(), blk.Body)
