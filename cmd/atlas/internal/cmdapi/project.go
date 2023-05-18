@@ -15,10 +15,11 @@ import (
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 )
-
-const defaultConfigPath = "file://atlas.hcl"
 
 type loadConfig struct {
 	inputValues map[string]cty.Value
@@ -385,7 +386,17 @@ func EnvByName(name string, opts ...LoadOption) (*Project, []*Env, error) {
 	return project, selected, nil
 }
 
+const (
+	blockEnv          = "env"
+	refAtlas          = "atlas"
+	defaultConfigPath = "file://atlas.hcl"
+)
+
 func parseConfig(path, env string, values map[string]cty.Value) (*Project, error) {
+	pr, err := partialParse(path, env)
+	if err != nil {
+		return nil, err
+	}
 	cfg := &cmdext.AtlasConfig{}
 	opts := append(
 		cmdext.DataSources,
@@ -397,13 +408,13 @@ func parseConfig(path, env string, values map[string]cty.Value) (*Project, error
 			formatGolangMigrate,
 		),
 		schemahcl.WithVariables(map[string]cty.Value{
-			"atlas": cty.ObjectVal(map[string]cty.Value{
-				"env": cty.StringVal(env),
+			refAtlas: cty.ObjectVal(map[string]cty.Value{
+				blockEnv: cty.StringVal(env),
 			}),
 		}),
 	)
 	p := &Project{Lint: &Lint{}, Diff: &Diff{}, cfg: cfg}
-	if err := schemahcl.New(opts...).EvalFiles([]string{path}, p, values); err != nil {
+	if err := schemahcl.New(opts...).Eval(pr, p, values); err != nil {
 		return nil, err
 	}
 	for _, e := range p.Envs {
@@ -413,5 +424,57 @@ func parseConfig(path, env string, values map[string]cty.Value) (*Project, error
 }
 
 func init() {
-	schemahcl.Register("env", &Env{})
+	schemahcl.Register(blockEnv, &Env{})
+}
+
+func partialParse(path, env string) (*hclparse.Parser, error) {
+	parser := hclparse.NewParser()
+	fi, err := parser.ParseHCLFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var used, locals, datasrc []*hclsyntax.Block
+	for _, b := range fi.Body.(*hclsyntax.Body).Blocks {
+		switch b.Type {
+		case schemahcl.BlockLocals:
+			locals = append(locals, b)
+		case schemahcl.BlockData:
+			datasrc = append(datasrc, b)
+		case blockEnv:
+			switch n := len(b.Labels); {
+			case n == 1 && b.Labels[0] == env:
+				used = append(used, b)
+			case n == 0 && b.Body != nil && b.Body.Attributes[schemahcl.AttrName] != nil:
+				t, ok := b.Body.Attributes[schemahcl.AttrName].Expr.(*hclsyntax.ScopeTraversalExpr)
+				if ok && len(t.Traversal) == 2 && t.Traversal.RootName() == refAtlas && t.Traversal[1].(hcl.TraverseAttr).Name == blockEnv {
+					used = append(used, b)
+				}
+			}
+		default:
+			used = append(used, b)
+		}
+	}
+	var (
+		body = &hclsyntax.Body{
+			Blocks:     used,
+			Attributes: fi.Body.(*hclsyntax.Body).Attributes,
+		}
+		vars = schemahcl.DynamicRefs(body)
+	)
+	for _, l := range locals {
+		for _, a := range l.Body.Attributes {
+			if !vars.Local[a.Name] {
+				// Remove local variables that are not used.
+				delete(l.Body.Attributes, a.Name)
+			}
+		}
+	}
+	body.Blocks = append(body.Blocks, locals...)
+	for _, d := range datasrc {
+		if len(d.Labels) == 2 && vars.Data[d.Labels[0]] != nil && vars.Data[d.Labels[0]][d.Labels[1]] {
+			body.Blocks = append(body.Blocks, d)
+		}
+	}
+	fi.Body = body
+	return parser, nil
 }
