@@ -161,6 +161,30 @@ table "metrics" {
 }
 ```
 
+### Storage Engine
+
+The `engine` attribute allows for overriding the default storage engine of the table. Supported by MySQL and MariaDB.
+
+```hcl
+table "users" {
+  schema = schema.public
+  // highlight-next-line
+  engine = MyISAM
+}
+
+table "posts" {
+  schema = schema.public
+  // highlight-next-line
+  engine = InnoDB
+}
+
+table "orders" {
+  schema = schema.public
+  // highlight-next-line
+  engine = "MyRocks"
+}
+```
+
 ### Table Qualification
 
 In some cases, an Atlas DDL document may contain multiple tables of the same name. This usually happens
@@ -596,10 +620,10 @@ table "products" {
 schema "public" {}
 
 table "products" {
-    column "name" {
-        type    = text
-        collate = "es_ES"
-    }
+  column "name" {
+    type    = text
+    collate = "es_ES"
+  }
 }
 ```
 
