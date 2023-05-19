@@ -116,18 +116,23 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
   atlas migrate apply --dry-run --env dev 1`,
 			Args: cobra.MaximumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) (err error) {
-				if GlobalFlags.SelectedEnv == "" {
+				switch {
+				case GlobalFlags.SelectedEnv == "":
+					if err := migrateFlagsFromConfig(cmd); err != nil {
+						return err
+					}
 					return migrateApplyRun(cmd, args, flags, &MigrateReport{}) // nop reporter
+				default:
+					project, envs, err := EnvByName(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
+					if err != nil {
+						return err
+					}
+					set := NewReportProvider(project, envs)
+					defer set.Flush(cmd)
+					return cmdEnvsRun(envs, setMigrateEnvFlags, cmd, func(env *Env) error {
+						return migrateApplyRun(cmd, args, flags, set.ReportFor(flags, env))
+					})
 				}
-				project, envs, err := EnvByName(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
-				if err != nil {
-					return err
-				}
-				set := NewReportProvider(project, envs)
-				defer set.Flush(cmd)
-				return cmdEnvsRun(envs, setMigrateEnvFlags, cmd, func(env *Env) error {
-					return migrateApplyRun(cmd, args, flags, set.ReportFor(flags, env))
-				})
 			},
 		}
 	)
@@ -523,7 +528,7 @@ directory state to the desired schema. The desired state can be another connecte
   atlas migrate diff --env dev --format '{{ sql . "  " }}'`,
 			Args: cobra.MaximumNArgs(1),
 			PreRunE: func(cmd *cobra.Command, args []string) error {
-				if err := migrateFlagsFromEnv(cmd); err != nil {
+				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
 				}
 				if err := dirFormatBC(flags.dirFormat, &flags.dirURL); err != nil {
@@ -532,7 +537,7 @@ directory state to the desired schema. The desired state can be another connecte
 				return checkDir(cmd, flags.dirURL, true)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
-				env, err := selectEnv(GlobalFlags.SelectedEnv)
+				env, err := selectEnv(cmd)
 				if err != nil {
 					return err
 				}
@@ -719,7 +724,7 @@ func migrateHashCmd() *cobra.Command {
 This command should be used whenever a manual change in the migration directory was made.`,
 			Example: `  atlas migrate hash`,
 			PreRunE: func(cmd *cobra.Command, args []string) error {
-				if err := migrateFlagsFromEnv(cmd); err != nil {
+				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
 				}
 				return dirFormatBC(flags.dirFormat, &flags.dirURL)
@@ -757,7 +762,7 @@ func migrateImportCmd() *cobra.Command {
 			// Validate the source directory. Consider a directory with no sum file
 			// valid, since it might be an import from an existing project.
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				if err := migrateFlagsFromEnv(cmd); err != nil {
+				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
 				}
 				if err := dirFormatBC(flags.dirFormat, &flags.fromURL); err != nil {
@@ -883,7 +888,7 @@ func migrateLintCmd() *cobra.Command {
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --git-base master
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --format '{{ json .Files }}'`,
 			PreRunE: func(cmd *cobra.Command, args []string) error {
-				if err := migrateFlagsFromEnv(cmd); err != nil {
+				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
 				}
 				return dirFormatBC(flags.dirFormat, &flags.dirURL)
@@ -943,7 +948,7 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 			return fmt.Errorf("parse format: %w", err)
 		}
 	}
-	env, err := selectEnv(GlobalFlags.SelectedEnv)
+	env, err := selectEnv(cmd)
 	if err != nil {
 		return err
 	}
@@ -985,7 +990,7 @@ func migrateNewCmd() *cobra.Command {
 			Example: `  atlas migrate new my-new-migration`,
 			Args:    cobra.MaximumNArgs(1),
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				if err := migrateFlagsFromEnv(cmd); err != nil {
+				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
 				}
 				if err := dirFormatBC(flags.dirFormat, &flags.dirURL); err != nil {
@@ -1047,7 +1052,7 @@ to be applied. This command is usually used after manually making changes to the
   atlas migrate set --env local
   atlas migrate set 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				if err := migrateFlagsFromEnv(cmd); err != nil {
+				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
 				}
 				if err := dirFormatBC(flags.dirFormat, &flags.dirURL); err != nil {
@@ -1242,7 +1247,7 @@ func migrateStatusCmd() *cobra.Command {
 			Example: `  atlas migrate status --url mysql://user:pass@localhost:3306/
   atlas migrate status --url mysql://user:pass@localhost:3306/ --dir file:///path/to/migration/directory`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				if err := migrateFlagsFromEnv(cmd); err != nil {
+				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
 				}
 				if err := dirFormatBC(flags.dirFormat, &flags.dirURL); err != nil {
@@ -1316,7 +1321,7 @@ files are executed on the connected database in order to validate SQL semantics.
   atlas migrate validate --dir file:///path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev
   atlas migrate validate --env dev`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				if err := migrateFlagsFromEnv(cmd); err != nil {
+				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
 				}
 				if err := dirFormatBC(flags.dirFormat, &flags.dirURL); err != nil {
@@ -1768,8 +1773,8 @@ func formatter(u *url.URL) (migrate.Formatter, error) {
 	}
 }
 
-func migrateFlagsFromEnv(cmd *cobra.Command) error {
-	env, err := selectEnv(GlobalFlags.SelectedEnv)
+func migrateFlagsFromConfig(cmd *cobra.Command) error {
+	env, err := selectEnv(cmd)
 	if err != nil {
 		return err
 	}

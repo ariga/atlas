@@ -112,12 +112,46 @@ env "dev" {
 </TabItem>
 </Tabs>
 
-Once defined, a project's environment can be worked against using the `--env` flag.
-For example:
+### Flags
+
+Once the project configuration has been defined, you can interact with it using one of the following options:
+
+<Tabs>
+<TabItem value="env" label="Env">
+
+To run the `schema apply` command using the `prod` configuration defined in `atlas.hcl` file located in your working directory:
 
 ```shell
-atlas schema apply --env local
+atlas schema apply --env prod
 ```
+
+</TabItem>
+<TabItem value="custom-path" label="Custom File">
+
+To run the `schema apply` command using the `prod` configuration defined in `atlas.hcl` in arbitrary location:
+
+```shell {2}
+atlas schema apply \
+  -c file://path/to/atlas.hcl \
+  --env prod
+```
+
+</TabItem>
+<TabItem value="global-config" label="Global Config (without --env)">
+
+Some commands accept global configuration blocks such as [`lint`](#configure-migration-linting) and
+[`diff`](#configure-diff-policy) policies. If no `env` is defined, you can instruct Atlas to explicitly use the config
+file using the `-c` (or `--config`) flag:
+
+```shell {2}
+atlas migrate lint \
+  -c file://path/to/atlas.hcl \
+  --dir "file://path/to/migrations" \
+  --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+</Tabs>
 
 Will run the `schema apply` command against the database that is defined for the `local`
 environment.
@@ -274,6 +308,11 @@ locals {
 
 Data sources enable users to retrieve information stored in an external service or database. The currently supported
 data sources are: [`sql`](#data-source-sql), [`runtimevar`](#data-source-runtimevar) and [`template_dir`](#data-source-template_dir).
+
+:::note
+Data sources are evaluated only if they are referenced by top-level blocks like `locals` or `variables`, or by the
+selected environment, for instance, `atlas schema apply --env dev`.
+:::
 
 #### Data source: `sql`
 

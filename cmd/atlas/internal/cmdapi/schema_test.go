@@ -538,6 +538,7 @@ table "users" {
 	err = os.WriteFile(cfg, []byte(`
 variable "schema" {
   type = string
+  default = "dev"
 }
 
 variable "destructive" {
@@ -571,6 +572,25 @@ diff {
 	)
 	require.NoError(t, err)
 	lines := strings.Split(strings.TrimSpace(s), "\n")
+	require.Equal(t, []string{
+		"-- Planned Changes:",
+		`-- Create "users" table`,
+		"CREATE TABLE `users` (`id` int NOT NULL);",
+	}, lines)
+
+	// Skip destructive changes by using project-level policy (no --env was passed).
+	cmd = schemaCmd()
+	cmd.AddCommand(schemaApplyCmd())
+	s, err = runCmd(
+		cmd, "apply",
+		"-u", openSQLite(t, "create table pets (id int);"),
+		"-c", "file://"+cfg, // Using the project-level policy.
+		"--to", "file://"+src,
+		"--dev-url", "sqlite://dev?mode=memory&_fk=1",
+		"--auto-approve",
+	)
+	require.NoError(t, err)
+	lines = strings.Split(strings.TrimSpace(s), "\n")
 	require.Equal(t, []string{
 		"-- Planned Changes:",
 		`-- Create "users" table`,
