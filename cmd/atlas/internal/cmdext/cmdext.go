@@ -466,10 +466,13 @@ type (
 	}
 )
 
-// States is a global registry for external state loaders.
-var States = registry{
-	"ent": EntLoader{},
-}
+var (
+	// States is a global registry for external state loaders.
+	States = registry{
+		"ent": EntLoader{},
+	}
+	errNotSchemaURL = errors.New("missing schema in --dev-url. See: https://atlasgo.io/url")
+)
 
 type registry map[string]StateLoader
 
@@ -495,8 +498,12 @@ type EntLoader struct{}
 // LoadState returns a migrate.StateReader that reads the schema from an ent.Schema.
 func (l EntLoader) LoadState(ctx context.Context, opts *LoadStateOptions) (migrate.StateReader, error) {
 	switch {
-	case opts.Dev == nil, len(opts.URLs) != 1:
-		return nil, errors.New("schema url and dev database are required")
+	case len(opts.URLs) != 1:
+		return nil, errors.New(`"ent://" requires exactly one schema URL`)
+	case opts.Dev == nil:
+		return nil, errors.New(`required flag "--dev-url" not set`)
+	case opts.Dev.URL.Schema == "":
+		return nil, errNotSchemaURL
 	case opts.URLs[0].Query().Has("globalid"):
 		return nil, errors.New("globalid is not supported by this command. Use 'migrate diff' instead")
 	}
@@ -517,6 +524,16 @@ func (l EntLoader) LoadState(ctx context.Context, opts *LoadStateOptions) (migra
 			return nil, err
 		}
 	}
+	if len(realm.Schemas) != 1 {
+		return nil, fmt.Errorf("expect exactly one schema, got %d", len(realm.Schemas))
+	}
+	// Use the dev-database schema name if the schema name is empty.
+	if realm.Schemas[0].Name == "" && opts.Dev.URL.Schema != "" {
+		realm.Schemas[0].Name = opts.Dev.URL.Schema
+	}
+	for _, t := range realm.Schemas[0].Tables {
+		t.Schema = realm.Schemas[0]
+	}
 	return migrate.Realm(realm), nil
 }
 
@@ -524,6 +541,9 @@ func (l EntLoader) LoadState(ctx context.Context, opts *LoadStateOptions) (migra
 func (l EntLoader) MigrateDiff(ctx context.Context, opts *MigrateDiffOptions) error {
 	if !l.needDiff(opts.To) {
 		return errors.New("invalid diff call")
+	}
+	if opts.Dev.URL.Schema == "" {
+		return errNotSchemaURL
 	}
 	u, err := url.Parse(opts.To[0])
 	if err != nil {
