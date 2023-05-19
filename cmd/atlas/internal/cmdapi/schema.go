@@ -89,16 +89,22 @@ migration.`,
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" --to file://schema.hcl
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" --to file://schema.hcl`,
 			RunE: func(cmd *cobra.Command, args []string) error {
-				if GlobalFlags.SelectedEnv == "" {
-					return schemaApplyRun(cmd, flags, nil)
+				switch {
+				case GlobalFlags.SelectedEnv == "":
+					env, err := selectEnv(cmd)
+					if err != nil {
+						return err
+					}
+					return schemaApplyRun(cmd, flags, env)
+				default:
+					_, envs, err := EnvByName(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
+					if err != nil {
+						return err
+					}
+					return cmdEnvsRun(envs, setSchemaEnvFlags, cmd, func(e *Env) error {
+						return schemaApplyRun(cmd, flags, e)
+					})
 				}
-				_, envs, err := EnvByName(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
-				if err != nil {
-					return err
-				}
-				return cmdEnvsRun(envs, setSchemaEnvFlags, cmd, func(e *Env) error {
-					return schemaApplyRun(cmd, flags, e)
-				})
 			},
 		}
 	)
@@ -242,7 +248,7 @@ As a safety feature, 'atlas schema clean' will ask for confirmation before attem
 			Example: `  atlas schema clean -u mysql://user:pass@localhost:3306/dbname
   atlas schema clean -u mysql://user:pass@localhost:3306/`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				return schemaFlagsFromEnv(cmd)
+				return schemaFlagsFromConfig(cmd)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return schemaCleanRun(cmd, args, flags)
@@ -324,10 +330,10 @@ The database states can be read from a connected database, an HCL project or a m
   atlas schema diff --from mysql://user:pass@localhost:3306 --to file://schema_1.hcl --to file://schema_2.hcl
   atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations --format '{{ sql . "  " }}'`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				return schemaFlagsFromEnv(cmd)
+				return schemaFlagsFromConfig(cmd)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
-				env, err := selectEnv(GlobalFlags.SelectedEnv)
+				env, err := selectEnv(cmd)
 				if err != nil {
 					return err
 				}
@@ -437,7 +443,7 @@ flag.
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
   atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				return schemaFlagsFromEnv(cmd)
+				return schemaFlagsFromConfig(cmd)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return schemaInspectRun(cmd, args, flags)
@@ -542,26 +548,36 @@ func schemaFmtRun(cmd *cobra.Command, args []string) error {
 // selectEnv returns the Env from the current project file based on the selected
 // argument. If selected is "", or no project file exists in the current directory
 // a zero-value Env is returned.
-func selectEnv(name string) (*Env, error) {
-	env := &Env{
-		Lint:      &Lint{},
-		Migration: &Migration{},
+func selectEnv(cmd *cobra.Command) (*Env, error) {
+	switch name := GlobalFlags.SelectedEnv; {
+	// A config file was passed without an env.
+	case name == "" && cmd.Flags().Changed(flagConfig):
+		p, envs, err := EnvByName(name, WithInput(GlobalFlags.Vars))
+		if err != nil {
+			return nil, err
+		}
+		if len(envs) != 0 {
+			return nil, fmt.Errorf("unexpected number of envs found: %d", len(envs))
+		}
+		return &Env{Lint: p.Lint, Diff: p.Diff, cfg: p.cfg, Migration: &Migration{}}, nil
+	// No config nor env was passed.
+	case name == "":
+		return &Env{Lint: &Lint{}, Migration: &Migration{}}, nil
+	// Env was passed.
+	default:
+		_, envs, err := EnvByName(name, WithInput(GlobalFlags.Vars))
+		if err != nil {
+			return nil, err
+		}
+		if len(envs) > 1 {
+			return nil, fmt.Errorf("multiple envs found for %q", name)
+		}
+		return envs[0], nil
 	}
-	if name == "" {
-		return env, nil
-	}
-	_, envs, err := EnvByName(name, WithInput(GlobalFlags.Vars))
-	if err != nil {
-		return nil, err
-	}
-	if len(envs) > 1 {
-		return nil, fmt.Errorf("multiple envs found for %q", name)
-	}
-	return envs[0], nil
 }
 
-func schemaFlagsFromEnv(cmd *cobra.Command) error {
-	env, err := selectEnv(GlobalFlags.SelectedEnv)
+func schemaFlagsFromConfig(cmd *cobra.Command) error {
+	env, err := selectEnv(cmd)
 	if err != nil {
 		return err
 	}

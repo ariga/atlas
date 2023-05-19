@@ -36,7 +36,7 @@ func WithInput(values map[string]cty.Value) LoadOption {
 }
 
 type (
-	// Project represents an atlas.hcl project file.
+	// Project represents an atlas.hcl project config file.
 	Project struct {
 		Envs []*Env `spec:"env"`  // List of environments
 		Lint *Lint  `spec:"lint"` // Optional global lint policy
@@ -333,10 +333,6 @@ func (e *Env) asMap() (map[string]string, error) {
 
 // EnvByName parses and returns the project configuration with selected environments.
 func EnvByName(name string, opts ...LoadOption) (*Project, []*Env, error) {
-	cfg := &loadConfig{}
-	for _, f := range opts {
-		f(cfg)
-	}
 	u, err := url.Parse(GlobalFlags.ConfigURL)
 	if err != nil {
 		return nil, nil, err
@@ -351,7 +347,7 @@ func EnvByName(name string, opts ...LoadOption) (*Project, []*Env, error) {
 		}
 		return nil, nil, err
 	}
-	project, err := parseConfig(path, name, cfg.inputValues)
+	project, err := parseConfig(path, name, opts...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -379,11 +375,16 @@ func EnvByName(name string, opts ...LoadOption) (*Project, []*Env, error) {
 		}
 		envs[e.Name] = append(envs[e.Name], e)
 	}
-	selected, ok := envs[name]
-	if !ok {
+	switch {
+	case name == "":
+		// If no env was selected,
+		// return only the project.
+		return project, nil, nil
+	case len(envs[name]) == 0:
 		return nil, nil, fmt.Errorf("env %q not defined in project file", name)
+	default:
+		return project, envs[name], nil
 	}
-	return project, selected, nil
 }
 
 const (
@@ -392,29 +393,35 @@ const (
 	defaultConfigPath = "file://atlas.hcl"
 )
 
-func parseConfig(path, env string, values map[string]cty.Value) (*Project, error) {
+func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
+	loadCfg := &loadConfig{}
+	for _, f := range opts {
+		f(loadCfg)
+	}
 	pr, err := partialParse(path, env)
 	if err != nil {
 		return nil, err
 	}
 	cfg := &cmdext.AtlasConfig{}
-	opts := append(
-		cmdext.DataSources,
-		cfg.InitBlock(),
-		schemahcl.WithScopedEnums(
-			"env.migration.format",
-			formatAtlas, formatFlyway,
-			formatLiquibase, formatGoose,
-			formatGolangMigrate,
-		),
-		schemahcl.WithVariables(map[string]cty.Value{
-			refAtlas: cty.ObjectVal(map[string]cty.Value{
-				blockEnv: cty.StringVal(env),
+	state := schemahcl.New(
+		append(
+			cmdext.DataSources,
+			cfg.InitBlock(),
+			schemahcl.WithScopedEnums(
+				"env.migration.format",
+				formatAtlas, formatFlyway,
+				formatLiquibase, formatGoose,
+				formatGolangMigrate,
+			),
+			schemahcl.WithVariables(map[string]cty.Value{
+				refAtlas: cty.ObjectVal(map[string]cty.Value{
+					blockEnv: cty.StringVal(env),
+				}),
 			}),
-		}),
+		)...,
 	)
 	p := &Project{Lint: &Lint{}, Diff: &Diff{}, cfg: cfg}
-	if err := schemahcl.New(opts...).Eval(pr, p, values); err != nil {
+	if err := state.Eval(pr, p, loadCfg.inputValues); err != nil {
 		return nil, err
 	}
 	for _, e := range p.Envs {
@@ -433,17 +440,19 @@ func partialParse(path, env string) (*hclparse.Parser, error) {
 	if err != nil {
 		return nil, err
 	}
-	var used, locals, datasrc []*hclsyntax.Block
+	var used, datasrc []*hclsyntax.Block
 	for _, b := range fi.Body.(*hclsyntax.Body).Blocks {
 		switch b.Type {
-		case schemahcl.BlockLocals:
-			locals = append(locals, b)
 		case schemahcl.BlockData:
 			datasrc = append(datasrc, b)
 		case blockEnv:
 			switch n := len(b.Labels); {
+			// No env was selected.
+			case env == "" && n == 0:
+			// Exact env was selected.
 			case n == 1 && b.Labels[0] == env:
 				used = append(used, b)
+			// Dynamic env selection.
 			case n == 0 && b.Body != nil && b.Body.Attributes[schemahcl.AttrName] != nil:
 				t, ok := b.Body.Attributes[schemahcl.AttrName].Expr.(*hclsyntax.ScopeTraversalExpr)
 				if ok && len(t.Traversal) == 2 && t.Traversal.RootName() == refAtlas && t.Traversal[1].(hcl.TraverseAttr).Name == blockEnv {
@@ -454,27 +463,14 @@ func partialParse(path, env string) (*hclparse.Parser, error) {
 			used = append(used, b)
 		}
 	}
-	var (
-		body = &hclsyntax.Body{
-			Blocks:     used,
-			Attributes: fi.Body.(*hclsyntax.Body).Attributes,
-		}
-		vars = schemahcl.DynamicRefs(body)
-	)
-	for _, l := range locals {
-		for _, a := range l.Body.Attributes {
-			if !vars.Local[a.Name] {
-				// Remove local variables that are not used.
-				delete(l.Body.Attributes, a.Name)
-			}
-		}
+	body := &hclsyntax.Body{
+		Blocks:     used,
+		Attributes: fi.Body.(*hclsyntax.Body).Attributes,
 	}
-	body.Blocks = append(body.Blocks, locals...)
-	for _, d := range datasrc {
-		if len(d.Labels) == 2 && vars.Data[d.Labels[0]] != nil && vars.Data[d.Labels[0]][d.Labels[1]] {
-			body.Blocks = append(body.Blocks, d)
-		}
+	// If no attributes, locals, variables, or blocks reference data sources, we skip
+	// loading. Otherwise, body stays unchanged as data sources may depend on others.
+	if len(schemahcl.DynamicRefs(body).Data) == 0 {
+		fi.Body = body
 	}
-	fi.Body = body
 	return parser, nil
 }

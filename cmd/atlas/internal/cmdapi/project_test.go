@@ -198,6 +198,47 @@ env {
 	require.Equal(t, "env: local", envs[0].Format.Schema.Apply)
 }
 
+func TestNoEnv(t *testing.T) {
+	h := `
+env "dev" {
+  log {
+    schema {
+      apply = "env: ${atlas.env}"
+    }
+  }
+}
+
+env {
+  name = atlas.env
+  log {
+    schema {
+      apply = "env: ${atlas.env}"
+    }
+  }
+}
+
+lint {
+  latest = 1
+}
+
+diff {
+  skip {
+    drop_column = true
+  }
+}
+`
+	path := filepath.Join(t.TempDir(), "atlas.hcl")
+	err := os.WriteFile(path, []byte(h), 0600)
+	require.NoError(t, err)
+	GlobalFlags.ConfigURL = "file://" + path
+	project, envs, err := EnvByName("")
+	require.NoError(t, err)
+	require.Len(t, envs, 0)
+	require.Equal(t, 1, project.Lint.Latest)
+	require.NotNil(t, project.Diff.SkipChanges)
+	require.True(t, project.Diff.SkipChanges.DropColumn)
+}
+
 func TestPartialParse(t *testing.T) {
 	h := `
 data "remote_dir" "ignored" {
@@ -206,7 +247,6 @@ data "remote_dir" "ignored" {
 
 locals {
   a = "b"
-  ignored = data.remote_dir.ignored.url
 }
 
 env {

@@ -442,6 +442,12 @@ variable "url" {
   type = string
 }
 
+locals {
+  string = "%test"
+  bool   = true
+  int    = 1
+}
+
 data "sql" "tenants" {
   url   = var.url
   query = <<EOS
@@ -449,7 +455,7 @@ SELECT name FROM tenants
 	WHERE mode LIKE ? AND active = ? AND created = ?
 EOS
   # Pass all types of arguments.
-  args  = ["%test", true, 1]
+  args  = [local.string, local.bool, local.int]
 }
 
 env "local" {
@@ -1603,6 +1609,46 @@ func TestMigrate_Lint(t *testing.T) {
 	)
 	require.Error(t, err)
 	require.Equal(t, "2.sql", s)
+
+	t.Run("FromConfig", func(t *testing.T) {
+		cfg := filepath.Join(p, "atlas.hcl")
+		err := os.WriteFile(cfg, []byte(`
+variable "error" {
+  type    = bool
+  default = false
+}
+
+lint {
+  latest = 1
+  destructive {
+    error = var.error
+  }
+}
+`), 0600)
+		require.NoError(t, err)
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateLintCmd())
+		s, err := runCmd(
+			cmd, "lint",
+			"--dir", "file://"+p,
+			"--dev-url", openSQLite(t, ""),
+			"-c", "file://"+cfg,
+		)
+		require.NoError(t, err)
+		require.Equal(t, "2.sql: destructive changes detected:\n\n\tL1: Dropping table \"t\"\n\n", s)
+
+		cmd = migrateCmd()
+		cmd.AddCommand(migrateLintCmd())
+		s, err = runCmd(
+			cmd, "lint",
+			"--dir", "file://"+p,
+			"--dev-url", openSQLite(t, ""),
+			"-c", "file://"+cfg,
+			"--var", "error=true",
+		)
+		require.Error(t, err)
+		require.Equal(t, "2.sql: destructive changes detected:\n\n\tL1: Dropping table \"t\"\n\n", s)
+	})
 
 	// Change files to golang-migrate format.
 	require.NoError(t, os.Rename(filepath.Join(p, "1.sql"), filepath.Join(p, "1.up.sql")))
