@@ -29,16 +29,17 @@ values={[
 ]}>
 <TabItem value="mysql">
 
+Connecting to a local MySQL server (all schemas/databases):
+```shell
+mysql://localhost:3306/
 ```
-mysql://localhost
 
-mysql://user:pass@localhost
-
-mysql://user:pass@localhost:3306/database
+Connecting to a specific MySQL schema (database) with a username and password:
+```shell
+mysql://user:pass@localhost:3306/schema
 ```
 
 Connecting using Unix Sockets:
-
 ```
 mysql+unix:///tmp/mysql.sock
 
@@ -50,16 +51,17 @@ mysql+unix://user@/tmp/mysql.sock?database=dbname
 </TabItem>
 <TabItem value="maria">
 
+Connecting to a local MariaDB server (all schemas/databases):
+```shell
+maria://localhost:3306/
 ```
-maria://localhost
 
-maria://user:pass@localhost
-
-maria://user:pass@localhost:3306/database
+Connecting to a specific MariaDB schema (database) with a username and password:
+```shell
+maria://user:pass@localhost:3306/schema
 ```
 
 Connecting using Unix Sockets:
-
 ```
 maria+unix:///tmp/mysql.sock
 
@@ -71,21 +73,32 @@ maria+unix://user@/tmp/mysql.sock?database=dbname
 </TabItem>
 <TabItem value="postgres">
 
-```
+Connecting to a local PostgreSQL database named `database` (all schemas):
+```shell
 postgres://localhost:5432/database
+```
 
-postgres://localhost:5432/database?search_path=schema
+Connecting to a specific PostgreSQL schema named `public`:
+```shell
+postgres://localhost:5432/database?search_path=public
+```
 
-postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable
+Connecting to a local PostgreSQL with credentials and SSL disabled:
+```shell
+postgres://postgres:pass@0.0.0.0:5432/database?search_path=public&sslmode=disable
 ```
 
 </TabItem>
 <TabItem value="sqlite">
 
-```
+Connecting to a local SQLite database (file):
+```shell
 sqlite://file.db
+```
 
-sqlite://file?cache=shared&mode=memory
+Connecting to an in-memory SQLite database (ephemeral). Useful for `--dev-url`:
+```shell
+sqlite://file?mode=memory&_fk=1
 ```
 
 </TabItem>
@@ -96,12 +109,24 @@ if you need a [dev database](../concepts/dev.mdx) for schema validation or diffi
 `mariadb` take quite some time to "boot", before they are ready to be used. For a smoother developing experience
 consider spinning up a longer lived container by yourself.
 
-```
-docker://postgres
+```shell
+# PostgreSQL database scope (all schemas).
+docker://postgres/15/test
 
-docker://mariadb/latest
+# PostgreSQL specific schema scope.
+docker://postgres/15/test?search_path=public
 
-docker://mysql/8/database
+# MySQL server scope (all schemas).
+docker://mysql/8
+
+# MySQL specific schema scope.
+docker://mysql/8/test
+
+# MySQL server scope (all schemas).
+docker://maria/latest
+
+# MySQL specific schema scope.
+docker://maria/latest/test
 ```
 
 </TabItem>
