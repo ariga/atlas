@@ -1092,10 +1092,12 @@ FROM
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
 	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
 	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
+	LEFT JOIN pg_depend AS t5 ON t5.objid = t3.oid AND t5.deptype = 'e'
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND NOT COALESCE(t3.relispartition, false)
 	AND t1.table_schema IN (%s)
+	AND t5.objid IS NULL
 ORDER BY
 	t1.table_schema, t1.table_name
 `
@@ -1112,11 +1114,13 @@ FROM
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
 	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
 	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
+	LEFT JOIN pg_depend AS t5 ON t5.objid = t3.oid AND t5.deptype = 'e'
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND NOT COALESCE(t3.relispartition, false)
 	AND t1.table_schema IN (%s)
 	AND t1.table_name IN (%s)
+	AND t5.objid IS NULL
 ORDER BY
 	t1.table_schema, t1.table_name
 `

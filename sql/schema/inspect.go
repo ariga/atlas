@@ -83,7 +83,7 @@ type (
 		// Exclude defines a list of glob patterns used to filter resources from inspection.
 		// The syntax used by the different drivers is implemented as follows:
 		//
-		//	s     // exclude schema 't'.
+		//	s     // exclude schema 's'.
 		//	*     // exclude all schemas.
 		//	s.t   // exclude table 't' under schema 's'.
 		//	s.*   // the last item defines the filtering; all tables under 's' are excluded.

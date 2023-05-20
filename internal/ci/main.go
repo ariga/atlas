@@ -99,6 +99,14 @@ var (
 			Options: mysqlOptions,
 		},
 		{
+			Version: "postgres-ext-postgis",
+			Image:   "postgis/postgis:latest",
+			Regex:   "Postgres",
+			Env:     pgEnv,
+			Ports:   []string{"5429:5432"},
+			Options: pgOptions,
+		},
+		{
 			Version: "postgres10",
 			Image:   "postgres:10",
 			Regex:   "Postgres",

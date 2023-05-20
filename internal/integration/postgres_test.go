@@ -35,12 +35,13 @@ type pgTest struct {
 }
 
 var pgTests = map[string]*pgTest{
-	"postgres10": {port: 5430},
-	"postgres11": {port: 5431},
-	"postgres12": {port: 5432},
-	"postgres13": {port: 5433},
-	"postgres14": {port: 5434},
-	"postgres15": {port: 5435},
+	"postgres-ext-postgis": {port: 5429},
+	"postgres10":           {port: 5430},
+	"postgres11":           {port: 5431},
+	"postgres12":           {port: 5432},
+	"postgres13":           {port: 5433},
+	"postgres14":           {port: 5434},
+	"postgres15":           {port: 5435},
 }
 
 func pgRun(t *testing.T, fn func(*pgTest)) {
@@ -56,6 +57,21 @@ func pgRun(t *testing.T, fn func(*pgTest)) {
 						log.Fatalln(err)
 					}
 					dbs = append(dbs, tt.db) // close connection after all tests have been run
+					// the postgis/postgis image enables the postgis_topology and postgis_tiger_geocoder extensions,
+					// this creates a few unwanted schemas, so we drop it.
+					// https://github.com/postgis/docker-postgis/issues/187
+					if tt.version == "postgres-ext-postgis" {
+						schemasToDrop := []string{
+							"tiger",      // created by postgis_tiger_geocoder
+							"tiger_data", // created by postgis_tiger_geocoder
+							"topology",   // created by postgis_topology
+						}
+						for _, s := range schemasToDrop {
+							if _, err := tt.db.Exec("DROP SCHEMA IF EXISTS " + s + " CASCADE;"); err != nil {
+								log.Fatalf("error dropping schema %q: %v", s, err)
+							}
+						}
+					}
 					tt.drv, err = postgres.Open(tt.db)
 					if err != nil {
 						log.Fatalln(err)
