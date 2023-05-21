@@ -50,10 +50,12 @@ get complicated very quickly. To help developers better understand their schema,
 For the purpose of this demo, we will follow the Django [Getting started tutorial](https://docs.djangoproject.com/en/4.2/intro/tutorial01/), and showcase how you can use DjangoViz for schema visualization, by visualizing all of Django build-in models that are automatically created when creating a new project.
 
 
-First, create a new Django project:
+First, install Django and create a new project:
 
 ```console
+pip install Django
 django-admin startproject atlas_demo
+cd atlas_demo
 ```
 
 Install the DjangoViz package: 
@@ -62,7 +64,7 @@ Install the DjangoViz package:
 pip install djangoviz
 ```
 
-Add DjangoViz to your Django project's INSTALLED_APPS in `settings.py`:
+Add DjangoViz to your Django project's INSTALLED_APPS in `atlas_demo/settings.py`:
 
 ```python
 INSTALLED_APPS = [
@@ -72,7 +74,7 @@ INSTALLED_APPS = [
 ]
 ```
 
-DjangoViz support either PostgreSQL or MySQL, in this example I will use PostgreSQL:
+DjangoViz support either PostgreSQL or MySQL, in this example we will use PostgreSQL:
 
 Install PostgreSQL driver:
 
@@ -87,20 +89,18 @@ Configure the database to work with PostgreSQL in the ‘settings.py` file:
 DATABASES = {
    "default": {
        "ENGINE": "django.db.backends.postgresql_psycopg2",
-       "NAMEv: "postgresDB",
-       'USER': 'postgresUser',
-       'PASSWORD': 'postgresP',
+       "NAME": "postgres",
+       'USER': 'postgres',
+       'PASSWORD': 'pass',
        'HOST': '127.0.0.1',
-       'PORT': '5455',
+       'PORT': '5432',
    }
 }
 ```
 
 Start a PostgreSQL container:
 ```console
-docker run    -p 5455:5432  -e POSTGRESf_USER=postgresUser   -e POSTGRES_PASSWORD=postgresP  -e POSTGRES_DB=postgresDB   -d   postgres
-   }
-}
+docker run --rm -p 5432:5432  -e POSTGRES_PASSWORD=pass -d postgres:15
 ```
 
 Now, you can visualize your schema by running the `djangoviz` management command from your new project directory:
