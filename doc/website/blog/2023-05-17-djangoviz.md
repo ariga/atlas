@@ -27,20 +27,17 @@ developers to define complex application data models with ease. Unlike tradition
 and foreign keys, Django models are defined using Python objects and relationships:
 
 ```python
-class EmailAddress(models.Model):
+from django.db import models
 
-    user = models.ForeignKey(
-        allauth_app_settings.USER_MODEL,
-        verbose_name=_("user"),
-        on_delete=models.CASCADE,
-    )
-    email = models.EmailField(
-        unique=app_settings.UNIQUE_EMAIL,
-        max_length=app_settings.EMAIL_MAX_LENGTH,
-        verbose_name=_("e-mail address"),
-    )
-    verified = models.BooleanField(verbose_name=_("verified"), default=False)
-    primary = models.BooleanField(verbose_name=_("primary"), default=False)
+class User(models.Model):
+    username = models.CharField(max_length=255)
+    email = models.EmailField(unique=True)
+    password = models.CharField(max_length=255)
+
+class Post(models.Model):
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
 ```
 
 When the application runs, Django translates these Python models into database schemas, mapping each model to a
@@ -50,33 +47,24 @@ get complicated very quickly. To help developers better understand their schema,
 
 ### Introducing DjangoViz
 
-For the purpose of this demo, we will use the [pennersr/django-allauth](https://github.com/pennersr/django-allauth/tree/master) 
-project (an integrated set of Django applications addressing authentication, registration, etc.) to showcase how you
-can use DjangoViz for schema visualization. To try this your self, clone the `pennersr/django-allauth` repository and
-follow the steps below.
+For the purpose of this demo, we will follow the Django [Getting started tutorial](https://docs.djangoproject.com/en/4.2/intro/tutorial01/), and showcase how you can use DjangoViz for schema visualization, by visualizing all of Django build-in models that are automatically created when creating a new project.
 
-First clone the repository:
+
+First, create a new Django project:
 
 ```console
-git clone git@github.com:pennersr/django-allauth.git
+django-admin startproject atlas_demo
 ```
 
-Install the requirements:
-
-```console
-cd django-allauth
-pip install .
-```
-
-Install the DjangoViz package:
+Install the DjangoViz package: 
 
 ```console
 pip install djangoviz
 ```
 
-Add DjangoViz to your Django project's INSTALLED_APPS in 'settings.py':
+Add DjangoViz to your Django project's INSTALLED_APPS in `settings.py`:
 
-```console
+```python
 INSTALLED_APPS = [
     ...,
     'djangoviz',
@@ -84,7 +72,38 @@ INSTALLED_APPS = [
 ]
 ```
 
-Now, you can visualize your schema by running the `djangoviz` management command:
+DjangoViz support either PostgreSQL or MySQL, in this example I will use PostgreSQL:
+
+Install PostgreSQL driver:
+
+```console
+pip install psycopg2-binary
+```
+
+Configure the database to work with PostgreSQL in the ‘settings.py` file:
+
+
+```python
+DATABASES = {
+   "default": {
+       "ENGINE": "django.db.backends.postgresql_psycopg2",
+       "NAMEv: "postgresDB",
+       'USER': 'postgresUser',
+       'PASSWORD': 'postgresP',
+       'HOST': '127.0.0.1',
+       'PORT': '5455',
+   }
+}
+```
+
+Start a PostgreSQL container:
+```console
+docker run    -p 5455:5432  -e POSTGRESf_USER=postgresUser   -e POSTGRES_PASSWORD=postgresP  -e POSTGRES_DB=postgresDB   -d   postgres
+   }
+}
+```
+
+Now, you can visualize your schema by running the `djangoviz` management command from your new project directory:
 
 ```console
 python manage.py djangoviz
@@ -95,13 +114,14 @@ or [HCL](https://atlasgo.io/guides/ddl#hcl%E2%80%9D%20with%20%E2%80%9Chttps://at
 
 ```console
 Here is a public link to your schema visualization:
-  https://gh.atlasgo.cloud/explore/9fe81b90
+  https://gh.atlasgo.cloud/explore/ac523fef
 ```
 
-When clicking on the link you will see the [ER diagram](https://gh.atlasgo.cloud/explore/9fe81b90) of the
-Pennersr/django-allauth project:
+When clicking on the link you will see the [ER diagram](https://gh.atlasgo.cloud/explore/ac523fef) of your new project, that includes all of Django build-in models:
 
-[![img](https://atlasgo.io/uploads/images/djangoviz-example.png)](https://gh.atlasgo.cloud/explore/9fe81b90)
+
+[![img](https://atlasgo.io/uploads/images/django-getting-started-schema.png)](https://gh.atlasgo.cloud/explore/ac523fef) . 
+
 
 ### Wrapping up
 
