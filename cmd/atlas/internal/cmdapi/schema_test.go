@@ -699,7 +699,7 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"--auto-approve",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "Schema is synced, no changes to be made.\n", s)
+		require.Equal(t, "Schema is synced, no changes to be made\n", s)
 	})
 	t.Run("Dir", func(t *testing.T) {
 		db := openSQLite(t, "")
@@ -721,7 +721,7 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"--auto-approve",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "Schema is synced, no changes to be made.\n", s)
+		require.Equal(t, "Schema is synced, no changes to be made\n", s)
 	})
 	t.Run("Error", func(t *testing.T) {
 		_, err := runCmd(
