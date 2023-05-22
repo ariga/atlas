@@ -1184,6 +1184,7 @@ SELECT
 	      		ns1.nspname AS schema_name,
       			t2.relname AS referenced_table_name,
 	      		ns2.nspname AS referenced_schema_name,
+	      		generate_series(1,array_length(con.conkey,1)) as ord,
 	      		unnest(con.conkey) AS conkey,
 	      		unnest(con.confkey) AS confkey
 	    	FROM pg_constraint con
@@ -1199,7 +1200,7 @@ SELECT
 	JOIN pg_attribute a2 ON a2.attnum = fk.confkey AND a2.attrelid = fk.confrelid
 	JOIN information_schema.referential_constraints rc ON rc.constraint_name = fk.constraint_name AND rc.constraint_schema = fk.schema_name
 	ORDER BY
-	    fk.conrelid, fk.constraint_name
+	    fk.conrelid, fk.constraint_name, fk.ord
 `
 
 	// Query to list table check constraints.
