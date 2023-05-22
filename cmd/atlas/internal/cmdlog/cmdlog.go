@@ -460,7 +460,7 @@ var SchemaPlanTemplate = template.Must(template.
 {{- printf "%s;\n" .Cmd -}}
 {{- end -}}
 {{- else -}}
-Schema is synced, no changes to be made.
+Schema is synced, no changes to be made
 {{ end -}}
 `))
 
