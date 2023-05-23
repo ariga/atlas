@@ -187,6 +187,40 @@ Wait for the operator to reconcile the desired state with the actual state of th
 kubectl wait --for=condition=Ready atlasschema/myapp --timeout=60s
 ```
 
+Alternatively, you can use a `ConfigMap` to store the desired schema of your database. To use
+this approach, create a ConfigMap with the desired schema:
+
+```yaml title="atlas-schema-configmap.yaml"
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: mysql-schema
+data:
+  schema.sql: |
+    create table users (
+       id int not null auto_increment,
+       name varchar(255) not null,
+       email varchar(255) unique not null,
+       short_bio varchar(255) not null,
+       primary key (id)
+    );
+```
+
+Then, update the `AtlasSchema` resource to reference the config map key:
+
+```yaml title="atlas-schema.yaml"
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasSchema
+metadata:
+  name: myapp
+spec:
+  schema:
+    configMapKeyRef:
+      key: schema.sql
+      name: mysql-schema
+  # Skipping all other fields for brevity.
+```
+
 ## Configuration for the `AtlasSchema` resource
 
 The `AtlasSchema` resource is used to define the desired state of a target database.
@@ -217,6 +251,7 @@ url: "mysql://user:pass@localhost:3306/myapp"
 ### `schema`
 
 The `schema` field is used to define the desired schema of the target database.
+
 This can be defined in either plain SQL or in Atlas HCL.
 
 ```yaml
@@ -241,6 +276,18 @@ schema:
       // ...
     }
 ```
+
+Alternatively, you can reference a key in a `ConfigMap` to store the desired schema of your database:
+
+```
+schema:
+  configMapKeyRef:
+    key: schema.sql
+    name: mysql-schema
+```
+
+Note: the `.sql` suffix on the key denotes that the schema is defined in plain SQL. If you are using Atlas HCL,
+you should use the `.hcl` suffix instead.
 
 ### `policy`
 
