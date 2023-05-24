@@ -1,0 +1,13 @@
+execsql 'CREATE TABLE tbl (col)'
+cmphcl 1.hcl
+
+-- 1.hcl --
+table "tbl" {
+  schema = schema.main
+  column "col" {
+    null = true
+    type = blob
+  }
+}
+schema "main" {
+}

@@ -82,6 +82,7 @@ func TestSQLite_Script(t *testing.T) {
 			"apply":       tt.cmdApply,
 			"exist":       tt.cmdExist,
 			"synced":      tt.cmdSynced,
+			"cmphcl":      tt.cmdCmpHCL,
 			"cmpshow":     tt.cmdCmpShow,
 			"cmpmig":      tt.cmdCmpMig,
 			"execsql":     tt.cmdExec,
@@ -323,6 +324,18 @@ func (t *pgTest) cmdCmpHCL(ts *testscript.TestScript, _ bool, args []string) {
 		s, err := t.drv.InspectSchema(context.Background(), name, nil)
 		ts.Check(err)
 		buf, err := postgres.MarshalHCL(s)
+		require.NoError(t, err)
+		return string(buf), nil
+	}, func(s string) string {
+		return strings.ReplaceAll(ts.ReadFile(s), "$db", ts.Getenv("db"))
+	})
+}
+
+func (t *liteTest) cmdCmpHCL(ts *testscript.TestScript, _ bool, args []string) {
+	cmdCmpHCL(ts, args, func(name string) (string, error) {
+		s, err := ts.Value(keyDrv).(migrate.Driver).InspectSchema(context.Background(), "main", nil)
+		ts.Check(err)
+		buf, err := sqlite.MarshalHCL(s)
 		require.NoError(t, err)
 		return string(buf), nil
 	}, func(s string) string {

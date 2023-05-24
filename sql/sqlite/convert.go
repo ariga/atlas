@@ -55,7 +55,7 @@ func FormatType(t schema.Type) (string, error) {
 func ParseType(c string) (schema.Type, error) {
 	// A datatype may be zero or more names.
 	if c == "" {
-		return &schema.UnsupportedType{}, nil
+		return &schema.BinaryType{T: "blob"}, nil
 	}
 	parts := columnParts(c)
 	switch t := parts[0]; t {

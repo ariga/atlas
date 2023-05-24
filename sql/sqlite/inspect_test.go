@@ -40,6 +40,7 @@ func TestDriver_InspectTable(t *testing.T) {
  c8   | text          |  0      |             |  0       |  0
  c9   | numeric(10,2) |  0      |             |  0       |  0
  c10  | real          |  0      |             |  0       |  0
+ c11  |               |  0      |             |  0       |  0
  w    | int           |  0      |             |  0       |  2
  x    | text          |  0      |             |  0       |  3
  y    | text          |  0      |             |  0       |  2
@@ -61,6 +62,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c8", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text"}},
 					{Name: "c9", Type: &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 10, Scale: 2}, Raw: "numeric(10,2)"}},
 					{Name: "c10", Type: &schema.ColumnType{Type: &schema.FloatType{T: "real"}, Raw: "real"}},
+					{Name: "c11", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob"}, Raw: ""}},
 					{Name: "w", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}, Raw: "int"}, Attrs: []schema.Attr{&schema.GeneratedExpr{Type: "VIRTUAL", Expr: "(a*10)"}}},
 					{Name: "x", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text"}, Attrs: []schema.Attr{&schema.GeneratedExpr{Type: "STORED", Expr: "(typeof(c))"}}},
 					{Name: "y", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text"}, Attrs: []schema.Attr{&schema.GeneratedExpr{Type: "VIRTUAL", Expr: "(substr(b,a,a+2))"}}},
