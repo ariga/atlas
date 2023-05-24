@@ -118,6 +118,9 @@ jobs:
         {{ with .Env }}env:{{ range . }}
           {{ . }}{{ end }}
         {{- end }}
+        {{- with .Command }}
+        command: {{ . }}
+        {{- end }}
         {{ with .Ports }}ports:{{ range . }}
           - {{ . }}{{ end }}
         {{- end }}

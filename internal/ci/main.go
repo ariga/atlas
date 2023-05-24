@@ -22,6 +22,7 @@ type Job struct {
 	Env     []string // env of service
 	Ports   []string // port mappings
 	Options []string // other options
+	Command string   // optional command to run
 }
 
 var (
@@ -172,9 +173,10 @@ var (
 		},
 		{
 			Version: "cockroach",
-			Image:   "ghcr.io/ariga/cockroachdb-single-node:v21.2.11",
+			Image:   "cockroachdb/cockroach:v22.1.6",
 			Regex:   "Cockroach",
 			Ports:   []string{"26257:26257"},
+			Command: "start-single-node --insecure --accept-sql-without-tls",
 		},
 	}
 )
