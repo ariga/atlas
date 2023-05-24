@@ -172,9 +172,12 @@ var (
 		},
 		{
 			Version: "cockroach",
-			Image:   "ghcr.io/ariga/cockroachdb-single-node:v21.2.11",
+			Image:   "cockroachdb/cockroach:v22.1.6",
 			Regex:   "Cockroach",
 			Ports:   []string{"26257:26257"},
+			Options: []string{
+				"--entrypoint start-single-node --insecure --accept-sql-without-tls",
+			},
 		},
 	}
 )

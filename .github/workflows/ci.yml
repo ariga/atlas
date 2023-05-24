@@ -478,11 +478,12 @@ jobs:
     runs-on: ubuntu-latest
     services:
       cockroach:
-        image: ghcr.io/ariga/cockroachdb-single-node:v21.2.11
+        image: cockroachdb/cockroach:v22.1.6
         
         ports:
           - 26257:26257
-        
+        options: >-
+          --entrypoint start-single-node --insecure --accept-sql-without-tls
     steps:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v4
