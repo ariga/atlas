@@ -545,8 +545,16 @@ func sqlStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 		if err != nil {
 			return nil, err
 		}
-		dir = &validMemDir{}
+		dir = &migrate.MemDir{}
 		if err := dir.WriteFile(fi.Name(), b); err != nil {
+			return nil, err
+		}
+		// Create a checksum file to bypass the checksum check.
+		sum, err := dir.Checksum()
+		if err != nil {
+			return nil, err
+		}
+		if err = migrate.WriteSumFile(dir, sum); err != nil {
 			return nil, err
 		}
 	// A migration directory.
@@ -586,11 +594,6 @@ func (sr *stateReadCloser) Close() {
 		sr.Closer.Close()
 	}
 }
-
-// validMemDir will not throw an error when put into migrate.Validate.
-type validMemDir struct{ migrate.MemDir }
-
-func (d *validMemDir) Validate() error { return nil }
 
 const (
 	extHCL = ".hcl"
