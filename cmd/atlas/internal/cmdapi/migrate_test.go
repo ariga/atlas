@@ -789,10 +789,11 @@ env "local" {
 
 func TestMigrate_ApplyCloudReport(t *testing.T) {
 	var (
-		dir    migrate.MemDir
-		status int
-		report cloudapi.ReportMigrationInput
-		srv    = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dir     migrate.MemDir
+		status  int
+		report  cloudapi.ReportMigrationInput
+		reports cloudapi.ReportMigrationSetInput
+		srv     = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var m struct {
 				Query     string `json:"query"`
 				Variables struct {
@@ -812,7 +813,12 @@ func TestMigrate_ApplyCloudReport(t *testing.T) {
 				arc, err := migrate.ArchiveDir(&dir)
 				require.NoError(t, err)
 				fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(arc))
-			case strings.Contains(m.Query, "mutation"):
+			case strings.Contains(m.Query, "mutation") && strings.Contains(m.Query, "ReportMigrationSet"):
+				if status != 0 {
+					w.WriteHeader(status)
+				}
+				require.NoError(t, json.Unmarshal(m.Variables.Input, &reports))
+			case strings.Contains(m.Query, "mutation") && strings.Contains(m.Query, "ReportMigration"):
 				if status != 0 {
 					w.WriteHeader(status)
 				}
@@ -944,6 +950,23 @@ env {
 		)
 		require.NoError(t, err)
 		require.Equal(t, "sqlite3\nError: unexpected status code: 500\n", s)
+	})
+
+	t.Run("OpenError", func(t *testing.T) {
+		sqlclient.Register("openerror", sqlclient.OpenerFunc(func(ctx context.Context, u *url.URL) (*sqlclient.Client, error) {
+			return nil, errors.New("openerror")
+		}))
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		_, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--url", "openerror://db",
+			"--var", "cloud_url="+srv.URL,
+		)
+		require.EqualError(t, err, "openerror")
+		require.Equal(t, "Error: openerror", *reports.Error)
 	})
 }
 
