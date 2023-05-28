@@ -115,7 +115,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
   atlas migrate apply --env dev 1
   atlas migrate apply --dry-run --env dev 1`,
 			Args: cobra.MaximumNArgs(1),
-			RunE: func(cmd *cobra.Command, args []string) (err error) {
+			RunE: func(cmd *cobra.Command, args []string) (cmdErr error) {
 				switch {
 				case GlobalFlags.SelectedEnv == "":
 					if err := migrateFlagsFromConfig(cmd); err != nil {
@@ -128,7 +128,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 						return err
 					}
 					set := NewReportProvider(project, envs)
-					defer set.Flush(cmd)
+					defer func() { set.Flush(cmd, cmdErr) }()
 					return cmdEnvsRun(envs, setMigrateEnvFlags, cmd, func(env *Env) error {
 						return migrateApplyRun(cmd, args, flags, set.ReportFor(flags, env))
 					})
@@ -374,16 +374,23 @@ func (s *MigrateReportSet) ReportFor(flags migrateApplyFlags, e *Env) *MigrateRe
 // report separately without marking them as part of a group.
 //
 // Note that reporting errors are logged, but not cause Atlas to fail.
-func (s *MigrateReportSet) Flush(cmd *cobra.Command) {
+func (s *MigrateReportSet) Flush(cmd *cobra.Command, cmdErr error) {
+	if cmdErr != nil && s.Error == nil {
+		s.StepLogError(cmdErr.Error())
+	}
 	var err error
 	switch {
 	// Skip reporting if set is empty,
 	// or there is no cloud connectivity.
 	case s.Planned == 0, s.client == nil:
 		return
-	// Single migration.
+	// Single migration that was completed.
 	case s.Planned == 1 && len(s.Completed) == 1:
 		err = s.client.ReportMigration(cmd.Context(), s.Completed[0])
+	// Single migration that failed to start.
+	case s.Planned == 1 && len(s.Completed) == 0:
+		s.EndTime = time.Now()
+		err = s.client.ReportMigrationSet(cmd.Context(), s.ReportMigrationSetInput)
 	// Multi environment migration (e.g., multi-tenancy).
 	case s.Planned > 1:
 		s.EndTime = time.Now()
