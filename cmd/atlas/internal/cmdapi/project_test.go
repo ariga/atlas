@@ -22,20 +22,21 @@ func TestEnvByName(t *testing.T) {
 	d := t.TempDir()
 	h := `
 variable "name" {
-	type = string
-	default = "hello"
+  type = string
+  default = "hello"
 }
 
 locals {
-	envName = atlas.env
+  envName = atlas.env
+  emptyEnv = getenv("NOT_SET")
 }
 
 lint {
-	destructive {
-		error = true
-	}
-	// Backwards compatibility with old attribute.
-	log = <<EOS
+  destructive {
+    error = true
+  }
+  // Backwards compatibility with old attribute.
+  log = <<EOS
 {{- range $f := .Files }}
 	{{- $f.Name }}
 {{- end }}
@@ -49,47 +50,51 @@ diff {
 }
 
 env "local" {
-	url = "mysql://root:pass@localhost:3306/"
-	dev = "docker://mysql/8"
-	src = "${local.envName}/app.hcl"
-	schemas = ["hello", "world"]
-	migration {
-		dir = "file://migrations"
-		format = atlas
-		lock_timeout = "1s"
-		revisions_schema = "revisions"
-	}
-	lint {
-		latest = 1
-	}
-	diff {
-		skip {
-			drop_column = true
-		}
-	}
-	bool = true
-	integer = 42
-	str = var.name
+  url = "mysql://root:pass@localhost:3306/"
+  dev = "docker://mysql/8"
+  src = "${local.envName}/app.hcl"
+  schemas = ["hello", "world"]
+  migration {
+    dir = "file://migrations"
+    format = atlas
+    lock_timeout = "1s"
+    revisions_schema = "revisions"
+  }
+  lint {
+    latest = 1
+  }
+  diff {
+    skip {
+      drop_column = true
+    }
+  }
+  bool = true
+  integer = 42
+  str = var.name
+  token  = getenv("ATLAS_TOKEN")
+  token2  = getenv("ATLAS_TOKEN2")
 }
 
 env "multi" {
-	url = "mysql://root:pass@localhost:3306/"
-	src = [
-		"./a.hcl",
-		"./b.hcl",
-	]
-	lint {
-		git {
-			dir  = "./path"
-			base = "master"
-		}
-	}
+  url = "mysql://root:pass@localhost:3306/"
+  src = [
+    "./a.hcl",
+    "./b.hcl",
+  ]
+  lint {
+    git {
+      dir  = "./path"
+      base = "master"
+    }
+  }
 }
 `
 	path := filepath.Join(d, "atlas.hcl")
 	err := os.WriteFile(path, []byte(h), 0600)
 	require.NoError(t, err)
 	GlobalFlags.ConfigURL = "file://" + path
+	require.NoError(t, os.Setenv("ATLAS_TOKEN", "token_atlas"))
+	t.Cleanup(func() { require.NoError(t, os.Unsetenv("ATLAS_TOKEN")) })
 	t.Run("ok", func(t *testing.T) {
 		_, envs, err := EnvByName("local")
 		require.NoError(t, err)
@@ -137,6 +142,8 @@ env "multi" {
 						schemahcl.IntAttr("integer", 42),
 						schemahcl.StringAttr("src", "local/app.hcl"),
 						schemahcl.StringAttr("str", "hello"),
+						schemahcl.StringAttr("token", "token_atlas"),
+						schemahcl.StringAttr("token2", ""),
 					},
 				},
 			},
