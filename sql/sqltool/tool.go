@@ -534,8 +534,8 @@ func (ff *flywayFiles) names() []string {
 	if ff.baseline != "" {
 		names = append(names, ff.baseline)
 	}
-	sort.Strings(ff.versioned)
-	sort.Strings(ff.repeatable)
+	flywaySort(ff.versioned)
+	flywaySort(ff.repeatable)
 	names = append(names, ff.versioned...)
 	names = append(names, ff.repeatable...)
 	return names
@@ -555,6 +555,12 @@ func flywayVersion(path string) string {
 		return ""
 	}
 	return strings.SplitN(strings.TrimSuffix(filepath.Base(path), ".sql"), "__", 2)[0][1:]
+}
+
+func flywaySort(files []string) {
+	sort.Slice(files, func(i, j int) bool {
+		return flywayVersion(files[i]) < flywayVersion(files[j])
+	})
 }
 
 func unexpectedPragmaErr(f migrate.File, line int, pragma string) error {
