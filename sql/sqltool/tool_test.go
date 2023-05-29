@@ -360,6 +360,24 @@ func TestChecksum(t *testing.T) {
 			},
 		},
 		{
+			name: "flyway with semver versioning",
+			dir: func() migrate.Dir {
+				fs := fstest.MapFS{
+					"V1__initial.sql":          &fstest.MapFile{Data: []byte("V1__initial")},
+					"V1.7__initial.sql":        &fstest.MapFile{Data: []byte("V1.7__initial")},
+					"V2__second_migration.sql": &fstest.MapFile{Data: []byte("V2__second_migration")},
+					"V3__third_migration.sql":  &fstest.MapFile{Data: []byte("V3__third_migration")},
+				}
+				return &sqltool.FlywayDir{&fs}
+			}(),
+			files: []string{
+				"V1__initial.sql",
+				"V1.7__initial.sql",
+				"V2__second_migration.sql",
+				"V3__third_migration.sql",
+			},
+		},
+		{
 			name: "liquibase",
 			dir: func() migrate.Dir {
 				d, err := sqltool.NewLiquibaseDir("testdata/liquibase")
