@@ -27,6 +27,7 @@ type (
 	// State is used to evaluate and marshal Atlas HCL documents and stores a configuration for these operations.
 	State struct {
 		config *Config
+		newCtx func() *hcl.EvalContext
 	}
 	// Evaluator is the interface that wraps the Eval function.
 	Evaluator interface {
@@ -69,7 +70,7 @@ func (s *State) EvalFiles(paths []string, v any, input map[string]cty.Value) err
 // Eval evaluates the parsed HCL documents using the input variables and populates v
 // using the result.
 func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value) error {
-	ctx := s.config.newCtx()
+	ctx := s.newCtx()
 	reg := &blockDef{
 		fields:   make(map[string]struct{}),
 		children: make(map[string]*blockDef),

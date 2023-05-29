@@ -19,7 +19,8 @@ type (
 	// Config configures an unmarshaling.
 	Config struct {
 		types            []*TypeSpec
-		newCtx           func() *hcl.EvalContext
+		vars             map[string]cty.Value
+		funcs            map[string]function.Function
 		pathVars         map[string]map[string]cty.Value
 		pathFuncs        map[string]map[string]function.Function
 		datasrc, initblk map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
@@ -31,19 +32,26 @@ type (
 // New returns a State configured with options.
 func New(opts ...Option) *State {
 	cfg := &Config{
+		vars:      make(map[string]cty.Value),
+		funcs:     make(map[string]function.Function),
 		pathVars:  make(map[string]map[string]cty.Value),
 		pathFuncs: make(map[string]map[string]function.Function),
-		newCtx: func() *hcl.EvalContext {
-			return stdTypes(&hcl.EvalContext{
-				Functions: stdFuncs(),
-				Variables: make(map[string]cty.Value),
-			})
-		},
 	}
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	return &State{config: cfg}
+	for n, f := range stdFuncs() {
+		cfg.funcs[n] = f
+	}
+	return &State{
+		config: cfg,
+		newCtx: func() *hcl.EvalContext {
+			return stdTypes(&hcl.EvalContext{
+				Variables: cfg.vars,
+				Functions: cfg.funcs,
+			})
+		},
+	}
 }
 
 // WithScopedEnums configured a list of allowed ENUMs to be used in
@@ -73,11 +81,23 @@ func WithScopedEnums(path string, enums ...string) Option {
 // WithVariables registers a list of variables to be injected into the context.
 func WithVariables(vars map[string]cty.Value) Option {
 	return func(c *Config) {
-		c.newCtx = func() *hcl.EvalContext {
-			return stdTypes(&hcl.EvalContext{
-				Functions: stdFuncs(),
-				Variables: vars,
-			})
+		if c.vars == nil {
+			c.vars = make(map[string]cty.Value)
+		}
+		for n, v := range vars {
+			c.vars[n] = v
+		}
+	}
+}
+
+// WithFunctions registers a list of functions to be injected into the context.
+func WithFunctions(funcs map[string]function.Function) Option {
+	return func(c *Config) {
+		if c.funcs == nil {
+			c.funcs = make(map[string]function.Function)
+		}
+		for n, f := range funcs {
+			c.funcs[n] = f
 		}
 	}
 }
