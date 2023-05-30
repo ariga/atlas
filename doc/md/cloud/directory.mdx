@@ -1,0 +1,32 @@
+---
+title: Connect Migration Directories
+id: directories
+slug: /cloud/directories
+---
+
+The following guide explains how to connect a migration directory to Atlas Cloud. Once connected, Atlas provides a list
+of features enabling users to seamlessly audit their migration history, run continues migration linting on their PRs,
+monitor executed migrations and receive Slack notifications, among other capabilities.
+
+There are two ways for connecting migration directories to Atlas Cloud:
+
+1. **Push mode**: Set up a GitHub Action, [`atlas-sync-action`](https://github.com/ariga/atlas-sync-action), to persist
+  the desired state of the migration directory in Atlas Cloud. Refer to the [Action documentation](https://github.com/ariga/atlas-sync-action#usage)
+  for installation guidance for your project.
+2. **Pull mode**: Connect your migration directory stored in GitHub with the Atlas GitHub App. To do so, follow these steps:
+   - Navigate to `/dirs` and click on **Add Directory**.
+   - Select **Continue with GitHub** and grant Atlas access to the relevant repositories.
+   - Once authorized by GitHub, select the path to the migration directory and click **Connect Directory**.
+     <details>
+     <summary>Screenshot example</summary>
+
+     ![](https://atlasgo.io/uploads/images/blog-v010/configure-dir.png)
+
+     </details>
+   - After the migration files are processed, you will be redirected to the migration directory page.
+     <details>
+     <summary>Screenshot example</summary>
+
+     ![](https://atlasgo.io/uploads/images/blog-v010/view-dir-erd.png)
+
+     </details>

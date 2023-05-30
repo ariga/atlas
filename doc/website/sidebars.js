@@ -79,6 +79,7 @@ module.exports = {
             collapsed: false,
             items: [
                 {type: 'doc', id: 'cloud/getting-started', label: 'Getting Started'},
+                {type: 'doc', id: 'cloud/directories', label: 'Connected Directories'},
             ],
         },
         {
