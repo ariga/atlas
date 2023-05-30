@@ -283,6 +283,11 @@ variable "url" {
   default = "mysql://root:pass@localhost:3306/"
 }
 
+variable "cloud_token" {
+  type    = string
+  default = getenv("ATLAS_TOKEN")
+}
+
 env "local" {
   // Reference an input variable.
   url = var.url
@@ -307,7 +312,11 @@ locals {
 ### Data Sources
 
 Data sources enable users to retrieve information stored in an external service or database. The currently supported
-data sources are: [`sql`](#data-source-sql), [`runtimevar`](#data-source-runtimevar) and [`template_dir`](#data-source-template_dir).
+data sources are:
+- [`sql`](#data-source-sql)
+- [`runtimevar`](#data-source-runtimevar)
+- [`remote_dir`](#data-source-remote_dir)
+- [`template_dir`](#data-source-template_dir)
 
 :::note
 Data sources are evaluated only if they are referenced by top-level blocks like `locals` or `variables`, or by the
@@ -446,6 +455,84 @@ env "dev" {
 
 </TabItem>
 </Tabs>
+
+#### Data source: `remote_dir`
+
+The `remote_dir` data source reads the state of a migration directory from [Atlas Cloud](https://atlasgo.cloud). For
+instructions on how to connect a migration directory to Atlas Cloud, please refer to the [cloud documentation](../cloud/directory.mdx).
+
+##### Arguments {#data-source-remote_dir-arguments}
+
+- `name` - The name of the migration directory, as defined in Atlas Cloud.
+- `tag` (optional) - The tag of the migration directory, such as Git commit. If not specified, the latest
+tag (e.g., `master` branch) will be used.
+
+##### Attributes {#data-source-remote_dir-attributes}
+
+- `url` - A [URL](../concepts/url.mdx) to the loaded migration directory.
+
+```hcl title="atlas.hcl" {6-21}
+variable "database_url" {
+  type    = string
+  default = getenv("DATABASE_URL")
+}
+
+variable "cloud_token" {
+  type    = string
+  default = getenv("ATLAS_TOKEN")
+}
+
+atlas {
+  cloud {
+    token = var.cloud_token
+  }
+}
+
+data "remote_dir" "migrations" {
+  // The name of the migration directory in Atlas Cloud.
+  // In this example, the directory is named "graph".
+  name = "graph"
+}
+
+env {
+  // Set environment name dynamically based on --env value.
+  name = atlas.env
+  url = var.database_url
+  migration {
+    dir = data.remote_dir.migrations.url
+  }
+}
+```
+
+#### Usage example
+
+```shell
+atlas migrate apply \
+  --url "<DATABASE_URL>" \
+  -c file://path/to/atlas.hcl \
+  --env prod \
+  --var cloud_token="<ATLAS_TOKEN>"
+```
+
+```shell
+DATABASE_URL="<DATABASE_URL>" ATLAS_TOKEN="<ATLAS_TOKEN>" \
+  atlas migrate apply \
+  -c file://path/to/atlas.hcl \
+  --env prod
+```
+
+:::info Reporting Cloud Deployments
+In case the `cloud` block was activated with a valid token, Atlas logs migration runs in your cloud account
+to facilitate the monitoring and troubleshooting of executed migrations. The following is a demonstration of how it
+appears in action:
+
+<details><summary>Screenshot example</summary>
+
+![](https://atlasgo.io/uploads/images/deploy-migration.png)
+
+</details>
+
+:::
 
 #### Data source: `template_dir`
 
