@@ -5,7 +5,7 @@ slug: /cloud/directories
 ---
 
 The following guide explains how to connect a migration directory to Atlas Cloud. Once connected, Atlas provides a list
-of features enabling users to seamlessly audit their migration history, run continues migration linting on their PRs,
+of features enabling users to seamlessly audit their migration history, run continuous migration linting on their PRs,
 monitor executed migrations and receive Slack notifications, among other capabilities.
 
 There are two ways for connecting migration directories to Atlas Cloud:
@@ -30,3 +30,31 @@ There are two ways for connecting migration directories to Atlas Cloud:
      ![](https://atlasgo.io/uploads/images/blog-v010/view-dir-erd.png)
 
      </details>
+
+### Slack Integration
+You can use Slack Webhooks to receive updates in your Slack channel about schema changes, CI runs and deployment statuses of your migration directory.
+Make sure you have a Slack incoming webhook configured
+(you can create one [here](https://my.slack.com/services/new/incoming-webhook)).
+
+Select your migration directory, go to "Webhooks" and click on **Add Webhook**.
+<details>
+<summary>Screenshot example</summary>
+
+![](https://atlasgo.io/uploads/images/blog-v010/webhook-form.png)
+
+</details>
+
+
+Select the Slack integration, Choose the events you want to be notified about and insert your webhook URL.
+Click on **Add Webhook** to confirm.
+
+Once the Webhook is created, you will be redirected to the Webhooks page.
+Select a webhook to edit its configuration and to view its delivery history.
+<details>
+<summary>Screenshot example</summary>
+
+![](https://atlasgo.io/uploads/images/blog-v010/manage-webhook-with-deliveries.png)
+
+</details>
+
+You can also test the webhook by clicking on `Send Ping`.
