@@ -363,18 +363,26 @@ func TestChecksum(t *testing.T) {
 			name: "flyway with semver versioning",
 			dir: func() migrate.Dir {
 				fs := fstest.MapFS{
-					"V1__initial.sql":          &fstest.MapFile{Data: []byte("V1__initial")},
-					"V1.7__initial.sql":        &fstest.MapFile{Data: []byte("V1.7__initial")},
-					"V2__second_migration.sql": &fstest.MapFile{Data: []byte("V2__second_migration")},
-					"V3__third_migration.sql":  &fstest.MapFile{Data: []byte("V3__third_migration")},
+					"V1__.sql":        &fstest.MapFile{Data: []byte("V1")},
+					"V1_1_0__.sql":    &fstest.MapFile{Data: []byte("V1.1.0")},
+					"V1.1.1__.sql":    &fstest.MapFile{Data: []byte("V1.1.1")},
+					"V2__.sql":        &fstest.MapFile{Data: []byte("V2")},
+					"V2.1.0__.sql":    &fstest.MapFile{Data: []byte("V2.1.0")},
+					"V3__.sql":        &fstest.MapFile{Data: []byte("V3")},
+					"V11__.sql":       &fstest.MapFile{Data: []byte("V11")},
+					"V11.11.11__.sql": &fstest.MapFile{Data: []byte("V11.11.11")},
 				}
 				return &sqltool.FlywayDir{&fs}
 			}(),
 			files: []string{
-				"V1__initial.sql",
-				"V1.7__initial.sql",
-				"V2__second_migration.sql",
-				"V3__third_migration.sql",
+				"V1__.sql",
+				"V1_1_0__.sql",
+				"V1.1.1__.sql",
+				"V2__.sql",
+				"V2.1.0__.sql",
+				"V3__.sql",
+				"V11__.sql",
+				"V11.11.11__.sql",
 			},
 		},
 		{
