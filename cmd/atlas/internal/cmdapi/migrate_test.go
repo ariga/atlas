@@ -823,7 +823,6 @@ func TestMigrate_ApplyCloudReport(t *testing.T) {
 					w.WriteHeader(status)
 				}
 				require.NoError(t, json.Unmarshal(m.Variables.Input, &report))
-				require.Equal(t, "migrations/foo/bar", report.DirName)
 			default:
 				t.Fatalf("unexpected query: %s", m.Query)
 			}
@@ -842,7 +841,7 @@ atlas {
 }
 
 data "remote_dir" "migrations" {
-  name = "migrations/foo/bar"
+  name = "migrations/v1/mysql"
 }
 
 env {
@@ -878,7 +877,7 @@ env {
 		require.False(t, report.EndTime.IsZero())
 		require.Equal(t, cloudapi.ReportMigrationInput{
 			ProjectName:  "example",
-			DirName:      "migrations/foo/bar",
+			DirName:      "migrations/v1/mysql",
 			EnvName:      "local",
 			AtlasVersion: "Atlas CLI - development",
 			StartTime:    report.StartTime,
@@ -1072,10 +1071,10 @@ env {
 		require.Contains(t, top.Log[1].Text, "sqlite://file")
 		require.Equal(t, report.Log[1].Text, "Run migration: 1")
 		require.Contains(t, report.Log[1].Log[0].Text, "Target URL: sqlite://file")
-		require.Contains(t, report.Log[1].Log[1].Text, "Migration directory: mem:///migration_set")
+		require.Contains(t, report.Log[1].Log[1].Text, "Migration directory: mem://migration_set")
 		require.Equal(t, report.Log[2].Text, "Run migration: 2")
 		require.Contains(t, report.Log[2].Log[0].Text, "Target URL: sqlite://file")
-		require.Contains(t, report.Log[2].Log[1].Text, "Migration directory: mem:///migration_set")
+		require.Contains(t, report.Log[2].Log[1].Text, "Migration directory: mem://migration_set")
 	})
 
 	t.Run("Error", func(t *testing.T) {
@@ -1115,7 +1114,7 @@ env {
 		require.Equal(t, report.Log[1].Text, "Run migration: 1")
 		require.True(t, report.Log[1].Error)
 		require.Contains(t, report.Log[1].Log[0].Text, "Target URL: sqlite://file")
-		require.Contains(t, report.Log[1].Log[1].Text, "Migration directory: mem:///migration_set")
+		require.Contains(t, report.Log[1].Log[1].Text, "Migration directory: mem://migration_set")
 		require.Equal(t, `Error: sql/migrate: execute: executing statement "create table bar (id int)" from version "2": table bar already exists`, report.Log[1].Log[2].Text)
 	})
 }
