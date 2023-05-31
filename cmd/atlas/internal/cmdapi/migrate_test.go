@@ -1115,7 +1115,7 @@ env {
 		require.Equal(t, report.Log[1].Text, "Run migration: 1")
 		require.True(t, report.Log[1].Error)
 		require.Contains(t, report.Log[1].Log[0].Text, "Target URL: sqlite://file")
-		require.Contains(t, report.Log[1].Log[1].Text, "Migration directory: mem://migration_set")
+		require.Contains(t, report.Log[1].Log[1].Text, "Migration directory: mem:///migration_set")
 		require.Equal(t, `Error: sql/migrate: execute: executing statement "create table bar (id int)" from version "2": table bar already exists`, report.Log[1].Log[2].Text)
 	})
 }
