@@ -823,6 +823,7 @@ func TestMigrate_ApplyCloudReport(t *testing.T) {
 					w.WriteHeader(status)
 				}
 				require.NoError(t, json.Unmarshal(m.Variables.Input, &report))
+				require.Equal(t, "migrations/foo/bar", report.DirName)
 			default:
 				t.Fatalf("unexpected query: %s", m.Query)
 			}
@@ -841,7 +842,7 @@ atlas {
 }
 
 data "remote_dir" "migrations" {
-  name = "migrations"
+  name = "migrations/foo/bar"
 }
 
 env {
@@ -877,7 +878,7 @@ env {
 		require.False(t, report.EndTime.IsZero())
 		require.Equal(t, cloudapi.ReportMigrationInput{
 			ProjectName:  "example",
-			DirName:      "migrations",
+			DirName:      "migrations/foo/bar",
 			EnvName:      "local",
 			AtlasVersion: "Atlas CLI - development",
 			StartTime:    report.StartTime,
