@@ -88,7 +88,11 @@ func (d *LocalDir) Path() string {
 
 // Open implements fs.FS.
 func (d *LocalDir) Open(name string) (fs.File, error) {
-	return os.Open(filepath.Join(d.path, name))
+	f, err := os.Open(filepath.Join(d.path, name))
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
 // WriteFile implements Dir.WriteFile.
@@ -561,11 +565,8 @@ func ArchiveDir(dir Dir) ([]byte, error) {
 	tw := tar.NewWriter(&buf)
 	defer tw.Close()
 	sumF, err := dir.Open(HashFileName)
-	if err != nil {
-		if !errors.Is(err, fs.ErrNotExist) {
-			return nil, err
-		}
-		sumF = nil
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
 	}
 	if sumF != nil {
 		sumB, err := io.ReadAll(sumF)
