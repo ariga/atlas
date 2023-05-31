@@ -219,7 +219,7 @@ func (f LocalFile) Directive(name string) (ds []string) {
 type (
 	// MemDir provides an in-memory Dir implementation.
 	MemDir struct {
-		files map[string]File
+		files []File
 	}
 	// An opened MemDir.
 	openedMem struct {
@@ -253,13 +253,14 @@ func OpenMemDir(name string) *MemDir {
 
 // Open implements fs.FS.
 func (d *MemDir) Open(name string) (fs.File, error) {
-	f, ok := d.files[name]
-	if !ok {
-		return nil, fs.ErrNotExist
+	for _, f := range d.files {
+		if f.Name() == name {
+			return &memFile{
+				ReadCloser: io.NopCloser(bytes.NewReader(f.Bytes())),
+			}, nil
+		}
 	}
-	return &memFile{
-		ReadCloser: io.NopCloser(bytes.NewReader(f.Bytes())),
-	}, nil
+	return nil, fs.ErrNotExist
 }
 
 // Close implements the io.Closer interface.
@@ -284,10 +285,13 @@ func (d *MemDir) Close() error {
 
 // WriteFile adds a new file in-memory.
 func (d *MemDir) WriteFile(name string, data []byte) error {
-	if d.files == nil {
-		d.files = make(map[string]File)
+	for i, f := range d.files {
+		if f.Name() == name {
+			d.files[i] = NewLocalFile(name, data)
+			return nil
+		}
 	}
-	d.files[name] = NewLocalFile(name, data)
+	d.files = append(d.files, NewLocalFile(name, data))
 	return nil
 }
 
@@ -299,9 +303,6 @@ func (d *MemDir) Files() ([]File, error) {
 			files = append(files, f)
 		}
 	}
-	sort.Slice(files, func(i, j int) bool {
-		return files[i].Name() < files[j].Name()
-	})
 	return files, nil
 }
 
