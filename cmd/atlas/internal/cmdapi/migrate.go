@@ -15,7 +15,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -441,10 +440,14 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 	default:
 		ver = rev.Version
 	}
+	dirName := flags.dirURL
+	if u, err := url.Parse(flags.dirURL); err == nil {
+		dirName = filepath.Join(u.Host, u.Path)
+	}
 	r.done(&cloudapi.ReportMigrationInput{
 		ProjectName:  r.env.cfg.Project,
 		EnvName:      r.env.Name,
-		DirName:      path.Base(flags.dirURL),
+		DirName:      dirName,
 		AtlasVersion: operatorVersion(),
 		Target: cloudapi.DeployedTargetInput{
 			ID:     r.id,

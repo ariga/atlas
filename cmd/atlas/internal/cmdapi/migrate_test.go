@@ -841,7 +841,7 @@ atlas {
 }
 
 data "remote_dir" "migrations" {
-  name = "migrations"
+  name = "migrations/v1/mysql"
 }
 
 env {
@@ -877,7 +877,7 @@ env {
 		require.False(t, report.EndTime.IsZero())
 		require.Equal(t, cloudapi.ReportMigrationInput{
 			ProjectName:  "example",
-			DirName:      "migrations",
+			DirName:      "migrations/v1/mysql",
 			EnvName:      "local",
 			AtlasVersion: "Atlas CLI - development",
 			StartTime:    report.StartTime,
