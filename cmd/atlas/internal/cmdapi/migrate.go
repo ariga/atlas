@@ -441,10 +441,15 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 	default:
 		ver = rev.Version
 	}
+	// Ignore parse errors
+	dirName, err := url.PathUnescape(path.Base(flags.dirURL))
+	if err != nil {
+		dirName = path.Base(flags.dirURL)
+	}
 	r.done(&cloudapi.ReportMigrationInput{
 		ProjectName:  r.env.cfg.Project,
 		EnvName:      r.env.Name,
-		DirName:      path.Base(flags.dirURL),
+		DirName:      dirName,
 		AtlasVersion: operatorVersion(),
 		Target: cloudapi.DeployedTargetInput{
 			ID:     r.id,
@@ -1579,7 +1584,9 @@ func dir(u string, create bool) (migrate.Dir, error) {
 
 // dirURL returns a migrate.Dir to use as migration directory. For now only local directories are supported.
 func dirURL(u *url.URL, create bool) (migrate.Dir, error) {
-	path := filepath.Join(u.Host, u.Path)
+	// We encode the path for mem:// URLs, the url.Parse automatically decodes it.
+	// So, we need to use RawPath instead of Path.
+	path := filepath.Join(u.Host, u.RawPath)
 	switch u.Scheme {
 	case "mem":
 		return migrate.OpenMemDir(path), nil

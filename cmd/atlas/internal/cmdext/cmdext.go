@@ -411,7 +411,8 @@ func memdir(client *cloudapi.Client, dirName string, tag string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	md := migrate.OpenMemDir(dirName)
+	dirPath := filepath.Join("/", url.PathEscape(dirName))
+	md := migrate.OpenMemDir(dirPath)
 	files, err := dir.Files()
 	if err != nil {
 		return "", err
@@ -430,7 +431,7 @@ func memdir(client *cloudapi.Client, dirName string, tag string) (string, error)
 			return "", err
 		}
 	}
-	return "mem://" + dirName, nil
+	return "mem://" + dirPath, nil
 }
 
 func blockError(name string, b *hclsyntax.Block) func(string, ...any) error {
