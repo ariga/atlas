@@ -7,7 +7,13 @@ import "@ariga/atlas-website/style.css";
 export default function () {
   return (
     <LayoutProvider>
-      <AtlasGoWebsite />
+      <AtlasGoWebsite
+        events={{
+          // TODO: Guys please, add your events here :)
+          events: [],
+          isHidden: true,
+        }}
+      />
     </LayoutProvider>
   );
 }
