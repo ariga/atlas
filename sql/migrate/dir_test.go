@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/sqltool"
 
 	"github.com/stretchr/testify/require"
 )
@@ -314,6 +315,12 @@ func TestDirTar(t *testing.T) {
 	f, err := fileNames(bytes.NewReader(b))
 	require.NoError(t, err)
 	require.Equal(t, []string{"1.sql"}, f)
+
+	// Test with Golang migrate dir.
+	dir1, err := sqltool.NewGolangMigrateDir("./testdata/golang-migrate")
+	require.NoError(t, err)
+	b, err = migrate.ArchiveDir(dir1)
+	require.NoError(t, err)
 
 	// With sumfile.
 	checksum, err := d.Checksum()

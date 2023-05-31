@@ -561,8 +561,11 @@ func ArchiveDir(dir Dir) ([]byte, error) {
 	tw := tar.NewWriter(&buf)
 	defer tw.Close()
 	sumF, err := dir.Open(HashFileName)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return nil, err
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return nil, err
+		}
+		sumF = nil
 	}
 	if sumF != nil {
 		sumB, err := io.ReadAll(sumF)
