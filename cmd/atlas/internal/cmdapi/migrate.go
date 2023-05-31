@@ -441,10 +441,15 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 	default:
 		ver = rev.Version
 	}
+	// Ignore parse errors
+	dirName, err := url.PathUnescape(path.Base(flags.dirURL))
+	if err != nil {
+		dirName = path.Base(flags.dirURL)
+	}
 	r.done(&cloudapi.ReportMigrationInput{
 		ProjectName:  r.env.cfg.Project,
 		EnvName:      r.env.Name,
-		DirName:      path.Base(flags.dirURL),
+		DirName:      dirName,
 		AtlasVersion: operatorVersion(),
 		Target: cloudapi.DeployedTargetInput{
 			ID:     r.id,
@@ -1582,6 +1587,11 @@ func dirURL(u *url.URL, create bool) (migrate.Dir, error) {
 	path := filepath.Join(u.Host, u.Path)
 	switch u.Scheme {
 	case "mem":
+		// We encode the path for mem:// URLs, the url.Parse automatically decodes it.
+		// So, we need to use RawPath instead of Path.
+		if u.RawPath != "" {
+			path = filepath.Join(u.Host, u.RawPath)
+		}
 		return migrate.OpenMemDir(path), nil
 	case "file":
 		if path == "" {
