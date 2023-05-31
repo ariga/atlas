@@ -1,25 +1,25 @@
 ---
 title: "Announcing Atlas v0.12: Cloud State Management"
 authors: a8m
-tags: [schema, migration, deployments]
+tags: [schema, migration, deployments, cloud]
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-It has been two months since we released the community preview plan for Atlas Cloud, and today I am thrilled to announce
-the next batch of features that we are opening from our commercial product to the OSS and our freemium plan.
+It has been two months since we announced the [Community Preview Plan](2023-03-13-atlas-v010.mdx) for Atlas Cloud, and today I am thrilled to announce
+the next batch of features that we are releasing to open-source and to Atlas Cloud:
 
 In summary, version v0.12 includes a few major features that are explained in detail below:
 
 1. We have added support for importing and running migration linting on GitHub PRs for external migration
-   formats, such as Flyway and golang-migrate.
-2. Atlas now supports reading the content of the migration directory from cloud accounts once it's synchronized with
-   project repository. This eliminates the need for users to build their Docker images with the directory content and
+   formats, such as [Flyway](https://flywaydb.org/) and [golang-migrate](https://github.com/golang-migrate/migrate).
+2. Atlas now supports reading your migration directory directly from your Atlas Cloud account.
+   This eliminates the need for users to build their Docker images with the directory content and
    makes running schema migrations in production much easier.
-3. By connecting Atlas CLI to the cloud, migration runs will be logged in the cloud account, making it easier to monitor
+3. By connecting Atlas CLI to Atlas Cloud, migration runs will be recorded in the cloud account, making it easier to monitor
    and troubleshoot executed migrations.
-4. Slack integration is now available for freemium accounts. Organizations that connect their migration directories to
+4. A new Slack integration is now available for Community Plan accounts. Organizations that connect their migration directories to
    the cloud can receive notifications to Slack channels when the schemas are updated or deployed, among
    other events.
 5. A new look has been given to the CI report page. It will be enhanced with additional features in the next version.
@@ -103,7 +103,7 @@ runs in your cloud account. Here's a demonstration of how it looks in action:
 </TabItem>
 </Tabs>
 
-We have several new features lined up for our freemium plan in the next release. If you're interested in
+We have several new features lined up for the Community Plan in the next release. If you're interested in
 them earlier, don't hesitate to reach out to me in our [Discord community](https://discord.com/invite/zZ6sWVg6NT).
 
 ## Slack Webhooks
