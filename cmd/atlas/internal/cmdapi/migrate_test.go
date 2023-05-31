@@ -1072,10 +1072,10 @@ env {
 		require.Contains(t, top.Log[1].Text, "sqlite://file")
 		require.Equal(t, report.Log[1].Text, "Run migration: 1")
 		require.Contains(t, report.Log[1].Log[0].Text, "Target URL: sqlite://file")
-		require.Contains(t, report.Log[1].Log[1].Text, "Migration directory: mem://migration_set")
+		require.Contains(t, report.Log[1].Log[1].Text, "Migration directory: mem:///migration_set")
 		require.Equal(t, report.Log[2].Text, "Run migration: 2")
 		require.Contains(t, report.Log[2].Log[0].Text, "Target URL: sqlite://file")
-		require.Contains(t, report.Log[2].Log[1].Text, "Migration directory: mem://migration_set")
+		require.Contains(t, report.Log[2].Log[1].Text, "Migration directory: mem:///migration_set")
 	})
 
 	t.Run("Error", func(t *testing.T) {

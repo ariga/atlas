@@ -1584,11 +1584,14 @@ func dir(u string, create bool) (migrate.Dir, error) {
 
 // dirURL returns a migrate.Dir to use as migration directory. For now only local directories are supported.
 func dirURL(u *url.URL, create bool) (migrate.Dir, error) {
-	// We encode the path for mem:// URLs, the url.Parse automatically decodes it.
-	// So, we need to use RawPath instead of Path.
-	path := filepath.Join(u.Host, u.RawPath)
+	path := filepath.Join(u.Host, u.Path)
 	switch u.Scheme {
 	case "mem":
+		// We encode the path for mem:// URLs, the url.Parse automatically decodes it.
+		// So, we need to use RawPath instead of Path.
+		if u.RawPath != "" {
+			path = filepath.Join(u.Host, u.RawPath)
+		}
 		return migrate.OpenMemDir(path), nil
 	case "file":
 		if path == "" {
