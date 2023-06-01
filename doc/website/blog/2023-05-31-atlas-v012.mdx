@@ -71,7 +71,7 @@ env {
 ```shell
 atlas migrate apply \
   --url "<DATABASE_URL>" \
-  -c file://path/to/atlas.hcl \
+  --config file://path/to/atlas.hcl \
   --env prod \
   --var cloud_token="<ATLAS_TOKEN>"
 ```
