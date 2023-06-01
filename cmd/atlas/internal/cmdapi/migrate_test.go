@@ -879,7 +879,7 @@ env {
 			ProjectName:  "example",
 			DirName:      "migrations/v1/mysql",
 			EnvName:      "local",
-			AtlasVersion: "Atlas CLI - development",
+			AtlasVersion: operatorVersion(),
 			StartTime:    report.StartTime,
 			EndTime:      report.EndTime,
 			Files:        []cloudapi.DeployedFileInput{},
