@@ -17,6 +17,7 @@ export default function () {
                       "database changes and apply CD for schema changes with Terraform and Kubernetes.",
                   linkUrl: "http://26565461.hs-sites-eu1.com/webinar-ci/cd-for-databases-with-atlas-cloud",
                   imageUrl: "https://atlasgo.io/uploads/event-placeholder.png",
+                  linkText: 'Register',
               },
               {
                   title: "Getting started with Atlas Cloud",
