@@ -1,4 +1,4 @@
-name: Push mysql quick boot images to Docker Hub
+name: CD - Build Docker - MySQL Quick Boot - Community Edition
 on:
   push:
     paths:

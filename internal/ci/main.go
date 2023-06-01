@@ -7,8 +7,10 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"text/template"
 )
 
@@ -19,6 +21,7 @@ type Job struct {
 	Version string   // version to test (passed to go test as flag which database dialect/version)
 	Image   string   // name of service
 	Regex   string   // run regex
+	OSS     bool     // run in community edition only
 	Env     []string // env of service
 	Ports   []string // port mappings
 	Options []string // other options
@@ -26,7 +29,8 @@ type Job struct {
 
 var (
 	//go:embed ci.tmpl
-	t string
+	t   string
+	tpl = template.Must(template.New("").Parse(t))
 
 	mysqlOptions = []string{
 		`--health-cmd "mysqladmin ping -ppass"`,
@@ -155,6 +159,12 @@ var (
 			Options: pgOptions,
 		},
 		{
+			Version: "sqlite",
+			Regex:   "SQLite.*",
+		},
+	}
+	oss = []Job{
+		{
 			Version: "tidb5",
 			Image:   "pingcap/tidb:v5.4.0",
 			Regex:   "TiDB",
@@ -167,10 +177,6 @@ var (
 			Ports:   []string{"4310:4000"},
 		},
 		{
-			Version: "sqlite",
-			Regex:   "SQLite.*",
-		},
-		{
 			Version: "cockroach",
 			Image:   "ghcr.io/ariga/cockroachdb-single-node:v21.2.11",
 			Regex:   "Cockroach",
@@ -179,12 +185,28 @@ var (
 	}
 )
 
+type data struct {
+	Jobs []Job
+	OSS  bool
+}
+
 func main() {
-	var buf bytes.Buffer
-	if err := template.Must(template.New("").Parse(t)).Execute(&buf, jobs); err != nil {
-		log.Fatalln(err)
-	}
-	if err := os.WriteFile("../../.github/workflows/ci.yml", buf.Bytes(), 0600); err != nil {
-		log.Fatalln(err)
+	for file, jobs := range map[string]data{
+		"ci-dialect": {
+			Jobs: jobs,
+		},
+		"ci-dialect_oss": {
+			Jobs: oss,
+			OSS:  true,
+		},
+	} {
+		var buf bytes.Buffer
+		if err := tpl.Execute(&buf, jobs); err != nil {
+			log.Fatalln(err)
+		}
+		err := os.WriteFile(filepath.Clean(fmt.Sprintf("../../.github/workflows/%s.yaml", file)), buf.Bytes(), 0600)
+		if err != nil {
+			log.Fatalln(err)
+		}
 	}
 }

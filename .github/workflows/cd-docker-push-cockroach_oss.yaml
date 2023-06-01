@@ -1,4 +1,4 @@
-name: Build Docker
+name: CD - Build Docker - Cockroach - Community Edition
 on:
   pull_request:
   push:
