@@ -140,8 +140,8 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-3', // Increment on change
-      content: `Announcing v0.11.0! Manage database schemas with Kubernetes and Atlas, Read it <a href="https://atlasgo.io/blog/2023/05/08/atlas-v011-kubernetes-operator"> here!</a> 🚀`,
+      id: 'announcementBar-4', // Increment on change
+      content: `Announcing v0.12.0: Cloud State Management, Read it <a href="https://atlasgo.io/blog/2023/05/31/atlas-v012"> here!</a> 🚀`,
       isCloseable: true,
     },
   },
