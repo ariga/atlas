@@ -173,21 +173,62 @@ atlas schema inspect -u "mysql://localhost" --exclude "schema_*"
 
 The following commands show how to exclude tables that match a glob pattern from the inspection:
 
+<Tabs>
+<TabItem value="database-scope" label="Database Scope">
+
+When inspecting a database (multiple schemas), the first glob pattern matches the schema name, and the second matches
+the table name:
+
 ```shell
 atlas schema inspect -u "mysql://localhost" --exclude "*.prefix_*"
 
 atlas schema inspect -u "mysql://localhost" --exclude "schema.table"
 ```
 
+</TabItem>
+<TabItem value="schema-scope" label="Schema Scope">
+
+When inspecting a specific schema, the first glob pattern matches the table name:
+
+```shell
+atlas schema inspect -u "mysql://localhost" --exclude "prefix_*"
+
+atlas schema inspect -u "mysql://localhost" --exclude "table"
+```
+
+</TabItem>
+</Tabs>
+
 ### Exclude Table Resources
 
 The following commands show how to exclude columns, indexes or foreign-keys that match a glob pattern from the inspection:
+
+
+<Tabs>
+<TabItem value="database-scope" label="Database Scope">
+
+When inspecting a database (multiple schemas), the first glob pattern matches the schema name, and the second matches
+the table name:
 
 ```shell
 atlas schema inspect -u "mysql://localhost" --exclude "*.*.prefix_*"
 
 atlas schema inspect -u "mysql://localhost" --exclude "public.*.c1"
 ```
+
+</TabItem>
+<TabItem value="schema-scope" label="Schema Scope">
+
+When inspecting a specific schema, the first glob pattern matches the table name:
+
+```shell
+atlas schema inspect -u "mysql://localhost" --exclude "*.prefix_*"
+
+atlas schema inspect -u "mysql://localhost" --exclude "*.c1"
+```
+
+</TabItem>
+</Tabs>
 
 ### SQL Format
 
