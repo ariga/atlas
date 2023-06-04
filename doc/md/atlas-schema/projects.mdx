@@ -44,8 +44,8 @@ env "dev" {
 // Define an environment named "local"
 env "local" {
   // Declare where the schema definition resides.
-  // Also supported: ["multi.hcl", "file.hcl"].
-  src = "./project/schema.hcl"
+  // Also supported: ["file://multi.hcl", "file://schema.hcl"].
+  src = "file://project/schema.hcl"
 
   // Define the URL of the database which is managed
   // in this environment.
@@ -68,8 +68,8 @@ env "dev" {
 // Define an environment named "local"
 env "local" {
   // Declare where the schema definition resides.
-  // Also supported: ["multi.hcl", "file.hcl"].
-  src = "./project/schema.hcl"
+  // Also supported: ["file://multi.hcl", "file://schema.hcl"].
+  src = "file://project/schema.hcl"
 
   // Define the URL of the database which is managed
   // in this environment.
@@ -92,8 +92,8 @@ env "dev" {
 // Define an environment named "local"
 env "local" {
   // Declare where the schema definition resides.
-  // Also supported: ["multi.hcl", "file.hcl"].
-  src = "./project/schema.hcl"
+  // Also supported: ["file://multi.hcl", "file://schema.hcl"].
+  src = "file://project/schema.hcl"
 
   // Define the URL of the database which is managed
   // in this environment.
@@ -189,8 +189,7 @@ work in the specific environment:
 env "local" {
     // ..
     migration {
-        // URL where the migration directory resides. Only filesystem directories
-        // are currently supported but more options will be added in the future.
+        // URL where the migration directory resides.
         dir = "file://migrations"
         // An optional format of the migration directory:
         // atlas (default) | flyway | liquibase | goose | golang-migrate | dbmate
