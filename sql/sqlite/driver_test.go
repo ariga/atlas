@@ -6,7 +6,8 @@ package sqlite
 
 import (
 	"context"
-	"net/url"
+	"database/sql"
+	"database/sql/driver"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,17 +16,32 @@ import (
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
 
+type mockDriver struct {
+	driver.Driver
+	opened []string
+}
+
+func (m *mockDriver) Open(name string) (driver.Conn, error) {
+	db, _, err := sqlmock.New()
+	if err != nil {
+		return nil, err
+	}
+	m.opened = append(m.opened, name)
+	return db.Driver().Open(name)
+}
+
 func TestParser_ParseURL(t *testing.T) {
-	u, err := url.Parse("libsql://awesome-db-url.com?authToken=secret-token")
-	require.NoError(t, err)
-	ac := parseUrl(u)
-	require.Equal(t, "secret-token", ac.Query().Get("authToken"))
-	require.Equal(t, "wss://awesome-db-url.com?authToken=secret-token", ac.DSN)
+	drv := &mockDriver{}
+	sql.Register("libsql", drv)
+	_, err := sqlclient.Open(context.Background(), "libsql+wss://example.com/db.sqlite3?_fk=1")
+	require.Error(t, err, "did not mock queries")
+	require.Equal(t, []string{"wss://example.com/db.sqlite3?_fk=1"}, drv.opened)
 }
 
 func TestDriver_LockAcquired(t *testing.T) {
