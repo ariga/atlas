@@ -312,6 +312,33 @@ env "local" {
 			"PRAGMA foreign_keys = on;",
 		}, lines)
 	})
+
+	t.Run("FromConfig/DevURL", func(t *testing.T) {
+		var (
+			p    = t.TempDir()
+			cfg  = filepath.Join(p, "atlas.hcl")
+			from = filepath.Join(p, "schema1.sql")
+		)
+		err = os.WriteFile(cfg, []byte(`
+env "local" {
+  dev = "sqlite://dev?mode=memory&_fk=1"
+  exclude = ["posts"]
+}
+`), 0600)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(from, []byte(`CREATE TABLE users (id int);`), 0600))
+		cmd := schemaCmd()
+		cmd.AddCommand(schemaDiffCmd())
+		s, err := runCmd(
+			cmd, "diff",
+			"--from", "file://"+from,
+			"--to", openSQLite(t, "CREATE TABLE users (id int, name text); CREATE TABLE posts (id int);"),
+			"--config", "file://"+cfg,
+			"--env", "local",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "-- Add column \"name\" to table: \"users\"\nALTER TABLE `users` ADD COLUMN `name` text NULL;\n", s)
+	})
 }
 
 func TestSchema_Apply(t *testing.T) {
