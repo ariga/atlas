@@ -695,6 +695,7 @@ func fmtPlan(client *sqlclient.Client, changes schema.Changes, indent []string) 
 		return "", fmt.Errorf("unexpected number of arguments: %d", len(indent))
 	}
 	plan, err := client.PlanChanges(context.Background(), "plan", changes, func(o *migrate.PlanOptions) {
+		o.Mode = migrate.PlanModeDump
 		// Disable tables qualifier in schema-mode.
 		if client.URL.Schema != "" {
 			o.SchemaQualifier = new(string)

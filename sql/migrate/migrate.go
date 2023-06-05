@@ -102,7 +102,14 @@ type (
 		// Indent is the string to use for indentation.
 		// If empty, no indentation is used.
 		Indent string
+		// Mode represents the migration planning mode to be used. If not specified, the driver picks its default.
+		// This is useful to indicate to the driver whether the context is a live database, an empty one, or the
+		// versioned migration workflow.
+		Mode PlanMode
 	}
+
+	// PlanMode defines the plan mode to use.
+	PlanMode uint8
 
 	// PlanOption allows configuring a drivers' plan using functional arguments.
 	PlanOption func(*PlanOptions)
@@ -122,6 +129,19 @@ type (
 // ReadState calls f(ctx).
 func (f StateReaderFunc) ReadState(ctx context.Context) (*schema.Realm, error) {
 	return f(ctx)
+}
+
+// List of migration planning modes.
+const (
+	PlanModeUnset    PlanMode = iota // Driver default.
+	PlanModeInPlace                  // Changes are applied inplace (e.g., 'schema diff').
+	PlanModeDeferred                 // Changes are planned for future applying (e.g., 'migrate diff').
+	PlanModeDump                     // Schema creation dump (e.g., 'schema inspect').
+)
+
+// Is reports whether m is match the given mode.
+func (m PlanMode) Is(m1 PlanMode) bool {
+	return m == m1 || m&m1 != 0
 }
 
 // ErrNoPlan is returned by Plan when there is no change between the two states.
@@ -310,6 +330,15 @@ func PlanWithIndent(indent string) PlannerOption {
 	return func(p *Planner) {
 		p.planOpts = append(p.planOpts, func(o *PlanOptions) {
 			o.Indent = indent
+		})
+	}
+}
+
+// PlanWithMode allows setting a custom plan mode.
+func PlanWithMode(m PlanMode) PlannerOption {
+	return func(p *Planner) {
+		p.planOpts = append(p.planOpts, func(o *PlanOptions) {
+			o.Mode = m
 		})
 	}
 }

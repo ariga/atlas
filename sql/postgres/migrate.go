@@ -767,12 +767,15 @@ func (s *state) mayAddEnums(ctx context.Context, t *schema.Table, columns ...*sc
 		if e.T == "" {
 			return fmt.Errorf("missing enum name for column %q", c.Name)
 		}
-		if exists, err := s.enumExists(ctx, t.Schema, e); err != nil {
-			return err
-		} else if exists {
-			// Enum exists and was not created
-			// on this migration phase.
-			continue
+		// Database connection is ignored on dump mode.
+		if !s.Mode.Is(migrate.PlanModeDump) {
+			if exists, err := s.enumExists(ctx, t.Schema, e); err != nil {
+				return err
+			} else if exists {
+				// Enum exists and was not created
+				// on this migration phase.
+				continue
+			}
 		}
 		name := s.enumIdent(t.Schema, e)
 		if prev, ok := s.createdE[name]; ok {

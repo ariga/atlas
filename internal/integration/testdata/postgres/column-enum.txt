@@ -12,6 +12,9 @@ cmpshow users 3.sql
 apply 2.hcl
 cmpshow users 2.sql
 
+# Test schema output.
+atlas schema inspect -u URL --format '{{ sql . "  " }}' > got.sql
+cmp got.sql want.sql
 
 -- 1.hcl --
 schema "$db" {}
@@ -74,3 +77,11 @@ table "users" {
  Column |  Type   | Collation | Nullable | Default
 --------+---------+-----------+----------+---------
  int    | integer |           | not null | 1
+
+-- want.sql --
+-- Create enum type "status"
+CREATE TYPE "status" AS ENUM ('active', 'inactive');
+-- Create "users" table
+CREATE TABLE "users" (
+  "type" "status" NOT NULL DEFAULT 'inactive'
+);
