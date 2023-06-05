@@ -60,6 +60,16 @@ func init() {
 			return uc
 		})),
 	)
+	sqlclient.Register(
+		"libsql",
+		sqlclient.DriverOpener(Open),
+		sqlclient.RegisterTxOpener(OpenTx),
+		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
+		sqlclient.RegisterFlavours("libsql+wss"),
+		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
+			return &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), "libsql+"), Schema: mainFile}
+		})),
+	)
 }
 
 // Open opens a new SQLite driver.
