@@ -223,6 +223,36 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Planner should create all enums without querying the database on dump mode.
+		{
+			options: []migrate.PlanOption{
+				func(opts *migrate.PlanOptions) {
+					opts.Mode = migrate.PlanModeDump
+					opts.SchemaQualifier = new(string)
+				},
+			},
+			changes: []schema.Change{
+				&schema.AddTable{
+					T: &schema.Table{
+						Schema: schema.New("public"),
+						Name:   "posts",
+						Columns: []*schema.Column{
+							{Name: "a", Type: &schema.ColumnType{Type: &schema.EnumType{T: "direction", Values: []string{"NORTH", "SOUTH"}, Schema: schema.New("public")}}},
+							{Name: "b", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"ON", "OFF"}}}},
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: `CREATE TYPE "direction" AS ENUM ('NORTH', 'SOUTH')`, Reverse: `DROP TYPE "direction"`},
+					{Cmd: `CREATE TYPE "state" AS ENUM ('ON', 'OFF')`, Reverse: `DROP TYPE "state"`},
+					{Cmd: `CREATE TABLE "posts" ("a" "direction" NOT NULL, "b" "state" NOT NULL)`, Reverse: `DROP TABLE "posts"`},
+				},
+			},
+		},
 		{
 			changes: []schema.Change{
 				&schema.AddTable{
@@ -882,7 +912,10 @@ func TestPlanChanges(t *testing.T) {
 						Cmd:     `DROP TABLE "public"."t2"`,
 						Reverse: `CREATE TABLE "public"."t2" ("state" "public"."state" NOT NULL)`,
 					},
-					{Cmd: `DROP TYPE "public"."state"`, Reverse: `CREATE TYPE "public"."state" AS ENUM ('on', 'off')`},
+					{
+						Cmd:     `DROP TYPE "public"."state"`,
+						Reverse: `CREATE TYPE "public"."state" AS ENUM ('on', 'off')`,
+					},
 				},
 			},
 		},
