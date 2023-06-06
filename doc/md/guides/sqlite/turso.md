@@ -198,74 +198,26 @@ schema "main" {
 ```
 </details>
 You can also use the `--format` flag to change the output format. For example, you can use
-the `--format json` flag to print the schema in JSON format:
+the `--format '{{ sql . "  " }}'` flag to print the schema in SQL format:
 
 ```
-atlas schema inspect --env turso --format "{{ json . }}"
+atlas schema inspect --env turso --format '{{ sql . "  " }}'
 ```
 <details>
-<summary>JSON Output</summary>
+<summary>SQL Output</summary>
 
 Output:
 ```
-{
-  "schemas": [
-    {
-      "name": "main",
-      "tables": [
-        {
-          "name": "users",
-          "columns": [
-            {
-              "name": "id",
-              "type": "INT"
-            },
-            {
-              "name": "name",
-              "type": "varchar"
-            },
-            {
-              "name": "manager_id",
-              "type": "INT"
-            }
-          ],
-          "indexes": [
-            {
-              "name": "idx_name",
-              "unique": true,
-              "parts": [
-                {
-                  "column": "name"
-                }
-              ]
-            }
-          ],
-          "primary_key": {
-            "parts": [
-              {
-                "column": "id"
-              }
-            ]
-          },
-          "foreign_keys": [
-            {
-              "name": "manager_fk",
-              "columns": [
-                "manager_id"
-              ],
-              "references": {
-                "table": "users",
-                "columns": [
-                  "id"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+-- Create "users" table
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` varchar NOT NULL,
+  `manager_id` int NOT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `manager_fk` FOREIGN KEY (`manager_id`) REFERENCES `users` (`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+);
+-- Create index "idx_name" to table: "users"
+CREATE UNIQUE INDEX `idx_name` ON `users` (`name`);
 ```
 
 </details>
