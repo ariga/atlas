@@ -291,6 +291,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/sqlite/functional-indexes',
                     label: 'Functional Indexes'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/sqlite/turso',
+                    label: 'Working with Turso'
                 }
             ],
         },
