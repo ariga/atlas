@@ -198,11 +198,12 @@ schema "main" {
 ```
 </details>
 You can also use the `--format` flag to change the output format. For example, you can use
-the `--format '{{ sql . "  " }}'` flag to print the schema in SQL format:
+the `--format` flag to print the schema in SQL format:
 
 ```
 atlas schema inspect --env turso --format '{{ sql . "  " }}'
 ```
+
 <details>
 <summary>SQL Output</summary>
 
