@@ -68,6 +68,8 @@ Welcome to the Atlas Guides.
 
 [Functional Indexes](sqlite/functional-indexes.md)
 
+[Working with Turso](sqlite/turso.md)
+
 ## Migration tools
 
 Automatic migration planning for [`golang-migrate`](migration-tools/golang-migrate.md)
