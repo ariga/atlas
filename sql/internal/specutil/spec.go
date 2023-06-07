@@ -20,31 +20,40 @@ func VarAttr(k, v string) *schemahcl.Attr {
 	return schemahcl.RefAttr(k, &schemahcl.Ref{V: v})
 }
 
-type doc struct {
-	Tables  []*sqlspec.Table  `spec:"table"`
-	Schemas []*sqlspec.Schema `spec:"schema"`
-}
+type (
+	// SchemaSpec is returned by driver convert functions to
+	// marshal a *schema.Schema into top-level spec objects.
+	SchemaSpec struct {
+		Schema *sqlspec.Schema
+		Tables []*sqlspec.Table
+	}
+	doc struct {
+		Tables  []*sqlspec.Table  `spec:"table"`
+		Views   []*sqlspec.View   `spec:"view"`
+		Schemas []*sqlspec.Schema `spec:"schema"`
+	}
+)
 
 // Marshal marshals v into an Atlas DDL document using a schemahcl.Marshaler. Marshal uses the given
-// schemaSpec function to convert a *schema.Schema into *sqlspec.Schema and []*sqlspec.Table.
-func Marshal(v any, marshaler schemahcl.Marshaler, schemaSpec func(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error)) ([]byte, error) {
+// schemaSpec function to convert a *schema.Schema into *sqlspec.Schema, []*sqlspec.Table and []*sqlspec.View.
+func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Schema) (*SchemaSpec, error)) ([]byte, error) {
 	d := &doc{}
 	switch s := v.(type) {
 	case *schema.Schema:
-		spec, tables, err := schemaSpec(s)
+		spec, err := convertFunc(s)
 		if err != nil {
 			return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 		}
-		d.Tables = tables
-		d.Schemas = []*sqlspec.Schema{spec}
+		d.Tables = spec.Tables
+		d.Schemas = []*sqlspec.Schema{spec.Schema}
 	case *schema.Realm:
 		for _, s := range s.Schemas {
-			spec, tables, err := schemaSpec(s)
+			spec, err := convertFunc(s)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 			}
-			d.Tables = append(d.Tables, tables...)
-			d.Schemas = append(d.Schemas, spec)
+			d.Tables = append(d.Tables, spec.Tables...)
+			d.Schemas = append(d.Schemas, spec.Schema)
 		}
 		if err := QualifyDuplicates(d.Tables); err != nil {
 			return nil, err

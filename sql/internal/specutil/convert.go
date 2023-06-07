@@ -293,7 +293,7 @@ func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table
 }
 
 // FromSchema converts a schema.Schema into sqlspec.Schema and []sqlspec.Table.
-func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec.Table, error) {
+func FromSchema(s *schema.Schema, fn TableSpecFunc) (*SchemaSpec, error) {
 	spec := &sqlspec.Schema{
 		Name: s.Name,
 	}
@@ -301,14 +301,17 @@ func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec
 	for _, t := range s.Tables {
 		table, err := fn(t)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		if s.Name != "" {
 			table.Schema = SchemaRef(s.Name)
 		}
 		tables = append(tables, table)
 	}
-	return spec, tables, nil
+	return &SchemaSpec{
+		Schema: spec,
+		Tables: tables,
+	}, nil
 }
 
 // FromTable converts a schema.Table to a sqlspec.Table.

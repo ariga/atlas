@@ -22,12 +22,12 @@ func TestFromSpec_SchemaName(t *testing.T) {
 		},
 	}
 	sc.Tables[0].Schema = sc
-	s, ta, err := FromSchema(sc, func(table *schema.Table) (*sqlspec.Table, error) {
+	spec, err := FromSchema(sc, func(table *schema.Table) (*sqlspec.Table, error) {
 		return &sqlspec.Table{}, nil
 	})
 	require.NoError(t, err)
-	require.Equal(t, sc.Name, s.Name)
-	require.Equal(t, "$schema."+sc.Name, ta[0].Schema.V)
+	require.Equal(t, sc.Name, spec.Schema.Name)
+	require.Equal(t, "$schema."+sc.Name, spec.Tables[0].Schema.V)
 }
 
 func TestFromForeignKey(t *testing.T) {

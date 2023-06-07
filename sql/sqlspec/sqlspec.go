@@ -30,6 +30,15 @@ type (
 		schemahcl.DefaultExtension
 	}
 
+	// View holds a specification for an SQL view.
+	View struct {
+		Name      string         `spec:",name"`
+		Qualifier string         `spec:",qualifier"`
+		Schema    *schemahcl.Ref `spec:"schema"`
+		Columns   []*Column      `spec:"column"`
+		schemahcl.DefaultExtension
+	}
+
 	// Column holds a specification for a column in an SQL table.
 	Column struct {
 		Name    string          `spec:",name"`

@@ -70,6 +70,11 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		}
 		sqlx.LinkSchemaTables(schemas)
 	}
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectViews) {
+		if err := i.inspectViews(ctx, r, opts); err != nil {
+			return nil, err
+		}
+	}
 	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 
@@ -81,7 +86,17 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 		if len(s.Tables) == 0 {
 			continue
 		}
-		if err := i.columns(ctx, s); err != nil {
+		if err := i.columns(ctx, s, queryScope{
+			exec: i.querySchema,
+			append: func(s *schema.Schema, table string, column *schema.Column) error {
+				t, ok := s.Table(table)
+				if !ok {
+					return fmt.Errorf("table %q was not found in schema", table)
+				}
+				t.AddColumns(column)
+				return nil
+			},
+		}); err != nil {
 			return err
 		}
 		if err := i.indexes(ctx, s); err != nil {
@@ -132,7 +147,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		if !ok {
 			return fmt.Errorf("schema %q was not found in realm", tSchema.String)
 		}
-		t := &schema.Table{Name: name.String}
+		t := schema.NewTable(name.String)
 		s.AddTables(t)
 		if sqlx.ValidString(comment) {
 			t.SetComment(comment.String)
@@ -148,19 +163,24 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 	return rows.Close()
 }
 
+type queryScope struct {
+	exec   func(context.Context, string, *schema.Schema) (*sql.Rows, error)
+	append func(*schema.Schema, string, *schema.Column) error
+}
+
 // columns queries and appends the columns of the given table.
-func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
+func (i *inspect) columns(ctx context.Context, s *schema.Schema, scope queryScope) error {
 	query := columnsQuery
 	if i.crdb {
 		query = crdbColumnsQuery
 	}
-	rows, err := i.querySchema(ctx, query, s)
+	rows, err := scope.exec(ctx, query, s)
 	if err != nil {
 		return fmt.Errorf("postgres: querying schema %q columns: %w", s.Name, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := i.addColumn(s, rows); err != nil {
+		if err := i.addColumn(s, rows, scope); err != nil {
 			return fmt.Errorf("postgres: %w", err)
 		}
 	}
@@ -170,8 +190,8 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 	return i.enumValues(ctx, s)
 }
 
-// addColumn scans the current row and adds a new column from it to the table.
-func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
+// addColumn scans the current row and adds a new column from it to the scope (table or view).
+func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) (err error) {
 	var (
 		typid, typelem, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast                                                  sql.NullInt64
 		table, name, typ, fmtype, nullable, defaults, identity, genidentity, genexpr, charset, collate, comment, typtype, elemtyp, interval sql.NullString
@@ -181,10 +201,6 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 		&collate, &identity, &seqstart, &seqinc, &seqlast, &genidentity, &genexpr, &comment, &typtype, &typelem, &elemtyp, &typid,
 	); err != nil {
 		return err
-	}
-	t, ok := s.Table(table.String)
-	if !ok {
-		return fmt.Errorf("table %q was not found in schema", table.String)
 	}
 	c := &schema.Column{
 		Name: name.String,
@@ -233,8 +249,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 	if sqlx.ValidString(collate) {
 		c.SetCollation(collate.String)
 	}
-	t.Columns = append(t.Columns, c)
-	return nil
+	return scope.append(s, table.String, c)
 }
 
 // enumValues fills enum columns with their values from the database.
@@ -873,6 +888,12 @@ type (
 	// operation. Note, this clause is automatically added to DROP SCHEMA by the planner.
 	Cascade struct {
 		schema.Clause
+	}
+
+	// ViewCheckOption controls the behavior of automatically updatable views.
+	ViewCheckOption struct {
+		schema.Attr
+		V string // LOCAL, CASCADED or NONE.
 	}
 )
 

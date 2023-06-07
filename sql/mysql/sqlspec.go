@@ -230,18 +230,18 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 }
 
 // schemaSpec converts from a concrete MySQL schema to Atlas specification.
-func schemaSpec(s *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
-	sc, t, err := specutil.FromSchema(s, tableSpec)
+func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
+	spec, err := specutil.FromSchema(s, tableSpec)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if c, ok := hasCharset(s.Attrs, nil); ok {
-		sc.Extra.Attrs = append(sc.Extra.Attrs, schemahcl.StringAttr("charset", c))
+		spec.Schema.Extra.Attrs = append(spec.Schema.Extra.Attrs, schemahcl.StringAttr("charset", c))
 	}
 	if c, ok := hasCollate(s.Attrs, nil); ok {
-		sc.Extra.Attrs = append(sc.Extra.Attrs, schemahcl.StringAttr("collate", c))
+		spec.Schema.Extra.Attrs = append(spec.Schema.Extra.Attrs, schemahcl.StringAttr("collate", c))
 	}
-	return sc, t, nil
+	return spec, nil
 }
 
 // tableSpec converts from a concrete MySQL sqlspec.Table to a schema.Table.

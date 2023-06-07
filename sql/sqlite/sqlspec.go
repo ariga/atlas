@@ -109,8 +109,8 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 }
 
 // schemaSpec converts from a concrete SQLite schema to Atlas specification.
-func schemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
-	return specutil.FromSchema(schem, tableSpec)
+func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
+	return specutil.FromSchema(s, tableSpec)
 }
 
 // tableSpec converts from a concrete SQLite sqlspec.Table to a schema.Table.
