@@ -43,6 +43,9 @@ const (
 	// InspectTables enables schema tables inspection including
 	// all its child resources (e.g. columns or indexes).
 	InspectTables
+
+	// InspectViews enables schema views inspection.
+	InspectViews
 )
 
 // Is reports whether the given mode is enabled.

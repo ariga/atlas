@@ -512,13 +512,13 @@ func enumRef(n string) *schemahcl.Ref {
 
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
 func schemaSpec(schem *schema.Schema) (*doc, error) {
-	s, tbls, err := specutil.FromSchema(schem, tableSpec)
+	spec, err := specutil.FromSchema(schem, tableSpec)
 	if err != nil {
 		return nil, err
 	}
 	d := &doc{
-		Tables:  tbls,
-		Schemas: []*sqlspec.Schema{s},
+		Tables:  spec.Tables,
+		Schemas: []*sqlspec.Schema{spec.Schema},
 	}
 	enums := make(map[string]bool)
 	for _, t := range schem.Tables {
@@ -526,7 +526,7 @@ func schemaSpec(schem *schema.Schema) (*doc, error) {
 			if e, ok := hasEnumType(c); ok && !enums[e.T] {
 				d.Enums = append(d.Enums, &Enum{
 					Name:   e.T,
-					Schema: specutil.SchemaRef(s.Name),
+					Schema: specutil.SchemaRef(spec.Schema.Name),
 					Values: e.Values,
 				})
 				enums[e.T] = true

@@ -133,6 +133,13 @@ func TestSchema_AddTables(t *testing.T) {
 	)
 }
 
+func TestSchema_Views(t *testing.T) {
+	s := schema.New("public")
+	v1, v2 := schema.NewView("v1", "SELECT 1"), schema.NewView("v2", "SELECT 2")
+	s.AddViews(v1, v2)
+	require.Equal(t, []*schema.View{v1, v2}, s.Views)
+}
+
 func TestSchema_SetCharset(t *testing.T) {
 	s := schema.New("public")
 	require.Empty(t, s.Attrs)

@@ -17,6 +17,7 @@ type (
 		Name   string
 		Realm  *Realm
 		Tables []*Table
+		Views  []*View
 		Attrs  []Attr // Attrs and options.
 	}
 
@@ -29,6 +30,15 @@ type (
 		PrimaryKey  *Index
 		ForeignKeys []*ForeignKey
 		Attrs       []Attr // Attrs, constraints and options.
+	}
+
+	// A View represents a view definition.
+	View struct {
+		Name    string
+		Def     string
+		Schema  *Schema
+		Columns []*Column
+		Attrs   []Attr // Attrs and options.
 	}
 
 	// A Column represents a column definition.
@@ -98,6 +108,16 @@ func (r *Realm) Schema(name string) (*Schema, bool) {
 // Table returns the first table that matched the given name.
 func (s *Schema) Table(name string) (*Table, bool) {
 	for _, t := range s.Tables {
+		if t.Name == name {
+			return t, true
+		}
+	}
+	return nil, false
+}
+
+// View returns the first view that matched the given name.
+func (s *Schema) View(name string) (*View, bool) {
+	for _, t := range s.Views {
 		if t.Name == name {
 			return t, true
 		}
