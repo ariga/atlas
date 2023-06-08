@@ -155,6 +155,16 @@ func (t *Table) ForeignKey(symbol string) (*ForeignKey, bool) {
 	return nil, false
 }
 
+// Column returns the first column that matched the given name.
+func (v *View) Column(name string) (*Column, bool) {
+	for _, c := range v.Columns {
+		if c.Name == name {
+			return c, true
+		}
+	}
+	return nil, false
+}
+
 // Column returns the first column that matches the given name.
 func (f *ForeignKey) Column(name string) (*Column, bool) {
 	for _, c := range f.Columns {

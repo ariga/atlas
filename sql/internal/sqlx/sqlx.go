@@ -198,7 +198,7 @@ func ValuesEqual(v1, v2 []string) bool {
 // ModeInspectSchema returns the InspectMode or its default.
 func ModeInspectSchema(o *schema.InspectOptions) schema.InspectMode {
 	if o == nil || o.Mode == 0 {
-		return schema.InspectSchemas | schema.InspectTables
+		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews
 	}
 	return o.Mode
 }
@@ -206,7 +206,7 @@ func ModeInspectSchema(o *schema.InspectOptions) schema.InspectMode {
 // ModeInspectRealm returns the InspectMode or its default.
 func ModeInspectRealm(o *schema.InspectRealmOption) schema.InspectMode {
 	if o == nil || o.Mode == 0 {
-		return schema.InspectSchemas | schema.InspectTables
+		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews
 	}
 	return o.Mode
 }
