@@ -25,9 +25,11 @@ type (
 	ConvertPrimaryKeyFunc func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
 	ConvertIndexFunc      func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
 	ConvertCheckFunc      func(*sqlspec.Check) (*schema.Check, error)
-	ColumnSpecFunc        func(*schema.Column, *schema.Table) (*sqlspec.Column, error)
 	ColumnTypeSpecFunc    func(schema.Type) (*sqlspec.Column, error)
 	TableSpecFunc         func(*schema.Table) (*sqlspec.Table, error)
+	TableColumnSpecFunc   func(*schema.Column, *schema.Table) (*sqlspec.Column, error)
+	ViewSpecFunc          func(*schema.View) (*sqlspec.View, error)
+	ViewColumnSpecFunc    func(*schema.Column, *schema.View) (*sqlspec.Column, error)
 	PrimaryKeySpecFunc    func(*schema.Index) (*sqlspec.PrimaryKey, error)
 	IndexSpecFunc         func(*schema.Index) (*sqlspec.Index, error)
 	ForeignKeySpecFunc    func(*schema.ForeignKey) (*sqlspec.ForeignKey, error)
@@ -293,13 +295,16 @@ func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table
 }
 
 // FromSchema converts a schema.Schema into sqlspec.Schema and []sqlspec.Table.
-func FromSchema(s *schema.Schema, fn TableSpecFunc) (*SchemaSpec, error) {
-	spec := &sqlspec.Schema{
-		Name: s.Name,
-	}
-	tables := make([]*sqlspec.Table, 0, len(s.Tables))
+func FromSchema(s *schema.Schema, specT TableSpecFunc, specV ViewSpecFunc) (*SchemaSpec, error) {
+	var (
+		spec = &sqlspec.Schema{
+			Name: s.Name,
+		}
+		views  = make([]*sqlspec.View, 0, len(s.Views))
+		tables = make([]*sqlspec.Table, 0, len(s.Tables))
+	)
 	for _, t := range s.Tables {
-		table, err := fn(t)
+		table, err := specT(t)
 		if err != nil {
 			return nil, err
 		}
@@ -308,14 +313,25 @@ func FromSchema(s *schema.Schema, fn TableSpecFunc) (*SchemaSpec, error) {
 		}
 		tables = append(tables, table)
 	}
+	for _, v := range s.Views {
+		view, err := specV(v)
+		if err != nil {
+			return nil, err
+		}
+		if s.Name != "" {
+			view.Schema = SchemaRef(s.Name)
+		}
+		views = append(views, view)
+	}
 	return &SchemaSpec{
 		Schema: spec,
 		Tables: tables,
+		Views:  views,
 	}, nil
 }
 
 // FromTable converts a schema.Table to a sqlspec.Table.
-func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc,
+func FromTable(t *schema.Table, colFn TableColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc,
 	fkFn ForeignKeySpecFunc, ckFn CheckSpecFunc) (*sqlspec.Table, error) {
 	spec := &sqlspec.Table{
 		Name: t.Name,
@@ -354,6 +370,28 @@ func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, i
 		}
 	}
 	convertCommentFromSchema(t.Attrs, &spec.Extra.Attrs)
+	return spec, nil
+}
+
+// FromView converts a schema.View to a sqlspec.View.
+func FromView(v *schema.View, colFn ViewColumnSpecFunc) (*sqlspec.View, error) {
+	spec := &sqlspec.View{
+		Name: v.Name,
+		As:   v.Def,
+	}
+	// In case the view definition is multi-line,
+	// format it as indented heredoc with two spaces.
+	if lines := strings.Split(v.Def, "\n"); len(lines) > 1 {
+		spec.As = fmt.Sprintf("<<-SQL\n  %s\n  SQL", strings.Join(lines, "\n  "))
+	}
+	for _, c := range v.Columns {
+		col, err := colFn(c, v)
+		if err != nil {
+			return nil, err
+		}
+		spec.Columns = append(spec.Columns, col)
+	}
+	convertCommentFromSchema(v.Attrs, &spec.Extra.Attrs)
 	return spec, nil
 }
 
@@ -702,10 +740,10 @@ func convertCommentFromSpec(spec Attrer, attrs *[]schema.Attr) error {
 }
 
 // convertCommentFromSchema converts a schema element comment attribute to a spec comment attribute.
-func convertCommentFromSchema(src []schema.Attr, trgt *[]*schemahcl.Attr) {
+func convertCommentFromSchema(src []schema.Attr, target *[]*schemahcl.Attr) {
 	var c schema.Comment
 	if sqlx.Has(src, &c) {
-		*trgt = append(*trgt, schemahcl.StringAttr("comment", c.Text))
+		*target = append(*target, schemahcl.StringAttr("comment", c.Text))
 	}
 }
 

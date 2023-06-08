@@ -36,6 +36,7 @@ type (
 		Qualifier string         `spec:",qualifier"`
 		Schema    *schemahcl.Ref `spec:"schema"`
 		Columns   []*Column      `spec:"column"`
+		As        string         `spec:"as"`
 		schemahcl.DefaultExtension
 	}
 

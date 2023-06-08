@@ -22,9 +22,15 @@ func TestFromSpec_SchemaName(t *testing.T) {
 		},
 	}
 	sc.Tables[0].Schema = sc
-	spec, err := FromSchema(sc, func(table *schema.Table) (*sqlspec.Table, error) {
-		return &sqlspec.Table{}, nil
-	})
+	spec, err := FromSchema(
+		sc,
+		func(*schema.Table) (*sqlspec.Table, error) {
+			return &sqlspec.Table{}, nil
+		},
+		func(*schema.View) (*sqlspec.View, error) {
+			return &sqlspec.View{}, nil
+		},
+	)
 	require.NoError(t, err)
 	require.Equal(t, sc.Name, spec.Schema.Name)
 	require.Equal(t, "$schema."+sc.Name, spec.Tables[0].Schema.V)

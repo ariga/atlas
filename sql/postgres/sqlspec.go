@@ -24,6 +24,7 @@ import (
 type (
 	doc struct {
 		Tables  []*sqlspec.Table  `spec:"table"`
+		Views   []*sqlspec.View   `spec:"view"`
 		Enums   []*Enum           `spec:"enum"`
 		Schemas []*sqlspec.Schema `spec:"schema"`
 	}
@@ -91,6 +92,7 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 			return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 		}
 		d.Tables = doc.Tables
+		d.Views = doc.Views
 		d.Schemas = doc.Schemas
 		d.Enums = doc.Enums
 	case *schema.Realm:
@@ -100,6 +102,7 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 				return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 			}
 			d.Tables = append(d.Tables, doc.Tables...)
+			d.Views = append(d.Views, doc.Views...)
 			d.Schemas = append(d.Schemas, doc.Schemas...)
 			d.Enums = append(d.Enums, doc.Enums...)
 		}
@@ -512,25 +515,34 @@ func enumRef(n string) *schemahcl.Ref {
 
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
 func schemaSpec(schem *schema.Schema) (*doc, error) {
-	spec, err := specutil.FromSchema(schem, tableSpec)
+	spec, err := specutil.FromSchema(schem, tableSpec, viewSpec)
 	if err != nil {
 		return nil, err
 	}
 	d := &doc{
 		Tables:  spec.Tables,
+		Views:   spec.Views,
 		Schemas: []*sqlspec.Schema{spec.Schema},
 	}
 	enums := make(map[string]bool)
+	mayAdd := func(c *schema.Column) {
+		if e, ok := hasEnumType(c); ok && !enums[e.T] {
+			d.Enums = append(d.Enums, &Enum{
+				Name:   e.T,
+				Schema: specutil.SchemaRef(spec.Schema.Name),
+				Values: e.Values,
+			})
+			enums[e.T] = true
+		}
+	}
 	for _, t := range schem.Tables {
 		for _, c := range t.Columns {
-			if e, ok := hasEnumType(c); ok && !enums[e.T] {
-				d.Enums = append(d.Enums, &Enum{
-					Name:   e.T,
-					Schema: specutil.SchemaRef(spec.Schema.Name),
-					Values: e.Values,
-				})
-				enums[e.T] = true
-			}
+			mayAdd(c)
+		}
+	}
+	for _, t := range schem.Views {
+		for _, c := range t.Columns {
+			mayAdd(c)
 		}
 	}
 	return d, nil
@@ -540,7 +552,7 @@ func schemaSpec(schem *schema.Schema) (*doc, error) {
 func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
 	spec, err := specutil.FromTable(
 		table,
-		columnSpec,
+		tableColumnSpec,
 		pkSpec,
 		indexSpec,
 		specutil.FromForeignKey,
@@ -551,6 +563,17 @@ func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
 	}
 	if p := (Partition{}); sqlx.Has(table.Attrs, &p) {
 		spec.Extra.Children = append(spec.Extra.Children, fromPartition(p))
+	}
+	return spec, nil
+}
+
+// viewSpec converts from a concrete PostgreSQL schema.View to a sqlspec.View.
+func viewSpec(view *schema.View) (*sqlspec.View, error) {
+	spec, err := specutil.FromView(view, func(c *schema.Column, _ *schema.View) (*sqlspec.Column, error) {
+		return specutil.FromColumn(c, columnTypeSpec)
+	})
+	if err != nil {
+		return nil, err
 	}
 	return spec, nil
 }
@@ -611,8 +634,8 @@ func partAttr(idx *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart
 	return nil
 }
 
-// columnSpec converts from a concrete Postgres schema.Column into a sqlspec.Column.
-func columnSpec(c *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
+// tableColumnSpec converts from a concrete Postgres schema.Column into a sqlspec.Column.
+func tableColumnSpec(c *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
 	s, err := specutil.FromColumn(c, columnTypeSpec)
 	if err != nil {
 		return nil, err

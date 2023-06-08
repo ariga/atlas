@@ -231,7 +231,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 
 // schemaSpec converts from a concrete MySQL schema to Atlas specification.
 func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
-	spec, err := specutil.FromSchema(s, tableSpec)
+	spec, err := specutil.FromSchema(s, tableSpec, viewSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -275,6 +275,17 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 		ts.Extra.Attrs = append(ts.Extra.Attrs, attr)
 	}
 	return ts, nil
+}
+
+// viewSpec converts from a concrete MySQL schema.View to a sqlspec.View.
+func viewSpec(view *schema.View) (*sqlspec.View, error) {
+	spec, err := specutil.FromView(view, func(c *schema.Column, _ *schema.View) (*sqlspec.Column, error) {
+		return specutil.FromColumn(c, columnTypeSpec)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return spec, nil
 }
 
 func pkSpec(idx *schema.Index) (*sqlspec.PrimaryKey, error) {
