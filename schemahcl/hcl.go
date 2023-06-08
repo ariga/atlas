@@ -405,15 +405,18 @@ func (s *State) encode(r *Resource) ([]byte, error) {
 }
 
 func (s *State) writeResource(b *Resource, body *hclwrite.Body) error {
-	blk := body.AppendNewBlock(b.Type, labels(b))
-	nb := blk.Body()
+	// Anonymous resources are treated as embedded blocks.
+	if b.Type != "" {
+		blk := body.AppendNewBlock(b.Type, labels(b))
+		body = blk.Body()
+	}
 	for _, attr := range b.Attrs {
-		if err := s.writeAttr(attr, nb); err != nil {
+		if err := s.writeAttr(attr, body); err != nil {
 			return err
 		}
 	}
 	for _, b := range b.Children {
-		if err := s.writeResource(b, nb); err != nil {
+		if err := s.writeResource(b, body); err != nil {
 			return err
 		}
 	}

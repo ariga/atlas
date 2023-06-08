@@ -36,7 +36,8 @@ type (
 		Qualifier string         `spec:",qualifier"`
 		Schema    *schemahcl.Ref `spec:"schema"`
 		Columns   []*Column      `spec:"column"`
-		As        string         `spec:"as"`
+		// The definition is appended as additional attribute
+		// by the spec creator to marshal it after the columns.
 		schemahcl.DefaultExtension
 	}
 
@@ -94,6 +95,7 @@ type (
 )
 
 func init() {
+	schemahcl.Register("view", &View{})
 	schemahcl.Register("table", &Table{})
 	schemahcl.Register("schema", &Schema{})
 }
