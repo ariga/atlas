@@ -25,6 +25,10 @@ b  = true
 s  = "hello, world"
 sl = ["hello", "world"]
 bl = [true, false]
+hd = <<-EOT
+  hello
+  world
+EOT
 `
 	var test struct {
 		Int        int      `spec:"i"`
@@ -32,6 +36,7 @@ bl = [true, false]
 		Str        string   `spec:"s"`
 		StringList []string `spec:"sl"`
 		BoolList   []bool   `spec:"bl"`
+		Heredoc    string   `spec:"hd"`
 	}
 	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
@@ -40,6 +45,9 @@ bl = [true, false]
 	require.EqualValues(t, "hello, world", test.Str)
 	require.EqualValues(t, []string{"hello", "world"}, test.StringList)
 	require.EqualValues(t, []bool{true, false}, test.BoolList)
+	require.EqualValues(t, "hello\nworld\n", test.Heredoc)
+	// Heredoc needs to be explicitly formatted this way.
+	test.Heredoc = "<<-EOT\n  hello\n  world\nEOT"
 	marshal, err := Marshal(&test)
 	require.NoError(t, err)
 	require.EqualValues(t, f, string(marshal))

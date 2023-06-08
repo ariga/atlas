@@ -263,6 +263,47 @@ enum "account_type" {
 	require.EqualValues(t, exp, &s)
 }
 
+func TestMarshalViews(t *testing.T) {
+	s := schema.New("public").
+		AddViews(
+			schema.NewView("v1", "SELECT 1"),
+			schema.NewView("v2", "SELECT * FROM t2\n\tWHERE id IS NOT NULL"),
+			schema.NewView("v3", "SELECT * FROM t3\n\tWHERE id IS NOT NULL\n\tORDER BY id").
+				AddColumns(
+					schema.NewIntColumn("id", "id"),
+				),
+		)
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	f := `view "v1" {
+  schema = schema.public
+  as     = "SELECT 1"
+}
+view "v2" {
+  schema = schema.public
+  as     = <<-SQL
+  SELECT * FROM t2
+  	WHERE id IS NOT NULL
+  SQL
+}
+view "v3" {
+  schema = schema.public
+  as     = <<-SQL
+  SELECT * FROM t3
+  	WHERE id IS NOT NULL
+  	ORDER BY id
+  SQL
+  column "id" {
+    null = false
+    type = sql("id")
+  }
+}
+schema "public" {
+}
+`
+	require.Equal(t, f, string(buf))
+}
+
 func TestUnmarshalSpec_IndexType(t *testing.T) {
 	f := `
 schema "s" {}

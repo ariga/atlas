@@ -26,6 +26,7 @@ type (
 	SchemaSpec struct {
 		Schema *sqlspec.Schema
 		Tables []*sqlspec.Table
+		Views  []*sqlspec.View
 	}
 	doc struct {
 		Tables  []*sqlspec.Table  `spec:"table"`

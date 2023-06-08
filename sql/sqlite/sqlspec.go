@@ -110,7 +110,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 
 // schemaSpec converts from a concrete SQLite schema to Atlas specification.
 func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
-	return specutil.FromSchema(s, tableSpec)
+	return specutil.FromSchema(s, tableSpec, viewSpec)
 }
 
 // tableSpec converts from a concrete SQLite sqlspec.Table to a schema.Table.
@@ -123,6 +123,17 @@ func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 		specutil.FromForeignKey,
 		specutil.FromCheck,
 	)
+}
+
+// viewSpec converts from a concrete SQLite schema.View to a sqlspec.View.
+func viewSpec(view *schema.View) (*sqlspec.View, error) {
+	spec, err := specutil.FromView(view, func(c *schema.Column, _ *schema.View) (*sqlspec.Column, error) {
+		return specutil.FromColumn(c, columnTypeSpec)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return spec, nil
 }
 
 func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {

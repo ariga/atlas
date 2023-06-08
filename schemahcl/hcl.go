@@ -498,6 +498,22 @@ func (s *State) writeAttr(attr *Attr, body *hclwrite.Body) error {
 			}
 		}
 		body.SetAttributeRaw(attr.K, hclList(tokens))
+	// Heredoc is a special case that currently is not handled by hclwrite:
+	// https://github.com/hashicorp/hcl/blob/main/hclwrite/generate.go#L218-L219.
+	case attr.V.Type() == cty.String && strings.Count(attr.V.AsString(), "\n") > 1 && strings.HasPrefix(attr.V.AsString(), "<<"):
+		v := strings.TrimLeft(attr.V.AsString(), "<-")
+		// Heredoc begins with << (or <<-), followed by a token that
+		// specifies the terminator and ends with the \n + terminator.
+		if lines := strings.Split(v, "\n"); len(lines) > 2 && strings.TrimSpace(lines[0]) == strings.TrimSpace(lines[len(lines)-1]) {
+			body.SetAttributeRaw(attr.K, hclwrite.Tokens{
+				&hclwrite.Token{
+					Type:  hclsyntax.TokenOHeredoc,
+					Bytes: []byte(attr.V.AsString()),
+				},
+			})
+		} else {
+			body.SetAttributeValue(attr.K, attr.V)
+		}
 	default:
 		body.SetAttributeValue(attr.K, attr.V)
 	}
