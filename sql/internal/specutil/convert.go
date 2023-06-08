@@ -377,21 +377,27 @@ func FromTable(t *schema.Table, colFn TableColumnSpecFunc, pkFn PrimaryKeySpecFu
 func FromView(v *schema.View, colFn ViewColumnSpecFunc) (*sqlspec.View, error) {
 	spec := &sqlspec.View{
 		Name: v.Name,
-		As:   v.Def,
-	}
-	// In case the view definition is multi-line,
-	// format it as indented heredoc with two spaces.
-	if lines := strings.Split(v.Def, "\n"); len(lines) > 1 {
-		spec.As = fmt.Sprintf("<<-SQL\n  %s\n  SQL", strings.Join(lines, "\n  "))
 	}
 	for _, c := range v.Columns {
-		col, err := colFn(c, v)
+		cs, err := colFn(c, v)
 		if err != nil {
 			return nil, err
 		}
-		spec.Columns = append(spec.Columns, col)
+		spec.Columns = append(spec.Columns, cs)
 	}
-	convertCommentFromSchema(v.Attrs, &spec.Extra.Attrs)
+	as := v.Def
+	// In case the view definition is multi-line,
+	// format it as indented heredoc with two spaces.
+	if lines := strings.Split(v.Def, "\n"); len(lines) > 1 {
+		as = fmt.Sprintf("<<-SQL\n  %s\n  SQL", strings.Join(lines, "\n  "))
+	}
+	embed := &schemahcl.Resource{
+		Attrs: []*schemahcl.Attr{
+			schemahcl.StringAttr("as", as),
+		},
+	}
+	convertCommentFromSchema(v.Attrs, &embed.Attrs)
+	spec.Extra.Children = append(spec.Extra.Children, embed)
 	return spec, nil
 }
 

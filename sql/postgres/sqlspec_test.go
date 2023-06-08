@@ -271,7 +271,8 @@ func TestMarshalViews(t *testing.T) {
 			schema.NewView("v3", "SELECT * FROM t3\n\tWHERE id IS NOT NULL\n\tORDER BY id").
 				AddColumns(
 					schema.NewIntColumn("id", "id"),
-				),
+				).
+				SetComment("view comment"),
 		)
 	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
@@ -288,15 +289,16 @@ view "v2" {
 }
 view "v3" {
   schema = schema.public
-  as     = <<-SQL
-  SELECT * FROM t3
-  	WHERE id IS NOT NULL
-  	ORDER BY id
-  SQL
   column "id" {
     null = false
     type = sql("id")
   }
+  as      = <<-SQL
+  SELECT * FROM t3
+  	WHERE id IS NOT NULL
+  	ORDER BY id
+  SQL
+  comment = "view comment"
 }
 schema "public" {
 }
