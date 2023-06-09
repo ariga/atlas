@@ -13,6 +13,336 @@ on:
       - 'doc/**'
 
 jobs:
+  integration-mysql56:
+    runs-on: ubuntu-latest
+    services:
+      mysql56:
+        image: mysql:5.6.35
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for mysql56
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL" -version="mysql56" -timeout 15m ./...
+
+  integration-mysql57:
+    runs-on: ubuntu-latest
+    services:
+      mysql57:
+        image: mysql:5.7.26
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for mysql57
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL" -version="mysql57" -timeout 15m ./...
+
+  integration-mysql8:
+    runs-on: ubuntu-latest
+    services:
+      mysql8:
+        image: mysql:8
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 3308:3306
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for mysql8
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL" -version="mysql8" -timeout 15m ./...
+
+  integration-maria107:
+    runs-on: ubuntu-latest
+    services:
+      maria107:
+        image: mariadb:10.7
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 4306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for maria107
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL" -version="maria107" -timeout 15m ./...
+
+  integration-maria102:
+    runs-on: ubuntu-latest
+    services:
+      maria102:
+        image: mariadb:10.2.32
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 4307:3306
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for maria102
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL" -version="maria102" -timeout 15m ./...
+
+  integration-maria103:
+    runs-on: ubuntu-latest
+    services:
+      maria103:
+        image: mariadb:10.3.13
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 4308:3306
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for maria103
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL" -version="maria103" -timeout 15m ./...
+
+  integration-postgres-ext-postgis:
+    runs-on: ubuntu-latest
+    services:
+      postgres-ext-postgis:
+        image: postgis/postgis:latest
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5429:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for postgres-ext-postgis
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres" -version="postgres-ext-postgis" -timeout 15m ./...
+
+  integration-postgres10:
+    runs-on: ubuntu-latest
+    services:
+      postgres10:
+        image: postgres:10
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5430:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for postgres10
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres" -version="postgres10" -timeout 15m ./...
+
+  integration-postgres11:
+    runs-on: ubuntu-latest
+    services:
+      postgres11:
+        image: postgres:11
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5431:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for postgres11
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres" -version="postgres11" -timeout 15m ./...
+
+  integration-postgres12:
+    runs-on: ubuntu-latest
+    services:
+      postgres12:
+        image: postgres:12.3
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for postgres12
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres" -version="postgres12" -timeout 15m ./...
+
+  integration-postgres13:
+    runs-on: ubuntu-latest
+    services:
+      postgres13:
+        image: postgres:13.1
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for postgres13
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres" -version="postgres13" -timeout 15m ./...
+
+  integration-postgres14:
+    runs-on: ubuntu-latest
+    services:
+      postgres14:
+        image: postgres:14
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for postgres14
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres" -version="postgres14" -timeout 15m ./...
+
+  integration-postgres15:
+    runs-on: ubuntu-latest
+    services:
+      postgres15:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for postgres15
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres" -version="postgres15" -timeout 15m ./...
+
+  integration-sqlite:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for sqlite
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="SQLite.*" -version="sqlite" -timeout 15m ./...
+
   integration-tidb5:
     runs-on: ubuntu-latest
     services:

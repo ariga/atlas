@@ -1,7 +1,7 @@
 # # # # # # # # # # # # # # # #
 # CODE GENERATED - DO NOT EDIT
 # # # # # # # # # # # # # # # #
-name: CI - Dialect Tests{{ if $.OSS }} - Community Edition{{ end }}
+name: CI - Dialect Tests{{ with $.Flavor }} - {{ . }} Edition{{ end }}
 on:
   pull_request:
     paths-ignore:
@@ -35,5 +35,5 @@ jobs:
           go-version: '1.20'
       - name: Run integration tests for {{ .Version }}
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="{{ .Regex }}" -version="{{ .Version }}" -timeout 15m ./...
+        run: go test {{ with $.Tags }}-tags={{ . }} {{ end }}-race -count=2 -v -run="{{ .Regex }}" -version="{{ .Version }}" -timeout 15m ./...
 {{ end }}

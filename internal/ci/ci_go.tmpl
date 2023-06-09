@@ -1,0 +1,107 @@
+# # # # # # # # # # # # # # # #
+# CODE GENERATED - DO NOT EDIT
+# # # # # # # # # # # # # # # #
+name: CI - General{{ with $.Flavor }} - {{ . }} Edition{{ end }}
+on:
+  pull_request:
+    paths-ignore:
+      - 'doc/**'
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'doc/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - uses: actions/checkout@v2
+      - name: Run linters
+        uses: golangci/golangci-lint-action@v3
+        with:
+          args: --verbose
+
+  generate-cmp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Install stringer
+        run: go install golang.org/x/tools/cmd/stringer@latest
+      - name: run "go generate ./..."
+        run: go generate ./...
+      - name: go generate cmd/atlas
+        working-directory: cmd/atlas
+        run: go generate ./...
+      - name: Verify generated files are checked in properly
+        run: |
+          status=$(git status --porcelain | grep -v "go.\(sum\|mod\)" | cat)
+          if [ -n "$status" ]; then
+            echo "you need to run 'go generate ./...' and commit the changes"
+            echo "$status"
+            exit 1
+          fi
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.19', '1.20' ]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v4
+        with:
+          go-version: {{ "${{ matrix.go }}" }}
+      - name: Run sql tests
+        run: go test {{ with $.Tags }}-tags={{ . }} {{ end }}-race ./...
+        working-directory: sql
+      - name: Run schemahcl tests
+        run: go test -race ./...
+        working-directory: schemahcl
+
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run cli tests
+        run: go test {{ with $.Tags }}-tags={{ . }} {{ end }}-race ./...
+        working-directory: cmd/atlas
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for HCL
+        working-directory: internal/integration/hclsqlspec
+        run: go test {{ with $.Tags }}-tags={{ . }} {{ end }}-race -count=2 -v ./...
+
+  revisions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Checkout origin/master
+        run: git checkout origin/master
+      - name: Create revisions from master
+        run: go run {{ with $.Tags }}-tags={{ . }} {{ end }}main.go migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
+        working-directory: cmd/atlas
+      - name: Checkout previous HEAD
+        run: git checkout -
+      - name: Migrate revisions table to HEAD
+        run: go run {{ with $.Tags }}-tags={{ . }} {{ end }}main.go migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
+        working-directory: cmd/atlas
