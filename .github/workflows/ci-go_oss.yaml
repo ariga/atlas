@@ -1,4 +1,7 @@
-name: CI - General
+# # # # # # # # # # # # # # # #
+# CODE GENERATED - DO NOT EDIT
+# # # # # # # # # # # # # # # #
+name: CI - General - Community Edition
 on:
   pull_request:
     paths-ignore:
@@ -63,14 +66,11 @@ jobs:
 
   cli:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go: [ '1.20' ]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v4
         with:
-          go-version: ${{ matrix.go }}
+          go-version: '1.20'
       - name: Run cli tests
         run: go test -race ./...
         working-directory: cmd/atlas

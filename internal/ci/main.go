@@ -6,7 +6,9 @@ package main
 
 import (
 	"bytes"
+	"embed"
 	_ "embed"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -14,23 +16,20 @@ import (
 	"text/template"
 )
 
-//go:generate go run main.go
-
 // Job defines an integration job to run.
 type Job struct {
 	Version string   // version to test (passed to go test as flag which database dialect/version)
 	Image   string   // name of service
 	Regex   string   // run regex
-	OSS     bool     // run in community edition only
 	Env     []string // env of service
 	Ports   []string // port mappings
 	Options []string // other options
 }
 
 var (
-	//go:embed ci.tmpl
-	t   string
-	tpl = template.Must(template.New("").Parse(t))
+	//go:embed ci_dialect.tmpl ci_go.tmpl
+	tplFS embed.FS
+	tpl   = template.Must(template.ParseFS(tplFS, "*.tmpl"))
 
 	mysqlOptions = []string{
 		`--health-cmd "mysqladmin ping -ppass"`,
@@ -163,48 +162,23 @@ var (
 			Regex:   "SQLite.*",
 		},
 	}
-	oss = []Job{
-		{
-			Version: "tidb5",
-			Image:   "pingcap/tidb:v5.4.0",
-			Regex:   "TiDB",
-			Ports:   []string{"4309:4000"},
-		},
-		{
-			Version: "tidb6",
-			Image:   "pingcap/tidb:v6.0.0",
-			Regex:   "TiDB",
-			Ports:   []string{"4310:4000"},
-		},
-		{
-			Version: "cockroach",
-			Image:   "ghcr.io/ariga/cockroachdb-single-node:v21.2.11",
-			Regex:   "Cockroach",
-			Ports:   []string{"26257:26257"},
-		},
-	}
 )
 
-type data struct {
-	Jobs []Job
-	OSS  bool
-}
-
 func main() {
-	for file, jobs := range map[string]data{
-		"ci-dialect": {
-			Jobs: jobs,
-		},
-		"ci-dialect_oss": {
-			Jobs: oss,
-			OSS:  true,
-		},
-	} {
+	var flavor, tags, suffix string
+	flag.StringVar(&flavor, "flavor", "", "")
+	flag.StringVar(&tags, "tags", "", "")
+	flag.StringVar(&suffix, "suffix", "", "")
+	flag.Parse()
+	for _, n := range []string{"go", "dialect"} {
 		var buf bytes.Buffer
-		if err := tpl.Execute(&buf, jobs); err != nil {
+		if err := tpl.ExecuteTemplate(&buf, fmt.Sprintf("ci_%s.tmpl", n), struct {
+			Jobs         []Job
+			Flavor, Tags string
+		}{jobs, flavor, tags}); err != nil {
 			log.Fatalln(err)
 		}
-		err := os.WriteFile(filepath.Clean(fmt.Sprintf("../../.github/workflows/%s.yaml", file)), buf.Bytes(), 0600)
+		err := os.WriteFile(filepath.Clean(fmt.Sprintf("../../.github/workflows/ci-%s_%s.yaml", n, suffix)), buf.Bytes(), 0600)
 		if err != nil {
 			log.Fatalln(err)
 		}
