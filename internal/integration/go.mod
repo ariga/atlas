@@ -8,6 +8,8 @@ replace ariga.io/atlas/cmd/atlas => ../../cmd/atlas
 
 require (
 	ariga.io/atlas v0.12.1-0.20230601120453-c847ec90d7c9
+	ariga.io/atlas/cmd/atlas v0.0.0-00010101000000-000000000000
+	entgo.io/ent v0.12.4-0.20230503082810-f251400818ea
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/lib/pq v1.10.7
@@ -19,12 +21,10 @@ require (
 )
 
 require (
-	ariga.io/atlas/cmd/atlas v0.12.1-0.20230604115020-fb0a5a21bcb2 // indirect
 	cloud.google.com/go v0.103.0 // indirect
 	cloud.google.com/go/compute v1.7.0 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
 	cloud.google.com/go/secretmanager v1.5.0 // indirect
-	entgo.io/ent v0.12.4-0.20230503082810-f251400818ea // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220816024939-bc8df83d7b9d // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230512164433-5d1fd1a340c9 // indirect
@@ -72,7 +72,6 @@ require (
 	github.com/klauspost/compress v1.15.15 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/libsql/libsql-client-go v0.0.0-20230602133133-5905f0c4f8a5 // indirect
 	github.com/libsql/sqlite-antlr4-parser v0.0.0-20230512205400-b2348f0d1196 // indirect
 	github.com/manifoldco/promptui v0.9.0 // indirect
@@ -112,7 +111,6 @@ require (
 	google.golang.org/genproto v0.0.0-20220802133213-ce4fa296bf78 // indirect
 	google.golang.org/grpc v1.48.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
