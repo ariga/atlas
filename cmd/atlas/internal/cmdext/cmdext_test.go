@@ -110,7 +110,7 @@ func TestEntLoader_LoadState(t *testing.T) {
 	require.NoError(t, err)
 	l, ok := cmdext.States.Loader("ent")
 	require.True(t, ok)
-	state, err := l.LoadState(ctx, &cmdext.LoadStateOptions{
+	state, err := l.LoadState(ctx, &cmdext.StateReaderConfig{
 		Dev:  drv,
 		URLs: []*url.URL{u},
 	})
@@ -226,6 +226,79 @@ dir = data.template_dir.tenant.url
 	require.Len(t, files, 1)
 	require.Equal(t, "1.sql", files[0].Name())
 	require.Equal(t, "create table a8m.t(c int);", string(files[0].Bytes()))
+}
+
+func TestSchemaHCL(t *testing.T) {
+	var (
+		v struct {
+			Schema string `spec:"schema"`
+		}
+		dir   = t.TempDir()
+		ctx   = context.Background()
+		state = schemahcl.New(cmdext.DataSources...)
+	)
+	err := os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(`
+variable "schema" {
+  type = string
+}
+
+schema "dynamic" {
+  name = var.schema
+}
+
+table "t" {
+  schema = schema.dynamic
+  column "c" {
+    type = int
+  }
+}
+`), 0644)
+	require.NoError(t, err)
+	err = state.EvalBytes([]byte(`
+variable "path" {
+  type = string
+}
+
+data "hcl_schema" "a8m" {
+  path = var.path
+  vars = {
+    schema = "a8m"
+  }
+}
+
+schema = data.hcl_schema.a8m.url
+`), &v, map[string]cty.Value{
+		"path": cty.StringVal(dir),
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, v.Schema)
+	u, err := url.Parse(v.Schema)
+	require.NoError(t, err)
+	loader, ok := cmdext.States.Loader(u.Scheme)
+	require.True(t, ok)
+	drv, err := sqlclient.Open(ctx, "sqlite://test?mode=memory&_fk=1")
+	require.NoError(t, err)
+	sr, err := loader.LoadState(ctx, &cmdext.StateReaderConfig{
+		Dev:  drv,
+		URLs: []*url.URL{u},
+		// Variables are not needed at this stage,
+		// as they are defined on the data source.
+	})
+	require.NoError(t, err)
+	realm, err := sr.ReadState(ctx)
+	require.NoError(t, err)
+	buf, err := drv.MarshalSpec(realm)
+	require.NoError(t, err)
+	require.Equal(t, `table "t" {
+  schema = schema.a8m
+  column "c" {
+    null = false
+    type = int
+  }
+}
+schema "a8m" {
+}
+`, string(buf))
 }
 
 func TestAtlasConfig(t *testing.T) {

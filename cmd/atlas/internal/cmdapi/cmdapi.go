@@ -10,7 +10,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -389,60 +388,65 @@ func resetFromEnv(cmd *cobra.Command) func() {
 	}
 }
 
-type (
-	// stateReadCloser is a migrate.StateReader with an optional io.Closer.
-	stateReadCloser struct {
-		migrate.StateReader
-		io.Closer        // optional close function
-		schema    string // in case we work on a single schema
-		hcl       bool   // true if state was read from HCL files since in that case we always compare realms
+// stateReaderConfig is given to stateReader.
+type stateReaderConfig struct {
+	urls        []string          // urls to create a migrate.StateReader from
+	client, dev *sqlclient.Client // database connections, while dev is considered a dev database, client is not
+	schemas     []string          // schemas to work on
+	exclude     []string          // exclude flag values
+	vars        Vars
+}
+
+// Exported is a temporary method to convert the stateReaderConfig to cmdext.StateReaderConfig.
+func (c *stateReaderConfig) Exported() (*cmdext.StateReaderConfig, error) {
+	var (
+		err    error
+		parsed = make([]*url.URL, len(c.urls))
+	)
+	for i, u := range c.urls {
+		if parsed[i], err = url.Parse(u); err != nil {
+			return nil, err
+		}
 	}
-	// stateReaderConfig is given to stateReader.
-	stateReaderConfig struct {
-		urls        []string          // urls to create a migrate.StateReader from
-		client, dev *sqlclient.Client // database connections, while dev is considered a dev database, client is not
-		schemas     []string          // schemas to work on
-		exclude     []string          // exclude flag values
-		vars        Vars
-	}
-)
+	return &cmdext.StateReaderConfig{
+		URLs:    parsed,
+		Client:  c.client,
+		Dev:     c.dev,
+		Schemas: c.schemas,
+		Exclude: c.exclude,
+		Vars:    c.vars,
+	}, nil
+}
 
 // stateReader returns a migrate.StateReader that reads the state from the given urls.
-func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadCloser, error) {
+func stateReader(ctx context.Context, config *stateReaderConfig) (*cmdext.StateReadCloser, error) {
+	excfg, err := config.Exported()
+	if err != nil {
+		return nil, err
+	}
 	scheme, err := selectScheme(config.urls)
 	if err != nil {
 		return nil, err
 	}
-	parsed := make([]*url.URL, len(config.urls))
-	for i, u := range config.urls {
-		parsed[i], err = url.Parse(u)
-		if err != nil {
-			return nil, err
-		}
-	}
 	switch scheme {
 	// "file" scheme is valid for both migration directory and HCL paths.
 	case "file":
-		switch ext, err := filesExt(parsed); {
+		switch ext, err := filesExt(excfg.URLs); {
 		case err != nil:
 			return nil, err
 		case ext == extHCL:
-			return hclStateReader(ctx, config, parsed)
+			return cmdext.StateReaderHCL(ctx, excfg)
 		case ext == extSQL:
-			return sqlStateReader(ctx, config, parsed)
+			return cmdext.StateReaderSQL(ctx, excfg)
 		default:
 			panic("unreachable") // checked by filesExt.
 		}
 	default:
 		// In case there is an external state-loader registered with this scheme.
 		if l, ok := cmdext.States.Loader(scheme); ok {
-			sr, err := l.LoadState(ctx, &cmdext.LoadStateOptions{URLs: parsed, Dev: config.dev})
+			rc, err := l.LoadState(ctx, excfg)
 			if err != nil {
 				return nil, err
-			}
-			rc := &stateReadCloser{StateReader: sr}
-			if config.dev != nil && config.dev.URL.Schema != "" {
-				rc.schema = config.dev.URL.Schema
 			}
 			return rc, nil
 		}
@@ -461,137 +465,11 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 		default:
 			sr = migrate.SchemaConn(c.Driver, c.URL.Schema, &schema.InspectOptions{Exclude: config.exclude})
 		}
-		return &stateReadCloser{
+		return &cmdext.StateReadCloser{
 			StateReader: sr,
 			Closer:      c,
-			schema:      c.URL.Schema,
+			Schema:      c.URL.Schema,
 		}, nil
-	}
-}
-
-// hclStateReadr returns a StateReader that reads the state from the given HCL paths urls.
-func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.URL) (*stateReadCloser, error) {
-	var client *sqlclient.Client
-	switch {
-	case config.dev != nil:
-		client = config.dev
-	case config.client != nil:
-		client = config.client
-	default:
-		return nil, errors.New("--dev-url cannot be empty")
-	}
-	paths := make([]string, len(urls))
-	for i, u := range urls {
-		paths[i] = filepath.Join(u.Host, u.Path)
-	}
-	parser, err := parseHCLPaths(paths...)
-	if err != nil {
-		return nil, err
-	}
-	realm := &schema.Realm{}
-	if err := client.Eval(parser, realm, config.vars); err != nil {
-		return nil, err
-	}
-	if len(config.schemas) > 0 {
-		// Validate all schemas in file were selected by user.
-		sm := make(map[string]bool, len(config.schemas))
-		for _, s := range config.schemas {
-			sm[s] = true
-		}
-		for _, s := range realm.Schemas {
-			if !sm[s.Name] {
-				return nil, fmt.Errorf("schema %q from paths %q is not requested (all schemas in HCL must be requested)", s.Name, paths)
-			}
-		}
-	}
-	// In case the dev connection is bound to a specific schema, we require the
-	// desired schema to contain only one schema. Thus, executing diff will be
-	// done on the content of these two schema and not the whole realm.
-	if client.URL.Schema != "" && len(realm.Schemas) > 1 {
-		return nil, fmt.Errorf(
-			"cannot use HCL with more than 1 schema when dev-url is limited to schema %q",
-			config.dev.URL.Schema,
-		)
-	}
-	if norm, ok := client.Driver.(schema.Normalizer); ok && config.dev != nil { // only normalize on a dev database
-		realm, err = norm.NormalizeRealm(ctx, realm)
-		if err != nil {
-			return nil, err
-		}
-	}
-	t := &stateReadCloser{StateReader: migrate.Realm(realm), hcl: true}
-	return t, nil
-}
-
-func sqlStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.URL) (*stateReadCloser, error) {
-	if len(urls) != 1 {
-		return nil, fmt.Errorf("the provided SQL state must be either a single schema file or a migration directory, but %d paths were found", len(urls))
-	}
-	// Replaying a migration directory requires a dev connection.
-	if config.dev == nil {
-		return nil, errors.New("--dev-url cannot be empty")
-	}
-	var (
-		dir  migrate.Dir
-		opts []migrate.ReplayOption
-		path = filepath.Join(urls[0].Host, urls[0].Path)
-	)
-	switch fi, err := os.Stat(path); {
-	case err != nil:
-		return nil, err
-	// A single schema file.
-	case !fi.IsDir():
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return nil, err
-		}
-		dir = &migrate.MemDir{}
-		if err := dir.WriteFile(fi.Name(), b); err != nil {
-			return nil, err
-		}
-		// Create a checksum file to bypass the checksum check.
-		sum, err := dir.Checksum()
-		if err != nil {
-			return nil, err
-		}
-		if err = migrate.WriteSumFile(dir, sum); err != nil {
-			return nil, err
-		}
-	// A migration directory.
-	default:
-		if dir, err = dirURL(urls[0], false); err != nil {
-			return nil, err
-		}
-		if v := urls[0].Query().Get("version"); v != "" {
-			opts = append(opts, migrate.ReplayToVersion(v))
-		}
-	}
-	ex, err := migrate.NewExecutor(config.dev.Driver, dir, migrate.NopRevisionReadWriter{})
-	if err != nil {
-		return nil, err
-	}
-	sr, err := ex.Replay(ctx, func() migrate.StateReader {
-		if config.dev.URL.Schema != "" {
-			return migrate.SchemaConn(config.dev, "", nil)
-		}
-		return migrate.RealmConn(config.dev, &schema.InspectRealmOption{
-			Schemas: config.schemas,
-			Exclude: config.exclude,
-		})
-	}(), opts...)
-	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
-		return nil, err
-	}
-	return &stateReadCloser{
-		StateReader: migrate.Realm(sr),
-		schema:      config.dev.URL.Schema,
-	}, nil
-}
-
-// Close redirects calls to Close to the enclosed io.Closer.
-func (sr *stateReadCloser) Close() {
-	if sr.Closer != nil {
-		sr.Closer.Close()
 	}
 }
 

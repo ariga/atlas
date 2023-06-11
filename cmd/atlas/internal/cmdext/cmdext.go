@@ -2,8 +2,8 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-// Package cmdext provides extensions to the Atlas CLI that
-// may be moved to a separate repository in the future.
+// Package cmdext provides extensions to the Atlas configuration
+// file such as schema loaders, data sources and cloud connectors.
 package cmdext
 
 import (
@@ -50,6 +50,7 @@ var DataSources = []schemahcl.Option{
 	schemahcl.WithDataSource("runtimevar", RuntimeVarSrc),
 	schemahcl.WithDataSource("template_dir", TemplateDir),
 	schemahcl.WithDataSource("remote_dir", RemoteDir),
+	schemahcl.WithDataSource("hcl_schema", SchemaHCL),
 }
 
 // RuntimeVarSrc exposes the gocloud.dev/runtimevar as a schemahcl datasource.
@@ -402,6 +403,44 @@ func RemoteDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) 
 	}), nil
 }
 
+// SchemaHCL is a data source that reads an Atlas HCL schema file(s), evaluates it
+// with the given variables and exposes its resulting schema as in-memory HCL file.
+func SchemaHCL(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+	var (
+		args struct {
+			Path   string               `hcl:"path"`
+			Vars   map[string]cty.Value `hcl:"vars,optional"`
+			Remain hcl.Body             `hcl:",remain"`
+		}
+		errorf = blockError("data.hcl_schema", block)
+	)
+	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+		return cty.NilVal, errorf("decoding body: %v", diags)
+	}
+	attrs, diags := args.Remain.JustAttributes()
+	if diags.HasErrors() {
+		return cty.NilVal, errorf("getting attributes: %v", diags)
+	}
+	if len(attrs) > 0 {
+		return cty.NilVal, errorf("unexpected attributes: %v", attrs)
+	}
+	if args.Path == "" {
+		return cty.NilVal, errorf("path cannot be empty")
+	}
+	u, err := url.JoinPath("mem://hcl_schema", block.Labels[1])
+	if err != nil {
+		return cty.NilVal, errorf("build url: %v", err)
+	}
+	memLoader.states[u] = StateLoaderFunc(func(ctx context.Context, config *StateReaderConfig) (*StateReadCloser, error) {
+		cfg := *config
+		cfg.Vars = args.Vars
+		return stateReaderHCL(ctx, &cfg, []string{args.Path})
+	})
+	return cty.ObjectVal(map[string]cty.Value{
+		"url": cty.StringVal(u),
+	}), nil
+}
+
 func memdir(client *cloudapi.Client, dirName string, tag string) (string, error) {
 	input := cloudapi.DirInput{
 		Name: dirName,
@@ -440,15 +479,13 @@ func blockError(name string, b *hclsyntax.Block) func(string, ...any) error {
 }
 
 type (
-	// LoadStateOptions for external state loaders.
-	LoadStateOptions struct {
-		URLs []*url.URL
-		Dev  *sqlclient.Client // Client for the dev database.
-	}
 	// StateLoader allows loading StateReader's from external sources.
 	StateLoader interface {
-		LoadState(context.Context, *LoadStateOptions) (migrate.StateReader, error)
+		LoadState(context.Context, *StateReaderConfig) (*StateReadCloser, error)
 	}
+	// The StateLoaderFunc type is an adapter to allow the use of ordinary
+	// function as StateLoader.
+	StateLoaderFunc func(context.Context, *StateReaderConfig) (*StateReadCloser, error)
 
 	// MigrateDiffOptions for external migration differ.
 	MigrateDiffOptions struct {
@@ -466,11 +503,18 @@ type (
 	}
 )
 
+// LoadState calls f(ctx, opts).
+func (f StateLoaderFunc) LoadState(ctx context.Context, opts *StateReaderConfig) (*StateReadCloser, error) {
+	return f(ctx, opts)
+}
+
 var (
 	// States is a global registry for external state loaders.
 	States = registry{
 		"ent": EntLoader{},
+		"mem": memLoader,
 	}
+	memLoader       = MemLoader{states: make(map[string]StateLoader)}
 	errNotSchemaURL = errors.New("missing schema in --dev-url. See: https://atlasgo.io/url")
 )
 
@@ -492,26 +536,44 @@ func (r registry) Differ(to []string) (MigrateDiffer, bool) {
 	return nil, false
 }
 
+// MemLoader is a StateLoader for loading data-sources
+// that were loaded into program memory.
+type MemLoader struct {
+	states map[string]StateLoader
+}
+
+// LoadState loads the state loaded from data-sources into memory.
+func (l MemLoader) LoadState(ctx context.Context, config *StateReaderConfig) (*StateReadCloser, error) {
+	if len(config.URLs) != 1 {
+		return nil, errors.New(`"mem://" requires exactly one data-source URL`)
+	}
+	u := config.URLs[0].String()
+	if l.states[u] == nil {
+		return nil, fmt.Errorf("data-source state %q not found in memory", u)
+	}
+	return l.states[u].LoadState(ctx, config)
+}
+
 // EntLoader is a StateLoader for loading ent.Schema's as StateReader's.
 type EntLoader struct{}
 
 // LoadState returns a migrate.StateReader that reads the schema from an ent.Schema.
-func (l EntLoader) LoadState(ctx context.Context, opts *LoadStateOptions) (migrate.StateReader, error) {
+func (l EntLoader) LoadState(ctx context.Context, config *StateReaderConfig) (*StateReadCloser, error) {
 	switch {
-	case len(opts.URLs) != 1:
+	case len(config.URLs) != 1:
 		return nil, errors.New(`"ent://" requires exactly one schema URL`)
-	case opts.Dev == nil:
+	case config.Dev == nil:
 		return nil, errors.New(`required flag "--dev-url" not set`)
-	case opts.Dev.URL.Schema == "":
+	case config.Dev.URL.Schema == "":
 		return nil, errNotSchemaURL
-	case opts.URLs[0].Query().Has("globalid"):
+	case config.URLs[0].Query().Has("globalid"):
 		return nil, errors.New("globalid is not supported by this command. Use 'migrate diff' instead")
 	}
-	tables, err := l.tables(opts.URLs[0])
+	tables, err := l.tables(config.URLs[0])
 	if err != nil {
 		return nil, err
 	}
-	m, err := entschema.NewMigrate(sql.OpenDB(opts.Dev.Name, opts.Dev.DB))
+	m, err := entschema.NewMigrate(sql.OpenDB(config.Dev.Name, config.Dev.DB))
 	if err != nil {
 		return nil, fmt.Errorf("creating migrate reader: %w", err)
 	}
@@ -519,7 +581,7 @@ func (l EntLoader) LoadState(ctx context.Context, opts *LoadStateOptions) (migra
 	if err != nil {
 		return nil, fmt.Errorf("reading schema state: %w", err)
 	}
-	if nr, ok := opts.Dev.Driver.(schema.Normalizer); ok {
+	if nr, ok := config.Dev.Driver.(schema.Normalizer); ok {
 		if realm, err = nr.NormalizeRealm(ctx, realm); err != nil {
 			return nil, err
 		}
@@ -528,13 +590,17 @@ func (l EntLoader) LoadState(ctx context.Context, opts *LoadStateOptions) (migra
 		return nil, fmt.Errorf("expect exactly one schema, got %d", len(realm.Schemas))
 	}
 	// Use the dev-database schema name if the schema name is empty.
-	if realm.Schemas[0].Name == "" && opts.Dev.URL.Schema != "" {
-		realm.Schemas[0].Name = opts.Dev.URL.Schema
+	if realm.Schemas[0].Name == "" && config.Dev.URL.Schema != "" {
+		realm.Schemas[0].Name = config.Dev.URL.Schema
 	}
 	for _, t := range realm.Schemas[0].Tables {
 		t.Schema = realm.Schemas[0]
 	}
-	return migrate.Realm(realm), nil
+	rc := &StateReadCloser{StateReader: migrate.Realm(realm)}
+	if config.Dev != nil && config.Dev.URL.Schema != "" {
+		rc.Schema = config.Dev.URL.Schema
+	}
+	return rc, nil
 }
 
 // MigrateDiff returns the diff between ent.Schema and a directory.

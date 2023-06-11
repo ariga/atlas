@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"net/url"
 	"os"
 	"os/exec"
@@ -167,7 +166,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		}
 	}
 	// Open and validate the migration directory.
-	migrationDir, err := dir(flags.dirURL, false)
+	migrationDir, err := cmdmigrate.Dir(flags.dirURL, false)
 	if err != nil {
 		return err
 	}
@@ -592,7 +591,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	if err != nil {
 		return err
 	}
-	dir, err := dirURL(u, false)
+	dir, err := cmdmigrate.DirURL(u, false)
 	if err != nil {
 		return err
 	}
@@ -603,7 +602,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	if len(args) > 0 {
 		name = args[0]
 	}
-	f, err := formatter(u)
+	f, err := cmdmigrate.Formatter(u)
 	if err != nil {
 		return err
 	}
@@ -654,7 +653,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	}()
 	var cerr *migrate.NotCleanError
 	switch {
-	case errors.As(err, &cerr) && dev.URL.Schema == "" && desired.schema != "":
+	case errors.As(err, &cerr) && dev.URL.Schema == "" && desired.Schema != "":
 		return fmt.Errorf("dev database is not clean (%s). Add a schema to the URL to limit the scope of the connection", cerr.Reason)
 	case err != nil:
 		return maskNoPlan(cmd, err)
@@ -740,7 +739,7 @@ This command should be used whenever a manual change in the migration directory 
 				return dirFormatBC(flags.dirFormat, &flags.dirURL)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
-				dir, err := dir(flags.dirURL, false)
+				dir, err := cmdmigrate.Dir(flags.dirURL, false)
 				if err != nil {
 					return err
 				}
@@ -778,7 +777,7 @@ func migrateImportCmd() *cobra.Command {
 				if err := dirFormatBC(flags.dirFormat, &flags.fromURL); err != nil {
 					return err
 				}
-				d, err := dir(flags.fromURL, false)
+				d, err := cmdmigrate.Dir(flags.fromURL, false)
 				if err != nil {
 					return err
 				}
@@ -805,14 +804,14 @@ func migrateImportRun(cmd *cobra.Command, _ []string, flags migrateImportFlags) 
 	if err != nil {
 		return err
 	}
-	if f := p.Query().Get("format"); f == "" || f == formatAtlas {
-		return fmt.Errorf("cannot import a migration directory already in %q format", formatAtlas)
+	if f := p.Query().Get("format"); f == "" || f == cmdmigrate.FormatAtlas {
+		return fmt.Errorf("cannot import a migration directory already in %q format", cmdmigrate.FormatAtlas)
 	}
-	src, err := dir(flags.fromURL, false)
+	src, err := cmdmigrate.Dir(flags.fromURL, false)
 	if err != nil {
 		return err
 	}
-	trgt, err := dir(flags.toURL, true)
+	trgt, err := cmdmigrate.Dir(flags.toURL, true)
 	if err != nil {
 		return err
 	}
@@ -928,7 +927,7 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 		return err
 	}
 	defer dev.Close()
-	dir, err := dir(flags.dirURL, false)
+	dir, err := cmdmigrate.Dir(flags.dirURL, false)
 	if err != nil {
 		return err
 	}
@@ -1025,14 +1024,14 @@ func migrateNewRun(_ *cobra.Command, args []string, flags migrateNewFlags) error
 	if err != nil {
 		return err
 	}
-	dir, err := dirURL(u, true)
+	dir, err := cmdmigrate.DirURL(u, true)
 	if err != nil {
 		return err
 	}
 	if flags.edit {
 		dir = &editDir{dir}
 	}
-	f, err := formatter(u)
+	f, err := cmdmigrate.Formatter(u)
 	if err != nil {
 		return err
 	}
@@ -1085,7 +1084,7 @@ to be applied. This command is usually used after manually making changes to the
 
 func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) (rerr error) {
 	ctx := cmd.Context()
-	dir, err := dir(flags.dirURL, false)
+	dir, err := cmdmigrate.Dir(flags.dirURL, false)
 	if err != nil {
 		return err
 	}
@@ -1282,7 +1281,7 @@ func migrateStatusCmd() *cobra.Command {
 }
 
 func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) error {
-	dir, err := dir(flags.dirURL, false)
+	dir, err := cmdmigrate.Dir(flags.dirURL, false)
 	if err != nil {
 		return err
 	}
@@ -1364,7 +1363,7 @@ func migrateValidateRun(cmd *cobra.Command, _ []string, flags migrateValidateFla
 	}
 	defer dev.Close()
 	// Currently, only our own migration file format is supported.
-	dir, err := dir(flags.dirURL, false)
+	dir, err := cmdmigrate.Dir(flags.dirURL, false)
 	if err != nil {
 		return err
 	}
@@ -1571,58 +1570,6 @@ func operatorVersion() string {
 	return "Atlas CLI " + v
 }
 
-// dir parses u and calls dirURL.
-func dir(u string, create bool) (migrate.Dir, error) {
-	parsed, err := url.Parse(u)
-	if err != nil {
-		return nil, err
-	}
-	return dirURL(parsed, create)
-}
-
-// dirURL returns a migrate.Dir to use as migration directory. For now only local directories are supported.
-func dirURL(u *url.URL, create bool) (migrate.Dir, error) {
-	path := filepath.Join(u.Host, u.Path)
-	switch u.Scheme {
-	case "mem":
-		return migrate.OpenMemDir(path), nil
-	case "file":
-		if path == "" {
-			path = "migrations"
-		}
-	default:
-		return nil, fmt.Errorf("unsupported driver %q", u.Scheme)
-	}
-	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(path) }
-	switch f := u.Query().Get("format"); f {
-	case "", formatAtlas:
-		// this is the default
-	case formatGolangMigrate:
-		fn = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(path) }
-	case formatGoose:
-		fn = func() (migrate.Dir, error) { return sqltool.NewGooseDir(path) }
-	case formatFlyway:
-		fn = func() (migrate.Dir, error) { return sqltool.NewFlywayDir(path) }
-	case formatLiquibase:
-		fn = func() (migrate.Dir, error) { return sqltool.NewLiquibaseDir(path) }
-	case formatDBMate:
-		fn = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(path) }
-	default:
-		return nil, fmt.Errorf("unknown dir format %q", f)
-	}
-	d, err := fn()
-	if create && errors.Is(err, fs.ErrNotExist) {
-		if err := os.MkdirAll(path, 0755); err != nil {
-			return nil, err
-		}
-		d, err = fn()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return d, err
-}
-
 // dirFormatBC ensures the soon-to-be deprecated --dir-format flag gets set on all migration directory URLs.
 func dirFormatBC(flag string, urls ...*string) error {
 	for _, s := range urls {
@@ -1641,7 +1588,7 @@ func dirFormatBC(flag string, urls ...*string) error {
 }
 
 func checkDir(cmd *cobra.Command, url string, create bool) error {
-	d, err := dir(url, create)
+	d, err := cmdmigrate.Dir(url, create)
 	if err != nil {
 		return err
 	}
@@ -1753,34 +1700,6 @@ func isProjectFile(f *hcl.File) bool {
 		}
 	}
 	return false
-}
-
-const (
-	formatAtlas         = "atlas"
-	formatGolangMigrate = "golang-migrate"
-	formatGoose         = "goose"
-	formatFlyway        = "flyway"
-	formatLiquibase     = "liquibase"
-	formatDBMate        = "dbmate"
-)
-
-func formatter(u *url.URL) (migrate.Formatter, error) {
-	switch f := u.Query().Get("format"); f {
-	case formatAtlas:
-		return migrate.DefaultFormatter, nil
-	case formatGolangMigrate:
-		return sqltool.GolangMigrateFormatter, nil
-	case formatGoose:
-		return sqltool.GooseFormatter, nil
-	case formatFlyway:
-		return sqltool.FlywayFormatter, nil
-	case formatLiquibase:
-		return sqltool.LiquibaseFormatter, nil
-	case formatDBMate:
-		return sqltool.DBMateFormatter, nil
-	default:
-		return nil, fmt.Errorf("unknown format %q", f)
-	}
 }
 
 func migrateFlagsFromConfig(cmd *cobra.Command) error {

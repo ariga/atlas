@@ -1471,7 +1471,7 @@ func TestMigrate_New(t *testing.T) {
 	require.Equal(t, 3, countFiles(t, p))
 
 	p = t.TempDir()
-	s, err = runCmd(migrateNewCmd(), "golang-migrate", "--dir", "file://"+p, "--dir-format", formatGolangMigrate)
+	s, err = runCmd(migrateNewCmd(), "golang-migrate", "--dir", "file://"+p, "--dir-format", migrate2.FormatGolangMigrate)
 	require.Zero(t, s)
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, v+"_golang-migrate.up.sql"))
@@ -1479,29 +1479,29 @@ func TestMigrate_New(t *testing.T) {
 	require.Equal(t, 3, countFiles(t, p))
 
 	p = t.TempDir()
-	s, err = runCmd(migrateNewCmd(), "goose", "--dir", "file://"+p+"?format="+formatGoose)
+	s, err = runCmd(migrateNewCmd(), "goose", "--dir", "file://"+p+"?format="+migrate2.FormatGoose)
 	require.Zero(t, s)
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, v+"_goose.sql"))
 	require.Equal(t, 2, countFiles(t, p))
 
 	p = t.TempDir()
-	s, err = runCmd(migrateNewCmd(), "flyway", "--dir", "file://"+p+"?format="+formatFlyway)
+	s, err = runCmd(migrateNewCmd(), "flyway", "--dir", "file://"+p+"?format="+migrate2.FormatFlyway)
 	require.Zero(t, s)
 	require.NoError(t, err)
-	require.FileExists(t, filepath.Join(p, fmt.Sprintf("V%s__%s.sql", v, formatFlyway)))
-	require.FileExists(t, filepath.Join(p, fmt.Sprintf("U%s__%s.sql", v, formatFlyway)))
+	require.FileExists(t, filepath.Join(p, fmt.Sprintf("V%s__%s.sql", v, migrate2.FormatFlyway)))
+	require.FileExists(t, filepath.Join(p, fmt.Sprintf("U%s__%s.sql", v, migrate2.FormatFlyway)))
 	require.Equal(t, 3, countFiles(t, p))
 
 	p = t.TempDir()
-	s, err = runCmd(migrateNewCmd(), "liquibase", "--dir", "file://"+p+"?format="+formatLiquibase)
+	s, err = runCmd(migrateNewCmd(), "liquibase", "--dir", "file://"+p+"?format="+migrate2.FormatLiquibase)
 	require.Zero(t, s)
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, v+"_liquibase.sql"))
 	require.Equal(t, 2, countFiles(t, p))
 
 	p = t.TempDir()
-	s, err = runCmd(migrateNewCmd(), "dbmate", "--dir", "file://"+p+"?format="+formatDBMate)
+	s, err = runCmd(migrateNewCmd(), "dbmate", "--dir", "file://"+p+"?format="+migrate2.FormatDBMate)
 	require.Zero(t, s)
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, v+"_dbmate.sql"))
@@ -1678,7 +1678,7 @@ lint {
 	require.NoError(t, os.Rename(filepath.Join(p, "2.sql"), filepath.Join(p, "1.down.sql")))
 	s, err = runCmd(
 		migrateLintCmd(),
-		"--dir", "file://"+p+"?format="+formatGolangMigrate,
+		"--dir", "file://"+p+"?format="+migrate2.FormatGolangMigrate,
 		"--dev-url", openSQLite(t, ""),
 		"--latest", "2",
 		"--format", "{{ range .Files }}{{ .Name }}:{{ len .Reports }}{{ end }}",
@@ -1687,11 +1687,11 @@ lint {
 	require.Equal(t, "1.up.sql:0", s)
 	s, err = runCmd(
 		migrateLintCmd(),
-		"--dir", "file://"+p+"?format="+formatGolangMigrate,
+		"--dir", "file://"+p+"?format="+migrate2.FormatGolangMigrate,
 		"--dev-url", openSQLite(t, ""),
 		"--latest", "2",
 		"--format", "{{ range .Files }}{{ .Name }}:{{ len .Reports }}{{ end }}",
-		"--dir-format", formatGolangMigrate,
+		"--dir-format", migrate2.FormatGolangMigrate,
 	)
 	require.NoError(t, err)
 	require.Equal(t, "1.up.sql:0", s)
@@ -1701,7 +1701,7 @@ lint {
 	require.NoError(t, err)
 	s, err = runCmd(
 		migrateLintCmd(),
-		"--dir", "file://"+p+"?format="+formatGolangMigrate,
+		"--dir", "file://"+p+"?format="+migrate2.FormatGolangMigrate,
 		"--dev-url", openSQLite(t, ""),
 		"--latest", "1",
 	)
