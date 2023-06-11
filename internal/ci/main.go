@@ -161,6 +161,26 @@ var (
 			Version: "sqlite",
 			Regex:   "SQLite.*",
 		},
+		{
+			Version: "sqlserver-2022",
+			Image:   "mcr.microsoft.com/mssql/server:2022-latest",
+			Regex:   "SQLServer",
+			Ports:   []string{"1433:1433"},
+			Env: []string{
+				"ACCEPT_EULA: Y",
+				"MSSQL_SA_PASSWORD: Passw0rd!995",
+			},
+		},
+		{
+			Version: "azure-sql-edge",
+			Image:   "mcr.microsoft.com/azure-sql-edge:latest",
+			Regex:   "SQLServer",
+			Ports:   []string{"1434:1433"},
+			Env: []string{
+				"ACCEPT_EULA: Y",
+				"MSSQL_SA_PASSWORD: Passw0rd!995",
+			},
+		},
 	}
 )
 

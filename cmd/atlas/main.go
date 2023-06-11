@@ -15,6 +15,7 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cmdapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdapi/vercheck"
 	_ "ariga.io/atlas/cmd/atlas/internal/docker"
+	_ "ariga.io/atlas/sql/mssql"
 	_ "ariga.io/atlas/sql/mysql"
 	_ "ariga.io/atlas/sql/mysql/mysqlcheck"
 	_ "ariga.io/atlas/sql/postgres"
@@ -28,6 +29,7 @@ import (
 	_ "github.com/lib/pq"
 	_ "github.com/libsql/libsql-client-go/libsql"
 	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/microsoft/go-mssqldb"
 )
 
 func main() {
