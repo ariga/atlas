@@ -15,6 +15,7 @@ import (
 	"strings"
 	"text/template"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -620,7 +621,7 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	return nil
 }
 
-func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateReadCloser, opts ...schema.DiffOption) ([]schema.Change, error) {
+func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *cmdext.StateReadCloser, opts ...schema.DiffOption) ([]schema.Change, error) {
 	current, err := from.ReadState(ctx)
 	if err != nil {
 		return nil, err
@@ -632,16 +633,16 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateR
 	var diff []schema.Change
 	switch {
 	// In case an HCL file is compared against a specific database schema (not a realm).
-	case to.hcl && len(desired.Schemas) == 1 && from.schema != "" && desired.Schemas[0].Name != from.schema:
-		return nil, fmt.Errorf("mismatched HCL and database schemas: %q <> %q", from.schema, desired.Schemas[0].Name)
+	case to.HCL && len(desired.Schemas) == 1 && from.Schema != "" && desired.Schemas[0].Name != from.Schema:
+		return nil, fmt.Errorf("mismatched HCL and database schemas: %q <> %q", from.Schema, desired.Schemas[0].Name)
 	// Compare realm if the desired state is an HCL file or both connections are not bound to a schema.
-	case from.hcl, to.hcl, from.schema == "" && to.schema == "":
+	case from.HCL, to.HCL, from.Schema == "" && to.Schema == "":
 		diff, err = differ.RealmDiff(current, desired, opts...)
 		if err != nil {
 			return nil, err
 		}
-	case from.schema == "", to.schema == "":
-		return nil, fmt.Errorf("cannot diff a schema with a database connection: %q <> %q", from.schema, to.schema)
+	case from.Schema == "", to.Schema == "":
+		return nil, fmt.Errorf("cannot diff a schema with a database connection: %q <> %q", from.Schema, to.Schema)
 	default:
 		// SchemaDiff checks for name equality which is irrelevant in the case
 		// the user wants to compare their contents, reset them to allow the comparison.

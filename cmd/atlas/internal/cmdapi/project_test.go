@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
+	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 
@@ -110,7 +111,7 @@ env "multi" {
 			Schemas: []string{"hello", "world"},
 			Migration: &Migration{
 				Dir:             "file://migrations",
-				Format:          formatAtlas,
+				Format:          cmdmigrate.FormatAtlas,
 				LockTimeout:     "1s",
 				RevisionsSchema: "revisions",
 			},

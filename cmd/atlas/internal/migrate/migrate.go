@@ -8,6 +8,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"net/url"
+	"os"
+	"path/filepath"
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
@@ -15,6 +19,8 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/sqltool"
+	
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
@@ -195,11 +201,11 @@ const revisionID = ".atlas_cloud_identifier"
 // ID returns the identifier of the connected revisions table.
 func (r *EntRevisions) ID(ctx context.Context, operatorV string) (string, error) {
 	err := r.ec.Revision.Create().
-		SetID(revisionID).                // identifier key
+		SetID(revisionID). // identifier key
 		SetDescription(uuid.NewString()). // actual revision identifier
-		SetOperatorVersion(operatorV).    // operator version
-		SetExecutedAt(time.Now()).        // when it was set
-		SetExecutionTime(0).              // dummy values
+		SetOperatorVersion(operatorV). // operator version
+		SetExecutedAt(time.Now()). // when it was set
+		SetExecutionTime(0). // dummy values
 		SetHash("").
 		OnConflict(sql.ConflictColumns(revision.FieldID)).
 		Ignore().
@@ -219,3 +225,88 @@ func (r *EntRevisions) ID(ctx context.Context, operatorV string) (string, error)
 }
 
 var _ migrate.RevisionReadWriter = (*EntRevisions)(nil)
+
+// List of supported formats.
+const (
+	FormatAtlas         = "atlas"
+	FormatGolangMigrate = "golang-migrate"
+	FormatGoose         = "goose"
+	FormatFlyway        = "flyway"
+	FormatLiquibase     = "liquibase"
+	FormatDBMate        = "dbmate"
+)
+
+// Formats is the list of supported formats.
+var Formats = []string{FormatAtlas, FormatGolangMigrate, FormatGoose, FormatFlyway, FormatLiquibase, FormatDBMate}
+
+// Formatter returns the dir formatter for its URL.
+func Formatter(u *url.URL) (migrate.Formatter, error) {
+	switch f := u.Query().Get("format"); f {
+	case FormatAtlas:
+		return migrate.DefaultFormatter, nil
+	case FormatGolangMigrate:
+		return sqltool.GolangMigrateFormatter, nil
+	case FormatGoose:
+		return sqltool.GooseFormatter, nil
+	case FormatFlyway:
+		return sqltool.FlywayFormatter, nil
+	case FormatLiquibase:
+		return sqltool.LiquibaseFormatter, nil
+	case FormatDBMate:
+		return sqltool.DBMateFormatter, nil
+	default:
+		return nil, fmt.Errorf("unknown format %q", f)
+	}
+}
+
+// Dir parses u and calls dirURL.
+func Dir(u string, create bool) (migrate.Dir, error) {
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return nil, err
+	}
+	return DirURL(parsed, create)
+}
+
+// DirURL returns a migrate.Dir to use as migration directory. For now only local directories are supported.
+func DirURL(u *url.URL, create bool) (migrate.Dir, error) {
+	path := filepath.Join(u.Host, u.Path)
+	switch u.Scheme {
+	case "mem":
+		return migrate.OpenMemDir(path), nil
+	case "file":
+		if path == "" {
+			path = "migrations"
+		}
+	default:
+		return nil, fmt.Errorf("unsupported driver %q", u.Scheme)
+	}
+	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(path) }
+	switch f := u.Query().Get("format"); f {
+	case "", FormatAtlas:
+		// this is the default
+	case FormatGolangMigrate:
+		fn = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(path) }
+	case FormatGoose:
+		fn = func() (migrate.Dir, error) { return sqltool.NewGooseDir(path) }
+	case FormatFlyway:
+		fn = func() (migrate.Dir, error) { return sqltool.NewFlywayDir(path) }
+	case FormatLiquibase:
+		fn = func() (migrate.Dir, error) { return sqltool.NewLiquibaseDir(path) }
+	case FormatDBMate:
+		fn = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(path) }
+	default:
+		return nil, fmt.Errorf("unknown dir format %q", f)
+	}
+	d, err := fn()
+	if create && errors.Is(err, fs.ErrNotExist) {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return nil, err
+		}
+		d, err = fn()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return d, err
+}

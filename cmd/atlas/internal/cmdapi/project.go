@@ -12,6 +12,7 @@ import (
 	"reflect"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
+	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 
@@ -408,12 +409,7 @@ func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
 		append(
 			cmdext.DataSources,
 			cfg.InitBlock(),
-			schemahcl.WithScopedEnums(
-				"env.migration.format",
-				formatAtlas, formatFlyway,
-				formatLiquibase, formatGoose,
-				formatGolangMigrate,
-			),
+			schemahcl.WithScopedEnums("env.migration.format", cmdmigrate.Formats...),
 			schemahcl.WithVariables(map[string]cty.Value{
 				refAtlas: cty.ObjectVal(map[string]cty.Value{
 					blockEnv: cty.StringVal(env),
