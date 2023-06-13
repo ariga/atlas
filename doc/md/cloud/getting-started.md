@@ -18,7 +18,7 @@ database schema.
 1. To get started with [Atlas Cloud](https://atlasgo.cloud/), create an account by clicking 'sign up' on the homepage.
 2. In the sign up screen, you can either sign up with GitHub or enter your work email and choose a password.
 3. Next, you will receive an email to verify your account. From your email, [Atlas Cloud](https://atlasgo.cloud/)
-will open in a new tab, and you will need to sign in to access your account.
+will open in a new tab, and you will need to sign in which will let you access your account.
 4. Once signed in, you will be asked to confirm the service agreement in order to continue with the login process.
 5. Next, you will be prompted to create an organization. After creating the organization, you will be able
 to invite team members to join. Choose a meaningful name for the organization, as it will also be your subdomain.
