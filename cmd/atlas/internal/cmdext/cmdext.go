@@ -443,7 +443,7 @@ func SchemaHCL(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) 
 	}), nil
 }
 
-// SchemaExternal is a data source that reads an Atlas SQL/HCL schema state from external program.
+// SchemaExternal is a data source that reads a SQL schema state from external program.
 func SchemaExternal(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {

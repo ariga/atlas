@@ -1,0 +1,44 @@
+atlas migrate diff first --env local --var filename=schema1.sql
+cmpmig 0 expected1.sql
+
+atlas migrate diff second --env local --var filename=schema2.sql
+cmpmig 1 expected2.sql
+
+-- atlas.hcl --
+variable "filename" {
+  type = string
+}
+
+data "external_schema" "app" {
+  program = [
+    "cat",
+    var.filename,
+  ]
+}
+
+env "local" {
+    src = data.external_schema.app.url
+    dev = "sqlite://dev?mode=memory&_fk=1"
+}
+
+-- schema1.sql --
+CREATE TABLE users (
+    name text NOT NULL
+);
+
+-- expected1.sql --
+-- Create "users" table
+CREATE TABLE `users` (`name` text NOT NULL);
+
+-- schema2.sql --
+CREATE TABLE users (
+    name text NOT NULL,
+    age decimal NOT NULL
+);
+
+-- expected2.sql --
+-- Add column "age" to table: "users"
+ALTER TABLE `users` ADD COLUMN `age` decimal NOT NULL;
+
+
+
