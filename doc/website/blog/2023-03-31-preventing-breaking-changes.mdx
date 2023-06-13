@@ -32,7 +32,7 @@ This is a breaking change, and it can cause downtime if not detected and prevent
 Preventing breaking changes in production is crucial to maintaining a highly-available
 system. To enforce backward-compatibility most teams rely on two things:
 
-1. **GitOps:** Making sure every change to the database is checked in to
+1. **GitOps:** Making sure every change to the database is checked-in to
   source control system, and using automated schema migration tools to apply the change.
 2. **Manual code-review:** Carefully reviewing every schema change to make sure it
   will not break the contract between the backend and the database.

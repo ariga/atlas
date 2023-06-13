@@ -7,7 +7,7 @@ slug: /guides/frameworks/sqlc-versioned
 In our [previous sqlc guide](/guides/frameworks/sqlc-declarative), we saw how we can use Atlas to handle the schema
 management process using the [declarative workflow](/concepts/declarative-vs-versioned#declarative-migrations). This
 works great in many situations, but some teams prefer the imperative approach where schema changes are explicitly
-checked in to source control and verified during code review
+checked-in to source control and verified during code review
 (see [this video](https://www.youtube.com/watch?v=FCeIjPb4AYs) to learn why).
 
 To accommodate such cases, Atlas supports another kind of workflow for handling migrations,
