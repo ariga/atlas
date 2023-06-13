@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v2.1.5
         with:
           node-version: 16
-      - name: Cache dependecies
+      - name: Cache dependencies
         uses: actions/cache@v2.1.6
         with:
           path: ~/.npm
