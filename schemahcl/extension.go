@@ -496,7 +496,7 @@ func scanPtr(key string, r *Resource, field reflect.Value) error {
 	default:
 		t, err := gocty.ImpliedType(e)
 		if err != nil {
-			return fmt.Errorf("schemahcl: cannot infer type for field %q when scaning pointer: %w", key, err)
+			return fmt.Errorf("schemahcl: cannot infer type for field %q when scanning pointer: %w", key, err)
 		}
 		attr.V, err = gocty.ToCtyValue(e, t)
 		if err != nil {
