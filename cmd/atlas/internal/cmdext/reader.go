@@ -71,16 +71,7 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 		if err != nil {
 			return nil, err
 		}
-		dir = &migrate.MemDir{}
-		if err := dir.WriteFile(fi.Name(), b); err != nil {
-			return nil, err
-		}
-		// Create a checksum file to bypass the checksum check.
-		sum, err := dir.Checksum()
-		if err != nil {
-			return nil, err
-		}
-		if err = migrate.WriteSumFile(dir, sum); err != nil {
+		if dir, err = fileAsDir(fi.Name(), b); err != nil {
 			return nil, err
 		}
 	// A migration directory.
@@ -92,6 +83,11 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 			opts = append(opts, migrate.ReplayToVersion(v))
 		}
 	}
+	return stateReaderSQL(ctx, config, dir, opts...)
+}
+
+// stateReaderSQL returns a migrate.StateReader from an SQL file or a directory of migrations.
+func stateReaderSQL(ctx context.Context, config *StateReaderConfig, dir migrate.Dir, opts ...migrate.ReplayOption) (*StateReadCloser, error) {
 	ex, err := migrate.NewExecutor(config.Dev.Driver, dir, migrate.NopRevisionReadWriter{})
 	if err != nil {
 		return nil, err
@@ -235,4 +231,20 @@ func isProjectFile(f *hcl.File) bool {
 		}
 	}
 	return false
+}
+
+func fileAsDir(name string, b []byte) (migrate.Dir, error) {
+	dir := &migrate.MemDir{}
+	if err := dir.WriteFile(name, b); err != nil {
+		return nil, err
+	}
+	// Create a checksum file to bypass the checksum check.
+	sum, err := dir.Checksum()
+	if err != nil {
+		return nil, err
+	}
+	if err = migrate.WriteSumFile(dir, sum); err != nil {
+		return nil, err
+	}
+	return dir, nil
 }

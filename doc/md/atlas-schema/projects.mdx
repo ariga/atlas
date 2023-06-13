@@ -29,7 +29,7 @@ env "local" {
 
   // Define the URL of the Dev Database for this environment
   // See: https://atlasgo.io/concepts/dev-database
-  dev = "docker://mysql/8/schema"
+  dev = "docker://mysql/8/dev"
 }
 
 env "dev" {
@@ -53,7 +53,7 @@ env "local" {
 
   // Define the URL of the Dev Database for this environment
   // See: https://atlasgo.io/concepts/dev-database
-  dev = "docker://maria/latest/schema"
+  dev = "docker://maria/latest/dev"
 }
 
 env "dev" {
@@ -77,7 +77,7 @@ env "local" {
 
   // Define the URL of the Dev Database for this environment
   // See: https://atlasgo.io/concepts/dev-database
-  dev = "docker://postgres/15"
+  dev = "docker://postgres/15/dev?search_path=public"
 }
 
 env "dev" {
@@ -207,46 +207,66 @@ Will run the `migrate validate` command against the Dev Database defined in the
 
 ### Passing Input Values
 
-Project files may pass [input values](input-variables) to variables defined in
-the Atlas schema of the environment. To do this simply provide additional attributes
-to the environment block:
-```hcl title="atlas.hcl"
-env "local" {
-  url = "sqlite://test?mode=memory&_fk=1"
-  src = "schema.hcl"
+Project files may pass [input values](input-variables) to variables defined in Atlas HCL schemas. To do this,
+define an [`hcl_schema`](#data-source-hcl_schema) data source, pass it the input values, and then designate it as the
+desired schema within the `env` block:
 
-  // Other attributes are passed as input values to "schema.hcl":
-  tenant = "rotemtam"
+<Tabs>
+<TabItem label="atlas.hcl" value="atlas.hcl">
+
+```hcl
+data "hcl_schema" "app" {
+  path = "schema.hcl"
+  vars = {
+    // Variables are passed as input values to "schema.hcl".
+    tenant = "ariga"
+  }
+}
+
+env "local" {
+  src = data.hcl_schema.app.url
+  url = "sqlite://test?mode=memory&_fk=1"
 }
 ```
 
-These values can then be consumed by variables defined in the schema file:
+</TabItem>
+<TabItem label="schema.hcl" value="schema.hcl">
 
 ```hcl title="schema.hcl"
+// This variable is passed as an input value from "atlas.hcl".
 variable "tenant" {
   type = string
 }
+
 schema "main" {
   name = var.tenant
 }
 ```
+
+</TabItem>
+</Tabs>
 
 ### Project Input Variables
 
 Project files may also declare [input variables](../atlas-schema/input.md) that can be supplied to the CLI
 at runtime. For example:
 
-```hcl
+```hcl title="atlas.hcl"
 variable "tenant" {
   type = string
 }
 
-env "local" {
-  url = "sqlite://test?mode=memory&_fk=1"
-  src = "schema.hcl"
+data "hcl_schema" "app" {
+  path = "schema.hcl"
+  vars = {
+    // Variables are passed as input values to "schema.hcl".
+    tenant = var.tenant
+  }
+}
 
-  // The value for "tenant" is determined by the user at runtime.
-  tenant = var.tenant
+env "local" {
+  src = data.hcl_schema.app.url
+  url = "sqlite://test?mode=memory&_fk=1"
 }
 ```
 To set the value for this variable at runtime, use the `--var` flag:
@@ -314,6 +334,8 @@ Data sources enable users to retrieve information stored in an external service 
 data sources are:
 - [`sql`](#data-source-sql)
 - [`runtimevar`](#data-source-runtimevar)
+- [`hcl_schema`](#data-source-hcl_schema)
+- [`external_schema`](#data-source-external_schema)
 - [`remote_dir`](#data-source-remote_dir)
 - [`template_dir`](#data-source-template_dir)
 
@@ -323,6 +345,8 @@ selected environment, for instance, `atlas schema apply --env dev`.
 :::
 
 #### Data source: `sql`
+
+The `sql` data source allows executing SQL queries on a database and using the results in the project.
 
 ##### Arguments {#data-source-sql-arguments}
 
@@ -455,6 +479,96 @@ env "dev" {
 </TabItem>
 </Tabs>
 
+#### Data source: `hcl_schema`
+
+The `hcl_schema` data source allows the loading of an Atlas HCL schema from a file or directory, with optional variables.
+
+##### Arguments {#data-source-hcl-schema-arguments}
+
+- `path` - The path to the HCL file or directory.
+- `vars` - A map of variables to pass to the HCL schema.
+
+##### Attributes {#data-source-hcl-schema-attributes}
+
+- `url` - The [URL](../concepts/url.mdx) of the loaded schema.
+
+
+<Tabs>
+<TabItem label="atlas.hcl" value="atlas.hcl">
+
+```hcl {5-10}
+variable "tenant" {
+  type = string
+}
+
+data "hcl_schema" "app" {
+  path = "schema.hcl"
+  vars = {
+    tenant = var.tenant
+  }
+}
+
+
+env "local" {
+  src = data.hcl_schema.app.url
+  url = "sqlite://test?mode=memory&_fk=1"
+}
+```
+
+</TabItem>
+<TabItem label="schema.hcl" value="schema.hcl">
+
+```hcl title="schema.hcl"
+// This variable is passed as an input value from "atlas.hcl".
+variable "tenant" {
+  type = string
+}
+
+schema "main" {
+  name = var.tenant
+}
+```
+
+</TabItem>
+</Tabs>
+
+#### Data source: `external_schema`
+
+The `external_schema` data source enables the import of an SQL schema from an external program into Atlas' desired state.
+With this data source, users have the flexibility to represent the desired state of the database schema in any language.
+
+##### Arguments {#data-source-external-schema-arguments}
+
+- `program` - The first element of the string is the program to run. The remaining elements are optional command line arguments.
+
+##### Attributes {#data-source-external-schema-attributes}
+
+- `url` - The [URL](../concepts/url.mdx) of the loaded schema.
+
+#### Usage example
+
+By running `atlas migrate diff` with the given configuration, the external program will be executed and its loaded state
+will be compared against the current state of the migration directory. In case of a difference between the two states,
+a new migration file will be created with the correct SQL statements.
+
+```hcl title="atlas.hcl"
+data "external_schema" "graph" {
+  program = [
+    "npm",
+    "run",
+    "generate-schema"
+  ]
+}
+
+env "local" {
+  src = data.external_schema.graph.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+}
+```
+
 #### Data source: `remote_dir`
 
 The `remote_dir` data source reads the state of a migration directory from [Atlas Cloud](https://atlasgo.cloud). For
@@ -542,6 +656,7 @@ have the `.sql` file extension, and generating an in-memory migration directory 
 ##### Arguments {#data-source-template_dir-arguments}
 
 - `path` - A path to the template directory.
+- `vars` - A map of variables to pass to the template.
 
 ##### Attributes {#data-source-template_dir-attributes}
 
