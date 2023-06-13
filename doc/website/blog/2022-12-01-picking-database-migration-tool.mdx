@@ -88,7 +88,7 @@ where the schema is defined in the Atlas language, but the Atlas engine is used 
 On top of Atlas's ability to load the migration directory as a graph of database entities,
 an entire infrastructure of _static code analysis_ was built to provide warnings
 about dangerous or inefficient operations. This technique is called **migration linting** and can be
-integrated with the [Atlas Github action](https://atlasgo.io/integrations/github-actions) during CI.
+integrated with the [Atlas Github Action](https://atlasgo.io/integrations/github-actions) during CI.
 
 In addition, if you would like to run your migrations using Terraform, Atlas has a [Terraform provider](https://atlasgo.io/integrations/terraform-provider)
 as well.
@@ -117,7 +117,7 @@ the common problems and solutions.
 | Use as package | Yes | Yes | Partial support ¹ |
 | Versioned Migration Authoring | No | No | [Yes](https://atlasgo.io/versioned/diff) |
 | Migration linting | No | No | [Yes](https://atlasgo.io/versioned/lint) |
-| Github action | No | No | [Yes](https://atlasgo.io/integrations/github-actions) |
+| Github Action | No | No | [Yes](https://atlasgo.io/integrations/github-actions) |
 | Terraform provider | No | No | [Yes](https://atlasgo.io/integrations/terraform-provider) |
 
 - 1: Atlas provides [a few packages](https://pkg.go.dev/ariga.io/atlas#section-directories) related to database operations, but the use is limited to complex cases
