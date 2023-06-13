@@ -27,7 +27,7 @@ For example, "Acme Corp" will be available at "acme-corp.atlasgo.cloud".
 ### Choosing an organization
 ![Choosing organization](https://atlasgo.io/uploads/images/choose-org-new.png)
 Atlas Cloud allows you to be a part of multiple organizations.
-After logging in (not including the first login), you will see all the organizations you have access to. Choose the organization you would to log in to.
+After logging in (not including the first login), you will see all the organizations you have access to. Choose the organization you would to log into.
 If you would like to create a new organization, click 'create a new organization'.
 While logged in to one organization, you would be able to switch to another by clicking on your avatar in the bottom left corner and choose the organization you would like to switch to.
 
