@@ -222,7 +222,7 @@ func (p *FileParser) FixChange(_ migrate.Driver, s string, changes schema.Change
 	}
 	if r, ok := stmt.RenameColumn(); ok {
 		if len(changes) != 1 {
-			return nil, fmt.Errorf("unexected number fo changes: %d", len(changes))
+			return nil, fmt.Errorf("unexpected number fo changes: %d", len(changes))
 		}
 		modify, ok := changes[0].(*schema.ModifyTable)
 		if !ok {

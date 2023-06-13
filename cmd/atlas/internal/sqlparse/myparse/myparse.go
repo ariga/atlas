@@ -256,7 +256,7 @@ func renameTable(drv migrate.Driver, stmt *ast.AlterTableStmt, changes schema.Ch
 		return changes, nil
 	}
 	if len(changes) != 2 {
-		return nil, fmt.Errorf("unexected number fo changes for ALTER command with RENAME clause: %d", len(changes))
+		return nil, fmt.Errorf("unexpected number fo changes for ALTER command with RENAME clause: %d", len(changes))
 	}
 	i, j := changes.IndexDropTable(stmt.Table.Name.O), changes.IndexAddTable(r.NewTable.Name.O)
 	if i == -1 {
