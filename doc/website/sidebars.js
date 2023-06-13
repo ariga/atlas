@@ -162,7 +162,7 @@ module.exports = {
                 {
                     type: 'doc',
                     id: 'guides/testing/testing-github-actions',
-                    label: 'With Github Actions'
+                    label: 'With GitHub Actions'
                 }
             ]
         },

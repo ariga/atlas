@@ -286,4 +286,4 @@ Now, whenever you push changes to the **main** branch, all pending migrations wi
 ## Wrapping Up
 In this guide, you learned how to deploy schema migrations to Cloud SQL using Atlas, while ensuring secure connections via a Cloud SQL Proxy. With this knowledge, you can leverage the power of Atlas and Cloud SQL to manage your database schema changes with ease and confidence.
 
-In addition to the specific steps outlined in this guide, you also gained valuable experience with various concepts and tools that are widely used in database management, such as Github Actions, Cloud SQL, Cloud SQL Proxy, and the Google Cloud SDK. We hope that this guide has been helpful in expanding your knowledge and skills.
+In addition to the specific steps outlined in this guide, you also gained valuable experience with various concepts and tools that are widely used in database management, such as GitHub Actions, Cloud SQL, Cloud SQL Proxy, and the Google Cloud SDK. We hope that this guide has been helpful in expanding your knowledge and skills.
