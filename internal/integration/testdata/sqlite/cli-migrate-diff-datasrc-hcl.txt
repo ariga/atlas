@@ -1,0 +1,35 @@
+atlas migrate diff --env local
+cmpmig 0 expected.sql
+
+-- atlas.hcl --
+data "hcl_schema" "app" {
+  path = "schema.hcl"
+  vars = {
+    default_value = "unknown"
+  }
+}
+
+env "local" {
+    src = data.hcl_schema.app.url
+    dev = "sqlite://dev?mode=memory&_fk=1"
+}
+
+-- schema.hcl --
+variable "default_value" {
+  type = string
+}
+
+schema "main" {}
+
+table "users" {
+  schema = schema.main
+  column "name" {
+    null    = false
+    type    = text
+    default = var.default_value
+  }
+}
+
+-- expected.sql --
+-- Create "users" table
+CREATE TABLE `users` (`name` text NOT NULL DEFAULT 'unknown');
