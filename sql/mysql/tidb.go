@@ -189,7 +189,7 @@ var reActions = regexp.MustCompile(fmt.Sprintf("(?i)(ON)\\s+(UPDATE|DELETE)\\s+(
 func (i *tinspect) setFKs(s *schema.Schema, t *schema.Table) error {
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE TABLE statment in attribuets for %q", t.Name)
+		return fmt.Errorf("missing CREATE TABLE statement in attributes for %q", t.Name)
 	}
 	for _, m := range reFK.FindAllStringSubmatch(c.S, -1) {
 		if len(m) != 5 {

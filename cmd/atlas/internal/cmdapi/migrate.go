@@ -254,7 +254,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 			break
 		}
 		if ex, err = migrate.NewExecutor(drv, migrationDir, rrw, opts...); err != nil {
-			return fmt.Errorf("unexpected exectuor creation error: %w", err)
+			return fmt.Errorf("unexpected executor creation error: %w", err)
 		}
 		if err = mux.mayRollback(ex.Execute(ctx, f)); err != nil {
 			break

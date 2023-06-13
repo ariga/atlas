@@ -458,7 +458,7 @@ func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error
 			used[enum] = struct{}{}
 			schemaE, err := specutil.SchemaName(enum.Schema)
 			if err != nil {
-				return fmt.Errorf("extract schema name from enum refrence: %w", err)
+				return fmt.Errorf("extract schema name from enum reference: %w", err)
 			}
 			es, ok := r.Schema(schemaE)
 			if !ok {
@@ -466,7 +466,7 @@ func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error
 			}
 			schemaT, err := specutil.SchemaName(t.Schema)
 			if err != nil {
-				return fmt.Errorf("extract schema name from table refrence: %w", err)
+				return fmt.Errorf("extract schema name from table reference: %w", err)
 			}
 			ts, ok := r.Schema(schemaT)
 			if !ok {

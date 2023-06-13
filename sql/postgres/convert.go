@@ -154,7 +154,7 @@ func FormatType(t schema.Type) (string, error) {
 		case typeOID, typeRegClass, typeRegCollation, typeRegConfig, typeRegDictionary, typeRegNamespace,
 			typeRegOper, typeRegOperator, typeRegProc, typeRegProcedure, typeRegRole, typeRegType:
 		default:
-			return "", fmt.Errorf("postgres: unsupported object identfier type: %q", t.T)
+			return "", fmt.Errorf("postgres: unsupported object identifier type: %q", t.T)
 		}
 	case *TextSearchType:
 		if f = strings.ToLower(t.T); f != TypeTSVector && f != TypeTSQuery {

@@ -18,7 +18,7 @@ In many tables, different records are not accessed with uniform frequency. A sub
 Partial indexes come into the picture to filter unsearched values and give you, as an engineer, a tool to index only what's important.
 
 #### Advantages of using Partial Indexes
-1. Partial indexses have index entries only for a defined subset of rows, compared to ordinary indexes which have exactly one index entry for every row in the table.
+1. Partial indexes have index entries only for a defined subset of rows, compared to ordinary indexes which have exactly one index entry for every row in the table.
 2. When used wisely, partial indexes result in smaller database files with improved query and write performance.
 
 #### Basic SQLite syntax for using Partial Indexes

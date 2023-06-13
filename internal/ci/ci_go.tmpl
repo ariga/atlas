@@ -39,7 +39,7 @@ jobs:
       - name: go generate cmd/atlas
         working-directory: cmd/atlas
         run: go generate ./...
-      - name: Verify generated files are checked in properly
+      - name: Verify generated files are checked-in properly
         run: |
           status=$(git status --porcelain | grep -v "go.\(sum\|mod\)" | cat)
           if [ -n "$status" ]; then

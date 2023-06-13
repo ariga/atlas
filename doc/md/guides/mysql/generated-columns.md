@@ -161,7 +161,7 @@ Select all the triangles in the table using `SELECT  *  FROM triangles` to recei
 | 3    | 4    | 5                  |
 | 6    | 8    | 10                 |
 
-### Implementing Virtual Generated Columns Columns with Atlas
+### Implementing Virtual Generated Columns with Atlas
 
 The following example declares a virtual generated column in a TABLE that stores the first and last name of a person, and computes the full name of the person _(when people are selected)_.
 

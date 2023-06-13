@@ -28,7 +28,7 @@ similar to what others have written in the same place.
 #### Code-generation
 
 Some of the code in the Atlas repository is generated. The CI process verifies that
-all generated files are checked in by running `go generate ./...` and then running
+all generated files are checked-in by running `go generate ./...` and then running
 `git status --porcelain`. Therefore, before committing changes to Atlas, please run:
 ```shell
 go generate ./...
