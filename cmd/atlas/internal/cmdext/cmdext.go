@@ -15,6 +15,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -46,14 +47,15 @@ import (
 
 // DataSources exposes the data sources provided by this package.
 var DataSources = []schemahcl.Option{
-	schemahcl.WithDataSource("sql", QuerySrc),
-	schemahcl.WithDataSource("runtimevar", RuntimeVarSrc),
+	schemahcl.WithDataSource("sql", Query),
+	schemahcl.WithDataSource("runtimevar", RuntimeVar),
 	schemahcl.WithDataSource("template_dir", TemplateDir),
 	schemahcl.WithDataSource("remote_dir", RemoteDir),
 	schemahcl.WithDataSource("hcl_schema", SchemaHCL),
+	schemahcl.WithDataSource("external_schema", SchemaExternal),
 }
 
-// RuntimeVarSrc exposes the gocloud.dev/runtimevar as a schemahcl datasource.
+// RuntimeVar exposes the gocloud.dev/runtimevar as a schemahcl datasource.
 //
 //	data "runtimevar" "pass" {
 //	  url = "driver://path?query=param"
@@ -62,7 +64,7 @@ var DataSources = []schemahcl.Option{
 //	locals {
 //	  url = "mysql://root:${data.runtimevar.pass}@:3306/"
 //	}
-func RuntimeVarSrc(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+func RuntimeVar(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
 			URL string `hcl:"url"`
@@ -109,7 +111,7 @@ func RuntimeVarSrc(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	return cty.StringVal(sv), nil
 }
 
-// QuerySrc exposes the database/sql.Query as a schemahcl datasource.
+// Query exposes the database/sql.Query as a schemahcl datasource.
 //
 //	data "sql" "tenants" {
 //	  url = var.url
@@ -121,7 +123,7 @@ func RuntimeVarSrc(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 //	  for_each = toset(data.sql.tenants.values)
 //	  url      = urlsetpath(var.url, each.value)
 //	}
-func QuerySrc(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+func Query(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
 			URL    string   `hcl:"url"`
@@ -435,6 +437,57 @@ func SchemaHCL(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) 
 		cfg := *config
 		cfg.Vars = args.Vars
 		return stateReaderHCL(ctx, &cfg, []string{args.Path})
+	})
+	return cty.ObjectVal(map[string]cty.Value{
+		"url": cty.StringVal(u),
+	}), nil
+}
+
+// SchemaExternal is a data source that reads an Atlas SQL/HCL schema state from external program.
+func SchemaExternal(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+	var (
+		args struct {
+			Program []string `hcl:"program"`
+			Dir     string   `hcl:"working_dir,optional"`
+			Remain  hcl.Body `hcl:",remain"`
+		}
+		errorf = blockError("data.external_schema", block)
+	)
+	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+		return cty.NilVal, errorf("decoding body: %v", diags)
+	}
+	attrs, diags := args.Remain.JustAttributes()
+	if diags.HasErrors() {
+		return cty.NilVal, errorf("getting attributes: %v", diags)
+	}
+	if len(attrs) > 0 {
+		return cty.NilVal, errorf("unexpected attributes: %v", attrs)
+	}
+	if len(args.Program) == 0 {
+		return cty.NilVal, errorf("program cannot be empty")
+	}
+	cmd := exec.Command(args.Program[0], args.Program[1:]...)
+	if args.Dir != "" {
+		cmd.Dir = args.Dir
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		msg := err.Error()
+		if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
+			msg = string(ee.Stderr)
+		}
+		return cty.NilVal, errorf("running program %v: %v", cmd.Path, msg)
+	}
+	dir, err := fileAsDir("schema.sql", out)
+	if err != nil {
+		return cty.NilVal, errorf("converting output to migration: %v", err)
+	}
+	u, err := url.JoinPath("mem://external_schema", block.Labels[1])
+	if err != nil {
+		return cty.NilVal, errorf("build url: %v", err)
+	}
+	memLoader.states[u] = StateLoaderFunc(func(ctx context.Context, config *StateReaderConfig) (*StateReadCloser, error) {
+		return stateReaderSQL(ctx, config, dir)
 	})
 	return cty.ObjectVal(map[string]cty.Value{
 		"url": cty.StringVal(u),
