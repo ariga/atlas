@@ -130,7 +130,7 @@ $ gcloud iam workload-identity-pools providers create-oidc "my-provider" \
 ```bash
 # Update this value to your GitHub repository.
 
-$ export REPO="username/repo_name" # e.g. "arigia/atlas"
+$ export REPO="username/repo_name" # e.g. "ariga/atlas"
 
 $ gcloud iam service-accounts add-iam-policy-binding "my-service-account@${PROJECT_ID}.iam.gserviceaccount.com" \
   --project="${PROJECT_ID}" \
