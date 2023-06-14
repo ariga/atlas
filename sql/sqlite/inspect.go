@@ -386,12 +386,26 @@ func (i *inspect) tables(ctx context.Context, opts *schema.InspectOptions) ([]*s
 				&CreateStmt{S: strings.TrimSpace(stmt)},
 			},
 		}
-		if strings.HasSuffix(stmt, "WITHOUT ROWID") || strings.HasSuffix(stmt, "without rowid") {
-			t.Attrs = append(t.Attrs, &WithoutRowID{})
-		}
+		t.Attrs = append(t.Attrs, tableOptions(stmt)...)
 		tables = append(tables, t)
 	}
 	return tables, nil
+}
+
+func tableOptions(stmt string) (opts []schema.Attr) {
+	optsStmt := stmt[strings.LastIndex(stmt, ")"):]
+	optsStmt = strings.ToLower(strings.TrimSpace(optsStmt))
+	if len(optsStmt) == 0 {
+		// The table has no options.
+		return
+	}
+	if strings.Contains(optsStmt, "without rowid") {
+		opts = append(opts, &WithoutRowID{})
+	}
+	if strings.Contains(optsStmt, "strict") {
+		opts = append(opts, &Strict{})
+	}
+	return
 }
 
 // schemas returns the list of the schemas in the database.
@@ -459,6 +473,12 @@ type (
 	// WithoutRowID describes the `WITHOUT ROWID` configuration.
 	// See: https://sqlite.org/withoutrowid.html
 	WithoutRowID struct {
+		schema.Attr
+	}
+
+	// Strict describes the `STRICT` configuration.
+	// See: https://sqlite.org/stricttables.html
+	Strict struct {
 		schema.Attr
 	}
 

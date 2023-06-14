@@ -115,7 +115,7 @@ func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
 
 // tableSpec converts from a concrete SQLite sqlspec.Table to a schema.Table.
 func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
-	return specutil.FromTable(
+	t, err := specutil.FromTable(
 		tab,
 		columnSpec,
 		specutil.FromPrimaryKey,
@@ -123,6 +123,18 @@ func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 		specutil.FromForeignKey,
 		specutil.FromCheck,
 	)
+	if err != nil {
+		return nil, err
+	}
+	for _, a := range tab.Attrs {
+		if _, ok := a.(*WithoutRowID); ok {
+			t.Extra.SetAttr(schemahcl.BoolAttr("without_rowid", true))
+		}
+		if _, ok := a.(*Strict); ok {
+			t.Extra.SetAttr(schemahcl.BoolAttr("strict", true))
+		}
+	}
+	return t, nil
 }
 
 // viewSpec converts from a concrete SQLite schema.View to a sqlspec.View.
