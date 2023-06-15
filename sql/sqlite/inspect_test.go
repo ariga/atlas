@@ -245,6 +245,26 @@ CREATE TABLE users(
 				require.Equal(t.Attrs[1:], checks)
 			},
 		},
+		{
+			name: "table options",
+			before: func(m mock) {
+				m.tableExists("users", true, "CREATE TABLE users(id INTEGER PRIMARY KEY) without rowid, strict")
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
+					WillReturnRows(sqltest.Rows(`
+ name |   type       | nullable | dflt_value  | primary  | hidden
+------+--------------+----------+ ------------+----------+----------
+ id   | int          |  0       |             |  1       |  0
+`))
+				m.noIndexes("users")
+				m.noFKs("users")
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Len(t.Attrs, 3)
+				require.Equal(t.Attrs[1], &WithoutRowID{})
+				require.Equal(t.Attrs[2], &Strict{})
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

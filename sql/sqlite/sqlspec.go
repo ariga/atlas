@@ -126,10 +126,10 @@ func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 		return nil, err
 	}
 	for _, a := range tab.Attrs {
-		if _, ok := a.(*WithoutRowID); ok {
+		switch a.(type) {
+		case *WithoutRowID:
 			t.Extra.SetAttr(schemahcl.BoolAttr("without_rowid", true))
-		}
-		if _, ok := a.(*Strict); ok {
+		case *Strict:
 			t.Extra.SetAttr(schemahcl.BoolAttr("strict", true))
 		}
 	}

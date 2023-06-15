@@ -392,18 +392,16 @@ func (i *inspect) tables(ctx context.Context, opts *schema.InspectOptions) ([]*s
 	return tables, nil
 }
 
+// Parse the table options from a creation statement (without rowid, strict).
 func tableOptions(stmt string) (opts []schema.Attr) {
-	optsStmt := stmt[strings.LastIndex(stmt, ")"):]
-	optsStmt = strings.ToLower(strings.TrimSpace(optsStmt))
-	if len(optsStmt) == 0 {
-		// The table has no options.
-		return
-	}
-	if strings.Contains(optsStmt, "without rowid") {
-		opts = append(opts, &WithoutRowID{})
-	}
-	if strings.Contains(optsStmt, "strict") {
-		opts = append(opts, &Strict{})
+	optsStmt := strings.ToLower(stmt[strings.LastIndex(stmt, ")")+1:])
+	for _, o := range strings.SplitN(optsStmt, ",", 2) {
+		switch strings.TrimSpace(o) {
+		case "without rowid":
+			opts = append(opts, &WithoutRowID{})
+		case "strict":
+			opts = append(opts, &Strict{})
+		}
 	}
 	return
 }
