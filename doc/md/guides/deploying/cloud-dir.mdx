@@ -22,7 +22,7 @@ This guide shows you how to set up this approach for your project.
 1. An Atlas Cloud account with administrator access. (If you don't have an account, you can [sign up for free](https://atlasgo.cloud/).)
 2. Sync your migration directory from GitHub to your Atlas Cloud account. (See [Syncing Migration Directories](/cloud/directories) for more information.)
 3. A token for an Atlas Cloud Bot user with permissions report CI/CD runs and read the migration directory.
-   (See [Creating a Bot User](/cloud/bot) for more information.
+   (See [Creating a Bot User](../../cloud/bot.mdx) for more information.
 
 ### Deploying migrations from Atlas Cloud
 
@@ -62,7 +62,7 @@ Let's review what this configuration file does:
    Atlas Cloud, using the token we defined in the previous step.
 3. We define a data source of the type `remote_dir` to fetch the migration directory from Atlas Cloud.
    We use the `name` parameter to specify the name of the directory we want to fetch. This name is the
-   same as the name you used when you [synced your migration directory](/cloud/directory).
+   same as the name you used when you [synced your migration directory](../../cloud/directory.mdx).
 4. Finally, we define an environment using the `env` block that uses the migration directory we fetched from Atlas Cloud.
    To avoid setting database credentials in the configuration file, we use the `DATABASE_URL` environment variable.
 
