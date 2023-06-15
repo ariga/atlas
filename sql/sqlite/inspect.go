@@ -392,6 +392,7 @@ func (i *inspect) tables(ctx context.Context, opts *schema.InspectOptions) ([]*s
 	return tables, nil
 }
 
+// Parse the table options from a creation statement (without rowid, strict).
 func tableOptions(stmt string) (opts []schema.Attr) {
 	optsStmt := stmt[strings.LastIndex(stmt, ")"):]
 	optsStmt = strings.ToLower(strings.TrimSpace(optsStmt))
