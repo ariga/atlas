@@ -26,7 +26,6 @@ func TestDriver_InspectTable(t *testing.T) {
 			name: "table columns",
 			before: func(m mock) {
 				m.tableExists("users", true, "CREATE TABLE users(id INTEGER PRIMARY KEY AUTOINCREMENT, w INT GENERATED ALWAYS AS (a*10), x TEXT AS (typeof(c)) STORED, y TEXT AS (substr(b,a,a+2)))")
-				m.noOptions()
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
  name |   type       | nullable | dflt_value  | primary  | hidden
@@ -83,7 +82,6 @@ func TestDriver_InspectTable(t *testing.T) {
 			name: "table indexes",
 			before: func(m mock) {
 				m.tableExists("users", true, "CREATE TABLE users(id INTEGER PRIMARY KEY)")
-				m.noOptions()
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
  name |   type       | nullable | dflt_value  | primary  | hidden
@@ -205,7 +203,6 @@ CREATE TABLE users(
 	CONSTRAINT "id_nonzero" CHECK (id <> 0)
 )
 `)
-				m.noOptions()
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
  name |   type       | nullable | dflt_value  | primary  | hidden
@@ -249,15 +246,20 @@ CREATE TABLE users(
 			},
 		},
 		{
-			name: "table option",
+			name: "table options",
 			before: func(m mock) {
-				m.tableExists("users", true, "CREATE TABLE users(id INTEGER PRIMARY KEY) without rowid, strict")
-				m.ExpectQuery(sqltest.Escape(optionsQuery)).
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(databasesQueryArgs, "?"))).
+					WithArgs("main").
 					WillReturnRows(sqltest.Rows(`
-name | wr | strict
------+----+--------
-users   |  1 |  1
+ name |   file
+------+-----------
+ main |
 `))
+				rows := sqlmock.NewRows([]string{"name", "sql", "wr", "strict"})
+				rows.AddRow("users", "CREATE TABLE users(id INTEGER PRIMARY KEY) without rowid, strict", 1, 1)
+				m.ExpectQuery(sqltest.Escape(tablesQuery + " AND sqlite_master.name IN (?)")).
+					WithArgs("users").
+					WillReturnRows(rows)
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
  name |   type       | nullable | dflt_value  | primary  | hidden
@@ -580,11 +582,11 @@ func (m mock) tableExists(table string, exists bool, stmt ...string) {
 ------+-----------
  main |   
 `))
-	rows := sqlmock.NewRows([]string{"name", "sql"})
+	rows := sqlmock.NewRows([]string{"name", "sql", "wr", "strict"})
 	if exists {
-		rows.AddRow(table, stmt[0])
+		rows.AddRow(table, stmt[0], nil, nil)
 	}
-	m.ExpectQuery(sqltest.Escape(tablesQuery + " AND name IN (?)")).
+	m.ExpectQuery(sqltest.Escape(tablesQuery + " AND sqlite_master.name IN (?)")).
 		WithArgs(table).
 		WillReturnRows(rows)
 }
@@ -602,9 +604,4 @@ func (m mock) noIndexes(table string) {
 func (m mock) noFKs(table string) {
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(fksQuery, table))).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "from", "to", "table", "on_update", "on_delete"}))
-}
-
-func (m mock) noOptions() {
-	m.ExpectQuery(sqltest.Escape(optionsQuery)).
-		WillReturnRows(sqlmock.NewRows([]string{"name", "wr", "strict"}))
 }
