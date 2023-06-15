@@ -23,24 +23,18 @@ import (
 
 func TestRevisionType_MarshalText(t *testing.T) {
 	for _, tt := range []struct {
-		r       migrate.RevisionType
-		ex      string
-		wantErr bool
+		r  migrate.RevisionType
+		ex string
 	}{
-		{migrate.RevisionTypeUnknown, "", true},
-		{migrate.RevisionTypeBaseline, "baseline", false},
-		{migrate.RevisionTypeExecute, "applied", false},
-		{migrate.RevisionTypeResolved, "manually set", false},
-		{migrate.RevisionTypeExecute | migrate.RevisionTypeResolved, "applied + manually set", false},
-		{migrate.RevisionTypeExecute | migrate.RevisionTypeBaseline, "", true},
-		{1 << 3, "", true},
+		{migrate.RevisionTypeUnknown, "unknown (0000)"},
+		{migrate.RevisionTypeBaseline, "baseline"},
+		{migrate.RevisionTypeExecute, "applied"},
+		{migrate.RevisionTypeResolved, "manually set"},
+		{migrate.RevisionTypeExecute | migrate.RevisionTypeResolved, "applied + manually set"},
+		{migrate.RevisionTypeExecute | migrate.RevisionTypeBaseline, "unknown (0011)"},
+		{1 << 3, "unknown (1000)"},
 	} {
 		ac, err := tt.r.MarshalText()
-		if tt.wantErr {
-			require.Error(t, err)
-			require.Zero(t, ac)
-			continue
-		}
 		require.NoError(t, err)
 		require.Equal(t, tt.ex, string(ac))
 	}
