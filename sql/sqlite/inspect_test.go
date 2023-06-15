@@ -249,6 +249,12 @@ CREATE TABLE users(
 			name: "table options",
 			before: func(m mock) {
 				m.tableExists("users", true, "CREATE TABLE users(id INTEGER PRIMARY KEY) without rowid, strict")
+				m.ExpectQuery(sqltest.Escape(optionsQuery)).
+					WillReturnRows(sqltest.Rows(`
+name  | wr | strict
+------+----+--------
+users |  1 |  1
+`))
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
  name |   type       | nullable | dflt_value  | primary  | hidden

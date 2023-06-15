@@ -386,24 +386,48 @@ func (i *inspect) tables(ctx context.Context, opts *schema.InspectOptions) ([]*s
 				&CreateStmt{S: strings.TrimSpace(stmt)},
 			},
 		}
-		t.Attrs = append(t.Attrs, tableOptions(stmt)...)
 		tables = append(tables, t)
+	}
+	if err := i.tableOptions(ctx, tables); err != nil {
+		return nil, err
 	}
 	return tables, nil
 }
 
 // Parse the table options from a creation statement (without rowid, strict).
-func tableOptions(stmt string) (opts []schema.Attr) {
-	optsStmt := strings.ToLower(stmt[strings.LastIndex(stmt, ")")+1:])
-	for _, o := range strings.SplitN(optsStmt, ",", 2) {
-		switch strings.TrimSpace(o) {
-		case "without rowid":
-			opts = append(opts, &WithoutRowID{})
-		case "strict":
-			opts = append(opts, &Strict{})
+func (i *inspect) tableOptions(ctx context.Context, tables []*schema.Table) error {
+	rows, err := i.QueryContext(ctx, optionsQuery)
+	if err != nil {
+		return fmt.Errorf("sqlite: querying table options: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			name       string
+			wr, strict int
+		)
+		if err := rows.Scan(&name, &wr, &strict); err != nil {
+			return fmt.Errorf("sqlite: scanning table options: %w", err)
+		}
+		tableIdx := func() int {
+			for i, t := range tables {
+				if t.Name == name {
+					return i
+				}
+			}
+			return -1
+		}()
+		if tableIdx == -1 {
+			return fmt.Errorf("sqlite: unexpected table %q", name)
+		}
+		if wr == 1 {
+			tables[tableIdx].Attrs = append(tables[tableIdx].Attrs, &WithoutRowID{})
+		}
+		if strict == 1 {
+			tables[tableIdx].Attrs = append(tables[tableIdx].Attrs, &Strict{})
 		}
 	}
-	return
+	return nil
 }
 
 // schemas returns the list of the schemas in the database.
@@ -734,6 +758,8 @@ const (
 	databasesQueryArgs = "SELECT `name`, `file` FROM pragma_database_list() WHERE `name` IN (%s)"
 	// Query to list database tables.
 	tablesQuery = "SELECT `name`, `sql` FROM sqlite_master WHERE `type` = 'table' AND `name` NOT LIKE 'sqlite_%' AND `name` NOT LIKE 'libsql_%'"
+	// Query to list table options.
+	optionsQuery = "SELECT `name`, `wr`, `strict` FROM pragma_table_list() WHERE name NOT LIKE 'sqlite_%' AND name NOT LIKE 'libsql_%'"
 	// Query to list table information.
 	columnsQuery = "SELECT `name`, `type`, (not `notnull`) AS `nullable`, `dflt_value`, (`pk` <> 0) AS `pk`, `hidden` FROM pragma_table_xinfo('%s') ORDER BY `cid`"
 	// Query to list table indexes.
