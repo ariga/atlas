@@ -1,0 +1,110 @@
+---
+id: cloud-dir
+title: Deploying from Atlas Cloud
+slug: /guides/deploying/from-cloud
+---
+In the past, we have recommended users to [build a migrations Docker image](image.md) as part of their
+CI pipeline and then use that image during their deployment process. This is still a valid approach,
+as it bundles together the Atlas binary needed to run migrations with the migrations themselves.
+However, over the last year we have received feedback from many users that this approach is cumbersome
+and requires a lot of boilerplate code to be written.
+
+To address this, we have introduced a new way to deploy migrations directly from [Atlas Cloud](https://atlasgo.cloud).
+
+On a high-level this approach works as follows:
+1. Users sync their migration directory to Atlas Cloud whenever you push new code to your mainline branch.
+2. Migrations are executed directly from Atlas Cloud during deployment.
+
+This guide shows you how to set up this approach for your project.
+
+### Prerequisites
+
+1. An Atlas Cloud account with administrator access. (If you don't have an account, you can [sign up for free](https://atlasgo.cloud/).)
+2. Sync your migration directory from GitHub to your Atlas Cloud account. (See [Syncing Migration Directories](/cloud/directories) for more information.)
+3. A token for an Atlas Cloud Bot user with permissions report CI/CD runs and read the migration directory.
+   (See [Creating a Bot User](../../cloud/bot.mdx) for more information.
+
+### Deploying migrations from Atlas Cloud
+
+Once your migration directory is synced to Atlas Cloud, you can deploy them using the `atlas` CLI.
+
+To get started, create a project configuration file named `atlas.hcl`:
+
+```hcl
+variable "cloud_token" {
+  type    = string
+  default = getenv("ATLAS_TOKEN")
+}
+
+atlas {
+  cloud {
+    token = var.cloud_token
+  }
+}
+
+data "remote_dir" "migration" {
+  name = "<name of dir>"
+}
+
+env {
+  name = atlas.env
+  url  = getenv("DATABASE_URL")
+  migration {
+    dir = data.remote_dir.migration.url
+  }
+}
+```
+
+Let's review what this configuration file does:
+1. The `cloud_token` variable is used to authenticate with Atlas Cloud. You can either set this variable
+   in your environment or pass it in as a command line argument.
+2. The `atlas` block sets global configuration for Atlas. In this case, we are setting Atlas to work against
+   Atlas Cloud, using the token we defined in the previous step.
+3. We define a data source of the type `remote_dir` to fetch the migration directory from Atlas Cloud.
+   We use the `name` parameter to specify the name of the directory we want to fetch. This name is the
+   same as the name you used when you [synced your migration directory](../../cloud/directory.mdx).
+4. Finally, we define an environment using the `env` block that uses the migration directory we fetched from Atlas Cloud.
+   To avoid setting database credentials in the configuration file, we use the `DATABASE_URL` environment variable.
+
+### Running migrations from Atlas Cloud
+
+Once you have created your configuration file, you can run migrations from Atlas Cloud using the `atlas` CLI
+using the following commands:
+
+```bash
+export ATLAS_TOKEN=<your token>
+export DATABASE_URL=<your database url>
+atlas migrate apply --env <env name>
+```
+
+Let's review what these commands do:
+1. We set the `ATLAS_TOKEN` environment variable to the token we created earlier.
+2. We set the `DATABASE_URL` environment variable to the URL of the database we want to run migrations against.
+3. We run the `atlas migrate apply` command to apply migrations to the database. The `--env` flag is used to specify
+   the name of the environment we defined in the configuration file.
+
+The `atlas migrate apply` command will run all migrations that have not been applied to the database yet:
+
+```
+Migrating to version 20230306221009 (1 migrations in total):
+
+  -- migrating version 20230306221009
+    -> create table users (
+  id int primary key
+)
+  -- ok (8.60933ms)
+
+  -------------------------
+  -- 68.037117ms
+  -- 1 migrations
+  -- 1 sql statements
+```
+
+### Viewing migrations in Atlas Cloud
+
+After the migrations have been applied, you can view them in Atlas Cloud by heading to the `/deployments` page
+in your Atlas Cloud account. You should see a new deployment with the name of the environment you specified in
+the configuration file. Clicking on the deployment will show you the details of the deployment, including the
+migrations that were applied:
+
+![](https://atlasgo.io/uploads/cloud/bots/migration-detail.png)

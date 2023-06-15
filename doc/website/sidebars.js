@@ -80,6 +80,7 @@ module.exports = {
             items: [
                 {type: 'doc', id: 'cloud/getting-started', label: 'Getting Started'},
                 {type: 'doc', id: 'cloud/directories', label: 'Connected Directories'},
+                {type: 'doc', id: 'cloud/bots', label: 'Creating Bots'},
             ],
         },
         {
@@ -116,6 +117,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/deploying/intro',
                     label: 'Introduction'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/cloud-dir',
+                    label: 'Deploying from Atlas Cloud'
                 },
                 {
                     type: 'doc',
