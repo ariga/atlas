@@ -388,14 +388,14 @@ func (i *inspect) tables(ctx context.Context, opts *schema.InspectOptions) ([]*s
 		}
 		tables = append(tables, t)
 	}
-	if err := i.tableOptions(ctx, tables); err != nil {
+	if err := i.tablesOptions(ctx, tables); err != nil {
 		return nil, err
 	}
 	return tables, nil
 }
 
-// Parse the table options from a creation statement (without rowid, strict).
-func (i *inspect) tableOptions(ctx context.Context, tables []*schema.Table) error {
+// tablesOptions adds the configuration options ("without rowid" and/or "strict") to each table in tables.
+func (i *inspect) tablesOptions(ctx context.Context, tables []*schema.Table) error {
 	rows, err := i.QueryContext(ctx, optionsQuery)
 	if err != nil {
 		return fmt.Errorf("sqlite: querying table options: %w", err)
