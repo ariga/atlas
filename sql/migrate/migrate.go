@@ -276,27 +276,23 @@ func (r RevisionType) Has(f RevisionType) bool {
 
 // String implements fmt.Stringer.
 func (r RevisionType) String() string {
-	switch {
-	case r == RevisionTypeBaseline:
+	switch r {
+	case RevisionTypeBaseline:
 		return "baseline"
-	case r == RevisionTypeExecute:
+	case RevisionTypeExecute:
 		return "applied"
-	case r == RevisionTypeResolved:
+	case RevisionTypeResolved:
 		return "manually set"
-	case r == RevisionTypeExecute|RevisionTypeResolved:
+	case RevisionTypeExecute | RevisionTypeResolved:
 		return "applied + manually set"
 	default:
-		return "unknown"
+		return fmt.Sprintf("unknown (%04b)", r)
 	}
 }
 
 // MarshalText implements encoding.TextMarshaler.
 func (r RevisionType) MarshalText() ([]byte, error) {
-	s := r.String()
-	if s == "unknown" {
-		return nil, fmt.Errorf("unexpected revision type '%v'", r)
-	}
-	return []byte(s), nil
+	return []byte(r.String()), nil
 }
 
 // NewPlanner creates a new Planner.
