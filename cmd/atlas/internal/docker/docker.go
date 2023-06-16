@@ -203,7 +203,7 @@ func Out(w io.Writer) ConfigOption {
 //	setup("DROP SCHEMA IF EXISTS public CASCADE")
 func setup(s ...string) ConfigOption {
 	return func(c *Config) error {
-		c.setup = s
+		c.setup = append(c.setup, s...)
 		return nil
 	}
 }
@@ -280,7 +280,7 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 			}
 			for _, s := range c.cfg.setup {
 				if _, err := db.ExecContext(ctx, s); err != nil {
-					_ = db.Close()
+					err = errors.Join(err, db.Close())
 					return fmt.Errorf("%q: %w", s, err)
 				}
 			}
