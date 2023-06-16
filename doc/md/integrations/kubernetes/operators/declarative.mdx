@@ -1,42 +1,10 @@
 ---
-title: The Atlas Kubernetes Operator
-id: kubernetes-operator
-slug: /integrations/kubernetes/operator
+title: Kubernetes Operator - Declarative Workflow
+id: declarative
+slug: /integrations/kubernetes/operators/declarative
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
-## Background
-
-### What are Kubernetes Operators?
-
-For many stateful resources, reconciling the desired state of a database with its actual state
-can be a complex task that requires a lot of domain knowledge. [Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
-were introduced to the Kubernetes ecosystem to help users manage complex stateful resources by codifying
-this domain knowledge into a Kubernetes controller.
-
-### What is the Atlas Kubernetes Operator?
-
-The Atlas Kubernetes Operator is a Kubernetes controller that uses Atlas to manage
-your database schema. The Atlas Kubernetes Operator allows you to define the desired schema 
-and apply it to your database using the Kubernetes API.
-
-### Supported workflows
-
-* [Declarative schema migrations](#declarative-schema-migrations)
-* Versioned schema migrations - coming soon. 
-
-### Declarative schema migrations
-
-![](https://user-images.githubusercontent.com/1522681/236139615-1d10feea-8b19-46a2-905b-b614883c48c8.png)
-
-The Atlas Kubernetes Operator supports [declarative migrations](https://atlasgo.io/concepts/declarative-vs-versioned#declarative-migrations).
-In declarative migrations, the desired state of the database is defined by the user and the operator is responsible
-for reconciling the desired state with the actual state of the database (planning and executing `CREATE`, `ALTER`
-and `DROP` statements).
-
-## Getting started
+import Credentials from './credentials.mdx';
 
 ### Installation
 
@@ -47,87 +15,7 @@ helm install atlas-operator oci://ghcr.io/ariga/charts/atlas-operator
 ```
 
 ### Credentials
-
-In order to manage the schema of your database, you must provide the Atlas Kubernetes Operator with an [Atlas URL](https://atlasgo.io/concepts/url)
-to your database. The Atlas Kubernetes Operator will use this URL to connect to your database and apply changes to the schema.
-As this string usually contains sensitive information, we recommend storing it as a [Kubernetes secret](https://kubernetes.io/docs/concepts/configuration/secret/).
-
-Notice that depending on your use-case, you may want to use either a schema-bound or a database-bound connection.
-* Schema-bound connections are recommended for most use-cases, as they allow you to manage the schema of a database
-schema (named database). This is akin to selecting a specific database using a `USE` statement.
-* Database-bound connections are recommended for use-cases where you want to manage multiple schemas in a single database
-  at once.
-
-Create a file named `db-credentials.yaml` with the following contents:
-
-<Tabs
-defaultValue="mysql-schema"
-values={[
-    {label: 'MySQL (Schema-bound)', value: 'mysql-schema'},
-    {label: 'MySQL (DB-bound)', value: 'mysql-db'},
-    {label: 'PostgreSQL (Schema-bound)', value: 'postgres-schema'},
-    {label: 'PostgreSQL (DB-bound)', value: 'postgres-db'},
-]}>
-<TabItem value="mysql-schema">
-
-```yaml title="db-credentials.yaml"
-apiVersion: v1
-kind: Secret
-metadata:
-  name: mysql-credentials
-type: Opaque
-stringData:
-  url: "mysql://user:pass@your.db.dns.default:3306/myapp"
-```
-This defines a schema-bound connection to a named database called `myapp`.
-
-</TabItem>
-<TabItem value="mysql-db">
-
-```yaml title="db-credentials.yaml"
-apiVersion: v1
-kind: Secret
-metadata:
-  name: mysql-credentials
-type: Opaque
-stringData:
-  url: "mysql://user:pass@your.db.com:3306/"
-```
-This defines a database-bound connection.
-</TabItem>
-<TabItem value="postgres-schema">
-
-```yaml title="db-credentials.yaml"
-apiVersion: v1
-kind: Secret
-metadata:
-  name: pg-credentials
-type: Opaque
-stringData:
-  url: "postgres://user:pass@your.db.com:5432/?search_path=myapp&sslmode=disable"
-```
-This defines a schema-bound connection to a schema called `myapp` to the default database (usually `postgres`).
-
-</TabItem>
-<TabItem value="postgres-db">
-
-```yaml title="db-credentials.yaml"
-apiVersion: v1
-kind: Secret
-metadata:
-  name: pg-credentials
-type: Opaque
-stringData:
-  url: "postgres://user:pass@your.db.com:5432/?sslmode=disable"
-```
-
-</TabItem>
-</Tabs>
-
-Apply this file to your cluster:
-```
-kubectl apply -f db-credentials.yaml
-```
+<Credentials/>
 
 ### Defining the desired schema
 

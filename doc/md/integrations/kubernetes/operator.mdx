@@ -1,0 +1,40 @@
+---
+title: The Atlas Kubernetes Operator
+id: operator
+slug: /integrations/kubernetes/operator
+---
+
+### What are Kubernetes Operators?
+
+For many stateful resources, reconciling the desired state of a database with its actual state
+can be a complex task that requires a lot of domain knowledge. [Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
+were introduced to the Kubernetes ecosystem to help users manage complex stateful resources by codifying
+this domain knowledge into a Kubernetes controller.
+
+### What is the Atlas Kubernetes Operator?
+
+The Atlas Kubernetes Operator is a Kubernetes controller that uses Atlas to manage
+your database schema. The Atlas Kubernetes Operator allows you to define the desired schema 
+and apply it to your database using the Kubernetes API.
+
+### Supported workflows
+
+* [Declarative schema migrations](#declarative-schema-migrations)
+* [Versioned schema migrations](#versioned-schema-migrations)
+
+### Declarative schema migrations
+
+![](https://atlasgo.io/uploads/images/operator-declarative.png)
+
+The Atlas Kubernetes Operator supports [declarative migrations](https://atlasgo.io/concepts/declarative-vs-versioned#declarative-migrations).
+In declarative migrations, the desired state of the database is defined by the user and the operator is responsible
+for reconciling the desired state with the actual state of the database (planning and executing `CREATE`, `ALTER`
+and `DROP` statements).
+
+### Versioned schema migrations
+
+![](https://atlasgo.io/uploads/images/operator-versioned.png)
+
+The Atlas Kubernetes Operator supports [versioned migrations](https://atlasgo.io/concepts/declarative-vs-versioned#versioned-migrations).
+In versioned migrations, the database schema is defined by a series of migrations that are applied in order. The user can specify the version
+and migration directory to run, which can be located on the [Atlas Cloud](https://atlasgo.io/cloud/getting-started) or the local file system.

@@ -87,7 +87,18 @@ module.exports = {
             label: 'Integrations',
             collapsed: false,
             items: [
-                {type: 'doc', id: 'integrations/kubernetes-operator', label: 'Kubernetes Operator'},
+                {
+                    type: 'category',
+                    label: 'Kubernetes Operator',
+                    link: {
+                        type: 'doc',
+                        id: 'integrations/kubernetes/operator',
+                    },
+                    items: [
+                        {type: 'doc', id: 'integrations/kubernetes/operators/declarative', label: 'Declarative Workflow'},
+                        {type: 'doc', id: 'integrations/kubernetes/operators/versioned', label: 'Versioned Workflow'},
+                    ]
+                },
                 {type: 'doc', id: 'integrations/github-actions', label: 'GitHub Actions'},
                 {type: 'doc', id: 'integrations/terraform-provider', label: 'Terraform Provider'},
                 {type: 'doc', id: 'integrations/go-api', label: 'Go API'},
