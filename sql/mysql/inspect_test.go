@@ -643,7 +643,7 @@ func TestDriver_InspectTable(t *testing.T) {
 `))
 				m.noIndexes()
 				m.ExpectQuery(queryFKs).
-					WithArgs("public", "users").
+					WithArgs("public", "public", "users").
 					WillReturnRows(sqltest.Rows(`
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
 | CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | TABLE_SCHEMA | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | REFERENCED_SCHEMA_NAME | UPDATE_RULE | DELETE_RULE |
@@ -840,7 +840,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexesExprQuery, "?, ?"))).
 					WillReturnRows(sqlmock.NewRows([]string{"table_name", "index_name", "column_name", "non_unique", "key_part", "expression"}))
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(fksQuery, "?, ?"))).
-					WithArgs("public", "users", "pets").
+					WithArgs("public", "public", "users", "pets").
 					WillReturnRows(sqltest.Rows(`
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
 | CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | TABLE_SCHEMA | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | REFERENCED_SCHEMA_NAME | UPDATE_RULE | DELETE_RULE |

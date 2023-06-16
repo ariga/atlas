@@ -672,7 +672,11 @@ func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
 }
 
 func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schema) (*sql.Rows, error) {
-	args := []any{s.Name}
+	// Number of times the schema name is parameterized.
+	args := make([]any, strings.Count(query, "?"))
+	for i := range args {
+		args[i] = s.Name
+	}
 	for _, t := range s.Tables {
 		args = append(args, t.Name)
 	}
@@ -721,8 +725,7 @@ WHERE
 	TABLE_SCHEMA IN (%s)
 	AND TABLE_TYPE = 'BASE TABLE'
 ORDER BY
-	TABLE_SCHEMA, TABLE_NAME
-`
+	TABLE_SCHEMA, TABLE_NAME`
 
 	tablesQueryArgs = `
 SELECT
@@ -746,8 +749,7 @@ WHERE
 	AND TABLE_NAME IN (%s)
 	AND TABLE_TYPE = 'BASE TABLE'
 ORDER BY
-	TABLE_SCHEMA, TABLE_NAME
-`
+	TABLE_SCHEMA, TABLE_NAME`
 
 	// Query to list table check constraints.
 	myChecksQuery  = `SELECT t1.TABLE_NAME, t1.CONSTRAINT_NAME, t2.CHECK_CLAUSE, t1.ENFORCED` + checksQuery
@@ -763,8 +765,7 @@ WHERE
 	AND t1.TABLE_SCHEMA = ?
 	AND t1.TABLE_NAME IN (%s)
 ORDER BY
-	t1.CONSTRAINT_NAME
-`
+	t1.CONSTRAINT_NAME`
 
 	// Query to list table foreign keys.
 	fksQuery = `
@@ -776,22 +777,20 @@ SELECT
 	t1.REFERENCED_TABLE_NAME,
 	t1.REFERENCED_COLUMN_NAME,
 	t1.REFERENCED_TABLE_SCHEMA,
-	t3.UPDATE_RULE,
-	t3.DELETE_RULE
+	t2.UPDATE_RULE,
+	t2.DELETE_RULE
 FROM
 	INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS t1
-	JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t2
-	JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t3
+	JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t2
 	ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
-	AND t1.CONSTRAINT_NAME = t3.CONSTRAINT_NAME
-	AND t1.TABLE_SCHEMA = t2.TABLE_SCHEMA
-	AND t1.TABLE_SCHEMA = t3.CONSTRAINT_SCHEMA
 WHERE
-	t2.CONSTRAINT_TYPE = 'FOREIGN KEY'
-	AND t1.TABLE_SCHEMA = ?
+	t1.REFERENCED_COLUMN_NAME IS NOT NULL
+	AND BINARY t1.TABLE_SCHEMA = ?
+	AND BINARY t2.CONSTRAINT_SCHEMA = ?
 	AND t1.TABLE_NAME IN (%s)
 ORDER BY
-	t1.CONSTRAINT_NAME,
+	BINARY t1.TABLE_NAME,
+	BINARY t1.CONSTRAINT_NAME,
 	t1.ORDINAL_POSITION`
 )
 
