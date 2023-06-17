@@ -77,7 +77,7 @@ Inspect the entire MySQL database and get its JSON representation:
 ```shell
 atlas schema inspect \
   --url "mysql://root:pass@localhost:3306/" \
-  --log '{{ json . }}' | jq
+  --format '{{ json . }}' | jq
 ```
 
 <details><summary>Result</summary>
@@ -105,7 +105,7 @@ Inspect a specific PostgreSQL schema and get its representation in SQL DDL synta
 ```shell
 atlas schema inspect \
   --url "postgres://root:pass@:5432/test?search_path=public&sslmode=disable" \
-  --log '{{ sql . }}'
+  --format '{{ sql . }}'
 ```
 
 <details><summary>Result</summary>
