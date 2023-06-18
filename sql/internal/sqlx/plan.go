@@ -354,6 +354,7 @@ func CheckChangesScope(opts migrate.PlanOptions, changes []schema.Change) error 
 		for k := range names {
 			ks = append(ks, k)
 		}
+		sort.Strings(ks)
 		return fmt.Errorf("found %d schemas when migration plan is scoped to one: %q", len(names), ks)
 	}
 	return nil
