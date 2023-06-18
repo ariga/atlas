@@ -265,6 +265,7 @@ type (
 	TimeType struct {
 		T         string
 		Precision *int
+		Scale     *int
 	}
 
 	// JSONType represents a JSON type.
