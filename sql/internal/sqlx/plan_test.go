@@ -7,6 +7,7 @@ package sqlx
 import (
 	"testing"
 
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
@@ -108,21 +109,26 @@ func TestDetachCycles(t *testing.T) {
 }
 
 func TestCheckChangesScope(t *testing.T) {
-	err := CheckChangesScope([]schema.Change{
+	err := CheckChangesScope(migrate.PlanOptions{}, []schema.Change{
 		&schema.AddSchema{},
 	})
 	require.EqualError(t, err, "*schema.AddSchema is not allowed when migration plan is scoped to one schema")
-	err = CheckChangesScope([]schema.Change{
-		&schema.ModifySchema{},
+	err = CheckChangesScope(migrate.PlanOptions{}, []schema.Change{
+		&schema.ModifySchema{
+			S: schema.New("s1"),
+			Changes: []schema.Change{
+				&schema.AddAttr{A: &schema.Collation{V: "utf8"}},
+			},
+		},
 	})
 	require.EqualError(t, err, "*schema.ModifySchema is not allowed when migration plan is scoped to one schema")
-	err = CheckChangesScope([]schema.Change{
+	err = CheckChangesScope(migrate.PlanOptions{}, []schema.Change{
 		&schema.DropSchema{},
 	})
 	require.EqualError(t, err, "*schema.DropSchema is not allowed when migration plan is scoped to one schema")
-	err = CheckChangesScope([]schema.Change{
+	err = CheckChangesScope(migrate.PlanOptions{}, []schema.Change{
 		&schema.AddTable{T: schema.NewTable("users").SetSchema(schema.New("s1"))},
 		&schema.AddTable{T: schema.NewTable("users").SetSchema(schema.New("s2"))},
 	})
-	require.EqualError(t, err, "found 2 schemas when migration plan is scoped to one")
+	require.EqualError(t, err, "found 2 schemas when migration plan is scoped to one: [\"s1\" \"s2\"]")
 }

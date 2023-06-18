@@ -634,13 +634,13 @@ func (l EntLoader) LoadState(ctx context.Context, config *StateReaderConfig) (*S
 	if err != nil {
 		return nil, fmt.Errorf("reading schema state: %w", err)
 	}
-	if nr, ok := config.Dev.Driver.(schema.Normalizer); ok {
-		if realm, err = nr.NormalizeRealm(ctx, realm); err != nil {
-			return nil, err
-		}
-	}
 	if len(realm.Schemas) != 1 {
 		return nil, fmt.Errorf("expect exactly one schema, got %d", len(realm.Schemas))
+	}
+	if nr, ok := config.Dev.Driver.(schema.Normalizer); ok {
+		if realm.Schemas[0], err = nr.NormalizeSchema(ctx, realm.Schemas[0]); err != nil {
+			return nil, err
+		}
 	}
 	// Use the dev-database schema name if the schema name is empty.
 	if realm.Schemas[0].Name == "" && config.Dev.URL.Schema != "" {

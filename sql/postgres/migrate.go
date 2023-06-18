@@ -73,7 +73,7 @@ type state struct {
 // if one of the operations fail, or a change is not supported.
 func (s *state) plan(ctx context.Context, changes []schema.Change) error {
 	if s.SchemaQualifier != nil {
-		if err := sqlx.CheckChangesScope(changes); err != nil {
+		if err := sqlx.CheckChangesScope(s.PlanOptions, changes); err != nil {
 			return err
 		}
 	}
