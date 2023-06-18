@@ -159,17 +159,28 @@ func stateReaderHCL(ctx context.Context, config *StateReaderConfig, paths []stri
 			config.Dev.URL.Schema,
 		)
 	}
-	if nr, ok := client.Driver.(schema.Normalizer); ok && config.Dev != nil { // only normalize on a dev database
-		if config.Dev.URL.Schema != "" {
-			realm.Schemas[0], err = nr.NormalizeSchema(ctx, realm.Schemas[0])
-		} else {
-			realm, err = nr.NormalizeRealm(ctx, realm)
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &StateReadCloser{StateReader: migrate.Realm(realm), HCL: true}, nil
+	var normalized bool
+	return &StateReadCloser{
+		HCL: true,
+		// Defer normalization until the first call to ReadState. This is required because the same
+		// dev-database is used for both migration replaying and schema normalization. As a result,
+		// objects created by the migrations, which are not yet supported by Atlas, such as functions,
+		// won't be cleaned and can be referenced by the HCL schema.
+		StateReader: migrate.StateReaderFunc(func(ctx context.Context) (*schema.Realm, error) {
+			// Normalize once, only on dev database connection.
+			if nr, ok := client.Driver.(schema.Normalizer); ok && !normalized && config.Dev != nil {
+				if config.Dev.URL.Schema != "" {
+					realm.Schemas[0], err = nr.NormalizeSchema(ctx, realm.Schemas[0])
+				} else {
+					realm, err = nr.NormalizeRealm(ctx, realm)
+				}
+				if err != nil {
+					return nil, err
+				}
+			}
+			return realm, nil
+		}),
+	}, nil
 }
 
 // parseHCLPaths parses the HCL files in the given paths. If a path represents a directory,

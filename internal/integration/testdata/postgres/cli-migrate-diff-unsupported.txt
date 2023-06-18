@@ -1,0 +1,37 @@
+atlas migrate hash
+atlas migrate diff --dev-url URL --to file://./schema.hcl
+cmpmig 1 2.expected.sql
+
+# Test no diff.
+atlas migrate diff --dev-url URL --to file://./schema.hcl
+stdout 'The migration directory is synced with the desired state, no changes to be made'
+
+-- migrations/1_baseline.sql --
+CREATE OR REPLACE FUNCTION random_id(n INTEGER) RETURNS TEXT AS $$
+DECLARE
+  chars TEXT := '0123456789';
+  result TEXT := '';
+  i INTEGER := 0;
+BEGIN
+  FOR i IN 1..n LOOP
+    result := result || substr(chars, trunc(random()*10)::integer + 1, 1);
+  END LOOP;
+  RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- schema.hcl --
+schema "script_cli_migrate_diff_unsupported" {}
+
+table "users" {
+  schema = schema.script_cli_migrate_diff_unsupported
+  column "id" {
+    null = false
+    type = text
+    default = sql("random_id(10)")
+  }
+}
+
+-- 2.expected.sql --
+-- Create "users" table
+CREATE TABLE "users" ("id" text NOT NULL DEFAULT random_id(10));
