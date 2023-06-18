@@ -469,6 +469,13 @@ func TimePrecision(precision int) TimeOption {
 	}
 }
 
+// TimeScale configures the scale of the time type.
+func TimeScale(scale int) TimeOption {
+	return func(b *TimeType) {
+		b.Scale = &scale
+	}
+}
+
 // NewTimeColumn creates a new TimeType column.
 func NewTimeColumn(name, typ string, opts ...TimeOption) *Column {
 	t := &TimeType{T: typ}
