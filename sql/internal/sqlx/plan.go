@@ -311,12 +311,24 @@ func isDropped(changes []schema.Change, t *schema.Table) bool {
 
 // CheckChangesScope checks that changes can be applied
 // on a schema scope (connection).
-func CheckChangesScope(changes []schema.Change) error {
+func CheckChangesScope(opts migrate.PlanOptions, changes []schema.Change) error {
 	names := make(map[string]struct{})
 	for _, c := range changes {
 		var t *schema.Table
 		switch c := c.(type) {
-		case *schema.AddSchema, *schema.ModifySchema, *schema.DropSchema:
+		case *schema.ModifySchema:
+			switch scope := V(opts.SchemaQualifier); {
+			case !opts.Mode.Is(migrate.PlanModeInPlace):
+				// The migration plan is generated for deferred execution.
+				return fmt.Errorf("%T is not allowed when migration plan is scoped to one schema", c)
+			case scope != "" && scope != c.S.Name:
+				// Other schemas can not be modified when the migration plan is scoped to one schema.
+				return fmt.Errorf("modify schema %s is not allowed when migration plan is scoped to schema %s", c.S.Name, scope)
+			default:
+				names[c.S.Name] = struct{}{}
+				continue
+			}
+		case *schema.AddSchema, *schema.DropSchema:
 			return fmt.Errorf("%T is not allowed when migration plan is scoped to one schema", c)
 		case *schema.AddTable:
 			t = c.T
@@ -338,7 +350,11 @@ func CheckChangesScope(changes []schema.Change) error {
 		}
 	}
 	if len(names) > 1 {
-		return fmt.Errorf("found %d schemas when migration plan is scoped to one", len(names))
+		ks := make([]string, 0, len(names))
+		for k := range names {
+			ks = append(ks, k)
+		}
+		return fmt.Errorf("found %d schemas when migration plan is scoped to one: %q", len(names), ks)
 	}
 	return nil
 }

@@ -7,8 +7,6 @@ package sqlx
 import (
 	"context"
 	"fmt"
-	"hash/fnv"
-	"time"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -18,16 +16,11 @@ import (
 // to interact with the development database.
 type DevDriver struct {
 	// A Driver connected to the dev database.
-	migrate.Driver
-
-	// MaxNameLen configures the max length of object names in
-	// the connected database (e.g. 64 in MySQL). Longer names
-	// are trimmed and suffixed with their hash.
-	MaxNameLen int
-
-	// DropClause holds optional clauses that
-	// can be added to the DropSchema change.
-	DropClause []schema.Clause
+	Driver interface {
+		migrate.Driver
+		migrate.CleanChecker
+		migrate.Snapshoter
+	}
 
 	// PatchColumn allows providing a custom function to patch
 	// columns that hold a schema reference.
@@ -40,93 +33,111 @@ type DevDriver struct {
 // to their "normal presentation" in the database, by creating them temporarily in
 // a "dev database", and then inspects them from there.
 func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *schema.Realm, err error) {
-	var (
-		names   = make(map[string]string)
-		changes = make([]schema.Change, 0, len(r.Schemas))
-		reverse = make([]schema.Change, 0, len(r.Schemas))
-		opts    = &schema.InspectRealmOption{
-			Schemas: make([]string, 0, len(r.Schemas)),
-		}
-	)
-	for _, s := range r.Schemas {
-		if s.Realm != r {
-			s.Realm = r
-		}
-		dev := d.formatName(s.Name)
-		names[dev] = s.Name
-		s.Name = dev
-		opts.Schemas = append(opts.Schemas, s.Name)
-		// Skip adding the schema.IfNotExists clause
-		// to fail if the schema exists.
-		st := schema.New(dev).AddAttrs(s.Attrs...)
-		changes = append(changes, &schema.AddSchema{S: st})
-		reverse = append(reverse, &schema.DropSchema{S: st, Extra: append(d.DropClause, &schema.IfExists{})})
-		for _, t := range s.Tables {
-			// If objects are not strongly connected.
-			if t.Schema != s {
-				t.Schema = s
-			}
-			for _, c := range t.Columns {
-				if e, ok := c.Type.Type.(*schema.EnumType); ok && e.Schema != s {
-					e.Schema = s
-				}
-				if d.PatchColumn != nil {
-					d.PatchColumn(s, c)
-				}
-			}
-			changes = append(changes, &schema.AddTable{T: t})
-		}
+	if err := d.Driver.CheckClean(ctx, nil); err != nil {
+		return nil, err
 	}
-	patch := func(r *schema.Realm) {
-		for _, s := range r.Schemas {
-			s.Name = names[s.Name]
-		}
+	restore, err := d.Driver.Snapshot(ctx)
+	if err != nil {
+		return nil, err
 	}
-	// Delete the dev resources, and return
-	// the source realm to its initial state.
 	defer func() {
-		patch(r)
-		if rerr := d.ApplyChanges(ctx, reverse); rerr != nil {
+		if rerr := restore(ctx); rerr != nil {
 			if err != nil {
 				rerr = fmt.Errorf("%w: %v", err, rerr)
 			}
 			err = rerr
 		}
 	}()
-	if err := d.ApplyChanges(ctx, changes); err != nil {
+	var (
+		changes []schema.Change
+		opts    = &schema.InspectRealmOption{
+			Schemas: make([]string, 0, len(r.Schemas)),
+		}
+	)
+	for _, s := range r.Schemas {
+		opts.Schemas = append(opts.Schemas, s.Name)
+		changes = append(changes, &schema.AddSchema{
+			S: s,
+			Extra: []schema.Clause{
+				&schema.IfNotExists{},
+			},
+		})
+		for _, t := range s.Tables {
+			changes = append(changes, &schema.AddTable{
+				T: t,
+			})
+		}
+	}
+	if err := d.Driver.ApplyChanges(ctx, changes); err != nil {
 		return nil, err
 	}
-	if nr, err = d.InspectRealm(ctx, opts); err != nil {
-		return nil, err
-	}
-	patch(nr)
-	return nr, nil
+	nr, err = d.Driver.InspectRealm(ctx, opts)
+	return
 }
 
 // NormalizeSchema returns the normal representation of the given database. See NormalizeRealm for more info.
 func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema.Schema, error) {
-	r := &schema.Realm{}
-	if s.Realm != nil {
-		r.Attrs = s.Realm.Attrs
+	if err := d.Driver.CheckClean(ctx, nil); err != nil {
+		return nil, err
 	}
-	r.Schemas = append(r.Schemas, s)
-	nr, err := d.NormalizeRealm(ctx, r)
+	restore, err := d.Driver.Snapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
-	ns, ok := nr.Schema(s.Name)
-	if !ok {
-		return nil, fmt.Errorf("missing normalized schema %q", s.Name)
+	defer func() {
+		if rerr := restore(ctx); rerr != nil {
+			if err != nil {
+				rerr = fmt.Errorf("%w: %v", err, rerr)
+			}
+			err = rerr
+		}
+	}()
+	dev, err := d.Driver.InspectSchema(ctx, "", &schema.InspectOptions{
+		Mode: schema.InspectSchemas,
+	})
+	if err != nil {
+		return nil, err
 	}
-	return ns, nil
-}
-
-func (d *DevDriver) formatName(name string) string {
-	dev := fmt.Sprintf("atlas_dev_%s_%d", name, time.Now().Unix())
-	if d.MaxNameLen == 0 || len(dev) <= d.MaxNameLen {
-		return dev
+	// Modify dev-schema attributes if needed.
+	changes, err := d.Driver.SchemaDiff(
+		schema.New(dev.Name).AddAttrs(dev.Attrs...),
+		schema.New(dev.Name).AddAttrs(s.Attrs...),
+	)
+	if err != nil {
+		return nil, err
 	}
-	h := fnv.New128()
-	h.Write([]byte(dev))
-	return fmt.Sprintf("%s_%x", dev[:d.MaxNameLen-1-h.Size()*2], h.Sum(nil))
+	prevName := s.Name
+	s.Name = dev.Name
+	for _, t := range s.Tables {
+		// If objects are not strongly connected.
+		if t.Schema != s {
+			t.Schema = s
+		}
+		for _, c := range t.Columns {
+			if e, ok := c.Type.Type.(*schema.EnumType); ok && e.Schema != s {
+				e.Schema = s
+			}
+			if d.PatchColumn != nil {
+				d.PatchColumn(s, c)
+			}
+		}
+		changes = append(changes, &schema.AddTable{T: t})
+	}
+	if err := d.Driver.ApplyChanges(ctx, changes, func(opts *migrate.PlanOptions) {
+		noQualifier := ""
+		opts.SchemaQualifier = &noQualifier
+		opts.Mode = migrate.PlanModeInPlace
+	}); err != nil {
+		return nil, err
+	}
+	ns, err := d.Driver.InspectSchema(ctx, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	// Preserve the original schema name and attributes.
+	ns.Name = prevName
+	for _, a := range s.Attrs {
+		schema.ReplaceOrAppend(&ns.Attrs, a)
+	}
+	return ns, err
 }

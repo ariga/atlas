@@ -159,8 +159,12 @@ func stateReaderHCL(ctx context.Context, config *StateReaderConfig, paths []stri
 			config.Dev.URL.Schema,
 		)
 	}
-	if norm, ok := client.Driver.(schema.Normalizer); ok && config.Dev != nil { // only normalize on a dev database
-		realm, err = norm.NormalizeRealm(ctx, realm)
+	if nr, ok := client.Driver.(schema.Normalizer); ok && config.Dev != nil { // only normalize on a dev database
+		if config.Dev.URL.Schema != "" {
+			realm.Schemas[0], err = nr.NormalizeSchema(ctx, realm.Schemas[0])
+		} else {
+			realm, err = nr.NormalizeRealm(ctx, realm)
+		}
 		if err != nil {
 			return nil, err
 		}

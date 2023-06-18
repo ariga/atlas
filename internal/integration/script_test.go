@@ -23,6 +23,7 @@ import (
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqlite"
 
 	"github.com/pkg/diff"
@@ -102,7 +103,12 @@ func (t *myTest) setupScript(env *testscript.Env) error {
 	if err := replaceDBURL(env, t.url("")); err != nil {
 		return err
 	}
-	return setupScript(t.T, env, t.db, "DROP SCHEMA IF EXISTS %s")
+	return setupScript(t.T, env, t.db, "DROP SCHEMA IF EXISTS %s", func(tt *testing.T, schema string) migrate.Driver {
+		dev, err := sqlclient.Open(context.Background(), fmt.Sprintf("mysql://root:pass@localhost:%d/%s", t.port, schema))
+		require.NoError(t, err)
+		tt.Cleanup(func() { require.NoError(t, dev.Close()) })
+		return dev.Driver
+	})
 }
 
 func replaceDBURL(env *testscript.Env, url string) error {
@@ -121,22 +127,37 @@ func (t *pgTest) setupScript(env *testscript.Env) error {
 	if err := replaceDBURL(env, u); err != nil {
 		return err
 	}
-	return setupScript(t.T, env, t.db, "DROP SCHEMA IF EXISTS %s CASCADE")
+	return setupScript(t.T, env, t.db, "DROP SCHEMA IF EXISTS %s CASCADE", func(tt *testing.T, schema string) migrate.Driver {
+		dev, err := sqlclient.Open(context.Background(), fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?search_path=%s&sslmode=disable", t.port, schema))
+		require.NoError(t, err)
+		tt.Cleanup(func() { require.NoError(t, dev.Close()) })
+		return dev.Driver
+	})
 }
 
-func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, dropCmd string) error {
+func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, dropCmd string, open func(*testing.T, string) migrate.Driver) error {
 	ctx := context.Background()
 	conn, err := db.Conn(ctx)
 	if err != nil {
 		return err
 	}
 	name := strings.ReplaceAll(filepath.Base(env.WorkDir), "-", "_")
+	devname := fmt.Sprintf("%s_dev", name)
 	env.Setenv("db", name)
+	env.Setenv("dev", devname)
 	if _, err := conn.ExecContext(ctx, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", name)); err != nil {
 		return err
 	}
+	if _, err := conn.ExecContext(ctx, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", devname)); err != nil {
+		return err
+	}
+	// Dev-driver per testscript schema to allow concurrent tests.
+	env.Values["dev"] = open(t, devname)
 	env.Defer(func() {
 		if _, err := conn.ExecContext(ctx, fmt.Sprintf(dropCmd, name)); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := conn.ExecContext(ctx, fmt.Sprintf(dropCmd, devname)); err != nil {
 			t.Fatal(err)
 		}
 		if err := conn.Close(); err != nil {
@@ -571,7 +592,7 @@ func (t *myTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Chang
 	ts.Check(mysql.EvalHCLBytes([]byte(r.Replace(f)), desired, nil))
 	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
-	desired, err = t.drv.(schema.Normalizer).NormalizeSchema(ctx, desired)
+	desired, err = ts.Value("dev").(schema.Normalizer).NormalizeSchema(ctx, desired)
 	// Normalization and diffing errors should
 	// be returned to the caller.
 	if err != nil {
@@ -601,7 +622,7 @@ func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Chang
 	ts.Check(postgres.EvalHCLBytes([]byte(f), desired, nil))
 	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
-	desired, err = t.drv.(schema.Normalizer).NormalizeSchema(ctx, desired)
+	desired, err = ts.Value("dev").(schema.Normalizer).NormalizeSchema(ctx, desired)
 	// Normalization and diffing errors should
 	// be returned to the caller.
 	if err != nil {

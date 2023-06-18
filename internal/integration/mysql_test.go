@@ -8,7 +8,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"os/exec"
 	"strings"
 	"sync"
@@ -50,14 +49,11 @@ func myRun(t *testing.T, fn func(*myTest)) {
 					tt.version = version
 					tt.rrw = &rrw{}
 					tt.db, err = sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", tt.port))
-					if err != nil {
-						log.Fatalln(err)
-					}
-					dbs = append(dbs, tt.db) // close connection after all tests have been run
+					require.NoError(t, err)
+					// Close connection after all tests have been run.
+					dbs = append(dbs, tt.db)
 					tt.drv, err = mysql.Open(tt.db)
-					if err != nil {
-						log.Fatalln(err)
-					}
+					require.NoError(t, err)
 				})
 				tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
 				fn(tt)
