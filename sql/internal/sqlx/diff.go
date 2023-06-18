@@ -445,6 +445,28 @@ func CommentChange(from, to []schema.Attr) schema.ChangeKind {
 	return schema.NoChange
 }
 
+// Charset reports if the attribute contains the "charset" attribute,
+// and it needs to be defined explicitly on the schema. This is true, in
+// case the element charset is different from its parent charset.
+func Charset(attr, parent []schema.Attr) (string, bool) {
+	var c, p schema.Charset
+	if Has(attr, &c) && (parent == nil || Has(parent, &p) && c.V != p.V) {
+		return c.V, true
+	}
+	return "", false
+}
+
+// Collate reports if the attribute contains the "collation"/"collate" attribute,
+// and it needs to be defined explicitly on the schema. This is true, in
+// case the element collation is different from its parent collation.
+func Collate(attr, parent []schema.Attr) (string, bool) {
+	var c, p schema.Collation
+	if Has(attr, &c) && (parent == nil || Has(parent, &p) && c.V != p.V) {
+		return c.V, true
+	}
+	return "", false
+}
+
 var (
 	attrsType   = reflect.TypeOf(([]schema.Attr)(nil))
 	clausesType = reflect.TypeOf(([]schema.Clause)(nil))
