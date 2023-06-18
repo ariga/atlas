@@ -235,10 +235,10 @@ func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c, ok := hasCharset(s.Attrs, nil); ok {
+	if c, ok := sqlx.Charset(s.Attrs, nil); ok {
 		spec.Schema.Extra.Attrs = append(spec.Schema.Extra.Attrs, schemahcl.StringAttr("charset", c))
 	}
-	if c, ok := hasCollate(s.Attrs, nil); ok {
+	if c, ok := sqlx.Collate(s.Attrs, nil); ok {
 		spec.Schema.Extra.Attrs = append(spec.Schema.Extra.Attrs, schemahcl.StringAttr("collate", c))
 	}
 	return spec, nil
@@ -257,10 +257,10 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c, ok := hasCharset(t.Attrs, t.Schema.Attrs); ok {
+	if c, ok := sqlx.Charset(t.Attrs, t.Schema.Attrs); ok {
 		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.StringAttr("charset", c))
 	}
-	if c, ok := hasCollate(t.Attrs, t.Schema.Attrs); ok {
+	if c, ok := sqlx.Collate(t.Attrs, t.Schema.Attrs); ok {
 		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.StringAttr("collate", c))
 	}
 	// Marshal the engine attribute only if it is not InnoDB (default).
@@ -327,10 +327,10 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c, ok := hasCharset(c.Attrs, t.Attrs); ok {
+	if c, ok := sqlx.Charset(c.Attrs, t.Attrs); ok {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.StringAttr("charset", c))
 	}
-	if c, ok := hasCollate(c.Attrs, t.Attrs); ok {
+	if c, ok := sqlx.Collate(c.Attrs, t.Attrs); ok {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.StringAttr("collate", c))
 	}
 	if o := (OnUpdate{}); sqlx.Has(c.Attrs, &o) {
@@ -407,28 +407,6 @@ func convertCharset(spec specutil.Attrer, attrs *[]schema.Attr) error {
 		*attrs = append(*attrs, &schema.Collation{V: s})
 	}
 	return nil
-}
-
-// hasCharset reports if the attribute contains the "charset" attribute,
-// and it needs to be defined explicitly on the schema. This is true, in
-// case the element charset is different from its parent charset.
-func hasCharset(attr []schema.Attr, parent []schema.Attr) (string, bool) {
-	var c, p schema.Charset
-	if sqlx.Has(attr, &c) && (parent == nil || sqlx.Has(parent, &p) && c.V != p.V) {
-		return c.V, true
-	}
-	return "", false
-}
-
-// hasCollate reports if the attribute contains the "collation"/"collate" attribute,
-// and it needs to be defined explicitly on the schema. This is true, in
-// case the element collation is different from its parent collation.
-func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
-	var c, p schema.Collation
-	if sqlx.Has(attr, &c) && (parent == nil || sqlx.Has(parent, &p) && c.V != p.V) {
-		return c.V, true
-	}
-	return "", false
 }
 
 // TypeRegistry contains the supported TypeSpecs for the mysql driver.
