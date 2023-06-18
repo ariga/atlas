@@ -718,17 +718,17 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec(TypePoint),
 		schemahcl.NewTypeSpec(TypePolygon),
 		schemahcl.NewTypeSpec(TypeDate),
-		schemahcl.NewTypeSpec(TypeTime, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
-		schemahcl.NewTypeSpec(TypeTimeTZ, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
-		schemahcl.NewTypeSpec(TypeTimestampTZ, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
-		schemahcl.NewTypeSpec(TypeTimestamp, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeTime, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeTimeTZ, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeTimestampTZ, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeTimestamp, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr()), formatTime()),
 		schemahcl.AliasTypeSpec("double_precision", TypeDouble),
 		schemahcl.NewTypeSpec(TypeReal),
-		schemahcl.NewTypeSpec(TypeFloat, schemahcl.WithAttributes(precisionTypeAttr())),
+		schemahcl.NewTypeSpec(TypeFloat, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr())),
 		schemahcl.NewTypeSpec(TypeFloat8),
 		schemahcl.NewTypeSpec(TypeFloat4),
-		schemahcl.NewTypeSpec(TypeNumeric, schemahcl.WithAttributes(precisionTypeAttr(), &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.NewTypeSpec(TypeDecimal, schemahcl.WithAttributes(precisionTypeAttr(), &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeNumeric, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
+		schemahcl.NewTypeSpec(TypeDecimal, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
 		schemahcl.NewTypeSpec(TypeSmallSerial),
 		schemahcl.NewTypeSpec(TypeSerial),
 		schemahcl.NewTypeSpec(TypeBigSerial),
@@ -801,7 +801,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 			}),
 		}
 		for _, f := range []string{"interval", "second", "day to second", "hour to second", "minute to second"} {
-			specs = append(specs, schemahcl.NewTypeSpec(specutil.Var(f), append(opts, schemahcl.WithAttributes(precisionTypeAttr()))...))
+			specs = append(specs, schemahcl.NewTypeSpec(specutil.Var(f), append(opts, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr()))...))
 		}
 		for _, f := range []string{"year", "month", "day", "hour", "minute", "year to month", "day to hour", "day to minute", "hour to minute"} {
 			specs = append(specs, schemahcl.NewTypeSpec(specutil.Var(f), opts...))
@@ -809,14 +809,6 @@ var TypeRegistry = schemahcl.NewRegistry(
 		return specs
 	}()...),
 )
-
-func precisionTypeAttr() *schemahcl.TypeAttr {
-	return &schemahcl.TypeAttr{
-		Name:     "precision",
-		Kind:     reflect.Int,
-		Required: false,
-	}
-}
 
 func attr(typ *schemahcl.Type, key string) (*schemahcl.Attr, bool) {
 	for _, a := range typ.Attrs {

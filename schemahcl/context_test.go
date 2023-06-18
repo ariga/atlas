@@ -432,8 +432,8 @@ func TestOptionalArgs(t *testing.T) {
 				T:    "float",
 				Name: "float",
 				Attributes: []*TypeAttr{
-					{Name: "precision", Kind: reflect.Int, Required: false},
-					{Name: "scale", Kind: reflect.Int, Required: false},
+					PrecisionTypeAttr(),
+					ScaleTypeAttr(),
 				},
 			},
 		}),
