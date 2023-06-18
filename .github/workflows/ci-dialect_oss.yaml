@@ -367,7 +367,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       azure-sql-edge:
-        image: mcr.microsoft.com/azure-sql-edge:latest
+        image: mcr.microsoft.com/azure-sql-edge:1.0.7
         env:
           ACCEPT_EULA: Y
           MSSQL_SA_PASSWORD: Passw0rd!995

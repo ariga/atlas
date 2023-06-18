@@ -173,7 +173,7 @@ var (
 		},
 		{
 			Version: "azure-sql-edge",
-			Image:   "mcr.microsoft.com/azure-sql-edge:latest",
+			Image:   "mcr.microsoft.com/azure-sql-edge:1.0.7",
 			Regex:   "SQLServer",
 			Ports:   []string{"1434:1433"},
 			Env: []string{
