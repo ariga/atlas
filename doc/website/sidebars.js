@@ -174,6 +174,69 @@ module.exports = {
         },
         {
             type: 'category',
+            label: 'Terraform',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/terraform/named-databases',
+                    label: 'Named Databases'
+                }
+            ]
+        },
+        {
+            type: 'category',
+            label: 'Migration tools',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/migration-tools/golang-migrate',
+                    label: 'Working with golang-migrate'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/migration-tools/goose-import',
+                    label: 'Importing from goose'
+                }
+            ]
+        },
+        {
+            type: 'category',
+            label: 'Frameworks',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/orms/gorm',
+                    label: 'Versioned migrations for GORM'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/frameworks/sqlc-declarative',
+                    label: 'Declarative migrations for sqlc'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/frameworks/sqlc-versioned',
+                    label: 'Versioned migrations for sqlc'
+                }
+            ]
+        },
+        {
+            type: 'category',
+            label: 'Cloud',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/cloud/explore-inspection',
+                    label: 'How to inspect a local database in the Cloud'
+                }
+            ]
+        },
+        {
+            type: 'category',
             label: 'MySQL',
             collapsed: false,
             items: [
@@ -223,18 +286,6 @@ module.exports = {
                     label: 'Constraint Drop (CD101)'
                 },
             ],
-        },
-        {
-            type: 'category',
-            label: 'Terraform',
-            collapsed: false,
-            items: [
-                {
-                    type: 'doc',
-                    id: 'guides/terraform/named-databases',
-                    label: 'Named Databases'
-                }
-            ]
         },
         {
             type: 'category',
@@ -304,57 +355,6 @@ module.exports = {
                     label: 'Working with Turso'
                 }
             ],
-        },
-        {
-            type: 'category',
-            label: 'Migration tools',
-            collapsed: false,
-            items: [
-                {
-                    type: 'doc',
-                    id: 'guides/migration-tools/golang-migrate',
-                    label: 'golang-migrate'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/migration-tools/goose-import',
-                    label: 'Importing from goose'
-                }
-            ]
-        },
-        {
-            type: 'category',
-            label: 'Frameworks',
-            collapsed: false,
-            items: [
-                {
-                    type: 'doc',
-                    id: 'guides/orms/gorm',
-                    label: 'GORM'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/frameworks/sqlc-declarative',
-                    label: 'Declarative migrations for sqlc'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/frameworks/sqlc-versioned',
-                    label: 'Versioned migrations for sqlc'
-                }
-            ]
-        },
-        {
-            type: 'category',
-            label: 'Cloud',
-            collapsed: false,
-            items: [
-                {
-                    type: 'doc',
-                    id: 'guides/cloud/explore-inspection',
-                    label: 'How to inspect a local database in the Cloud'
-                }
-            ]
         },
         {
             type: 'doc',
