@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSQLSpec(t *testing.T) {
@@ -19,7 +20,9 @@ schema "schema" {
 }
 
 table "table" {
-	schema = schema.schema
+	schema        = schema.schema
+	without_rowid = true
+	strict        = false
 	column "id" {
 		type = integer
 		auto_increment = true
@@ -60,6 +63,7 @@ table "table" {
 
 table "accounts" {
 	schema = schema.schema
+	strict = true
 	column "name" {
 		type = varchar(32)
 	}
@@ -118,6 +122,7 @@ table "accounts" {
 					Name: "positive price",
 					Expr: "price > 0",
 				},
+				&WithoutRowID{},
 			},
 		},
 		{
@@ -133,6 +138,9 @@ table "accounts" {
 						},
 					},
 				},
+			},
+			Attrs: []schema.Attr{
+				&Strict{},
 			},
 		},
 	}
@@ -421,6 +429,43 @@ schema "test" {
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})
 	}
+}
+
+func TestMarshalSpec_TableOptions(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					},
+				},
+				Attrs: []schema.Attr{
+					&WithoutRowID{},
+					&Strict{},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema        = schema.test
+  without_rowid = true
+  strict        = true
+  column "id" {
+    null = false
+    type = int
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
 }
 
 func TestInputVars(t *testing.T) {
