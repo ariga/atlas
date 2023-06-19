@@ -343,6 +343,46 @@ jobs:
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="SQLite.*" -version="sqlite" -timeout 15m ./...
 
+  integration-sqlserver-2022:
+    runs-on: ubuntu-latest
+    services:
+      sqlserver-2022:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Passw0rd!995
+        ports:
+          - 1433:1433
+        
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for sqlserver-2022
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="SQLServer" -version="sqlserver-2022" -timeout 15m ./...
+
+  integration-azure-sql-edge:
+    runs-on: ubuntu-latest
+    services:
+      azure-sql-edge:
+        image: mcr.microsoft.com/azure-sql-edge:1.0.7
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Passw0rd!995
+        ports:
+          - 1434:1433
+        
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: Run integration tests for azure-sql-edge
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="SQLServer" -version="azure-sql-edge" -timeout 15m ./...
+
   integration-tidb5:
     runs-on: ubuntu-latest
     services:
