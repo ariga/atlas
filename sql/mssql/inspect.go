@@ -128,12 +128,16 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema, scope queryScop
 // addColumn scans the current row and adds a new column from it to the scope (table or view).
 func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) (err error) {
 	var (
-		table, name, typeName, comment, collation     sql.NullString
-		nullable, userDefined, size, precision, scale sql.NullInt64
+		table, name, typeName, comment, collation sql.NullString
+		nullable, userDefined                     sql.NullInt64
+		identity, identitySeek, identityIncrement sql.NullInt64
+		size, precision, scale                    sql.NullInt64
 	)
 	if err = rows.Scan(
-		&table, &name, &typeName, &comment, &collation,
-		&nullable, &userDefined, &size, &precision, &scale,
+		&table, &name, &typeName, &comment,
+		&nullable, &userDefined,
+		&identity, &identitySeek, &identityIncrement,
+		&collation, &size, &precision, &scale,
 	); err != nil {
 		return err
 	}
@@ -151,6 +155,12 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) 
 		precision:   precision.Int64,
 		userDefined: userDefined.Int64 == 1,
 	})
+	if identity.Valid && identity.Int64 == 1 {
+		c.Attrs = append(c.Attrs, &Identity{
+			Seek:      identitySeek.Int64,
+			Increment: identityIncrement.Int64,
+		})
+	}
 	if sqlx.ValidString(comment) {
 		c.SetComment(comment.String)
 	}
@@ -223,8 +233,9 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 	for rows.Next() {
 		var (
 			tSchema, name, comment sql.NullString
+			memoryOptimized        sql.NullInt64
 		)
-		if err := rows.Scan(&tSchema, &name, &comment); err != nil {
+		if err := rows.Scan(&tSchema, &name, &comment, &memoryOptimized); err != nil {
 			return fmt.Errorf("scan table information: %w", err)
 		}
 		if !sqlx.ValidString(tSchema) || !sqlx.ValidString(name) {
@@ -238,6 +249,11 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		s.AddTables(t)
 		if sqlx.ValidString(comment) {
 			t.SetComment(comment.String)
+		}
+		if memoryOptimized.Valid {
+			t.Attrs = append(t.Attrs, &MemoryOptimized{
+				V: memoryOptimized.Int64 == 1,
+			})
 		}
 	}
 	return rows.Close()
@@ -302,7 +318,8 @@ ORDER BY
 SELECT
 	[table_schema] = SCHEMA_NAME([t1].[schema_id]),
 	[table_name] = [t1].[name],
-	[comment] = [td].[value]
+	[comment] = [td].[value],
+	[is_memory_optimized] = [t1].[is_memory_optimized]
 FROM
 	[sys].[tables] as [t1]
 	LEFT JOIN [sys].[extended_properties] [td]
@@ -320,7 +337,8 @@ ORDER BY
 SELECT
 	[table_schema] = SCHEMA_NAME([t1].[schema_id]),
 	[table_name] = [t1].[name],
-	[comment] = [td].[value]
+	[comment] = [td].[value],
+	[is_memory_optimized] = [t1].[is_memory_optimized]
 FROM
 	[sys].[tables] as [t1]
 	LEFT JOIN [sys].[extended_properties] [td]
@@ -342,7 +360,10 @@ SELECT
 	[type_name] = [tp].[name],
 	[comment] = [cd].[value],
 	[is_nullable] = [c1].[is_nullable],
-	[is_user_defined] = [tp].[is_user_defined]
+	[is_user_defined] = [tp].[is_user_defined],
+	[is_identity] = [ti].[is_identity],
+	[identity_seek] = [ti].[seed_value],
+	[identity_increment] = [ti].[increment_value],
 	[collation_name] = [c1].[collation_name],
 	[max_length] = [c1].[max_length],
 	[precision] = [c1].[precision],
@@ -353,6 +374,9 @@ FROM
 	ON [t1].[object_id] = [c1].[object_id]
 	INNER JOIN [sys].[types] [tp]
 	ON [c1].[user_type_id] = [tp].[user_type_id]
+	LEFT JOIN [sys].[identity_columns] [ti]
+	ON [ti].[object_id] = [c1].[object_id]
+	AND [ti].[column_id] = [c1].[column_id]
 	LEFT JOIN [sys].[extended_properties] [cd]
 	ON [cd].[major_id] = [c1].[object_id]
 	AND [cd].[minor_id] = [c1].[column_id]
@@ -367,6 +391,17 @@ ORDER BY
 )
 
 type (
+	// MemoryOptimized attribute describes if the table is memory-optimized or disk-based.
+	MemoryOptimized struct {
+		schema.Attr
+		V bool
+	}
+	// Identity defines an identity column.
+	Identity struct {
+		schema.Attr
+		Seek      int64
+		Increment int64
+	}
 	// BitType defines a bit type.
 	// https://learn.microsoft.com/en-us/sql/t-sql/data-types/bit-transact-sql
 	BitType struct {
@@ -388,6 +423,11 @@ type (
 	// UniqueIdentifierType defines a uniqueidentifier type.
 	// https://learn.microsoft.com/en-us/sql/t-sql/data-types/uniqueidentifier-transact-sql
 	UniqueIdentifierType struct {
+		schema.Type
+		T string
+	}
+	// RowVersionType defines a rowversion type.
+	RowVersionType struct {
 		schema.Type
 		T string
 	}
