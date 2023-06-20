@@ -1353,6 +1353,147 @@ env "local" {
 		require.NoError(t, err)
 		require.Len(t, files, 2)
 	})
+
+	t.Run("TemplateDir", func(t *testing.T) {
+		var (
+			h = `
+variable "default" {
+  type    = string
+  default = "Default"
+}
+
+variable "schema_path" {
+  type = string
+}
+
+variable "migrations_path" {
+  type = string
+}
+
+data "hcl_schema" "app" {
+  path = var.schema_path
+  vars = {
+    default = var.default
+  }
+}
+
+data "template_dir" "app" {
+  path = var.migrations_path
+  vars = {
+    default = var.default
+  }
+}
+
+env "local" {
+  src = data.hcl_schema.app.url
+  dev = "sqlite://file?mode=memory&_fk=1"
+  migration {
+    dir = data.template_dir.app.url
+  }
+}
+`
+			p, md      = t.TempDir(), t.TempDir()
+			cfg, state = filepath.Join(p, "atlas.hcl"), filepath.Join(p, "schema.hcl")
+		)
+		err := os.WriteFile(cfg, []byte(h), 0600)
+		require.NoError(t, err)
+		err = os.WriteFile(state, []byte(`variable "default" { type = string  }
+schema "main" {}
+table "users" {
+  schema = schema.main
+  column "c" {
+    type = text
+    default = var.default
+  }
+}
+`), 0600)
+		require.NoError(t, err)
+		dir, err := migrate.NewLocalDir(md)
+		require.NoError(t, err)
+		err = dir.WriteFile("1.sql", []byte(`create table users (c text default "{{ .default }}" NOT NULL);`))
+		require.NoError(t, err)
+
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateHashCmd())
+		_, err = runCmd(
+			cmd, "hash",
+			"--dir", "file://"+md,
+		)
+		require.NoError(t, err)
+		f, err := dir.Open(migrate.HashFileName)
+		require.NoError(t, err)
+		b, err := io.ReadAll(f)
+		require.NoError(t, err)
+		require.NotEmpty(t, b)
+
+		cmd = migrateCmd()
+		cmd.AddCommand(migrateDiffCmd())
+		s, err := runCmd(
+			cmd, "diff",
+			"-c", "file://"+cfg,
+			"--env", "local",
+			"--var", "migrations_path="+md,
+			"--var", "schema_path="+state,
+		)
+		// Desired state and migration directory are in sync.
+		require.NoError(t, err)
+		require.Equal(t, "The migration directory is synced with the desired state, no changes to be made\n", s)
+		f, err = dir.Open(migrate.HashFileName)
+		require.NoError(t, err)
+		nb, err := io.ReadAll(f)
+		require.NoError(t, err)
+		require.Equal(t, b, nb, "hash file should not be updated")
+
+		// Update the desired state and run diff again.
+		err = os.WriteFile(state, []byte(`variable "default" { type = string  }
+schema "main" {}
+table "users" {
+  schema = schema.main
+  column "c" {
+    type = text
+    default = var.default
+  }
+  column "d" {
+    type = text
+  }
+}
+`), 0600)
+		require.NoError(t, err)
+		_, err = runCmd(
+			cmd, "diff",
+			"-c", "file://"+cfg,
+			"--env", "local",
+			"--var", "migrations_path="+md,
+			"--var", "schema_path="+state,
+		)
+		require.NoError(t, err)
+
+		// Check files.
+		files, err := dir.Files()
+		require.NoError(t, err)
+		require.Len(t, files, 2)
+		require.Equal(t, "1.sql", files[0].Name())
+		require.Equal(t, `create table users (c text default "{{ .default }}" NOT NULL);`, string(files[0].Bytes()), "should not update template files")
+		require.Equal(t, "-- Add column \"d\" to table: \"users\"\nALTER TABLE `users` ADD COLUMN `d` text NOT NULL;\n", string(files[1].Bytes()))
+
+		// Ensure the sum file is consistent.
+		f, err = dir.Open(migrate.HashFileName)
+		require.NoError(t, err)
+		before, err := io.ReadAll(f)
+		require.NoError(t, err)
+		cmd = migrateCmd()
+		cmd.AddCommand(migrateHashCmd())
+		_, err = runCmd(
+			cmd, "hash",
+			"--dir", "file://"+md,
+		)
+		require.NoError(t, err)
+		f, err = dir.Open(migrate.HashFileName)
+		require.NoError(t, err)
+		after, err := io.ReadAll(f)
+		require.NoError(t, err)
+		require.Equal(t, before, after)
+	})
 }
 
 func TestMigrate_StatusJSON(t *testing.T) {

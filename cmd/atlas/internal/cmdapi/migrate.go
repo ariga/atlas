@@ -166,11 +166,11 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		}
 	}
 	// Open and validate the migration directory.
-	migrationDir, err := cmdmigrate.Dir(flags.dirURL, false)
+	dir, err := cmdmigrate.Dir(flags.dirURL, false)
 	if err != nil {
 		return err
 	}
-	if err := migrate.Validate(migrationDir); err != nil {
+	if err := migrate.Validate(dir); err != nil {
 		printChecksumError(cmd)
 		return err
 	}
@@ -205,7 +205,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		return err
 	}
 	// Setup reporting info.
-	report := cmdlog.NewMigrateApply(client, migrationDir)
+	report := cmdlog.NewMigrateApply(client, dir)
 	mr.Init(client, report, rrw.(*cmdmigrate.EntRevisions))
 	// If cloud reporting is enabled, and we cannot obtain the current
 	// target identifier, abort and report it to the user.
@@ -214,7 +214,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 	}
 	// Determine pending files.
 	opts := append(flags.migrateOptions(), migrate.WithOperatorVersion(operatorVersion()), migrate.WithLogger(report))
-	ex, err := migrate.NewExecutor(client.Driver, migrationDir, rrw, opts...)
+	ex, err := migrate.NewExecutor(client.Driver, dir, rrw, opts...)
 	if err != nil {
 		return err
 	}
@@ -253,7 +253,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		if drv, rrw, err = mux.driverFor(ctx, f); err != nil {
 			break
 		}
-		if ex, err = migrate.NewExecutor(drv, migrationDir, rrw, opts...); err != nil {
+		if ex, err = migrate.NewExecutor(drv, dir, rrw, opts...); err != nil {
 			return fmt.Errorf("unexpected executor creation error: %w", err)
 		}
 		if err = mux.mayRollback(ex.Execute(ctx, f)); err != nil {

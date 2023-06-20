@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -268,6 +269,13 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	if len(attrs) > 0 {
 		return cty.NilVal, errorf("unexpected attributes: %v", attrs)
 	}
+	dirname := path.Join(args.Path, block.Labels[1])
+	dir := migrate.OpenMemDir(dirname)
+	// Clear existing directories in case the config was called
+	// multiple times with different variables.
+	if files, err := dir.Files(); err != nil || len(files) > 0 {
+		dir.Reset()
+	}
 	t := template.New("template_dir")
 	err := filepath.Walk(args.Path, func(path string, d os.FileInfo, err error) error {
 		if err != nil {
@@ -281,7 +289,6 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	if err != nil {
 		return cty.NilVal, errorf(err.Error())
 	}
-	dir := migrate.OpenMemDir(args.Path)
 	// Only top-level (template) files are treated as migrations.
 	matches, err := fs.Glob(os.DirFS(args.Path), "*.sql")
 	if err != nil {
@@ -300,15 +307,29 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	if err != nil {
 		return cty.NilVal, err
 	}
-	b, err := sum.MarshalText()
-	if err != nil {
+	if err := migrate.WriteSumFile(dir, sum); err != nil {
 		return cty.NilVal, err
 	}
-	if err := dir.WriteFile(migrate.HashFileName, b); err != nil {
-		return cty.NilVal, err
-	}
+	// Sync template dir to local filesystem.
+	dir.SyncWrites(func(name string, data []byte) error {
+		if name == migrate.HashFileName {
+			return nil
+		}
+		l, err := migrate.NewLocalDir(args.Path)
+		if err != nil {
+			return err
+		}
+		if err := l.WriteFile(name, data); err != nil {
+			return err
+		}
+		sum, err := l.Checksum()
+		if err != nil {
+			return err
+		}
+		return migrate.WriteSumFile(l, sum)
+	})
 	return cty.ObjectVal(map[string]cty.Value{
-		"url": cty.StringVal(fmt.Sprintf("mem://%s", args.Path)),
+		"url": cty.StringVal(fmt.Sprintf("mem://%s", dirname)),
 	}), nil
 }
 
