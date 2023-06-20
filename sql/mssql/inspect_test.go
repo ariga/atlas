@@ -117,7 +117,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 								Tables: []*schema.Table{
 									{
 										Name:  "t1",
-										Attrs: []schema.Attr{&MemoryOptimized{}},
+										Attrs: nil,
 										Columns: []*schema.Column{
 											{Name: "id", Type: &schema.ColumnType{
 												Raw:  "int",

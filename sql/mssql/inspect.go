@@ -250,10 +250,8 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		if sqlx.ValidString(comment) {
 			t.SetComment(comment.String)
 		}
-		if memoryOptimized.Valid {
-			t.Attrs = append(t.Attrs, &MemoryOptimized{
-				V: memoryOptimized.Int64 == 1,
-			})
+		if memoryOptimized.Valid && memoryOptimized.Int64 == 1 {
+			t.Attrs = append(t.Attrs, &MemoryOptimized{})
 		}
 	}
 	return rows.Close()
@@ -394,7 +392,6 @@ type (
 	// MemoryOptimized attribute describes if the table is memory-optimized or disk-based.
 	MemoryOptimized struct {
 		schema.Attr
-		V bool
 	}
 	// Identity defines an identity column.
 	Identity struct {
