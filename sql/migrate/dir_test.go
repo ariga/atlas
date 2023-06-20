@@ -227,6 +227,18 @@ func TestMemDir(t *testing.T) {
 	files, err = d.Files()
 	require.NoError(t, err)
 	require.Len(t, files, 1) // 1.sql
+
+	// Sync with additional directory.
+	var d2, d3 migrate.MemDir
+	d.SyncWrites(d2.WriteFile, d3.WriteFile)
+	require.NoError(t, d.WriteFile("2.sql", []byte("create table t2(c int);")))
+	for _, d1 := range []migrate.MemDir{d, d2, d3} {
+		f, err := d1.Open("2.sql")
+		require.NoError(t, err)
+		c, err := io.ReadAll(f)
+		require.NoError(t, err)
+		require.Equal(t, "create table t2(c int);", string(c))
+	}
 }
 
 func TestOpenMemDir(t *testing.T) {

@@ -662,7 +662,10 @@ have the `.sql` file extension, and generating an in-memory migration directory 
 
 - `url` - A [URL](../concepts/url.mdx) to the generated migration directory.
 
-```hcl title="atlas.hcl" {6-14}
+<Tabs>
+<TabItem label="Read only templates" value="read-only">
+
+```hcl title="atlas.hcl" {6-14,19}
 variable "path" {
   type        = string
   description = "A path to the template directory"
@@ -685,6 +688,41 @@ env "dev" {
   }
 }
 ```
+
+</TabItem>
+<TabItem label="Variables shared between HCL and directory" value="diff">
+
+```hcl title="atlas.hcl" {13-18,24}
+variable "schema_name" {
+  type    = string
+  default = "Database schema name injected to both migrations directory and HCL schema"
+}
+
+data "hcl_schema" "app" {
+  path = "path/to/schema.hcl"
+  vars = {
+    schema_name = var.schema_name
+  }
+}
+
+data "template_dir" "migrations" {
+  path = "path/to/directory"
+  vars = {
+    schema_name = var.schema_name
+  }
+}
+
+env "local" {
+  src = data.hcl_schema.app.url
+  dev = "sqlite://file?mode=memory&_fk=1"
+  migration {
+    dir = data.template_dir.migrations.url
+  }
+}
+```
+
+</TabItem>
+</Tabs>
 
 ### Environments
 

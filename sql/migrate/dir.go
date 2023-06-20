@@ -219,7 +219,8 @@ func (f LocalFile) Directive(name string) (ds []string) {
 type (
 	// MemDir provides an in-memory Dir implementation.
 	MemDir struct {
-		files map[string]File
+		files  map[string]File
+		syncTo []func(string, []byte) error
 	}
 	// An opened MemDir.
 	openedMem struct {
@@ -262,6 +263,12 @@ func (d *MemDir) Open(name string) (fs.File, error) {
 	}, nil
 }
 
+// Reset the in-memory directory to its initial state.
+func (d *MemDir) Reset() {
+	d.files = nil
+	d.syncTo = nil
+}
+
 // Close implements the io.Closer interface.
 func (d *MemDir) Close() error {
 	memDirs.Lock()
@@ -288,7 +295,18 @@ func (d *MemDir) WriteFile(name string, data []byte) error {
 		d.files = make(map[string]File)
 	}
 	d.files[name] = NewLocalFile(name, data)
+	for _, f := range d.syncTo {
+		if err := f(name, data); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// SyncWrites allows syncing writes from in-memory directory
+// the underlying storage.
+func (d *MemDir) SyncWrites(fs ...func(string, []byte) error) {
+	d.syncTo = append(d.syncTo, fs...)
 }
 
 // Files returns a set of files stored in-memory to be executed on a database.
