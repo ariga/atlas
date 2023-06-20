@@ -147,11 +147,15 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	if err != nil {
 		return nil, err
 	}
+	options := &schemahcl.Resource{}
 	if sqlx.Has(t.Attrs, &WithoutRowID{}) {
-		spec.Extra.SetAttr(schemahcl.BoolAttr("without_rowid", true))
+		options.SetAttr(schemahcl.BoolAttr("without_rowid", true))
 	}
 	if sqlx.Has(t.Attrs, &Strict{}) {
-		spec.Extra.SetAttr(schemahcl.BoolAttr("strict", true))
+		options.SetAttr(schemahcl.BoolAttr("strict", true))
+	}
+	if options != nil {
+		spec.Extra.Children = append(spec.Extra.Children, options)
 	}
 	return spec, nil
 }
