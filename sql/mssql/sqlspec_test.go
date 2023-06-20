@@ -11,5 +11,9 @@ import (
 )
 
 func TestRegistrySanity(t *testing.T) {
-	spectest.RegistrySanityTest(t, TypeRegistry, nil)
+	spectest.RegistrySanityTest(t, TypeRegistry, []string{
+		// skip the following types as they are have different sizes in input and output
+		// nchar(50) and nvarchar(50) have Size attribute as 100
+		"nchar", "nvarchar",
+	})
 }

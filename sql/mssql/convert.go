@@ -79,9 +79,11 @@ func FormatType(t schema.Type) (string, error) {
 		case -1:
 			f = fmt.Sprintf("%s(MAX)", f)
 		case 0:
-			n = 1
-			fallthrough
+			f = fmt.Sprintf("%s(1)", f)
 		default:
+			if f == TypeNChar || f == TypeNVarchar {
+				n /= 2 // NCHAR and NVARCHAR are always 2 bytes per character.
+			}
 			f = fmt.Sprintf("%s(%d)", f, n)
 		}
 	case *schema.BinaryType:
@@ -187,8 +189,11 @@ func parseColumn(s string) (*columnDesc, error) {
 		}
 	case TypeBinary, TypeChar, TypeNChar:
 		if len(parts) > 1 {
-			if c.size, err = strconv.ParseInt(parts[1], 10, 64); err != nil {
+			switch c.size, err = strconv.ParseInt(parts[1], 10, 64); {
+			case err != nil:
 				return nil, fmt.Errorf("mssql: parse size %q: %w", parts[1], err)
+			case typ == TypeNChar:
+				c.size *= 2 // NCHAR is always 2 bytes per character.
 			}
 		}
 	case TypeVarBinary, TypeVarchar, TypeNVarchar:
@@ -196,8 +201,13 @@ func parseColumn(s string) (*columnDesc, error) {
 			// MAX is a special value for the maximum length.
 			if strings.ToLower(parts[1]) == "max" {
 				c.size = -1
-			} else if c.size, err = strconv.ParseInt(parts[1], 10, 64); err != nil {
-				return nil, fmt.Errorf("mssql: parse size %q: %w", parts[1], err)
+			} else {
+				switch c.size, err = strconv.ParseInt(parts[1], 10, 64); {
+				case err != nil:
+					return nil, fmt.Errorf("mssql: parse size %q: %w", parts[1], err)
+				case typ == TypeNVarchar:
+					c.size *= 2 // NVarchar is always 2 bytes per character.
+				}
 			}
 		}
 	case TypeDateTime2, TypeDateTimeOffset, TypeTime:
@@ -258,6 +268,10 @@ func columnType(c *columnDesc) (schema.Type, error) {
 		typ = &schema.SpatialType{T: t}
 	case TypeHierarchyID:
 		typ = &HierarchyIDType{T: t}
+	case TypeRowVersion, "timestamp":
+		// timestamp is the deprecated synonym for the rowversion data type.
+		// https://learn.microsoft.com/en-us/sql/t-sql/data-types/rowversion-transact-sql#remarks
+		typ = &RowVersionType{T: TypeRowVersion}
 	case TypeUniqueIdentifier:
 		typ = &UniqueIdentifierType{T: t}
 	case TypeXML:
