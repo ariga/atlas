@@ -6,6 +6,8 @@ package mssql
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/zclconf/go-cty/cty"
@@ -114,7 +116,18 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 
 // convertIndex converts a sqlspec.Index into a schema.Index.
 func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
-	return specutil.Index(spec, t)
+	idx, err := specutil.Index(spec, t)
+	if err != nil {
+		return nil, err
+	}
+	if attr, ok := spec.Attr("where"); ok {
+		p, err := attr.String()
+		if err != nil {
+			return nil, err
+		}
+		idx.Attrs = append(idx.Attrs, &IndexPredicate{P: p})
+	}
+	return idx, nil
 }
 
 var (
@@ -187,9 +200,7 @@ func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
 		table,
 		columnSpec,
 		specutil.FromPrimaryKey,
-		func(i *schema.Index) (*sqlspec.Index, error) {
-			return specutil.FromIndex(i)
-		},
+		indexSpec,
 		specutil.FromForeignKey,
 		specutil.FromCheck,
 	)
@@ -224,6 +235,22 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 		return nil, err
 	}
 	return &sqlspec.Column{Type: st}, nil
+}
+
+// indexSpec converts from a concrete MSSQL schema.Index into a sqlspec.Index.
+func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
+	spec, err := specutil.FromIndex(idx)
+	if err != nil {
+		return nil, err
+	}
+	// Avoid printing the index type if it is the default.
+	if a := (&IndexType{}); sqlx.Has(idx.Attrs, a) && strings.ToUpper(a.T) != IndexTypeCluster {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(a.T)))
+	}
+	if a := (&IndexPredicate{}); sqlx.Has(idx.Attrs, a) && a.P != "" {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(a.P)))
+	}
+	return spec, nil
 }
 
 // fromSpec converts from a sqlspec.Resource into an Identity.
