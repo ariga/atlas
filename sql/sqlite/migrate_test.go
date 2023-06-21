@@ -411,6 +411,30 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		{
+			changes: []schema.Change{
+				&schema.AddTable{
+					T: schema.NewTable("t1").
+						SetSchema(schema.New("s1")).
+						AddColumns(schema.NewIntColumn("id", "int")).
+						AddAttrs(&WithoutRowID{}, &Strict{}),
+				},
+				&schema.AddTable{
+					T: schema.NewTable("t2").
+						SetSchema(schema.New("s2")).
+						AddColumns(schema.NewIntColumn("id", "int")).
+						AddAttrs(&Strict{}),
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: "CREATE TABLE `t1` (`id` int NOT NULL) WITHOUT ROWID, STRICT", Reverse: "DROP TABLE `t1`"},
+					{Cmd: "CREATE TABLE `t2` (`id` int NOT NULL) STRICT", Reverse: "DROP TABLE `t`"},
+				},
+			},
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
