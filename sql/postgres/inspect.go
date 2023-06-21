@@ -610,7 +610,9 @@ func nArgs(start, n int) string {
 	return b.String()
 }
 
-var reNextval = regexp.MustCompile(`(?i) *nextval\('(?:")?(?:[\w$]+\.)*([\w$]+_[\w$]+_seq)(?:")?'(?:::regclass)*\) *$`)
+// A regexp to extracts the sequence name from a "nextval" expression.
+// nextval('<optional (quoted) schema>.<sequence name>'::regclass).
+var reNextval = regexp.MustCompile(`(?i) *nextval\('(?:"?[\w$]+"?\.)?"?([\w$]+_[\w$]+_seq)"?'(?:::regclass)*\) *$`)
 
 func defaultExpr(c *schema.Column, s string) {
 	switch m := reNextval.FindStringSubmatch(s); {
