@@ -38,6 +38,8 @@ func TestPlanChanges(t *testing.T) {
 						Attrs: []schema.Attr{
 							&schema.Check{Expr: "(text <> '')"},
 							&schema.Check{Name: "positive_id", Expr: "(id <> 0)"},
+							&WithoutRowID{},
+							&Strict{},
 						},
 					},
 				},
@@ -45,7 +47,7 @@ func TestPlanChanges(t *testing.T) {
 			plan: &migrate.Plan{
 				Reversible:    true,
 				Transactional: true,
-				Changes:       []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` integer NOT NULL, `text` text NULL, CHECK (text <> ''), CONSTRAINT `positive_id` CHECK (id <> 0))", Reverse: "DROP TABLE `posts`"}},
+				Changes:       []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` integer NOT NULL, `text` text NULL, CHECK (text <> ''), CONSTRAINT `positive_id` CHECK (id <> 0)) WITHOUT ROWID, STRICT", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{
@@ -408,30 +410,6 @@ func TestPlanChanges(t *testing.T) {
 						Cmd:     "CREATE TABLE `other`.`t` (`a` int NOT NULL)",
 						Reverse: "DROP TABLE `other`.`t`",
 					},
-				},
-			},
-		},
-		{
-			changes: []schema.Change{
-				&schema.AddTable{
-					T: schema.NewTable("t1").
-						SetSchema(schema.New("s1")).
-						AddColumns(schema.NewIntColumn("id", "int")).
-						AddAttrs(&WithoutRowID{}, &Strict{}),
-				},
-				&schema.AddTable{
-					T: schema.NewTable("t2").
-						SetSchema(schema.New("s2")).
-						AddColumns(schema.NewIntColumn("id", "int")).
-						AddAttrs(&Strict{}),
-				},
-			},
-			plan: &migrate.Plan{
-				Reversible:    true,
-				Transactional: true,
-				Changes: []*migrate.Change{
-					{Cmd: "CREATE TABLE `t1` (`id` int NOT NULL) WITHOUT ROWID, STRICT", Reverse: "DROP TABLE `t1`"},
-					{Cmd: "CREATE TABLE `t2` (`id` int NOT NULL) STRICT", Reverse: "DROP TABLE `t`"},
 				},
 			},
 		},

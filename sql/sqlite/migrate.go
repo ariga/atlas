@@ -131,10 +131,10 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errs, ", "))
 	}
 	var options []string
-	if p := (WithoutRowID{}); sqlx.Has(add.T.Attrs, &p) {
+	if sqlx.Has(add.T.Attrs, &WithoutRowID{}) {
 		options = append(options, "WITHOUT ROWID")
 	}
-	if p := (Strict{}); sqlx.Has(add.T.Attrs, &p) {
+	if sqlx.Has(add.T.Attrs, &Strict{}) {
 		options = append(options, "STRICT")
 	}
 	b.MapComma(options, func(i int, b *sqlx.Builder) {
