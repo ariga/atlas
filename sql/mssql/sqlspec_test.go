@@ -83,3 +83,83 @@ func TestParseType_MAX(t *testing.T) {
 		require.Equal(t, tt.wantT, d)
 	}
 }
+
+func TestMarshalSpec_Identity(t *testing.T) {
+	s := &schema.Schema{
+		Name: "dbo",
+		Tables: []*schema.Table{
+			{
+				Name: "t1",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+						Attrs: []schema.Attr{
+							&Identity{Seek: 701, Increment: 1000},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "t1" {
+  schema = schema.dbo
+  column "id" {
+    null = false
+    type = bigint
+    identity {
+      seek      = 701
+      increment = 1000
+    }
+  }
+}
+schema "dbo" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestSQLSpec(t *testing.T) {
+	f := `
+schema "dbo" {
+}
+
+table "t1" {
+	schema = schema.dbo
+	column "c1" {
+		type = int
+		identity {
+			seek      = 701
+			increment = 1000
+		}
+	}
+}
+`
+	var s schema.Schema
+	err := EvalHCLBytes([]byte(f), &s, nil)
+	require.NoError(t, err)
+
+	exp := &schema.Schema{
+		Name: "dbo",
+	}
+	tables := []*schema.Table{
+		{
+			Name: "t1",
+			Columns: []*schema.Column{
+				{
+					Name: "c1",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					Attrs: []schema.Attr{
+						&Identity{Seek: 701, Increment: 1000},
+					},
+				},
+			},
+		},
+	}
+	tables[0].Schema = exp
+	exp.Tables = tables
+	require.EqualValues(t, exp, &s)
+}
