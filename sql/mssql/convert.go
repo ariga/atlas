@@ -188,27 +188,32 @@ func parseColumn(s string) (*columnDesc, error) {
 			}
 		}
 	case TypeBinary, TypeChar, TypeNChar:
+		c.size = 1
 		if len(parts) > 1 {
-			switch c.size, err = strconv.ParseInt(parts[1], 10, 64); {
-			case err != nil:
+			if c.size, err = strconv.ParseInt(parts[1], 10, 64); err != nil {
 				return nil, fmt.Errorf("mssql: parse size %q: %w", parts[1], err)
-			case typ == TypeNChar:
-				c.size *= 2 // NCHAR is always 2 bytes per character.
 			}
 		}
+		// NCHAR is always 2 bytes per character.
+		if typ == TypeNChar {
+			c.size *= 2
+		}
 	case TypeVarBinary, TypeVarchar, TypeNVarchar:
-		if len(parts) > 1 {
+		c.size = 1
+		switch {
+		case len(parts) == 1:
+			c.size = 1
+		case len(parts) > 1 && strings.ToLower(parts[1]) == "max":
 			// MAX is a special value for the maximum length.
-			if strings.ToLower(parts[1]) == "max" {
-				c.size = -1
-			} else {
-				switch c.size, err = strconv.ParseInt(parts[1], 10, 64); {
-				case err != nil:
-					return nil, fmt.Errorf("mssql: parse size %q: %w", parts[1], err)
-				case typ == TypeNVarchar:
-					c.size *= 2 // NVarchar is always 2 bytes per character.
-				}
+			c.size = -1
+		case len(parts) > 1:
+			if c.size, err = strconv.ParseInt(parts[1], 10, 64); err != nil {
+				return nil, fmt.Errorf("mssql: parse size %q: %w", parts[1], err)
 			}
+		}
+		// NVARCHAR is always 2 bytes per character.
+		if typ == TypeNVarchar && c.size > 0 {
+			c.size *= 2
 		}
 	case TypeDateTime2, TypeDateTimeOffset, TypeTime:
 		if len(parts) > 1 {
