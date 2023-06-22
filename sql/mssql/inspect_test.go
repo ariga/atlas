@@ -129,6 +129,7 @@ func TestDriver_InspectSchema(t *testing.T) {
  t1         | i4         | NONCLUSTERED | c5          | NULL      | ([c5]=(1))  | 0       | 0         | 0        | 0       | 1
  t1         | i4         | NONCLUSTERED | c28         | NULL      | ([c5]=(1))  | 0       | 0         | 0        | 0       | 2
 `))
+				m.noFKs("dbo", "t1")
 			},
 			expect: func(require *require.Assertions, s *schema.Schema, err error) {
 				require.NoError(err)
@@ -346,6 +347,120 @@ func TestDriver_InspectSchema(t *testing.T) {
 				}(), s)
 			},
 		},
+		{
+			name: "table and fks",
+			before: func(m mock) {
+				m.version("16.0.4035.4")
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= SCHEMA_NAME()"))).
+					WillReturnRows(sqltest.Rows(`
+ SCHEMA_NAME
+-------------
+ dbo
+				`))
+				m.tables("dbo", "t1", "t2")
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, nArgs(1, 2)))).
+					WithArgs("dbo", "t1", "t2").
+					WillReturnRows(sqltest.Rows(`
+ table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name               | max_length | precision | scale 
+------------|-------------|----------------+------------------------|-------------|-----------------|-------------|---------------|--------------------|------------------------------|------------|-----------|-------
+ t1         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     
+ t1         | c1          | bigint         | NULL                   | 0           | 0               | 1           | 701           | 1000               | NULL                         | 8          | 19        | 0     
+ t2         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     
+ t2         | fk_t1       | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     
+ t2         | fk2         | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     
+`))
+				m.noIndexes("dbo", "t1", "t2")
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(fksQuery, nArgs(1, 2)))).
+					WithArgs("dbo", "t1", "t2").
+					WillReturnRows(sqltest.Rows(`
+ constraint_name | table_name | column_name | table_schema | referenced_table_name | referenced_column_name | referenced_table_schema | update_rule | delete_rule 
+-----------------|------------|-------------|--------------|-----------------------|------------------------|-------------------------|-------------|-------------
+ fk_t2_t1        | t2         | fk_t1       | dbo          | t1                    | id                     | dbo                     | NO_ACTION   | NO_ACTION   
+ gtm_fk2_t1      | t2         | fk2         | dbo          | t1                    | id                     | gtm                     | NO_ACTION   | NO_ACTION   
+`))
+			},
+			expect: func(require *require.Assertions, s *schema.Schema, err error) {
+				require.NoError(err)
+				require.EqualValues(func() *schema.Schema {
+					dboTables := []*schema.Table{{
+						Name:  "t1",
+						Attrs: nil,
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{
+								Raw:  "int",
+								Type: &schema.IntegerType{T: "int"},
+							}},
+							{Name: "c1", Type: &schema.ColumnType{
+								Raw:  "bigint",
+								Type: &schema.IntegerType{T: "bigint"},
+							}, Attrs: []schema.Attr{
+								&Identity{Seek: 701, Increment: 1000},
+							}},
+						},
+					}, {
+						Name:  "t2",
+						Attrs: nil,
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{
+								Raw:  "int",
+								Type: &schema.IntegerType{T: "int"},
+							}},
+							{Name: "fk_t1", Type: &schema.ColumnType{
+								Raw:  "int",
+								Type: &schema.IntegerType{T: "int"},
+							}},
+							{Name: "fk2", Type: &schema.ColumnType{
+								Raw:  "int",
+								Type: &schema.IntegerType{T: "int"},
+							}},
+						},
+					}}
+					dboTable1FK1 := &schema.ForeignKey{
+						Symbol: "fk_t2_t1",
+						Table:  dboTables[1],
+						Columns: []*schema.Column{
+							dboTables[1].Columns[1],
+						},
+						RefTable: dboTables[0],
+						RefColumns: []*schema.Column{
+							dboTables[0].Columns[0],
+						},
+						OnUpdate: "NO_ACTION",
+						OnDelete: "NO_ACTION",
+					}
+					dboTable1FK2 := &schema.ForeignKey{
+						Symbol: "gtm_fk2_t1",
+						Table:  dboTables[1],
+						Columns: []*schema.Column{
+							dboTables[1].Columns[2],
+						},
+						RefTable: &schema.Table{
+							Name:   "t1",
+							Schema: &schema.Schema{Name: "gtm"},
+						},
+						RefColumns: []*schema.Column{{
+							Name: "id",
+						}},
+						OnUpdate: "NO_ACTION",
+						OnDelete: "NO_ACTION",
+					}
+					dboTables[1].Columns[1].ForeignKeys = []*schema.ForeignKey{dboTable1FK1}
+					dboTables[1].Columns[2].ForeignKeys = []*schema.ForeignKey{dboTable1FK2}
+					dboTables[1].ForeignKeys = []*schema.ForeignKey{dboTable1FK1, dboTable1FK2}
+					dbo := &schema.Schema{Name: "dbo", Tables: nil}
+					dbo.Realm = &schema.Realm{
+						Schemas: []*schema.Schema{dbo},
+						Attrs: []schema.Attr{
+							&schema.Collation{
+								V: "SQL_Latin1_General_CP1_CI_AS",
+							},
+						},
+					}
+					dbo.AddTables(dboTables...)
+					return dbo
+				}(), s)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -388,9 +503,21 @@ func (m mock) noIndexes(schema string, tables ...string) {
 	for _, t := range tables {
 		args = append(args, t)
 	}
-	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexesQuery, nArgs(1, 1)))).
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexesQuery, nArgs(1, len(tables))))).
 		WithArgs(args...).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"table_name", "index_name", "index_type", "column_name", "comment", "filter_expr", "primary", "is_unique", "included", "is_desc", "seq_in_index",
+		}))
+}
+
+func (m mock) noFKs(schema string, tables ...string) {
+	args := []driver.Value{schema}
+	for _, t := range tables {
+		args = append(args, t)
+	}
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(fksQuery, nArgs(1, len(tables))))).
+		WithArgs(args...).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"constraint_name", "table_name", "column_name", "table_schema", "referenced_table_name", "referenced_column_name", "referenced_table_schema", "update_rule", "delete_rule",
 		}))
 }

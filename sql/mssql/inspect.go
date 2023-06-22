@@ -92,9 +92,9 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 		if err := i.indexes(ctx, s); err != nil {
 			return err
 		}
-		// if err := i.fks(ctx, s); err != nil {
-		// 	return err
-		// }
+		if err := i.fks(ctx, s); err != nil {
+			return err
+		}
 		// if err := i.checks(ctx, s); err != nil {
 		// 	return err
 		// }
@@ -108,6 +108,19 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 type queryScope struct {
 	exec   func(context.Context, string, *schema.Schema) (*sql.Rows, error)
 	append func(*schema.Schema, string, *schema.Column) error
+}
+
+// fks queries and appends the foreign keys of the given table.
+func (i *inspect) fks(ctx context.Context, s *schema.Schema) error {
+	rows, err := i.querySchema(ctx, fksQuery, s)
+	if err != nil {
+		return fmt.Errorf("mssql: querying %q foreign keys: %w", s.Name, err)
+	}
+	defer rows.Close()
+	if err := sqlx.SchemaFKs(s, rows); err != nil {
+		return fmt.Errorf("mssql: %w", err)
+	}
+	return rows.Err()
 }
 
 // indexes queries and appends the indexes of the given table.
@@ -511,6 +524,37 @@ WHERE
 	)
 ORDER BY
 	[i1].[index_id], [ic].[key_ordinal]`
+
+	fksQuery = `
+SELECT
+	[constraint_name] = [fk].[name],
+	[table_name] = OBJECT_NAME([fk].[parent_object_id]),
+	[column_name] = [cp].[name],
+	[table_schema] = SCHEMA_NAME([fk].[schema_id]),
+	[referenced_table_name] = OBJECT_NAME([fk].[referenced_object_id]),
+	[referenced_column_name] = [cr].[name],
+	[referenced_table_schema] = SCHEMA_NAME([tr].[schema_id]),
+	[update_rule] = [fk].[update_referential_action_desc],
+	[delete_rule] = [fk].[delete_referential_action_desc]
+FROM
+	[sys].[foreign_keys] [fk]
+	INNER JOIN [sys].[foreign_key_columns] [fkc]
+	ON [fkc].[constraint_object_id] = [fk].[object_id]
+	AND [fkc].[constraint_column_id] = [fk].[key_index_id]
+	INNER JOIN [sys].[tables] [tr]
+	ON [tr].[object_id] = [fk].[referenced_object_id]
+	LEFT JOIN [sys].[columns] [cp]
+	ON [cp].[object_id] = [fkc].[parent_object_id]
+	AND [cp].[column_id] = [fkc].[parent_column_id]
+	LEFT JOIN [sys].[columns] [cr]
+	ON [cr].[object_id] = [fkc].[referenced_object_id]
+	AND [cr].[column_id] = [fkc].[referenced_column_id]
+WHERE
+	[fk].[is_ms_shipped] = 0
+	AND SCHEMA_NAME([fk].[schema_id]) = @1
+	AND OBJECT_NAME([fk].[parent_object_id]) IN (%s)
+ORDER BY
+	[table_schema], [constraint_name], [fk].[key_index_id]`
 )
 
 type (
