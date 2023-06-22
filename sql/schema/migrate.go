@@ -87,6 +87,29 @@ type (
 		From, To *Table
 	}
 
+	// AddView describes a view creation change.
+	AddView struct {
+		V     *View
+		Extra []Clause // Extra clauses and options.
+	}
+
+	// DropView describes a view removal change.
+	DropView struct {
+		V     *View
+		Extra []Clause // Extra clauses.
+	}
+
+	// ModifyView describes a view modification change.
+	ModifyView struct {
+		V       *View
+		Changes []Change
+	}
+
+	// RenameView describes a view rename change.
+	RenameView struct {
+		From, To *View
+	}
+
 	// AddColumn describes a column creation change.
 	AddColumn struct {
 		C *Column
@@ -489,6 +512,10 @@ func (*AddTable) change()         {}
 func (*DropTable) change()        {}
 func (*ModifyTable) change()      {}
 func (*RenameTable) change()      {}
+func (*AddView) change()          {}
+func (*DropView) change()         {}
+func (*ModifyView) change()       {}
+func (*RenameView) change()       {}
 func (*AddIndex) change()         {}
 func (*DropIndex) change()        {}
 func (*ModifyIndex) change()      {}
