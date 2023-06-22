@@ -540,6 +540,7 @@ FROM
 	[sys].[foreign_keys] [fk]
 	INNER JOIN [sys].[foreign_key_columns] [fkc]
 	ON [fkc].[constraint_object_id] = [fk].[object_id]
+	AND [fkc].[constraint_column_id] = [fk].[key_index_id]
 	INNER JOIN [sys].[tables] [tr]
 	ON [tr].[object_id] = [fk].[referenced_object_id]
 	LEFT JOIN [sys].[columns] [cp]
