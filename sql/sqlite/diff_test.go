@@ -27,22 +27,28 @@ func TestDiff_TableDiff(t *testing.T) {
 			to:   &schema.Table{Name: "users"},
 		},
 		{
-			name: "add attr",
+			name: "add attrs",
 			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
-			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&WithoutRowID{}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&WithoutRowID{}, &Strict{}}},
 			wantChanges: []schema.Change{
 				&schema.AddAttr{
 					A: &WithoutRowID{},
 				},
+				&schema.AddAttr{
+					A: &Strict{},
+				},
 			},
 		},
 		{
-			name: "drop attr",
-			from: &schema.Table{Name: "t1", Attrs: []schema.Attr{&WithoutRowID{}}},
+			name: "drop attrs",
+			from: &schema.Table{Name: "t1", Attrs: []schema.Attr{&WithoutRowID{}, &Strict{}}},
 			to:   &schema.Table{Name: "t1"},
 			wantChanges: []schema.Change{
 				&schema.DropAttr{
 					A: &WithoutRowID{},
+				},
+				&schema.DropAttr{
+					A: &Strict{},
 				},
 			},
 		},
