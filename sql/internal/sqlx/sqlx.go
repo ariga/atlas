@@ -249,9 +249,21 @@ func (b *Builder) Ident(s string) *Builder {
 	return b
 }
 
+// View writes the view identifier to the builder, prefixed
+// with the schema name if exists.
+func (b *Builder) View(v *schema.View) *Builder {
+	return b.mayQualify(v.Schema, v.Name)
+}
+
 // Table writes the table identifier to the builder, prefixed
 // with the schema name if exists.
 func (b *Builder) Table(t *schema.Table) *Builder {
+	return b.mayQualify(t.Schema, t.Name)
+}
+
+// Table writes the table identifier to the builder, prefixed
+// with the schema name if exists.
+func (b *Builder) mayQualify(s *schema.Schema, ident string) *Builder {
 	switch {
 	// Custom qualifier.
 	case b.Schema != nil:
@@ -261,11 +273,11 @@ func (b *Builder) Table(t *schema.Table) *Builder {
 			b.rewriteLastByte('.')
 		}
 	// Default schema qualifier.
-	case t.Schema != nil && t.Schema.Name != "":
-		b.Ident(t.Schema.Name)
+	case s != nil && s.Name != "":
+		b.Ident(s.Name)
 		b.rewriteLastByte('.')
 	}
-	b.Ident(t.Name)
+	b.Ident(ident)
 	return b
 }
 
