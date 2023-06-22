@@ -49,13 +49,27 @@ var (
 	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.version=${version}'"
 	version string
 
+	// flavor holds Atlas flavor. When built with cloud packages should be set by build flag
+	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.flavor=${flavor}'"
+	flavor string
+
 	// schemaCmd represents the subcommand 'atlas version'.
 	versionCmd = &cobra.Command{
 		Use:   "version",
 		Short: "Prints this Atlas CLI version information.",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
+			var (
+				f    = "atlas "
+				args []any
+			)
+			if flavor != "" {
+				f += "%s "
+				args = append(args, flavor)
+			}
+			f += "version %s\n%s\n"
 			v, u := parseV(version)
-			cmd.Printf("%s version %s\n%s\n", flavor, v, u)
+			args = append(args, v, u)
+			cmd.Printf(f, args...)
 		},
 	}
 
