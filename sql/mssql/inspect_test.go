@@ -6,6 +6,7 @@ package mssql
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"testing"
 
@@ -105,139 +106,232 @@ func TestDriver_InspectSchema(t *testing.T) {
  t1         | c21         | varbinary      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | -1         | 0         | 0     
  t1         | c22         | varchar        | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 50         | 0         | 0     
  t1         | c23         | char           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 50         | 0         | 0     
- `))
+ t1         | c24         | real           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 24        | 0     
+ t1         | c25         | nchar          | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 2          | 0         | 0     
+ t1         | c26         | binary         | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 1          | 0         | 0     
+ t1         | c27         | varbinary      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 1          | 0         | 0     
+ t1         | c28         | varchar        | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 1          | 0         | 0     
+`))
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexesQuery, nArgs(1, 1)))).
+					WithArgs("dbo", "t1").
+					WillReturnRows(sqltest.Rows(`
+ table_name | index_name | index_type   | column_name | comment   | filter_expr | primary | is_unique | included | is_desc | seq_in_index
+------------+------------+--------------+-------------+-----------+-------------+---------+-----------+----------+---------+--------------
+ t1         | PK_t1      | CLUSTERED    | id          | NULL      | NULL        | 1       | 1         | 0        | 0       | 1
+ t1         | i1         | NONCLUSTERED | c1          | Index One | NULL        | 0       | 1         | 0        | 0       | 1
+ t1         | i1         | NONCLUSTERED | c2          | Index One | NULL        | 0       | 1         | 0        | 0       | 2
+ t1         | i2         | NONCLUSTERED | c21         | NULL      | NULL        | 0       | 0         | 1        | 0       | 0
+ t1         | i2         | NONCLUSTERED | c22         | NULL      | NULL        | 0       | 0         | 1        | 0       | 0
+ t1         | i2         | NONCLUSTERED | c4          | NULL      | NULL        | 0       | 0         | 0        | 0       | 1
+ t1         | i2         | NONCLUSTERED | c5          | NULL      | NULL        | 0       | 0         | 0        | 1       | 2
+ t1         | i3         | NONCLUSTERED | id          | NULL      | ([c5]=(1))  | 0       | 0         | 0        | 0       | 1
+ t1         | i4         | NONCLUSTERED | c25         | NULL      | ([c5]=(1))  | 0       | 0         | 1        | 0       | 0
+ t1         | i4         | NONCLUSTERED | c5          | NULL      | ([c5]=(1))  | 0       | 0         | 0        | 0       | 1
+ t1         | i4         | NONCLUSTERED | c28         | NULL      | ([c5]=(1))  | 0       | 0         | 0        | 0       | 2
+`))
 			},
 			expect: func(require *require.Assertions, s *schema.Schema, err error) {
 				require.NoError(err)
 				require.EqualValues(func() *schema.Schema {
+					table := &schema.Table{
+						Name:  "t1",
+						Attrs: nil,
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{
+								Raw:  "int",
+								Type: &schema.IntegerType{T: "int"},
+							}},
+							{Name: "c1", Type: &schema.ColumnType{
+								Raw:  "bigint",
+								Type: &schema.IntegerType{T: "bigint"},
+							}, Attrs: []schema.Attr{
+								&Identity{Seek: 701, Increment: 1000},
+							}},
+							{Name: "c2", Type: &schema.ColumnType{
+								Null: true, Raw: "smallint",
+								Type: &schema.IntegerType{T: "smallint"},
+							}},
+							{Name: "c3", Type: &schema.ColumnType{
+								Null: true, Raw: "tinyint",
+								Type: &schema.IntegerType{T: "tinyint"},
+							}},
+							{Name: "c4", Type: &schema.ColumnType{
+								Null: true, Raw: "binary",
+								Type: &schema.BinaryType{T: "binary", Size: sqlx.P[int](50)},
+							}},
+							{Name: "c5", Type: &schema.ColumnType{
+								Null: true, Raw: "bit",
+								Type: &BitType{T: "bit"},
+							}},
+							{Name: "c6", Type: &schema.ColumnType{
+								Null: true, Raw: "date",
+								Type: &schema.TimeType{T: "date"},
+							}},
+							{Name: "c7", Type: &schema.ColumnType{
+								Null: true, Raw: "datetime",
+								Type: &schema.TimeType{T: "datetime"},
+							}, Attrs: []schema.Attr{
+								&schema.Comment{Text: "This is datetime"},
+							}},
+							{Name: "c8", Type: &schema.ColumnType{
+								Null: true, Raw: "datetime2",
+								Type: &schema.TimeType{T: "datetime2", Precision: sqlx.P[int](24), Scale: sqlx.P[int](4)},
+							}},
+							{Name: "c9", Type: &schema.ColumnType{
+								Null: true, Raw: "datetime2",
+								Type: &schema.TimeType{T: "datetime2", Precision: sqlx.P[int](27), Scale: sqlx.P[int](7)},
+							}, Attrs: []schema.Attr{
+								&schema.Comment{Text: "Datetime default scale"},
+							}},
+							{Name: "c10", Type: &schema.ColumnType{
+								Null: true, Raw: "datetimeoffset",
+								Type: &schema.TimeType{T: "datetimeoffset", Precision: sqlx.P[int](34), Scale: sqlx.P[int](7)},
+							}},
+							{Name: "c11", Type: &schema.ColumnType{
+								Null: true, Raw: "decimal",
+								Type: &schema.DecimalType{T: "decimal", Precision: 12, Scale: 9},
+							}},
+							{Name: "c12", Type: &schema.ColumnType{
+								Null: true, Raw: "timestamp",
+								Type: &RowVersionType{T: "rowversion"},
+							}},
+							{Name: "c13", Type: &schema.ColumnType{
+								Null: true, Raw: "real",
+								Type: &schema.FloatType{T: "real", Precision: 24},
+							}},
+							{Name: "c14", Type: &schema.ColumnType{
+								Null: true, Raw: "real",
+								Type: &schema.FloatType{T: "real", Precision: 24},
+							}},
+							{Name: "c15", Type: &schema.ColumnType{
+								Null: true, Raw: "money",
+								Type: &MoneyType{T: "money"},
+							}, Attrs: []schema.Attr{
+								&schema.Comment{Text: "Tien tien tien"},
+							}},
+							{Name: "c16", Type: &schema.ColumnType{
+								Null: true, Raw: "smallmoney",
+								Type: &MoneyType{T: "smallmoney"},
+							}, Attrs: []schema.Attr{
+								&schema.Comment{Text: "small tien"},
+							}},
+							{Name: "c17", Type: &schema.ColumnType{
+								Null: true, Raw: "nchar",
+								Type: &schema.StringType{T: "nchar", Size: 1402},
+							}, Attrs: []schema.Attr{
+								&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
+							}},
+							{Name: "c18", Type: &schema.ColumnType{
+								Null: true, Raw: "nvarchar",
+								Type: &schema.StringType{T: "nvarchar", Size: 100},
+							}, Attrs: []schema.Attr{
+								&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
+							}},
+							{Name: "c19", Type: &schema.ColumnType{
+								Null: true, Raw: "nvarchar",
+								Type: &schema.StringType{T: "nvarchar", Size: -1},
+							}, Attrs: []schema.Attr{
+								&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
+							}},
+							{Name: "c20", Type: &schema.ColumnType{
+								Null: true, Raw: "varbinary",
+								Type: &schema.BinaryType{T: "varbinary", Size: sqlx.P[int](50)},
+							}},
+							{Name: "c21", Type: &schema.ColumnType{
+								Null: true, Raw: "varbinary",
+								Type: &schema.BinaryType{T: "varbinary", Size: sqlx.P[int](-1)},
+							}},
+							{Name: "c22", Type: &schema.ColumnType{
+								Null: true, Raw: "varchar",
+								Type: &schema.StringType{T: "varchar", Size: 50},
+							}, Attrs: []schema.Attr{
+								&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
+							}},
+							{Name: "c23", Type: &schema.ColumnType{
+								Null: true, Raw: "char",
+								Type: &schema.StringType{T: "char", Size: 50},
+							}, Attrs: []schema.Attr{
+								&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
+							}},
+							{Name: "c24", Type: &schema.ColumnType{
+								Null: true, Raw: "real",
+								Type: &schema.FloatType{T: "real", Precision: 24},
+							}},
+							{Name: "c25", Type: &schema.ColumnType{
+								Null: true, Raw: "nchar",
+								Type: &schema.StringType{T: "nchar", Size: 2},
+							}, Attrs: []schema.Attr{
+								&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
+							}},
+							{Name: "c26", Type: &schema.ColumnType{
+								Null: true, Raw: "binary",
+								Type: &schema.BinaryType{T: "binary", Size: sqlx.P(1)},
+							}},
+							{Name: "c27", Type: &schema.ColumnType{
+								Null: true, Raw: "varbinary",
+								Type: &schema.BinaryType{T: "varbinary", Size: sqlx.P(1)},
+							}},
+							{Name: "c28", Type: &schema.ColumnType{
+								Null: true, Raw: "varchar",
+								Type: &schema.StringType{T: "varchar", Size: 1},
+							}, Attrs: []schema.Attr{
+								&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
+							}},
+						},
+					}
+					indexes := []*schema.Index{
+						{Table: table, Name: "PK_t1", Unique: true, Attrs: []schema.Attr{
+							&IndexType{T: "CLUSTERED"},
+						}, Parts: []*schema.IndexPart{
+							{SeqNo: 1, C: table.Columns[0]},
+						}},
+						{Table: table, Name: "i1", Unique: true, Attrs: []schema.Attr{
+							&IndexType{T: "NONCLUSTERED"},
+							&schema.Comment{Text: "Index One"},
+						}, Parts: []*schema.IndexPart{
+							{SeqNo: 1, C: table.Columns[1]},
+							{SeqNo: 2, C: table.Columns[2]},
+						}},
+						{Table: table, Name: "i2", Attrs: []schema.Attr{
+							&IndexType{T: "NONCLUSTERED"},
+							&IndexInclude{Columns: []*schema.Column{
+								table.Columns[21], table.Columns[22],
+							}},
+						}, Parts: []*schema.IndexPart{
+							{SeqNo: 1, C: table.Columns[4]},
+							{SeqNo: 2, C: table.Columns[5], Desc: true},
+						}},
+						{Table: table, Name: "i3", Attrs: []schema.Attr{
+							&IndexType{T: "NONCLUSTERED"},
+							&IndexPredicate{P: "([c5]=(1))"},
+						}, Parts: []*schema.IndexPart{
+							{SeqNo: 1, C: table.Columns[0]},
+						}},
+						{Table: table, Name: "i4", Attrs: []schema.Attr{
+							&IndexType{T: "NONCLUSTERED"},
+							&IndexPredicate{P: "([c5]=(1))"},
+							&IndexInclude{Columns: []*schema.Column{
+								table.Columns[25],
+							}},
+						}, Parts: []*schema.IndexPart{
+							{SeqNo: 1, C: table.Columns[5]},
+							{SeqNo: 2, C: table.Columns[28]},
+						}},
+					}
+					table.Columns[0].Indexes = []*schema.Index{indexes[0], indexes[3]}
+					table.Columns[1].Indexes = []*schema.Index{indexes[1]}
+					table.Columns[2].Indexes = []*schema.Index{indexes[1]}
+					table.Columns[4].Indexes = []*schema.Index{indexes[2]}
+					table.Columns[5].Indexes = []*schema.Index{indexes[2], indexes[4]}
+					table.Columns[28].Indexes = []*schema.Index{indexes[4]}
+
+					table.Indexes = []*schema.Index{indexes[1], indexes[2], indexes[3], indexes[4]}
+					table.PrimaryKey = indexes[0]
 					realm := &schema.Realm{
 						Schemas: []*schema.Schema{
 							{
-								Name: "dbo",
-								Tables: []*schema.Table{
-									{
-										Name:  "t1",
-										Attrs: nil,
-										Columns: []*schema.Column{
-											{Name: "id", Type: &schema.ColumnType{
-												Raw:  "int",
-												Type: &schema.IntegerType{T: "int"},
-											}},
-											{Name: "c1", Type: &schema.ColumnType{
-												Raw:  "bigint",
-												Type: &schema.IntegerType{T: "bigint"},
-											}, Attrs: []schema.Attr{
-												&Identity{Seek: 701, Increment: 1000},
-											}},
-											{Name: "c2", Type: &schema.ColumnType{
-												Null: true, Raw: "smallint",
-												Type: &schema.IntegerType{T: "smallint"},
-											}},
-											{Name: "c3", Type: &schema.ColumnType{
-												Null: true, Raw: "tinyint",
-												Type: &schema.IntegerType{T: "tinyint"},
-											}},
-											{Name: "c4", Type: &schema.ColumnType{
-												Null: true, Raw: "binary",
-												Type: &schema.BinaryType{T: "binary", Size: sqlx.P[int](50)},
-											}},
-											{Name: "c5", Type: &schema.ColumnType{
-												Null: true, Raw: "bit",
-												Type: &BitType{T: "bit"},
-											}},
-											{Name: "c6", Type: &schema.ColumnType{
-												Null: true, Raw: "date",
-												Type: &schema.TimeType{T: "date"},
-											}},
-											{Name: "c7", Type: &schema.ColumnType{
-												Null: true, Raw: "datetime",
-												Type: &schema.TimeType{T: "datetime"},
-											}, Attrs: []schema.Attr{
-												&schema.Comment{Text: "This is datetime"},
-											}},
-											{Name: "c8", Type: &schema.ColumnType{
-												Null: true, Raw: "datetime2",
-												Type: &schema.TimeType{T: "datetime2", Precision: sqlx.P[int](24), Scale: sqlx.P[int](4)},
-											}},
-											{Name: "c9", Type: &schema.ColumnType{
-												Null: true, Raw: "datetime2",
-												Type: &schema.TimeType{T: "datetime2", Precision: sqlx.P[int](27), Scale: sqlx.P[int](7)},
-											}, Attrs: []schema.Attr{
-												&schema.Comment{Text: "Datetime default scale"},
-											}},
-											{Name: "c10", Type: &schema.ColumnType{
-												Null: true, Raw: "datetimeoffset",
-												Type: &schema.TimeType{T: "datetimeoffset", Precision: sqlx.P[int](34), Scale: sqlx.P[int](7)},
-											}},
-											{Name: "c11", Type: &schema.ColumnType{
-												Null: true, Raw: "decimal",
-												Type: &schema.DecimalType{T: "decimal", Precision: 12, Scale: 9},
-											}},
-											{Name: "c12", Type: &schema.ColumnType{
-												Null: true, Raw: "timestamp",
-												Type: &RowVersionType{T: "rowversion"},
-											}},
-											{Name: "c13", Type: &schema.ColumnType{
-												Null: true, Raw: "real",
-												Type: &schema.FloatType{T: "real", Precision: 24},
-											}},
-											{Name: "c14", Type: &schema.ColumnType{
-												Null: true, Raw: "real",
-												Type: &schema.FloatType{T: "real", Precision: 24},
-											}},
-											{Name: "c15", Type: &schema.ColumnType{
-												Null: true, Raw: "money",
-												Type: &MoneyType{T: "money"},
-											}, Attrs: []schema.Attr{
-												&schema.Comment{Text: "Tien tien tien"},
-											}},
-											{Name: "c16", Type: &schema.ColumnType{
-												Null: true, Raw: "smallmoney",
-												Type: &MoneyType{T: "smallmoney"},
-											}, Attrs: []schema.Attr{
-												&schema.Comment{Text: "small tien"},
-											}},
-											{Name: "c17", Type: &schema.ColumnType{
-												Null: true, Raw: "nchar",
-												Type: &schema.StringType{T: "nchar", Size: 1402},
-											}, Attrs: []schema.Attr{
-												&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
-											}},
-											{Name: "c18", Type: &schema.ColumnType{
-												Null: true, Raw: "nvarchar",
-												Type: &schema.StringType{T: "nvarchar", Size: 100},
-											}, Attrs: []schema.Attr{
-												&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
-											}},
-											{Name: "c19", Type: &schema.ColumnType{
-												Null: true, Raw: "nvarchar",
-												Type: &schema.StringType{T: "nvarchar", Size: -1},
-											}, Attrs: []schema.Attr{
-												&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
-											}},
-											{Name: "c20", Type: &schema.ColumnType{
-												Null: true, Raw: "varbinary",
-												Type: &schema.BinaryType{T: "varbinary", Size: sqlx.P[int](50)},
-											}},
-											{Name: "c21", Type: &schema.ColumnType{
-												Null: true, Raw: "varbinary",
-												Type: &schema.BinaryType{T: "varbinary", Size: sqlx.P[int](-1)},
-											}},
-											{Name: "c22", Type: &schema.ColumnType{
-												Null: true, Raw: "varchar",
-												Type: &schema.StringType{T: "varchar", Size: 50},
-											}, Attrs: []schema.Attr{
-												&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
-											}},
-											{Name: "c23", Type: &schema.ColumnType{
-												Null: true, Raw: "char",
-												Type: &schema.StringType{T: "char", Size: 50},
-											}, Attrs: []schema.Attr{
-												&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
-											}},
-										},
-									},
-								},
+								Name:   "dbo",
+								Tables: []*schema.Table{table},
 							},
 						},
 						Attrs: []schema.Attr{
@@ -287,4 +381,16 @@ func (m mock) tables(schema string, tables ...string) {
 	m.ExpectQuery(queryTable).
 		WithArgs(schema).
 		WillReturnRows(rows)
+}
+
+func (m mock) noIndexes(schema string, tables ...string) {
+	args := []driver.Value{schema}
+	for _, t := range tables {
+		args = append(args, t)
+	}
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexesQuery, nArgs(1, 1)))).
+		WithArgs(args...).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"table_name", "index_name", "index_type", "column_name", "comment", "filter_expr", "primary", "is_unique", "included", "is_desc", "seq_in_index",
+		}))
 }

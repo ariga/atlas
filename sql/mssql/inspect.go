@@ -89,9 +89,9 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 		}); err != nil {
 			return err
 		}
-		// if err := i.indexes(ctx, s); err != nil {
-		// 	return err
-		// }
+		if err := i.indexes(ctx, s); err != nil {
+			return err
+		}
 		// if err := i.fks(ctx, s); err != nil {
 		// 	return err
 		// }
@@ -108,6 +108,89 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 type queryScope struct {
 	exec   func(context.Context, string, *schema.Schema) (*sql.Rows, error)
 	append func(*schema.Schema, string, *schema.Column) error
+}
+
+// indexes queries and appends the indexes of the given table.
+func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
+	rows, err := i.querySchema(ctx, indexesQuery, s)
+	if err != nil {
+		return fmt.Errorf("mssql: querying schema %q indexes: %w", s.Name, err)
+	}
+	defer rows.Close()
+	if err := i.addIndexes(s, rows); err != nil {
+		return err
+	}
+	return rows.Err()
+}
+
+// addIndexes scans the rows and adds the indexes to the table.
+func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
+	names := make(map[string]*schema.Index)
+	for rows.Next() {
+		var (
+			table, name, typ                          string
+			primary, uniq, included, desc, seqInIndex int64
+			column, comment, pred                     sql.NullString
+		)
+		if err := rows.Scan(
+			&table, &name, &typ, &column, &comment, &pred,
+			&primary, &uniq, &included, &desc, &seqInIndex,
+		); err != nil {
+			return fmt.Errorf("mssql: scanning indexes for schema %q: %w", s.Name, err)
+		}
+		t, ok := s.Table(table)
+		if !ok {
+			return fmt.Errorf("mssql: table %q was not found in schema", table)
+		}
+		idx, ok := names[name]
+		if !ok {
+			idx = &schema.Index{
+				Name:   name,
+				Unique: uniq == 1,
+				Table:  t,
+				Attrs: []schema.Attr{
+					&IndexType{T: typ},
+				},
+			}
+			if sqlx.ValidString(comment) {
+				idx.Attrs = append(idx.Attrs, &schema.Comment{Text: comment.String})
+			}
+			if sqlx.ValidString(pred) {
+				idx.Attrs = append(idx.Attrs, &IndexPredicate{P: pred.String})
+			}
+			names[name] = idx
+			if primary == 1 {
+				t.PrimaryKey = idx
+			} else {
+				t.Indexes = append(t.Indexes, idx)
+			}
+		}
+		part := &schema.IndexPart{
+			SeqNo: int(seqInIndex),
+			Desc:  desc == 1,
+		}
+		switch {
+		case included == 1:
+			c, ok := t.Column(column.String)
+			if !ok {
+				return fmt.Errorf("mssql: INCLUDE column %q was not found for index %q", column.String, idx.Name)
+			}
+			include := &IndexInclude{}
+			sqlx.Has(idx.Attrs, include)
+			include.Columns = append(include.Columns, c)
+			schema.ReplaceOrAppend(&idx.Attrs, include)
+		case sqlx.ValidString(column):
+			part.C, ok = t.Column(column.String)
+			if !ok {
+				return fmt.Errorf("mssql: column %q was not found for index %q", column.String, idx.Name)
+			}
+			part.C.Indexes = append(part.C.Indexes, idx)
+			idx.Parts = append(idx.Parts, part)
+		default:
+			return fmt.Errorf("mssql: invalid part for index %q", idx.Name)
+		}
+	}
+	return nil
 }
 
 // columns queries and appends the columns of the given table.
@@ -323,6 +406,7 @@ FROM
 	LEFT JOIN [sys].[extended_properties] [td]
 	ON [td].[major_id] = [t1].[object_id]
 	AND [td].[minor_id] = 0
+	AND [td].[class_desc] = N'OBJECT_OR_COLUMN'
 	AND [td].[name] = N'MS_Description'
 WHERE
 	SCHEMA_NAME([t1].[schema_id]) IN (%s)
@@ -342,6 +426,7 @@ FROM
 	LEFT JOIN [sys].[extended_properties] [td]
 	ON [td].[major_id] = [t1].[object_id]
 	AND [td].[minor_id] = 0
+	AND [td].[class_desc] = N'OBJECT_OR_COLUMN'
 	AND [td].[name] = N'MS_Description'
 WHERE
 	SCHEMA_NAME([t1].[schema_id]) IN (%s)
@@ -378,6 +463,7 @@ FROM
 	LEFT JOIN [sys].[extended_properties] [cd]
 	ON [cd].[major_id] = [c1].[object_id]
 	AND [cd].[minor_id] = [c1].[column_id]
+	AND [cd].[class_desc] = N'OBJECT_OR_COLUMN'
 	AND [cd].[name] = N'MS_Description'
 WHERE
 	SCHEMA_NAME([t1].[schema_id]) = @1
@@ -386,6 +472,45 @@ WHERE
 	AND [t1].[is_ms_shipped] = 0
 ORDER BY
 	[c1].[column_id]`
+
+	indexesQuery = `
+SELECT
+	[table_name] = OBJECT_NAME([i1].[object_id]),
+	[index_name] = [i1].[name],
+	[index_type] = [i1].[type_desc],
+	[column_name] = [c1].[name],
+	[comment] = [pd].[value],
+	[where_pred] = [i1].[filter_definition],
+	[primary] = [i1].[is_primary_key],
+	[is_unique] = [i1].[is_unique],
+	[included] = [ic].[is_included_column],
+	[is_desc] = [ic].[is_descending_key],
+	[seq_in_index] = [ic].[key_ordinal]
+FROM
+	[sys].[indexes] [i1]
+	INNER JOIN [sys].[index_columns] [ic]
+	ON [ic].[object_id] = [i1].[object_id]
+	AND [ic].[index_id] = [i1].[index_id]
+	LEFT JOIN [sys].[columns] [c1]
+	ON [c1].[object_id] = [i1].[object_id]
+	AND [c1].[column_id] = [ic].[column_id]
+	LEFT JOIN [sys].[extended_properties] [pd]
+	ON [pd].[major_id] = [i1].[object_id]
+	AND [pd].[minor_id] = [i1].[index_id]
+	AND [pd].[class_desc] = N'INDEX'
+	AND [pd].[name] = N'MS_Description'
+WHERE
+	[i1].[object_id] IN (
+		SELECT
+			[t1].[object_id]
+		FROM
+			[sys].[tables] [t1]
+		WHERE
+			SCHEMA_NAME([t1].[schema_id]) = @1
+			AND [t1].[name] IN (%s)
+	)
+ORDER BY
+	[i1].[index_id], [ic].[key_ordinal]`
 )
 
 type (
@@ -398,6 +523,25 @@ type (
 		schema.Attr
 		Seek      int64
 		Increment int64
+	}
+	// IndexType represents an index type.
+	// https://learn.microsoft.com/en-us/sql/relational-databases/indexes/indexes#available-index-types
+	IndexType struct {
+		schema.Attr
+		T string // HASH, CLUSTERED, NONCLUSTERED, COLUMNSTORE, XML, Spatial, Filtered, FullText
+	}
+	// IndexInclude describes the INCLUDE clause allows specifying
+	// a list of column which added to the index as non-key columns.
+	// https://www.postgresql.org/docs/current/sql-createindex.html
+	IndexInclude struct {
+		schema.Attr
+		Columns []*schema.Column
+	}
+	// IndexPredicate describes a where index predicate.
+	// https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-filtered-indexes
+	IndexPredicate struct {
+		schema.Attr
+		P string
 	}
 	// BitType defines a bit type.
 	// https://learn.microsoft.com/en-us/sql/t-sql/data-types/bit-transact-sql
