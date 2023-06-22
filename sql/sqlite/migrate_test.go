@@ -38,6 +38,8 @@ func TestPlanChanges(t *testing.T) {
 						Attrs: []schema.Attr{
 							&schema.Check{Expr: "(text <> '')"},
 							&schema.Check{Name: "positive_id", Expr: "(id <> 0)"},
+							&WithoutRowID{},
+							&Strict{},
 						},
 					},
 				},
@@ -45,7 +47,7 @@ func TestPlanChanges(t *testing.T) {
 			plan: &migrate.Plan{
 				Reversible:    true,
 				Transactional: true,
-				Changes:       []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` integer NOT NULL, `text` text NULL, CHECK (text <> ''), CONSTRAINT `positive_id` CHECK (id <> 0))", Reverse: "DROP TABLE `posts`"}},
+				Changes:       []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` integer NOT NULL, `text` text NULL, CHECK (text <> ''), CONSTRAINT `positive_id` CHECK (id <> 0)) WITHOUT ROWID, STRICT", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{
