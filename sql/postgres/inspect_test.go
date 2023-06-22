@@ -23,9 +23,9 @@ var (
 	queryTables      = sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))
 	queryChecks      = sqltest.Escape(fmt.Sprintf(checksQuery, "$2"))
 	queryColumns     = sqltest.Escape(fmt.Sprintf(columnsQuery, "$2"))
-	queryCrdbColumns = sqltest.Escape(fmt.Sprintf(crdbColumnsQuery, "$2"))
+	queryCRDBColumns = sqltest.Escape(fmt.Sprintf(crdbColumnsQuery, "$2"))
 	queryIndexes     = sqltest.Escape(fmt.Sprintf(indexesQuery, "$2"))
-	queryCrdbIndexes = sqltest.Escape(fmt.Sprintf(crdbIndexesQuery, "$2"))
+	queryCRDBIndexes = sqltest.Escape(fmt.Sprintf(crdbIndexesQuery, "$2"))
 )
 
 func TestDriver_InspectTable(t *testing.T) {
@@ -100,6 +100,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.noIndexes()
 				m.noFKs()
 				m.noChecks()
+				m.noViews()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				p := func(i int) *int { return &i }
@@ -190,6 +191,7 @@ users           | tsx             | gist        | ts          | f        | f    
 `))
 				m.noFKs()
 				m.noChecks()
+				m.noViews()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -251,6 +253,7 @@ multi_column    | users      | oid         | public       | t1                  
 self_reference  | users      | uid         | public       | users                 | id                     | public                 | NO ACTION   | CASCADE
 `))
 				m.noChecks()
+				m.noViews()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -301,7 +304,7 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c2          | {2,1
 users        | users_check1       | (((c2 + c1) + c3) > 10) | c1          | {2,1,3}        | f
 users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1,3}        | f
 `))
-				m.noChecks()
+				m.noViews()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -386,6 +389,7 @@ logs3      | c5         | integer   | integer   | NO          |                |
 		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "table_name", "column_name", "referenced_table_name", "referenced_column_name", "referenced_table_schema", "update_rule", "delete_rule"}))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(checksQuery, "$2, $3, $4"))).
 		WillReturnRows(sqlmock.NewRows([]string{"table_name", "constraint_name", "expression", "column_name", "column_indexes"}))
+	mk.noViews()
 	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
 	require.NoError(t, err)
 
@@ -437,7 +441,7 @@ schema_name
 public
 `))
 	mk.tableExists("public", "users", true)
-	mk.ExpectQuery(queryCrdbColumns).
+	mk.ExpectQuery(queryCRDBColumns).
 		WithArgs("public", "users").
 		WillReturnRows(sqltest.Rows(`
 table_name  | column_name | data_type | formatted | is_nullable |              column_default               | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | interval_type | character_set_name | collation_name | is_identity | identity_start | identity_increment |   identity_last  |  identity_generation  | generation_expression | comment | typtype | typelem | elemtyp | oid 
@@ -447,7 +451,7 @@ users       | b           | bigint    | bigint    | NO          |               
 users       | c           | bigint    | bigint    | NO          |                                           |                          |                64 |                    |             0 |               |                    |                | NO          |                |                    |                  |                       |                       |         | b       |         |         | 20 
 users       | d           | bigint    | bigint    | NO          |                                           |                          |                64 |                    |             0 |               |                    |                | NO          |                |                    |                  |                       |                       |         | b       |         |         | 20 
 `))
-	mk.ExpectQuery(queryCrdbIndexes).
+	mk.ExpectQuery(queryCRDBIndexes).
 		WithArgs("public", "users").
 		WillReturnRows(sqltest.Rows(`
 table_name  | index_name | column_name | primary | unique | constraint_type |                                   create_stmt                                   | predicate | expression | comment 
@@ -462,6 +466,7 @@ users       | idx5       | c           | false   | false  |                 | CR
 `))
 	mk.noFKs()
 	mk.noChecks()
+	mk.noViews()
 	s, err := drv.InspectSchema(context.Background(), "public", nil)
 	require.NoError(t, err)
 	tbl := s.Tables[0]
@@ -503,6 +508,7 @@ test
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
+	mk.noViews()
 	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Schema {
@@ -735,4 +741,11 @@ func (m mock) noFKs() {
 func (m mock) noChecks() {
 	m.ExpectQuery(queryChecks).
 		WillReturnRows(sqlmock.NewRows([]string{"table_name", "constraint_name", "expression", "column_name", "column_indexes"}))
+}
+
+func (m mock) noViews() {
+	if queryViews != "" {
+		m.ExpectQuery(queryViews).
+			WillReturnRows(sqlmock.NewRows([]string{"view_schema", "view_name", "definition", "check_option", "comment"}))
+	}
 }
