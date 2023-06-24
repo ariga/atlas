@@ -140,3 +140,7 @@ const (
 	IndexTypeUnique     = "UNIQUE"
 	IndexTypeXML        = "XML"
 )
+
+const (
+	computedPersisted = "PERSISTED"
+)

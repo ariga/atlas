@@ -279,13 +279,15 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) 
 		table, name, typeName, comment, collation sql.NullString
 		nullable, userDefined                     sql.NullInt64
 		identity, identitySeek, identityIncrement sql.NullInt64
-		size, precision, scale                    sql.NullInt64
+		size, precision, scale, isPersisted       sql.NullInt64
+		genexpr                                   sql.NullString
+		isComputed                                int64
 	)
 	if err = rows.Scan(
 		&table, &name, &typeName, &comment,
 		&nullable, &userDefined,
 		&identity, &identitySeek, &identityIncrement,
-		&collation, &size, &precision, &scale,
+		&collation, &size, &precision, &scale, &isComputed, &genexpr, &isPersisted,
 	); err != nil {
 		return err
 	}
@@ -308,6 +310,18 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) 
 			Seek:      identitySeek.Int64,
 			Increment: identityIncrement.Int64,
 		})
+	}
+	if isComputed == 1 {
+		if !sqlx.ValidString(genexpr) {
+			return fmt.Errorf("mssql: computed column %q is missing its definition", name.String)
+		}
+		x := &schema.GeneratedExpr{
+			Expr: genexpr.String,
+		}
+		if isPersisted.Valid && isPersisted.Int64 == 1 {
+			x.Type = computedPersisted
+		}
+		c.SetGeneratedExpr(x)
 	}
 	if sqlx.ValidString(comment) {
 		c.SetComment(comment.String)
@@ -515,13 +529,19 @@ SELECT
 	[collation_name] = [c1].[collation_name],
 	[max_length] = [c1].[max_length],
 	[precision] = [c1].[precision],
-	[scale] = [c1].[scale]
+	[scale] = [c1].[scale],
+	[is_computed] = [c1].[is_computed],
+	[computed_definition] = [cc].[definition],
+	[computed_persisted] = [cc].[is_persisted]
 FROM
 	[sys].[tables] [t1]
 	INNER JOIN [sys].[columns] [c1]
 	ON [t1].[object_id] = [c1].[object_id]
 	INNER JOIN [sys].[types] [tp]
 	ON [c1].[user_type_id] = [tp].[user_type_id]
+	LEFT JOIN [sys].[computed_columns] [cc]
+	ON [cc].[object_id] = [c1].[object_id]
+	AND [cc].[column_id] = [c1].[column_id]
 	LEFT JOIN [sys].[identity_columns] [ti]
 	ON [ti].[object_id] = [c1].[object_id]
 	AND [ti].[column_id] = [c1].[column_id]
