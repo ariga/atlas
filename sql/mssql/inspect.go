@@ -146,7 +146,6 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 			check = &schema.Check{
 				Name:  name,
 				Expr:  clause,
-				Attrs: nil,
 			}
 			if column.Valid {
 				check.Attrs = append(check.Attrs, &CheckColumns{
