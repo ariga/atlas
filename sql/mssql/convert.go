@@ -145,7 +145,7 @@ type columnDesc struct {
 }
 
 // ParseType returns the schema.Type value represented by the given raw type.
-// The raw value is expected to follow the format in PostgreSQL information schema
+// The raw value is expected to follow the format in MS-SQL information schema
 // or as an input for the CREATE TABLE statement.
 func ParseType(typ string) (schema.Type, error) {
 	d, err := parseColumn(typ)
