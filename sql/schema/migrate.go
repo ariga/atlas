@@ -110,6 +110,30 @@ type (
 		From, To *View
 	}
 
+	// AddObject describes a generic object creation change.
+	AddObject struct {
+		O     Object
+		Extra []Clause // Extra clauses and options.
+	}
+
+	// DropObject describes a generic object removal change.
+	DropObject struct {
+		O     Object
+		Extra []Clause // Extra clauses.
+	}
+
+	// ModifyObject describes a generic object modification change.
+	// Unlike tables changes, the diffing types are implemented by
+	// the underlying driver.
+	ModifyObject struct {
+		From, To Object
+	}
+
+	// RenameObject describes a generic object rename change.
+	RenameObject struct {
+		From, To Object
+	}
+
 	// AddColumn describes a column creation change.
 	AddColumn struct {
 		C *Column
