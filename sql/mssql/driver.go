@@ -54,8 +54,10 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		return nil, fmt.Errorf("mssql: scan server property: %w", err)
 	}
 	return &Driver{
-		conn:      c,
-		Inspector: &inspect{c},
+		conn:        c,
+		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
+		Inspector:   &inspect{c},
+		PlanApplier: &planApply{c},
 	}, nil
 }
 
