@@ -102,9 +102,8 @@ enum "account_type" {
 	var s schema.Schema
 	err := EvalHCLBytes([]byte(f), &s, nil)
 	require.NoError(t, err)
-	exp := &schema.Schema{
-		Name: "schema",
-	}
+	exp := schema.New("schema")
+	exp.AddObjects(&schema.EnumType{T: "account_type", Values: []string{"private", "business"}, Schema: exp})
 	exp.Tables = []*schema.Table{
 		{
 			Name:   "table",
@@ -1118,7 +1117,18 @@ table "users" {
 }
 
 func TestMarshalSpec_Enum(t *testing.T) {
+	stateE := &schema.EnumType{
+		T:      "state",
+		Values: []string{"on", "off"},
+	}
+	typeE := &schema.EnumType{
+		T:      "account_type",
+		Values: []string{"private", "business"},
+	}
 	s := schema.New("test").
+		AddObjects(
+			typeE, stateE,
+		).
 		AddTables(
 			schema.NewTable("account").
 				AddColumns(
@@ -1128,19 +1138,14 @@ func TestMarshalSpec_Enum(t *testing.T) {
 					),
 					schema.NewColumn("account_states").
 						SetType(&ArrayType{
-							T: "states[]",
-							Type: &schema.EnumType{
-								T:      "state",
-								Values: []string{"on", "off"},
-							},
+							T:    "states[]",
+							Type: stateE,
 						}),
 				),
 			schema.NewTable("table2").
 				AddColumns(
-					schema.NewEnumColumn("account_type",
-						schema.EnumName("account_type"),
-						schema.EnumValues("private", "business"),
-					),
+					schema.NewColumn("account_type").
+						SetType(typeE),
 				),
 		)
 	buf, err := MarshalSpec(s, hclState)

@@ -197,10 +197,7 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema, scope queryScop
 			return fmt.Errorf("postgres: %w", err)
 		}
 	}
-	if err := rows.Close(); err != nil {
-		return err
-	}
-	return nil
+	return rows.Close()
 }
 
 // addColumn scans the current row and adds a new column from it to the scope (table or view).
@@ -1226,6 +1223,8 @@ FROM
 	JOIN pg_namespace n ON t.typnamespace = n.oid
 WHERE
     n.nspname IN (%s)
+ORDER BY
+    n.nspname, e.enumtypid, e.enumsortorder
 `
 	// Query to list foreign-keys.
 	fksQuery = `

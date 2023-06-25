@@ -134,6 +134,16 @@ func (s *Schema) View(name string) (*View, bool) {
 	return nil, false
 }
 
+// Object returns the first object that matched the given predicate.
+func (s *Schema) Object(f func(Object) bool) (Object, bool) {
+	for _, o := range s.Objects {
+		if f(o) {
+			return o, true
+		}
+	}
+	return nil, false
+}
+
 // Column returns the first column that matched the given name.
 func (t *Table) Column(name string) (*Column, bool) {
 	for _, c := range t.Columns {
