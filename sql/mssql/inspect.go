@@ -95,12 +95,9 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 		if err := i.fks(ctx, s); err != nil {
 			return err
 		}
-		// if err := i.checks(ctx, s); err != nil {
-		// 	return err
-		// }
-		// if err := i.showCreate(ctx, s); err != nil {
-		// 	return err
-		// }
+		if err := i.checks(ctx, s); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -108,6 +105,61 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 type queryScope struct {
 	exec   func(context.Context, string, *schema.Schema) (*sql.Rows, error)
 	append func(*schema.Schema, string, *schema.Column) error
+}
+
+// checks queries and appends the check constraints of the given table.
+func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
+	rows, err := i.querySchema(ctx, checksQuery, s)
+	if err != nil {
+		return fmt.Errorf("mssql: querying schema %q check constraints: %w", s.Name, err)
+	}
+	defer rows.Close()
+	if err := i.addChecks(s, rows); err != nil {
+		return err
+	}
+	return rows.Err()
+}
+
+// addChecks scans the rows and adds the checks to the table.
+func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
+	names := make(map[string]*schema.Check)
+	for rows.Next() {
+		var (
+			table, name, clause string
+			column              sql.NullString
+			disabled            int64
+		)
+		if err := rows.Scan(&table, &name, &clause, &column, &disabled); err != nil {
+			return fmt.Errorf("mssql: scanning check: %w", err)
+		}
+		t, ok := s.Table(table)
+		if !ok {
+			return fmt.Errorf("mssql: table %q was not found in schema", table)
+		}
+		if column.Valid {
+			if _, ok := t.Column(column.String); !ok {
+				return fmt.Errorf("mssql: column %q was not found for check %q", column.String, name)
+			}
+		}
+		check, ok := names[name]
+		if !ok {
+			check = &schema.Check{
+				Name:  name,
+				Expr:  clause,
+			}
+			if column.Valid {
+				check.Attrs = append(check.Attrs, &CheckColumns{
+					Columns: []string{column.String},
+				})
+			}
+			if disabled == 1 {
+				check.Attrs = append(check.Attrs, &CheckDisabled{})
+			}
+			names[name] = check
+			t.Attrs = append(t.Attrs, check)
+		}
+	}
+	return nil
 }
 
 // fks queries and appends the foreign keys of the given table.
@@ -555,6 +607,23 @@ WHERE
 	AND OBJECT_NAME([fk].[parent_object_id]) IN (%s)
 ORDER BY
 	[table_schema], [constraint_name], [fk].[key_index_id]`
+	checksQuery = `
+SELECT
+	[table_name] = OBJECT_NAME([cc].[parent_object_id]),
+	[constraint_name] = [cc].[name],
+	[expression] = [cc].[definition],
+	[column_name] = [c1].[name],
+	[disabled] = [cc].[is_disabled]
+FROM
+	[sys].[check_constraints] [cc]
+	LEFT JOIN [sys].[columns] [c1]
+	ON [c1].[object_id] = [cc].[parent_object_id]
+	AND [c1].column_id = [cc].[parent_column_id]
+WHERE
+	SCHEMA_NAME([cc].[schema_id]) = @1
+	AND OBJECT_NAME([cc].[parent_object_id]) IN (%s)
+ORDER BY
+	[cc].[name]`
 )
 
 type (
@@ -586,6 +655,15 @@ type (
 	IndexPredicate struct {
 		schema.Attr
 		P string
+	}
+	// CheckColumns attribute hold the column named used by the CHECK constraints.
+	CheckColumns struct {
+		schema.Attr
+		Columns []string
+	}
+	// CheckDisabled attribute describes a disabled CHECK constraint.
+	CheckDisabled struct {
+		schema.Attr
 	}
 	// BitType defines a bit type.
 	// https://learn.microsoft.com/en-us/sql/t-sql/data-types/bit-transact-sql
