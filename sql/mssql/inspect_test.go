@@ -80,37 +80,37 @@ func TestDriver_InspectSchema(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, nArgs(1, 1)))).
 					WithArgs("dbo", "t1").
 					WillReturnRows(sqltest.Rows(`
- table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted
-------------|-------------|----------------+------------------------|-------------|-----------------|-------------|---------------|--------------------|------------------------------|------------|-----------|-------|-------------|------------|--------------
- t1         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL
- t1         | c1          | bigint         | NULL                   | 0           | 0               | 1           | 701           | 1000               | NULL                         | 8          | 19        | 0     | 0           | NULL       | NULL
- t1         | c2          | smallint       | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 2          | 5         | 0     | 0           | NULL       | NULL
- t1         | c3          | tinyint        | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 1          | 3         | 0     | 0           | NULL       | NULL
- t1         | c4          | binary         | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 50         | 0         | 0     | 0           | NULL       | NULL
- t1         | c5          | bit            | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 1          | 1         | 0     | 0           | NULL       | NULL
- t1         | c6          | date           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 3          | 10        | 0     | 0           | NULL       | NULL
- t1         | c7          | datetime       | This is datetime       | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 8          | 23        | 3     | 0           | NULL       | NULL
- t1         | c8          | datetime2      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 7          | 24        | 4     | 0           | NULL       | NULL
- t1         | c9          | datetime2      | Datetime default scale | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 8          | 27        | 7     | 0           | NULL       | NULL
- t1         | c10         | datetimeoffset | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 10         | 34        | 7     | 0           | NULL       | NULL
- t1         | c11         | decimal        | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 9          | 12        | 9     | 0           | NULL       | NULL
- t1         | c12         | timestamp      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 8          | 0         | 0     | 0           | NULL       | NULL
- t1         | c13         | real           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 24        | 0     | 0           | NULL       | NULL
- t1         | c14         | real           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 24        | 0     | 0           | NULL       | NULL
- t1         | c15         | money          | Tien tien tien         | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 8          | 19        | 4     | 0           | NULL       | NULL
- t1         | c16         | smallmoney     | small tien             | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 4     | 0           | NULL       | NULL
- t1         | c17         | nchar          | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 1402       | 0         | 0     | 0           | NULL       | NULL
- t1         | c18         | nvarchar       | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 100        | 0         | 0     | 0           | NULL       | NULL
- t1         | c19         | nvarchar       | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | -1         | 0         | 0     | 0           | NULL       | NULL
- t1         | c20         | varbinary      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 50         | 0         | 0     | 0           | NULL       | NULL
- t1         | c21         | varbinary      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | -1         | 0         | 0     | 0           | NULL       | NULL
- t1         | c22         | varchar        | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 50         | 0         | 0     | 0           | NULL       | NULL
- t1         | c23         | char           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 50         | 0         | 0     | 0           | NULL       | NULL
- t1         | c24         | real           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 24        | 0     | 0           | NULL       | NULL
- t1         | c25         | nchar          | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 2          | 0         | 0     | 0           | NULL       | NULL
- t1         | c26         | binary         | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 1          | 0         | 0     | 0           | NULL       | NULL
- t1         | c27         | varbinary      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 1          | 0         | 0     | 0           | NULL       | NULL
- t1         | c28         | varchar        | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 1          | 0         | 0     | 0           | NULL       | NULL
+ table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted | default_definition         
+------------|-------------|----------------+------------------------|-------------|-----------------|-------------|---------------|--------------------|------------------------------|------------|-----------|-------|-------------|------------|--------------|----------------------------
+ t1         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c1          | bigint         | NULL                   | 0           | 0               | 1           | 701           | 1000               | NULL                         | 8          | 19        | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c2          | smallint       | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 2          | 5         | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c3          | tinyint        | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 1          | 3         | 0     | 0           | NULL       | NULL         | ((100))                    
+ t1         | c4          | binary         | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 50         | 0         | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c5          | bit            | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 1          | 1         | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c6          | date           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 3          | 10        | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c7          | datetime       | This is datetime       | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 8          | 23        | 3     | 0           | NULL       | NULL         | (getdate())                
+ t1         | c8          | datetime2      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 7          | 24        | 4     | 0           | NULL       | NULL         | (getdate())                
+ t1         | c9          | datetime2      | Datetime default scale | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 8          | 27        | 7     | 0           | NULL       | NULL         | NULL                       
+ t1         | c10         | datetimeoffset | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 10         | 34        | 7     | 0           | NULL       | NULL         | NULL                       
+ t1         | c11         | decimal        | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 9          | 12        | 9     | 0           | NULL       | NULL         | ((100.69))                 
+ t1         | c12         | timestamp      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 8          | 0         | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c13         | real           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 24        | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c14         | real           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 24        | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c15         | money          | Tien tien tien         | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 8          | 19        | 4     | 0           | NULL       | NULL         | ((1000))                   
+ t1         | c16         | smallmoney     | small tien             | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 4     | 0           | NULL       | NULL         | ((1))                      
+ t1         | c17         | nchar          | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 1402       | 0         | 0     | 0           | NULL       | NULL         | ('G')                      
+ t1         | c18         | nvarchar       | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 100        | 0         | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c19         | nvarchar       | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | -1         | 0         | 0     | 0           | NULL       | NULL         | ('string with quote '' 1') 
+ t1         | c20         | varbinary      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 50         | 0         | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c21         | varbinary      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | -1         | 0         | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c22         | varchar        | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 50         | 0         | 0     | 0           | NULL       | NULL         | ('Size must be 50')        
+ t1         | c23         | char           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 50         | 0         | 0     | 0           | NULL       | NULL         | ('Size must be 50')        
+ t1         | c24         | real           | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 24        | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c25         | nchar          | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 2          | 0         | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c26         | binary         | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 1          | 0         | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c27         | varbinary      | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | NULL                         | 1          | 0         | 0     | 0           | NULL       | NULL         | NULL                       
+ t1         | c28         | varchar        | NULL                   | 1           | 0               | NULL        | NULL          | NULL               | SQL_Latin1_General_CP1_CI_AS | 1          | 0         | 0     | 0           | NULL       | NULL         | NULL                       
 `))
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexesQuery, nArgs(1, 1)))).
 					WithArgs("dbo", "t1").
@@ -156,7 +156,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 							{Name: "c3", Type: &schema.ColumnType{
 								Null: true, Raw: "tinyint",
 								Type: &schema.IntegerType{T: "tinyint"},
-							}},
+							}, Default: &schema.Literal{V: "(100)"}},
 							{Name: "c4", Type: &schema.ColumnType{
 								Null: true, Raw: "binary",
 								Type: &schema.BinaryType{T: "binary", Size: sqlx.P[int](50)},
@@ -174,11 +174,11 @@ func TestDriver_InspectSchema(t *testing.T) {
 								Type: &schema.TimeType{T: "datetime"},
 							}, Attrs: []schema.Attr{
 								&schema.Comment{Text: "This is datetime"},
-							}},
+							}, Default: &schema.RawExpr{X: "getdate()"}},
 							{Name: "c8", Type: &schema.ColumnType{
 								Null: true, Raw: "datetime2",
 								Type: &schema.TimeType{T: "datetime2", Precision: sqlx.P[int](24), Scale: sqlx.P[int](4)},
-							}},
+							}, Default: &schema.RawExpr{X: "getdate()"}},
 							{Name: "c9", Type: &schema.ColumnType{
 								Null: true, Raw: "datetime2",
 								Type: &schema.TimeType{T: "datetime2", Precision: sqlx.P[int](27), Scale: sqlx.P[int](7)},
@@ -192,7 +192,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 							{Name: "c11", Type: &schema.ColumnType{
 								Null: true, Raw: "decimal",
 								Type: &schema.DecimalType{T: "decimal", Precision: 12, Scale: 9},
-							}},
+							}, Default: &schema.Literal{V: "(100.69)"}},
 							{Name: "c12", Type: &schema.ColumnType{
 								Null: true, Raw: "timestamp",
 								Type: &RowVersionType{T: "rowversion"},
@@ -210,19 +210,19 @@ func TestDriver_InspectSchema(t *testing.T) {
 								Type: &MoneyType{T: "money"},
 							}, Attrs: []schema.Attr{
 								&schema.Comment{Text: "Tien tien tien"},
-							}},
+							}, Default: &schema.Literal{V: "(1000)"}},
 							{Name: "c16", Type: &schema.ColumnType{
 								Null: true, Raw: "smallmoney",
 								Type: &MoneyType{T: "smallmoney"},
 							}, Attrs: []schema.Attr{
 								&schema.Comment{Text: "small tien"},
-							}},
+							}, Default: &schema.Literal{V: "(1)"}},
 							{Name: "c17", Type: &schema.ColumnType{
 								Null: true, Raw: "nchar",
 								Type: &schema.StringType{T: "nchar", Size: 1402},
 							}, Attrs: []schema.Attr{
 								&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
-							}},
+							}, Default: &schema.Literal{V: "'G'"}},
 							{Name: "c18", Type: &schema.ColumnType{
 								Null: true, Raw: "nvarchar",
 								Type: &schema.StringType{T: "nvarchar", Size: 100},
@@ -234,7 +234,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 								Type: &schema.StringType{T: "nvarchar", Size: -1},
 							}, Attrs: []schema.Attr{
 								&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
-							}},
+							}, Default: &schema.Literal{V: "'string with quote '' 1'"}},
 							{Name: "c20", Type: &schema.ColumnType{
 								Null: true, Raw: "varbinary",
 								Type: &schema.BinaryType{T: "varbinary", Size: sqlx.P[int](50)},
@@ -248,13 +248,13 @@ func TestDriver_InspectSchema(t *testing.T) {
 								Type: &schema.StringType{T: "varchar", Size: 50},
 							}, Attrs: []schema.Attr{
 								&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
-							}},
+							}, Default: &schema.Literal{V: "'Size must be 50'"}},
 							{Name: "c23", Type: &schema.ColumnType{
 								Null: true, Raw: "char",
 								Type: &schema.StringType{T: "char", Size: 50},
 							}, Attrs: []schema.Attr{
 								&schema.Collation{V: "SQL_Latin1_General_CP1_CI_AS"},
-							}},
+							}, Default: &schema.Literal{V: "'Size must be 50'"}},
 							{Name: "c24", Type: &schema.ColumnType{
 								Null: true, Raw: "real",
 								Type: &schema.FloatType{T: "real", Precision: 24},
@@ -362,12 +362,12 @@ func TestDriver_InspectSchema(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, nArgs(1, 1)))).
 					WithArgs("dbo", "t4").
 					WillReturnRows(sqltest.Rows(`
- table_name | column_name | type_name | comment | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name | max_length | precision | scale | is_computed | definition              | is_persisted
-------------|-------------|-----------|---------|-------------|-----------------|-------------|---------------|--------------------|----------------|------------|-----------|-------|-------------|-------------------------|--------------
- t4         | a           |int        | NULL    | 0           | 0               | NULL        | NULL          | NULL               | NULL           | 4          | 10        | 0     | 0           | NULL                    | NULL
- t4         | b           |int        | NULL    | 0           | 0               | NULL        | NULL          | NULL               | NULL           | 4          | 10        | 0     | 0           | NULL                    | NULL
- t4         | s           |float      | NULL    | 0           | 0               | NULL        | NULL          | NULL               | NULL           | 8          | 53        | 0     | 1           | (sqrt([a]*[a]+[b]*[b])) | 1
- t4         | q           |int        | NULL    | 1           | 0               | NULL        | NULL          | NULL               | NULL           | 4          | 10        | 0     | 1           | (([a]*[b])/(2))         | 0
+ table_name | column_name | type_name | comment | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name | max_length | precision | scale | is_computed | definition              | is_persisted  | default_definition 
+------------|-------------|-----------|---------|-------------|-----------------|-------------|---------------|--------------------|----------------|------------|-----------|-------|-------------|-------------------------|---------------|--------------------
+ t4         | a           |int        | NULL    | 0           | 0               | NULL        | NULL          | NULL               | NULL           | 4          | 10        | 0     | 0           | NULL                    | NULL          | NULL               
+ t4         | b           |int        | NULL    | 0           | 0               | NULL        | NULL          | NULL               | NULL           | 4          | 10        | 0     | 0           | NULL                    | NULL          | NULL               
+ t4         | s           |float      | NULL    | 0           | 0               | NULL        | NULL          | NULL               | NULL           | 8          | 53        | 0     | 1           | (sqrt([a]*[a]+[b]*[b])) | 1             | NULL               
+ t4         | q           |int        | NULL    | 1           | 0               | NULL        | NULL          | NULL               | NULL           | 4          | 10        | 0     | 1           | (([a]*[b])/(2))         | 0             | NULL               
 				`))
 				m.noIndexes("dbo", "t4")
 				m.noFKs("dbo", "t4")
@@ -431,13 +431,13 @@ func TestDriver_InspectSchema(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, nArgs(1, 2)))).
 					WithArgs("dbo", "t1", "t2").
 					WillReturnRows(sqltest.Rows(`
- table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted 
-------------|-------------|----------------+------------------------|-------------|-----------------|-------------|---------------|--------------------|------------------------------|------------|-----------|-------|-------------|------------|--------------
- t1         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         
- t1         | c1          | bigint         | NULL                   | 0           | 0               | 1           | 701           | 1000               | NULL                         | 8          | 19        | 0     | 0           | NULL       | NULL         
- t2         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         
- t2         | fk_t1       | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         
- t2         | fk2         | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         
+ table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted | default_definition 
+------------|-------------|----------------+------------------------|-------------|-----------------|-------------|---------------|--------------------|------------------------------|------------|-----------|-------|-------------|------------|--------------|--------------------
+ t1         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL               
+ t1         | c1          | bigint         | NULL                   | 0           | 0               | 1           | 701           | 1000               | NULL                         | 8          | 19        | 0     | 0           | NULL       | NULL         | NULL               
+ t2         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL               
+ t2         | fk_t1       | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL               
+ t2         | fk2         | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL               
 `))
 				m.noIndexes("dbo", "t1", "t2")
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(fksQuery, nArgs(1, 2)))).
@@ -546,11 +546,11 @@ func TestDriver_InspectSchema(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, nArgs(1, 1)))).
 					WithArgs("dbo", "t3").
 					WillReturnRows(sqltest.Rows(`
- table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted 
-------------|-------------|----------------+------------------------|-------------|-----------------|-------------|---------------|--------------------|------------------------------|------------|-----------|-------|-------------|------------|--------------
- t3         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         
- t3         | c1          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         
- t3         | c2          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         
+ table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted | default_definition 
+------------|-------------|----------------+------------------------|-------------|-----------------|-------------|---------------|--------------------|------------------------------|------------|-----------|-------|-------------|------------|--------------|--------------------
+ t3         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL               
+ t3         | c1          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL               
+ t3         | c2          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL               
 `))
 				m.noIndexes("dbo", "t3")
 				m.noFKs("dbo", "t3")
