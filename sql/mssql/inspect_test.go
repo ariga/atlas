@@ -130,6 +130,7 @@ func TestDriver_InspectSchema(t *testing.T) {
  t1         | i4         | NONCLUSTERED | c28         | NULL      | ([c5]=(1))  | 0       | 0         | 0        | 0       | 2
 `))
 				m.noFKs("dbo", "t1")
+				m.noChecks("dbo", "t1")
 			},
 			expect: func(require *require.Assertions, s *schema.Schema, err error) {
 				require.NoError(err)
@@ -378,6 +379,7 @@ func TestDriver_InspectSchema(t *testing.T) {
  fk_t2_t1        | t2         | fk_t1       | dbo          | t1                    | id                     | dbo                     | NO_ACTION   | NO_ACTION   
  gtm_fk2_t1      | t2         | fk2         | dbo          | t1                    | id                     | gtm                     | NO_ACTION   | NO_ACTION   
 `))
+				m.noChecks("dbo", "t1", "t2")
 			},
 			expect: func(require *require.Assertions, s *schema.Schema, err error) {
 				require.NoError(err)
@@ -461,6 +463,87 @@ func TestDriver_InspectSchema(t *testing.T) {
 				}(), s)
 			},
 		},
+		{
+			name: "table and checks",
+			before: func(m mock) {
+				m.version("16.0.4035.4")
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= SCHEMA_NAME()"))).
+					WillReturnRows(sqltest.Rows(`
+ SCHEMA_NAME
+-------------
+ dbo
+`))
+				m.tables("dbo", "t3")
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, nArgs(1, 1)))).
+					WithArgs("dbo", "t3").
+					WillReturnRows(sqltest.Rows(`
+ table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name               | max_length | precision | scale 
+------------|-------------|----------------+------------------------|-------------|-----------------|-------------|---------------|--------------------|------------------------------|------------|-----------|-------
+ t3         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     
+ t3         | c1          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     
+ t3         | c2          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     
+`))
+				m.noIndexes("dbo", "t3")
+				m.noFKs("dbo", "t3")
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(checksQuery, nArgs(1, 1)))).
+					WithArgs("dbo", "t3").
+					WillReturnRows(sqltest.Rows(`
+ table_name | constraint_name | expression  | column_name | disabled 
+------------|-----------------|-------------|-------------+----------
+ t3         | CK_t3_1         | ([c1]<(5))  | c1          | 1
+ t3         | CK_t3_2         | ([c1]<[c2]) | NULL        | 0
+`))
+			},
+			expect: func(require *require.Assertions, s *schema.Schema, err error) {
+				require.NoError(err)
+				require.EqualValues(func() *schema.Schema {
+					dboTables := []*schema.Table{{
+						Name: "t3",
+						Attrs: []schema.Attr{
+							&schema.Check{
+								Name: "CK_t3_1",
+								Expr: "([c1]<(5))",
+								Attrs: []schema.Attr{
+									&CheckColumns{
+										Columns: []string{"c1"},
+									},
+									&CheckDisabled{},
+								},
+							},
+							&schema.Check{
+								Name: "CK_t3_2",
+								Expr: "([c1]<[c2])",
+							},
+						},
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{
+								Raw:  "int",
+								Type: &schema.IntegerType{T: "int"},
+							}},
+							{Name: "c1", Type: &schema.ColumnType{
+								Raw:  "int",
+								Type: &schema.IntegerType{T: "int"},
+							}},
+							{Name: "c2", Type: &schema.ColumnType{
+								Raw:  "int",
+								Type: &schema.IntegerType{T: "int"},
+							}},
+						},
+					}}
+					dbo := &schema.Schema{Name: "dbo", Tables: nil}
+					dbo.Realm = &schema.Realm{
+						Schemas: []*schema.Schema{dbo},
+						Attrs: []schema.Attr{
+							&schema.Collation{
+								V: "SQL_Latin1_General_CP1_CI_AS",
+							},
+						},
+					}
+					dbo.AddTables(dboTables...)
+					return dbo
+				}(), s)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -519,5 +602,17 @@ func (m mock) noFKs(schema string, tables ...string) {
 		WithArgs(args...).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"constraint_name", "table_name", "column_name", "table_schema", "referenced_table_name", "referenced_column_name", "referenced_table_schema", "update_rule", "delete_rule",
+		}))
+}
+
+func (m mock) noChecks(schema string, tables ...string) {
+	args := []driver.Value{schema}
+	for _, t := range tables {
+		args = append(args, t)
+	}
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(checksQuery, nArgs(1, len(tables))))).
+		WithArgs(args...).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"table_name", "constraint_name", "expression", "column_name",
 		}))
 }
