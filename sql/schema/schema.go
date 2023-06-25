@@ -14,11 +14,19 @@ type (
 
 	// A Schema describes a database schema (i.e. named database).
 	Schema struct {
-		Name   string
-		Realm  *Realm
-		Tables []*Table
-		Views  []*View
-		Attrs  []Attr // Attrs and options.
+		Name    string
+		Realm   *Realm
+		Tables  []*Table
+		Views   []*View
+		Attrs   []Attr   // Attrs and options.
+		Objects []Object // Driver specific objects.
+	}
+
+	// An Object represents a generic database object.
+	// Note that this interface is implemented by some top-level types
+	// to describe their relationship, and by driver specific types.
+	Object interface {
+		obj()
 	}
 
 	// A Table represents a table definition.
@@ -38,7 +46,8 @@ type (
 		Def     string
 		Schema  *Schema
 		Columns []*Column
-		Attrs   []Attr // Attrs and options.
+		Attrs   []Attr   // Attrs and options.
+		Deps    []Object // Tables and views used in view definition.
 	}
 
 	// A Column represents a column definition.
@@ -343,6 +352,11 @@ type (
 		Type string // Optional type. e.g. STORED or VIRTUAL.
 	}
 )
+
+// objects.
+func (*Table) obj()    {}
+func (*View) obj()     {}
+func (*EnumType) obj() {}
 
 // expressions.
 func (*Literal) expr() {}
