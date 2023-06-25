@@ -127,7 +127,7 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 		var (
 			table, name, clause string
 			column              sql.NullString
-			disabled            int64
+			disabled            bool
 		)
 		if err := rows.Scan(&table, &name, &clause, &column, &disabled); err != nil {
 			return fmt.Errorf("mssql: scanning check: %w", err)
@@ -144,15 +144,15 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 		check, ok := names[name]
 		if !ok {
 			check = &schema.Check{
-				Name:  name,
-				Expr:  clause,
+				Name: name,
+				Expr: clause,
 			}
 			if column.Valid {
 				check.Attrs = append(check.Attrs, &CheckColumns{
 					Columns: []string{column.String},
 				})
 			}
-			if disabled == 1 {
+			if disabled {
 				check.Attrs = append(check.Attrs, &CheckDisabled{})
 			}
 			names[name] = check
@@ -193,9 +193,10 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			table, name, typ                          string
-			primary, uniq, included, desc, seqInIndex int64
-			column, comment, pred                     sql.NullString
+			table, name, typ              string
+			primary, uniq, included, desc bool
+			seqInIndex                    int64
+			column, comment, pred         sql.NullString
 		)
 		if err := rows.Scan(
 			&table, &name, &typ, &column, &comment, &pred,
@@ -211,7 +212,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		if !ok {
 			idx = &schema.Index{
 				Name:   name,
-				Unique: uniq == 1,
+				Unique: uniq,
 				Table:  t,
 				Attrs: []schema.Attr{
 					&IndexType{T: typ},
@@ -224,7 +225,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 				idx.Attrs = append(idx.Attrs, &IndexPredicate{P: pred.String})
 			}
 			names[name] = idx
-			if primary == 1 {
+			if primary {
 				t.PrimaryKey = idx
 			} else {
 				t.Indexes = append(t.Indexes, idx)
@@ -232,10 +233,10 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		}
 		part := &schema.IndexPart{
 			SeqNo: int(seqInIndex),
-			Desc:  desc == 1,
+			Desc:  desc,
 		}
 		switch {
-		case included == 1:
+		case included:
 			c, ok := t.Column(column.String)
 			if !ok {
 				return fmt.Errorf("mssql: INCLUDE column %q was not found for index %q", column.String, idx.Name)
@@ -277,16 +278,16 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema, scope queryScop
 func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) (err error) {
 	var (
 		table, name, typeName, comment, collation sql.NullString
-		nullable, userDefined                     sql.NullInt64
-		identity, identitySeek, identityIncrement sql.NullInt64
-		size, precision, scale, isPersisted       sql.NullInt64
+		nullable, isComputed, isUserDefined       bool
+		isIdentity, isPersisted                   sql.NullBool
+		identitySeek, identityIncrement           sql.NullInt64
+		size, precision, scale                    sql.NullInt64
 		genexpr, defaults                         sql.NullString
-		isComputed                                int64
 	)
 	if err = rows.Scan(
 		&table, &name, &typeName, &comment,
-		&nullable, &userDefined,
-		&identity, &identitySeek, &identityIncrement,
+		&nullable, &isUserDefined,
+		&isIdentity, &identitySeek, &identityIncrement,
 		&collation, &size, &precision, &scale, &isComputed,
 		&genexpr, &isPersisted, &defaults,
 	); err != nil {
@@ -296,7 +297,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) 
 		Name: name.String,
 		Type: &schema.ColumnType{
 			Raw:  typeName.String,
-			Null: nullable.Int64 == 1,
+			Null: nullable,
 		},
 	}
 	c.Type.Type, err = columnType(&columnDesc{
@@ -304,22 +305,22 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) 
 		size:        size.Int64,
 		scale:       scale.Int64,
 		precision:   precision.Int64,
-		userDefined: userDefined.Int64 == 1,
+		userDefined: isUserDefined,
 	})
-	if identity.Valid && identity.Int64 == 1 {
+	if isIdentity.Valid && isIdentity.Bool {
 		c.Attrs = append(c.Attrs, &Identity{
 			Seek:      identitySeek.Int64,
 			Increment: identityIncrement.Int64,
 		})
 	}
-	if isComputed == 1 {
+	if isComputed {
 		if !sqlx.ValidString(genexpr) {
 			return fmt.Errorf("mssql: computed column %q is missing its definition", name.String)
 		}
 		x := &schema.GeneratedExpr{
 			Expr: genexpr.String,
 		}
-		if isPersisted.Valid && isPersisted.Int64 == 1 {
+		if isPersisted.Valid && isPersisted.Bool {
 			x.Type = computedPersisted
 		}
 		c.SetGeneratedExpr(x)
@@ -399,7 +400,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 	for rows.Next() {
 		var (
 			tSchema, name, comment sql.NullString
-			memoryOptimized        sql.NullInt64
+			memoryOptimized        bool
 		)
 		if err := rows.Scan(&tSchema, &name, &comment, &memoryOptimized); err != nil {
 			return fmt.Errorf("scan table information: %w", err)
@@ -416,7 +417,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		if sqlx.ValidString(comment) {
 			t.SetComment(comment.String)
 		}
-		if memoryOptimized.Valid && memoryOptimized.Int64 == 1 {
+		if memoryOptimized {
 			t.Attrs = append(t.Attrs, &MemoryOptimized{})
 		}
 	}
