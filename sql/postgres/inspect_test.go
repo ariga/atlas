@@ -5,12 +5,12 @@
 package postgres
 
 import (
-	"ariga.io/atlas/sql/internal/sqlx"
 	"context"
 	"fmt"
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
