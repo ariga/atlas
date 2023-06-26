@@ -497,28 +497,17 @@ func TestDiff_SchemaDiff(t *testing.T) {
 	mock{m}.version("130000")
 	drv, err := Open(db)
 	require.NoError(t, err)
-	from := &schema.Schema{
-		Tables: []*schema.Table{
-			{Name: "users"},
-			{Name: "pets"},
-		},
-	}
-	to := &schema.Schema{
-		Tables: []*schema.Table{
-			{
-				Name: "users",
-				Columns: []*schema.Column{
-					{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
-				},
-			},
-			{Name: "groups"},
-		},
-	}
-	from.Tables[0].Schema = from
-	from.Tables[1].Schema = from
+	from := schema.New("public").
+		AddTables(schema.NewTable("users"), schema.NewTable("pets")).
+		AddObjects(&schema.EnumType{T: "dropped"}, &schema.EnumType{T: "modified", Values: []string{"a"}}, &schema.EnumType{T: "unchanged"})
+	to := schema.New("public").AddTables(schema.NewTable("users").AddColumns(schema.NewIntColumn("t2_id", "int")), schema.NewTable("groups")).
+		AddObjects(&schema.EnumType{T: "modified", Values: []string{"b"}}, &schema.EnumType{T: "unchanged"}, &schema.EnumType{T: "added"})
 	changes, err := drv.SchemaDiff(from, to)
 	require.NoError(t, err)
 	require.EqualValues(t, []schema.Change{
+		&schema.DropObject{O: from.Objects[0]},
+		&schema.ModifyObject{From: from.Objects[1], To: to.Objects[0]},
+		&schema.AddObject{O: to.Objects[2]},
 		&schema.ModifyTable{T: to.Tables[0], Changes: []schema.Change{&schema.AddColumn{C: to.Tables[0].Columns[0]}}},
 		&schema.DropTable{T: from.Tables[1]},
 		&schema.AddTable{T: to.Tables[1]},

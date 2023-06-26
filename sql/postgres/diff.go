@@ -27,9 +27,47 @@ var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{}}
 type diff struct{ conn }
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
-func (d *diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
+func (*diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
 	// No special schema attribute diffing for PostgreSQL.
 	return nil
+}
+
+// SchemaObjectDiff returns a changeset for migrating schema objects from
+// one state to the other.
+func (*diff) SchemaObjectDiff(from, to *schema.Schema) ([]schema.Change, error) {
+	var changes []schema.Change
+	// Drop or modify enums.
+	for _, o1 := range from.Objects {
+		e1, ok := o1.(*schema.EnumType)
+		if !ok {
+			return nil, fmt.Errorf("unsupported object type %T", o1)
+		}
+		o2, ok := to.Object(func(o schema.Object) bool {
+			e2, ok := o.(*schema.EnumType)
+			return ok && e1.T == e2.T
+		})
+		if !ok {
+			changes = append(changes, &schema.DropObject{O: o1})
+			continue
+		}
+		if e2 := o2.(*schema.EnumType); !sqlx.ValuesEqual(e1.Values, e2.Values) {
+			changes = append(changes, &schema.ModifyObject{From: e1, To: e2})
+		}
+	}
+	// Add new enums.
+	for _, o1 := range to.Objects {
+		e1, ok := o1.(*schema.EnumType)
+		if !ok {
+			return nil, fmt.Errorf("unsupported object type %T", o1)
+		}
+		if _, ok := from.Object(func(o schema.Object) bool {
+			e2, ok := o.(*schema.EnumType)
+			return ok && e1.T == e2.T
+		}); !ok {
+			changes = append(changes, &schema.AddObject{O: e1})
+		}
+	}
+	return changes, nil
 }
 
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.

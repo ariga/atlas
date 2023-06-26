@@ -23,9 +23,15 @@ var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{}}
 type diff struct{}
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
-func (d *diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
+func (*diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
 	// No special schema attribute diffing for SQLite.
 	return nil
+}
+
+// SchemaObjectDiff returns a changeset for migrating schema objects from
+// one state to the other.
+func (*diff) SchemaObjectDiff(_, _ *schema.Schema) ([]schema.Change, error) {
+	return nil, nil
 }
 
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
