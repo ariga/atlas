@@ -244,7 +244,7 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 		return nil, err
 	}
 	// Avoid printing the index type if it is the default.
-	if a := (&IndexType{}); sqlx.Has(idx.Attrs, a) && strings.ToUpper(a.T) != IndexTypeCluster {
+	if a := (&IndexType{}); sqlx.Has(idx.Attrs, a) && strings.ToUpper(a.T) != IndexTypeClustered {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(a.T)))
 	}
 	if a := (&IndexPredicate{}); sqlx.Has(idx.Attrs, a) && a.P != "" {

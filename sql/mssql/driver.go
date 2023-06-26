@@ -134,7 +134,7 @@ const (
 
 // List of supported index types.
 const (
-	IndexTypeCluster    = "CLUSTERED"
+	IndexTypeClustered  = "CLUSTERED"
 	IndexTypeFullText   = "FULLTEXT"
 	IndexTypeHash       = "HASH"
 	IndexTypeNonCluster = "NONCLUSTERED"
