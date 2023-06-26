@@ -659,6 +659,12 @@ func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 		for _, t := range s.Tables {
 			changes = append(changes, &schema.AddTable{T: t})
 		}
+		for _, v := range s.Views {
+			changes = append(changes, &schema.AddView{V: v})
+		}
+		for _, o := range s.Objects {
+			changes = append(changes, &schema.AddObject{O: o})
+		}
 	}
 	return fmtPlan(report.Client, changes, indent)
 }

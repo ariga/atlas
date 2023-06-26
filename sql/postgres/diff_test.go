@@ -244,7 +244,6 @@ func TestDiff_TableDiff(t *testing.T) {
 				from = schema.NewTable("users").
 					SetSchema(schema.New("public")).
 					AddColumns(
-						schema.NewEnumColumn("state", schema.EnumName("state"), schema.EnumValues("on")),
 						schema.NewEnumColumn("enum1", schema.EnumName("enum1"), schema.EnumValues("a")),
 						schema.NewEnumColumn("enum3", schema.EnumName("enum3"), schema.EnumValues("a")),
 						schema.NewEnumColumn("enum4", schema.EnumName("enum4"), schema.EnumValues("a"), schema.EnumSchema(schema.New("public"))),
@@ -252,8 +251,6 @@ func TestDiff_TableDiff(t *testing.T) {
 				to = schema.NewTable("users").
 					SetSchema(schema.New("public")).
 					AddColumns(
-						// Add value.
-						schema.NewEnumColumn("state", schema.EnumName("state"), schema.EnumValues("on", "off")),
 						// Change type.
 						schema.NewEnumColumn("enum1", schema.EnumName("enum2"), schema.EnumValues("a")),
 						// No change as schema is optional.
@@ -268,8 +265,7 @@ func TestDiff_TableDiff(t *testing.T) {
 				to:   to,
 				wantChanges: []schema.Change{
 					&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeType},
-					&schema.ModifyColumn{From: from.Columns[1], To: to.Columns[1], Change: schema.ChangeType},
-					&schema.ModifyColumn{From: from.Columns[3], To: to.Columns[3], Change: schema.ChangeType},
+					&schema.ModifyColumn{From: from.Columns[2], To: to.Columns[2], Change: schema.ChangeType},
 				},
 			}
 		}(),
@@ -279,18 +275,13 @@ func TestDiff_TableDiff(t *testing.T) {
 				from = schema.NewTable("users").
 					SetSchema(schema.New("public")).
 					AddColumns(
-						schema.NewColumn("a1").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on"}}}),
-						schema.NewColumn("a2").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
+						schema.NewColumn("a1").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
 						schema.NewColumn("a3").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
 					)
 				to = schema.NewTable("users").
 					SetSchema(schema.New("public")).
 					AddColumns(
-						// Add value.
-						schema.NewColumn("a1").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
-						// Drop value.
-						schema.NewColumn("a2").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on"}}}),
-						// Same values.
+						schema.NewColumn("a1").SetType(&ArrayType{T: "status[]", Type: &schema.EnumType{T: "status", Values: []string{"on", "off"}}}),
 						schema.NewColumn("a3").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
 					)
 			)
@@ -300,7 +291,6 @@ func TestDiff_TableDiff(t *testing.T) {
 				to:   to,
 				wantChanges: []schema.Change{
 					&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeType},
-					&schema.ModifyColumn{From: from.Columns[1], To: to.Columns[1], Change: schema.ChangeType},
 				},
 			}
 		}(),

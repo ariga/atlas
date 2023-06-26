@@ -331,9 +331,8 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		changed = t1 != t2
 	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
-		// Column type was changed if the underlying enum type was changed or values are not equal.
-		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values) || fromT.T != toT.T ||
-			(toT.Schema != nil && fromT.Schema != nil && fromT.Schema.Name != toT.Schema.Name)
+		// Column type was changed if the underlying enum type was changed.
+		changed = fromT.T != toT.T || (toT.Schema != nil && fromT.Schema != nil && fromT.Schema.Name != toT.Schema.Name)
 	case *CurrencyType:
 		toT := toT.(*CurrencyType)
 		changed = fromT.T != toT.T
@@ -342,14 +341,6 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		changed = fromT.T != toT.T
 	case *ArrayType:
 		toT := toT.(*ArrayType)
-		// Same type.
-		if changed = fromT.T != toT.T; !changed {
-			// In case it is an enum type, compare its values.
-			fromE, ok1 := fromT.Type.(*schema.EnumType)
-			toE, ok2 := toT.Type.(*schema.EnumType)
-			changed = ok1 && ok2 && !sqlx.ValuesEqual(fromE.Values, toE.Values)
-			break
-		}
 		// In case the desired schema is not normalized, the string type can look different even
 		// if the two strings represent the same array type (varchar(1), character varying (1)).
 		// Therefore, we try by comparing the underlying types if they were defined.
