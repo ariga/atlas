@@ -31,6 +31,10 @@ type (
 		// from one state to the other. For example, changing schema collation.
 		SchemaAttrDiff(from, to *schema.Schema) []schema.Change
 
+		// SchemaObjectDiff returns a changeset for migrating schema objects from
+		// one state to the other. For example, changing schema custom types.
+		SchemaObjectDiff(from, to *schema.Schema) ([]schema.Change, error)
+
 		// TableAttrDiff returns a changeset for migrating table attributes from
 		// one state to the other. For example, dropping or adding a `CHECK` constraint.
 		TableAttrDiff(from, to *schema.Table) ([]schema.Change, error)
@@ -136,6 +140,12 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 			Changes: change,
 		})
 	}
+	// Add, drop or modify objects.
+	change, err := d.SchemaObjectDiff(from, to)
+	if err != nil {
+		return nil, err
+	}
+	changes = opts.AddOrSkip(changes, change...)
 
 	// Drop or modify tables.
 	for _, t1 := range from.Tables {

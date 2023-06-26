@@ -244,7 +244,6 @@ func TestDiff_TableDiff(t *testing.T) {
 				from = schema.NewTable("users").
 					SetSchema(schema.New("public")).
 					AddColumns(
-						schema.NewEnumColumn("state", schema.EnumName("state"), schema.EnumValues("on")),
 						schema.NewEnumColumn("enum1", schema.EnumName("enum1"), schema.EnumValues("a")),
 						schema.NewEnumColumn("enum3", schema.EnumName("enum3"), schema.EnumValues("a")),
 						schema.NewEnumColumn("enum4", schema.EnumName("enum4"), schema.EnumValues("a"), schema.EnumSchema(schema.New("public"))),
@@ -252,8 +251,6 @@ func TestDiff_TableDiff(t *testing.T) {
 				to = schema.NewTable("users").
 					SetSchema(schema.New("public")).
 					AddColumns(
-						// Add value.
-						schema.NewEnumColumn("state", schema.EnumName("state"), schema.EnumValues("on", "off")),
 						// Change type.
 						schema.NewEnumColumn("enum1", schema.EnumName("enum2"), schema.EnumValues("a")),
 						// No change as schema is optional.
@@ -268,8 +265,7 @@ func TestDiff_TableDiff(t *testing.T) {
 				to:   to,
 				wantChanges: []schema.Change{
 					&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeType},
-					&schema.ModifyColumn{From: from.Columns[1], To: to.Columns[1], Change: schema.ChangeType},
-					&schema.ModifyColumn{From: from.Columns[3], To: to.Columns[3], Change: schema.ChangeType},
+					&schema.ModifyColumn{From: from.Columns[2], To: to.Columns[2], Change: schema.ChangeType},
 				},
 			}
 		}(),
@@ -279,18 +275,13 @@ func TestDiff_TableDiff(t *testing.T) {
 				from = schema.NewTable("users").
 					SetSchema(schema.New("public")).
 					AddColumns(
-						schema.NewColumn("a1").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on"}}}),
-						schema.NewColumn("a2").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
+						schema.NewColumn("a1").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
 						schema.NewColumn("a3").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
 					)
 				to = schema.NewTable("users").
 					SetSchema(schema.New("public")).
 					AddColumns(
-						// Add value.
-						schema.NewColumn("a1").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
-						// Drop value.
-						schema.NewColumn("a2").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on"}}}),
-						// Same values.
+						schema.NewColumn("a1").SetType(&ArrayType{T: "status[]", Type: &schema.EnumType{T: "status", Values: []string{"on", "off"}}}),
 						schema.NewColumn("a3").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
 					)
 			)
@@ -300,7 +291,6 @@ func TestDiff_TableDiff(t *testing.T) {
 				to:   to,
 				wantChanges: []schema.Change{
 					&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeType},
-					&schema.ModifyColumn{From: from.Columns[1], To: to.Columns[1], Change: schema.ChangeType},
 				},
 			}
 		}(),
@@ -497,28 +487,17 @@ func TestDiff_SchemaDiff(t *testing.T) {
 	mock{m}.version("130000")
 	drv, err := Open(db)
 	require.NoError(t, err)
-	from := &schema.Schema{
-		Tables: []*schema.Table{
-			{Name: "users"},
-			{Name: "pets"},
-		},
-	}
-	to := &schema.Schema{
-		Tables: []*schema.Table{
-			{
-				Name: "users",
-				Columns: []*schema.Column{
-					{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
-				},
-			},
-			{Name: "groups"},
-		},
-	}
-	from.Tables[0].Schema = from
-	from.Tables[1].Schema = from
+	from := schema.New("public").
+		AddTables(schema.NewTable("users"), schema.NewTable("pets")).
+		AddObjects(&schema.EnumType{T: "dropped"}, &schema.EnumType{T: "modified", Values: []string{"a"}}, &schema.EnumType{T: "unchanged"})
+	to := schema.New("public").AddTables(schema.NewTable("users").AddColumns(schema.NewIntColumn("t2_id", "int")), schema.NewTable("groups")).
+		AddObjects(&schema.EnumType{T: "modified", Values: []string{"b"}}, &schema.EnumType{T: "unchanged"}, &schema.EnumType{T: "added"})
 	changes, err := drv.SchemaDiff(from, to)
 	require.NoError(t, err)
 	require.EqualValues(t, []schema.Change{
+		&schema.DropObject{O: from.Objects[0]},
+		&schema.ModifyObject{From: from.Objects[1], To: to.Objects[0]},
+		&schema.AddObject{O: to.Objects[2]},
 		&schema.ModifyTable{T: to.Tables[0], Changes: []schema.Change{&schema.AddColumn{C: to.Tables[0].Columns[0]}}},
 		&schema.DropTable{T: from.Tables[1]},
 		&schema.AddTable{T: to.Tables[1]},

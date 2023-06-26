@@ -293,7 +293,10 @@ func TestPostgres_Enums(t *testing.T) {
 		})
 
 		// Create table with an enum column.
-		err := t.drv.ApplyChanges(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		err := t.drv.ApplyChanges(ctx, []schema.Change{
+			&schema.AddObject{O: &schema.EnumType{T: "state", Values: []string{"on", "off"}, Schema: usersT.Schema}},
+			&schema.AddTable{T: usersT},
+		})
 		require.NoError(t, err, "create a new table with an enum column")
 		t.dropTables(usersT.Name)
 		ensureNoChange(t, usersT)
@@ -305,26 +308,11 @@ func TestPostgres_Enums(t *testing.T) {
 		)
 		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
-		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		err = t.drv.ApplyChanges(ctx, []schema.Change{
+			&schema.AddObject{O: &schema.EnumType{T: "day", Values: []string{"sunday", "monday"}, Schema: usersT.Schema}},
+			&schema.ModifyTable{T: usersT, Changes: changes},
+		})
 		require.NoError(t, err, "add a new enum column to existing table")
-		ensureNoChange(t, usersT)
-
-		// Add a new value to an existing enum.
-		e := usersT.Columns[1].Type.Type.(*schema.EnumType)
-		e.Values = append(e.Values, "tuesday")
-		changes = t.diff(t.loadUsers(), usersT)
-		require.Len(t, changes, 1)
-		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err, "append a value to existing enum")
-		ensureNoChange(t, usersT)
-
-		// Add multiple new values to an existing enum.
-		e = usersT.Columns[1].Type.Type.(*schema.EnumType)
-		e.Values = append(e.Values, "wednesday", "thursday", "friday", "saturday")
-		changes = t.diff(t.loadUsers(), usersT)
-		require.Len(t, changes, 1)
-		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err, "append multiple values to existing enum")
 		ensureNoChange(t, usersT)
 	})
 }

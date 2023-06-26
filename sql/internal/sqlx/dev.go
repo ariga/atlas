@@ -21,10 +21,9 @@ type DevDriver struct {
 		migrate.CleanChecker
 		migrate.Snapshoter
 	}
-
-	// PatchColumn allows providing a custom function to patch
-	// columns that hold a schema reference.
-	PatchColumn func(*schema.Schema, *schema.Column)
+	// PathObject allows providing a custom function to patch
+	// objects that hold a schema reference.
+	PatchObject func(*schema.Schema, schema.Object)
 }
 
 // NormalizeRealm implements the schema.Normalizer interface.
@@ -66,6 +65,12 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 			changes = append(changes, &schema.AddTable{
 				T: t,
 			})
+		}
+		for _, v := range s.Views {
+			changes = append(changes, &schema.AddView{V: v})
+		}
+		for _, o := range s.Objects {
+			changes = append(changes, &schema.AddObject{O: o})
 		}
 	}
 	if err := d.Driver.ApplyChanges(ctx, changes); err != nil {
@@ -117,11 +122,21 @@ func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sch
 			if e, ok := c.Type.Type.(*schema.EnumType); ok && e.Schema != s {
 				e.Schema = s
 			}
-			if d.PatchColumn != nil {
-				d.PatchColumn(s, c)
-			}
 		}
 		changes = append(changes, &schema.AddTable{T: t})
+	}
+	for _, v := range s.Views {
+		// If objects are not strongly connected.
+		if v.Schema != s {
+			v.Schema = s
+		}
+		changes = append(changes, &schema.AddView{V: v})
+	}
+	for _, o := range s.Objects {
+		if d.PatchObject != nil {
+			d.PatchObject(s, o)
+		}
+		changes = append(changes, &schema.AddObject{O: o})
 	}
 	if err := d.Driver.ApplyChanges(ctx, changes, func(opts *migrate.PlanOptions) {
 		noQualifier := ""

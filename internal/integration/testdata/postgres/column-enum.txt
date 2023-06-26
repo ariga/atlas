@@ -16,6 +16,10 @@ cmpshow users 2.sql
 atlas schema inspect -u URL --format '{{ sql . "  " }}' > got.sql
 cmp got.sql want.sql
 
+# Rename the column.
+apply 4.hcl
+cmpshow users 4.sql
+
 -- 1.hcl --
 schema "$db" {}
 
@@ -85,3 +89,24 @@ CREATE TYPE "status" AS ENUM ('active', 'inactive');
 CREATE TABLE "users" (
   "type" "status" NOT NULL DEFAULT 'inactive'
 );
+-- 4.hcl --
+schema "$db" {}
+
+enum "status" {
+  schema = schema.$db
+  values = ["active", "inactive"]
+}
+
+table "users" {
+  schema = schema.$db
+  column "renamed" {
+    type = enum.status
+    default = "inactive"
+  }
+}
+
+-- 4.sql --
+                                  Table "script_column_enum.users"
+ Column  |           Type            | Collation | Nullable |                Default
+---------+---------------------------+-----------+----------+---------------------------------------
+ renamed | script_column_enum.status |           | not null | 'inactive'::script_column_enum.status

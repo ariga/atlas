@@ -377,9 +377,11 @@ func (o *DiffOptions) Skipped(c Change) bool {
 }
 
 // AddOrSkip adds the given change to the list of changes if it is not skipped.
-func (o *DiffOptions) AddOrSkip(changes Changes, c Change) Changes {
-	if !o.Skipped(c) {
-		return append(changes, c)
+func (o *DiffOptions) AddOrSkip(changes Changes, cs ...Change) Changes {
+	for _, c := range cs {
+		if !o.Skipped(c) {
+			changes = append(changes, c)
+		}
 	}
 	return changes
 
@@ -540,6 +542,10 @@ func (*AddView) change()          {}
 func (*DropView) change()         {}
 func (*ModifyView) change()       {}
 func (*RenameView) change()       {}
+func (*AddObject) change()        {}
+func (*DropObject) change()       {}
+func (*ModifyObject) change()     {}
+func (*RenameObject) change()     {}
 func (*AddIndex) change()         {}
 func (*DropIndex) change()        {}
 func (*ModifyIndex) change()      {}
