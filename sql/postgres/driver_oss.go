@@ -31,6 +31,3 @@ func (*state) modifyView(context.Context, *schema.ModifyView) error {
 func (*state) renameView(context.Context, *schema.RenameView) {
 	// unimplemented.
 }
-
-// testing stubs.
-var queryViews string

@@ -102,7 +102,6 @@ func TestDriver_InspectTable(t *testing.T) {
  public      |   16774 |  state  | off
  public      |   16775 |  status | unknown
 `))
-				m.noViews()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -195,7 +194,6 @@ users           | tsx             | gist        | ts          | f        | f    
 `))
 				m.noFKs()
 				m.noChecks()
-				m.noViews()
 				m.noEnums()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
@@ -258,7 +256,6 @@ multi_column    | users      | oid         | public       | t1                  
 self_reference  | users      | uid         | public       | users                 | id                     | public                 | NO ACTION   | CASCADE
 `))
 				m.noChecks()
-				m.noViews()
 				m.noEnums()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
@@ -310,7 +307,6 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c2          | {2,1
 users        | users_check1       | (((c2 + c1) + c3) > 10) | c1          | {2,1,3}        | f
 users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1,3}        | f
 `))
-				m.noViews()
 				m.noEnums()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
@@ -349,7 +345,9 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1
  public
 `))
 			tt.before(mk)
-			s, err := drv.InspectSchema(context.Background(), "public", nil)
+			s, err := drv.InspectSchema(context.Background(), "public", &schema.InspectOptions{
+				Mode: schema.InspectSchemas | schema.InspectTables,
+			})
 			require.NoError(t, err)
 			tt.expect(require.New(t), s.Tables[0], err)
 		})
@@ -396,9 +394,10 @@ logs3      | c5         | integer   | integer   | NO          |                |
 		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "table_name", "column_name", "referenced_table_name", "referenced_column_name", "referenced_table_schema", "update_rule", "delete_rule"}))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(checksQuery, "$2, $3, $4"))).
 		WillReturnRows(sqlmock.NewRows([]string{"table_name", "constraint_name", "expression", "column_name", "column_indexes"}))
-	mk.noViews()
 	mk.noEnums()
-	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
+	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
+		Mode: ^schema.InspectViews,
+	})
 	require.NoError(t, err)
 
 	t1, ok := s.Table("logs1")
@@ -474,9 +473,10 @@ users       | idx5       | c           | false   | false  |                 | CR
 `))
 	mk.noFKs()
 	mk.noChecks()
-	mk.noViews()
 	mk.noEnums()
-	s, err := drv.InspectSchema(context.Background(), "public", nil)
+	s, err := drv.InspectSchema(context.Background(), "public", &schema.InspectOptions{
+		Mode: ^schema.InspectViews,
+	})
 	require.NoError(t, err)
 	tbl := s.Tables[0]
 	require.Equal(t, "users", tbl.Name)
@@ -517,9 +517,10 @@ test
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
-	mk.noViews()
 	mk.noEnums()
-	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
+	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
+		Mode: ^schema.InspectViews,
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Schema {
 		r := &schema.Realm{
@@ -562,7 +563,9 @@ public
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(enumsQuery, "$1, $2"))).
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
-	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
+	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+		Mode: ^schema.InspectViews,
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
 		r := &schema.Realm{
@@ -602,7 +605,10 @@ public
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(enumsQuery, "$1, $2"))).
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
-	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test", "public"}})
+	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+		Schemas: []string{"test", "public"},
+		Mode:    ^schema.InspectViews,
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
 		r := &schema.Realm{
@@ -640,7 +646,10 @@ public
 		WithArgs("test").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
 	mk.noEnums()
-	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test"}})
+	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+		Schemas: []string{"test"},
+		Mode:    schema.InspectSchemas | schema.InspectTables,
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
 		r := &schema.Realm{
@@ -763,11 +772,4 @@ func (m mock) noChecks() {
 func (m mock) noEnums() {
 	m.ExpectQuery(queryEnums).
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
-}
-
-func (m mock) noViews() {
-	if queryViews != "" {
-		m.ExpectQuery(queryViews).
-			WillReturnRows(sqlmock.NewRows([]string{"view_schema", "view_name", "definition", "check_option", "comment"}))
-	}
 }
