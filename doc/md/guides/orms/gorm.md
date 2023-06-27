@@ -26,176 +26,253 @@ Atlas can automatically plan database schema migrations for developers using GOR
 Atlas plans migrations by calculating the diff between the _current_ state of the database,
 and its _desired_ state.
 
-For GORM users, the current state can be thought of as the database schema that would have
-been created by GORM's [AutoMigrate](https://gorm.io/docs/migration.html#Auto-Migration)
-feature, if run on an empty database. 
+In the context of versioned migrations, the current state can be thought of as the database schema that would have
+been created by applying all previous migration scripts.
 
-The desired state can be provided to Atlas via an Atlas schema [HCL file](https://atlasgo.io/atlas-schema/sql-resources) 
-or as a connection string to a database that contains the desired schema.
+The desired schema of your application can be provided to Atlas via an [External Schema Datasource](/atlas-schema/projects#data-source-external_schema)
+which is any program that can output a SQL schema definition to stdout.
 
-In this guide, we will show how Atlas can automatically plan schema migrations for
+To use Atlas with GORM, users can utilize the [GORM Atlas Provider](https://github.com/ariga/atlas-provider-gorm),
+a small Go program that can be used to load the schema of a GORM project into Atlas.
+
+In this guide, we will show how Atlas can be used to automatically plan schema migrations for
 GORM users.
 
 ## Prerequisites
 
-* An existing project with a GORM.
-* Docker
-* Atlas ([installation guide](https://atlasgo.io/getting-started/#installation))
+* A local [GORM](https://gorm.io) project.
 
-## Dev database
-To plan a migration from the current to the desired state, Atlas uses a [Dev Database](/concepts/dev-database),
-which is usually provided by a locally running container with an empty database of the type
-you work with (such as MySQL or PostgreSQL).
+If you don't have a GORM project handy, you can use [go-admin-team/go-admin](https://github.com/go-admin-team/go-admin)
+as a starting point:
 
-To spin up a local MySQL database that will be used as a dev-database in our example, run:
-
-```text
-docker run --rm --name atlas-db-dev -d -p 3306:3306 -e MYSQL_DATABASE=dev -e MYSQL_ROOT_PASSWORD=pass mysql:8
+```
+git clone git@github.com:go-admin-team/go-admin.git
 ```
 
-As reference for the next steps, the URL for the Dev Database will be:
-```text
-mysql://root:pass@localhost:3306/dev
+## Using the Atlas GORM Provider 
+
+In this guide, we will use the [GORM Atlas Provider](https://github.com/ariga/atlas-provider-gorm)
+to automatically plan schema migrations for a GORM project.
+
+### Installation
+
+Install Atlas from macOS or Linux by running:
+```bash
+curl -sSf https://atlasgo.sh | sh
+```
+See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more installation options.
+
+Install the provider by running:
+```bash
+go get -u ariga.io/atlas-provider-gorm
+``` 
+
+### Standalone vs Go Program mode
+
+The Atlas GORM Provider can be used in two modes:
+* **Standalone** - If all of your GORM models exist in a single package, and either embed `gorm.Model` or contain `gorm` struct tags, 
+  you can use the provider directly to load your GORM schema into Atlas.
+* **Go Program** - If your GORM models are spread across multiple packages, or do not embed `gorm.Model` or contain `gorm` struct tags, 
+  you can use the provider as a library in your Go program to load your GORM schema into Atlas.
+
+### Standalone mode
+
+If all of your GORM models exist in a single package, and either embed `gorm.Model` or contain `gorm` struct tags,
+you can use the provider directly to load your GORM schema into Atlas.
+
+In your project directory, create a new file named `atlas.hcl` with the following contents:
+
+```hcl
+data "external_schema" "gorm" {
+  program = [
+    "go",
+    "run",
+    "-mod=mod",
+    "ariga.io/atlas-provider-gorm",
+    "load",
+    "--path", "./path/to/models",
+    "--dialect", "mysql", // | postgres | sqlite
+  ]
+}
+
+env "gorm" {
+  src = data.external_schema.gorm.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
 ```
 
-## Create an auto-migration script
+### Go Program mode
 
-To plan a migration to your desired state, we will first create a script that
-populates an empty database with your current schema. Suppose you have models
-such as:
+If your GORM models are spread across multiple packages, or do not embed `gorm.Model` or contain `gorm` struct tags,
+you can use the provider as a library in your Go program to load your GORM schema into Atlas.
+
+Be sure to replace `github.com/<yourorg>/<yourrepo>/path/to/models` with the import path to your GORM models.
+In addition, replace the model types (e.g `models.User`) with the types of your GORM models.
+
+If you want to use the provider as a Go file, you can use the provider as follows:
+
+Create a new program named `loader/main.go` with the following contents:
+
 ```go
-type User struct {
-	gorm.Model
-	Name string
-}
-
-type Product struct {
-	gorm.Model
-	Code  string
-	Price uint
-}
-```
-In a new directory in your project, create a new file named `main.go`:
-```go title=main.go
 package main
 
 import (
-	"flag"
+  "io"
+  "os"
 
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
+  "ariga.io/atlas-provider-gorm/gormschema"
+  _ "ariga.io/atlas-provider-gorm/recordriver"
+  "github.com/<yourorg>/<yourrepo>/path/to/models"
 )
 
 func main() {
-        conn := flag.StringVar("conn", "", "connection string to db")
-	flag.Parse()
-	if *conn == "" {
-		log.Fatalln("conn flag required")
-	}
-	db, err := gorm.Open(mysql.Open(conn), &gorm.Config{})
-	if err != nil {
-		log.Fatalln(err)
-	}
-	// Replace `&Product{}, &User{}` with the models of your application.
-	if err := db.AutoMigrate(&Product{}, &User{}); err != nil {
-		log.Fatalln(err)
-	}
+  stmts, err := gormschema.New("mysql", &models.User{}, &models.Pet{}).Load()
+  if err != nil {
+    fmt.Fprintf(os.Stderr, "failed to load gorm schema: %v\n", err)
+    os.Exit(1)
+  }
+  io.WriteString(os.Stdout, stmts)
 }
 ```
 
-Create a schema named `gorm` in our Dev Database to hold the desired state:
-```text
-docker exec atlas-db-dev mysql -ppass -e 'drop database if exists gorm; create database gorm'
+Be sure to replace `github.com/<yourorg>/<yourrepo>/path/to/models` with the import path to your GORM models.
+In addition, replace the model types (e.g `models.User`) with the types of your GORM models.
+
+Next, in your project directory, create a new file named `atlas.hcl` with the following contents:
+
+```hcl
+data "external_schema" "gorm" {
+  program = [
+    "go",
+    "run",
+    "-mod=mod",
+    "./loader",
+  ]
+}
+
+env "gorm" {
+  src = data.external_schema.gorm.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
 ```
 
-To populate the `gorm` schema with the desired state run:
-```text
-go run main.go -conn 'root:pass@tcp(localhost:3306)/gorm'
-```
+## Usage
 
-## Use Atlas to plan an initial migration
+Atlas supports a [versioned migrations](https://atlasgo.io/concepts/declarative-vs-versioned#versioned-migrations)
+workflow, where each change to the database is versioned and recorded in a migration file. You can use the
+`atlas migrate diff` command to automatically generate a migration file that will migrate the database
+from its latest revision to the current GORM schema.
 
-We can now use Atlas's `migrate diff` command to calculate a migration from the 
-current state, which can be thought of as the sum of all the migration scripts
-in the `migrations` directory (currently an empty schema), to the desired schema
-which exists in the Dev Database.
-
-Run:
-
-```text
-atlas migrate diff --dir file://migrations --dev-url mysql://root:pass@:3306/dev --to mysql://root:pass@:3306/gorm
-```
-
-Observe that two new files were created under the `migrations` directory:
-
-* `20221002070731.sql` (name will vary on your workstation) - a migration file containing SQL to create
-  your database schemas:
-  ```sql
-  -- create "products" table
-  CREATE TABLE `products` (`id` bigint unsigned NOT NULL AUTO_INCREMENT, `created_at` datetime(3) NULL, `updated_at` datetime(3) NULL, `deleted_at` datetime(3) NULL, `code` longtext NULL, `price` bigint unsigned NULL, PRIMARY KEY (`id`), INDEX `idx_products_deleted_at` (`deleted_at`)) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-  -- create "users" table
-  CREATE TABLE `users` (`id` bigint unsigned NOT NULL AUTO_INCREMENT, `created_at` datetime(3) NULL, `updated_at` datetime(3) NULL, `deleted_at` datetime(3) NULL, `name` longtext NULL, PRIMARY KEY (`id`), INDEX `idx_users_deleted_at` (`deleted_at`)) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-  ```
-* `atlas.sum` - To ensure migration history is correct while multiple developers work on the same project
-  in parallel Atlas enforces [migration directory integrity](/concepts/migration-directory-integrity)
-  using a file name `atlas.sum`. This file was created in your migrations directory
-  which contains a hash sum of each file in your directory as well as a total sum:
-  ```text
-  h1:RrRV3cwyd/K1y74c0tUs04RQ1nRFTkA+g7JRb79PwBU=
-  20221002070731.sql h1:je1k1wqknzZ72N2Hmg0MRyuXwHVtg9k7dtoCf33G4Ek=
-  ```
-
-:::info Support for other migration tools
-
-By default, Atlas generates migration files in a format that is accepted by Atlas's migration
-execution engine using the `migrate apply` ([docs](/versioned/apply)) command. Atlas can also generate migrations for other
-popular migration tools such as golang-migrate, Flyway, Liquibase, and more! To learn more about custom formats, read
-the docs [here](/versioned/diff#generate-migrations-with-custom-formats).
-
-:::
-
-## Evolving the schema
-
-Next, let's see how we can generate additional migrations when we evolve our schema.
-Start by adding an `email` field to our `User` model and add a struct tag telling GORM
-we want this field to be unique:
+Suppose we have the following GORM models in our `models` package:
 
 ```go
+package models
+
+import "gorm.io/gorm"
+
 type User struct {
-	gorm.Model
-	Name  string
-	// highlight-next-line-info
-	Email string `gorm:"unique"`
+  gorm.Model
+  Name string
+  Pets []Pet
+}
+
+type Pet struct {
+  gorm.Model
+  Name   string
+  User   User
+  UserID uint
 }
 ```
 
-Make sure our `gorm` schema is empty:
+Using the [Standalone mode](#standalone-mode) configuration file for the Atlas GORM Provider,
+we can generate a migration file by running this command:
 
-```text
-docker exec atlas-db-dev mysql -ppass -e 'drop database if exists gorm; create database gorm'
+```bash
+atlas migrate diff --env gorm 
 ```
 
-Re-populate the schema with the new desired state:
+Will generate files similar to this in the `migrations` directory:
 
-```text
-go run main.go -conn 'root:pass@tcp(localhost:3306)/gorm'
+```
+migrations
+|-- 20230627123246.sql
+`-- atlas.sum
+
+0 directories, 2 files
 ```
 
-Use `migrate diff` to plan the next migration:
-
-```text
-atlas migrate diff --dir file://migrations --dev-url mysql://root:pass@localhost:3306/dev --to mysql://root:pass@localhost:3306/gorm
-```
-
-Observe a new migration file was created in the `migrations` directory:
+Examining the contents of `20230625161420.sql`:
 
 ```sql
--- modify "users" table
-ALTER TABLE `users` ADD COLUMN `email` varchar(191) NULL, ADD UNIQUE INDEX `email` (`email`);
+-- Create "users" table
+CREATE TABLE `users` (
+                       `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+                       `created_at` datetime(3) NULL,
+                       `updated_at` datetime(3) NULL,
+                       `deleted_at` datetime(3) NULL,
+                       `name` longtext NULL,
+                       PRIMARY KEY (`id`),
+                       INDEX `idx_users_deleted_at` (`deleted_at`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- Create "pets" table
+CREATE TABLE `pets` (
+                      `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+                      `created_at` datetime(3) NULL,
+                      `updated_at` datetime(3) NULL,
+                      `deleted_at` datetime(3) NULL,
+                      `name` longtext NULL,
+                      `user_id` bigint unsigned NULL,
+                      PRIMARY KEY (`id`),
+                      INDEX `fk_users_pets` (`user_id`),
+                      INDEX `idx_pets_deleted_at` (`deleted_at`),
+                      CONSTRAINT `fk_users_pets` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
 ```
 
-Amazing! Atlas automatically calculated the difference between our current state (the migrations
-directory) and our desired state (our GORM schema) and planned a correct migration.
+Amazing, Atlas automatically generated a migration file that will create the `pets` and `users` tables
+in our database!
+
+Next, alter the `models.Pet` struct to add a `Nickname` field:
+
+```diff
+type Pet struct {
+	gorm.Model
+	Name     string
++	Nickname string
+	User     User
+	UserID   uint
+}
+```
+
+Re-run this command: 
+
+```shell
+atlas migrate diff --env gorm 
+```
+
+Observe a new migration file is generated:
+
+```
+-- Modify "pets" table
+ALTER TABLE `pets` ADD COLUMN `nickname` longtext NULL;
+```
 
 ## Conclusion
 
