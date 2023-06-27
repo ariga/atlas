@@ -28,7 +28,37 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change, o
 }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *planApply) PlanChanges(_ context.Context, _ string, _ []schema.Change, _ ...migrate.PlanOption) (*migrate.Plan, error) {
-	// Not implemented yet.
-	return nil, nil
+func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
+	s := &state{
+		conn: p.conn,
+		Plan: migrate.Plan{
+			Name:          name,
+			Transactional: true,
+		},
+	}
+	for _, o := range opts {
+		o(&s.PlanOptions)
+	}
+	if err := s.plan(ctx, changes); err != nil {
+		return nil, err
+	}
+	if err := sqlx.SetReversible(&s.Plan); err != nil {
+		return nil, err
+	}
+	return &s.Plan, nil
+}
+
+// state represents the state of a planning. It is not part of
+// planApply so that multiple planning/applying can be called
+// in parallel.
+type state struct {
+	conn
+	migrate.Plan
+	migrate.PlanOptions
+}
+
+// plan builds the migration plan for applying the
+// given changes on the attached connection.
+func (s *state) plan(_ context.Context, _ []schema.Change) error {
+	return nil
 }
