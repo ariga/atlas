@@ -169,7 +169,7 @@ services:
   tidb6:
     container_name: atlas-integration-tidb6
     platform: linux/amd64
-    image: pingcap/tidb:v6.0.0
+    image: pingcap/tidb:v6.6.0
     ports:
       - "4310:4000"
   
