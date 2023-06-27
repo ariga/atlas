@@ -82,9 +82,13 @@ func flat(changes []schema.Change) []schema.Change {
 
 // PlanChanges returns a migration plan for the given schema changes.
 func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
-	fc := flat(changes)
-	sort.SliceStable(fc, func(i, j int) bool {
-		return priority(fc[i]) < priority(fc[j])
+	planned, err := sqlx.DetachCycles(changes)
+	if err != nil {
+		return nil, err
+	}
+	planned = flat(planned)
+	sort.SliceStable(planned, func(i, j int) bool {
+		return priority(planned[i]) < priority(planned[j])
 	})
 	s := &state{
 		conn: p.conn,
@@ -96,7 +100,7 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 			Transactional: false,
 		},
 	}
-	for _, c := range fc {
+	for _, c := range planned {
 		// Use the planner of MySQL with each "atomic" change.
 		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c}, opts...)
 		if err != nil {
