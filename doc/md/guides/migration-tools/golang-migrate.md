@@ -20,7 +20,7 @@ and it's _desired_ state.
 
 For golang-migrate users, the current state can be thought of as the sum of 
 all _up_ migrations in a migration directory. The desired state can be provided to Atlas
-via an Atlas schema [HCL file](https://atlasgo.io/atlas-schema/sql-resources) or as a
+via an Atlas schema [HCL file](https://atlasgo.io/atlas-schema/hcl) or as a
 connection string to a database that contains the desired schema.
 
 In this guide, we will show how Atlas can automatically plan schema migrations for
@@ -74,7 +74,7 @@ h1:y6Zf8kAu98N0jAR+yemZ7zT91nUyECLWzxxR7GHJIAg=
 
 ## Convert your migrations directory to an Atlas schema file
 
-With Atlas, users can describe their desired schema using an [HCL-based configuration language](https://atlasgo.io/atlas-schema/sql-resources).
+With Atlas, users can describe their desired schema using an [HCL-based configuration language](https://atlasgo.io/atlas-schema/hcl).
 As a new user coming from an existing project, you may not want to learn this new language and
 prefer that Atlas will generate a schema file that reflects your existing schema. 
 

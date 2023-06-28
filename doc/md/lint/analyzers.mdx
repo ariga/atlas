@@ -359,7 +359,7 @@ Unlike other checks, there is no single correct way to resolve this one. Here ar
   [GORM](https://gorm.io/docs/models.html#Fields-Tags) you can set it by adding the `column` struct tag.
 
 2. If renaming is desired but the previous version of the application uses the old column name, a temporary `VIRTUAL`
-   [generated column](/atlas-schema/sql-resources#generated-columns) can be created to mimic the previous schema version
+   [generated column](/atlas-schema/hcl#generated-columns) can be created to mimic the previous schema version
    in the deployment phase. However, the downside of this solution is that mutations using the old column name will fail.
    Yet, if Atlas detects a consecutive command with such a column, it will ignore this check.
   ```sql

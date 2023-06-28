@@ -187,11 +187,11 @@ module.exports = {
             from: '/cli/projects',
           },
           {
-            to: '/atlas-schema/sql-types',
+            to: '/atlas-schema/hcl-types',
             from: '/ddl/sql-types',
           },
           {
-            to: '/atlas-schema/sql-resources',
+            to: '/atlas-schema/hcl',
             from: '/ddl/sql',
           },
           {
@@ -217,6 +217,14 @@ module.exports = {
           {
             to: '/concepts/url',
             from: '/url',
+          },
+          {
+            from: '/atlas-schema/sql-resources',
+            to: '/atlas-schema/hcl',
+          },
+          {
+            from: '/atlas-schema/sql-types',
+            to: '/atlas-schema/hcl-types',
           },
         ],
       },

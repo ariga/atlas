@@ -207,7 +207,7 @@ Will run the `migrate validate` command against the Dev Database defined in the
 
 ### Passing Input Values
 
-Project files may pass [input values](input-variables) to variables defined in Atlas HCL schemas. To do this,
+Project files may pass [input values](hcl-input.md) to variables defined in Atlas HCL schemas. To do this,
 define an [`hcl_schema`](#data-source-hcl_schema) data source, pass it the input values, and then designate it as the
 desired schema within the `env` block:
 
@@ -248,7 +248,7 @@ schema "main" {
 
 ### Project Input Variables
 
-Project files may also declare [input variables](../atlas-schema/input.md) that can be supplied to the CLI
+Project files may also declare [input variables](hcl-input.md) that can be supplied to the CLI
 at runtime. For example:
 
 ```hcl title="atlas.hcl"
@@ -287,7 +287,7 @@ Project configuration files support different types of blocks.
 
 ### Input Variables
 
-Project files support defining input variables that can be injected through the CLI, [read more here](input.md).
+Project files support defining input variables that can be injected through the CLI, [read more here](hcl-input.md).
 
 - `type` - The type constraint of a variable.
 - `default` - Define if the variable is optional by setting its default value.

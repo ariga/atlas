@@ -1,7 +1,7 @@
 ---
-id: input-variables
+id: hcl-variables
 slug: /atlas-schema/input-variables
-title: Input Variables
+title: HCL Input Variables
 ---
 In some cases, it is desirable to reuse an Atlas HCL document in different contexts.
 For example, many organizations manage a multi-tenant architecture where the same database
@@ -11,8 +11,8 @@ Input variables are defined using the `variable` block:
 
 ```hcl
 variable "comment" {
-  type = string // | int | bool
-  default = "rotemtam"
+  type    = string // | int | bool | list(string) | etc.
+  default = "default value"
 }
 ```
 
@@ -48,22 +48,23 @@ First, we define our schema in a file named `multi.hcl`:
 ```hcl title="multi.hcl"
 // Define the input variable that contains the tenant name.
 variable "tenant" {
-	type = string
+  type        = string
+  description = "The name of the tenant (schema) to create"
 }
 
 // Define the schema, "tenant" here is a placeholder for the final
 // schema name that will be defined at runtime.
 schema "tenant" {
-    // Reference to the input variable.
-	name = var.tenant
+  // Reference to the input variable.
+  name = var.tenant
 }
 table "users" {
-    // Refer to the "tenant" schema. It's actual name will be
-    // defined at runtime.
-	schema = schema.tenant
-	column "id" {
-		type = int
-	}
+  // Refer to the "tenant" schema. It's actual name will be
+  // defined at runtime.
+  schema = schema.tenant
+  column "id" {
+    type = int
+  }
 }
 ```
 
