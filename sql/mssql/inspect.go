@@ -280,14 +280,14 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) 
 		table, name, typeName, comment, collation sql.NullString
 		nullable, isComputed, isUserDefined       bool
 		isIdentity, isPersisted                   sql.NullBool
-		identitySeek, identityIncrement           sql.NullInt64
+		identitySeed, identityIncrement           sql.NullInt64
 		size, precision, scale                    sql.NullInt64
 		genexpr, defaults                         sql.NullString
 	)
 	if err = rows.Scan(
 		&table, &name, &typeName, &comment,
 		&nullable, &isUserDefined,
-		&isIdentity, &identitySeek, &identityIncrement,
+		&isIdentity, &identitySeed, &identityIncrement,
 		&collation, &size, &precision, &scale, &isComputed,
 		&genexpr, &isPersisted, &defaults,
 	); err != nil {
@@ -309,7 +309,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) 
 	})
 	if isIdentity.Valid && isIdentity.Bool {
 		c.Attrs = append(c.Attrs, &Identity{
-			Seek:      identitySeek.Int64,
+			Seed:      identitySeed.Int64,
 			Increment: identityIncrement.Int64,
 		})
 	}
@@ -552,7 +552,7 @@ SELECT
 	[is_nullable] = [c1].[is_nullable],
 	[is_user_defined] = [tp].[is_user_defined],
 	[is_identity] = [ti].[is_identity],
-	[identity_seek] = [ti].[seed_value],
+	[identity_seed] = [ti].[seed_value],
 	[identity_increment] = [ti].[increment_value],
 	[collation_name] = [c1].[collation_name],
 	[max_length] = [c1].[max_length],
@@ -687,7 +687,7 @@ type (
 	// Identity defines an identity column.
 	Identity struct {
 		schema.Attr
-		Seek      int64
+		Seed      int64
 		Increment int64
 	}
 	// IndexType represents an index type.

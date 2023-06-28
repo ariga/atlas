@@ -256,14 +256,14 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 // fromSpec converts from a sqlspec.Resource into an Identity.
 func (i *Identity) fromSpec(r *schemahcl.Resource) error {
 	var spec struct {
-		Seek      int64 `spec:"seek"`
+		Seed      int64 `spec:"seed"`
 		Increment int64 `spec:"increment"`
 	}
 	if err := r.As(&spec); err != nil {
 		return err
 	}
-	if spec.Seek != 0 {
-		i.Seek = spec.Seek
+	if spec.Seed != 0 {
+		i.Seed = spec.Seed
 	}
 	if spec.Increment != 0 {
 		i.Increment = spec.Increment
@@ -276,7 +276,7 @@ func (i *Identity) toSpec() *schemahcl.Resource {
 	return &schemahcl.Resource{
 		Type: "identity",
 		Attrs: []*schemahcl.Attr{
-			schemahcl.Int64Attr("seek", i.Seek),
+			schemahcl.Int64Attr("seed", i.Seed),
 			schemahcl.Int64Attr("increment", i.Increment),
 		},
 	}
