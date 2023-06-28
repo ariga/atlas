@@ -80,7 +80,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, nArgs(1, 1)))).
 					WithArgs("dbo", "t1").
 					WillReturnRows(sqltest.Rows(`
- table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted | default_definition         
+ table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seed | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted | default_definition         
 ------------|-------------|----------------+------------------------|-------------|-----------------|-------------|---------------|--------------------|------------------------------|------------|-----------|-------|-------------|------------|--------------|----------------------------
  t1         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL                       
  t1         | c1          | bigint         | NULL                   | 0           | 0               | 1           | 701           | 1000               | NULL                         | 8          | 19        | 0     | 0           | NULL       | NULL         | NULL                       
@@ -147,7 +147,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 								Raw:  "bigint",
 								Type: &schema.IntegerType{T: "bigint"},
 							}, Attrs: []schema.Attr{
-								&Identity{Seek: 701, Increment: 1000},
+								&Identity{Seed: 701, Increment: 1000},
 							}},
 							{Name: "c2", Type: &schema.ColumnType{
 								Null: true, Raw: "smallint",
@@ -362,7 +362,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, nArgs(1, 1)))).
 					WithArgs("dbo", "t4").
 					WillReturnRows(sqltest.Rows(`
- table_name | column_name | type_name | comment | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name | max_length | precision | scale | is_computed | definition              | is_persisted  | default_definition 
+ table_name | column_name | type_name | comment | is_nullable | is_user_defined | is_identity | identity_seed | identity_increment | collation_name | max_length | precision | scale | is_computed | definition              | is_persisted  | default_definition 
 ------------|-------------|-----------|---------|-------------|-----------------|-------------|---------------|--------------------|----------------|------------|-----------|-------|-------------|-------------------------|---------------|--------------------
  t4         | a           |int        | NULL    | 0           | 0               | NULL        | NULL          | NULL               | NULL           | 4          | 10        | 0     | 0           | NULL                    | NULL          | NULL               
  t4         | b           |int        | NULL    | 0           | 0               | NULL        | NULL          | NULL               | NULL           | 4          | 10        | 0     | 0           | NULL                    | NULL          | NULL               
@@ -431,7 +431,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, nArgs(1, 2)))).
 					WithArgs("dbo", "t1", "t2").
 					WillReturnRows(sqltest.Rows(`
- table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted | default_definition 
+ table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seed | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted | default_definition 
 ------------|-------------|----------------+------------------------|-------------|-----------------|-------------|---------------|--------------------|------------------------------|------------|-----------|-------|-------------|------------|--------------|--------------------
  t1         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL               
  t1         | c1          | bigint         | NULL                   | 0           | 0               | 1           | 701           | 1000               | NULL                         | 8          | 19        | 0     | 0           | NULL       | NULL         | NULL               
@@ -465,7 +465,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 								Raw:  "bigint",
 								Type: &schema.IntegerType{T: "bigint"},
 							}, Attrs: []schema.Attr{
-								&Identity{Seek: 701, Increment: 1000},
+								&Identity{Seed: 701, Increment: 1000},
 							}},
 						},
 					}, {
@@ -546,7 +546,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, nArgs(1, 1)))).
 					WithArgs("dbo", "t3").
 					WillReturnRows(sqltest.Rows(`
- table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seek | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted | default_definition 
+ table_name | column_name | type_name      | comment                | is_nullable | is_user_defined | is_identity | identity_seed | identity_increment | collation_name               | max_length | precision | scale | is_computed | definition | is_persisted | default_definition 
 ------------|-------------|----------------+------------------------|-------------|-----------------|-------------|---------------|--------------------|------------------------------|------------|-----------|-------|-------------|------------|--------------|--------------------
  t3         | id          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL               
  t3         | c1          | int            | NULL                   | 0           | 0               | NULL        | NULL          | NULL               | NULL                         | 4          | 10        | 0     | 0           | NULL       | NULL         | NULL               

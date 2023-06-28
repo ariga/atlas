@@ -95,7 +95,7 @@ func TestMarshalSpec_Identity(t *testing.T) {
 						Name: "id",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
 						Attrs: []schema.Attr{
-							&Identity{Seek: 701, Increment: 1000},
+							&Identity{Seed: 701, Increment: 1000},
 						},
 					},
 				},
@@ -111,7 +111,7 @@ func TestMarshalSpec_Identity(t *testing.T) {
     null = false
     type = bigint
     identity {
-      seek      = 701
+      seed      = 701
       increment = 1000
     }
   }
@@ -132,7 +132,7 @@ table "t1" {
 	column "c1" {
 		type = int
 		identity {
-			seek      = 701
+			seed      = 701
 			increment = 1000
 		}
 	}
@@ -153,7 +153,7 @@ table "t1" {
 					Name: "c1",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
 					Attrs: []schema.Attr{
-						&Identity{Seek: 701, Increment: 1000},
+						&Identity{Seed: 701, Increment: 1000},
 					},
 				},
 			},
