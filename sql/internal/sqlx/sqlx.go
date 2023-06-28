@@ -334,6 +334,23 @@ func (b *Builder) MapComma(x any, f func(i int, b *Builder)) *Builder {
 	return b
 }
 
+// CommaQuote is like MapComma, but quotes the written elements with the given quote.
+func (b *Builder) CommaQuote(q byte, f ...func()) *Builder {
+	for i, fn := range f {
+		if i > 0 {
+			b.Comma()
+		}
+		b.WriteByte(q)
+		fn()
+		if b.lastByte() != ' ' {
+			b.WriteByte(q)
+		} else {
+			b.rewriteLastByte(q)
+		}
+	}
+	return b
+}
+
 // MapIndent is like MapComma, but writes a new line before each element.
 func (b *Builder) MapIndent(x any, f func(i int, b *Builder)) *Builder {
 	return b.MapComma(x, func(i int, b *Builder) {
