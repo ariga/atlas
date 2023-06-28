@@ -11,7 +11,7 @@ import Discord from '../../website/src/assets/icons/discord-white.svg'
 import { AtlasGoNewsletterDocs } from "@ariga/atlas-website";
 
 Atlas is an open-source tool designed to help software engineers, DBAs and DevOps
-practitioners to manage their database schemas. Atlas users can use the [Atlas DDL](../atlas-schema/sql-resources)
+practitioners to manage their database schemas. Atlas users can use the [Atlas DDL](../atlas-schema/hcl)
 (data-definition language) or SQL to describe the desired database schema and use the command-line
 tool to plan and apply the migrations to their systems.
 
@@ -46,7 +46,7 @@ docker exec atlas-demo mysql -ppass -e 'CREATE table example.users(id int PRIMAR
 ### Inspecting our database
 
 The `atlas schema inspect` command supports reading the database description provided by a URL and outputting it in
-three different formats: [Atlas DDL](../atlas-schema/sql.mdx) (default), SQL, and JSON. In this guide, we will
+three different formats: [Atlas DDL](../atlas-schema/hcl.mdx) (default), SQL, and JSON. In this guide, we will
 demonstrate the flow using both the Atlas DDL and SQL formats, as the JSON format is often used for processing the
 output using `jq`.
 
@@ -77,7 +77,7 @@ table "users" {
   }
 }
 ```
-This block represents a [table](../atlas-schema/sql.mdx#table) resource with `id`, and `name`
+This block represents a [table](../atlas-schema/hcl.mdx#table) resource with `id`, and `name`
 columns. The `schema` field references the `example` schema that is defined elsewhere
 in this document. In addition, the `primary_key` sub-block defines the `id` column as
 the primary key for the table. Atlas strives to mimic the syntax of the database that the user is working against. In this case, the
@@ -96,7 +96,11 @@ Open the `schema.sql` file to view the inspected SQL schema that describes our d
 
 ```sql title="schema.sql"
 -- create "users" table
-CREATE TABLE `users` (`id` int NOT NULL, `name` varchar(100) NULL, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` varchar(100) NULL,
+  PRIMARY KEY (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 ```
 
 </TabItem>
@@ -143,7 +147,7 @@ table "blog_posts" {
   }
 }
 ```
-In addition to the elements we saw in the `users` table, here we can find a [foreign key](../atlas-schema/sql.mdx#foreign-key)
+In addition to the elements we saw in the `users` table, here we can find a [foreign key](../atlas-schema/hcl.mdx#foreign-key)
 block, declaring that the `author_id` column references the `id` column on the
 `users` table.
 </TabItem>

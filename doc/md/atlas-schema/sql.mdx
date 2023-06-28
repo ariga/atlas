@@ -1,725 +1,156 @@
 ---
-id: sql-resources
-title: SQL Resources
-slug: /atlas-schema/sql-resources
+id: sql-schema
+title: SQL Schema
+slug: /atlas-schema/sql
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-The [sqlspec](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlspec) package defines
-the resource types used to describe an SQL database schema. Used with the
-[Atlas HCL](/guides/ddl.md#hcl) syntax, it is easy to compose documents describing the desired
-state of a SQL database.
+Atlas supports defining database schemas in various ways, from its own [HCL language](hcl.mdx) to external ORMs,
+programs, or the standard SQL. This guide focuses on defining schemas using SQL syntax, but also covers other methods.
+There are multiple ways to define schemas in SQL, such as using a single schema SQL file, a directory, or
+Go template-based directory. All of these methods are covered below.
 
-## Schema
+## Dev Database
 
-The `schema` object describes a database schema. A `DATABASE` in MySQL and SQLite, or a `SCHEMA` in PostgreSQL.
-An HCL file can contain 1 or more schema objects.
+When working with SQL schemas, Atlas requires a URL to a [_Dev Database_](concepts/dev.mdx), specified via the
+`--dev-url` flag (or the `dev` attribute in `atlas.hcl`). Typically, this is a temporary database running locally, used
+to parse and validate the SQL definition. This requirement is necessary as Atlas cannot replicate every database type
+'X' in every version 'Y'.
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-]}>
-<TabItem value="mysql">
+To simplify the process of creating temporary databases for one-time use, Atlas can spin up an ephemeral local Docker
+container using the special [docker driver](concepts/url.mdx), and clean it up at the end of the process. Here are a
+few examples of how to use the docker driver:
 
-In MySQL and MariaDB, the `schema` resource can contain the `charset` and `collate` attributes. Read more about them
-in [MySQL](https://dev.mysql.com/doc/refman/8.0/en/charset.html) or
-[MariaDB](https://mariadb.com/kb/en/setting-character-sets-and-collations/) websites.
+<Tabs>
+<TabItem value="mysql" label="MySQL" default>
 
-```hcl
-# Schema with attributes.
-schema "market" {
-  charset = "utf8mb4"
-  collate = "utf8mb4_0900_ai_ci"
-  comment = "A schema comment"
-}
+```shell
+# When working on a single database schema.
+--dev-url "docker://mysql/8/schema"
 
-# Schema without attributes.
-schema "orders" {}
+# When working on multiple database schemas.
+--dev-url "docker://mysql/8"
+```
+</TabItem>
+<TabItem value="mariadb" label="MariaDB">
+
+```shell
+# When working on a single database schema.
+--dev-url "docker://maria/latest/schema"
+
+# When working on multiple database schemas.
+--dev-url "docker://maria/latest"
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
-```hcl
-schema "public" {
-  comment = "A schema comment"
-}
+```shell
+# When working on a single database schema, use the auth-created
+# "public" schema as the search path.
+--dev-url "docker://postgres/15/dev?search_path=public"
 
-schema "private" {}
+# When working on multiple database schemas.
+--dev-url "docker://postgres/15/dev"
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
-Atlas does not support [attached databases](https://www.sqlite.org/lang_attach.html), and support only the default
-database (i.e. `main`).
-
-```hcl
-schema "main" {}
-```
-
-</TabItem>
-</Tabs>
-
-## Table
-
-A `table` describes a table in a SQL database. A table hold its columns, indexes, constraints, and additional attributes
-that are supported by the different drivers.
-
-```hcl
-table "users" {
-  schema = schema.public
-  column "id" {
-    type = int
-  }
-  column "name" {
-    type = varchar(255)
-  }
-  column "manager_id" {
-    type = int
-  }
-  primary_key {
-    columns = [
-      column.id
-    ]
-  }
-  index "idx_name" {
-    columns = [
-      column.name
-    ]
-    unique = true
-  }
-  foreign_key "manager_fk" {
-    columns = [column.manager_id]
-    ref_columns = [column.id]
-    on_delete = CASCADE
-    on_update = NO_ACTION
-  }
-}
-```
-
-### Check
-
-A `check` is a child resource of a `table` that describes a `CHECK` constraint.
-
-```hcl
-table "products" {
-    column "price" {
-        type = float
-    }
-    check "positive price" {
-	    expr = "price > 0"
-    }
-}
-```
-
-### Partitions
-
-Table partitioning refers to splitting logical large tables into smaller physical ones.
-
-:::note
-Atlas currently only supports PostgreSQL. Support for the remaining dialects will be added in future versions.
-:::
-
-```hcl
-table "logs" {
-  schema = schema.public
-  column "date" {
-    type = date
-  }
-  column "text" {
-    type = integer
-  }
-  partition {
-    type = RANGE
-    columns = [column.date]
-  }
-}
-
-table "metrics" {
-  schema = schema.public
-  column "x" {
-    type = integer
-  }
-  column "y" {
-    type = integer
-  }
-  partition {
-    type = RANGE
-    by {
-      column = column.x
-    }
-    by {
-      expr = "floor(y)"
-    }
-  }
-}
-```
-
-### Storage Engine
-
-The `engine` attribute allows for overriding the default storage engine of the table. Supported by MySQL and MariaDB.
-
-```hcl
-table "users" {
-  schema = schema.public
-  // highlight-next-line
-  engine = MyISAM
-}
-
-table "posts" {
-  schema = schema.public
-  // highlight-next-line
-  engine = InnoDB
-}
-
-table "orders" {
-  schema = schema.public
-  // highlight-next-line
-  engine = "MyRocks"
-}
-```
-
-### Table Qualification
-
-In some cases, an Atlas DDL document may contain multiple tables of the same name. This usually happens
-when the same table name appears in two different schemas. In these cases, the table names must be
-disambiguated by using resource [qualifiers](/guides/ddl.md#qualifiers). The following document describes a
-database that contains two schemas named `a` and `b`, and both of them contain a table named `users`.
-
-```hcl
-schema "a" {}
-schema "b" {}
-
-table "a" "users" {
-  schema = schema.a
-  // .. columns
-}
-table "b" "users" {
-  schema = schema.b
-  // .. columns
-}
-```
-
-## Column
-
-A `column` is a child resource of a `table`.
-
-```hcl
-column "name" {
-  type = text
-  null = false
-}
-
-column "age" {
-  type = integer
-  default = 42
-}
-
-column "active" {
-  type = tinyint(1)
-  default = true
-}
-```
-
-#### Properties
-
-| Name    | Kind      | Type                    | Description                                                |
-|---------|-----------|-------------------------|------------------------------------------------------------|
-| null    | attribute | bool                    | Defines whether the column is nullable.                    |
-| type    | attribute | *schemahcl.Type         | Defines the type of data that can be stored in the column. |
-| default | attribute | *schemahcl.LiteralValue | Defines the default value of the column.                   |
-
-### Generated Columns
-
-Generated columns are columns whose their values are computed using other columns or by deterministic expressions.
-
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-]}>
-<TabItem value="mysql">
-
-```hcl
-table "users" {
-  schema = schema.test
-  column "a" {
-    type = int
-  }
-  column "b" {
-    type = int
-    # In MySQL, generated columns are VIRTUAL by default.
-    as = "a * 2"
-  }
-  column "c" {
-    type = int
-    as {
-      expr = "a * b"
-      type = STORED
-    }
-  }
-}
-```
-
-</TabItem>
-<TabItem value="postgres">
-
-```hcl
-table "users" {
-  schema = schema.test
-  column "a" {
-    type = int
-  }
-  column "b" {
-    type = int
-    # In PostgreSQL, generated columns are STORED by default.
-    as = "a * 2"
-  }
-  column "c" {
-    type = int
-    as {
-      expr = "a * b"
-      type = STORED
-    }
-  }
-}
-```
-
-</TabItem>
-<TabItem value="sqlite">
-
-```hcl
-table "users" {
-  schema = schema.test
-  column "a" {
-    type = int
-  }
-  column "b" {
-    type = int
-    # In SQLite, generated columns are VIRTUAL by default.
-    as = "a * 2"
-  }
-  column "c" {
-    type = int
-    as {
-      expr = "a * b"
-      type = STORED
-    }
-  }
-}
+```shell
+# Atlas supports working with an in-memory database in SQLite.
+--dev-url "sqlite://dev?mode=memory"
 ```
 
 </TabItem>
 </Tabs>
 
-:::info
-Note, it is recommended to use the [`--dev-url`](../concepts/dev-database) option when generated columns are used.
+## Schema Definition
+
+Once the dev-database is set, Atlas utilizes it to convert the provided raw SQL files and statements into the Atlas
+_"schema graph"_, that then can be used by various layers of the engine to _diff_, _plan_, and _apply_ changes onto the
+target database. It's important to note that Atlas loads the raw SQL schema by executing the statements defined in the files
+one by one. As such, it is expected that files and statements are ordered according to their dependencies. For example,
+if a `VIEW` named `v1` depends on `TABLE` named `t1`, `v1` must be defined after `t1`, either in the same file or in a
+separate one.
+
+:::info Ensuring the dev-database is clean
+As mentioned above, Atlas uses the dev database to compute the desired state of the database schema. Therefore, before
+starting its work, Atlas ensures the dev database is clean and there are no leftovers from previous runs. Once done,
+Atlas cleans up after itself and the dev database is ready for future runs.
 :::
 
-## Column Types
+## Schema File
 
-The SQL dialects supported by Atlas (Postgres, MySQL, MariaDB, and SQLite) vary in
-the types they support. At this point, the Atlas DDL does not attempt to abstract
-away the differences between various databases. This means that the schema documents
-are tied to a specific database engine and version. This may change in a future version
-of Atlas as we plan to add "Virtual Types" support. This section lists the various
-types that are supported in each database.
+An SQL schema defined in a single file is typically named `schema.sql` and composed of multiple DDL statements separated
+by a semicolon (`;`) or a [custom delimiter](../versioned/new.mdx#custom-statements-delimiter), which can be validly
+executed onto a database one after the other.
 
-For a full list of supported column types, [click here](sql-types.md).
+```sql title="schema.sql"
+-- create "users" table
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` varchar(100) NULL,
+  PRIMARY KEY (`id`)
+);
 
-## Primary Key
+-- create "blog_posts" table
+CREATE TABLE `blog_posts` (
+  `id` int NOT NULL,
+  `title` varchar(100) NULL,
+  `body` text NULL,
+  `author_id` int NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `author_fk` FOREIGN KEY (`author_id`) REFERENCES `example`.`users` (`id`)
+);
+```
 
-A `primary_key` is a child resource of a `table`, and it defines the table's
-primary key.
+In order to use an SQL schema file as an Atlas state, use the following format: `file://path/to/schema.sql`.
 
-#### Example
+## Schema Directory
 
-```hcl
-primary_key {
-  columns = [column.id]
+An SQL schema directory includes one or more schema files, ordered lexicographically according to their dependencies.
+For example, a table with foreign keys must be defined after the other tables it references, and a view should also
+be defined after the other tables and views it depends on.
+
+In order to use a schema directory as an Atlas state, use the following format: `file://path/to/dir`.
+
+## Template Directory
+
+Atlas supports computing the desired schemas dynamically using [Go templates](https://pkg.go.dev/text/template) and
+injected variables. To set it up for a project, create an `atlas.hcl` [config file](projects.mdx), if you don't already
+have one. Then, declare a new data source of type [`template_dir`](projects.mdx#data-source-template_dir) that can be
+used later as an Atlas schema.
+
+```hcl title="atlas.hcl"
+variable "path" {
+  type        = string
+  description = "A path to the template directory"
+}
+
+data "template_dir" "schema" {
+  path = var.path
+  vars = {
+    key = "value"
+    // Pass the --env value as a template variable.
+    env  = atlas.env
+  }
+}
+
+env "dev" {
+  url = var.url
+  src = data.template_dir.schema.url
 }
 ```
 
-#### Properties
-
-| Name    | Kind      | Type                     | Description                                                    |
-|---------|-----------|--------------------------|----------------------------------------------------------------|
-| columns | resource  | reference (list)         | A list of references to columns that comprise the primary key. |
-
-## Foreign Key
-
-Foreign keys are child resources of a `table`, and it defines some columns in the table
-as references to columns in other tables.
-
-#### Example
-
-```hcl title="schema.hcl" {18-19}
-table "users" {
-  schema = schema.public
-  column "id" {
-    type = integer
-  }
-  primary_key {
-    columns = [column.id]
-  }
-}
-
-table "orders" {
-  schema = schema.market
-  // ...
-  column "owner_id" {
-    type = integer
-  }
-  foreign_key "owner_id" {
-    columns     = [column.owner_id]
-    ref_columns = [table.users.column.id]
-    on_update   = NO_ACTION
-    on_delete   = NO_ACTION
-  }
-}
+```sql title="example/schema.tmpl.sql"
+{{- if eq .env "dev" }}
+    create table dev2 (c text);
+    {{ template "shared/users" "dev2" }}
+{{- else }}
+    create table prod2 (c text);
+    {{ template "shared/users" "prod2" }}
+{{- end }}
 ```
-
-#### Referencing Qualified Tables
-
-If a foreign key references a column in a [qualified](#table-qualification) table, it is referenced
-using `table.<qualifier>.<table_name>.column.<column_name>`:
-
-```hcl title="schema.hcl" {18-19}
-table "public" "users" {
-  schema = schema.public
-  column "id" {
-    type = integer
-  }
-  primary_key {
-    columns = [column.id]
-  }
-}
-
-table "admin" "users" {
-  schema = schema.admin
-  // ...
-  column "external_id" {
-    type = integer
-  }
-  foreign_key "external_id" {
-    columns     = [column.external_id]
-    ref_columns = [table.admin.users.column.id]
-    on_update   = NO_ACTION
-    on_delete   = NO_ACTION
-  }
-}
-```
-
-#### Properties
-
-| Name        | Kind      | Type                   | Description                               |
-|-------------|-----------|------------------------|-------------------------------------------|
-| columns     | attribute | reference (list)       | The columns that reference other columns. |
-| ref_columns | attribute | reference (list)       | The referenced columns.                   |
-| on_update   | attribute | schema.ReferenceOption | Defines what to do on update.             |
-| on_delete   | attribute | schema.ReferenceOption | Defines what to do on delete.             |
-
-## Index
-
-Indexes are child resources of a `table`, and it defines an index on the table.
-
-#### Example
-
-```hcl
-index "idx_name" {
-    columns = [
-      column.name
-    ]
-    unique = true
-}
-
-index "idx_name" {
-    on {
-        column = column.rank
-    }
-    on {
-        column = column.score
-        desc = true
-    }
-    unique = true
-}
-
-index "idx_name" {
-  type = GIN
-  columns = [column.data]
-}
-
-index "idx_range" {
-  type = BRIN
-  columns = [column.range]
-  page_per_range = 128
-}
-
-index "idx_include" {
-  columns = [column.range]
-  include = [column.version]
-}
-
-index "idx_operator_class" {
-  type = GIN
-  on {
-    column = column.j
-    ops    = jsonb_path_ops
-  }
-}
-```
-
-#### Properties
-
-| Name      | Kind      | Type                    | Description                                                    |
-|-----------|-----------|-------------------------|----------------------------------------------------------------|
-| unique    | attribute | boolean                 | Defines whether a uniqueness constraint is set on the index.   |
-| type      | attribute | IndexType (enum)        | Defines the index type. e.g. `HASH`, `GIN`, `FULLTEXT`.        |
-| columns   | attribute | reference (list)        | The columns that comprise the index.                           |
-| on        | resource  | schema.IndexPart (list) | The index parts that comprise the index.                       |
-| options   | attribute | schema.Attr             | Additional driver specific attributes. e.g. `page_per_range`   |
-
-### Index Expressions
-
-Index expressions allow setting indexes over functions or computed expressions. Supported by PostgreSQL, SQLite and
-MySQL8.
-
-```hcl {9-16}
-table "t" {
-  schema = schema.test
-  column "c1" {
-    type = int
-  }
-  column "c2" {
-    type = int
-  }
-  index "i" {
-    on {
-      expr = "c1 - c2"
-    }
-    on {
-      expr = "c2 - c1"
-    }
-  }
-}
-```
-
-:::info
-Note, it is recommended to use the [`--dev-url`](../concepts/dev-database) option when index expressions are used.
-:::
-
-### Partial Indexes
-
-[Partial indexes](https://www.postgresql.org/docs/current/indexes-partial.html) allow setting indexes over subset of
-the table. Supported by PostgreSQL and SQLite.
-
-```hcl {11}
-table "t" {
-  schema = schema.public
-  column "b" {
-    type = bool
-  }
-  column "c" {
-    type = int
-  }
-  index "i" {
-    columns = [column.c]
-    where = "b AND c > 0"
-  }
-}
-```
-
-:::info
-Note, it is recommended to use the [`--dev-url`](../concepts/dev-database) option when partial indexes are used.
-:::
-
-### Index Prefixes
-
-[Index prefixes](https://dev.mysql.com/doc/refman/8.0/en/column-indexes.html#column-indexes-prefix) allow setting an index
-on the first `N` characters of string columns. Supported by MySQL and MariaDB.
-
-```hcl {9}
-table "users" {
-  schema = schema.test
-  column "name" {
-    type = varchar(255)
-  }
-  index "user_name" {
-    on {
-      column = column.name
-      prefix = 128
-    }
-  }
-}
-```
-
-## Comment
-
-The `comment` attribute is an attribute of `schema`, `table`, `column`, and `index`.
-
-```hcl
-schema "public" {
-    comment = "A schema comment"
-}
-
-table "users" {
-    schema = schema.public
-    column "name" {
-        type    = text
-        comment = "A column comment"
-    }
-    index "name_idx" {
-        columns = [column.name]
-    }
-    comment = "A table comment"
-}
-```
-
-## Charset and Collation
-
-The `charset` and `collate` are attributes of `schema`, `table` and `column` and supported by MySQL, MariaDB and PostgreSQL.
-Read more about them in [MySQL](https://dev.mysql.com/doc/refman/8.0/en/charset.html),
-[MariaDB](https://mariadb.com/kb/en/setting-character-sets-and-collations/) and
-[PostgreSQL](https://www.postgresql.org/docs/current/collation.html) websites.
-
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'PostgreSQL', value: 'postgres'},
-]}>
-<TabItem value="mysql">
-
-```hcl
-schema "public" {
-    charset = "utf8mb4"
-    collate = "utf8mb4_0900_ai_ci"
-}
-
-table "products" {
-    column "name" {
-        type    = text
-        collate = "binary"
-    }
-    collate = "utf8_general_ci"
-}
-```
-
-</TabItem>
-<TabItem value="postgres">
-
-```hcl
-schema "public" {}
-
-table "products" {
-  column "name" {
-    type    = text
-    collate = "es_ES"
-  }
-}
-```
-
-</TabItem>
-</Tabs>
-
-## Auto Increment
-
-`AUTO_INCREMENT` and `IDENTITY` columns are attributes of the `column` and `table` resource, and can be used to
-generate a unique identity for new rows.
-
-
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-]}>
-<TabItem value="mysql">
-
-In MySQL/MariaDB the `auto_increment` attribute can be set on columns and tables.
-
-```hcl
-table "users" {
-  schema = schema.public
-  column "id" {
-    null = false
-    type = bigint
-    auto_increment = true
-  }
-  primary_key  {
-    columns = [column.id]
-  }
-}
-```
-
-The `auto_increment` column can be set on the table to configure a start value other than 1.
-
-```hcl
-table "users" {
-  schema = schema.public
-  column "id" {
-    null = false
-    type = bigint
-    auto_increment = true
-  }
-  primary_key  {
-    columns = [column.id]
-  }
-  auto_increment = 100
-}
-```
-
-</TabItem>
-<TabItem value="postgres">
-
-PostgreSQL supports `serial` columns and the `generated as identity` syntax for versions >= 10.
-
-```hcl
-table "users" {
-  schema = schema.public
-  column "id" {
-    null = false
-    type = int
-    identity {
-        generated = ALWAYS
-        start = 10
-        increment = 10
-    }
-  }
-  primary_key  {
-    columns = [column.id]
-  }
-}
-```
-
-</TabItem>
-<TabItem value="sqlite">
-
-SQLite allows configuring [`AUTOINCREMENT`](https://www.sqlite.org/autoinc.html) columns using the `auto_increment`
-attribute.
-
-```hcl
-table "users" {
-  schema = schema.main
-  column "id" {
-    null = false
-    type = integer
-    auto_increment = true
-  }
-  primary_key  {
-    columns = [column.id]
-  }
-}
-```
-
-</TabItem>
-</Tabs>

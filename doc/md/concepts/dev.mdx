@@ -41,11 +41,12 @@ a special [docker driver](concepts/url.mdx).
 <TabItem value="postgres" label="PostgreSQL">
 
 ```shell
-# Every PostgreSQL database is created with the "public" schema.
---dev-url "docker://postgres/15/test?search_path=public"
+# When working on a single database schema, use the auth-created
+# "public" schema as the search path.
+--dev-url "docker://postgres/15/dev?search_path=public"
 
 # When working on multiple database schemas.
---dev-url "docker://postgres/15"
+--dev-url "docker://postgres/15/dev"
 ```
 
 </TabItem>
@@ -53,7 +54,7 @@ a special [docker driver](concepts/url.mdx).
 
 ```shell
 # Atlas supports working with an in-memory database in SQLite.
---dev-url "sqlite://file?mode=memory&_fk=1"
+--dev-url "sqlite://dev?mode=memory"
 ```
 
 </TabItem>

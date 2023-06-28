@@ -1,8 +1,10 @@
 ---
-id: sql-types
-title: SQL Column Types
-slug: /atlas-schema/sql-types
+id: hcl-types
+title: HCL Column Types
+slug: /atlas-schema/hcl-types
 ---
+
+The following guide describes the column types supported by Atlas HCL, and how to use them.
 
 ## MySQL
 
