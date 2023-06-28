@@ -145,6 +145,11 @@ module.exports = {
                 },
                 {
                     type: 'doc',
+                    id: 'guides/deploying/k8s-argo',
+                    label: 'Kubernetes (ArgoCD)'
+                },
+                {
+                    type: 'doc',
                     id: 'guides/deploying/fly-io',
                     label: 'Fly.io'
                 },
