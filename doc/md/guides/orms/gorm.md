@@ -125,24 +125,24 @@ Create a new program named `loader/main.go` with the following contents:
 package main
 
 import (
-  "io"
-  "os"
+	"io"
+    "os"
 
-  "ariga.io/atlas-provider-gorm/gormschema"
-  _ "ariga.io/atlas-provider-gorm/recordriver"
-  "github.com/<yourorg>/<yourrepo>/path/to/models"
+    "ariga.io/atlas-provider-gorm/gormschema"
+    _ "ariga.io/atlas-provider-gorm/recordriver"
+    "github.com/<yourorg>/<yourrepo>/path/to/models"
 )
 
 func main() {
-  stmts, err := gormschema.New("mysql", &models.User{}, &models.Pet{}).Load()
-  if err != nil {
-    fmt.Fprintf(os.Stderr, "failed to load gorm schema: %v\n", err)
-    os.Exit(1)
-  }
-  io.WriteString(os.Stdout, stmts)
+    stmts, err := gormschema.New("mysql", &models.User{}, &models.Pet{}).Load()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "failed to load gorm schema: %v\n", err)
+        os.Exit(1)
+    }
+    io.WriteString(os.Stdout, stmts)
 }
 ```
-
+  
 Be sure to replace `github.com/<yourorg>/<yourrepo>/path/to/models` with the import path to your GORM models.
 In addition, replace the model types (e.g `models.User`) with the types of your GORM models.
 
@@ -186,17 +186,17 @@ package models
 
 import "gorm.io/gorm"
 
-type User struct {
-  gorm.Model
-  Name string
-  Pets []Pet
+type User struct {  
+	gorm.Model
+    Name string
+    Pets []Pet
 }
 
 type Pet struct {
-  gorm.Model
-  Name   string
-  User   User
-  UserID uint
+    gorm.Model
+    Name   string
+    User   User
+    UserID uint
 }
 ```
 
@@ -222,26 +222,26 @@ Examining the contents of `20230625161420.sql`:
 ```sql
 -- Create "users" table
 CREATE TABLE `users` (
-                       `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-                       `created_at` datetime(3) NULL,
-                       `updated_at` datetime(3) NULL,
-                       `deleted_at` datetime(3) NULL,
-                       `name` longtext NULL,
-                       PRIMARY KEY (`id`),
-                       INDEX `idx_users_deleted_at` (`deleted_at`)
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+ `created_at` datetime(3) NULL,
+ `updated_at` datetime(3) NULL,
+ `deleted_at` datetime(3) NULL,
+ `name` longtext NULL,
+ PRIMARY KEY (`id`),
+ INDEX `idx_users_deleted_at` (`deleted_at`)
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 -- Create "pets" table
 CREATE TABLE `pets` (
-                      `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-                      `created_at` datetime(3) NULL,
-                      `updated_at` datetime(3) NULL,
-                      `deleted_at` datetime(3) NULL,
-                      `name` longtext NULL,
-                      `user_id` bigint unsigned NULL,
-                      PRIMARY KEY (`id`),
-                      INDEX `fk_users_pets` (`user_id`),
-                      INDEX `idx_pets_deleted_at` (`deleted_at`),
-                      CONSTRAINT `fk_users_pets` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) NULL,
+  `updated_at` datetime(3) NULL,
+  `deleted_at` datetime(3) NULL,
+  `name` longtext NULL,
+  `user_id` bigint unsigned NULL,
+  PRIMARY KEY (`id`),
+  INDEX `fk_users_pets` (`user_id`),
+  INDEX `idx_pets_deleted_at` (`deleted_at`),
+  CONSTRAINT `fk_users_pets` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 ```
