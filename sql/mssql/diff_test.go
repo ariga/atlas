@@ -135,12 +135,10 @@ func TestDiff_TableDiff(t *testing.T) {
 					)
 			)
 			return testcase{
-				name: "drop generation expression",
-				from: from,
-				to:   to,
-				wantChanges: []schema.Change{
-					&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeGenerated},
-				},
+				name:    "drop generation expression",
+				from:    from,
+				to:      to,
+				wantErr: true,
 			}
 		}(),
 		{

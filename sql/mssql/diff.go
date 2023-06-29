@@ -68,7 +68,7 @@ func (d *diff) ColumnChange(_ *schema.Table, from, to *schema.Column) (schema.Ch
 	if identityChanged(from.Attrs, to.Attrs) {
 		change |= schema.ChangeAttr
 	}
-	if changed, err = generatedChanged(from, to); err != nil {
+	if changed, err = computedChanged(from, to); err != nil {
 		return schema.NoChange, err
 	}
 	if changed {
@@ -269,17 +269,21 @@ func indexIncludeChanged(from, to []schema.Attr) bool {
 	return false
 }
 
-// generatedChanged reports if the generated expression of a column was changed.
-func generatedChanged(from, to *schema.Column) (bool, error) {
+// computedChanged reports if the computed expression of a column was changed.
+func computedChanged(from, to *schema.Column) (bool, error) {
 	var fromX, toX schema.GeneratedExpr
 	switch fromHas, toHas := sqlx.Has(from.Attrs, &fromX), sqlx.Has(to.Attrs, &toX); {
 	case fromHas && toHas && sqlx.MayWrap(fromX.Expr) != sqlx.MayWrap(toX.Expr):
-		return false, fmt.Errorf("changing the generation expression for a column %q is not supported", from.Name)
+		return false, fmt.Errorf("changing the computed expression for a column %q is not supported", from.Name)
 	case !fromHas && toHas:
-		return false, fmt.Errorf("changing column %q to generated column is not supported (drop and add is required)", from.Name)
+		return false, fmt.Errorf("changing column %q to computed column is not supported (drop and add is required)", from.Name)
+	case fromHas && !toHas:
+		// SQL Server does not allow to change a computed column to a regular column.
+		// It is required to drop and add the column, select the computed value
+		// and insert it into the new column.
+		return false, fmt.Errorf("changing computed column %q to regular column is not supported (drop and add is required)", from.Name)
 	default:
-		// Only DROP EXPRESSION is supported.
-		return fromHas && !toHas, nil
+		return false, nil
 	}
 }
 
