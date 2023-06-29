@@ -134,13 +134,13 @@ const (
 
 // List of supported index types.
 const (
-	IndexTypeCluster    = "CLUSTERED"
-	IndexTypeFullText   = "FULLTEXT"
-	IndexTypeHash       = "HASH"
-	IndexTypeNonCluster = "NONCLUSTERED"
-	IndexTypeSpatial    = "SPATIAL"
-	IndexTypeUnique     = "UNIQUE"
-	IndexTypeXML        = "XML"
+	IndexTypeNonClustered = "NONCLUSTERED" // Default
+	IndexTypeClustered    = "CLUSTERED"
+	IndexTypeFullText     = "FULLTEXT"
+	IndexTypeHash         = "HASH"
+	IndexTypeSpatial      = "SPATIAL"
+	IndexTypeUnique       = "UNIQUE"
+	IndexTypeXML          = "XML"
 )
 
 const (
