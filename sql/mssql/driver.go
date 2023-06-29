@@ -92,6 +92,91 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	}, nil
 }
 
+// Snapshot implements migrate.Snapshoter.
+func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
+	// The connection is considered bound to the realm.
+	if d.schema != "" {
+		s, err := d.InspectSchema(ctx, d.schema, nil)
+		if err != nil {
+			return nil, err
+		}
+		if len(s.Tables) > 0 {
+			return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in connected schema", s.Tables[0].Name)}
+		}
+		return func(ctx context.Context) error {
+			current, err := d.InspectSchema(ctx, s.Name, nil)
+			if err != nil {
+				return err
+			}
+			changes, err := d.SchemaDiff(current, s)
+			if err != nil {
+				return err
+			}
+			return d.ApplyChanges(ctx, changes)
+		}, nil
+	}
+	// Not bound to a schema.
+	realm, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	restore := func(ctx context.Context) error {
+		current, err := d.InspectRealm(ctx, nil)
+		if err != nil {
+			return err
+		}
+		changes, err := d.RealmDiff(current, realm)
+		if err != nil {
+			return err
+		}
+		return d.ApplyChanges(ctx, changes)
+	}
+	// MS-SQL is considered clean, if there are no schemas or the dbo schema has no tables.
+	if len(realm.Schemas) == 0 {
+		return restore, nil
+	}
+	if s, ok := realm.Schema("dbo"); len(realm.Schemas) == 1 && ok {
+		if len(s.Tables) > 0 {
+			return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+		}
+		return restore, nil
+	}
+	return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
+}
+
+// CheckClean implements migrate.CleanChecker.
+func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error {
+	if revT == nil { // accept nil values
+		revT = &migrate.TableIdent{}
+	}
+	if d.schema != "" {
+		switch s, err := d.InspectSchema(ctx, d.schema, nil); {
+		case err != nil:
+			return err
+		case len(s.Tables) == 0, (revT.Schema == "" || s.Name == revT.Schema) && len(s.Tables) == 1 && s.Tables[0].Name == revT.Name:
+			return nil
+		default:
+			return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+		}
+	}
+	r, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return err
+	}
+	for _, s := range r.Schemas {
+		switch {
+		case len(s.Tables) == 0 && s.Name == "dbo":
+		case len(s.Tables) == 0 || s.Name != revT.Schema:
+			return &migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", s.Name)}
+		case len(s.Tables) > 1:
+			return &migrate.NotCleanError{Reason: fmt.Sprintf("found %d tables in schema %q", len(s.Tables), s.Name)}
+		case len(s.Tables) == 1 && s.Tables[0].Name != revT.Name:
+			return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+		}
+	}
+	return nil
+}
+
 type parser struct{}
 
 // ParseURL implements the sqlclient.URLParser interface.
