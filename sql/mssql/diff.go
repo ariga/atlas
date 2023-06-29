@@ -37,14 +37,11 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	if change := sqlx.CommentDiff(from.Attrs, to.Attrs); change != nil {
 		changes = append(changes, change)
 	}
-	if change := collationChange(from.Attrs, from.Schema.Attrs, to.Attrs); change != noChange {
-		changes = append(changes, change)
-	}
 	return append(changes, sqlx.CheckDiff(from, to)...), nil
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
-func (d *diff) ColumnChange(_ *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
+func (d *diff) ColumnChange(t *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
 	var (
 		change  = sqlx.CommentChange(from.Attrs, to.Attrs)
 		changed bool
@@ -73,6 +70,9 @@ func (d *diff) ColumnChange(_ *schema.Table, from, to *schema.Column) (schema.Ch
 	}
 	if changed {
 		change |= schema.ChangeGenerated
+	}
+	if columnCollationChanged(from.Attrs, to.Attrs, t.Schema.Realm) {
+		change |= schema.ChangeCollate
 	}
 	return change, nil
 }
@@ -118,33 +118,24 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 	return from != to
 }
 
-// collationChange returns the schema change for migrating the collation if
-// it was changed, and it is not the default attribute inherited from its parent.
-func collationChange(from, top, to []schema.Attr) schema.Change {
-	var fromC, topC, toC schema.Collation
-	switch fromHas, topHas, toHas := sqlx.Has(from, &fromC), sqlx.Has(top, &topC), sqlx.Has(to, &toC); {
-	case !fromHas && !toHas:
-	case !fromHas:
-		return &schema.AddAttr{
-			A: &toC,
-		}
-	case !toHas:
-		// There is no way to DROP a COLLATE that was configured on the table,
-		// and it is not the default. Therefore, we use ModifyAttr and give it
-		// the inherited (and default) collation from schema or server.
-		if topHas && fromC.V != topC.V {
-			return &schema.ModifyAttr{
-				From: &fromC,
-				To:   &topC,
-			}
-		}
-	case fromC.V != toC.V:
-		return &schema.ModifyAttr{
-			From: &fromC,
-			To:   &toC,
-		}
+// columnCollationChanged indicates if there is a change to the column collation.
+func columnCollationChanged(from, to []schema.Attr, r *schema.Realm) bool {
+	var top []schema.Attr
+	if r != nil {
+		top = r.Attrs
 	}
-	return noChange
+	var (
+		fromC, topC, toC       schema.Collation
+		fromHas, topHas, toHas = sqlx.Has(from, &fromC), sqlx.Has(top, &topC), sqlx.Has(to, &toC)
+	)
+	// Column was updated with custom COLLATE that was dropped.
+	// Hence, we should revert to the one defined on the top.
+	return fromHas && !toHas && topHas && fromC.V != topC.V ||
+		// Custom COLLATE was added to the column. Hence,
+		// Does not match the one defined in the top.
+		!fromHas && toHas && topHas && toC.V != topC.V ||
+		// COLLATE was explicitly changed.
+		fromHas && toHas && fromC.V != toC.V
 }
 
 func typeChanged(from, to *schema.Column) (bool, error) {
