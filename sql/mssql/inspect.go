@@ -348,7 +348,7 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 		case n == 1 && opts.Schemas[0] == "":
 			query = fmt.Sprintf(schemasQueryArgs, "= SCHEMA_NAME()")
 		case n == 1 && opts.Schemas[0] != "":
-			query = fmt.Sprintf(schemasQueryArgs, "= @1")
+			query = fmt.Sprintf(schemasQueryArgs, "= @p1")
 			args = append(args, opts.Schemas[0])
 		case n > 0:
 			query = fmt.Sprintf(schemasQueryArgs, "IN ("+nArgs(0, len(opts.Schemas))+")")
@@ -438,7 +438,7 @@ func nArgs(start, n int) string {
 		if i > 1 {
 			b.WriteString(", ")
 		}
-		b.WriteByte('@')
+		b.WriteString("@p")
 		b.WriteString(strconv.Itoa(start + i))
 	}
 	return b.String()
@@ -584,7 +584,7 @@ FROM
 	AND [cd].[class_desc] = N'OBJECT_OR_COLUMN'
 	AND [cd].[name] = N'MS_Description'
 WHERE
-	SCHEMA_NAME([t1].[schema_id]) = @1
+	SCHEMA_NAME([t1].[schema_id]) = @p1
 	AND [t1].[name] IN (%s)
 	AND [t1].[type] = 'U'
 	AND [t1].[is_ms_shipped] = 0
@@ -624,7 +624,7 @@ WHERE
 		FROM
 			[sys].[tables] [t1]
 		WHERE
-			SCHEMA_NAME([t1].[schema_id]) = @1
+			SCHEMA_NAME([t1].[schema_id]) = @p1
 			AND [t1].[name] IN (%s)
 	)
 ORDER BY
@@ -656,7 +656,7 @@ FROM
 	AND [cr].[column_id] = [fkc].[referenced_column_id]
 WHERE
 	[fk].[is_ms_shipped] = 0
-	AND SCHEMA_NAME([fk].[schema_id]) = @1
+	AND SCHEMA_NAME([fk].[schema_id]) = @p1
 	AND OBJECT_NAME([fk].[parent_object_id]) IN (%s)
 ORDER BY
 	[table_schema], [constraint_name], [fk].[key_index_id]`
@@ -673,7 +673,7 @@ FROM
 	ON [c1].[object_id] = [cc].[parent_object_id]
 	AND [c1].column_id = [cc].[parent_column_id]
 WHERE
-	SCHEMA_NAME([cc].[schema_id]) = @1
+	SCHEMA_NAME([cc].[schema_id]) = @p1
 	AND OBJECT_NAME([cc].[parent_object_id]) IN (%s)
 ORDER BY
 	[cc].[name]`
