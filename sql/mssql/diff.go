@@ -237,9 +237,11 @@ func (d *diff) defaultEqual(from, to schema.Expr) (bool, error) {
 }
 
 // indexType returns the index type from its attribute.
-// The default type is CLUSTERED if no type was specified.
+// The default type is NONCLUSTERED if no type was specified.
+//
+// https://learn.microsoft.com/en-us/sql/t-sql/statements/create-index-transact-sql#nonclustered
 func indexType(attr []schema.Attr) *IndexType {
-	t := &IndexType{T: IndexTypeClustered}
+	t := &IndexType{T: IndexTypeNonClustered}
 	if sqlx.Has(attr, t) {
 		t.T = strings.ToUpper(t.T)
 	}
