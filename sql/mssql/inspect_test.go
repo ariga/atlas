@@ -20,7 +20,7 @@ import (
 
 // Single table queries used by the different tests.
 var (
-	queryTable = sqltest.Escape(fmt.Sprintf(tablesQuery, "@1"))
+	queryTable = sqltest.Escape(fmt.Sprintf(tablesQuery, "@p1"))
 )
 
 func TestDriver_InspectSchema(t *testing.T) {
