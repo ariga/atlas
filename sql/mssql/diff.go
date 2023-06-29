@@ -31,6 +31,11 @@ func (d *diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
 	return nil
 }
 
+// SchemaObjectDiff returns a changeset for migrating schema objects from one state to the other.
+func (d *diff) SchemaObjectDiff(_, _ *schema.Schema) ([]schema.Change, error) {
+	return nil, nil
+}
+
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
 func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	var changes []schema.Change
