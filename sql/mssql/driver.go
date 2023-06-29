@@ -6,7 +6,9 @@ package mssql
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"net/url"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
@@ -27,6 +29,8 @@ type (
 	// database connection and its information.
 	conn struct {
 		schema.ExecQuerier
+		// The schema in the `schema` parameter (if given).
+		schema  string
 		version string
 		charset string
 		collate string
@@ -39,8 +43,35 @@ const DriverName = "sqlserver"
 func init() {
 	sqlclient.Register(
 		DriverName,
-		sqlclient.DriverOpener(Open),
+		sqlclient.OpenerFunc(opener),
+		sqlclient.RegisterDriverOpener(Open),
+		sqlclient.RegisterURLParser(parser{}),
 	)
+}
+
+func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
+	ur := parser{}.ParseURL(u)
+	db, err := sql.Open(DriverName, ur.DSN)
+	if err != nil {
+		return nil, err
+	}
+	drv, err := Open(db)
+	if err != nil {
+		if cerr := db.Close(); cerr != nil {
+			err = fmt.Errorf("%w: %v", err, cerr)
+		}
+		return nil, err
+	}
+	switch drv := drv.(type) {
+	case *Driver:
+		drv.schema = ur.Schema
+	}
+	return &sqlclient.Client{
+		Name:   DriverName,
+		DB:     db,
+		URL:    ur,
+		Driver: drv,
+	}, nil
 }
 
 // Open opens a new Spanner driver.
@@ -59,6 +90,28 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		Inspector:   &inspect{c},
 		PlanApplier: &planApply{c},
 	}, nil
+}
+
+type parser struct{}
+
+// ParseURL implements the sqlclient.URLParser interface.
+func (parser) ParseURL(u *url.URL) *sqlclient.URL {
+	// "schema" is used to specify the schema name.
+	// It is not part of the default SQL driver.
+	return &sqlclient.URL{
+		URL:    u,
+		DSN:    u.String(),
+		Schema: u.Query().Get("schema"),
+	}
+}
+
+// ChangeSchema implements the sqlclient.SchemaChanger interface.
+func (parser) ChangeSchema(u *url.URL, s string) *url.URL {
+	nu := *u
+	q := nu.Query()
+	q.Set("schema", s)
+	nu.RawQuery = q.Encode()
+	return &nu
 }
 
 // MS-SQL standard column types as defined in its codebase.
