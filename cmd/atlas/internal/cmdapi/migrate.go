@@ -1642,41 +1642,6 @@ func selectScheme(urls []string) (string, error) {
 	return scheme, nil
 }
 
-// parseHCLPaths parses the HCL files in the given paths. If a path represents a directory,
-// its direct descendants will be considered, skipping any subdirectories. If a project file
-// is present in the input paths, an error is returned.
-func parseHCLPaths(paths ...string) (*hclparse.Parser, error) {
-	p := hclparse.NewParser()
-	for _, path := range paths {
-		switch stat, err := os.Stat(path); {
-		case err != nil:
-			return nil, err
-		case stat.IsDir():
-			dir, err := os.ReadDir(path)
-			if err != nil {
-				return nil, err
-			}
-			for _, f := range dir {
-				// Skip nested dirs.
-				if f.IsDir() {
-					continue
-				}
-				if err := mayParse(p, filepath.Join(path, f.Name())); err != nil {
-					return nil, err
-				}
-			}
-		default:
-			if err := mayParse(p, path); err != nil {
-				return nil, err
-			}
-		}
-	}
-	if len(p.Files()) == 0 {
-		return nil, fmt.Errorf("no schema files found in: %s", paths)
-	}
-	return p, nil
-}
-
 // mayParse will parse the file in path if it is an HCL file. If the file is an Atlas
 // project file an error is returned.
 func mayParse(p *hclparse.Parser, path string) error {
