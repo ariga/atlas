@@ -155,7 +155,7 @@ For more information on the installation process refer to the [Atlas Operator Do
 Argo CD works by tracking changes to a Git repository and applying them to the cluster, so let's
 set up a Git repository to serve as the central storage for all your application configuration.
 
-In this example, we’re using the [https://github.com/rotemtam/atlas-argocd-demo](rotemtam/atlas-argocd-demo)
+In this example, we’re using the [rotemtam/atlas-argocd-demo](https://github.com/rotemtam/atlas-argocd-demo)
 repository, which contains all of the Kubernetes manifests necessary to deploy our application.
 
 ### 2. Define the database resources
