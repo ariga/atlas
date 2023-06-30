@@ -53,10 +53,6 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 	if len(config.URLs) != 1 {
 		return nil, fmt.Errorf("the provided SQL state must be either a single schema file or a migration directory, but %d paths were found", len(config.URLs))
 	}
-	// Replaying a migration directory requires a dev connection.
-	if config.Dev == nil {
-		return nil, errors.New("--dev-url cannot be empty")
-	}
 	var (
 		dir  migrate.Dir
 		opts []migrate.ReplayOption
@@ -88,6 +84,10 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 
 // stateReaderSQL returns a migrate.StateReader from an SQL file or a directory of migrations.
 func stateReaderSQL(ctx context.Context, config *StateReaderConfig, dir migrate.Dir, opts ...migrate.ReplayOption) (*StateReadCloser, error) {
+	// Replaying a migration directory requires a dev connection.
+	if config.Dev == nil {
+		return nil, errors.New("--dev-url cannot be empty. See: https://atlasgo.io/atlas-schema/sql#dev-database")
+	}
 	ex, err := migrate.NewExecutor(config.Dev.Driver, dir, migrate.NopRevisionReadWriter{})
 	if err != nil {
 		return nil, err
