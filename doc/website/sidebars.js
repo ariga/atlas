@@ -53,7 +53,7 @@ module.exports = {
         },
         {
             type: 'category',
-            label: 'Atlas Schemas',
+            label: 'Atlas Schema',
             collapsed: false,
             items: [
                 {
@@ -68,6 +68,7 @@ module.exports = {
                     ]
                 },
                 {type: 'doc', id: 'atlas-schema/sql-schema', label: 'SQL Syntax'},
+                {type: 'doc', id: 'atlas-schema/external-schema', label: 'External Integrations'},
                 {type: 'doc', id: 'atlas-schema/projects', label: 'Project Configuration'},
             ],
         },
