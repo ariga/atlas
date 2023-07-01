@@ -36,7 +36,7 @@ On a high level, our application consists of the following components:
 
 1. A backend application - in our example we will use a plain NGINX server
    as a placeholder for a real backend application.
-2. A database - in our example we will use a MySQL Pod for the database.
+2. A database - in our example we will use a MySQL pod for the database.
    In a more realistic scenario, you might want to use a managed database service like AWS RDS or GCP Cloud SQL.
 3. An `AtlasSchema`  Custom Resource that defines the database schema and is managed by the Atlas Operator.
 
@@ -161,7 +161,7 @@ repository, which contains all of the Kubernetes manifests necessary to deploy o
 ### 2. Define the database resources
 
 Recall that in our first sync-wave, we want to deploy the database resources to our cluster. For the
-purposes of this example we're deploying a simple MySQL Pod to our cluster, but in a realistic scenario
+purposes of this example we're deploying a simple MySQL pod to our cluster, but in a realistic scenario
 you will probably want to use a managed database service such as AWS RDS, GCP Cloud SQL or one of the available
 database operators for Kubernetes.
 
@@ -379,9 +379,9 @@ Before deploying our application, we need to apply the custom health check confi
 kubectl apply -f https://raw.githubusercontent.com/rotemtam/atlas-argocd-demo/master/argo-cm.yaml -n argocd
 ```
 
-### 2. Deploy Argo CD
+### 2. Deploy our application
 
-With the custom health check in place, we can now deploy Argo CD to our cluster.
+With the custom health check in place, we can now deploy our application.
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/rotemtam/atlas-argocd-demo/master/Application.yaml
