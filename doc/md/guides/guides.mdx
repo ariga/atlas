@@ -4,7 +4,7 @@ id: guides
 slug: /guides
 ---
 
-import {Card, CardImage} from '../components/card'
+import { Card, CardImage } from "../components/card";
 
 # Atlas Guides
 
@@ -42,6 +42,12 @@ import {Card, CardImage} from '../components/card'
     image={CardImage.Kubernetes}
   />
   <Card
+    name="Kubernetes with ArgoCD"
+    description="Use the Atlas Kubernetes Operator and Argo CD"
+    url="/guides/deploying/k8s-argo"
+    image={CardImage.Deployment}
+  />
+  <Card
     name="CloudSQL with GitHub Actions"
     description="Deploying to CloudSQL with GitHub Actions"
     url="/guides/deploying/cloud-sql-via-github-actions"
@@ -70,7 +76,7 @@ import {Card, CardImage} from '../components/card'
     url="/guides/mysql/functional-indexes"
     image={CardImage.MySQL}
   />
-<Card
+  <Card
     name="Prefix Indexes"
     description="This guide is for working with prefix indexes in MySQL with Atlas"
     url="/guides/mysql/prefix-indexes"
@@ -161,7 +167,6 @@ import {Card, CardImage} from '../components/card'
   />
 </div>
 
-
 ## SQLite
 
 <div className="row">
@@ -219,7 +224,7 @@ import {Card, CardImage} from '../components/card'
   />
 </div>
 
-## Terraform 
+## Terraform
 
 <div className="row">
   <Card
