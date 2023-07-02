@@ -4,37 +4,517 @@ id: operator
 slug: /integrations/kubernetes/operator
 ---
 
-### What are Kubernetes Operators?
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-For many stateful resources, reconciling the desired state of a database with its actual state
-can be a complex task that requires a lot of domain knowledge. [Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
+## What are Kubernetes Operators?
+
+Kubernetes is an excellent solution for managing stateless resources. But for many stateful resources, such as databases,
+reconciling the desired state of a database with its actual state can be a complex task that requires specific domain
+knowledge. [Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 were introduced to the Kubernetes ecosystem to help users manage complex stateful resources by codifying
 this domain knowledge into a Kubernetes controller.
 
-### What is the Atlas Kubernetes Operator?
+## What is the Atlas Kubernetes Operator?
 
 The Atlas Kubernetes Operator is a Kubernetes controller that uses Atlas to manage
 your database schema. The Atlas Kubernetes Operator allows you to define the desired schema 
 and apply it to your database using the Kubernetes API.
 
-### Supported workflows
+## Supported workflows
 
 * [Declarative schema migrations](#declarative-schema-migrations)
 * [Versioned schema migrations](#versioned-schema-migrations)
 
 ### Declarative schema migrations
 
-![](https://atlasgo.io/uploads/images/operator-declarative.png)
+![](https://atlasgo.io/uploads/k8s/operator/declarative-workflow.png)
 
-The Atlas Kubernetes Operator supports [declarative migrations](https://atlasgo.io/concepts/declarative-vs-versioned#declarative-migrations).
+The Atlas Kubernetes Operator supports [declarative migrations](/concepts/declarative-vs-versioned#declarative-migrations).
 In declarative migrations, the desired state of the database is defined by the user and the operator is responsible
 for reconciling the desired state with the actual state of the database (planning and executing `CREATE`, `ALTER`
 and `DROP` statements).
 
+In this workflow, after installing the Atlas Kubernetes Operator, the user defines the desired state of the database
+as an `AtlasSchema` resource which either includes the desired schema directly or references a `ConfigMap` that contains
+it.
+
+The operator then reconciles the desired state with the actual state of the database by planning and executing
+`CREATE`, `ALTER` and `DROP` statements.
+
+To ensure that the operator does not accidentally introduce destructive changes to the database, the user can
+specify linting or diffing policies that will be applied to the computed plan before it is applied to the database.
+
+To learn more about getting started with the Atlas Operator and declarative migrations, see the
+[announcement blog post](/blog/2023/05/08/atlas-v011-kubernetes-operator).
+
 ### Versioned schema migrations
 
-![](https://atlasgo.io/uploads/images/operator-versioned.png)
+![](https://atlasgo.io/uploads/k8s/operator/versioned-flow.png)
 
-The Atlas Kubernetes Operator supports [versioned migrations](https://atlasgo.io/concepts/declarative-vs-versioned#versioned-migrations).
-In versioned migrations, the database schema is defined by a series of migrations that are applied in order. The user can specify the version
-and migration directory to run, which can be located on the [Atlas Cloud](https://atlasgo.io/cloud/getting-started) or the local file system.
+The Atlas Kubernetes Operator also supports [versioned migrations](https://atlasgo.io/concepts/declarative-vs-versioned#versioned-migrations).
+In versioned migrations, the database schema is defined by a series of SQL scripts ("migrations") that are applied
+in lexicographical order. The user can specify the version and migration directory to run, which can be located
+on the [Atlas Cloud](https://atlasgo.io/cloud/getting-started) or stored as a `ConfigMap` in your Kubernetes
+cluster.
+
+In this workflow, after installing the Atlas Kubernetes Operator, the user defines the desired state of the database
+as an `AtlasMigration` resource which connects between a target database and a migration directory. The migration directory
+may be configured as a remote directory in [Atlas Cloud](/cloud/directories) or as a `ConfigMap` in your Kubernetes
+cluster.
+
+The operator then reconciles the desired state with the actual state of the database by applying any pending migrations on the
+target database.
+
+## Installation
+
+The Atlas Kubernetes Operator is available as a Helm Chart. To install the chart with the release name `atlas-operator`:
+
+```bash
+helm install atlas-operator oci://ghcr.io/ariga/charts/atlas-operator
+```
+
+## Providing credentials
+
+In order to manage the schema of your database, you must provide the Atlas Kubernetes Operator with an [Atlas URL](https://atlasgo.io/concepts/url)
+to your database. The Atlas Kubernetes Operator will use this URL to connect to your database and apply changes to the schema.
+As this string usually contains sensitive information, we recommend storing it as a [Kubernetes secret](https://kubernetes.io/docs/concepts/configuration/secret/).
+
+Notice that depending on your use-case, you may want to use either a schema-bound or a database-bound connection.
+* Schema-bound connections are recommended for most use-cases, as they allow you to manage the schema of a database
+schema (named database). This is akin to selecting a specific database using a `USE` statement.
+* Database-bound connections are recommended for use-cases where you want to manage multiple schemas in a single database
+  at once.
+
+Create a file named `db-credentials.yaml` with the following contents:
+
+<Tabs
+defaultValue="mysql-schema"
+values={[
+    {label: 'MySQL (Schema-bound)', value: 'mysql-schema'},
+    {label: 'MySQL (DB-bound)', value: 'mysql-db'},
+    {label: 'PostgreSQL (Schema-bound)', value: 'postgres-schema'},
+    {label: 'PostgreSQL (DB-bound)', value: 'postgres-db'},
+]}>
+<TabItem value="mysql-schema">
+
+```yaml title="db-credentials.yaml"
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-credentials
+type: Opaque
+stringData:
+  url: "mysql://user:pass@your.db.dns.default:3306/myapp"
+```
+This defines a schema-bound connection to a named database called `myapp`.
+
+</TabItem>
+<TabItem value="mysql-db">
+
+```yaml title="db-credentials.yaml"
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-credentials
+type: Opaque
+stringData:
+  url: "mysql://user:pass@your.db.com:3306/"
+```
+This defines a database-bound connection.
+</TabItem>
+<TabItem value="postgres-schema">
+
+```yaml title="db-credentials.yaml"
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pg-credentials
+type: Opaque
+stringData:
+  url: "postgres://user:pass@your.db.com:5432/?search_path=myapp&sslmode=disable"
+```
+This defines a schema-bound connection to a schema called `myapp` to the default database (usually `postgres`).
+
+</TabItem>
+<TabItem value="postgres-db">
+
+```yaml title="db-credentials.yaml"
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pg-credentials
+type: Opaque
+stringData:
+  url: "postgres://user:pass@your.db.com:5432/?sslmode=disable"
+```
+
+</TabItem>
+</Tabs>
+
+## Declarative migrations
+
+The Atlas Operator relies on a Kubernetes custom resource called `AtlasSchema` to define the desired schema of your database.
+You can find the full definition for this resource on the [ariga/atlas-operator repo](https://github.com/ariga/atlas-operator/blob/master/charts/atlas-operator/templates/crds/crd.yaml).
+This resource describes the desired state of a target database that is used in the operator's reconciliation loop.
+
+Let's review an example of such as a resource. Create a file named `atlas-schema.yaml` with the following contents:
+
+```yaml title="atlas-schema.yaml"
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasSchema
+metadata:
+  name: myapp
+spec:
+  # Load the URL of the target database from a Kubernetes secret.
+  urlFrom:
+    secretKeyRef:
+      key: url
+      name: mysql-credentials
+  # Define the desired schema of the target database. This can be defined in either
+  # plain SQL like this example or in Atlas HCL.
+  schema:
+    sql: |
+      create table users (
+        id int not null auto_increment,
+        name varchar(255) not null,
+        email varchar(255) unique not null,
+        short_bio varchar(255) not null,
+        primary key (id)
+      );
+  # Define policies that control how the operator will apply changes to the target database.
+  policy:
+    # Define a policy that will stop the reconciliation loop if the operator detects
+    # a destructive change such as dropping a column or table.
+    lint:
+      destructive:
+        error: true
+    # Define a policy that omits DROP COLUMN changes from any produced plan.
+    diff:
+      skip:
+        drop_column: true
+  # Exclude a table from being managed by the operator. This is useful for resources
+  # that belong to other applications and are managed in other ways.
+  exclude:
+    - external_table_managed_elsewhere
+```
+
+Alternatively, you can use a `ConfigMap` to store the desired schema of your database. To use
+this approach, create a ConfigMap with the desired schema:
+
+```yaml title="atlas-schema-configmap.yaml"
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: mysql-schema
+data:
+  schema.sql: |
+    create table users (
+       id int not null auto_increment,
+       name varchar(255) not null,
+       email varchar(255) unique not null,
+       short_bio varchar(255) not null,
+       primary key (id)
+    );
+```
+
+Then, update the `AtlasSchema` resource to reference the config map key:
+
+```yaml title="atlas-schema.yaml" {7-9}
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasSchema
+metadata:
+  name: myapp
+spec:
+  schema:
+    configMapKeyRef:
+      key: schema.sql
+      name: mysql-schema
+  # Skipping all other fields for brevity.
+```
+
+## `AtlasSchema` API reference
+
+The `AtlasSchema` resource is used to define the desired state of a target database.
+
+Available fields:
+
+#### `urlFrom`
+
+The `urlFrom` field is used to load the URL of the target database from another resource such as a
+Kubernetes secret.
+
+```yaml
+urlFrom:
+    secretKeyRef:
+      key: url
+      name: mysql-credentials
+```
+
+### `url`
+
+The `url` field is used to define the URL of the target database directly. This is not recommended, but may
+be useful for testing purposes.
+
+```yaml
+url: "mysql://user:pass@localhost:3306/myapp"
+```
+
+### `schema`
+
+The `schema` field is used to define the desired schema of the target database.
+
+This can be defined in either plain SQL or in Atlas HCL.
+
+```yaml
+schema:
+    sql: |
+      create table users (
+        id int not null auto_increment,
+        name varchar(255) not null,
+        email varchar(255) uniuse
+      );
+```
+
+```yaml
+schema:
+  hcl: |
+    schema "myapp" {
+    }
+    table "users" {
+      column "id" {
+        type = int
+      }
+      // ...
+    }
+```
+
+Alternatively, you can reference a key in a `ConfigMap` to store the desired schema of your database:
+
+```
+schema:
+  configMapKeyRef:
+    key: schema.sql
+    name: mysql-schema
+```
+
+Note: the `.sql` suffix on the key denotes that the schema is defined in plain SQL. If you are using Atlas HCL,
+you should use the `.hcl` suffix instead.
+
+### `policy`
+
+The `policy` field is used to define policies that control how the operator will apply changes to the target database.
+
+#### `lint`
+
+The `lint` field is used to define policies that control how the operator will lint the desired schema.
+
+```yaml
+policy:
+  lint:
+    destructive:
+      error: true
+```
+
+Currently, the only lint policy available is `destructive`. This policy controls what the operator will do if it
+detects a destructive change such as dropping a column or table.
+
+#### `diff`
+
+The `diff` field is used to define the diff policies that are used to plan the schema changes.
+
+```yaml
+policy:
+  diff:
+   skip:
+    drop_column: true
+```
+
+Currently, the only diff policy available is `skip`. This policy controls which kind of schema changes will be
+skipped from the produced plan. The following options are available:
+* `add_column`, `add_foreign_key`, `add_index`, `add_schema`, `add_table`, `drop_column`, `drop_foreign_key`,
+  `drop_index`, `drop_schema`, `drop_table`, `modify_column`, `modify_foreign_key`, `modify_index`,
+  `modify_schema`, `modify_table`
+
+### `exclude`
+
+The `exclude` field is used to define tables that should be excluded from being managed by the operator.
+This is useful for resources that belong to other applications and are managed in other ways.
+
+```yaml
+exclude:
+- external_table_managed_elsewhere
+```
+
+### `schemas`
+
+The `schemas` field is used to define schemas that should be managed by the operator. This is used
+to manage multiple schemas in a single database and works only if the connection string is database-bound.
+
+```yaml
+schemas:
+- schema1
+- schema2
+```
+
+
+## Versioned migrations
+
+### ConfigMap
+
+The Atlas Operator supports defining the migration directory as `ConfigMap`
+with key-value pairs where the key is the file name and the value is the content of the migration file.
+
+```yaml title="atlas-migration-configmap.yaml"
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: migration-dir
+data:
+  20230316085611.sql: |
+    create table users (
+      id int not null auto_increment,
+      name varchar(255) not null,
+      email varchar(255) unique not null,
+      short_bio varchar(255) not null,
+      primary key (id)
+    );
+  atlas.sum: |
+    h1:W/ujmfqFLOAFDscMEVJ2wrbh4MrpVHENKEP9bVH3mlc=
+    20230316085611.sql h1:Bb6K2XoJavRLhMIsITnxtWLiBhe/Dfp5X5yNxBYP++I=
+```
+
+Then, update the `AtlasMigration` resource to reference the config map key:
+
+```yaml title="atlas-migration.yaml"
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasMigration
+metadata:
+  name: atlasmigration-sample
+spec:
+  urlFrom:
+    secretKeyRef:
+      key: url
+      name: db-credentials
+  dir:
+    configMapRef:
+      name: "migration-dir" # ConfigMap name of atlas-migration-configmap.yaml
+```
+
+### Remote Directory (Atlas Cloud)
+
+If your migration directory is connected to [Atlas Cloud](/cloud/directories/)
+you can configure the operator to read it from your cloud account.
+
+To configure your `AtlasMigration` to read the directory from your cloud account, set the `cloud` and `dir`
+attributes.
+
+```yaml title="atlas-migration-dir.yaml"
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasMigration
+metadata:
+  name: atlasmigration-sample
+spec:
+  urlFrom:
+    secretKeyRef:
+      key: url
+      name: db-credentials
+  cloud:
+    project: "cloud" # Atlas Cloud project name
+    tokenFrom:
+      secretKeyRef:
+        key: token
+        name: atlas-credentials
+  dir:
+    remote:
+      name: "atlas" # Migration directory name in your atlas cloud project
+      tag: "commit-id" # When tag is not specified, the latest tag will be used
+```
+
+
+## `AtlasMigration` API reference
+
+### `envName`
+
+The `envName` sets the environment name used for reporting runs to Atlas Cloud.
+By default, the environment name is set to `Kubernetes`.
+
+```yaml
+envName: "production"
+```
+
+### `url`
+
+The `url` field is used to define the URL of the target database directly.
+This is not recommended, but may be useful for testing purposes.
+
+```yaml
+url: "mysql://user:pass@localhost:3306/myapp"
+```
+
+#### `urlFrom`
+
+The `urlFrom` field is used to load the URL of the target database from another resource such as a
+Kubernetes secret.
+
+```yaml
+urlFrom:
+    secretKeyRef:
+      key: url
+      name: db-credentials
+```
+
+### `cloud`
+
+Cloud is used to define the Atlas Cloud configuration.
+
+#### `project`
+
+The `project` field is used to define the project name.
+
+```yaml
+cloud:
+  project: "cloud"
+```
+
+#### `tokenFrom`
+
+The `tokenFrom` field is used to load the Atlas Cloud token from another resource such as a Kubernetes secret.
+
+```yaml
+cloud:
+  tokenFrom:
+    secretKeyRef:
+      key: token
+      name: atlas-credentials
+```
+
+### `dir`
+
+The `dir` field is used to define the migration directory.
+For local directory, use `configMapRef` to reference the `ConfigMap` that contains the migration files.
+
+```yaml
+dir:
+  configMapRef:
+    name: "migration-dir" # ConfigMap name of atlas-migration-configmap.yaml
+```
+
+For remote directory, use `remote` to define the migration directory in Atlas Cloud.
+
+```yaml
+dir:
+  remote:
+    name: "atlas"
+    tag: "commit-id"
+```
+
+### `revisionsSchema`
+
+The `revisionsSchema` field is used to define the schema name for the revisions table.
+Details about the revisions table can be found in the [Revisions Schema](/versioned/apply#schema-revision-information).
+
+```yaml
+revisionsSchema: "atlas"
+```
+
