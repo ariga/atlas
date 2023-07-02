@@ -1478,6 +1478,7 @@ func (t *myTest) quoted(s string) string {
 func (t *myTest) loadRealm() *schema.Realm {
 	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"test"},
+		Mode:    ^schema.InspectViews,
 	})
 	require.NoError(t, err)
 	return r
