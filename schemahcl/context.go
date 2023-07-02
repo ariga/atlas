@@ -409,43 +409,6 @@ type Variables struct {
 	Data       map[string]map[string]bool
 }
 
-// DynamicRefs returns the references to dynamic variables.
-// i.e, variables, locals, and data sources.
-func DynamicRefs(b *hclsyntax.Body) *Variables {
-	var (
-		vars = &Variables{
-			Var:   make(map[string]bool),
-			Local: make(map[string]bool),
-			Data:  make(map[string]map[string]bool),
-		}
-		visit func(b *hclsyntax.Body, vars *Variables)
-	)
-	visit = func(b *hclsyntax.Body, vars *Variables) {
-		for _, a := range b.Attributes {
-			for _, v := range hclsyntax.Variables(a.Expr) {
-				switch {
-				case len(v) == 0:
-				case v.RootName() == RefVar && len(v) > 1:
-					vars.Var[v[1].(hcl.TraverseAttr).Name] = true
-				case v.RootName() == RefLocal && len(v) > 1:
-					vars.Local[v[1].(hcl.TraverseAttr).Name] = true
-				case v.RootName() == RefData && len(v) > 2:
-					n1, n2 := v[1].(hcl.TraverseAttr).Name, v[2].(hcl.TraverseAttr).Name
-					if _, ok := vars.Data[n1]; !ok {
-						vars.Data[n1] = make(map[string]bool)
-					}
-					vars.Data[n1][n2] = true
-				}
-			}
-		}
-		for _, b := range b.Blocks {
-			visit(b.Body, vars)
-		}
-	}
-	visit(b, vars)
-	return vars
-}
-
 // defRegistry returns a tree of blockDef structs representing the schema of the
 // blocks in the *hclsyntax.Body. The returned fields and children of each type
 // are an intersection of all existing blocks of the same type.

@@ -451,11 +451,9 @@ func partialParse(path, env string) (*hclparse.Parser, error) {
 	if err != nil {
 		return nil, err
 	}
-	var used, datasrc []*hclsyntax.Block
+	var used []*hclsyntax.Block
 	for _, b := range fi.Body.(*hclsyntax.Body).Blocks {
 		switch b.Type {
-		case schemahcl.BlockData:
-			datasrc = append(datasrc, b)
 		case blockEnv:
 			switch n := len(b.Labels); {
 			// No env was selected.
@@ -474,14 +472,9 @@ func partialParse(path, env string) (*hclparse.Parser, error) {
 			used = append(used, b)
 		}
 	}
-	body := &hclsyntax.Body{
+	fi.Body = &hclsyntax.Body{
 		Blocks:     used,
 		Attributes: fi.Body.(*hclsyntax.Body).Attributes,
-	}
-	// If no attributes, locals, variables, or blocks reference data sources, we skip
-	// loading. Otherwise, body stays unchanged as data sources may depend on others.
-	if len(schemahcl.DynamicRefs(body).Data) == 0 {
-		fi.Body = body
 	}
 	return parser, nil
 }
