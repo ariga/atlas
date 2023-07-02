@@ -1,44 +1,72 @@
 ---
 title: The Atlas Kubernetes Operator
-id: kubernetes-operator
+id: operator
 slug: /integrations/kubernetes/operator
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-## Background
+## What are Kubernetes Operators?
 
-### What are Kubernetes Operators?
-
-For many stateful resources, reconciling the desired state of a database with its actual state
-can be a complex task that requires a lot of domain knowledge. [Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
+Kubernetes is an excellent solution for managing stateless resources. But for many stateful resources, such as databases,
+reconciling the desired state of a database with its actual state can be a complex task that requires specific domain
+knowledge. [Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 were introduced to the Kubernetes ecosystem to help users manage complex stateful resources by codifying
 this domain knowledge into a Kubernetes controller.
 
-### What is the Atlas Kubernetes Operator?
+## What is the Atlas Kubernetes Operator?
 
 The Atlas Kubernetes Operator is a Kubernetes controller that uses Atlas to manage
 your database schema. The Atlas Kubernetes Operator allows you to define the desired schema 
 and apply it to your database using the Kubernetes API.
 
-### Supported workflows
+## Supported workflows
 
 * [Declarative schema migrations](#declarative-schema-migrations)
-* Versioned schema migrations - coming soon. 
+* [Versioned schema migrations](#versioned-schema-migrations)
 
 ### Declarative schema migrations
 
-![](https://user-images.githubusercontent.com/1522681/236139615-1d10feea-8b19-46a2-905b-b614883c48c8.png)
+![](https://atlasgo.io/uploads/k8s/operator/declarative-workflow.png)
 
-The Atlas Kubernetes Operator supports [declarative migrations](https://atlasgo.io/concepts/declarative-vs-versioned#declarative-migrations).
+The Atlas Kubernetes Operator supports [declarative migrations](/concepts/declarative-vs-versioned#declarative-migrations).
 In declarative migrations, the desired state of the database is defined by the user and the operator is responsible
 for reconciling the desired state with the actual state of the database (planning and executing `CREATE`, `ALTER`
 and `DROP` statements).
 
-## Getting started
+In this workflow, after installing the Atlas Kubernetes Operator, the user defines the desired state of the database
+as an `AtlasSchema` resource which either includes the desired schema directly or references a `ConfigMap` that contains
+it.
 
-### Installation
+The operator then reconciles the desired state with the actual state of the database by planning and executing
+`CREATE`, `ALTER` and `DROP` statements.
+
+To ensure that the operator does not accidentally introduce destructive changes to the database, the user can
+specify linting or diffing policies that will be applied to the computed plan before it is applied to the database.
+
+To learn more about getting started with the Atlas Operator and declarative migrations, see the
+[announcement blog post](/blog/2023/05/08/atlas-v011-kubernetes-operator).
+
+### Versioned schema migrations
+
+![](https://atlasgo.io/uploads/k8s/operator/versioned-flow.png)
+
+The Atlas Kubernetes Operator also supports [versioned migrations](https://atlasgo.io/concepts/declarative-vs-versioned#versioned-migrations).
+In versioned migrations, the database schema is defined by a series of SQL scripts ("migrations") that are applied
+in lexicographical order. The user can specify the version and migration directory to run, which can be located
+on the [Atlas Cloud](https://atlasgo.io/cloud/getting-started) or stored as a `ConfigMap` in your Kubernetes
+cluster.
+
+In this workflow, after installing the Atlas Kubernetes Operator, the user defines the desired state of the database
+as an `AtlasMigration` resource which connects between a target database and a migration directory. The migration directory
+may be configured as a remote directory in [Atlas Cloud](/cloud/directories) or as a `ConfigMap` in your Kubernetes
+cluster.
+
+The operator then reconciles the desired state with the actual state of the database by applying any pending migrations on the
+target database.
+
+## Installation
 
 The Atlas Kubernetes Operator is available as a Helm Chart. To install the chart with the release name `atlas-operator`:
 
@@ -46,7 +74,7 @@ The Atlas Kubernetes Operator is available as a Helm Chart. To install the chart
 helm install atlas-operator oci://ghcr.io/ariga/charts/atlas-operator
 ```
 
-### Credentials
+## Providing credentials
 
 In order to manage the schema of your database, you must provide the Atlas Kubernetes Operator with an [Atlas URL](https://atlasgo.io/concepts/url)
 to your database. The Atlas Kubernetes Operator will use this URL to connect to your database and apply changes to the schema.
@@ -124,12 +152,7 @@ stringData:
 </TabItem>
 </Tabs>
 
-Apply this file to your cluster:
-```
-kubectl apply -f db-credentials.yaml
-```
-
-### Defining the desired schema
+## Declarative migrations
 
 The Atlas Operator relies on a Kubernetes custom resource called `AtlasSchema` to define the desired schema of your database.
 You can find the full definition for this resource on the [ariga/atlas-operator repo](https://github.com/ariga/atlas-operator/blob/master/charts/atlas-operator/templates/crds/crd.yaml).
@@ -176,17 +199,6 @@ spec:
     - external_table_managed_elsewhere
 ```
 
-Apply this file to your cluster:
-```
-kubectl apply -f atlas-schema.yaml
-```
-
-Wait for the operator to reconcile the desired state with the actual state of the database:
-
-```
-kubectl wait --for=condition=Ready atlasschema/myapp --timeout=60s
-```
-
 Alternatively, you can use a `ConfigMap` to store the desired schema of your database. To use
 this approach, create a ConfigMap with the desired schema:
 
@@ -208,7 +220,7 @@ data:
 
 Then, update the `AtlasSchema` resource to reference the config map key:
 
-```yaml title="atlas-schema.yaml"
+```yaml title="atlas-schema.yaml" {7-9}
 apiVersion: db.atlasgo.io/v1alpha1
 kind: AtlasSchema
 metadata:
@@ -221,7 +233,7 @@ spec:
   # Skipping all other fields for brevity.
 ```
 
-## Configuration for the `AtlasSchema` resource
+## `AtlasSchema` API reference
 
 The `AtlasSchema` resource is used to define the desired state of a target database.
 
@@ -344,3 +356,165 @@ schemas:
 - schema1
 - schema2
 ```
+
+
+## Versioned migrations
+
+### ConfigMap
+
+The Atlas Operator supports defining the migration directory as `ConfigMap`
+with key-value pairs where the key is the file name and the value is the content of the migration file.
+
+```yaml title="atlas-migration-configmap.yaml"
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: migration-dir
+data:
+  20230316085611.sql: |
+    create table users (
+      id int not null auto_increment,
+      name varchar(255) not null,
+      email varchar(255) unique not null,
+      short_bio varchar(255) not null,
+      primary key (id)
+    );
+  atlas.sum: |
+    h1:W/ujmfqFLOAFDscMEVJ2wrbh4MrpVHENKEP9bVH3mlc=
+    20230316085611.sql h1:Bb6K2XoJavRLhMIsITnxtWLiBhe/Dfp5X5yNxBYP++I=
+```
+
+Then, update the `AtlasMigration` resource to reference the config map key:
+
+```yaml title="atlas-migration.yaml"
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasMigration
+metadata:
+  name: atlasmigration-sample
+spec:
+  urlFrom:
+    secretKeyRef:
+      key: url
+      name: db-credentials
+  dir:
+    configMapRef:
+      name: "migration-dir" # ConfigMap name of atlas-migration-configmap.yaml
+```
+
+### Remote Directory (Atlas Cloud)
+
+If your migration directory is connected to [Atlas Cloud](/cloud/directories/)
+you can configure the operator to read it from your cloud account.
+
+To configure your `AtlasMigration` to read the directory from your cloud account, set the `cloud` and `dir`
+attributes.
+
+```yaml title="atlas-migration-dir.yaml"
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasMigration
+metadata:
+  name: atlasmigration-sample
+spec:
+  urlFrom:
+    secretKeyRef:
+      key: url
+      name: db-credentials
+  cloud:
+    project: "cloud" # Atlas Cloud project name
+    tokenFrom:
+      secretKeyRef:
+        key: token
+        name: atlas-credentials
+  dir:
+    remote:
+      name: "atlas" # Migration directory name in your atlas cloud project
+      tag: "commit-id" # When tag is not specified, the latest tag will be used
+```
+
+
+## `AtlasMigration` API reference
+
+### `envName`
+
+The `envName` sets the environment name used for reporting runs to Atlas Cloud.
+By default, the environment name is set to `Kubernetes`.
+
+```yaml
+envName: "production"
+```
+
+### `url`
+
+The `url` field is used to define the URL of the target database directly.
+This is not recommended, but may be useful for testing purposes.
+
+```yaml
+url: "mysql://user:pass@localhost:3306/myapp"
+```
+
+#### `urlFrom`
+
+The `urlFrom` field is used to load the URL of the target database from another resource such as a
+Kubernetes secret.
+
+```yaml
+urlFrom:
+    secretKeyRef:
+      key: url
+      name: db-credentials
+```
+
+### `cloud`
+
+Cloud is used to define the Atlas Cloud configuration.
+
+#### `project`
+
+The `project` field is used to define the project name.
+
+```yaml
+cloud:
+  project: "cloud"
+```
+
+#### `tokenFrom`
+
+The `tokenFrom` field is used to load the Atlas Cloud token from another resource such as a Kubernetes secret.
+
+```yaml
+cloud:
+  tokenFrom:
+    secretKeyRef:
+      key: token
+      name: atlas-credentials
+```
+
+### `dir`
+
+The `dir` field is used to define the migration directory.
+For local directory, use `configMapRef` to reference the `ConfigMap` that contains the migration files.
+
+```yaml
+dir:
+  configMapRef:
+    name: "migration-dir" # ConfigMap name of atlas-migration-configmap.yaml
+```
+
+For remote directory, use `remote` to define the migration directory in Atlas Cloud.
+
+```yaml
+dir:
+  remote:
+    name: "atlas"
+    tag: "commit-id"
+```
+
+### `revisionsSchema`
+
+The `revisionsSchema` field is used to define the schema name for the revisions table.
+Details about the revisions table can be found in the [Revisions Schema](/versioned/apply#schema-revision-information).
+
+```yaml
+revisionsSchema: "atlas"
+```
+
