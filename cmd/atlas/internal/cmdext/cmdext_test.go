@@ -440,6 +440,8 @@ func TestRemoteDir(t *testing.T) {
 data "remote_dir" "hello" {
   name  = "atlas"
 }
+
+dir = data.remote_dir.hello.url
 `), &v, map[string]cty.Value{"cloud_url": cty.StringVal(srv.URL)})
 	require.EqualError(t, err, "data.remote_dir.hello: missing atlas cloud config")
 
