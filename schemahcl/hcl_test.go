@@ -551,6 +551,9 @@ locals {
   c = "local-c-ref-data-a: ${data.text.a.output}"
   d = "local-d"
   host = "atlasgo.io"
+  obj = {
+    k = "obj-v"
+  }
 }
 
 data "sql" "tenants" {
@@ -586,6 +589,9 @@ data "remote_dir" "migrations" {
   host = atlas.auth.host
 }
 
+data "text" "obj" {
+  value = local.obj.k
+}
 vs = [
   local.a,
   local.b,
@@ -594,6 +600,7 @@ vs = [
   data.text.a.output,
   data.text.b.output,
   data.remote_dir.migrations.url,
+  data.text.obj.output,
 ]
 `)
 	)
@@ -606,6 +613,7 @@ vs = [
 		"data-text-a-ref-data-sql-tenants: data-sql-tenants",
 		"data-text-b-ref-local-d: local-d",
 		"atlas://atlasgo.io/ent/migrations",
+		"obj-v",
 	}, doc.Values)
 
 	b = []byte(`locals { a = local.a }`)
