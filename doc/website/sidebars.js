@@ -53,13 +53,23 @@ module.exports = {
         },
         {
             type: 'category',
-            label: 'Atlas Schemas',
+            label: 'Atlas Schema',
             collapsed: false,
             items: [
-                {type: 'doc', id: 'atlas-schema/sql-resources', label: 'SQL Resources'},
-                {type: 'doc', id: 'atlas-schema/sql-types', label: 'SQL Column Types'},
+                {
+                    type: 'category', label: 'HCL Syntax',
+                    link: {
+                        type: 'doc',
+                        id: 'atlas-schema/hcl-schema',
+                    },
+                    items: [
+                        {type: 'doc', id: 'atlas-schema/hcl-types', label: 'Column Types'},
+                        {type: 'doc', id: 'atlas-schema/hcl-variables', label: 'Input Variables'},
+                    ]
+                },
+                {type: 'doc', id: 'atlas-schema/sql-schema', label: 'SQL Syntax'},
+                {type: 'doc', id: 'atlas-schema/external-schema', label: 'External Integrations'},
                 {type: 'doc', id: 'atlas-schema/projects', label: 'Project Configuration'},
-                {type: 'doc', id: 'atlas-schema/input-variables', label: 'Input Variables'},
             ],
         },
         {
@@ -80,6 +90,7 @@ module.exports = {
             items: [
                 {type: 'doc', id: 'cloud/getting-started', label: 'Getting Started'},
                 {type: 'doc', id: 'cloud/directories', label: 'Connected Directories'},
+                {type: 'doc', id: 'cloud/bots', label: 'Creating Bots'},
             ],
         },
         {
@@ -130,6 +141,11 @@ module.exports = {
                 },
                 {
                     type: 'doc',
+                    id: 'guides/deploying/cloud-dir',
+                    label: 'Deploying from Atlas Cloud'
+                },
+                {
+                    type: 'doc',
                     id: 'guides/deploying/image',
                     label: 'Creating container images'
                 },
@@ -147,6 +163,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/deploying/k8s-init-containers',
                     label: 'Kubernetes (Init Container)'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/k8s-argo',
+                    label: 'Kubernetes (ArgoCD)'
                 },
                 {
                     type: 'doc',
@@ -173,7 +194,70 @@ module.exports = {
                 {
                     type: 'doc',
                     id: 'guides/testing/testing-github-actions',
-                    label: 'With Github Actions'
+                    label: 'With GitHub Actions'
+                }
+            ]
+        },
+        {
+            type: 'category',
+            label: 'Terraform',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/terraform/named-databases',
+                    label: 'Named Databases'
+                }
+            ]
+        },
+        {
+            type: 'category',
+            label: 'Migration tools',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/migration-tools/golang-migrate',
+                    label: 'Working with golang-migrate'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/migration-tools/goose-import',
+                    label: 'Importing from goose'
+                }
+            ]
+        },
+        {
+            type: 'category',
+            label: 'Frameworks',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/orms/gorm',
+                    label: 'Versioned migrations for GORM'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/frameworks/sqlc-declarative',
+                    label: 'Declarative migrations for sqlc'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/frameworks/sqlc-versioned',
+                    label: 'Versioned migrations for sqlc'
+                }
+            ]
+        },
+        {
+            type: 'category',
+            label: 'Cloud',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/cloud/explore-inspection',
+                    label: 'How to inspect a local database in the Cloud'
                 }
             ]
         },
@@ -228,18 +312,6 @@ module.exports = {
                     label: 'Constraint Drop (CD101)'
                 },
             ],
-        },
-        {
-            type: 'category',
-            label: 'Terraform',
-            collapsed: false,
-            items: [
-                {
-                    type: 'doc',
-                    id: 'guides/terraform/named-databases',
-                    label: 'Named Databases'
-                }
-            ]
         },
         {
             type: 'category',
@@ -309,57 +381,6 @@ module.exports = {
                     label: 'Working with Turso'
                 }
             ],
-        },
-        {
-            type: 'category',
-            label: 'Migration tools',
-            collapsed: false,
-            items: [
-                {
-                    type: 'doc',
-                    id: 'guides/migration-tools/golang-migrate',
-                    label: 'golang-migrate'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/migration-tools/goose-import',
-                    label: 'Importing from goose'
-                }
-            ]
-        },
-        {
-            type: 'category',
-            label: 'Frameworks',
-            collapsed: false,
-            items: [
-                {
-                    type: 'doc',
-                    id: 'guides/orms/gorm',
-                    label: 'GORM'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/frameworks/sqlc-declarative',
-                    label: 'Declarative migrations for sqlc'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/frameworks/sqlc-versioned',
-                    label: 'Versioned migrations for sqlc'
-                }
-            ]
-        },
-        {
-            type: 'category',
-            label: 'Cloud',
-            collapsed: false,
-            items: [
-                {
-                    type: 'doc',
-                    id: 'guides/cloud/explore-inspection',
-                    label: 'How to inspect a local database in the Cloud'
-                }
-            ]
         },
         {
             type: 'doc',

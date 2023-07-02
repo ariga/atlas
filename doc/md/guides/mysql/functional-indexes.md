@@ -230,7 +230,7 @@ This is where having knowledge about functional indexes becomes essential. Now, 
 CREATE INDEX
     functional_idx
 ON
-    scorecard((science + mathamatics)/2);
+    scorecard((science + mathematics)/2);
 ```
 
 ```console title="Output"
@@ -243,7 +243,7 @@ Oops, that didn’t work! As we mentioned in the [syntax](#syntax) section above
 CREATE INDEX
     functional_idx
 ON
-    scorecard(((science + mathamatics)/2));
+    scorecard(((science + mathematics)/2));
 ```
 
 ```console title="Output"

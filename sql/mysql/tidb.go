@@ -82,9 +82,13 @@ func flat(changes []schema.Change) []schema.Change {
 
 // PlanChanges returns a migration plan for the given schema changes.
 func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
-	fc := flat(changes)
-	sort.SliceStable(fc, func(i, j int) bool {
-		return priority(fc[i]) < priority(fc[j])
+	planned, err := sqlx.DetachCycles(changes)
+	if err != nil {
+		return nil, err
+	}
+	planned = flat(planned)
+	sort.SliceStable(planned, func(i, j int) bool {
+		return priority(planned[i]) < priority(planned[j])
 	})
 	s := &state{
 		conn: p.conn,
@@ -96,7 +100,7 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 			Transactional: false,
 		},
 	}
-	for _, c := range fc {
+	for _, c := range planned {
 		// Use the planner of MySQL with each "atomic" change.
 		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c}, opts...)
 		if err != nil {
@@ -146,9 +150,6 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 		if err := i.setCollate(t); err != nil {
 			return nil, err
 		}
-		if err := i.setFKs(s, t); err != nil {
-			return nil, err
-		}
 		if err := i.setAutoIncrement(t); err != nil {
 			return nil, err
 		}
@@ -180,69 +181,6 @@ func bytesToBitLiteral(b []byte) string {
 	}
 	val := binary.BigEndian.Uint64(bytes)
 	return fmt.Sprintf("b'%b'", val)
-}
-
-// e.g. CONSTRAINT "" FOREIGN KEY ("foo_id") REFERENCES "foo" ("id").
-var reFK = regexp.MustCompile("(?i)CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+FOREIGN\\s+KEY\\s*\\(([,\"` \\w]+)\\)\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\).*")
-var reActions = regexp.MustCompile(fmt.Sprintf("(?i)(ON)\\s+(UPDATE|DELETE)\\s+(%s|%s|%s|%s|%s)", schema.NoAction, schema.Restrict, schema.SetNull, schema.SetDefault, schema.Cascade))
-
-func (i *tinspect) setFKs(s *schema.Schema, t *schema.Table) error {
-	var c CreateStmt
-	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE TABLE statment in attribuets for %q", t.Name)
-	}
-	for _, m := range reFK.FindAllStringSubmatch(c.S, -1) {
-		if len(m) != 5 {
-			return fmt.Errorf("unexpected number of matches for a table constraint: %q", m)
-		}
-		stmt, ctName, clmns, refTableName, refClmns := m[0], m[1], m[2], m[3], m[4]
-		fk := &schema.ForeignKey{
-			Symbol: ctName,
-			Table:  t,
-		}
-		actions := reActions.FindAllStringSubmatch(stmt, 2)
-		for _, actionMatches := range actions {
-			actionType, actionOp := actionMatches[2], actionMatches[3]
-			switch actionType {
-			case "UPDATE":
-				fk.OnUpdate = schema.ReferenceOption(actionOp)
-			case "DELETE":
-				fk.OnDelete = schema.ReferenceOption(actionOp)
-			default:
-				return fmt.Errorf("action type %s is none of 'UPDATE'/'DELETE'", actionType)
-			}
-		}
-		refTable, ok := s.Table(refTableName)
-		if !ok {
-			return fmt.Errorf("couldn't resolve ref table %s on ", m[3])
-		}
-		fk.RefTable = refTable
-		for _, c := range columns(s, clmns) {
-			column, ok := t.Column(c)
-			if !ok {
-				return fmt.Errorf("column %q was not found for fk %q", c, ctName)
-			}
-			fk.Columns = append(fk.Columns, column)
-		}
-		for _, c := range columns(s, refClmns) {
-			column, ok := refTable.Column(c)
-			if !ok {
-				return fmt.Errorf("ref column %q was not found for fk %q", c, ctName)
-			}
-			fk.RefColumns = append(fk.RefColumns, column)
-		}
-		t.ForeignKeys = append(t.ForeignKeys, fk)
-	}
-	return nil
-}
-
-// columns from the matched regex above.
-func columns(_ *schema.Schema, s string) []string {
-	names := strings.Split(s, ",")
-	for i := range names {
-		names[i] = strings.Trim(strings.TrimSpace(names[i]), "`\"")
-	}
-	return names
 }
 
 // e.g CHARSET=utf8mb4 COLLATE=utf8mb4_bin

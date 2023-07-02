@@ -166,11 +166,11 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		}
 	}
 	// Open and validate the migration directory.
-	migrationDir, err := cmdmigrate.Dir(flags.dirURL, false)
+	dir, err := cmdmigrate.Dir(flags.dirURL, false)
 	if err != nil {
 		return err
 	}
-	if err := migrate.Validate(migrationDir); err != nil {
+	if err := migrate.Validate(dir); err != nil {
 		printChecksumError(cmd)
 		return err
 	}
@@ -205,7 +205,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		return err
 	}
 	// Setup reporting info.
-	report := cmdlog.NewMigrateApply(client, migrationDir)
+	report := cmdlog.NewMigrateApply(client, dir)
 	mr.Init(client, report, rrw.(*cmdmigrate.EntRevisions))
 	// If cloud reporting is enabled, and we cannot obtain the current
 	// target identifier, abort and report it to the user.
@@ -214,7 +214,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 	}
 	// Determine pending files.
 	opts := append(flags.migrateOptions(), migrate.WithOperatorVersion(operatorVersion()), migrate.WithLogger(report))
-	ex, err := migrate.NewExecutor(client.Driver, migrationDir, rrw, opts...)
+	ex, err := migrate.NewExecutor(client.Driver, dir, rrw, opts...)
 	if err != nil {
 		return err
 	}
@@ -253,8 +253,8 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		if drv, rrw, err = mux.driverFor(ctx, f); err != nil {
 			break
 		}
-		if ex, err = migrate.NewExecutor(drv, migrationDir, rrw, opts...); err != nil {
-			return fmt.Errorf("unexpected exectuor creation error: %w", err)
+		if ex, err = migrate.NewExecutor(drv, dir, rrw, opts...); err != nil {
+			return fmt.Errorf("unexpected executor creation error: %w", err)
 		}
 		if err = mux.mayRollback(ex.Execute(ctx, f)); err != nil {
 			break
@@ -1640,41 +1640,6 @@ func selectScheme(urls []string) (string, error) {
 		}
 	}
 	return scheme, nil
-}
-
-// parseHCLPaths parses the HCL files in the given paths. If a path represents a directory,
-// its direct descendants will be considered, skipping any subdirectories. If a project file
-// is present in the input paths, an error is returned.
-func parseHCLPaths(paths ...string) (*hclparse.Parser, error) {
-	p := hclparse.NewParser()
-	for _, path := range paths {
-		switch stat, err := os.Stat(path); {
-		case err != nil:
-			return nil, err
-		case stat.IsDir():
-			dir, err := os.ReadDir(path)
-			if err != nil {
-				return nil, err
-			}
-			for _, f := range dir {
-				// Skip nested dirs.
-				if f.IsDir() {
-					continue
-				}
-				if err := mayParse(p, filepath.Join(path, f.Name())); err != nil {
-					return nil, err
-				}
-			}
-		default:
-			if err := mayParse(p, path); err != nil {
-				return nil, err
-			}
-		}
-	}
-	if len(p.Files()) == 0 {
-		return nil, fmt.Errorf("no schema files found in: %s", paths)
-	}
-	return p, nil
 }
 
 // mayParse will parse the file in path if it is an HCL file. If the file is an Atlas

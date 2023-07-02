@@ -87,6 +87,53 @@ type (
 		From, To *Table
 	}
 
+	// AddView describes a view creation change.
+	AddView struct {
+		V     *View
+		Extra []Clause // Extra clauses and options.
+	}
+
+	// DropView describes a view removal change.
+	DropView struct {
+		V     *View
+		Extra []Clause // Extra clauses.
+	}
+
+	// ModifyView describes a view modification change.
+	ModifyView struct {
+		V       *View
+		Changes []Change
+	}
+
+	// RenameView describes a view rename change.
+	RenameView struct {
+		From, To *View
+	}
+
+	// AddObject describes a generic object creation change.
+	AddObject struct {
+		O     Object
+		Extra []Clause // Extra clauses and options.
+	}
+
+	// DropObject describes a generic object removal change.
+	DropObject struct {
+		O     Object
+		Extra []Clause // Extra clauses.
+	}
+
+	// ModifyObject describes a generic object modification change.
+	// Unlike tables changes, the diffing types are implemented by
+	// the underlying driver.
+	ModifyObject struct {
+		From, To Object
+	}
+
+	// RenameObject describes a generic object rename change.
+	RenameObject struct {
+		From, To Object
+	}
+
 	// AddColumn describes a column creation change.
 	AddColumn struct {
 		C *Column
@@ -330,9 +377,11 @@ func (o *DiffOptions) Skipped(c Change) bool {
 }
 
 // AddOrSkip adds the given change to the list of changes if it is not skipped.
-func (o *DiffOptions) AddOrSkip(changes Changes, c Change) Changes {
-	if !o.Skipped(c) {
-		return append(changes, c)
+func (o *DiffOptions) AddOrSkip(changes Changes, cs ...Change) Changes {
+	for _, c := range cs {
+		if !o.Skipped(c) {
+			changes = append(changes, c)
+		}
 	}
 	return changes
 
@@ -489,6 +538,14 @@ func (*AddTable) change()         {}
 func (*DropTable) change()        {}
 func (*ModifyTable) change()      {}
 func (*RenameTable) change()      {}
+func (*AddView) change()          {}
+func (*DropView) change()         {}
+func (*ModifyView) change()       {}
+func (*RenameView) change()       {}
+func (*AddObject) change()        {}
+func (*DropObject) change()       {}
+func (*ModifyObject) change()     {}
+func (*RenameObject) change()     {}
 func (*AddIndex) change()         {}
 func (*DropIndex) change()        {}
 func (*ModifyIndex) change()      {}

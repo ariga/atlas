@@ -132,7 +132,7 @@ After running the command above and confirming the changes, your database should
 
 As your application evolves, it is very common to have the database schema evolve as well. Suppose that to support a new
 feature in your application, you need to add a new `age` column. With Atlas, the process can be as simple as updating
-the `schema.sql` to the desired schema, updating the `query.sql` file, executing the `sqlc generate` comamnd
+the `schema.sql` to the desired schema, updating the `query.sql` file, executing the `sqlc generate` command
 and running `schema apply` again.
 
 First, let's update our `schema.sql` file, adding the new column.

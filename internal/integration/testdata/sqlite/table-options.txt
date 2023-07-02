@@ -1,0 +1,74 @@
+apply 1.hcl
+cmpshow t1 1.sql
+cmpshow t2 2.sql
+cmpshow t3 3.sql
+
+# Drop options.
+apply 2.hcl
+cmpshow t1 11.sql
+
+-- 1.hcl --
+schema "main" {}
+
+table "t1" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = integer
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+  strict = true
+  without_rowid = true
+}
+
+table "t2" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = integer
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+  strict = true
+}
+
+table "t3" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = integer
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+  without_rowid = true
+}
+
+-- 1.sql --
+CREATE TABLE `t1` (`id` integer NOT NULL, PRIMARY KEY (`id`)) WITHOUT ROWID, STRICT
+
+-- 2.sql --
+CREATE TABLE `t2` (`id` integer NOT NULL, PRIMARY KEY (`id`)) STRICT
+
+-- 3.sql --
+CREATE TABLE `t3` (`id` integer NOT NULL, PRIMARY KEY (`id`)) WITHOUT ROWID
+
+-- 2.hcl --
+schema "main" {}
+
+table "t1" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = integer
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+}
+
+-- 11.sql --
+CREATE TABLE "t1" (`id` integer NOT NULL, PRIMARY KEY (`id`))

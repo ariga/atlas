@@ -78,18 +78,14 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	}, nil
 }
 
-func (d *Driver) dev() *sqlx.DevDriver {
-	return &sqlx.DevDriver{Driver: d, MaxNameLen: 64}
-}
-
 // NormalizeRealm returns the normal representation of the given database.
 func (d *Driver) NormalizeRealm(ctx context.Context, r *schema.Realm) (*schema.Realm, error) {
-	return d.dev().NormalizeRealm(ctx, r)
+	return (&sqlx.DevDriver{Driver: d}).NormalizeRealm(ctx, r)
 }
 
 // NormalizeSchema returns the normal representation of the given database.
 func (d *Driver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema.Schema, error) {
-	return d.dev().NormalizeSchema(ctx, s)
+	return (&sqlx.DevDriver{Driver: d}).NormalizeSchema(ctx, s)
 }
 
 // Lock implements the schema.Locker interface.

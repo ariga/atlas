@@ -187,11 +187,11 @@ module.exports = {
             from: '/cli/projects',
           },
           {
-            to: '/atlas-schema/sql-types',
+            to: '/atlas-schema/hcl-types',
             from: '/ddl/sql-types',
           },
           {
-            to: '/atlas-schema/sql-resources',
+            to: '/atlas-schema/hcl',
             from: '/ddl/sql',
           },
           {
@@ -218,6 +218,14 @@ module.exports = {
             to: '/concepts/url',
             from: '/url',
           },
+          {
+            from: '/atlas-schema/sql-resources',
+            to: '/atlas-schema/hcl',
+          },
+          {
+            from: '/atlas-schema/sql-types',
+            to: '/atlas-schema/hcl-types',
+          },
         ],
       },
     ],
@@ -226,6 +234,16 @@ module.exports = {
       {
         id: 'GTM-T9GX8BR', // GTM Container ID
       }
+    ],
+    [
+      '@docusaurus/plugin-ideal-image',
+      {
+        quality: 70,
+        max: 1030,
+        min: 640,
+        steps: 2,
+        disableInDev: false,
+      },
     ],
   ],
   presets: [

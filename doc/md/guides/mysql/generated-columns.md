@@ -92,7 +92,7 @@ Install the latest version of Atlas using the [Guide to Setting Up Atlas](/cli/g
 
 ### Generated Column Syntax in Atlas
 
-Use `as` in a column in a table to declare a MySQL generated column. For examples with other databases, read the [Atlas Generated Columns DDL](/atlas-schema/sql.mdx#generated-columns).
+Use `as` in a column in a table to declare a MySQL generated column. For examples with other databases, read the [Atlas Generated Columns DDL](/atlas-schema/hcl.mdx#generated-columns).
 
 ```hcl
 column "name" {
@@ -161,7 +161,7 @@ Select all the triangles in the table using `SELECT  *  FROM triangles` to recei
 | 3    | 4    | 5                  |
 | 6    | 8    | 10                 |
 
-### Implementing Virtual Generated Columns Columns with Atlas
+### Implementing Virtual Generated Columns with Atlas
 
 The following example declares a virtual generated column in a TABLE that stores the first and last name of a person, and computes the full name of the person _(when people are selected)_.
 

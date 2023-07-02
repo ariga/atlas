@@ -14,11 +14,19 @@ type (
 
 	// A Schema describes a database schema (i.e. named database).
 	Schema struct {
-		Name   string
-		Realm  *Realm
-		Tables []*Table
-		Views  []*View
-		Attrs  []Attr // Attrs and options.
+		Name    string
+		Realm   *Realm
+		Tables  []*Table
+		Views   []*View
+		Attrs   []Attr   // Attrs and options.
+		Objects []Object // Driver specific objects.
+	}
+
+	// An Object represents a generic database object.
+	// Note that this interface is implemented by some top-level types
+	// to describe their relationship, and by driver specific types.
+	Object interface {
+		obj()
 	}
 
 	// A Table represents a table definition.
@@ -38,7 +46,8 @@ type (
 		Def     string
 		Schema  *Schema
 		Columns []*Column
-		Attrs   []Attr // Attrs and options.
+		Attrs   []Attr   // Attrs and options.
+		Deps    []Object // Tables and views used in view definition.
 	}
 
 	// A Column represents a column definition.
@@ -120,6 +129,16 @@ func (s *Schema) View(name string) (*View, bool) {
 	for _, t := range s.Views {
 		if t.Name == name {
 			return t, true
+		}
+	}
+	return nil, false
+}
+
+// Object returns the first object that matched the given predicate.
+func (s *Schema) Object(f func(Object) bool) (Object, bool) {
+	for _, o := range s.Objects {
+		if f(o) {
+			return o, true
 		}
 	}
 	return nil, false
@@ -265,6 +284,7 @@ type (
 	TimeType struct {
 		T         string
 		Precision *int
+		Scale     *int
 	}
 
 	// JSONType represents a JSON type.
@@ -342,6 +362,11 @@ type (
 		Type string // Optional type. e.g. STORED or VIRTUAL.
 	}
 )
+
+// objects.
+func (*Table) obj()    {}
+func (*View) obj()     {}
+func (*EnumType) obj() {}
 
 // expressions.
 func (*Literal) expr() {}

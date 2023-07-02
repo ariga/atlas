@@ -245,6 +245,37 @@ CREATE TABLE users(
 				require.Equal(t.Attrs[1:], checks)
 			},
 		},
+		{
+			name: "table options",
+			before: func(m mock) {
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(databasesQueryArgs, "?"))).
+					WithArgs("main").
+					WillReturnRows(sqltest.Rows(`
+ name |   file
+------+-----------
+ main |
+`))
+				rows := sqlmock.NewRows([]string{"name", "sql", "wr", "strict"})
+				rows.AddRow("users", "CREATE TABLE users(id INTEGER PRIMARY KEY) without rowid, strict", 1, 1)
+				m.ExpectQuery(sqltest.Escape(tablesQuery + " AND sqlite_master.name IN (?)")).
+					WithArgs("users").
+					WillReturnRows(rows)
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
+					WillReturnRows(sqltest.Rows(`
+ name |   type       | nullable | dflt_value  | primary  | hidden
+------+--------------+----------+ ------------+----------+----------
+ id   | int          |  0       |             |  1       |  0
+`))
+				m.noIndexes("users")
+				m.noFKs("users")
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Len(t.Attrs, 3)
+				require.Equal(t.Attrs[1], &WithoutRowID{})
+				require.Equal(t.Attrs[2], &Strict{})
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -551,11 +582,11 @@ func (m mock) tableExists(table string, exists bool, stmt ...string) {
 ------+-----------
  main |   
 `))
-	rows := sqlmock.NewRows([]string{"name", "sql"})
+	rows := sqlmock.NewRows([]string{"name", "sql", "wr", "strict"})
 	if exists {
-		rows.AddRow(table, stmt[0])
+		rows.AddRow(table, stmt[0], nil, nil)
 	}
-	m.ExpectQuery(sqltest.Escape(tablesQuery + " AND name IN (?)")).
+	m.ExpectQuery(sqltest.Escape(tablesQuery + " AND sqlite_master.name IN (?)")).
 		WithArgs(table).
 		WillReturnRows(rows)
 }

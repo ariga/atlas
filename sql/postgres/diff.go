@@ -27,9 +27,47 @@ var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{}}
 type diff struct{ conn }
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
-func (d *diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
+func (*diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
 	// No special schema attribute diffing for PostgreSQL.
 	return nil
+}
+
+// SchemaObjectDiff returns a changeset for migrating schema objects from
+// one state to the other.
+func (*diff) SchemaObjectDiff(from, to *schema.Schema) ([]schema.Change, error) {
+	var changes []schema.Change
+	// Drop or modify enums.
+	for _, o1 := range from.Objects {
+		e1, ok := o1.(*schema.EnumType)
+		if !ok {
+			return nil, fmt.Errorf("unsupported object type %T", o1)
+		}
+		o2, ok := to.Object(func(o schema.Object) bool {
+			e2, ok := o.(*schema.EnumType)
+			return ok && e1.T == e2.T
+		})
+		if !ok {
+			changes = append(changes, &schema.DropObject{O: o1})
+			continue
+		}
+		if e2 := o2.(*schema.EnumType); !sqlx.ValuesEqual(e1.Values, e2.Values) {
+			changes = append(changes, &schema.ModifyObject{From: e1, To: e2})
+		}
+	}
+	// Add new enums.
+	for _, o1 := range to.Objects {
+		e1, ok := o1.(*schema.EnumType)
+		if !ok {
+			return nil, fmt.Errorf("unsupported object type %T", o1)
+		}
+		if _, ok := from.Object(func(o schema.Object) bool {
+			e2, ok := o.(*schema.EnumType)
+			return ok && e1.T == e2.T
+		}); !ok {
+			changes = append(changes, &schema.AddObject{O: e1})
+		}
+	}
+	return changes, nil
 }
 
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
@@ -293,9 +331,8 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		changed = t1 != t2
 	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
-		// Column type was changed if the underlying enum type was changed or values are not equal.
-		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values) || fromT.T != toT.T ||
-			(toT.Schema != nil && fromT.Schema != nil && fromT.Schema.Name != toT.Schema.Name)
+		// Column type was changed if the underlying enum type was changed.
+		changed = fromT.T != toT.T || (toT.Schema != nil && fromT.Schema != nil && fromT.Schema.Name != toT.Schema.Name)
 	case *CurrencyType:
 		toT := toT.(*CurrencyType)
 		changed = fromT.T != toT.T
@@ -304,14 +341,6 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		changed = fromT.T != toT.T
 	case *ArrayType:
 		toT := toT.(*ArrayType)
-		// Same type.
-		if changed = fromT.T != toT.T; !changed {
-			// In case it is an enum type, compare its values.
-			fromE, ok1 := fromT.Type.(*schema.EnumType)
-			toE, ok2 := toT.Type.(*schema.EnumType)
-			changed = ok1 && ok2 && !sqlx.ValuesEqual(fromE.Values, toE.Values)
-			break
-		}
 		// In case the desired schema is not normalized, the string type can look different even
 		// if the two strings represent the same array type (varchar(1), character varying (1)).
 		// Therefore, we try by comparing the underlying types if they were defined.

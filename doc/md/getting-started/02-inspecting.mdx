@@ -92,7 +92,7 @@ schema "main" {
 </Tabs>
 
 As you can see, Atlas inspected our (empty) database and wrote an Atlas HCL document
-containing only a [Schema](../atlas-schema/sql.mdx#schema) resource.
+containing only a [Schema](../atlas-schema/hcl.mdx#schema) resource.
 
 Next, let's create some tables in our SQL database and see how they are reflected
 in the inspected Atlas HCL document.
@@ -184,14 +184,14 @@ table "users" {
   }
 }
 ```
-This block represents a [Table](../atlas-schema/sql.mdx#table) resource with `id`, and `name`
+This block represents a [Table](../atlas-schema/hcl.mdx#table) resource with `id`, and `name`
 columns. The `schema` field references the `example` schema that is defined elsewhere
 in this document. In addition, the `primary_key` sub-block defines the `id` column as
 the primary key for the table. In SQL databases, columns usually have a type attribute
 that defines the kind of data that can be stored in that column. Atlas strives to
 mimic the syntax of the database that the user is working against. In this case, the
 type for the `id` column is `int`, and `varchar(100)` for the `name` column. To
-see the full list of supported types, [click here](../atlas-schema/sql-types.md).
+see the full list of supported types, [click here](../atlas-schema/hcl-types.md).
 
 
 Next, consider this block:
@@ -230,12 +230,12 @@ table "blog_posts" {
 }
 ```
 This block represents the `blog_posts` table. In addition to the elements
-we saw in the `users` table, here we can find a [Foreign Key](../atlas-schema/sql.mdx#foreign-key)
+we saw in the `users` table, here we can find a [Foreign Key](../atlas-schema/hcl.mdx#foreign-key)
 block, declaring that the `author_id` column references the `id` column on the
 `users` table.
 
 To learn more about the resource types that are available to describe SQL schemas,
-read the [SQL Syntax](../atlas-schema/sql.mdx) documentation.
+read the [SQL Syntax](../atlas-schema/hcl.mdx) documentation.
 
 In the next section, we will see how we can modify our database's schema by
 applying a modified Atlas HCL file using the Atlas CLI.

@@ -6,7 +6,6 @@ package sqlite
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -63,7 +62,29 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, convertIndex, specutil.Check)
+	t, err := specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, convertIndex, specutil.Check)
+	if err != nil {
+		return nil, err
+	}
+	if attr, ok := spec.Attr("without_rowid"); ok {
+		b, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		if b {
+			t.AddAttrs(&WithoutRowID{})
+		}
+	}
+	if attr, ok := spec.Attr("strict"); ok {
+		b, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		if b {
+			t.AddAttrs(&Strict{})
+		}
+	}
+	return t, nil
 }
 
 // convertIndex converts a sqlspec.Index into a schema.Index.
@@ -114,15 +135,29 @@ func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
 }
 
 // tableSpec converts from a concrete SQLite sqlspec.Table to a schema.Table.
-func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
-	return specutil.FromTable(
-		tab,
+func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
+	spec, err := specutil.FromTable(
+		t,
 		columnSpec,
 		specutil.FromPrimaryKey,
 		indexSpec,
 		specutil.FromForeignKey,
 		specutil.FromCheck,
 	)
+	if err != nil {
+		return nil, err
+	}
+	options := &schemahcl.Resource{}
+	if sqlx.Has(t.Attrs, &WithoutRowID{}) {
+		options.SetAttr(schemahcl.BoolAttr("without_rowid", true))
+	}
+	if sqlx.Has(t.Attrs, &Strict{}) {
+		options.SetAttr(schemahcl.BoolAttr("strict", true))
+	}
+	if options != nil {
+		spec.Extra.Children = append(spec.Extra.Children, options)
+	}
+	return spec, nil
 }
 
 // viewSpec converts from a concrete SQLite schema.View to a sqlspec.View.
@@ -176,7 +211,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 	schemahcl.WithFormatter(FormatType),
 	schemahcl.WithParser(ParseType),
 	schemahcl.WithSpecs(
-		schemahcl.NewTypeSpec(TypeReal, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeReal, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
 		schemahcl.NewTypeSpec(TypeBlob, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec(TypeText, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec(TypeInteger, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
@@ -199,8 +234,8 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.AliasTypeSpec("native_character", "native character", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec("nvarchar", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec("clob", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.NewTypeSpec("numeric", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.NewTypeSpec("decimal", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec("numeric", schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
+		schemahcl.NewTypeSpec("decimal", schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
 		schemahcl.NewTypeSpec("bool"),
 		schemahcl.NewTypeSpec("boolean"),
 		schemahcl.NewTypeSpec("date"),

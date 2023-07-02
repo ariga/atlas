@@ -27,7 +27,7 @@ type Job struct {
 }
 
 var (
-	//go:embed ci_dialect.tmpl ci_go.tmpl
+	//go:embed *.tmpl
 	tplFS embed.FS
 	tpl   = template.Must(template.ParseFS(tplFS, "*.tmpl"))
 
@@ -170,7 +170,7 @@ func main() {
 	flag.StringVar(&tags, "tags", "", "")
 	flag.StringVar(&suffix, "suffix", "", "")
 	flag.Parse()
-	for _, n := range []string{"go", "dialect"} {
+	for _, n := range []string{"dialect", "go", "revisions"} {
 		var buf bytes.Buffer
 		if err := tpl.ExecuteTemplate(&buf, fmt.Sprintf("ci_%s.tmpl", n), struct {
 			Jobs         []Job

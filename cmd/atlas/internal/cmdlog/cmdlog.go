@@ -23,13 +23,18 @@ import (
 )
 
 var (
+	ColorCyan         = color.CyanString
+	ColorGreen        = color.HiGreenString
+	ColorRed          = color.HiRedString
+	ColorRedBgWhiteFg = color.New(color.FgHiWhite, color.BgHiRed).SprintFunc()
+	ColorYellow       = color.YellowString
 	// ColorTemplateFuncs are globally available functions to color strings in a report template.
 	ColorTemplateFuncs = template.FuncMap{
-		"cyan":         color.CyanString,
-		"green":        color.HiGreenString,
-		"red":          color.HiRedString,
-		"redBgWhiteFg": color.New(color.FgHiWhite, color.BgHiRed).SprintFunc(),
-		"yellow":       color.YellowString,
+		"cyan":         ColorCyan,
+		"green":        ColorGreen,
+		"red":          ColorRed,
+		"redBgWhiteFg": ColorRedBgWhiteFg,
+		"yellow":       ColorYellow,
 	}
 )
 
@@ -658,6 +663,12 @@ func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 		}
 		for _, t := range s.Tables {
 			changes = append(changes, &schema.AddTable{T: t})
+		}
+		for _, v := range s.Views {
+			changes = append(changes, &schema.AddView{V: v})
+		}
+		for _, o := range s.Objects {
+			changes = append(changes, &schema.AddObject{O: o})
 		}
 	}
 	return fmtPlan(report.Client, changes, indent)

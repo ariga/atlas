@@ -194,7 +194,7 @@ resource "aws_db_instance" "atlas-demo" {
 ### Define the desired schema
 
 In a separate file named `schema.hcl` define the desired database schema. To learn more
-about defining SQL resources with the Atlas language, [see the docs](https://atlasgo.io/atlas-schema/sql-resources).
+about defining SQL resources with the Atlas language, [see the docs](https://atlasgo.io/atlas-schema/hcl).
 
 ```hcl
 // Create a new database named "hello"

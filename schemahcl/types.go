@@ -343,6 +343,22 @@ func SizeTypeAttr(required bool) *TypeAttr {
 	}
 }
 
+// PrecisionTypeAttr returns a TypeAttr for a precision attribute.
+func PrecisionTypeAttr() *TypeAttr {
+	return &TypeAttr{
+		Name: "precision",
+		Kind: reflect.Int,
+	}
+}
+
+// ScaleTypeAttr returns a TypeAttr for a scale attribute.
+func ScaleTypeAttr() *TypeAttr {
+	return &TypeAttr{
+		Name: "scale",
+		Kind: reflect.Int,
+	}
+}
+
 // typeNonFuncArgs returns the type attributes that are NOT configured via arguments to the
 // type definition, `int unsigned`.
 func typeNonFuncArgs(spec *TypeSpec) []*TypeAttr {

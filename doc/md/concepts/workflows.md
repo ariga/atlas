@@ -141,6 +141,6 @@ explicitness of versioned migrations.
 With versioned migration authoring, users still declare their desired state and use
 the Atlas engine to plan a safe migration from the existing to the new state. 
 However, instead of coupling planning and execution, plans are instead written 
-into normal migration files which can be checked into source control, fine-tuned manually and 
+into normal migration files which can be checked-in to source control, fine-tuned manually and 
 reviewed in regular code review processes.
 

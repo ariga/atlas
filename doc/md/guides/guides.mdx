@@ -1,0 +1,264 @@
+---
+title: Guides
+id: guides
+slug: /guides
+---
+
+import { Card, CardImage } from "../components/card";
+
+# Atlas Guides
+
+## Deployments
+
+<div className="row">
+  <Card
+    name="Introduction"
+    description="Intro to deploying schema migrations"
+    url="/guides/deploying/intro"
+    image={CardImage.Deployment}
+  />
+  <Card
+    name="Docker images"
+    description="Creating container images for deploying migrations"
+    url="/guides/deploying/image"
+    image={CardImage.Docker}
+  />
+  <Card
+    name="AWS ECS"
+    description="Deploying to AWS ECS (Fargate)"
+    url="/guides/deploying/aws-ecs-fargate"
+    image={CardImage.ECS}
+  />
+  <Card
+    name="Kubernetes with Helm"
+    description="Deploying schema migrations to Kubernetes with Helm"
+    url="/guides/deploying/helm"
+    image={CardImage.Helm}
+  />
+  <Card
+    name="Kubernetes with Init Containers"
+    description="Deploying schema migrations to Kubernetes with Init Containers"
+    url="/guides/deploying/k8s-init-container"
+    image={CardImage.Kubernetes}
+  />
+  <Card
+    name="Kubernetes with ArgoCD"
+    description="Use the Atlas Kubernetes Operator and Argo CD"
+    url="/guides/deploying/k8s-argo"
+    image={CardImage.Deployment}
+  />
+  <Card
+    name="CloudSQL with GitHub Actions"
+    description="Deploying to CloudSQL with GitHub Actions"
+    url="/guides/deploying/cloud-sql-via-github-actions"
+    image={CardImage.Deployment}
+  />
+  <Card
+    name="Deploying to Fly.io"
+    description="Using Atlas with Fly.io"
+    url="/guides/deploying/fly-io"
+    image={CardImage.Deployment}
+  />
+</div>
+
+## MySQL
+
+<div className="row">
+  <Card
+    name="Descending Indexes"
+    description="This guide is for working with descending indexes in MySQL with Atlas"
+    url="/guides/mysql/descending-indexes"
+    image={CardImage.MySQL}
+  />
+  <Card
+    name="Functional Indexes"
+    description="This guide is for working with functional indexes in MySQL with Atlas"
+    url="/guides/mysql/functional-indexes"
+    image={CardImage.MySQL}
+  />
+  <Card
+    name="Prefix Indexes"
+    description="This guide is for working with prefix indexes in MySQL with Atlas"
+    url="/guides/mysql/prefix-indexes"
+    image={CardImage.MySQL}
+  />
+  <Card
+    name="CHECK Constraint"
+    description="This guide is for working with CHECK constraints in MySQL with Atlas"
+    url="/guides/mysql/check-constraint"
+    image={CardImage.MySQL}
+  />
+  <Card
+    name="Generated Columns"
+    description="This guide is for working with generated columns in MySQL with Atlas"
+    url="/guides/mysql/generated-columns"
+    image={CardImage.MySQL}
+  />
+  <Card
+    name="MySQL RDS with Terraform"
+    description="Managing MySQL schemas on RDS with Terraform"
+    url="/guides/mysql/terraform"
+    image={CardImage.Terraform}
+  />
+  <Card
+    name="Inline REFERENCES clauses (MY102)"
+    description="This guide describes in detail the detection of inline REFERENCES clauses for MySQL"
+    url="/guides/mysql/checks/MY102"
+    image={CardImage.MySQL}
+  />
+  <Card
+    name="Dropping non-virtual columns (DS103)"
+    description="This guide describes in detail the detection of dropping non-virtual columns for MySQL databases with Atlas's linting capabilities"
+    url="/guides/mysql/checks/DS103"
+    image={CardImage.MySQL}
+  />
+  <Card
+    name="Detecting drops of foreign key constraints"
+    description="This guide describes in detail the detection of dropping foreign keys in MySQL databases, using Atlas's linting capabilities"
+    url="/guides/mysql/checks/CD101"
+    image={CardImage.MySQL}
+  />
+</div>
+
+## PostgreSQL
+
+<div className="row">
+  <Card
+    name="Serial Type Columns"
+    description="This guide is for understanding serial type columns in PostgreSQL with Atlas"
+    url="/guides/postgres/serial-columns"
+    image={CardImage.Postgres}
+  />
+  <Card
+    name="Partial Indexes"
+    description="This guide is for implementing partial indexes in PostgreSQL with Atlas"
+    url="/guides/postgres/partial-indexes"
+    image={CardImage.Postgres}
+  />
+  <Card
+    name="Included Columns"
+    description="This guide is for working with covering indexes in PostgreSQL"
+    url="/guides/postgres/included-columns"
+    image={CardImage.Postgres}
+  />
+  <Card
+    name="Index Operator Classes"
+    description="This guide is for understanding index operator classes in PostgreSQL"
+    url="/guides/postgres/index-operator-classes"
+    image={CardImage.Postgres}
+  />
+  <Card
+    name="Optimal data alignment (AR101)"
+    description="This guide is for achieving optimal data alignment in PostgreSQL with Atlas"
+    url="/guides/postgres/ar-101"
+    image={CardImage.Postgres}
+  />
+  <Card
+    name="Descending Indexes"
+    description="This guide is for implementing descending indexes in PostgreSQL with Atlas"
+    url="/guides/postgres/descending-indexes"
+    image={CardImage.Postgres}
+  />
+  <Card
+    name="Functional Indexes"
+    description="This guide is for creating functional indexes in PostgreSQL with Atlas"
+    url="/guides/postgres/functional-indexes"
+    image={CardImage.Postgres}
+  />
+</div>
+
+## SQLite
+
+<div className="row">
+  <Card
+    name="Partial Indexes"
+    description="This guide is for implementing partial indexes in SQLite with Atlas"
+    url="/guides/sqlite/partial-indexes"
+    image={CardImage.SQLite}
+  />
+  <Card
+    name="Descending Indexes"
+    description="This guide is for creating descending indexes in SQLite with Atlas"
+    url="/guides/sqlite/descending-indexes"
+    image={CardImage.SQLite}
+  />
+  <Card
+    name="Functional Indexes"
+    description="This guide is for creating functional indexes in SQLite with Atlas"
+    url="/guides/sqlite/functional-indexes"
+    image={CardImage.SQLite}
+  />
+  <Card
+    name="Working with Turso"
+    description="This guide is for working with Turso in SQLite with Atlas"
+    url="/guides/sqlite/turso"
+    image={CardImage.Integration}
+  />
+</div>
+
+## Migration tools
+
+<div className="row">
+  <Card
+    name="Automatic migration planning for golang-migrate"
+    description="This guide is for automatic migration planning for golang-migrate with Atlas"
+    url="/guides/migration-tools/golang-migrate"
+    image={CardImage.Tools}
+  />
+  <Card
+    name="Importing from pressly/goose"
+    description="This guide is for importing a pressly/goose project to Atlas"
+    url="/guides/migration-tools/goose-import"
+    image={CardImage.Tools}
+  />
+</div>
+
+## ORMs
+
+<div className="row">
+  <Card
+    name="GORM"
+    description="This guide is for automatic migration planning for GORM with Atlas"
+    url="/guides/orms/gorm"
+    image={CardImage.Tools}
+  />
+</div>
+
+## Terraform
+
+<div className="row">
+  <Card
+    name="Provisioning schemas (named databases)"
+    description="This guide is for provisioning schemas (named databases) with Terraform using Atlas"
+    url="/guides/terraform/named-databases"
+    image={CardImage.Terraform}
+  />
+</div>
+
+## Cloud
+
+<div className="row">
+  <Card
+    name="Inspecting a local database in the Cloud"
+    description="This guide is for inspecting a local database in the Cloud with Atlas"
+    url="/guides/cloud/explore-inspection"
+    image={CardImage.Cloud}
+  />
+</div>
+
+## Tests
+
+<div className="row">
+  <Card
+    name="Integration tests with docker-compose"
+    description="This guide is for running integration tests with docker-compose using Atlas"
+    url="/guides/testing/docker-compose"
+    image={CardImage.Testing}
+  />
+  <Card
+    name="Integration tests with GitHub Actions"
+    description="This guide is for running integration tests with GitHub Actions using Atlas"
+    url="/guides/testing/github-actions"
+    image={CardImage.Testing}
+  />
+</div>

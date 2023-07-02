@@ -30,12 +30,12 @@ terraform {
 
 ## Declarative Migrations
 
-In the declarative workflow, the Atlas Terraform provider uses an [HCL file](/atlas-schema/sql.mdx) to describe the
+In the declarative workflow, the Atlas Terraform provider uses an [HCL file](/atlas-schema/hcl.mdx) to describe the
 desired state of the database, and performs migrations according to the state difference
 between the HCL file and the target database.
 
 To use the Terraform provider, you will need such a file. If you are working against a fresh,
-empty database, start by creating a file named `schema.hcl` that only contains a single [`schema`](/atlas-schema/sql.mdx#schema)
+empty database, start by creating a file named `schema.hcl` that only contains a single [`schema`](/atlas-schema/hcl.mdx#schema)
 resource. If your database contains a schema (named database) is named `example`, use something like:
 
 ```hcl

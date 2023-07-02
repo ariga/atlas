@@ -43,6 +43,7 @@ func TestSchema_AddTables(t *testing.T) {
 		schema.NewBoolColumn("active", "boolean"),
 		schema.NewNullStringColumn("name", "varchar", schema.StringSize(255)),
 		schema.NewTimeColumn("registered_at", "timestamp", schema.TimePrecision(6)),
+		schema.NewTimeColumn("open_time", "time", schema.TimeScale(2)),
 	}
 	users := schema.NewTable("users").
 		AddColumns(userColumns...).
@@ -74,6 +75,7 @@ func TestSchema_AddTables(t *testing.T) {
 		t,
 		func() *schema.Schema {
 			p := 6
+			scale := 2
 			s := &schema.Schema{Name: "public"}
 			users := &schema.Table{
 				Name:   "users",
@@ -86,6 +88,7 @@ func TestSchema_AddTables(t *testing.T) {
 					{Name: "active", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}}},
 					{Name: "name", Type: &schema.ColumnType{Null: true, Type: &schema.StringType{T: "varchar", Size: 255}}},
 					{Name: "registered_at", Type: &schema.ColumnType{Null: false, Type: &schema.TimeType{T: "timestamp", Precision: &p}}},
+					{Name: "open_time", Type: &schema.ColumnType{Null: false, Type: &schema.TimeType{T: "time", Precision: nil, Scale: &scale}}},
 				},
 			}
 			s.Tables = append(s.Tables, users)

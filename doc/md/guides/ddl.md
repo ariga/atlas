@@ -171,7 +171,7 @@ This function takes a byte-slice, an empty interface as arguments and a map of s
 The empty interface should be a  pointer to a struct into which the `EvalBytes` function will
 read the values. The struct fields must be annotated with `spec` tags that define the mapping from HCL to the Go type.
 This mapping is discussed in the section about [Extensions](#extensions). The final map argument may contain
-[Input Values](/atlas-schema/input.md) to be passed as parameters of the evaluation.
+[Input Values](../atlas-schema/hcl-input.md) to be passed as parameters of the evaluation.
 
 ### Writing with Go
 

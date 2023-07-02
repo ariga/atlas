@@ -293,7 +293,10 @@ func TestPostgres_Enums(t *testing.T) {
 		})
 
 		// Create table with an enum column.
-		err := t.drv.ApplyChanges(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		err := t.drv.ApplyChanges(ctx, []schema.Change{
+			&schema.AddObject{O: &schema.EnumType{T: "state", Values: []string{"on", "off"}, Schema: usersT.Schema}},
+			&schema.AddTable{T: usersT},
+		})
 		require.NoError(t, err, "create a new table with an enum column")
 		t.dropTables(usersT.Name)
 		ensureNoChange(t, usersT)
@@ -305,26 +308,11 @@ func TestPostgres_Enums(t *testing.T) {
 		)
 		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
-		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		err = t.drv.ApplyChanges(ctx, []schema.Change{
+			&schema.AddObject{O: &schema.EnumType{T: "day", Values: []string{"sunday", "monday"}, Schema: usersT.Schema}},
+			&schema.ModifyTable{T: usersT, Changes: changes},
+		})
 		require.NoError(t, err, "add a new enum column to existing table")
-		ensureNoChange(t, usersT)
-
-		// Add a new value to an existing enum.
-		e := usersT.Columns[1].Type.Type.(*schema.EnumType)
-		e.Values = append(e.Values, "tuesday")
-		changes = t.diff(t.loadUsers(), usersT)
-		require.Len(t, changes, 1)
-		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err, "append a value to existing enum")
-		ensureNoChange(t, usersT)
-
-		// Add multiple new values to an existing enum.
-		e = usersT.Columns[1].Type.Type.(*schema.EnumType)
-		e.Values = append(e.Values, "wednesday", "thursday", "friday", "saturday")
-		changes = t.diff(t.loadUsers(), usersT)
-		require.Len(t, changes, 1)
-		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err, "append multiple values to existing enum")
 		ensureNoChange(t, usersT)
 	})
 }
@@ -775,6 +763,94 @@ func TestPostgres_CLI_MultiSchema(t *testing.T) {
 			t.dropSchemas("test2")
 			testCLIMultiSchemaApply(t, h, t.url(""), []string{"public", "test2"}, postgres.EvalHCL)
 		})
+	})
+}
+
+func TestPostgres_NormalizeRealm(t *testing.T) {
+	bin, err := buildCmd(t)
+	require.NoError(t, err)
+	pgRun(t, func(t *pgTest) {
+		dir := t.TempDir()
+		_, err := t.db.Exec("CREATE DATABASE normalized_realm")
+		require.NoError(t, err)
+		defer t.db.Exec("DROP DATABASE IF EXISTS normalized_realm")
+		hcl := `
+schema "public" {}
+enum "status" {
+  schema = schema.public
+  values = ["active", "inactive"]
+}
+
+table "users" {
+  schema = schema.public
+  column "id" { type = serial }
+  column "e"  { type = enum.status }
+  column "ae" { type = sql("status[]") }
+}
+
+schema "other" {}
+table "posts" {
+  schema = schema.other
+  column "id" { type = integer }
+}
+
+table "with_default" {
+  schema = schema.other
+  column "name" {
+    type = varchar
+	default = sql("lower('Hello')")
+  }
+}
+`
+		err = os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(hcl), 0600)
+		require.NoError(t, err)
+		out, err := exec.Command(
+			bin, "schema", "inspect",
+			"--url", fmt.Sprintf("file://%s", filepath.Join(dir, "schema.hcl")),
+			"--dev-url", fmt.Sprintf("postgres://postgres:pass@localhost:%d/normalized_realm?sslmode=disable", t.port),
+		).CombinedOutput()
+		require.NoError(t, err)
+		require.Equal(t, `table "posts" {
+  schema = schema.other
+  column "id" {
+    null = false
+    type = integer
+  }
+}
+table "with_default" {
+  schema = schema.other
+  column "name" {
+    null    = false
+    type    = character_varying
+    default = sql("lower('Hello'::text)")
+  }
+}
+table "users" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = serial
+  }
+  column "e" {
+    null = false
+    type = enum.status
+  }
+  column "ae" {
+    null = false
+    type = sql("status[]")
+  }
+}
+enum "status" {
+  schema = schema.public
+  values = ["active", "inactive"]
+}
+schema "other" {
+}
+schema "public" {
+}
+`, string(out))
+		err = t.drv.(migrate.CleanChecker).CheckClean(context.Background(), nil)
+		require.NoError(t, err)
 	})
 }
 

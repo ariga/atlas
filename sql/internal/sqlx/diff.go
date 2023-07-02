@@ -31,6 +31,10 @@ type (
 		// from one state to the other. For example, changing schema collation.
 		SchemaAttrDiff(from, to *schema.Schema) []schema.Change
 
+		// SchemaObjectDiff returns a changeset for migrating schema objects from
+		// one state to the other. For example, changing schema custom types.
+		SchemaObjectDiff(from, to *schema.Schema) ([]schema.Change, error)
+
 		// TableAttrDiff returns a changeset for migrating table attributes from
 		// one state to the other. For example, dropping or adding a `CHECK` constraint.
 		TableAttrDiff(from, to *schema.Table) ([]schema.Change, error)
@@ -136,6 +140,12 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 			Changes: change,
 		})
 	}
+	// Add, drop or modify objects.
+	change, err := d.SchemaObjectDiff(from, to)
+	if err != nil {
+		return nil, err
+	}
+	changes = opts.AddOrSkip(changes, change...)
 
 	// Drop or modify tables.
 	for _, t1 := range from.Tables {
@@ -443,6 +453,28 @@ func CommentChange(from, to []schema.Attr) schema.ChangeKind {
 		return schema.ChangeComment
 	}
 	return schema.NoChange
+}
+
+// Charset reports if the attribute contains the "charset" attribute,
+// and it needs to be defined explicitly on the schema. This is true, in
+// case the element charset is different from its parent charset.
+func Charset(attr, parent []schema.Attr) (string, bool) {
+	var c, p schema.Charset
+	if Has(attr, &c) && (parent == nil || Has(parent, &p) && c.V != p.V) {
+		return c.V, true
+	}
+	return "", false
+}
+
+// Collate reports if the attribute contains the "collation"/"collate" attribute,
+// and it needs to be defined explicitly on the schema. This is true, in
+// case the element collation is different from its parent collation.
+func Collate(attr, parent []schema.Attr) (string, bool) {
+	var c, p schema.Collation
+	if Has(attr, &c) && (parent == nil || Has(parent, &p) && c.V != p.V) {
+		return c.V, true
+	}
+	return "", false
 }
 
 var (

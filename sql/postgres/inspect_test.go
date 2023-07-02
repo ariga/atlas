@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
@@ -20,12 +21,13 @@ import (
 // Single table queries used by the different tests.
 var (
 	queryFKs         = sqltest.Escape(fmt.Sprintf(fksQuery, "$2"))
+	queryEnums       = sqltest.Escape(fmt.Sprintf(enumsQuery, "$1"))
 	queryTables      = sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))
 	queryChecks      = sqltest.Escape(fmt.Sprintf(checksQuery, "$2"))
 	queryColumns     = sqltest.Escape(fmt.Sprintf(columnsQuery, "$2"))
-	queryCrdbColumns = sqltest.Escape(fmt.Sprintf(crdbColumnsQuery, "$2"))
+	queryCRDBColumns = sqltest.Escape(fmt.Sprintf(crdbColumnsQuery, "$2"))
 	queryIndexes     = sqltest.Escape(fmt.Sprintf(indexesQuery, "$2"))
-	queryCrdbIndexes = sqltest.Escape(fmt.Sprintf(crdbIndexesQuery, "$2"))
+	queryCRDBIndexes = sqltest.Escape(fmt.Sprintf(crdbIndexesQuery, "$2"))
 )
 
 func TestDriver_InspectTable(t *testing.T) {
@@ -77,7 +79,7 @@ func TestDriver_InspectTable(t *testing.T) {
  users       |  c30         | interval                    | interval            | NO          |                                        |                          |                   |                  6 |               |        MONTH        |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |         |  1269
  users       |  c31         | interval                    | interval            | NO          |                                        |                          |                   |                  6 |               | MINUTE TO SECOND(6) |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |         |  1233
  users       |  c32         | bigint                      | int4                | NO          | nextval('public.t1_c32_seq'::regclass) |                          |                32 |                    |             0 |                     |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |         |    23
- users       |  c33         | USER-DEFINED                | test."status""."    | NO          |  'unknown'::test."status""."           |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | e       |         |         | 16775
+ users       |  c33         | USER-DEFINED                | public."status""."  | NO          |  'unknown'::test."status""."           |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | e       |         |         | 16775
  users       |  c34         | ARRAY                       | state[]             | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | b       |  16774  |  e      | 16779
  users       |  c35         | character                   | domain_char         | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | d       |  16774  |  e      | 16779
  users       |  c36         | tsvector                    | tsvector            | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | b       |  16774  |         | 16779
@@ -85,24 +87,27 @@ func TestDriver_InspectTable(t *testing.T) {
  users       |  c38         | datemultirange              | datemultirange      | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | m       |         |         | 4535
  users       |  c39         | numrange                    | numrange            | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | m       |         |         | 4536
  users       |  c40         | smallint                    | int4                | NO          | nextval('"Users_c40_seq"'::regclass)   |                          |                32 |                    |             0 |                     |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |         |    23
-`))
-				m.ExpectQuery(sqltest.Escape(`SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN ($1, $2)`)).
-					WithArgs(16774, 16775).
-					WillReturnRows(sqltest.Rows(`
- enumtypid | enumlabel
------------+-----------
-     16774 | on
-     16774 | off
-     16775 | unknown
+ users       |  c41         | smallint                    | int4                | NO          | nextval('foo."T_C40_seq"'::regclass)   |                          |                32 |                    |             0 |                     |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |         |    23
+ users       |  c42         | smallint                    | int4                | NO          | nextval('"F"."T_C40_seq"'::regclass)   |                          |                32 |                    |             0 |                     |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |         |    23
 `))
 				m.noIndexes()
 				m.noFKs()
 				m.noChecks()
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(enumsQuery, "$1"))).
+					WithArgs("public").
+					WillReturnRows(sqltest.Rows(`
+ schema_name | enum_id | type    | enum_value
+-------------+---------+---------+------------
+ public      |   16774 |  state  | on
+ public      |   16774 |  state  | off
+ public      |   16775 |  status | unknown
+`))
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
-				p := func(i int) *int { return &i }
 				require.NoError(err)
 				require.Equal("users", t.Name)
+				stateE := &schema.EnumType{T: "state", Values: []string{"on", "off"}, Schema: t.Schema}
+				statusE := &schema.EnumType{T: `status".` /* intentionally broken */, Values: []string{"unknown"}, Schema: t.Schema}
 				require.EqualValues([]*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&Identity{Generation: "BY DEFAULT", Sequence: &Sequence{Start: 100, Increment: 1, Last: 1}}}},
 					{Name: "rank", Type: &schema.ColumnType{Raw: "integer", Null: true, Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{&schema.Comment{Text: "rank"}}},
@@ -116,7 +121,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c8", Type: &schema.ColumnType{Raw: "cidr", Type: &NetworkType{T: "cidr"}}},
 					{Name: "c9", Type: &schema.ColumnType{Raw: "circle", Type: &schema.SpatialType{T: "circle"}}},
 					{Name: "c10", Type: &schema.ColumnType{Raw: "date", Type: &schema.TimeType{T: "date"}}},
-					{Name: "c11", Type: &schema.ColumnType{Raw: "time with time zone", Type: &schema.TimeType{T: "time with time zone", Precision: p(0)}}},
+					{Name: "c11", Type: &schema.ColumnType{Raw: "time with time zone", Type: &schema.TimeType{T: "time with time zone", Precision: sqlx.P(0)}}},
 					{Name: "c12", Type: &schema.ColumnType{Raw: "double precision", Type: &schema.FloatType{T: "double precision", Precision: 53}}},
 					{Name: "c13", Type: &schema.ColumnType{Raw: "real", Type: &schema.FloatType{T: "real", Precision: 24}}, Default: &schema.RawExpr{X: "random()"}},
 					{Name: "c14", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}, Default: &schema.Literal{V: "'{}'"}},
@@ -129,24 +134,27 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c21", Type: &schema.ColumnType{Raw: "xml", Type: &XMLType{T: "xml"}}},
 					{Name: "c22", Type: &schema.ColumnType{Raw: "ARRAY", Null: true, Type: &ArrayType{Type: &schema.IntegerType{T: "integer"}, T: "integer[]"}}},
 					{Name: "c23", Type: &schema.ColumnType{Raw: "USER-DEFINED", Null: true, Type: &UserDefinedType{T: "ltree"}}},
-					{Name: "c24", Type: &schema.ColumnType{Raw: "state", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}, Schema: t.Schema}}},
-					{Name: "c25", Type: &schema.ColumnType{Raw: "timestamp without time zone", Type: &schema.TimeType{T: "timestamp without time zone", Precision: p(4)}}, Default: &schema.RawExpr{X: "now()"}},
-					{Name: "c26", Type: &schema.ColumnType{Raw: "timestamp with time zone", Type: &schema.TimeType{T: "timestamp with time zone", Precision: p(6)}}},
-					{Name: "c27", Type: &schema.ColumnType{Raw: "time without time zone", Type: &schema.TimeType{T: "time without time zone", Precision: p(6)}}},
+					{Name: "c24", Type: &schema.ColumnType{Raw: "state", Type: stateE}},
+					{Name: "c25", Type: &schema.ColumnType{Raw: "timestamp without time zone", Type: &schema.TimeType{T: "timestamp without time zone", Precision: sqlx.P(4)}}, Default: &schema.RawExpr{X: "now()"}},
+					{Name: "c26", Type: &schema.ColumnType{Raw: "timestamp with time zone", Type: &schema.TimeType{T: "timestamp with time zone", Precision: sqlx.P(6)}}},
+					{Name: "c27", Type: &schema.ColumnType{Raw: "time without time zone", Type: &schema.TimeType{T: "time without time zone", Precision: sqlx.P(6)}}},
 					{Name: "c28", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&schema.GeneratedExpr{Expr: "(c1 + c2)"}}},
-					{Name: "c29", Type: &schema.ColumnType{Raw: "interval", Type: &IntervalType{T: "interval", Precision: p(6)}}},
-					{Name: "c30", Type: &schema.ColumnType{Raw: "interval", Type: &IntervalType{T: "interval", F: "MONTH", Precision: p(6)}}},
-					{Name: "c31", Type: &schema.ColumnType{Raw: "interval", Type: &IntervalType{T: "interval", F: "MINUTE TO SECOND", Precision: p(6)}}},
+					{Name: "c29", Type: &schema.ColumnType{Raw: "interval", Type: &IntervalType{T: "interval", Precision: sqlx.P(6)}}},
+					{Name: "c30", Type: &schema.ColumnType{Raw: "interval", Type: &IntervalType{T: "interval", F: "MONTH", Precision: sqlx.P(6)}}},
+					{Name: "c31", Type: &schema.ColumnType{Raw: "interval", Type: &IntervalType{T: "interval", F: "MINUTE TO SECOND", Precision: sqlx.P(6)}}},
 					{Name: "c32", Type: &schema.ColumnType{Raw: "bigserial", Type: &SerialType{T: "bigserial", SequenceName: "t1_c32_seq"}}},
-					{Name: "c33", Type: &schema.ColumnType{Raw: `status".`, Type: &schema.EnumType{T: `status".`, Values: []string{"unknown"}, Schema: schema.New("test")}}, Default: &schema.Literal{V: "'unknown'"}},
-					{Name: "c34", Type: &schema.ColumnType{Raw: "ARRAY", Type: &ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}, Schema: t.Schema}}}},
+					{Name: "c33", Type: &schema.ColumnType{Raw: `status".`, Type: statusE}, Default: &schema.Literal{V: "'unknown'"}},
+					{Name: "c34", Type: &schema.ColumnType{Raw: "ARRAY", Type: &ArrayType{T: "state[]", Type: stateE}}},
 					{Name: "c35", Type: &schema.ColumnType{Raw: "character", Type: &UserDefinedType{T: "domain_char"}}},
 					{Name: "c36", Type: &schema.ColumnType{Raw: "tsvector", Type: &TextSearchType{T: "tsvector"}}},
 					{Name: "c37", Type: &schema.ColumnType{Raw: "tsquery", Type: &TextSearchType{T: "tsquery"}}},
 					{Name: "c38", Type: &schema.ColumnType{Raw: "datemultirange", Type: &RangeType{T: "datemultirange"}}},
 					{Name: "c39", Type: &schema.ColumnType{Raw: "numrange", Type: &RangeType{T: "numrange"}}},
 					{Name: "c40", Type: &schema.ColumnType{Raw: "smallserial", Type: &SerialType{T: "smallserial", SequenceName: "Users_c40_seq"}}},
+					{Name: "c41", Type: &schema.ColumnType{Raw: "smallserial", Type: &SerialType{T: "smallserial", SequenceName: "T_C40_seq"}}},
+					{Name: "c42", Type: &schema.ColumnType{Raw: "smallserial", Type: &SerialType{T: "smallserial", SequenceName: "T_C40_seq"}}},
 				}, t.Columns)
+				require.Equal([]schema.Object{stateE, statusE}, t.Schema.Objects)
 			},
 		},
 		{
@@ -186,6 +194,7 @@ users           | tsx             | gist        | ts          | f        | f    
 `))
 				m.noFKs()
 				m.noChecks()
+				m.noEnums()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -247,6 +256,7 @@ multi_column    | users      | oid         | public       | t1                  
 self_reference  | users      | uid         | public       | users                 | id                     | public                 | NO ACTION   | CASCADE
 `))
 				m.noChecks()
+				m.noEnums()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -297,7 +307,7 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c2          | {2,1
 users        | users_check1       | (((c2 + c1) + c3) > 10) | c1          | {2,1,3}        | f
 users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1,3}        | f
 `))
-				m.noChecks()
+				m.noEnums()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -335,7 +345,9 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1
  public
 `))
 			tt.before(mk)
-			s, err := drv.InspectSchema(context.Background(), "public", nil)
+			s, err := drv.InspectSchema(context.Background(), "public", &schema.InspectOptions{
+				Mode: schema.InspectSchemas | schema.InspectTables,
+			})
 			require.NoError(t, err)
 			tt.expect(require.New(t), s.Tables[0], err)
 		})
@@ -382,7 +394,10 @@ logs3      | c5         | integer   | integer   | NO          |                |
 		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "table_name", "column_name", "referenced_table_name", "referenced_column_name", "referenced_table_schema", "update_rule", "delete_rule"}))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(checksQuery, "$2, $3, $4"))).
 		WillReturnRows(sqlmock.NewRows([]string{"table_name", "constraint_name", "expression", "column_name", "column_indexes"}))
-	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
+	mk.noEnums()
+	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
+		Mode: ^schema.InspectViews,
+	})
 	require.NoError(t, err)
 
 	t1, ok := s.Table("logs1")
@@ -433,7 +448,7 @@ schema_name
 public
 `))
 	mk.tableExists("public", "users", true)
-	mk.ExpectQuery(queryCrdbColumns).
+	mk.ExpectQuery(queryCRDBColumns).
 		WithArgs("public", "users").
 		WillReturnRows(sqltest.Rows(`
 table_name  | column_name | data_type | formatted | is_nullable |              column_default               | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | interval_type | character_set_name | collation_name | is_identity | identity_start | identity_increment |   identity_last  |  identity_generation  | generation_expression | comment | typtype | typelem | elemtyp | oid 
@@ -443,7 +458,7 @@ users       | b           | bigint    | bigint    | NO          |               
 users       | c           | bigint    | bigint    | NO          |                                           |                          |                64 |                    |             0 |               |                    |                | NO          |                |                    |                  |                       |                       |         | b       |         |         | 20 
 users       | d           | bigint    | bigint    | NO          |                                           |                          |                64 |                    |             0 |               |                    |                | NO          |                |                    |                  |                       |                       |         | b       |         |         | 20 
 `))
-	mk.ExpectQuery(queryCrdbIndexes).
+	mk.ExpectQuery(queryCRDBIndexes).
 		WithArgs("public", "users").
 		WillReturnRows(sqltest.Rows(`
 table_name  | index_name | column_name | primary | unique | constraint_type |                                   create_stmt                                   | predicate | expression | comment 
@@ -458,7 +473,10 @@ users       | idx5       | c           | false   | false  |                 | CR
 `))
 	mk.noFKs()
 	mk.noChecks()
-	s, err := drv.InspectSchema(context.Background(), "public", nil)
+	mk.noEnums()
+	s, err := drv.InspectSchema(context.Background(), "public", &schema.InspectOptions{
+		Mode: ^schema.InspectViews,
+	})
 	require.NoError(t, err)
 	tbl := s.Tables[0]
 	require.Equal(t, "users", tbl.Name)
@@ -499,7 +517,10 @@ test
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
-	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
+	mk.noEnums()
+	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
+		Mode: ^schema.InspectViews,
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Schema {
 		r := &schema.Realm{
@@ -540,7 +561,11 @@ public
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
 		WithArgs("test", "public").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
-	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(enumsQuery, "$1, $2"))).
+		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
+	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+		Mode: ^schema.InspectViews,
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
 		r := &schema.Realm{
@@ -578,7 +603,12 @@ public
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
 		WithArgs("test", "public").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
-	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test", "public"}})
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(enumsQuery, "$1, $2"))).
+		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
+	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+		Schemas: []string{"test", "public"},
+		Mode:    ^schema.InspectViews,
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
 		r := &schema.Realm{
@@ -615,7 +645,11 @@ public
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
-	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test"}})
+	mk.noEnums()
+	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+		Schemas: []string{"test"},
+		Mode:    schema.InspectSchemas | schema.InspectTables,
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
 		r := &schema.Realm{
@@ -652,6 +686,8 @@ test
 public
 `))
 	drv, err := Open(db)
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(enumsQuery, "$1, $2"))).
+		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
 	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Mode: schema.InspectSchemas})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
@@ -731,4 +767,9 @@ func (m mock) noFKs() {
 func (m mock) noChecks() {
 	m.ExpectQuery(queryChecks).
 		WillReturnRows(sqlmock.NewRows([]string{"table_name", "constraint_name", "expression", "column_name", "column_indexes"}))
+}
+
+func (m mock) noEnums() {
+	m.ExpectQuery(queryEnums).
+		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
 }

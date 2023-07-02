@@ -70,7 +70,7 @@ type state struct {
 // given changes on the attached connection.
 func (s *state) plan(changes []schema.Change) error {
 	if s.SchemaQualifier != nil {
-		if err := sqlx.CheckChangesScope(changes); err != nil {
+		if err := sqlx.CheckChangesScope(s.PlanOptions, changes); err != nil {
 			return err
 		}
 	}
@@ -482,7 +482,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		// a reversed order they were created.
 		sqlx.ReverseChanges(reverse)
 		if change.Reverse, err = build(reverse); err != nil {
-			return fmt.Errorf("reversd alter table %q: %v", t.Name, err)
+			return fmt.Errorf("reversed alter table %q: %v", t.Name, err)
 		}
 	}
 	s.append(change)

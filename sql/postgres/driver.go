@@ -126,10 +126,9 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 
 func (d *Driver) dev() *sqlx.DevDriver {
 	return &sqlx.DevDriver{
-		Driver:     d,
-		MaxNameLen: 63,
-		PatchColumn: func(s *schema.Schema, c *schema.Column) {
-			if e, ok := hasEnumType(c); ok {
+		Driver: d,
+		PatchObject: func(s *schema.Schema, o schema.Object) {
+			if e, ok := o.(*schema.EnumType); ok {
 				e.Schema = s
 			}
 		},
@@ -455,4 +454,11 @@ const (
 	PartitionTypeRange = "RANGE"
 	PartitionTypeList  = "LIST"
 	PartitionTypeHash  = "HASH"
+)
+
+// List of PARTITION KEY types.
+const (
+	ViewCheckNone    = "NONE"
+	ViewCheckCascade = "CASCADED"
+	ViewCheckLocal   = "LOCAL"
 )

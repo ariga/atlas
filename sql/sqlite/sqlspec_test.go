@@ -56,6 +56,8 @@ table "table" {
 	check "positive price" {
 		expr = "price > 0"
 	}
+	without_rowid = true
+	strict        = false
 }
 
 table "accounts" {
@@ -66,6 +68,7 @@ table "accounts" {
 	primary_key {
 		columns = [table.accounts.column.name]
 	}
+	strict = true
 }
 `
 	exp := &schema.Schema{
@@ -118,6 +121,7 @@ table "accounts" {
 					Name: "positive price",
 					Expr: "price > 0",
 				},
+				&WithoutRowID{},
 			},
 		},
 		{
@@ -133,6 +137,9 @@ table "accounts" {
 						},
 					},
 				},
+			},
+			Attrs: []schema.Attr{
+				&Strict{},
 			},
 		},
 	}
@@ -421,6 +428,36 @@ schema "test" {
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})
 	}
+}
+
+func TestMarshalSpec_TableOptions(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("id", "int"),
+				).
+				AddAttrs(
+					&WithoutRowID{},
+					&Strict{},
+				),
+		)
+	s.Tables[0].SetSchema(s)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = int
+  }
+  without_rowid = true
+  strict        = true
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
 }
 
 func TestInputVars(t *testing.T) {

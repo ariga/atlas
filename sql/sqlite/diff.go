@@ -23,23 +23,31 @@ var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{}}
 type diff struct{}
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
-func (d *diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
+func (*diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
 	// No special schema attribute diffing for SQLite.
 	return nil
+}
+
+// SchemaObjectDiff returns a changeset for migrating schema objects from
+// one state to the other.
+func (*diff) SchemaObjectDiff(_, _ *schema.Schema) ([]schema.Change, error) {
+	return nil, nil
 }
 
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
 func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	var changes []schema.Change
-	switch {
-	case sqlx.Has(from.Attrs, &WithoutRowID{}) && !sqlx.Has(to.Attrs, &WithoutRowID{}):
-		changes = append(changes, &schema.DropAttr{
-			A: &WithoutRowID{},
-		})
-	case !sqlx.Has(from.Attrs, &WithoutRowID{}) && sqlx.Has(to.Attrs, &WithoutRowID{}):
-		changes = append(changes, &schema.AddAttr{
-			A: &WithoutRowID{},
-		})
+	for _, a := range []schema.Attr{&WithoutRowID{}, &Strict{}} {
+		switch {
+		case sqlx.Has(from.Attrs, a) && !sqlx.Has(to.Attrs, a):
+			changes = append(changes, &schema.DropAttr{
+				A: a,
+			})
+		case !sqlx.Has(from.Attrs, a) && sqlx.Has(to.Attrs, a):
+			changes = append(changes, &schema.AddAttr{
+				A: a,
+			})
+		}
 	}
 	return append(changes, sqlx.CheckDiff(from, to)...), nil
 }

@@ -160,7 +160,7 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 		for _, e := range n.edges() {
 			var addr [3]string
 			switch root := e.RootName(); {
-			case root == RefLocal && len(e) == 2:
+			case root == RefLocal && len(e) > 1:
 				addr = [3]string{RefLocal, e[1].(hcl.TraverseAttr).Name, ""}
 			case root == RefData && len(e) > 2:
 				addr = [3]string{RefData, e[1].(hcl.TraverseAttr).Name, e[2].(hcl.TraverseAttr).Name}

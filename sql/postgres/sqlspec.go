@@ -427,16 +427,26 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 // convertEnums converts possibly referenced column types (like enums) to
 // an actual schema.Type and sets it on the correct schema.Column.
 func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error {
-	var (
-		used   = make(map[*Enum]struct{})
-		byName = make(map[string]*Enum)
-	)
+	byName := make(map[string]*schema.EnumType)
 	for _, e := range enums {
-		byName[e.Name] = e
+		if byName[e.Name] != nil {
+			return fmt.Errorf("duplicate enum %q", e.Name)
+		}
+		ns, err := specutil.SchemaName(e.Schema)
+		if err != nil {
+			return fmt.Errorf("extract schema name from enum reference: %w", err)
+		}
+		es, ok := r.Schema(ns)
+		if !ok {
+			return fmt.Errorf("schema %q defined on enum %q was not found in realm", ns, e.Name)
+		}
+		e1 := &schema.EnumType{T: e.Name, Schema: es, Values: e.Values}
+		es.Objects = append(es.Objects, e1)
+		byName[e.Name] = e1
 	}
 	for _, t := range tables {
 		for _, c := range t.Columns {
-			var enum *Enum
+			var enum *schema.EnumType
 			switch {
 			case c.Type.IsRef:
 				n, err := enumName(c.Type)
@@ -445,7 +455,7 @@ func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error
 				}
 				e, ok := byName[n]
 				if !ok {
-					return fmt.Errorf("enum %q was not found", n)
+					return fmt.Errorf("enum %q was not found in realm", n)
 				}
 				enum = e
 			default:
@@ -455,18 +465,9 @@ func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error
 				}
 				enum = byName[n]
 			}
-			used[enum] = struct{}{}
-			schemaE, err := specutil.SchemaName(enum.Schema)
-			if err != nil {
-				return fmt.Errorf("extract schema name from enum refrence: %w", err)
-			}
-			es, ok := r.Schema(schemaE)
-			if !ok {
-				return fmt.Errorf("schema %q not found in realm for table %q", schemaE, t.Name)
-			}
 			schemaT, err := specutil.SchemaName(t.Schema)
 			if err != nil {
-				return fmt.Errorf("extract schema name from table refrence: %w", err)
+				return fmt.Errorf("extract schema name from table reference: %w", err)
 			}
 			ts, ok := r.Schema(schemaT)
 			if !ok {
@@ -480,18 +481,12 @@ func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error
 			if !ok {
 				return fmt.Errorf("column %q not found in table %q", c.Name, t.Name)
 			}
-			e := &schema.EnumType{T: enum.Name, Schema: es, Values: enum.Values}
 			switch t := cc.Type.Type.(type) {
 			case *ArrayType:
-				t.Type = e
+				t.Type = enum
 			default:
-				cc.Type.Type = e
+				cc.Type.Type = enum
 			}
-		}
-	}
-	for _, e := range enums {
-		if _, ok := used[e]; !ok {
-			return fmt.Errorf("enum %q declared but not used", e.Name)
 		}
 	}
 	return nil
@@ -514,8 +509,8 @@ func enumRef(n string) *schemahcl.Ref {
 }
 
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
-func schemaSpec(schem *schema.Schema) (*doc, error) {
-	spec, err := specutil.FromSchema(schem, tableSpec, viewSpec)
+func schemaSpec(s *schema.Schema) (*doc, error) {
+	spec, err := specutil.FromSchema(s, tableSpec, viewSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -523,26 +518,15 @@ func schemaSpec(schem *schema.Schema) (*doc, error) {
 		Tables:  spec.Tables,
 		Views:   spec.Views,
 		Schemas: []*sqlspec.Schema{spec.Schema},
+		Enums:   make([]*Enum, 0, len(s.Objects)),
 	}
-	enums := make(map[string]bool)
-	mayAdd := func(c *schema.Column) {
-		if e, ok := hasEnumType(c); ok && !enums[e.T] {
+	for _, o := range s.Objects {
+		if e, ok := o.(*schema.EnumType); ok {
 			d.Enums = append(d.Enums, &Enum{
 				Name:   e.T,
-				Schema: specutil.SchemaRef(spec.Schema.Name),
 				Values: e.Values,
+				Schema: specutil.SchemaRef(spec.Schema.Name),
 			})
-			enums[e.T] = true
-		}
-	}
-	for _, t := range schem.Tables {
-		for _, c := range t.Columns {
-			mayAdd(c)
-		}
-	}
-	for _, t := range schem.Views {
-		for _, c := range t.Columns {
-			mayAdd(c)
 		}
 	}
 	return d, nil
@@ -718,17 +702,17 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec(TypePoint),
 		schemahcl.NewTypeSpec(TypePolygon),
 		schemahcl.NewTypeSpec(TypeDate),
-		schemahcl.NewTypeSpec(TypeTime, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
-		schemahcl.NewTypeSpec(TypeTimeTZ, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
-		schemahcl.NewTypeSpec(TypeTimestampTZ, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
-		schemahcl.NewTypeSpec(TypeTimestamp, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeTime, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeTimeTZ, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeTimestampTZ, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeTimestamp, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr()), formatTime()),
 		schemahcl.AliasTypeSpec("double_precision", TypeDouble),
 		schemahcl.NewTypeSpec(TypeReal),
-		schemahcl.NewTypeSpec(TypeFloat, schemahcl.WithAttributes(precisionTypeAttr())),
+		schemahcl.NewTypeSpec(TypeFloat, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr())),
 		schemahcl.NewTypeSpec(TypeFloat8),
 		schemahcl.NewTypeSpec(TypeFloat4),
-		schemahcl.NewTypeSpec(TypeNumeric, schemahcl.WithAttributes(precisionTypeAttr(), &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.NewTypeSpec(TypeDecimal, schemahcl.WithAttributes(precisionTypeAttr(), &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeNumeric, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
+		schemahcl.NewTypeSpec(TypeDecimal, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
 		schemahcl.NewTypeSpec(TypeSmallSerial),
 		schemahcl.NewTypeSpec(TypeSerial),
 		schemahcl.NewTypeSpec(TypeBigSerial),
@@ -801,7 +785,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 			}),
 		}
 		for _, f := range []string{"interval", "second", "day to second", "hour to second", "minute to second"} {
-			specs = append(specs, schemahcl.NewTypeSpec(specutil.Var(f), append(opts, schemahcl.WithAttributes(precisionTypeAttr()))...))
+			specs = append(specs, schemahcl.NewTypeSpec(specutil.Var(f), append(opts, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr()))...))
 		}
 		for _, f := range []string{"year", "month", "day", "hour", "minute", "year to month", "day to hour", "day to minute", "hour to minute"} {
 			specs = append(specs, schemahcl.NewTypeSpec(specutil.Var(f), opts...))
@@ -809,14 +793,6 @@ var TypeRegistry = schemahcl.NewRegistry(
 		return specs
 	}()...),
 )
-
-func precisionTypeAttr() *schemahcl.TypeAttr {
-	return &schemahcl.TypeAttr{
-		Name:     "precision",
-		Kind:     reflect.Int,
-		Required: false,
-	}
-}
 
 func attr(typ *schemahcl.Type, key string) (*schemahcl.Attr, bool) {
 	for _, a := range typ.Attrs {

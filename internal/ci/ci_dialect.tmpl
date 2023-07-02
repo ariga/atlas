@@ -36,4 +36,7 @@ jobs:
       - name: Run integration tests for {{ .Version }}
         working-directory: internal/integration
         run: go test {{ with $.Tags }}-tags={{ . }} {{ end }}-race -count=2 -v -run="{{ .Regex }}" -version="{{ .Version }}" -timeout 15m ./...
+        {{ with .Env }}env:{{ range . }}
+          {{ . }}{{ end }}
+        {{- end }}
 {{ end }}

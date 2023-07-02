@@ -205,7 +205,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	if attr, ok := spec.Attr("on_update"); ok {
 		x, err := attr.RawExpr()
 		if err != nil {
-			return nil, fmt.Errorf(`unexpected type %T for atrribute "on_update"`, attr.V.Type())
+			return nil, fmt.Errorf(`unexpected type %T for attribute "on_update"`, attr.V.Type())
 		}
 		c.AddAttrs(&OnUpdate{A: x.X})
 	}
@@ -235,10 +235,10 @@ func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c, ok := hasCharset(s.Attrs, nil); ok {
+	if c, ok := sqlx.Charset(s.Attrs, nil); ok {
 		spec.Schema.Extra.Attrs = append(spec.Schema.Extra.Attrs, schemahcl.StringAttr("charset", c))
 	}
-	if c, ok := hasCollate(s.Attrs, nil); ok {
+	if c, ok := sqlx.Collate(s.Attrs, nil); ok {
 		spec.Schema.Extra.Attrs = append(spec.Schema.Extra.Attrs, schemahcl.StringAttr("collate", c))
 	}
 	return spec, nil
@@ -257,10 +257,10 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c, ok := hasCharset(t.Attrs, t.Schema.Attrs); ok {
+	if c, ok := sqlx.Charset(t.Attrs, t.Schema.Attrs); ok {
 		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.StringAttr("charset", c))
 	}
-	if c, ok := hasCollate(t.Attrs, t.Schema.Attrs); ok {
+	if c, ok := sqlx.Collate(t.Attrs, t.Schema.Attrs); ok {
 		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.StringAttr("collate", c))
 	}
 	// Marshal the engine attribute only if it is not InnoDB (default).
@@ -327,10 +327,10 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c, ok := hasCharset(c.Attrs, t.Attrs); ok {
+	if c, ok := sqlx.Charset(c.Attrs, t.Attrs); ok {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.StringAttr("charset", c))
 	}
-	if c, ok := hasCollate(c.Attrs, t.Attrs); ok {
+	if c, ok := sqlx.Collate(c.Attrs, t.Attrs); ok {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.StringAttr("collate", c))
 	}
 	if o := (OnUpdate{}); sqlx.Has(c.Attrs, &o) {
@@ -409,28 +409,6 @@ func convertCharset(spec specutil.Attrer, attrs *[]schema.Attr) error {
 	return nil
 }
 
-// hasCharset reports if the attribute contains the "charset" attribute,
-// and it needs to be defined explicitly on the schema. This is true, in
-// case the element charset is different from its parent charset.
-func hasCharset(attr []schema.Attr, parent []schema.Attr) (string, bool) {
-	var c, p schema.Charset
-	if sqlx.Has(attr, &c) && (parent == nil || sqlx.Has(parent, &p) && c.V != p.V) {
-		return c.V, true
-	}
-	return "", false
-}
-
-// hasCollate reports if the attribute contains the "collation"/"collate" attribute,
-// and it needs to be defined explicitly on the schema. This is true, in
-// case the element collation is different from its parent collation.
-func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
-	var c, p schema.Collation
-	if sqlx.Has(attr, &c) && (parent == nil || sqlx.Has(parent, &p) && c.V != p.V) {
-		return c.V, true
-	}
-	return "", false
-}
-
 // TypeRegistry contains the supported TypeSpecs for the mysql driver.
 var TypeRegistry = schemahcl.NewRegistry(
 	schemahcl.WithFormatter(FormatType),
@@ -480,16 +458,16 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec(TypeSmallInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec(TypeMediumInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec(TypeBigInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
-		schemahcl.NewTypeSpec(TypeDecimal, schemahcl.WithAttributes(unsignedTypeAttr(), &schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.NewTypeSpec(TypeNumeric, schemahcl.WithAttributes(unsignedTypeAttr(), &schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.NewTypeSpec(TypeFloat, schemahcl.WithAttributes(unsignedTypeAttr(), &schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.NewTypeSpec(TypeDouble, schemahcl.WithAttributes(unsignedTypeAttr(), &schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.NewTypeSpec(TypeReal, schemahcl.WithAttributes(unsignedTypeAttr(), &schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.NewTypeSpec(TypeTimestamp, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeDecimal, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
+		schemahcl.NewTypeSpec(TypeNumeric, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
+		schemahcl.NewTypeSpec(TypeFloat, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
+		schemahcl.NewTypeSpec(TypeDouble, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
+		schemahcl.NewTypeSpec(TypeReal, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.PrecisionTypeAttr(), schemahcl.ScaleTypeAttr())),
+		schemahcl.NewTypeSpec(TypeTimestamp, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr())),
 		schemahcl.NewTypeSpec(TypeDate),
-		schemahcl.NewTypeSpec(TypeTime, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
-		schemahcl.NewTypeSpec(TypeDateTime, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
-		schemahcl.NewTypeSpec(TypeYear, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeTime, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr())),
+		schemahcl.NewTypeSpec(TypeDateTime, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr())),
+		schemahcl.NewTypeSpec(TypeYear, schemahcl.WithAttributes(schemahcl.PrecisionTypeAttr())),
 		schemahcl.NewTypeSpec(TypeVarchar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(true))),
 		schemahcl.NewTypeSpec(TypeChar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec(TypeVarBinary, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(true))),

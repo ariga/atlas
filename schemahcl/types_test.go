@@ -145,16 +145,8 @@ func TestRegistryConvert(t *testing.T) {
 		NewTypeSpec(
 			"decimal",
 			WithAttributes(
-				&TypeAttr{
-					Name:     "precision",
-					Kind:     reflect.Int,
-					Required: false,
-				},
-				&TypeAttr{
-					Name:     "scale",
-					Kind:     reflect.Int,
-					Required: false,
-				},
+				PrecisionTypeAttr(),
+				ScaleTypeAttr(),
 			),
 		),
 		NewTypeSpec("enum", WithAttributes(&TypeAttr{

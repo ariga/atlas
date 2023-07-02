@@ -12,6 +12,22 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-func (i *inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOptions) error {
+func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
+}
+
+func (*state) addView(context.Context, *schema.AddView) error {
+	return nil // unimplemented.
+}
+
+func (*state) dropView(context.Context, *schema.DropView) error {
+	return nil // unimplemented.
+}
+
+func (*state) modifyView(context.Context, *schema.ModifyView) error {
+	return nil // unimplemented.
+}
+
+func (*state) renameView(context.Context, *schema.RenameView) {
+	// unimplemented.
 }

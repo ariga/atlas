@@ -81,7 +81,7 @@ func TestSchema_Diff(t *testing.T) {
 		"--from", "file://testdata/sqlite",
 		"--to", openSQLite(t, ""),
 	)
-	require.EqualError(t, err, "--dev-url cannot be empty")
+	require.EqualError(t, err, "--dev-url cannot be empty. See: https://atlasgo.io/atlas-schema/sql#dev-database")
 
 	// Desired state from migration directory.
 	s, err = runCmd(

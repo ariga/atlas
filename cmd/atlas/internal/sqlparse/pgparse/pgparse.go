@@ -134,7 +134,7 @@ func renameColumn(stmt *tree.AlterTable) (*parseutil.Rename, bool) {
 
 func expectModify(changes schema.Changes) (*schema.ModifyTable, error) {
 	if len(changes) != 1 {
-		return nil, fmt.Errorf("unexected number fo changes: %d", len(changes))
+		return nil, fmt.Errorf("unexpected number fo changes: %d", len(changes))
 	}
 	modify, ok := changes[0].(*schema.ModifyTable)
 	if !ok {

@@ -39,7 +39,7 @@ jobs:
       - name: go generate cmd/atlas
         working-directory: cmd/atlas
         run: go generate ./...
-      - name: Verify generated files are checked in properly
+      - name: Verify generated files are checked-in properly
         run: |
           status=$(git status --porcelain | grep -v "go.\(sum\|mod\)" | cat)
           if [ -n "$status" ]; then
@@ -85,23 +85,3 @@ jobs:
       - name: Run integration tests for HCL
         working-directory: internal/integration/hclsqlspec
         run: go test {{ with $.Tags }}-tags={{ . }} {{ end }}-race -count=2 -v ./...
-
-  revisions:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2.3.4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.20'
-      - name: Checkout origin/master
-        run: git checkout origin/master
-      - name: Create revisions from master
-        run: go run {{ with $.Tags }}-tags={{ . }} {{ end }}main.go migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
-        working-directory: cmd/atlas
-      - name: Checkout previous HEAD
-        run: git checkout -
-      - name: Migrate revisions table to HEAD
-        run: go run {{ with $.Tags }}-tags={{ . }} {{ end }}main.go migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
-        working-directory: cmd/atlas

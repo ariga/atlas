@@ -17,7 +17,7 @@ repository.
 One of the Analyzers we added in this release is the
 [Concurrent Index Policy](/lint/analyzers#concurrent-index-policy-postgresql) Analyzer for Postgres. When creating or
 dropping indexes Postgres will lock the table against writes. Depending on the amount of data this lock might be in
-place longer than just a few moments, up to several hours. Therefore, Postgres provides the `CONCURRENLTY` option
+place longer than just a few moments, up to several hours. Therefore, Postgres provides the `CONCURRENTLY` option
 which will cause the index to be built without keeping a lock for the whole time it is built. While consuming more
 resources, this option oftentimes is preferred, and we are happy to present to you, that Atlas Linting engine is now
 capable of detecting statements that create or drop an index without using the `CONCURRENTLY` option.

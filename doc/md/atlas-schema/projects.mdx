@@ -207,7 +207,7 @@ Will run the `migrate validate` command against the Dev Database defined in the
 
 ### Passing Input Values
 
-Project files may pass [input values](input-variables) to variables defined in Atlas HCL schemas. To do this,
+Project files may pass [input values](hcl-input.md) to variables defined in Atlas HCL schemas. To do this,
 define an [`hcl_schema`](#data-source-hcl_schema) data source, pass it the input values, and then designate it as the
 desired schema within the `env` block:
 
@@ -248,7 +248,7 @@ schema "main" {
 
 ### Project Input Variables
 
-Project files may also declare [input variables](../atlas-schema/input.md) that can be supplied to the CLI
+Project files may also declare [input variables](hcl-input.md) that can be supplied to the CLI
 at runtime. For example:
 
 ```hcl title="atlas.hcl"
@@ -287,7 +287,7 @@ Project configuration files support different types of blocks.
 
 ### Input Variables
 
-Project files support defining input variables that can be injected through the CLI, [read more here](input.md).
+Project files support defining input variables that can be injected through the CLI, [read more here](hcl-input.md).
 
 - `type` - The type constraint of a variable.
 - `default` - Define if the variable is optional by setting its default value.
@@ -662,7 +662,10 @@ have the `.sql` file extension, and generating an in-memory migration directory 
 
 - `url` - A [URL](../concepts/url.mdx) to the generated migration directory.
 
-```hcl title="atlas.hcl" {6-14}
+<Tabs>
+<TabItem label="Read only templates" value="read-only">
+
+```hcl title="atlas.hcl" {6-14,19}
 variable "path" {
   type        = string
   description = "A path to the template directory"
@@ -685,6 +688,41 @@ env "dev" {
   }
 }
 ```
+
+</TabItem>
+<TabItem label="Variables shared between HCL and directory" value="diff">
+
+```hcl title="atlas.hcl" {13-18,24}
+variable "schema_name" {
+  type    = string
+  default = "Database schema name injected to both migrations directory and HCL schema"
+}
+
+data "hcl_schema" "app" {
+  path = "path/to/schema.hcl"
+  vars = {
+    schema_name = var.schema_name
+  }
+}
+
+data "template_dir" "migrations" {
+  path = "path/to/directory"
+  vars = {
+    schema_name = var.schema_name
+  }
+}
+
+env "local" {
+  src = data.hcl_schema.app.url
+  dev = "sqlite://file?mode=memory&_fk=1"
+  migration {
+    dir = data.template_dir.migrations.url
+  }
+}
+```
+
+</TabItem>
+</Tabs>
 
 ### Environments
 

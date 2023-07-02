@@ -14,7 +14,7 @@ where each change is explicitly defined as a migration script with a specific ve
 
 Practically speaking, this means developers define the desired state and Atlas maintains the `migrations` directory,
 which contains the explicit SQL scripts to move from one version to the next. The desired state can be defined using an
-[HCL](/atlas-schema/sql-resources) or SQL schema definition, or a database [URL](../concepts/url).
+[HCL](/atlas-schema/hcl) or SQL schema definition, or a database [URL](../concepts/url).
 
 ### Generate migrations from HCL schemas
 
@@ -35,7 +35,7 @@ Let's run `atlas migrate diff` with the necessary parameters to generate a migra
 creating our `users` table:
 
 * `--dir` the URL to the migration directory, by default it is `file://migrations`.
-* `--to` the URL of the desired state, an [HCL](/atlas-schema/sql-resources) or SQL schema definition, or a database [URL](../concepts/url).
+* `--to` the URL of the desired state, an [HCL](/atlas-schema/hcl) or SQL schema definition, or a database [URL](../concepts/url).
 * `--dev-url` a [URL](/concepts/url) to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
 * `--format` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
 
@@ -307,7 +307,7 @@ Let's run `atlas migrate diff` with the necessary parameters to generate a migra
 creating our `users` table:
 
 * `--dir` the URL to the migration directory, by default it is `file://migrations`.
-* `--to` the URL of the desired state, an [HCL](/atlas-schema/sql-resources) or SQL schema definition, or a database [URL](../concepts/url).
+* `--to` the URL of the desired state, an [HCL](/atlas-schema/hcl) or SQL schema definition, or a database [URL](../concepts/url).
 * `--dev-url` a [URL](/concepts/url) to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
 
 <Tabs

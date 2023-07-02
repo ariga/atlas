@@ -36,13 +36,23 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	}
 	r := schema.NewRealm(schemas...).SetCollation(i.collate)
 	r.Attrs = append(r.Attrs, &CType{V: i.ctype})
-	if len(schemas) == 0 || !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
-		return sqlx.ExcludeRealm(r, opts.Exclude)
+	if len(schemas) > 0 {
+		mode := sqlx.ModeInspectRealm(opts)
+		if mode.Is(schema.InspectTables) {
+			if err := i.inspectTables(ctx, r, nil); err != nil {
+				return nil, err
+			}
+			sqlx.LinkSchemaTables(schemas)
+		}
+		if mode.Is(schema.InspectViews) {
+			if err := i.inspectViews(ctx, r, nil); err != nil {
+				return nil, err
+			}
+		}
+		if err := i.inspectEnums(ctx, r); err != nil {
+			return nil, err
+		}
 	}
-	if err := i.inspectTables(ctx, r, nil); err != nil {
-		return nil, err
-	}
-	sqlx.LinkSchemaTables(schemas)
 	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
 
@@ -74,6 +84,9 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		if err := i.inspectViews(ctx, r, opts); err != nil {
 			return nil, err
 		}
+	}
+	if err := i.inspectEnums(ctx, r); err != nil {
+		return nil, err
 	}
 	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
@@ -184,10 +197,7 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema, scope queryScop
 			return fmt.Errorf("postgres: %w", err)
 		}
 	}
-	if err := rows.Close(); err != nil {
-		return err
-	}
-	return i.enumValues(ctx, s)
+	return rows.Close()
 }
 
 // addColumn scans the current row and adds a new column from it to the scope (table or view).
@@ -253,58 +263,73 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) 
 }
 
 // enumValues fills enum columns with their values from the database.
-func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
+func (i *inspect) inspectEnums(ctx context.Context, r *schema.Realm) error {
 	var (
-		args  []any
-		ids   = make(map[int64][]*schema.EnumType)
-		query = "SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN (%s)"
-		newE  = func(e1 *enumType) *schema.EnumType {
-			if _, ok := ids[e1.ID]; !ok {
-				args = append(args, e1.ID)
+		ids  = make(map[int64]*schema.EnumType)
+		args = make([]any, 0, len(r.Schemas))
+		newE = func(e1 *enumType) *schema.EnumType {
+			e2, ok := ids[e1.ID]
+			if ok {
+				return e2
 			}
-			// Convert the intermediate type to
-			// the standard schema.EnumType.
-			e2 := &schema.EnumType{T: e1.T, Schema: s}
-			if e1.Schema != "" && e1.Schema != s.Name {
-				e2.Schema = schema.New(e1.Schema)
-			}
-			ids[e1.ID] = append(ids[e1.ID], e2)
+			e2 = &schema.EnumType{T: e1.T}
+			ids[e1.ID] = e2
 			return e2
 		}
-	)
-	for _, t := range s.Tables {
-		for _, c := range t.Columns {
-			switch t := c.Type.Type.(type) {
-			case *enumType:
-				e := newE(t)
-				c.Type.Type = e
-				c.Type.Raw = e.T
-			case *ArrayType:
-				if e, ok := t.Type.(*enumType); ok {
-					t.Type = newE(e)
+		scanC = func(cs []*schema.Column) {
+			for _, c := range cs {
+				switch t := c.Type.Type.(type) {
+				case *enumType:
+					e := newE(t)
+					c.Type.Type = e
+					c.Type.Raw = e.T
+				case *ArrayType:
+					if e, ok := t.Type.(*enumType); ok {
+						t.Type = newE(e)
+					}
 				}
 			}
 		}
+	)
+	for _, s := range r.Schemas {
+		args = append(args, s.Name)
+		for _, t := range s.Tables {
+			scanC(t.Columns)
+		}
+		for _, v := range s.Views {
+			scanC(v.Columns)
+		}
 	}
-	if len(ids) == 0 {
+	if len(args) == 0 {
 		return nil
 	}
-	rows, err := i.QueryContext(ctx, fmt.Sprintf(query, nArgs(0, len(args))), args...)
+	rows, err := i.QueryContext(ctx, fmt.Sprintf(enumsQuery, nArgs(0, len(args))), args...)
 	if err != nil {
 		return fmt.Errorf("postgres: querying enum values: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var (
-			id int64
-			v  string
+			id       int64
+			ns, n, v string
 		)
-		if err := rows.Scan(&id, &v); err != nil {
+		if err := rows.Scan(&ns, &id, &n, &v); err != nil {
 			return fmt.Errorf("postgres: scanning enum label: %w", err)
 		}
-		for _, enum := range ids[id] {
-			enum.Values = append(enum.Values, v)
+		e, ok := ids[id]
+		if !ok {
+			e = &schema.EnumType{T: n}
+			ids[id] = e
 		}
+		if e.Schema == nil {
+			s, ok := r.Schema(ns)
+			if !ok {
+				return fmt.Errorf("postgres: schema %q for enum %q was not found in inspection", ns, e.T)
+			}
+			e.Schema = s
+			s.Objects = append(s.Objects, e)
+		}
+		e.Values = append(e.Values, v)
 	}
 	return nil
 }
@@ -610,7 +635,9 @@ func nArgs(start, n int) string {
 	return b.String()
 }
 
-var reNextval = regexp.MustCompile(`(?i) *nextval\('(?:")?(?:[\w$]+\.)*([\w$]+_[\w$]+_seq)(?:")?'(?:::regclass)*\) *$`)
+// A regexp to extracts the sequence name from a "nextval" expression.
+// nextval('<optional (quoted) schema>.<sequence name>'::regclass).
+var reNextval = regexp.MustCompile(`(?i) *nextval\('(?:"?[\w$]+"?\.)?"?([\w$]+_[\w$]+_seq)"?'(?:::regclass)*\) *$`)
 
 func defaultExpr(c *schema.Column, s string) {
 	switch m := reNextval.FindStringSubmatch(s); {
@@ -1183,7 +1210,23 @@ WHERE
 ORDER BY
 	t1.table_name, t1.ordinal_position
 `
-
+	// Query to list enum values.
+	enumsQuery = `
+SELECT
+	n.nspname AS schema_name,
+	e.enumtypid AS enum_id,
+	t.typname AS enum_name,
+	e.enumlabel AS enum_value
+FROM
+	pg_enum e
+	JOIN pg_type t ON e.enumtypid = t.oid
+	JOIN pg_namespace n ON t.typnamespace = n.oid
+WHERE
+    n.nspname IN (%s)
+ORDER BY
+    n.nspname, e.enumtypid, e.enumsortorder
+`
+	// Query to list foreign-keys.
 	fksQuery = `
 SELECT 
     fk.constraint_name,

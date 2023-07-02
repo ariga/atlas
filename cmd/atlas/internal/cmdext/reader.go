@@ -53,10 +53,6 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 	if len(config.URLs) != 1 {
 		return nil, fmt.Errorf("the provided SQL state must be either a single schema file or a migration directory, but %d paths were found", len(config.URLs))
 	}
-	// Replaying a migration directory requires a dev connection.
-	if config.Dev == nil {
-		return nil, errors.New("--dev-url cannot be empty")
-	}
 	var (
 		dir  migrate.Dir
 		opts []migrate.ReplayOption
@@ -88,6 +84,10 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 
 // stateReaderSQL returns a migrate.StateReader from an SQL file or a directory of migrations.
 func stateReaderSQL(ctx context.Context, config *StateReaderConfig, dir migrate.Dir, opts ...migrate.ReplayOption) (*StateReadCloser, error) {
+	// Replaying a migration directory requires a dev connection.
+	if config.Dev == nil {
+		return nil, errors.New("--dev-url cannot be empty. See: https://atlasgo.io/atlas-schema/sql#dev-database")
+	}
 	ex, err := migrate.NewExecutor(config.Dev.Driver, dir, migrate.NopRevisionReadWriter{})
 	if err != nil {
 		return nil, err
@@ -159,13 +159,28 @@ func stateReaderHCL(ctx context.Context, config *StateReaderConfig, paths []stri
 			config.Dev.URL.Schema,
 		)
 	}
-	if norm, ok := client.Driver.(schema.Normalizer); ok && config.Dev != nil { // only normalize on a dev database
-		realm, err = norm.NormalizeRealm(ctx, realm)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &StateReadCloser{StateReader: migrate.Realm(realm), HCL: true}, nil
+	var normalized bool
+	return &StateReadCloser{
+		HCL: true,
+		// Defer normalization until the first call to ReadState. This is required because the same
+		// dev-database is used for both migration replaying and schema normalization. As a result,
+		// objects created by the migrations, which are not yet supported by Atlas, such as functions,
+		// won't be cleaned and can be referenced by the HCL schema.
+		StateReader: migrate.StateReaderFunc(func(ctx context.Context) (*schema.Realm, error) {
+			// Normalize once, only on dev database connection.
+			if nr, ok := client.Driver.(schema.Normalizer); ok && !normalized && config.Dev != nil {
+				if config.Dev.URL.Schema != "" {
+					realm.Schemas[0], err = nr.NormalizeSchema(ctx, realm.Schemas[0])
+				} else {
+					realm, err = nr.NormalizeRealm(ctx, realm)
+				}
+				if err != nil {
+					return nil, err
+				}
+			}
+			return realm, nil
+		}),
+	}, nil
 }
 
 // parseHCLPaths parses the HCL files in the given paths. If a path represents a directory,

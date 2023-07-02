@@ -79,6 +79,12 @@ func (s *Schema) AddViews(views ...*View) *Schema {
 	return s
 }
 
+// AddObjects adds the given objects to the schema.
+func (s *Schema) AddObjects(objs ...Object) *Schema {
+	s.Objects = append(s.Objects, objs...)
+	return s
+}
+
 // NewRealm creates a new Realm.
 func NewRealm(schemas ...*Schema) *Realm {
 	r := &Realm{Schemas: schemas}
@@ -247,6 +253,12 @@ func (v *View) SetComment(c string) *View {
 // AddAttrs adds and additional attributes to the view.
 func (v *View) AddAttrs(attrs ...Attr) *View {
 	v.Attrs = append(v.Attrs, attrs...)
+	return v
+}
+
+// AddDeps adds the given objects as dependencies to the view.
+func (v *View) AddDeps(objs ...Object) *View {
+	v.Deps = append(v.Deps, objs...)
 	return v
 }
 
@@ -466,6 +478,13 @@ type TimeOption func(*TimeType)
 func TimePrecision(precision int) TimeOption {
 	return func(b *TimeType) {
 		b.Precision = &precision
+	}
+}
+
+// TimeScale configures the scale of the time type.
+func TimeScale(scale int) TimeOption {
+	return func(b *TimeType) {
+		b.Scale = &scale
 	}
 }
 

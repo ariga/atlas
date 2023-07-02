@@ -37,6 +37,9 @@ jobs:
       - name: Run integration tests for mysql56
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="mysql56" -timeout 15m ./...
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
 
   integration-mysql57:
     runs-on: ubuntu-latest
@@ -62,6 +65,9 @@ jobs:
       - name: Run integration tests for mysql57
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="mysql57" -timeout 15m ./...
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
 
   integration-mysql8:
     runs-on: ubuntu-latest
@@ -87,6 +93,9 @@ jobs:
       - name: Run integration tests for mysql8
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="mysql8" -timeout 15m ./...
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
 
   integration-maria107:
     runs-on: ubuntu-latest
@@ -112,6 +121,9 @@ jobs:
       - name: Run integration tests for maria107
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="maria107" -timeout 15m ./...
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
 
   integration-maria102:
     runs-on: ubuntu-latest
@@ -137,6 +149,9 @@ jobs:
       - name: Run integration tests for maria102
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="maria102" -timeout 15m ./...
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
 
   integration-maria103:
     runs-on: ubuntu-latest
@@ -162,6 +177,9 @@ jobs:
       - name: Run integration tests for maria103
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="maria103" -timeout 15m ./...
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
 
   integration-postgres-ext-postgis:
     runs-on: ubuntu-latest
@@ -186,6 +204,9 @@ jobs:
       - name: Run integration tests for postgres-ext-postgis
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres-ext-postgis" -timeout 15m ./...
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
 
   integration-postgres10:
     runs-on: ubuntu-latest
@@ -210,6 +231,9 @@ jobs:
       - name: Run integration tests for postgres10
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres10" -timeout 15m ./...
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
 
   integration-postgres11:
     runs-on: ubuntu-latest
@@ -234,6 +258,9 @@ jobs:
       - name: Run integration tests for postgres11
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres11" -timeout 15m ./...
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
 
   integration-postgres12:
     runs-on: ubuntu-latest
@@ -258,6 +285,9 @@ jobs:
       - name: Run integration tests for postgres12
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres12" -timeout 15m ./...
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
 
   integration-postgres13:
     runs-on: ubuntu-latest
@@ -282,6 +312,9 @@ jobs:
       - name: Run integration tests for postgres13
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres13" -timeout 15m ./...
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
 
   integration-postgres14:
     runs-on: ubuntu-latest
@@ -306,6 +339,9 @@ jobs:
       - name: Run integration tests for postgres14
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres14" -timeout 15m ./...
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
 
   integration-postgres15:
     runs-on: ubuntu-latest
@@ -330,6 +366,9 @@ jobs:
       - name: Run integration tests for postgres15
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres15" -timeout 15m ./...
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
 
   integration-sqlite:
     runs-on: ubuntu-latest
@@ -342,6 +381,7 @@ jobs:
       - name: Run integration tests for sqlite
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="SQLite.*" -version="sqlite" -timeout 15m ./...
+        
 
   integration-tidb5:
     runs-on: ubuntu-latest
@@ -360,6 +400,7 @@ jobs:
       - name: Run integration tests for tidb5
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="TiDB" -version="tidb5" -timeout 15m ./...
+        
 
   integration-tidb6:
     runs-on: ubuntu-latest
@@ -378,6 +419,7 @@ jobs:
       - name: Run integration tests for tidb6
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="TiDB" -version="tidb6" -timeout 15m ./...
+        
 
   integration-cockroach:
     runs-on: ubuntu-latest
@@ -396,4 +438,5 @@ jobs:
       - name: Run integration tests for cockroach
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Cockroach" -version="cockroach" -timeout 15m ./...
+        
 
