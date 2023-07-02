@@ -264,6 +264,12 @@ enum "account_type" {
 
 func TestMarshalViews(t *testing.T) {
 	s := schema.New("public").
+		AddTables(
+			schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("id", "int"),
+				),
+		).
 		AddViews(
 			schema.NewView("v1", "SELECT 1"),
 			schema.NewView("v2", "SELECT * FROM t2\n\tWHERE id IS NOT NULL"),
@@ -273,9 +279,23 @@ func TestMarshalViews(t *testing.T) {
 				).
 				SetComment("view comment"),
 		)
+	s.AddViews(
+		schema.NewView("v4", "SELECT * FROM v2 JOIN t1 USING (id)").
+			AddDeps(
+				s.Views[1],
+				s.Tables[0],
+			),
+	)
 	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
-	f := `view "v1" {
+	f := `table "t1" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = int
+  }
+}
+view "v1" {
   schema = schema.public
   as     = "SELECT 1"
 }
@@ -298,6 +318,11 @@ view "v3" {
   	ORDER BY id
   SQL
   comment = "view comment"
+}
+view "v4" {
+  schema     = schema.public
+  as         = "SELECT * FROM v2 JOIN t1 USING (id)"
+  depends_on = [view.v2, table.t1]
 }
 schema "public" {
 }

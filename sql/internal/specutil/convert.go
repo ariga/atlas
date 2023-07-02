@@ -396,6 +396,22 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc) (*sqlspec.View, error) {
 			schemahcl.StringAttr("as", as),
 		},
 	}
+	deps := make([]*schemahcl.Ref, 0, len(v.Deps))
+	for _, d := range v.Deps {
+		switch d := d.(type) {
+		case *schema.Table:
+			deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
+				{T: "table", V: []string{d.Name}},
+			}))
+		case *schema.View:
+			deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
+				{T: "view", V: []string{d.Name}},
+			}))
+		}
+	}
+	if len(deps) > 0 {
+		embed.Attrs = append(embed.Attrs, schemahcl.RefsAttr("depends_on", deps...))
+	}
 	convertCommentFromSchema(v.Attrs, &embed.Attrs)
 	spec.Extra.Children = append(spec.Extra.Children, embed)
 	return spec, nil
