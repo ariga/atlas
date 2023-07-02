@@ -639,3 +639,62 @@ locals {
 `)
 	require.Error(t, New(opts...).EvalBytes(b, &doc, nil), `cyclic reference to "data.text.a"`)
 }
+
+func TestSkippedDataSrc(t *testing.T) {
+	var (
+		opts = []Option{
+			WithDataSource("dynamic", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+				attrs, diags := b.Body.JustAttributes()
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				s, diags := attrs["skip"].Expr.Value(ctx)
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				if s.True() {
+					return cty.NilVal, fmt.Errorf("data source should be skipped, but was called with %q", b.Labels)
+				}
+				v, diags := attrs["v"].Expr.Value(ctx)
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				return cty.ObjectVal(map[string]cty.Value{
+					"v": v,
+				}), nil
+			}),
+		}
+		v struct {
+			V2 string `spec:"v2"`
+			V3 string `spec:"v3"`
+		}
+		b = []byte(`
+data "dynamic" "skipped1" {
+  v = "value is irrelevant"
+  // This attribute has no meaning, besides indicating
+  // to the test that the data source should be skipped.
+  skip = true
+}
+data "dynamic" "skipped2" {
+  v = data.dynamic.skipped1.v
+  skip = true
+}
+data "dynamic" "evaluated1" {
+  v = "v1"
+  skip = false
+}
+data "dynamic" "evaluated2" {
+  v = "v2"
+  skip = false
+}
+data "dynamic" "evaluated3" {
+  v = data.dynamic.evaluated1.v
+  skip = false
+}
+
+v2 = data.dynamic.evaluated2.v
+v3 = data.dynamic.evaluated3.v
+`)
+	)
+	require.NoError(t, New(opts...).EvalBytes(b, &v, nil))
+}
