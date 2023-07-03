@@ -19,7 +19,7 @@ your database schemas natively from your Kubernetes cluster.  By exposing custom
 resource definitions (CRD) the operator extends the Kubernetes API to support
 database schema management.
 
-In a [previous blog post](/2023/05/08/atlas-v011-kubernetes-operator) we demonstrated
+In a [previous blog post](/blog/2023/05/08/atlas-v011-kubernetes-operator) we demonstrated
 how to use the Atlas Operator for the [declarative (state-based) workflow](/integrations/kubernetes/operator#declarative-schema-migrations)
 in which you define the desired state of your database schema in a Kubernetes manifest
 and the operator takes care of the rest.
