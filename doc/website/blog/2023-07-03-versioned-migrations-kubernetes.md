@@ -24,7 +24,7 @@ how to use the Atlas Operator for the [declarative (state-based) workflow](/inte
 in which you define the desired state of your database schema in a Kubernetes manifest
 and the operator takes care of the rest.
 
-State vs versioned based migrations is a common and unresolved debate in the database schema
+State vs. versioned based migrations is a common and unresolved debate in the database schema
 management world, and we built Atlas to [support both](/concepts/declarative-vs-versioned) from
 the get-go.  
 
@@ -41,7 +41,7 @@ with this new workflow.
 
 The Atlas Kubernetes Operator supports [versioned migrations](https://atlasgo.io/concepts/declarative-vs-versioned#versioned-migrations).
 In versioned migrations, the database schema is defined by a series of SQL scripts ("migrations") that are applied
-in lexicographical order. The user can specify the version and migration directory to run, which can be located
+in order. The user can specify the version and migration directory to run, which can be located
 on the [Atlas Cloud](https://atlasgo.io/cloud/getting-started) or stored as a `ConfigMap` in your Kubernetes
 cluster.
 
