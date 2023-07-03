@@ -27,8 +27,10 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		if err := hclState.Eval(p, &d, input); err != nil {
 			return err
 		}
-		err := specutil.Scan(v, d.Schemas, d.Tables, convertTable)
-		if err != nil {
+		if err := specutil.Scan(v,
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables},
+			&specutil.ScanFuncs{Table: convertTable},
+		); err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
 	case *schema.Schema:
@@ -39,8 +41,11 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		if len(d.Schemas) != 1 {
 			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
-		var r schema.Realm
-		if err := specutil.Scan(&r, d.Schemas, d.Tables, convertTable); err != nil {
+		r := &schema.Realm{}
+		if err := specutil.Scan(r,
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables},
+			&specutil.ScanFuncs{Table: convertTable},
+		); err != nil {
 			return err
 		}
 		r.Schemas[0].Realm = nil

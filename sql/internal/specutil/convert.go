@@ -19,79 +19,136 @@ import (
 
 // List of convert function types.
 type (
-	ConvertTableFunc      func(*sqlspec.Table, *schema.Schema) (*schema.Table, error)
-	ConvertColumnFunc     func(*sqlspec.Column, *schema.Table) (*schema.Column, error)
-	ConvertTypeFunc       func(*sqlspec.Column) (schema.Type, error)
-	ConvertPrimaryKeyFunc func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
-	ConvertIndexFunc      func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
-	ConvertCheckFunc      func(*sqlspec.Check) (*schema.Check, error)
-	ColumnTypeSpecFunc    func(schema.Type) (*sqlspec.Column, error)
-	TableSpecFunc         func(*schema.Table) (*sqlspec.Table, error)
-	TableColumnSpecFunc   func(*schema.Column, *schema.Table) (*sqlspec.Column, error)
-	ViewSpecFunc          func(*schema.View) (*sqlspec.View, error)
-	ViewColumnSpecFunc    func(*schema.Column, *schema.View) (*sqlspec.Column, error)
-	PrimaryKeySpecFunc    func(*schema.Index) (*sqlspec.PrimaryKey, error)
-	IndexSpecFunc         func(*schema.Index) (*sqlspec.Index, error)
-	ForeignKeySpecFunc    func(*schema.ForeignKey) (*sqlspec.ForeignKey, error)
-	CheckSpecFunc         func(*schema.Check) *sqlspec.Check
+	ConvertTableFunc       func(*sqlspec.Table, *schema.Schema) (*schema.Table, error)
+	ConvertTableColumnFunc func(*sqlspec.Column, *schema.Table) (*schema.Column, error)
+	ConvertViewFunc        func(*sqlspec.View, *schema.Schema) (*schema.View, error)
+	ConvertViewColumnFunc  func(*sqlspec.Column, *schema.View) (*schema.Column, error)
+	ConvertTypeFunc        func(*sqlspec.Column) (schema.Type, error)
+	ConvertPrimaryKeyFunc  func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
+	ConvertIndexFunc       func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
+	ConvertCheckFunc       func(*sqlspec.Check) (*schema.Check, error)
+	ColumnTypeSpecFunc     func(schema.Type) (*sqlspec.Column, error)
+	TableSpecFunc          func(*schema.Table) (*sqlspec.Table, error)
+	TableColumnSpecFunc    func(*schema.Column, *schema.Table) (*sqlspec.Column, error)
+	ViewSpecFunc           func(*schema.View) (*sqlspec.View, error)
+	ViewColumnSpecFunc     func(*schema.Column, *schema.View) (*sqlspec.Column, error)
+	PrimaryKeySpecFunc     func(*schema.Index) (*sqlspec.PrimaryKey, error)
+	IndexSpecFunc          func(*schema.Index) (*sqlspec.Index, error)
+	ForeignKeySpecFunc     func(*schema.ForeignKey) (*sqlspec.ForeignKey, error)
+	CheckSpecFunc          func(*schema.Check) *sqlspec.Check
+)
+
+type (
+	// ScanDoc represents a scanned HCL document.
+	ScanDoc struct {
+		Schemas []*sqlspec.Schema
+		Tables  []*sqlspec.Table
+		Views   []*sqlspec.View
+	}
+	// ScanFuncs represents a set of scan functions
+	// used to convert the HCL document to the Realm.
+	ScanFuncs struct {
+		Table ConvertTableFunc
+		View  ConvertViewFunc
+	}
 )
 
 // Scan populates the Realm from the schemas and table specs.
-func Scan(r *schema.Realm, schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
+func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 	byName := make(map[string]*schema.Schema)
-	for _, spec := range schemas {
-		s := &schema.Schema{Name: spec.Name, Realm: r}
-		r.AddSchemas(s)
-		byName[spec.Name] = s
+	for _, s := range doc.Schemas {
+		s1 := schema.New(s.Name)
+		r.AddSchemas(s1)
+		byName[s.Name] = s1
 	}
-	for _, spec := range tables {
-		name, err := SchemaName(spec.Schema)
+	tableFKs := make(map[*schema.Table][]*sqlspec.ForeignKey)
+	for _, st := range doc.Tables {
+		name, err := SchemaName(st.Schema)
 		if err != nil {
-			return fmt.Errorf("specutil: cannot extract schema name for table %q: %w", spec.Name, err)
+			return fmt.Errorf("specutil: cannot extract schema name for table %q: %w", st.Name, err)
 		}
 		s, ok := byName[name]
 		if !ok {
-			return fmt.Errorf("specutil: schema %q not found for table %q", name, spec.Name)
+			return fmt.Errorf("specutil: schema %q not found for table %q", name, st.Name)
 		}
-		t, err := convertTable(spec, s)
+		t, err := funcs.Table(st, s)
 		if err != nil {
-			return fmt.Errorf("specutil: cannot convert table %q: %w", spec.Name, err)
+			return fmt.Errorf("specutil: cannot convert table %q: %w", st.Name, err)
 		}
+		tableFKs[t] = st.ForeignKeys
 		s.AddTables(t)
 	}
 	// Link the foreign keys.
-	for _, s := range r.Schemas {
-		for _, t := range s.Tables {
-			spec, err := findTableSpec(tables, s.Name, t.Name)
+	for t, fks := range tableFKs {
+		if err := linkForeignKeys(t, fks); err != nil {
+			return err
+		}
+	}
+	viewDeps := make(map[*schema.View][]*schemahcl.Ref, len(doc.Views))
+	for _, sv := range doc.Views {
+		name, err := SchemaName(sv.Schema)
+		if err != nil {
+			return fmt.Errorf("specutil: cannot extract schema name for view %q: %w", sv.Name, err)
+		}
+		s, ok := byName[name]
+		if !ok {
+			return fmt.Errorf("specutil: schema %q not found for view %q", name, sv.Name)
+		}
+		v, err := funcs.View(sv, s)
+		if err != nil {
+			return fmt.Errorf("specutil: cannot convert view %q: %w", sv.Name, err)
+		}
+		s.AddViews(v)
+		if deps, ok := sv.Attr("depends_on"); ok {
+			refs, err := deps.Refs()
 			if err != nil {
-				return err
+				return fmt.Errorf("specutil: expect list of references for attribute view.%s.depends_on: %w", sv.Name, err)
 			}
-			if err := linkForeignKeys(t, s, spec); err != nil {
-				return err
+			viewDeps[v] = refs
+		}
+	}
+	// Link views' dependencies.
+	for v, refs := range viewDeps {
+		for i, r := range refs {
+			switch p, err := r.Path(); {
+			case err != nil:
+				return fmt.Errorf("specutil: extract reference for view.%s: %w", v.Name, err)
+			case len(p) == 0:
+				return fmt.Errorf("specutil: empty reference for view.%s", v.Name)
+			case p[0].T == "view":
+				q, n, err := viewName(r)
+				if err != nil {
+					return fmt.Errorf("specutil: extract view name from view.%s.depends_on[%d]: %w", v.Name, i, err)
+				}
+				v1, err := findT(v.Schema, q, n, func(s *schema.Schema, name string) (*schema.View, bool) {
+					return s.View(name)
+				})
+				if err != nil {
+					return fmt.Errorf("specutil: find view refrence for view.%s.depends_on[%d]: %w", v.Name, i, err)
+				}
+				v.AddDeps(v1)
+			case p[0].T == "table":
+				q, n, err := tableName(r)
+				if err != nil {
+					return fmt.Errorf("specutil: extract view name from view.%s.depends_on[%d]: %w", v.Name, i, err)
+				}
+				t1, err := findT(v.Schema, q, n, func(s *schema.Schema, name string) (*schema.Table, bool) {
+					return s.Table(name)
+				})
+				if err != nil {
+					return fmt.Errorf("specutil: find table refrence for view.%s.depends_on[%d]: %w", v.Name, i, err)
+				}
+				v.AddDeps(t1)
 			}
 		}
 	}
 	return nil
 }
 
-// findTableSpec searches tableSpecs for a spec of a table named tableName in a schema named schemaName.
-func findTableSpec(tableSpecs []*sqlspec.Table, schemaName, tableName string) (*sqlspec.Table, error) {
-	for _, tbl := range tableSpecs {
-		n, err := SchemaName(tbl.Schema)
-		if err != nil {
-			return nil, err
-		}
-		if n == schemaName && tbl.Name == tableName {
-			return tbl, nil
-		}
-	}
-	return nil, fmt.Errorf("table %s.%s not found", schemaName, tableName)
-}
-
 // Table converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the Schema function.
-func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColumnFunc,
+func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertTableColumnFunc,
 	convertPK ConvertPrimaryKeyFunc, convertIndex ConvertIndexFunc, convertCheck ConvertCheckFunc) (*schema.Table, error) {
 	tbl := &schema.Table{
 		Name:   spec.Name,
@@ -129,6 +186,30 @@ func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColu
 		return nil, err
 	}
 	return tbl, nil
+}
+
+// View converts a sqlspec.View to a schema.View.
+func View(spec *sqlspec.View, parent *schema.Schema, convertColumn ConvertViewColumnFunc) (*schema.View, error) {
+	as, ok := spec.Extra.Attr("as")
+	if !ok {
+		return nil, fmt.Errorf("specutil: missing 'as' definition for view %q", spec.Name)
+	}
+	def, err := as.String()
+	if err != nil {
+		return nil, fmt.Errorf("specutil: expect string definition for attribute view.%s.as: %w", spec.Name, err)
+	}
+	v := schema.NewView(spec.Name, def).SetSchema(parent)
+	for _, c := range spec.Columns {
+		c, err := convertColumn(c, v)
+		if err != nil {
+			return nil, err
+		}
+		v.AddColumns(c)
+	}
+	if err := convertCommentFromSpec(spec, &v.Attrs); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 // Column converts a sqlspec.Column into a schema.Column.
@@ -255,8 +336,8 @@ func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, 
 // linkForeignKeys creates the foreign keys defined in the Table's spec by creating references
 // to column in the provided Schema. It is assumed that all tables referenced FK definitions in the spec
 // are reachable from the provided schema or its connected realm.
-func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table) error {
-	for _, spec := range table.ForeignKeys {
+func linkForeignKeys(tbl *schema.Table, fks []*sqlspec.ForeignKey) error {
+	for _, spec := range fks {
 		fk := &schema.ForeignKey{Symbol: spec.Symbol, Table: tbl}
 		if spec.OnUpdate != nil {
 			fk.OnUpdate = schema.ReferenceOption(FromVar(spec.OnUpdate.V))
@@ -275,7 +356,7 @@ func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table
 			fk.Columns = append(fk.Columns, c)
 		}
 		for i, ref := range spec.RefColumns {
-			t, c, err := externalRef(ref, sch)
+			t, c, err := externalRef(ref, tbl.Schema)
 			if isLocalRef(ref) {
 				t = fk.Table
 				c, err = ColumnByRef(fk.Table, ref)
@@ -646,27 +727,29 @@ func ColumnByRef(t *schema.Table, ref *schemahcl.Ref) (*schema.Column, error) {
 }
 
 func externalRef(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, *schema.Column, error) {
-	tbl, err := findTable(ref, sch)
-	if err != nil {
-		return nil, nil, err
-	}
-	c, err := ColumnByRef(tbl, ref)
-	if err != nil {
-		return nil, nil, err
-	}
-	return tbl, c, nil
-}
-
-// findTable finds the table referenced by ref in the provided schema. If the table
-// is not in the provided schema.Schema other schemas in the connected schema.Realm
-// are searched as well.
-func findTable(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, error) {
 	qualifier, name, err := tableName(ref)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	t, err := findT(sch, qualifier, name, func(s *schema.Schema, name string) (*schema.Table, bool) {
+		return s.Table(name)
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	c, err := ColumnByRef(t, ref)
+	if err != nil {
+		return nil, nil, err
+	}
+	return t, c, nil
+}
+
+// findT finds the table/view referenced by ref in the provided schema. If the table/view
+// is not in the provided schema.Schema other schemas in the connected schema.Realm are
+// searched as well.
+func findT[T schema.View | schema.Table](sch *schema.Schema, qualifier, name string, findT func(*schema.Schema, string) (*T, bool)) (*T, error) {
 	var (
-		matches []*schema.Table  // Found references.
+		matches []*T             // Found references.
 		schemas []*schema.Schema // Schemas to search.
 	)
 	switch {
@@ -681,7 +764,7 @@ func findTable(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, error) {
 		}
 	}
 	for _, s := range schemas {
-		t, ok := s.Table(name)
+		t, ok := findT(s, name)
 		if ok {
 			matches = append(matches, t)
 		}
@@ -690,14 +773,30 @@ func findTable(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, error) {
 	case 1:
 		return matches[0], nil
 	case 0:
-		return nil, fmt.Errorf("sqlspec: table %q not found", name)
+		return nil, fmt.Errorf("specutil: refrenced table/view %q not found", name)
 	default:
-		return nil, fmt.Errorf("specutil: multiple tables found for %q", name)
+		return nil, fmt.Errorf("specutil: multiple refrences tables/views found for %q", name)
 	}
 }
 
 func tableName(ref *schemahcl.Ref) (qualifier, name string, err error) {
 	vs, err := ref.ByType("table")
+	if err != nil {
+		return "", "", err
+	}
+	switch len(vs) {
+	case 1:
+		name = vs[0]
+	case 2:
+		qualifier, name = vs[0], vs[1]
+	default:
+		return "", "", fmt.Errorf("sqlspec: unexpected number of references in %q", vs)
+	}
+	return
+}
+
+func viewName(ref *schemahcl.Ref) (qualifier, name string, err error) {
+	vs, err := ref.ByType("view")
 	if err != nil {
 		return "", "", err
 	}

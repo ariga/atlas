@@ -49,7 +49,10 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		if err := hclState.Eval(p, &d, input); err != nil {
 			return err
 		}
-		if err := specutil.Scan(v, d.Schemas, d.Tables, convertTable); err != nil {
+		if err := specutil.Scan(v,
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views},
+			&specutil.ScanFuncs{Table: convertTable, View: convertView},
+		); err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
 		if len(d.Enums) > 0 {
@@ -66,7 +69,10 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
 		r := &schema.Realm{}
-		if err := specutil.Scan(r, d.Schemas, d.Tables, convertTable); err != nil {
+		if err := specutil.Scan(r,
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views},
+			&specutil.ScanFuncs{Table: convertTable, View: convertView},
+		); err != nil {
 			return err
 		}
 		if err := convertEnums(d.Tables, d.Enums, r); err != nil {
@@ -120,6 +126,7 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 
 var (
 	hclState = schemahcl.New(
+		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
 		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, "GiST", IndexTypeSPGiST, "SPGiST"),
 		schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
@@ -158,6 +165,17 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 		return nil, err
 	}
 	return t, nil
+}
+
+// convertView converts a sqlspec.View to a schema.View.
+func convertView(spec *sqlspec.View, parent *schema.Schema) (*schema.View, error) {
+	v, err := specutil.View(spec, parent, func(c *sqlspec.Column, _ *schema.View) (*schema.Column, error) {
+		return specutil.Column(c, convertColumnType)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 // convertPartition converts and appends the partition block into the table attributes if exists.
