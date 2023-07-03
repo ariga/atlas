@@ -1,7 +1,7 @@
 ---
 title: "Announcing v0.11.0: Manage database schemas with Kubernetes and Atlas"
 authors: rotemtam
-tags: [schema, migration, terraform]
+tags: [schema, migration, kube, kubernetes, operator, diff-policy, declarative, provider, release]
 ---
 :::info TL;DR
 
