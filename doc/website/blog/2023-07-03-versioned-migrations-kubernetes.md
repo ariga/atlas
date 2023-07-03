@@ -1,5 +1,5 @@
 ---
-title: "Versioned migrations support for the Atlas Kubernetes Operator"
+title: "Versioned migrations on Kubernetes with the Atlas Operator"
 authors: rotemtam
 tags: [migrations, kubernetes, operators, versioned-migrations]
 ---
