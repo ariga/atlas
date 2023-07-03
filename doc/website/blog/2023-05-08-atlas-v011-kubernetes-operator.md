@@ -1,7 +1,7 @@
 ---
 title: "Announcing v0.11.0: Manage database schemas with Kubernetes and Atlas"
 authors: rotemtam
-tags: [schema, migration, terraform]
+tags: [schema, migration, kubernetes, operator]
 ---
 :::info TL;DR
 
@@ -107,7 +107,7 @@ operator, follow these steps to get started:
   to the database:
 
   ```bash
-  kubectl apply -f https://raw.githubusercontent.com/ariga/atlas-operator/master/config/integration/mysql.yaml
+  kubectl apply -f https://raw.githubusercontent.com/ariga/atlas-operator/65dce84761354d1766041c7f286b35cc24ffdddb/config/integration/databases/mysql.yaml
   ```
 
   Result:
