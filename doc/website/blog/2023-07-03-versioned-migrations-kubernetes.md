@@ -32,8 +32,7 @@ Today, we are happy to announce [v0.2.0](https://github.com/ariga/atlas-operator
 of the Atlas Kubernetes Operator which adds support support for the 
 [versioned migration workflow](/integrations/kubernetes/operator#versioned-schema-migrations).
 
-In this blog post we will demonstrate how to use the Atlas Operator for the 
-with this new workflow.
+In this blog post we will demonstrate how to use the Atlas Operator this new workflow.
 
 ## How it works
 
