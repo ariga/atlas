@@ -24,6 +24,8 @@ func RegistrySanityTest(t *testing.T, registry *schemahcl.TypeRegistry, skip []s
 			continue
 		}
 		t.Run(ts.Name, func(t *testing.T) {
+			_, err := registry.Type(nil, nil)
+			require.EqualError(t, err, "specutil: nil type")
 			spec := dummyType(t, ts)
 			styp, err := registry.Type(spec, nil)
 			require.NoError(t, err)
