@@ -59,6 +59,7 @@ type schemaApplyFlags struct {
 	dryRun      bool     // Only show SQL on screen instead of applying it.
 	autoApprove bool     // Don't prompt for approval before applying SQL.
 	logFormat   string   // Log format.
+	txMode      string   // (none, file)
 }
 
 // schemaApplyCmd represents the 'atlas schema apply' subcommand.
@@ -119,6 +120,7 @@ migration.`,
 	addFlagAutoApprove(cmd.Flags(), &flags.autoApprove)
 	addFlagLog(cmd.Flags(), &flags.logFormat)
 	addFlagFormat(cmd.Flags(), &flags.logFormat)
+	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file]")
 	// Hidden support for the deprecated -f flag.
 	cmd.Flags().StringSliceVarP(&flags.paths, flagFile, "f", nil, "[paths...] file or directory containing HCL or SQL files")
 	cobra.CheckErr(cmd.Flags().MarkHidden(flagFile))
@@ -135,6 +137,8 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		return errors.New(`one of flag(s) "file" or "to" is required`)
 	case flags.logFormat != "" && !flags.dryRun && !flags.autoApprove:
 		return errors.New(`--log and --format can only be used with --dry-run or --auto-approve`)
+	case flags.txMode != txModeNone && flags.txMode != txModeFile:
+		return fmt.Errorf("unknown tx-mode %q", flags.txMode)
 	}
 	// If the old -f flag is given convert them to the URL format. If both are given,
 	// cobra would throw an error since they are marked as mutually exclusive.
@@ -174,6 +178,22 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 	if !ok {
 		return errors.New("--url must be a database connection")
 	}
+	apply := client.ApplyChanges
+	if !flags.dryRun && flags.txMode == txModeFile {
+		apply = func(ctx context.Context, cs []schema.Change, _ ...migrate.PlanOption) error {
+			tx, err := client.Tx(ctx, nil)
+			if err != nil {
+				return err
+			}
+			if err := tx.ApplyChanges(ctx, cs); err != nil {
+				// Rollback on error but the underlying error
+				// is still returned to make type-assertion pass.
+				_ = tx.Rollback()
+				return err
+			}
+			return tx.Commit()
+		}
+	}
 	to, err := stateReader(ctx, &stateReaderConfig{
 		urls:    flags.toURLs,
 		dev:     dev,
@@ -206,27 +226,21 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		if plan, err = client.PlanChanges(ctx, "", changes); err != nil {
 			return err
 		}
-		if err = client.ApplyChanges(ctx, changes); err == nil {
+		if err = apply(ctx, changes); err == nil {
 			applied = len(plan.Changes)
 		} else if i, ok := err.(interface{ Applied() int }); ok && i.Applied() < len(plan.Changes) {
 			applied, cause = i.Applied(), &cmdlog.StmtError{Stmt: plan.Changes[i.Applied()].Cmd, Text: err.Error()}
 		} else {
 			cause = &cmdlog.StmtError{Text: err.Error()}
 		}
-		apply := cmdlog.NewSchemaApply(cmdlog.NewEnv(client, nil), plan.Changes[:applied], plan.Changes[applied:], cause)
-		if err1 := format.Execute(out, apply); err1 != nil {
-			if err != nil {
-				err1 = fmt.Errorf("%w: %v", err, err1)
-			}
-			err = err1
-		}
-		return err
+		err1 := format.Execute(out, cmdlog.NewSchemaApply(cmdlog.NewEnv(client, nil), plan.Changes[:applied], plan.Changes[applied:], cause))
+		return errors.Join(err, err1)
 	default:
 		if err := summary(cmd, client, changes, format); err != nil {
 			return err
 		}
 		if !flags.dryRun && (flags.autoApprove || promptUser()) {
-			return client.ApplyChanges(ctx, changes)
+			return apply(ctx, changes)
 		}
 		return nil
 	}
