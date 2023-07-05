@@ -432,6 +432,15 @@ func (c *stateReaderConfig) Exported() (*cmdext.StateReaderConfig, error) {
 	}, nil
 }
 
+// readerUseDev reports if any of the URL uses the dev-database.
+func readerUseDev(urls ...string) (bool, error) {
+	s, err := selectScheme(urls)
+	if err != nil {
+		return false, err
+	}
+	return s == "file" || cmdext.States.HasLoader(s), nil
+}
+
 // stateReader returns a migrate.StateReader that reads the state from the given urls.
 func stateReader(ctx context.Context, config *stateReaderConfig) (*cmdext.StateReadCloser, error) {
 	excfg, err := config.Exported()

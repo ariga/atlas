@@ -468,10 +468,12 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 		ctx = cmd.Context()
 		dev *sqlclient.Client
 	)
-	if flags.devURL != "" {
-		var err error
-		dev, err = sqlclient.Open(ctx, flags.devURL)
-		if err != nil {
+	useDev, err := readerUseDev(flags.url)
+	if err != nil {
+		return err
+	}
+	if flags.devURL != "" && useDev {
+		if dev, err = sqlclient.Open(ctx, flags.devURL); err != nil {
 			return err
 		}
 		defer dev.Close()
