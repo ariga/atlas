@@ -594,6 +594,12 @@ var (
 
 type registry map[string]StateLoader
 
+// HasLoader returns true if the given scheme is registered.
+func (r registry) HasLoader(scheme string) bool {
+	_, ok := r[scheme]
+	return ok
+}
+
 // Loader returns the state loader for the given scheme.
 func (r registry) Loader(scheme string) (StateLoader, bool) {
 	l, ok := r[scheme]

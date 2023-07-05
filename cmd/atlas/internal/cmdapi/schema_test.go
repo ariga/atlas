@@ -802,6 +802,57 @@ func TestSchema_InspectLog(t *testing.T) {
 	require.Equal(t, `{"schemas":[{"name":"main","tables":[{"name":"t1","columns":[{"name":"id","type":"INTEGER","null":true}],"primary_key":{"parts":[{"column":"id"}]}},{"name":"t2","columns":[{"name":"name","type":"TEXT","null":true}]}]}]}`, s)
 }
 
+func TestSchema_InspectFile(t *testing.T) {
+	var (
+		p   = t.TempDir()
+		cp  = filepath.Join(p, "atlas.hcl")
+		sp  = filepath.Join(p, "schema.hcl")
+		cfg = fmt.Sprintf(`
+env "db" {
+  url = "%s"
+  dev = "docker://should-not-be-opened"
+}
+
+env "file" {
+  dev = "%s"
+}
+`, openSQLite(t, "create table t1(c int)"), openSQLite(t, ""))
+	)
+
+	require.NoError(t, os.WriteFile(cp, []byte(cfg), 0600))
+	require.NoError(t, os.WriteFile(sp, []byte(`
+schema "main" {}
+table "users" {
+  schema = schema.main
+  column "id" {
+    type = int
+  }
+}
+`), 0600))
+	cmd := schemaCmd()
+	cmd.AddCommand(schemaInspectCmd())
+	s, err := runCmd(
+		cmd, "inspect",
+		"-c", "file://"+cp,
+		"--env", "db",
+		"--format", "{{ sql . }}",
+	)
+	require.NoError(t, err)
+	require.Equal(t, "-- Create \"t1\" table\nCREATE TABLE `t1` (`c` int NULL);\n", s)
+
+	cmd = schemaCmd()
+	cmd.AddCommand(schemaInspectCmd())
+	s, err = runCmd(
+		cmd, "inspect",
+		"-c", "file://"+cp,
+		"--env", "file",
+		"--url", "file://"+sp,
+		"--format", "{{ sql . }}",
+	)
+	require.NoError(t, err)
+	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL);\n", s)
+}
+
 func TestFmt(t *testing.T) {
 	for _, tt := range []struct {
 		name          string
