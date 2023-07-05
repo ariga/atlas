@@ -3,8 +3,8 @@
 [![Twitter](https://img.shields.io/twitter/url.svg?label=Follow%20%40ariga%2Fatlas&style=social&url=https%3A%2F%2Ftwitter.com%2Fariga_io)](https://twitter.com/ariga_io)
 [![Discord](https://img.shields.io/discord/930720389120794674?label=discord&logo=discord&style=flat-square&logoColor=white)](https://discord.com/invite/zZ6sWVg6NT)
 
-<img width="30%" align="right" style="display: block; margin:40px auto;"
-src="https://atlasgo.io/uploads/images/gopher.png"/>
+<img width="25%" align="right" style="display: block; margin:40px auto;"
+src="https://atlasgo.io/uploads/github-mascot-light.png"/>
 
 Atlas is a tool for managing and migrating database schemas using modern DevOps principles. It offers two workflows:
 
