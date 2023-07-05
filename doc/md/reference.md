@@ -397,6 +397,7 @@ migration.
       --dry-run           print SQL without executing it
       --auto-approve      apply changes without prompting for approval
       --format string     Go template to use to format the output
+      --tx-mode string    set transaction mode [none, file] (default "file")
 
 ```
 

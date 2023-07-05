@@ -787,6 +787,46 @@ func TestSchema_ApplySQL(t *testing.T) {
 		)
 		require.EqualError(t, err, "missing scheme. Did you mean file://testdata/sqlite?")
 	})
+	t.Run("TxMode", func(t *testing.T) {
+		db := openSQLite(t, "")
+		p := filepath.Join(t.TempDir(), "schema.hcl")
+		require.NoError(t, os.WriteFile(p, []byte(`schema "main" {}
+
+table "ok" {
+  schema = schema.main
+  column "id" {
+    type = int
+  }
+}
+
+table "bad" {
+  schema = schema.main
+  column "id" {
+    type = int
+    default = "invalid check"
+  }
+}`), 0600))
+		s, err := runCmd(
+			schemaApplyCmd(),
+			"-u", db,
+			"--to", "file://"+p,
+			"--auto-approve",
+		)
+		require.Error(t, err)
+		require.Equal(t, strings.Join([]string{
+			"-- Planned Changes:",
+			`-- Create "ok" table`,
+			"CREATE TABLE `ok` (`id` int NOT NULL);",
+			`-- Create "bad" table`,
+			"CREATE TABLE `bad` (`id` int NOT NULL DEFAULT invalid check);",
+			"Error: create \"bad\" table: near \")\": syntax error\n",
+		}, "\n"), s)
+
+		// The "ok" table should be created, as changes are rolled back on error.
+		s, err = runCmd(schemaInspectCmd(), "-u", db)
+		require.NoError(t, err)
+		require.Equal(t, "schema \"main\" {\n}\n", s)
+	})
 }
 
 func TestSchema_InspectLog(t *testing.T) {
