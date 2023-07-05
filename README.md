@@ -4,7 +4,7 @@
 [![Discord](https://img.shields.io/discord/930720389120794674?label=discord&logo=discord&style=flat-square&logoColor=white)](https://discord.com/invite/zZ6sWVg6NT)
 
 <img width="25%" align="right" style="display: block; margin:40px auto;"
-src="https://atlasgo.io/uploads/github-mascot-light.png#gh-dark-mode-only"/>
+src="https://atlasgo.io/uploads/github-mascot-light.png"/>
 
 Atlas is a tool for managing and migrating database schemas using modern DevOps principles. It offers two workflows:
 
