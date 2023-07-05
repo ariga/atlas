@@ -6,10 +6,8 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdapi"
@@ -31,10 +29,9 @@ import (
 )
 
 func main() {
-	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	cmdapi.Root.SetOut(os.Stdout)
 	update := checkForUpdate()
-	err := cmdapi.Root.ExecuteContext(ctx)
+	err := cmdapi.Root.ExecuteContext(newContext())
 	if u := update(); u != "" {
 		fmt.Println(u)
 	}
