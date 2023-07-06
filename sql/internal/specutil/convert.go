@@ -58,6 +58,9 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 	byName := make(map[string]*schema.Schema)
 	for _, s := range doc.Schemas {
 		s1 := schema.New(s.Name)
+		if err := convertCommentFromSpec(s, &s1.Attrs); err != nil {
+			return err
+		}
 		r.AddSchemas(s1)
 		byName[s.Name] = s1
 	}
@@ -404,6 +407,7 @@ func FromSchema(s *schema.Schema, specT TableSpecFunc, specV ViewSpecFunc) (*Sch
 		}
 		views = append(views, view)
 	}
+	convertCommentFromSchema(s.Attrs, &spec.Extra.Attrs)
 	return &SchemaSpec{
 		Schema: spec,
 		Tables: tables,

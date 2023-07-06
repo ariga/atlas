@@ -262,6 +262,48 @@ enum "account_type" {
 	require.EqualValues(t, exp, &s)
 }
 
+func TestMarshalSpec_Schema(t *testing.T) {
+	s := schema.New("public").SetComment("schema comment")
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	require.Equal(t, `schema "public" {
+  comment = "schema comment"
+}
+`, string(buf))
+
+	r := schema.NewRealm(
+		schema.New("s1").SetComment("c1"),
+		schema.New("s2").SetComment("c2"),
+		schema.New("s3"),
+	)
+	buf, err = MarshalHCL(r)
+	require.NoError(t, err)
+	require.Equal(t, `schema "s1" {
+  comment = "c1"
+}
+schema "s2" {
+  comment = "c2"
+}
+schema "s3" {
+}
+`, string(buf))
+}
+
+func TestUnmarshalSpec_Schema(t *testing.T) {
+	var (
+		s schema.Schema
+		f = `
+schema "public" {
+  comment = "schema comment"
+}
+`
+	)
+	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+	require.Equal(t, "public", s.Name)
+	require.Len(t, s.Attrs, 1)
+	require.Equal(t, "schema comment", s.Attrs[0].(*schema.Comment).Text)
+}
+
 func TestMarshalViews(t *testing.T) {
 	s := schema.New("public").
 		AddTables(
