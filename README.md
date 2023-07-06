@@ -6,12 +6,12 @@
 <img width="25%" align="right" style="display: block; margin:40px auto;"
 src="https://atlasgo.io/uploads/github-mascot-light.png"/>
 
-Atlas is a tool for managing and migrating database schemas using modern DevOps principles. It offers two workflows:
+Atlas is a language-agnostic tool for managing and migrating database schemas using modern DevOps principles. It offers two workflows:
 
 - **Declarative**: Similar to Terraform, Atlas compares the current state of the database with the desired state defined in
-an [HCL] or SQL schema, and generates a migration plan to reach that state.
+an [HCL], [SQL], or an [ORM] schema, and generates a migration plan to reach that state.
 - **Versioned**: Unlike other tools, Atlas automatically plans schema migrations for you. Users can describe their desired
-database schema in HCL or SQL and use Atlas CLI to plan, lint, and apply the necessary migrations.
+database schema in [HCL], [SQL], or their [ORM], and use Atlas CLI to plan, lint, and apply the necessary migrations.
 
 ## Quick installation
 
@@ -46,7 +46,7 @@ This tutorial teaches you how to inspect a database, generate a migration plan a
 - **Versioned migration**: The `atlas migrate` command provides a state-of-the-art experience for planning, linting, and
   applying migrations.
 - **Terraform support**: Managing database changes as part of a Terraform deployment workflow.
-- **SQL and [HCL] support**: Atlas supports both SQL and HCL for describing database schemas.
+- **[SQL] and [HCL] support**: Atlas supports both SQL and HCL for describing database schemas.
 - **Multi-tenancy**: Atlas includes built-in support for multi-tenant database schemas.
 - **Cloud integration**: Atlas integrates with standard cloud services and provides an easy way to read secrets from cloud
   providers such as AWS Secrets Manager and GCP Secret Manager.
@@ -254,4 +254,6 @@ Atlas offers additional commands to assist users managing their database migrati
 ### Supported databases
 MySQL, MariaDB, PostgresSQL, SQLite, TiDB, CockroachDB
 
-[HCL]: https://github.com/hashicorp/hcl
+[HCL]: https://atlasgo.io/atlas-schema/hcl
+[SQL]: https://atlasgo.io/atlas-schema/sql
+[ORM]: https://atlasgo.io/atlas-schema/external
