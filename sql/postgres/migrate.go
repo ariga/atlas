@@ -147,6 +147,31 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 				Reverse: s.Build("DROP SCHEMA").Ident(c.S.Name).P("CASCADE").String(),
 				Comment: fmt.Sprintf("Add new schema named %q", c.S.Name),
 			})
+			if cm := (schema.Comment{}); sqlx.Has(c.S.Attrs, &cm) {
+				s.append(s.schemaComment(c.S, cm.Text, ""))
+			}
+		case *schema.ModifySchema:
+			for i := range c.Changes {
+				switch change := c.Changes[i].(type) {
+				// Add schema attributes to an existing schema only if
+				// it is different from the default server configuration.
+				case *schema.AddAttr:
+					a, ok := change.A.(*schema.Comment)
+					if !ok {
+						return nil, fmt.Errorf("unexpected schema AddAttr: %T", change.A)
+					}
+					s.append(s.schemaComment(c.S, a.Text, ""))
+				case *schema.ModifyAttr:
+					to, ok1 := change.To.(*schema.Comment)
+					from, ok2 := change.From.(*schema.Comment)
+					if !ok1 || !ok2 {
+						return nil, fmt.Errorf("unexpected schema ModifyAttr: (%T, %T)", change.To, change.From)
+					}
+					s.append(s.schemaComment(c.S, to.Text, from.Text))
+				default:
+					return nil, fmt.Errorf("unsupported ModifySchema change: %T", change)
+				}
+			}
 		case *schema.DropSchema:
 			b := s.Build("DROP SCHEMA")
 			if sqlx.Has(c.Extra, &schema.IfExists{}) {
@@ -710,6 +735,15 @@ func (s *state) addComments(t *schema.Table) {
 		if sqlx.Has(t.Indexes[i].Attrs, &c) && c.Text != "" {
 			s.append(s.indexComment(t, t.Indexes[i], c.Text, ""))
 		}
+	}
+}
+
+func (s *state) schemaComment(sc *schema.Schema, to, from string) *migrate.Change {
+	b := s.Build("COMMENT ON SCHEMA").Ident(sc.Name).P("IS")
+	return &migrate.Change{
+		Cmd:     b.Clone().P(quote(to)).String(),
+		Comment: fmt.Sprintf("set comment to schema: %q", sc.Name),
+		Reverse: b.Clone().P(quote(from)).String(),
 	}
 }
 

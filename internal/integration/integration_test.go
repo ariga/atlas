@@ -81,8 +81,10 @@ func testAddDrop(t T) {
 	t.migrate(&schema.AddTable{T: petsT}, &schema.AddTable{T: usersT}, &schema.AddTable{T: postsT})
 	ensureNoChange(t, usersT, petsT, postsT)
 	t.migrate(&schema.DropTable{T: usersT}, &schema.DropTable{T: postsT}, &schema.DropTable{T: petsT})
-	// Ensure the realm is empty.
-	require.EqualValues(t, t.realm(), t.loadRealm())
+	// Ensure the realm has no tables.
+	for _, s := range t.loadRealm().Schemas {
+		require.Empty(t, s.Tables)
+	}
 }
 
 func testRelation(t T) {
