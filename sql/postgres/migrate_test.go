@@ -27,10 +27,12 @@ func TestPlanChanges(t *testing.T) {
 	}{
 		{
 			changes: []schema.Change{
-				&schema.AddSchema{S: schema.New("public")},
+				&schema.AddSchema{S: schema.New("public").SetComment("public schema")},
 				&schema.AddSchema{S: schema.New("test"), Extra: []schema.Clause{&schema.IfNotExists{}}},
 				&schema.DropSchema{S: schema.New("test"), Extra: []schema.Clause{&schema.IfExists{}}},
 				&schema.DropSchema{S: schema.New("test"), Extra: []schema.Clause{}},
+				&schema.ModifySchema{S: schema.New("modify1").SetComment("comment"), Changes: schema.Changes{&schema.AddAttr{A: &schema.Comment{Text: "comment"}}}},
+				&schema.ModifySchema{S: schema.New("modify2").SetComment("comment"), Changes: schema.Changes{&schema.ModifyAttr{From: &schema.Comment{Text: "old"}, To: &schema.Comment{Text: "new"}}}},
 			},
 			wantPlan: &migrate.Plan{
 				Reversible:    false,
@@ -41,6 +43,10 @@ func TestPlanChanges(t *testing.T) {
 						Reverse: `DROP SCHEMA "public" CASCADE`,
 					},
 					{
+						Cmd:     `COMMENT ON SCHEMA "public" IS 'public schema'`,
+						Reverse: `COMMENT ON SCHEMA "public" IS ''`,
+					},
+					{
 						Cmd:     `CREATE SCHEMA IF NOT EXISTS "test"`,
 						Reverse: `DROP SCHEMA "test" CASCADE`,
 					},
@@ -49,6 +55,14 @@ func TestPlanChanges(t *testing.T) {
 					},
 					{
 						Cmd: `DROP SCHEMA "test" CASCADE`,
+					},
+					{
+						Cmd:     `COMMENT ON SCHEMA "modify1" IS 'comment'`,
+						Reverse: `COMMENT ON SCHEMA "modify1" IS ''`,
+					},
+					{
+						Cmd:     `COMMENT ON SCHEMA "modify2" IS 'new'`,
+						Reverse: `COMMENT ON SCHEMA "modify2" IS 'old'`,
 					},
 				},
 			},

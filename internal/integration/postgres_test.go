@@ -523,6 +523,7 @@ func TestPostgres_HCL_Realm(t *testing.T) {
 		require.NoError(t, err)
 		wa := string(hcl) + `
 schema "second" {
+  comment = "second schema"
 }
 `
 		t.applyRealmHcl(wa)
@@ -530,8 +531,10 @@ schema "second" {
 		require.NoError(t, err)
 		_, ok := realm.Schema("public")
 		require.True(t, ok)
-		_, ok = realm.Schema("second")
+		s2, ok := realm.Schema("second")
 		require.True(t, ok)
+		require.Len(t, s2.Attrs, 1)
+		require.Equal(t, "second schema", s2.Attrs[0].(*schema.Comment).Text)
 	})
 }
 
@@ -847,6 +850,7 @@ enum "status" {
 schema "other" {
 }
 schema "public" {
+  comment = "standard public schema"
 }
 `, string(out))
 		err = t.drv.(migrate.CleanChecker).CheckClean(context.Background(), nil)
@@ -958,7 +962,9 @@ func TestPostgres_SchemaDiff(t *testing.T) {
 
 		// Create schemas on test2 database.
 		hcl := `
-schema "public" {}
+schema "public" {
+  comment = "standard public schema"
+}
 table "users" {
 	schema = schema.public
 	column "id" { type = integer }
@@ -986,8 +992,11 @@ CREATE SCHEMA "other";
 CREATE TABLE "public"."users" ("id" integer NOT NULL);
 -- Create "posts" table
 CREATE TABLE "other"."posts" ("id" integer NOT NULL);`, diff("test1?sslmode=disable", "test2?sslmode=disable"))
-		// diff schemas
-		require.Equal(t, `-- Drop "posts" table
+
+		// Diffing schema should both tables and comments (from 'public' to 'other').
+		require.Equal(t, `-- Set comment to schema: ""
+COMMENT ON SCHEMA IS 'standard public schema';
+-- Drop "posts" table
 DROP TABLE "posts";
 -- Create "users" table
 CREATE TABLE "users" ("id" integer NOT NULL);`, diff("test2?sslmode=disable&search_path=other", "test2?sslmode=disable&search_path=public"))
@@ -1532,6 +1541,9 @@ func (t *pgTest) realm() *schema.Realm {
 		Schemas: []*schema.Schema{
 			{
 				Name: "public",
+				Attrs: []schema.Attr{
+					&schema.Comment{Text: "standard public schema"},
+				},
 			},
 		},
 		Attrs: []schema.Attr{
