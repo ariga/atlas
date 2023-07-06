@@ -502,6 +502,26 @@ func TestDiff_SchemaDiff(t *testing.T) {
 		&schema.DropTable{T: from.Tables[1]},
 		&schema.AddTable{T: to.Tables[1]},
 	}, changes)
+
+	// Add comment.
+	from, to = schema.New("public"), schema.New("public").SetComment("comment")
+	changes, err = drv.SchemaDiff(from, to)
+	require.NoError(t, err)
+	require.EqualValues(t, []schema.Change{
+		&schema.ModifySchema{S: to, Changes: schema.Changes{&schema.AddAttr{A: &schema.Comment{Text: "comment"}}}},
+	}, changes)
+	// Modify comment.
+	from.SetComment("boring")
+	changes, err = drv.SchemaDiff(from, to)
+	require.NoError(t, err)
+	require.EqualValues(t, []schema.Change{
+		&schema.ModifySchema{S: to, Changes: schema.Changes{
+			&schema.ModifyAttr{
+				From: &schema.Comment{Text: "boring"},
+				To:   &schema.Comment{Text: "comment"},
+			},
+		}},
+	}, changes)
 }
 
 func TestDefaultDiff(t *testing.T) {
