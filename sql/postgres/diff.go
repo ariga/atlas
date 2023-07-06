@@ -27,9 +27,12 @@ var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{}}
 type diff struct{ conn }
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
-func (*diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
-	// No special schema attribute diffing for PostgreSQL.
-	return nil
+func (*diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
+	var changes []schema.Change
+	if change := sqlx.CommentDiff(from.Attrs, to.Attrs); change != nil {
+		changes = append(changes, change)
+	}
+	return changes
 }
 
 // SchemaObjectDiff returns a changeset for migrating schema objects from
