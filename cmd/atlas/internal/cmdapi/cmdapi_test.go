@@ -76,6 +76,10 @@ func TestCLI_Version(t *testing.T) {
 }
 
 func runCmd(cmd *cobra.Command, args ...string) (string, error) {
+	return runCmdContext(context.Background(), cmd, args...)
+}
+
+func runCmdContext(ctx context.Context, cmd *cobra.Command, args ...string) (string, error) {
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&out)
@@ -85,7 +89,7 @@ func runCmd(cmd *cobra.Command, args ...string) (string, error) {
 		args = []string{}
 	}
 	cmd.SetArgs(args)
-	err := cmd.Execute()
+	err := cmd.ExecuteContext(ctx)
 	return out.String(), err
 }
 
