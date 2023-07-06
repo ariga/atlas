@@ -91,6 +91,7 @@ module.exports = {
                 {type: 'doc', id: 'cloud/getting-started', label: 'Getting Started'},
                 {type: 'doc', id: 'cloud/directories', label: 'Connected Directories'},
                 {type: 'doc', id: 'cloud/bots', label: 'Creating Bots'},
+                {type: 'doc', id: 'cloud/deployment', label: 'Deployments'},
             ],
         },
         {

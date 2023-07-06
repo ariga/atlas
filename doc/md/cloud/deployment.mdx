@@ -1,0 +1,102 @@
+---
+id: deployment
+title: Deploying migrations from Atlas Cloud
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+### Deploying without Atlas Cloud
+
+A common way to deploy migrations using Atlas (or any other migration tool) is similar to this:
+
+* When changes are merged to the `main` branch, a CI/CD pipeline is triggered.
+* The pipeline builds an artifact (usually a Docker image) that includes the migration directory content
+  and Atlas itself.
+* The artifact is pushed to a registry.
+* The deployment process is configured to use this newly created image to run the migrations
+  against the production database.
+
+This process is a common practice, but it requires setting up a CI/CD pipeline (including storage, permissions,
+and other glue) for each service, adding another layer of complexity.
+
+### Why deploy from Atlas Cloud?
+
+Atlas Cloud streamlines deploying migrations by providing a single place to manage migrations for all your services. After connecting
+your migration directory to Atlas Cloud, it is automatically synced to a central location on every commit to your main branch.
+Once this setup (which takes less than one minute) is complete, you can deploy migrations from Atlas Cloud to any environment
+with a single command (or using popular CD tools such as Kubernetes and Terraform).
+
+## Deploying migrations from Atlas Cloud
+
+Atlas supports the concept of [_Data Sources_](/atlas-schema/projects#data-sources), which enables users to retrieve
+information stored in an external service or database. To deploy migrations directly from your cloud account, use the
+[`remote_dir`](/atlas-schema/projects#data-source-remote_dir) data source. This feature allows users to configure Atlas to read
+the content of the migration directory directly from their cloud account, thereby eliminating the need to build custom
+artifacts or docker images with the directory content.
+
+Here is an example of how to configure the `remote_dir` data source:
+
+```hcl title="atlas.hcl" {1-15}
+variable "cloud_token" {
+  type = string
+}
+
+atlas {
+  cloud {
+    token = var.cloud_token
+  }
+}
+
+data "remote_dir" "migrations" {
+  // The name of the migration directory in Atlas Cloud.
+  // In this example, the directory is named "myapp".
+  name = "myapp"
+}
+
+env {
+  // Set environment name dynamically based on --env value.
+  name = atlas.env
+  migration {
+    dir = data.remote_dir.migrations.url
+  }
+}
+```
+
+After configuring the `remote_dir` data source, you can deploy migrations from Atlas Cloud using the following command:
+
+```shell
+atlas migrate apply \
+  --url "<DATABASE_URL>" \
+  --config file://path/to/atlas.hcl \
+  --env prod \
+  --var cloud_token="<ATLAS_TOKEN>"
+```
+
+## Visualizing Migration Runs
+
+Schema migrations are an integral part of application deployments, yet the setup might vary between different applications and teams.
+Some teams may prefer using init-containers, while others run migrations from a structured CD pipeline. There are also those who opt for Helm
+upgrade hooks or use our Kubernetes operator. The differences also apply to databases. Some applications work with one database,
+while others manage multiple databases, often seen in [multi-tenant applications](/blog/2022/10/27/multi-tenant-support).
+
+However, across all these scenarios, there's a shared need for a single place to view and track the progress of executed
+schema migrations. This includes triggering alerts and providing the means to troubleshoot and manage recovery if
+problems arise.
+
+When you use the configuration above with a valid token, Atlas will log migration
+runs in your cloud account. Here's a demonstration of how it looks in action:
+
+<Tabs>
+<TabItem label="Single Deployment" value="single">
+
+[![](https://atlasgo.io/uploads/single-deployment.png)](https://gh.atlasgo.cloud/deployments/51539607558)
+
+</TabItem>
+<TabItem label="Multi-Tenant Deployment" value="mt">
+
+[![](https://atlasgo.io/uploads/mt-deployment.png)](https://gh.atlasgo.cloud/deployments/sets/94489280523)
+
+</TabItem>
+</Tabs>
+
