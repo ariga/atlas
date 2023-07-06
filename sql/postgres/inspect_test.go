@@ -340,9 +340,9 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1
 			mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
 				WithArgs("public").
 				WillReturnRows(sqltest.Rows(`
-    schema_name
---------------------
- public
+ schema_name | comment 
+-------------+---------
+ public      | nil
 `))
 			tt.before(mk)
 			s, err := drv.InspectSchema(context.Background(), "public", &schema.InspectOptions{
@@ -363,9 +363,9 @@ func TestDriver_InspectPartitionedTable(t *testing.T) {
 	require.NoError(t, err)
 	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= CURRENT_SCHEMA()"))).
 		WillReturnRows(sqltest.Rows(`
-   schema_name
---------------------
-public
+ schema_name | comment 
+-------------+---------
+ public      | nil
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("public").
@@ -443,9 +443,9 @@ func TestDriver_InspectCRDBSchema(t *testing.T) {
 	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
 		WithArgs("public").
 		WillReturnRows(sqltest.Rows(`
-schema_name
---------------------
-public
+ schema_name | comment 
+-------------+---------
+ public      | nil
 `))
 	mk.tableExists("public", "users", true)
 	mk.ExpectQuery(queryCRDBColumns).
@@ -510,9 +510,9 @@ func TestDriver_InspectSchema(t *testing.T) {
 	require.NoError(t, err)
 	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= CURRENT_SCHEMA()"))).
 		WillReturnRows(sqltest.Rows(`
-   schema_name
---------------------
-test
+ schema_name | comment 
+-------------+---------
+ test        | boring
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
@@ -525,9 +525,7 @@ test
 	require.EqualValues(t, func() *schema.Schema {
 		r := &schema.Realm{
 			Schemas: []*schema.Schema{
-				{
-					Name: "test",
-				},
+				schema.New("test").SetComment("boring"),
 			},
 			// Server default configuration.
 			Attrs: []schema.Attr{
@@ -553,10 +551,10 @@ func TestDriver_Realm(t *testing.T) {
 	require.NoError(t, err)
 	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
 		WillReturnRows(sqltest.Rows(`
-   schema_name
---------------------
-test
-public
+ schema_name | comment 
+-------------+---------
+ test        | nil
+ public      | nil
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
 		WithArgs("test", "public").
@@ -595,10 +593,10 @@ public
 	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "IN ($1, $2)"))).
 		WithArgs("test", "public").
 		WillReturnRows(sqltest.Rows(`
-   schema_name
---------------------
-  test
-  public
+ schema_name | comment 
+-------------+---------
+ test        | nil
+ public      | nil
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
 		WithArgs("test", "public").
@@ -638,9 +636,9 @@ public
 	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
 		WithArgs("test").
 		WillReturnRows(sqltest.Rows(`
- schema_name
---------------------
- test
+ schema_name | comment 
+-------------+---------
+ test        | nil
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
@@ -680,10 +678,10 @@ func TestInspectMode_InspectRealm(t *testing.T) {
 	mk.version("130000")
 	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
 		WillReturnRows(sqltest.Rows(`
-   schema_name
---------------------
-test
-public
+ schema_name | comment 
+-------------+---------
+ test        | nil
+ public      | nil
 `))
 	drv, err := Open(db)
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(enumsQuery, "$1, $2"))).

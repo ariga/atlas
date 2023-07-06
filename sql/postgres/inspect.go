@@ -601,13 +601,18 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 	defer rows.Close()
 	var schemas []*schema.Schema
 	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
+		var (
+			name    string
+			comment sql.NullString
+		)
+		if err := rows.Scan(&name, &comment); err != nil {
 			return nil, err
 		}
-		schemas = append(schemas, &schema.Schema{
-			Name: name,
-		})
+		s := schema.New(name)
+		if comment.Valid {
+			s.SetComment(comment.String)
+		}
+		schemas = append(schemas, s)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1121,10 +1126,29 @@ const (
 	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('lc_collate', 'lc_ctype', 'server_version_num', 'crdb_version') ORDER BY name DESC`
 
 	// Query to list database schemas.
-	schemasQuery = "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast', 'crdb_internal', 'pg_extension') AND schema_name NOT LIKE 'pg_%temp_%' ORDER BY schema_name"
+	schemasQuery = `
+SELECT
+	nspname AS schema_name,
+	pg_catalog.obj_description(oid) AS comment
+FROM
+    pg_catalog.pg_namespace
+WHERE
+    nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast', 'crdb_internal', 'pg_extension')
+    AND nspname NOT LIKE 'pg_%temp_%'
+ORDER BY
+    nspname`
 
-	// Query to list specific database schemas.
-	schemasQueryArgs = "SELECT schema_name FROM information_schema.schemata WHERE schema_name %s ORDER BY schema_name"
+	// Query to list database schemas.
+	schemasQueryArgs = `
+SELECT
+	nspname AS schema_name,
+	pg_catalog.obj_description(oid) AS comment
+FROM
+    pg_catalog.pg_namespace
+WHERE
+    nspname %s
+ORDER BY
+    nspname`
 
 	// Query to list table information.
 	tablesQuery = `
