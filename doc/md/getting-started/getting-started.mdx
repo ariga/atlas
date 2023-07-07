@@ -10,10 +10,16 @@ import Discord from '../../website/src/assets/icons/discord-white.svg'
 
 import { AtlasGoNewsletterDocs } from "@ariga/atlas-website";
 
-Atlas is an open-source tool designed to help software engineers, DBAs and DevOps
-practitioners to manage their database schemas. Atlas users can use the [Atlas DDL](../atlas-schema/hcl)
-(data-definition language) or SQL to describe the desired database schema and use the command-line
-tool to plan and apply the migrations to their systems.
+Atlas is a language-independent tool for managing and migrating database schemas using modern DevOps principles.
+It offers two workflows:
+
+- **Declarative**: Similar to Terraform, Atlas compares the current state of the database to the desired state, as
+defined in an [HCL](../atlas-schema/hcl), [SQL](../atlas-schema/sql), or [ORM](../atlas-schema/external) schema.
+Based on this comparison, it generates and executes a migration plan to transition the database to its desired state.
+
+- **Versioned**: Unlike other tools, Atlas automatically plans schema migrations for you. Users can describe their desired
+database schema in [HCL](../atlas-schema/hcl), [SQL](../atlas-schema/sql), or their chosen [ORM](../atlas-schema/external),
+and by utilizing Atlas, they can plan, lint, and apply the necessary migrations to the database.
 
 ### Installation
 
