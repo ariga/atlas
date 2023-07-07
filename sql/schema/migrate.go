@@ -101,8 +101,7 @@ type (
 
 	// ModifyView describes a view modification change.
 	ModifyView struct {
-		V       *View
-		Changes []Change
+		From, To *View
 	}
 
 	// RenameView describes a view rename change.
