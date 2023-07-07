@@ -6,12 +6,16 @@
 <img width="25%" align="right" style="display: block; margin:40px auto;"
 src="https://atlasgo.io/uploads/github-mascot-light.png"/>
 
-Atlas is a language-agnostic tool for managing and migrating database schemas using modern DevOps principles. It offers two workflows:
+Atlas is a language-agnostic tool for managing and migrating database schemas using modern DevOps principles.
+It offers two workflows:
 
-- **Declarative**: Similar to Terraform, Atlas compares the current state of the database with the desired state defined in
-an [HCL], [SQL], or an [ORM] schema, and generates a migration plan to reach that state.
+- **Declarative**: Similar to Terraform, Atlas compares the current state of the database to the desired state, as
+defined in an [HCL], [SQL], or [ORM] schema. Based on this comparison, it generates and executes a migration plan to 
+transition the database to its desired state.
+
 - **Versioned**: Unlike other tools, Atlas automatically plans schema migrations for you. Users can describe their desired
-database schema in [HCL], [SQL], or their [ORM], and use Atlas CLI to plan, lint, and apply the necessary migrations.
+database schema in [HCL], [SQL], or their chosen [ORM], and by utilizing Atlas, they can plan, lint, and apply the
+necessary migrations to the database.
 
 ## Quick installation
 
