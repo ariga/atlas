@@ -108,3 +108,38 @@ func TestURLEscapeFunc(t *testing.T) {
 		})
 	}
 }
+
+func Example_PrintFunc() {
+	for _, f := range []string{
+		`v  = print(1)`,
+		`v  = print(true)`,
+		`v  = print("hello, world")`,
+		`v  = print({"hello": "world"})`,
+		`v  = print(["hello", "world"])`,
+	} {
+		var d struct {
+			V cty.Value `spec:"v"`
+		}
+		if err := New().EvalBytes([]byte(f), &d, nil); err != nil {
+			fmt.Println("failed to evaluate:", err)
+			return
+		}
+		fmt.Printf("%#v\n\n", d.V)
+	}
+	// Output:
+	// 1
+	// cty.NumberIntVal(1)
+	//
+	// true
+	// cty.True
+	//
+	// "hello, world"
+	// cty.StringVal("hello, world")
+	//
+	// {"hello":"world"}
+	// cty.ObjectVal(map[string]cty.Value{"hello":cty.StringVal("world")})
+	//
+	// ["hello","world"]
+	// cty.ListVal([]cty.Value{cty.StringVal("hello"), cty.StringVal("world")})
+	//
+}
