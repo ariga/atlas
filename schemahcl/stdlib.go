@@ -5,6 +5,7 @@
 package schemahcl
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/zclconf/go-cty/cty/convert"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+	"github.com/zclconf/go-cty/cty/json"
 )
 
 func stdTypes(ctx *hcl.EvalContext) *hcl.EvalContext {
@@ -128,6 +130,7 @@ func stdFuncs() map[string]function.Function {
 		"min":             stdlib.MinFunc,
 		"parseint":        stdlib.ParseIntFunc,
 		"pow":             stdlib.PowFunc,
+		"print":           printFunc,
 		"range":           stdlib.RangeFunc,
 		"regex":           stdlib.RegexFunc,
 		"regexall":        stdlib.RegexAllFunc,
@@ -304,5 +307,25 @@ var urlEscape = function.New(&function.Spec{
 	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 		u := url.QueryEscape(args[0].AsString())
 		return cty.StringVal(u), nil
+	},
+})
+
+var printFunc = function.New(&function.Spec{
+	Params: []function.Parameter{
+		{
+			Name: "print",
+			Type: cty.DynamicPseudoType,
+		},
+	},
+	Type: func(args []cty.Value) (cty.Type, error) {
+		return args[0].Type(), nil
+	},
+	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		if b, err := json.Marshal(args[0], args[0].Type()); err != nil {
+			fmt.Println(args[0].GoString())
+		} else {
+			fmt.Println(string(b))
+		}
+		return args[0], nil
 	},
 })
