@@ -291,6 +291,10 @@ func blockVars(blocks hclsyntax.Blocks, parentAddr string, defs *blockDef) (map[
 			}
 			self := addr(parentAddr, name, blkName, qualifier)
 			attrs["__ref"] = cty.StringVal(self)
+			// Skip naming blocks with "name" attribute.
+			if _, ok := blk.Body.Attributes["name"]; !ok {
+				attrs["name"] = cty.StringVal(blkName)
+			}
 			varMap, err := blockVars(blk.Body.Blocks, self, def)
 			if err != nil {
 				return nil, err
@@ -456,6 +460,7 @@ func (t *blockDef) asCty() cty.Type {
 	for attr := range t.fields {
 		f[attr] = ctyNilType
 	}
+	f["name"] = cty.String
 	f["__ref"] = cty.String
 	for _, c := range t.children {
 		f[c.name] = c.asCty()

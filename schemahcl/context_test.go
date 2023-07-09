@@ -6,6 +6,7 @@ package schemahcl
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -611,4 +612,36 @@ variable "name" {
 }`
 	err = New().EvalBytes([]byte(h), &struct{}{}, nil)
 	require.EqualError(t, err, `invalid type "boring" for variable "name". Valid types are: string, number, bool, list, map, or set`)
+}
+
+func TestTemplateReferences(t *testing.T) {
+	var (
+		d struct {
+			Stmt1 string `spec:"stmt1"`
+			Stmt2 string `spec:"stmt2"`
+		}
+		b = []byte(`
+table "foo" {}
+
+table "bar" {
+  name = "baz"
+  column "id" {
+    type = int
+  }
+}
+
+stmt1 = <<-SQL
+   SELECT * FROM ${table.foo.name}
+  SQL
+stmt2 = <<-SQL
+   SELECT ${table.bar.column.id.name} FROM ${table.bar.name}
+  SQL
+`)
+	)
+	require.NoError(t, New().EvalBytes(b, &d, nil))
+	require.Equal(t, "SELECT * FROM foo", strings.TrimSpace(d.Stmt1))
+	require.Equal(t, "SELECT id FROM baz", strings.TrimSpace(d.Stmt2))
+
+	err := New().EvalBytes([]byte(`v = "${unknown}"`), &d, nil)
+	require.EqualError(t, err, `:1,8-15: Unknown variable; There is no variable named "unknown".`)
 }
