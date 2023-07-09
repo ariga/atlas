@@ -232,6 +232,9 @@ func withCascade(changes schema.Changes) schema.Changes {
 		if d, ok := c.(*schema.DropTable); ok {
 			d.Extra = append(d.Extra, &Cascade{})
 		}
+		if d, ok := c.(*schema.DropView); ok {
+			d.Extra = append(d.Extra, &schema.IfExists{})
+		}
 	}
 	return changes
 }
