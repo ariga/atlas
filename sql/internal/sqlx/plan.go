@@ -212,7 +212,7 @@ func sortMap(changes []schema.Change) (map[string]int, error) {
 	return sorted, nil
 }
 
-// dependencies returned an adjacency list of all tables and the table they depend on
+// dependencies returned an adjacency list of all tables and the tables they depend on.
 func dependencies(changes []schema.Change) (map[string][]*schema.Table, error) {
 	deps := make(map[string][]*schema.Table)
 	for _, change := range changes {

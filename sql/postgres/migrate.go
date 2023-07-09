@@ -99,6 +99,9 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) error {
 			return err
 		}
 	}
+	if deferred, err = sqlx.PlanViewChanges(deferred); err != nil {
+		return err
+	}
 	for _, c := range deferred {
 		switch c := c.(type) {
 		case *schema.AddView:
