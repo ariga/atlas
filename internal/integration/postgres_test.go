@@ -996,10 +996,10 @@ CREATE TABLE "other"."posts" ("id" integer NOT NULL);`, diff("test1?sslmode=disa
 		// Diffing schema should both tables and comments (from 'public' to 'other').
 		require.Equal(t, `-- Set comment to schema: ""
 COMMENT ON SCHEMA IS 'standard public schema';
--- Drop "posts" table
-DROP TABLE "posts";
 -- Create "users" table
-CREATE TABLE "users" ("id" integer NOT NULL);`, diff("test2?sslmode=disable&search_path=other", "test2?sslmode=disable&search_path=public"))
+CREATE TABLE "users" ("id" integer NOT NULL);
+-- Drop "posts" table
+DROP TABLE "posts";`, diff("test2?sslmode=disable&search_path=other", "test2?sslmode=disable&search_path=public"))
 		// diff between schema and database
 		out, err = exec.Command(
 			bin, "schema", "diff",

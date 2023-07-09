@@ -368,6 +368,35 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
+				&schema.DropObject{O: &schema.EnumType{T: "status", Values: []string{"on", "off"}, Schema: schema.New("public")}},
+				&schema.DropTable{T: schema.NewTable("logs").
+					AddColumns(
+						schema.NewColumn("status").SetType(&schema.EnumType{T: "status", Values: []string{"on", "off"}, Schema: schema.New("public")}),
+					),
+				},
+				&schema.DropObject{O: &schema.EnumType{T: "state", Values: []string{"on", "off"}, Schema: schema.New("public")}},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `DROP TABLE "logs"`,
+						Reverse: `CREATE TABLE "logs" ("status" "public"."status" NOT NULL)`,
+					},
+					{
+						Cmd:     `DROP TYPE "public"."status"`,
+						Reverse: `CREATE TYPE "public"."status" AS ENUM ('on', 'off')`,
+					},
+					{
+						Cmd:     `DROP TYPE "public"."state"`,
+						Reverse: `CREATE TYPE "public"."state" AS ENUM ('on', 'off')`,
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
 				&schema.DropTable{
 					T: func() *schema.Table {
 						id := schema.NewIntColumn("id", "int")

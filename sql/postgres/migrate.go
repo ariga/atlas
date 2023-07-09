@@ -78,20 +78,25 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) error {
 	if planned, err = sqlx.DetachCycles(planned); err != nil {
 		return err
 	}
-	deferred := make([]schema.Change, 0, len(planned))
+	var (
+		views []schema.Change
+		dropT []*schema.DropTable
+		dropO []*schema.DropObject
+	)
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
 			err = s.addTable(ctx, c)
-		case *schema.DropTable:
-			err = s.dropTable(ctx, c)
 		case *schema.ModifyTable:
 			err = s.modifyTable(ctx, c)
 		case *schema.RenameTable:
 			s.renameTable(c)
-		case *schema.DropObject, *schema.AddView, *schema.DropView,
-			*schema.ModifyView, *schema.RenameView:
-			deferred = append(deferred, c)
+		case *schema.AddView, *schema.DropView, *schema.ModifyView, *schema.RenameView:
+			views = append(views, c)
+		case *schema.DropTable:
+			dropT = append(dropT, c)
+		case *schema.DropObject:
+			dropO = append(dropO, c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -99,10 +104,10 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) error {
 			return err
 		}
 	}
-	if deferred, err = sqlx.PlanViewChanges(deferred); err != nil {
+	if views, err = sqlx.PlanViewChanges(views); err != nil {
 		return err
 	}
-	for _, c := range deferred {
+	for _, c := range views {
 		switch c := c.(type) {
 		case *schema.AddView:
 			err = s.addView(ctx, c)
@@ -112,19 +117,25 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) error {
 			err = s.modifyView(ctx, c)
 		case *schema.RenameView:
 			s.renameView(ctx, c)
-		case *schema.DropObject:
-			e, ok := c.O.(*schema.EnumType)
-			if !ok {
-				return fmt.Errorf("unsupported object %T", c.O)
-			}
-			create, drop := s.createDropEnum(e)
-			s.append(&migrate.Change{
-				Source:  c,
-				Cmd:     drop,
-				Reverse: create,
-				Comment: fmt.Sprintf("drop enum type %q", e.T),
-			})
 		}
+	}
+	for _, c := range dropT {
+		if err := s.dropTable(ctx, c); err != nil {
+			return err
+		}
+	}
+	for _, c := range dropO {
+		e, ok := c.O.(*schema.EnumType)
+		if !ok {
+			return fmt.Errorf("unsupported object %T", c.O)
+		}
+		create, drop := s.createDropEnum(e)
+		s.append(&migrate.Change{
+			Source:  c,
+			Cmd:     drop,
+			Reverse: create,
+			Comment: fmt.Sprintf("drop enum type %q", e.T),
+		})
 	}
 	return nil
 }
