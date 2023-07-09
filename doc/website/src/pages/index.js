@@ -20,7 +20,7 @@ export default function () {
                   linkText: 'Register',
               },
               {
-                  title: "Kubernetes-native database schema migrations",  
+                  title: "Kubernetes-native schema migrations",  
                   date: "Wednesday, July 19th, 2023. 13:00 UTC",
                   description: "Discover the power of the Atlas Kubernetes Operator for seamless management of your database schemas in Kubernetes.",
                   linkUrl: 'https://26565461.hs-sites-eu1.com/webinar-ci/cd-for-databases-with-atlas-cloud-0-0',
