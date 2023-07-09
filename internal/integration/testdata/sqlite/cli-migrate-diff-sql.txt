@@ -1,0 +1,22 @@
+atlas migrate diff --dev-url sqlite://dev --to file://schema.sql --dir file://migrations
+cmpmig 0 diff.sql
+
+atlas migrate diff --dev-url sqlite://dev --to file://schema.sql --dir file://migrations
+stdout 'The migration directory is synced with the desired state, no changes to be made'
+
+-- schema.sql --
+-- Create "records" table
+CREATE TABLE IF NOT EXISTS `records` (
+    `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+    `name` varchar(255) NOT NULL DEFAULT ''  UNIQUE,
+    `price` decimal NOT NULL DEFAULT 0
+);
+CREATE INDEX `records_price` ON `records` (`price`);
+
+-- diff.sql --
+-- Create "records" table
+CREATE TABLE `records` (`id` integer NOT NULL PRIMARY KEY AUTOINCREMENT, `name` varchar NOT NULL DEFAULT '', `price` decimal NOT NULL DEFAULT 0);
+-- Create index "records_name" to table: "records"
+CREATE UNIQUE INDEX `records_name` ON `records` (`name`);
+-- Create index "records_price" to table: "records"
+CREATE INDEX `records_price` ON `records` (`price`);

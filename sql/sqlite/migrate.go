@@ -279,25 +279,8 @@ func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) error {
 
 func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
 	for _, idx := range indexes {
-		// PRIMARY KEY or UNIQUE columns automatically create indexes with the generated name.
-		// See: sqlite/build.c#sqlite3CreateIndex. Therefore, we ignore such PKs, but create
-		// the inlined UNIQUE constraints manually with custom name, because SQLite does not
-		// allow creating indexes with such names manually. Note, this case is possible if
-		// "apply" schema that was inspected from the database as-is.
-		if strings.HasPrefix(idx.Name, "sqlite_autoindex") {
-			if i := (IndexOrigin{}); sqlx.Has(idx.Attrs, &i) && i.O == "p" {
-				continue
-			}
-			// Use the following format: <Table>_<Columns>.
-			names := make([]string, len(idx.Parts)+1)
-			names[0] = t.Name
-			for i, p := range idx.Parts {
-				if p.C == nil {
-					return fmt.Errorf("unexpected index part %s (%d)", idx.Name, i)
-				}
-				names[i+1] = p.C.Name
-			}
-			idx.Name = strings.Join(names, "_")
+		if err := normalizeIdxName(idx, t); err != nil {
+			return err
 		}
 		b := s.Build("CREATE")
 		if idx.Unique {
@@ -318,6 +301,31 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
 			Reverse: s.Build("DROP INDEX").Ident(idx.Name).String(),
 			Comment: fmt.Sprintf("create index %q to table: %q", idx.Name, t.Name),
 		})
+	}
+	return nil
+}
+
+// normalizeIdxName normalizes the index name before generating the CREATE INDEX statement.
+func normalizeIdxName(idx *schema.Index, t *schema.Table) error {
+	// PRIMARY KEY or UNIQUE columns automatically create indexes with the generated name.
+	// See: sqlite/build.c#sqlite3CreateIndex. Therefore, we ignore such PKs, but create
+	// the inlined UNIQUE constraints manually with custom name, because SQLite does not
+	// allow creating indexes with such names manually. Note, this case is possible if
+	// "apply" schema that was inspected from the database as-is.
+	if strings.HasPrefix(idx.Name, "sqlite_autoindex") {
+		if i := (IndexOrigin{}); sqlx.Has(idx.Attrs, &i) && i.O == "p" {
+			return nil
+		}
+		// Use the following format: <Table>_<Columns>.
+		names := make([]string, len(idx.Parts)+1)
+		names[0] = t.Name
+		for i, p := range idx.Parts {
+			if p.C == nil {
+				return fmt.Errorf("unexpected index part %s (%d)", idx.Name, i)
+			}
+			names[i+1] = p.C.Name
+		}
+		idx.Name = strings.Join(names, "_")
 	}
 	return nil
 }
