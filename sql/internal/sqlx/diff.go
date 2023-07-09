@@ -117,6 +117,9 @@ func (d *Diff) RealmDiff(from, to *schema.Realm, options ...schema.DiffOption) (
 		for _, t := range s1.Tables {
 			changes = opts.AddOrSkip(changes, &schema.AddTable{T: t})
 		}
+		for _, v := range s1.Views {
+			changes = opts.AddOrSkip(changes, &schema.AddView{V: v})
+		}
 	}
 	return d.mayAnnotate(changes, opts)
 }
