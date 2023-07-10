@@ -142,7 +142,6 @@ func testHCLIntegration(t T, full string, empty string) {
 }
 
 func testCLIMigrateApplyBC(t T, dialect string) {
-	require.NoError(t, initCLI())
 	ctx := context.Background()
 
 	t.dropSchemas("bc_test", "bc_test_2", "atlas_schema_revisions")
@@ -151,7 +150,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 
 	// Connection to schema with flag will respect flag (also mimics "old" behavior).
 	out, err := exec.Command(
-		"go", "run", "ariga.io/atlas/cmd/atlas",
+		execPath(t),
 		"migrate", "apply",
 		"--allow-dirty", // since database does contain more than one schema
 		"--dir", "file://testdata/migrations/"+dialect,
@@ -166,7 +165,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 
 	// Connection to realm will see the existing schema and will not attempt to migrate.
 	out, err = exec.Command(
-		"go", "run", "ariga.io/atlas/cmd/atlas",
+		execPath(t),
 		"migrate", "apply",
 		"--dir", "file://testdata/migrations/"+dialect,
 		"--url", t.url(""),
@@ -176,7 +175,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 
 	// Connection to schema without flag will error.
 	out, err = exec.Command(
-		"go", "run", "ariga.io/atlas/cmd/atlas",
+		execPath(t),
 		"migrate", "apply",
 		"--dir", "file://testdata/migrations/"+dialect,
 		"--url", t.url("bc_test"),
@@ -186,7 +185,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 
 	// Providing the flag and we are good.
 	out, err = exec.Command(
-		"go", "run", "ariga.io/atlas/cmd/atlas",
+		execPath(t),
 		"migrate", "apply",
 		"--dir", "file://testdata/migrations/"+dialect,
 		"--url", t.url("bc_test"),
@@ -201,7 +200,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 		&schema.AddSchema{S: schema.New("bc_test")},
 	)
 	out, err = exec.Command(
-		"go", "run", "ariga.io/atlas/cmd/atlas",
+		execPath(t),
 		"migrate", "apply",
 		"--dir", "file://testdata/migrations/"+dialect,
 		"--url", t.url("bc_test"),
@@ -212,7 +211,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 
 	// Consecutive attempts do not need the flag anymore.
 	out, err = exec.Command(
-		"go", "run", "ariga.io/atlas/cmd/atlas",
+		execPath(t),
 		"migrate", "apply",
 		"--dir", "file://testdata/migrations/"+dialect,
 		"--url", t.url("bc_test"),
@@ -228,7 +227,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 		&schema.AddSchema{S: schema.New("bc_test_2")},
 	)
 	out, err = exec.Command(
-		"go", "run", "ariga.io/atlas/cmd/atlas",
+		execPath(t),
 		"migrate", "apply",
 		"--allow-dirty", // since database does contain more than one schema
 		"--dir", "file://testdata/migrations/"+dialect,
@@ -244,21 +243,19 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 }
 
 func testCLISchemaInspect(t T, h string, url string, eval schemahcl.Evaluator, args ...string) {
-	require.NoError(t, initCLI())
 	t.dropTables("users")
 	var expected schema.Schema
 	err := evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	t.applyHcl(h)
 	runArgs := []string{
-		"run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"inspect",
 		"-u",
 		url,
 	}
 	runArgs = append(runArgs, args...)
-	cmd := exec.Command("go", runArgs...)
+	cmd := exec.Command(execPath(t), runArgs...)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr
 	cmd.Stdout = stdout
@@ -271,14 +268,12 @@ func testCLISchemaInspect(t T, h string, url string, eval schemahcl.Evaluator, a
 }
 
 func testCLISchemaInspectEnv(t T, h string, env string, eval schemahcl.Evaluator) {
-	err := initCLI()
-	require.NoError(t, err)
 	t.dropTables("users")
 	var expected schema.Schema
-	err = evalBytes([]byte(h), &expected, eval)
+	err := evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	t.applyHcl(h)
-	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+	cmd := exec.Command(execPath(t),
 		"schema",
 		"inspect",
 		"--env",
@@ -298,24 +293,30 @@ func testCLISchemaInspectEnv(t T, h string, env string, eval schemahcl.Evaluator
 // initOnce controls that the cli will only be built once.
 var initOnce sync.Once
 
-func initCLI() error {
-	var err error
+func execPath(t testing.TB) string {
 	initOnce.Do(func() {
-		err = exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+		args := []string{
+			"build",
+			"-mod=mod",
+			"-o", filepath.Join(os.TempDir(), "atlas"),
+		}
+		args = append(args, buildFlags...)
+		args = append(args, "ariga.io/atlas/cmd/atlas")
+		out, err := exec.Command("go", args...).CombinedOutput()
+		require.NoError(t, err, string(out))
 	})
-	return err
+	return filepath.Join(os.TempDir(), "atlas")
 }
 
 func testCLIMultiSchemaApply(t T, h string, url string, schemas []string, eval schemahcl.Evaluator) {
-	err := initCLI()
 	f := filepath.Join(t.TempDir(), "schema.hcl")
-	err = os.WriteFile(f, []byte(h), 0644)
+	err := os.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	require.NoError(t, err)
 	var expected schema.Realm
 	err = evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
-	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+	cmd := exec.Command(execPath(t),
 		"schema",
 		"apply",
 		"-f",
@@ -337,13 +338,11 @@ func testCLIMultiSchemaApply(t T, h string, url string, schemas []string, eval s
 }
 
 func testCLIMultiSchemaInspect(t T, h string, url string, schemas []string, eval schemahcl.Evaluator) {
-	err := initCLI()
-	require.NoError(t, err)
 	var expected schema.Realm
-	err = evalBytes([]byte(h), &expected, eval)
+	err := evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	t.applyRealmHcl(h)
-	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+	cmd := exec.Command(execPath(t),
 		"schema",
 		"inspect",
 		"-u",
@@ -363,14 +362,11 @@ func testCLIMultiSchemaInspect(t T, h string, url string, schemas []string, eval
 }
 
 func testCLISchemaApply(t T, h string, url string, args ...string) {
-	err := initCLI()
-	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "schema.hcl")
-	err = os.WriteFile(f, []byte(h), 0644)
+	err := os.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	runArgs := []string{
-		"run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
 		"-u",
@@ -381,7 +377,7 @@ func testCLISchemaApply(t T, h string, url string, args ...string) {
 		url,
 	}
 	runArgs = append(runArgs, args...)
-	cmd := exec.Command("go", runArgs...)
+	cmd := exec.Command(execPath(t), runArgs...)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr
 	cmd.Stdout = stdout
@@ -398,13 +394,11 @@ func testCLISchemaApply(t T, h string, url string, args ...string) {
 }
 
 func testCLISchemaApplyDry(t T, h string, url string) {
-	err := initCLI()
-	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "schema.hcl")
-	err = os.WriteFile(f, []byte(h), 0644)
+	err := os.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+	cmd := exec.Command(execPath(t),
 		"schema",
 		"apply",
 		"-u",
@@ -431,14 +425,11 @@ func testCLISchemaApplyDry(t T, h string, url string) {
 }
 
 func testCLISchemaApplyAutoApprove(t T, h string, url string, args ...string) {
-	err := initCLI()
-	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "schema.hcl")
-	err = os.WriteFile(f, []byte(h), 0644)
+	err := os.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	runArgs := []string{
-		"run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
 		"-u",
@@ -448,7 +439,7 @@ func testCLISchemaApplyAutoApprove(t T, h string, url string, args ...string) {
 		"--auto-approve",
 	}
 	runArgs = append(runArgs, args...)
-	cmd := exec.Command("go", runArgs...)
+	cmd := exec.Command(execPath(t), runArgs...)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr
 	cmd.Stdout = stdout
@@ -498,16 +489,15 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 	require.NoError(t, os.WriteFile(filepath.Join(p, "1.sql"), []byte(one), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(p, "2.sql"), []byte(two), 0644))
 
-	require.NoError(t, initCLI())
 	require.NoError(t, exec.Command(
-		"go", "run", "ariga.io/atlas/cmd/atlas",
+		execPath(t),
 		"migrate", "hash",
 		"--dir", "file://"+p,
 	).Run())
 
 	// All versions - must contain all migration files.
 	out, err := exec.Command(
-		"go", "run", "ariga.io/atlas/cmd/atlas",
+		execPath(t),
 		"schema", "apply",
 		"-u", t.url(dbname),
 		"--to", "file://"+p,
@@ -520,7 +510,7 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 
 	// One version - must contain only file one.
 	out, err = exec.Command(
-		"go", "run", "ariga.io/atlas/cmd/atlas",
+		execPath(t),
 		"schema", "apply",
 		"-u", t.url(dbname),
 		"--to", "file://"+p+"?version=1",
@@ -533,11 +523,8 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 }
 
 func testCLISchemaDiff(t T, url string) {
-	err := initCLI()
-
-	require.NoError(t, err)
 	t.dropTables("users")
-	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+	cmd := exec.Command(execPath(t),
 		"schema",
 		"diff",
 		"--from",
