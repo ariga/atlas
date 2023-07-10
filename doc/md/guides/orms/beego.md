@@ -276,8 +276,8 @@ type HotdogType struct {
     Id          int            `orm:"auto;pk"`
     Name        string         `orm:"unique"`
     Description string         `orm:"type(text)"`
--    Price       float64        `orm:"digits(10);decimals(2);index"`
-+	 Price       float64
+-   Price       float64        `orm:"digits(10);decimals(2);index"`
++   Price       float64
     Inventory   []*HotdogStock `orm:"reverse(many)"`
 }
 ```
