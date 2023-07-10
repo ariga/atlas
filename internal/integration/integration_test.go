@@ -689,11 +689,16 @@ func (r *rrw) clean() {
 	*r = []*migrate.Revision{}
 }
 
-var _ migrate.RevisionReadWriter = (*rrw)(nil)
+var (
+	buildFlags []string
+	_          migrate.RevisionReadWriter = (*rrw)(nil)
+)
 
 func buildCmd(t *testing.T) (string, error) {
 	td := t.TempDir()
-	if b, err := exec.Command("go", "build", "-o", td, "ariga.io/atlas/cmd/atlas").CombinedOutput(); err != nil {
+	args := append([]string{"build"}, buildFlags...)
+	args = append(args, "-o", td, "ariga.io/atlas/cmd/atlas")
+	if b, err := exec.Command("go", args...).CombinedOutput(); err != nil {
 		return "", fmt.Errorf("%w: %s", err, b)
 	}
 	return filepath.Join(td, "atlas"), nil
