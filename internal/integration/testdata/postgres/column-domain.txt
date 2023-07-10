@@ -25,7 +25,7 @@ table "users" {
   schema = schema.script_column_domain
   column "c1" {
     null = false
-    type = sql("script_column_domain.positive_int")
+    type = sql("positive_int")
   }
 }
 schema "script_column_domain" {

@@ -326,7 +326,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	switch fromT := fromT.(type) {
 	case *schema.BinaryType, *BitType, *schema.BoolType, *schema.DecimalType, *schema.FloatType, *IntervalType,
 		*schema.IntegerType, *schema.JSONType, *OIDType, *RangeType, *SerialType, *schema.SpatialType,
-		*schema.StringType, *schema.TimeType, *TextSearchType, *NetworkType, *UserDefinedType, *schema.UUIDType:
+		*schema.StringType, *schema.TimeType, *TextSearchType, *NetworkType, *schema.UUIDType:
 		t1, err := FormatType(toT)
 		if err != nil {
 			return false, err
@@ -336,6 +336,12 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 			return false, err
 		}
 		changed = t1 != t2
+	case *UserDefinedType:
+		toT := toT.(*UserDefinedType)
+		changed = toT.T != fromT.T &&
+			// In case the type is defined with schema qualifier, but returned without
+			// (inspecting a schema scope), or vice versa, remove before comparing.
+			d.schema != "" && d.trimSchema(toT.T) != d.trimSchema(toT.T)
 	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
 		// Column type was changed if the underlying enum type was changed.
@@ -367,6 +373,14 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		return false, &sqlx.UnsupportedTypeError{Type: fromT}
 	}
 	return changed, nil
+}
+
+// trimSchema returns the given type without the schema qualifier.
+func (d *diff) trimSchema(t string) string {
+	if strings.HasPrefix(t, `"`) {
+		return strings.TrimPrefix(t, fmt.Sprintf("%q.", d.schema))
+	}
+	return strings.TrimPrefix(t, fmt.Sprintf("%s.", d.schema))
 }
 
 // defaultEqual reports if the DEFAULT values x and y

@@ -152,6 +152,7 @@ func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, dropCmd string, 
 		return err
 	}
 	// Dev-driver per testscript schema to allow concurrent tests.
+	env.Values["drv"] = open(t, name)
 	env.Values["dev"] = open(t, devname)
 	env.Defer(func() {
 		if _, err := conn.ExecContext(ctx, fmt.Sprintf(dropCmd, name)); err != nil {
@@ -330,7 +331,7 @@ func cmdCmpShow(ts *testscript.TestScript, args []string, show func(schema, name
 func (t *myTest) cmdCmpHCL(ts *testscript.TestScript, _ bool, args []string) {
 	r := strings.NewReplacer("$charset", ts.Getenv("charset"), "$collate", ts.Getenv("collate"), "$db", ts.Getenv("db"))
 	cmdCmpHCL(ts, args, func(name string) (string, error) {
-		s, err := t.drv.InspectSchema(context.Background(), name, nil)
+		s, err := ts.Value("drv").(migrate.Driver).InspectSchema(context.Background(), name, nil)
 		ts.Check(err)
 		buf, err := mysql.MarshalHCL(s)
 		require.NoError(t, err)
@@ -342,7 +343,7 @@ func (t *myTest) cmdCmpHCL(ts *testscript.TestScript, _ bool, args []string) {
 
 func (t *pgTest) cmdCmpHCL(ts *testscript.TestScript, _ bool, args []string) {
 	cmdCmpHCL(ts, args, func(name string) (string, error) {
-		s, err := t.drv.InspectSchema(context.Background(), name, nil)
+		s, err := ts.Value("drv").(migrate.Driver).InspectSchema(context.Background(), name, nil)
 		ts.Check(err)
 		buf, err := postgres.MarshalHCL(s)
 		require.NoError(t, err)
@@ -579,7 +580,7 @@ func (t *myTest) cmdSynced(ts *testscript.TestScript, neg bool, args []string) {
 }
 
 func (t *myTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
-	cmdApply(ts, neg, args, t.drv.ApplyChanges, t.hclDiff)
+	cmdApply(ts, neg, args, ts.Value("drv").(migrate.Driver).ApplyChanges, t.hclDiff)
 }
 
 func (t *myTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Change, error) {
@@ -587,10 +588,11 @@ func (t *myTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Chang
 		desired = &schema.Schema{}
 		f       = ts.ReadFile(name)
 		ctx     = context.Background()
+		drv     = ts.Value("drv").(migrate.Driver)
 		r       = strings.NewReplacer("$charset", ts.Getenv("charset"), "$collate", ts.Getenv("collate"), "$db", ts.Getenv("db"))
 	)
 	ts.Check(mysql.EvalHCLBytes([]byte(r.Replace(f)), desired, nil))
-	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
+	current, err := drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
 	desired, err = ts.Value("dev").(schema.Normalizer).NormalizeSchema(ctx, desired)
 	// Normalization and diffing errors should
@@ -598,7 +600,7 @@ func (t *myTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Chang
 	if err != nil {
 		return nil, err
 	}
-	changes, err := t.drv.SchemaDiff(current, desired)
+	changes, err := drv.SchemaDiff(current, desired)
 	if err != nil {
 		return nil, err
 	}
@@ -610,17 +612,18 @@ func (t *pgTest) cmdSynced(ts *testscript.TestScript, neg bool, args []string) {
 }
 
 func (t *pgTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
-	cmdApply(ts, neg, args, t.drv.ApplyChanges, t.hclDiff)
+	cmdApply(ts, neg, args, ts.Value("drv").(migrate.Driver).ApplyChanges, t.hclDiff)
 }
 
 func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Change, error) {
 	var (
 		desired = &schema.Schema{}
 		ctx     = context.Background()
+		drv     = ts.Value("drv").(migrate.Driver)
 		f       = strings.ReplaceAll(ts.ReadFile(name), "$db", ts.Getenv("db"))
 	)
 	ts.Check(postgres.EvalHCLBytes([]byte(f), desired, nil))
-	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
+	current, err := drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
 	desired, err = ts.Value("dev").(schema.Normalizer).NormalizeSchema(ctx, desired)
 	// Normalization and diffing errors should
@@ -628,7 +631,7 @@ func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Chang
 	if err != nil {
 		return nil, err
 	}
-	changes, err := t.drv.SchemaDiff(current, desired)
+	changes, err := drv.SchemaDiff(current, desired)
 	if err != nil {
 		return nil, err
 	}

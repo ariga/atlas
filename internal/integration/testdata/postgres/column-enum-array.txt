@@ -140,7 +140,7 @@ table "enums" {
   }
   column "statuses" {
     null = false
-    type = sql("script_column_enum_array.status[]")
+    type = sql("status[]")
   }
   column "status" {
     null = false
