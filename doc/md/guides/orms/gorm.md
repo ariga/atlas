@@ -114,11 +114,6 @@ env "gorm" {
 If your GORM models are spread across multiple packages, or do not embed `gorm.Model` or contain `gorm` struct tags,
 you can use the provider as a library in your Go program to load your GORM schema into Atlas.
 
-Be sure to replace `github.com/<yourorg>/<yourrepo>/path/to/models` with the import path to your GORM models.
-In addition, replace the model types (e.g `models.User`) with the types of your GORM models.
-
-If you want to use the provider as a Go file, you can use the provider as follows:
-
 Create a new program named `loader/main.go` with the following contents:
 
 ```go
@@ -174,7 +169,7 @@ env "gorm" {
 
 ## Usage
 
-Atlas supports a [versioned migrations](https://atlasgo.io/concepts/declarative-vs-versioned#versioned-migrations)
+Atlas supports a [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations)
 workflow, where each change to the database is versioned and recorded in a migration file. You can use the
 `atlas migrate diff` command to automatically generate a migration file that will migrate the database
 from its latest revision to the current GORM schema.

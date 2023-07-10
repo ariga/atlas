@@ -230,17 +230,22 @@ module.exports = {
                 {
                     type: 'doc',
                     id: 'guides/orms/gorm',
-                    label: 'Versioned migrations for GORM'
+                    label: 'GORM'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/orms/beego',
+                    label: 'beego'
                 },
                 {
                     type: 'doc',
                     id: 'guides/frameworks/sqlc-declarative',
-                    label: 'Declarative migrations for sqlc'
+                    label: 'sqlc (declarative)'
                 },
                 {
                     type: 'doc',
                     id: 'guides/frameworks/sqlc-versioned',
-                    label: 'Versioned migrations for sqlc'
+                    label: 'sqlc (versioned)'
                 }
             ]
         },
