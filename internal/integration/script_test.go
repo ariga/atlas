@@ -168,9 +168,7 @@ func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, dropCmd string, 
 	// Store the testscript.T for later use.
 	// See "only" function below.
 	env.Values[keyT] = env.T()
-	if err := setupCLITest(t, env); err != nil {
-		return err
-	}
+	env.Setenv(atlasPathKey, cliPath(t))
 	return nil
 }
 
@@ -195,9 +193,7 @@ func (t *liteTest) setupScript(env *testscript.Env) error {
 	// environment as tests run in parallel.
 	env.Values[keyDB] = db
 	env.Values[keyDrv] = drv
-	if err := setupCLITest(t.T, env); err != nil {
-		return err
-	}
+	env.Setenv(atlasPathKey, cliPath(t.T))
 	// Set the workdir in the test atlas.hcl file.
 	projectFile := filepath.Join(env.WorkDir, "atlas.hcl")
 	if b, err := os.ReadFile(projectFile); err == nil {
@@ -205,15 +201,6 @@ func (t *liteTest) setupScript(env *testscript.Env) error {
 			fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", env.WorkDir))
 		return os.WriteFile(projectFile, []byte(rep), 0600)
 	}
-	return nil
-}
-
-func setupCLITest(t *testing.T, env *testscript.Env) error {
-	path, err := buildCmd(t)
-	if err != nil {
-		return err
-	}
-	env.Setenv(atlasPathKey, path)
 	return nil
 }
 

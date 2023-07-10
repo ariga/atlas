@@ -770,8 +770,7 @@ func TestPostgres_CLI_MultiSchema(t *testing.T) {
 }
 
 func TestPostgres_NormalizeRealm(t *testing.T) {
-	bin, err := buildCmd(t)
-	require.NoError(t, err)
+	bin := cliPath(t)
 	pgRun(t, func(t *pgTest) {
 		dir := t.TempDir()
 		_, err := t.db.Exec("CREATE DATABASE normalized_realm")
@@ -859,8 +858,7 @@ schema "public" {
 }
 
 func TestPostgres_MigrateDiffRealm(t *testing.T) {
-	bin, err := buildCmd(t)
-	require.NoError(t, err)
+	bin := cliPath(t)
 	pgRun(t, func(t *pgTest) {
 		dir := t.TempDir()
 		_, err := t.db.Exec("CREATE DATABASE migrate_diff")
@@ -931,11 +929,10 @@ CREATE TABLE "other"."users" ("id" integer NOT NULL);
 }
 
 func TestPostgres_SchemaDiff(t *testing.T) {
-	bin, err := buildCmd(t)
-	require.NoError(t, err)
+	bin := cliPath(t)
 	pgRun(t, func(t *pgTest) {
 		dir := t.TempDir()
-		_, err = t.db.Exec("CREATE DATABASE test1")
+		_, err := t.db.Exec("CREATE DATABASE test1")
 		require.NoError(t, err)
 		t.Cleanup(func() {
 			_, err := t.db.Exec("DROP DATABASE IF EXISTS test1")
