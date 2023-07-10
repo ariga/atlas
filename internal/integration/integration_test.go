@@ -9,7 +9,6 @@ import (
 	"context"
 	"database/sql"
 	"flag"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -679,16 +678,18 @@ func (r *rrw) clean() {
 var (
 	buildFlags []string
 	_          migrate.RevisionReadWriter = (*rrw)(nil)
+	buildOnce  sync.Once
 )
 
-func buildCmd(t *testing.T) (string, error) {
-	td := t.TempDir()
-	args := append([]string{"build"}, buildFlags...)
-	args = append(args, "-o", td, "ariga.io/atlas/cmd/atlas")
-	if b, err := exec.Command("go", args...).CombinedOutput(); err != nil {
-		return "", fmt.Errorf("%w: %s", err, b)
-	}
-	return filepath.Join(td, "atlas"), nil
+func cliPath(t *testing.T) string {
+	path := filepath.Join(os.TempDir(), "atlas")
+	buildOnce.Do(func() {
+		args := append([]string{"build"}, buildFlags...)
+		args = append(args, "-o", path, "ariga.io/atlas/cmd/atlas")
+		out, err := exec.Command("go", args...).CombinedOutput()
+		require.NoError(t, err, string(out))
+	})
+	return path
 }
 
 func evalBytes(b []byte, v any, ev schemahcl.Evaluator) error {
