@@ -591,7 +591,7 @@ func TestMySQL_CLI_MigrateApplyLock(t *testing.T) {
 			go func(i int) {
 				defer wg.Done()
 				out, err := exec.Command(
-					"go", "run", "ariga.io/atlas/cmd/atlas",
+					execPath(t),
 					"migrate", "apply",
 					"--dir", "file://testdata/migrations/mysqlock",
 					"--url", t.url("mysqlock"),
