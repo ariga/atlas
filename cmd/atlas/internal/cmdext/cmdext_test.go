@@ -299,6 +299,22 @@ schema = data.hcl_schema.a8m.url
 schema "a8m" {
 }
 `, string(buf))
+
+	// An empty schema case.
+	err = os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(``), 0644)
+	require.NoError(t, err)
+	sr, err = loader.LoadState(ctx, &cmdext.StateReaderConfig{
+		Dev:  drv,
+		URLs: []*url.URL{u},
+		// Variables are not needed at this stage,
+		// as they are defined on the data source.
+	})
+	require.NoError(t, err)
+	realm, err = sr.ReadState(ctx)
+	require.NoError(t, err)
+	buf, err = drv.MarshalSpec(realm)
+	require.NoError(t, err)
+	require.Equal(t, ``, string(buf))
 }
 
 func TestExternalSchema(t *testing.T) {
