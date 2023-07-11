@@ -22,6 +22,7 @@ import (
 
 type doc struct {
 	Tables  []*sqlspec.Table  `spec:"table"`
+	Views   []*sqlspec.View   `spec:"view"`
 	Schemas []*sqlspec.Schema `spec:"schema"`
 }
 
@@ -34,8 +35,8 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return err
 		}
 		if err := specutil.Scan(v,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables},
-			&specutil.ScanFuncs{Table: convertTable},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views},
+			&specutil.ScanFuncs{Table: convertTable, View: convertView},
 		); err != nil {
 			return fmt.Errorf("mysql: failed converting to *schema.Realm: %w", err)
 		}
@@ -58,15 +59,14 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		}
 		r := &schema.Realm{}
 		if err := specutil.Scan(r,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables},
-			&specutil.ScanFuncs{Table: convertTable},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views},
+			&specutil.ScanFuncs{Table: convertTable, View: convertView},
 		); err != nil {
 			return err
 		}
 		if err := convertCharset(d.Schemas[0], &r.Schemas[0].Attrs); err != nil {
 			return err
 		}
-		r.Schemas[0].Realm = nil
 		*v = *r.Schemas[0]
 	case schema.Schema, schema.Realm:
 		return fmt.Errorf("mysql: Eval expects a pointer: received %[1]T, expected *%[1]T", v)
@@ -84,6 +84,7 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
+		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
 		schemahcl.WithScopedEnums("table.engine", EngineInnoDB, EngineMyISAM, EngineMemory, EngineCSV, EngineNDB),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
 		schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
@@ -131,6 +132,17 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 		t.AddAttrs(&Engine{V: v})
 	}
 	return t, err
+}
+
+// convertView converts a sqlspec.View to a schema.View.
+func convertView(spec *sqlspec.View, parent *schema.Schema) (*schema.View, error) {
+	v, err := specutil.View(spec, parent, func(c *sqlspec.Column, _ *schema.View) (*schema.Column, error) {
+		return specutil.Column(c, convertColumnType)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 // convertPK converts a sqlspec.PrimaryKey into a schema.Index.
