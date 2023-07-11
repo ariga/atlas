@@ -42,7 +42,11 @@ Beego users.
 
 ## Prerequisites
 
-* A local [Beego](https://github.com/beego/beego) project.
+* A local [Beego](https://github.com/beego/beego) project - the project have a `go.mod` file describing it.
+
+The Beego Atlas Provider works by creating a temporary Go program, compiling and running
+it to extract the schema of your Beego project. Therefore, you will need to have Go installed
+on your machine.
 
 ## Using the Beego Atlas Provider 
 
