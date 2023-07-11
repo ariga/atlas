@@ -169,9 +169,12 @@ func stateReaderHCL(ctx context.Context, config *StateReaderConfig, paths []stri
 		StateReader: migrate.StateReaderFunc(func(ctx context.Context) (*schema.Realm, error) {
 			// Normalize once, only on dev database connection.
 			if nr, ok := client.Driver.(schema.Normalizer); ok && !normalized && config.Dev != nil {
-				if config.Dev.URL.Schema != "" {
+				switch {
+				// Empty schema file.
+				case len(realm.Schemas) == 0:
+				case config.Dev.URL.Schema != "":
 					realm.Schemas[0], err = nr.NormalizeSchema(ctx, realm.Schemas[0])
-				} else {
+				default:
 					realm, err = nr.NormalizeRealm(ctx, realm)
 				}
 				if err != nil {
