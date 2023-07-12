@@ -6,6 +6,7 @@ package pgparse
 
 import (
 	"fmt"
+	"strconv"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parseutil"
 	"ariga.io/atlas/sql/migrate"
@@ -104,7 +105,11 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 		if err != nil {
 			return nil, err
 		}
-		i := schema.Changes(modify.Changes).IndexAddIndex(stmt.Name.String())
+		name := stmt.Name.String()
+		if uname, err := strconv.Unquote(name); err == nil {
+			name = uname
+		}
+		i := schema.Changes(modify.Changes).IndexAddIndex(name)
 		if i == -1 {
 			return nil, fmt.Errorf("AddIndex %q command not found", stmt.Name)
 		}
