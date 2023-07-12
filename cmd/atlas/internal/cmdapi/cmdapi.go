@@ -45,13 +45,13 @@ var (
 		Vars Vars
 	}
 
-	// version holds Atlas version. When built with cloud packages should be set by build flag
-	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.version=${version}'"
-	version string
-
-	// flavor holds Atlas flavor. When built with cloud packages should be set by build flag
-	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.flavor=${flavor}'"
+	// flavor holds Atlas flavor. Custom flavors (like the community build) should set this by build flag
+	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.flavor=community'"
 	flavor string
+
+	// version holds Atlas version. When built with cloud packages should be set by build flag, e.g.
+	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.version=v0.1.2'"
+	version string
 
 	// schemaCmd represents the subcommand 'atlas version'.
 	versionCmd = &cobra.Command{
@@ -77,6 +77,8 @@ var (
 	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.license=${license}'"
 	license = `LICENSE
 Atlas is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/blob/master/LICENSE.`
+
+	// licenseCmd represents the subcommand 'atlas license'.
 	licenseCmd = &cobra.Command{
 		Use:   "license",
 		Short: "Display license information",
