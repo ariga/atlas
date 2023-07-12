@@ -185,6 +185,23 @@ func TestFixChange_CreateIndexCon(t *testing.T) {
 		},
 		changes,
 	)
+	// Support quoted identifiers.
+	changes, err = p.FixChange(
+		nil,
+		`CREATE INDEX CONCURRENTLY "i1" ON t1 (c1)`,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.AddIndex{I: schema.NewIndex("i1")},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	m, ok := changes[0].(*schema.ModifyTable)
+	require.True(t, ok)
+	require.Equal(t, &postgres.Concurrently{}, m.Changes[0].(*schema.AddIndex).Extra[0])
 }
 
 func TestFixChange_RenameTable(t *testing.T) {
