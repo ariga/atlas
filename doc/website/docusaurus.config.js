@@ -37,7 +37,7 @@ module.exports = {
       title: 'Atlas',
       logo: {
         alt: 'Atlas',
-        src: 'https://atlasgo.io/uploads/landing/logo.svg',
+        src: 'https://atlasgo.io/uploads/websiteicon.svg',
       },
       items: [
         {
