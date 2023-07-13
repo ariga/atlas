@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"text/template"
 	"time"
 )
@@ -93,6 +94,10 @@ func (v *VerChecker) Check(ver string) (*Payload, error) {
 		s := State{CheckedAt: time.Now()}
 		st, err := json.Marshal(s)
 		if err != nil {
+			return nil, err
+		}
+		// Create containing directory if it doesn't exist.
+		if err := os.MkdirAll(filepath.Dir(v.statePath), os.ModePerm); err != nil {
 			return nil, err
 		}
 		if err := os.WriteFile(v.statePath, st, os.ModePerm); err != nil {
