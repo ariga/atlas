@@ -16,18 +16,18 @@ func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOpti
 	return nil // unimplemented.
 }
 
-func (*state) addView(context.Context, *schema.AddView) error {
+func (*state) addView(*schema.AddView) error {
 	return nil // unimplemented.
 }
 
-func (*state) dropView(context.Context, *schema.DropView) error {
+func (*state) dropView(*schema.DropView) error {
 	return nil // unimplemented.
 }
 
-func (*state) modifyView(context.Context, *schema.ModifyView) error {
+func (*state) modifyView(*schema.ModifyView) error {
 	return nil // unimplemented.
 }
 
-func (*state) renameView(context.Context, *schema.RenameView) {
+func (*state) renameView(*schema.RenameView) {
 	// unimplemented.
 }
