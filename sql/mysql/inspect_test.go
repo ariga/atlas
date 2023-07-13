@@ -753,7 +753,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			tt.before(mk)
 			drv, err := Open(db)
 			require.NoError(t, err)
-			s, err := drv.InspectSchema(context.Background(), "public", nil)
+			s, err := drv.InspectSchema(context.Background(), "public", &schema.InspectOptions{
+				Mode: ^schema.InspectViews,
+			})
 			require.NoError(t, err)
 			require.NotNil(t, s)
 			tt.expect(require.New(t), s.Tables[0], err)
@@ -765,7 +767,6 @@ func TestDriver_InspectSchema(t *testing.T) {
 	tests := []struct {
 		name   string
 		schema string
-		opts   *schema.InspectOptions
 		before func(mock)
 		expect func(*require.Assertions, *schema.Schema, error)
 	}{
@@ -890,7 +891,9 @@ func TestDriver_InspectSchema(t *testing.T) {
 			tt.before(mock{m})
 			drv, err := Open(db)
 			require.NoError(t, err)
-			tables, err := drv.InspectSchema(context.Background(), tt.schema, tt.opts)
+			tables, err := drv.InspectSchema(context.Background(), tt.schema, &schema.InspectOptions{
+				Mode: ^schema.InspectViews,
+			})
 			tt.expect(require.New(t), tables, err)
 		})
 	}
@@ -912,7 +915,9 @@ func TestDriver_Realm(t *testing.T) {
 	mk.tables("test")
 	drv, err := Open(db)
 	require.NoError(t, err)
-	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
+	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+		Mode: ^schema.InspectViews,
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
 		r := &schema.Realm{
@@ -952,7 +957,10 @@ func TestDriver_Realm(t *testing.T) {
 	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "?, ?"))).
 		WithArgs("test", "public").
 		WillReturnRows(sqlmock.NewRows([]string{"schema", "table", "charset", "collate", "inc", "comment", "options"}))
-	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test", "public"}})
+	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+		Mode:    ^schema.InspectViews,
+		Schemas: []string{"test", "public"},
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
 		r := &schema.Realm{
@@ -1036,7 +1044,6 @@ type mock struct {
 }
 
 func (m mock) version(version string) {
-
 	m.ExpectQuery(sqltest.Escape(variablesQuery)).
 		WillReturnRows(sqltest.Rows(`
 +-----------------+--------------------+------------------------+--------------------------+ 
@@ -1048,7 +1055,6 @@ func (m mock) version(version string) {
 }
 
 func (m mock) lcmode(version, mode string) {
-
 	m.ExpectQuery(sqltest.Escape(variablesQuery)).
 		WillReturnRows(sqltest.Rows(`
 +-----------------+--------------------+------------------------+--------------------------+ 

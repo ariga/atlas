@@ -361,6 +361,11 @@ type (
 		Expr string
 		Type string // Optional type. e.g. STORED or VIRTUAL.
 	}
+
+	// ViewCheckOption describes the standard 'WITH CHECK OPTION clause' of a view.
+	ViewCheckOption struct {
+		V string // LOCAL, CASCADED, NONE, or driver specific.
+	}
 )
 
 // objects.
@@ -387,8 +392,9 @@ func (*DecimalType) typ()     {}
 func (*UnsupportedType) typ() {}
 
 // attributes.
-func (*Check) attr()         {}
-func (*Comment) attr()       {}
-func (*Charset) attr()       {}
-func (*Collation) attr()     {}
-func (*GeneratedExpr) attr() {}
+func (*Check) attr()           {}
+func (*Comment) attr()         {}
+func (*Charset) attr()         {}
+func (*Collation) attr()       {}
+func (*GeneratedExpr) attr()   {}
+func (*ViewCheckOption) attr() {}

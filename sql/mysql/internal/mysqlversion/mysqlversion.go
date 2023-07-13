@@ -84,6 +84,12 @@ func (v V) SupportsIndexComment() bool {
 	return v.Maria() || v.GTE("5.5.3")
 }
 
+// SupportsViewUsage reports if the version supports
+// querying the VIEW_TABLE_USAGE table.
+func (v V) SupportsViewUsage() bool {
+	return !v.Maria() && v.GTE("8.0.13")
+}
+
 // CharsetToCollate returns the mapping from charset to its default collation.
 func (v V) CharsetToCollate() (map[string]string, error) {
 	name := "is/charset2collate"
