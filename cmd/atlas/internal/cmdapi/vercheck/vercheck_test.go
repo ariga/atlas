@@ -100,6 +100,21 @@ func TestState(t *testing.T) {
 	}
 }
 
+func TestStatePersist(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(srv.Close)
+	path := filepath.Join(t.TempDir(), ".atlas", "release.json")
+	vc := New(srv.URL, path)
+	_, err := vc.Check("v0.1.2")
+	require.NoError(t, err)
+
+	b, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Contains(t, string(b), `"checkedat":`)
+}
+
 func TestTemplate(t *testing.T) {
 
 	for _, tt := range []struct {
