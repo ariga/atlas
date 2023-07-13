@@ -46,6 +46,7 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 			return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 		}
 		d.Tables = spec.Tables
+		d.Views = spec.Views
 		d.Schemas = []*sqlspec.Schema{spec.Schema}
 	case *schema.Realm:
 		for _, s := range s.Schemas {
@@ -54,6 +55,7 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 				return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 			}
 			d.Tables = append(d.Tables, spec.Tables...)
+			d.Views = append(d.Views, spec.Views...)
 			d.Schemas = append(d.Schemas, spec.Schema)
 		}
 		if err := QualifyDuplicates(d.Tables); err != nil {

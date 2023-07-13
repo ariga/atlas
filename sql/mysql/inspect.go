@@ -31,13 +31,20 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		opts = &schema.InspectRealmOption{}
 	}
 	r := schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
-	if len(schemas) == 0 || !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
-		return r, nil
+	if len(schemas) > 0 {
+		mode := sqlx.ModeInspectRealm(opts)
+		if mode.Is(schema.InspectTables) {
+			if err := i.inspectTables(ctx, r, nil); err != nil {
+				return nil, err
+			}
+			sqlx.LinkSchemaTables(schemas)
+		}
+		if mode.Is(schema.InspectViews) {
+			if err := i.inspectViews(ctx, r, nil); err != nil {
+				return nil, err
+			}
+		}
 	}
-	if err := i.inspectTables(ctx, r, nil); err != nil {
-		return nil, err
-	}
-	sqlx.LinkSchemaTables(schemas)
 	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
 
@@ -63,6 +70,11 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 			return nil, err
 		}
 		sqlx.LinkSchemaTables(schemas)
+	}
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectViews) {
+		if err := i.inspectViews(ctx, r, opts); err != nil {
+			return nil, err
+		}
 	}
 	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }

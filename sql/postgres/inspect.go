@@ -921,12 +921,6 @@ type (
 	Cascade struct {
 		schema.Clause
 	}
-
-	// ViewCheckOption controls the behavior of automatically updatable views.
-	ViewCheckOption struct {
-		schema.Attr
-		V string // LOCAL, CASCADED or NONE.
-	}
 )
 
 // IsUnique reports if the type is unique constraint.
