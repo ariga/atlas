@@ -82,6 +82,7 @@ func (s *state) plan(changes []schema.Change) error {
 	if err != nil {
 		return err
 	}
+	var views []schema.Change
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
@@ -92,11 +93,28 @@ func (s *state) plan(changes []schema.Change) error {
 			err = s.modifyTable(c)
 		case *schema.RenameTable:
 			s.renameTable(c)
+		case *schema.AddView, *schema.DropView, *schema.ModifyView, *schema.RenameView:
+			views = append(views, c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
 		if err != nil {
 			return err
+		}
+	}
+	if views, err = sqlx.PlanViewChanges(views); err != nil {
+		return err
+	}
+	for _, c := range views {
+		switch c := c.(type) {
+		case *schema.AddView:
+			err = s.addView(c)
+		case *schema.DropView:
+			err = s.dropView( c)
+		case *schema.ModifyView:
+			err = s.modifyView(c)
+		case *schema.RenameView:
+			s.renameView(c)
 		}
 	}
 	return nil

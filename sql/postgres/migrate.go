@@ -26,7 +26,7 @@ var DefaultPlan migrate.PlanApplier = &planApply{conn: conn{ExecQuerier: sqlx.No
 type planApply struct{ conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
+func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	s := &state{
 		conn: p.conn,
 		Plan: migrate.Plan{
@@ -37,7 +37,7 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 	for _, o := range opts {
 		o(&s.PlanOptions)
 	}
-	if err := s.plan(ctx, changes); err != nil {
+	if err := s.plan(changes); err != nil {
 		return nil, err
 	}
 	if err := sqlx.SetReversible(&s.Plan); err != nil {
@@ -65,7 +65,7 @@ type state struct {
 
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
-func (s *state) plan(ctx context.Context, changes []schema.Change) error {
+func (s *state) plan(changes []schema.Change) error {
 	if s.SchemaQualifier != nil {
 		if err := sqlx.CheckChangesScope(s.PlanOptions, changes); err != nil {
 			return err
@@ -86,9 +86,9 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) error {
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
-			err = s.addTable(ctx, c)
+			err = s.addTable(c)
 		case *schema.ModifyTable:
-			err = s.modifyTable(ctx, c)
+			err = s.modifyTable(c)
 		case *schema.RenameTable:
 			s.renameTable(c)
 		case *schema.AddView, *schema.DropView, *schema.ModifyView, *schema.RenameView:
@@ -110,17 +110,17 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) error {
 	for _, c := range views {
 		switch c := c.(type) {
 		case *schema.AddView:
-			err = s.addView(ctx, c)
+			err = s.addView(c)
 		case *schema.DropView:
-			err = s.dropView(ctx, c)
+			err = s.dropView(c)
 		case *schema.ModifyView:
-			err = s.modifyView(ctx, c)
+			err = s.modifyView(c)
 		case *schema.RenameView:
-			s.renameView(ctx, c)
+			s.renameView(c)
 		}
 	}
 	for _, c := range dropT {
-		if err := s.dropTable(ctx, c); err != nil {
+		if err := s.dropTable(c); err != nil {
 			return err
 		}
 	}
@@ -233,7 +233,7 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 }
 
 // addTable builds and executes the query for creating a table in a schema.
-func (s *state) addTable(_ context.Context, add *schema.AddTable) error {
+func (s *state) addTable(add *schema.AddTable) error {
 	var (
 		errs []string
 		b    = s.Build("CREATE TABLE")
@@ -292,14 +292,14 @@ func (s *state) addTable(_ context.Context, add *schema.AddTable) error {
 }
 
 // dropTable builds and executes the query for dropping a table from a schema.
-func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
+func (s *state) dropTable(drop *schema.DropTable) error {
 	cmd := &changeGroup{}
 	s.droppedT = append(s.droppedT, drop.T)
 	rs := &state{
 		conn:        s.conn,
 		PlanOptions: s.PlanOptions,
 	}
-	if err := rs.addTable(ctx, &schema.AddTable{T: drop.T}); err != nil {
+	if err := rs.addTable(&schema.AddTable{T: drop.T}); err != nil {
 		return fmt.Errorf("calculate reverse for drop table %q: %w", drop.T.Name, err)
 	}
 	b := s.Build("DROP TABLE")
@@ -332,7 +332,7 @@ func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
 }
 
 // modifyTable builds the statements that bring the table into its modified state.
-func (s *state) modifyTable(_ context.Context, modify *schema.ModifyTable) error {
+func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	var (
 		alter   []schema.Change
 		addI    []*schema.AddIndex

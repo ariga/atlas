@@ -552,7 +552,9 @@ func TestMySQL_Snapshot(t *testing.T) {
 		_, err = drv.(migrate.Snapshoter).Snapshot(context.Background())
 		require.ErrorAs(t, err, new(*migrate.NotCleanError))
 
-		r, err := t.driver().InspectRealm(context.Background(), nil)
+		r, err := t.driver().InspectRealm(context.Background(), &schema.InspectRealmOption{
+			Mode: ^schema.InspectViews,
+		})
 		require.NoError(t, err)
 		restore, err := t.driver().(migrate.Snapshoter).Snapshot(context.Background())
 		require.NoError(t, err) // connected to test schema
@@ -564,7 +566,9 @@ func TestMySQL_Snapshot(t *testing.T) {
 			t.dropTables("my_table")
 		})
 		require.NoError(t, restore(context.Background()))
-		r1, err := t.driver().InspectRealm(context.Background(), nil)
+		r1, err := t.driver().InspectRealm(context.Background(), &schema.InspectRealmOption{
+			Mode: ^schema.InspectViews,
+		})
 		require.NoError(t, err)
 		diff, err := t.driver().RealmDiff(r1, r)
 		require.NoError(t, err)
@@ -746,7 +750,9 @@ schema "second" {
 }
 `
 		t.applyRealmHcl(wa)
-		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
+		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+			Mode: ^schema.InspectViews,
+		})
 		require.NoError(t, err)
 		_, ok := realm.Schema("test")
 		require.True(t, ok)
@@ -815,7 +821,10 @@ schema "users" {
 		hcl, err := mysql.MarshalHCL(realm)
 		require.NoError(t, err)
 		t.applyRealmHcl(string(hcl) + "\n" + expected)
-		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"users", "financial"}})
+		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+			Mode: ^schema.InspectViews,
+			Schemas: []string{"users", "financial"},
+		})
 		require.NoError(t, err)
 		actual, err := mysql.MarshalHCL(realm)
 		require.NoError(t, err)

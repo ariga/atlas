@@ -461,7 +461,9 @@ schema "second" {
 }
 `
 		t.applyRealmHcl(wa)
-		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
+		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+			Mode: ^schema.InspectViews,
+		})
 		require.NoError(t, err)
 		_, ok := realm.Schema("test")
 		require.True(t, ok)
