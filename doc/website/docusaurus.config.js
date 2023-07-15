@@ -245,6 +245,7 @@ module.exports = {
         disableInDev: false,
       },
     ],
+    "./plugins/utm-plugin",
   ],
   presets: [
     [
