@@ -76,6 +76,11 @@ func testAddDrop(t T) {
 	petsT.ForeignKeys = []*schema.ForeignKey{
 		{Symbol: "owner_id", Table: petsT, Columns: petsT.Columns[1:], RefTable: usersT, RefColumns: usersT.Columns[:1]},
 	}
+	if tt, ok := t.(interface {
+		pets(_, _ *schema.Table) *schema.Table
+	}); ok {
+		petsT = tt.pets(usersT, postsT)
+	}
 	t.dropTables(postsT.Name, usersT.Name, petsT.Name)
 	t.migrate(&schema.AddTable{T: petsT}, &schema.AddTable{T: usersT}, &schema.AddTable{T: postsT})
 	ensureNoChange(t, usersT, petsT, postsT)
@@ -591,7 +596,11 @@ func testExecutor(t T) {
 	petsT.ForeignKeys = []*schema.ForeignKey{
 		{Symbol: "owner_id", Table: petsT, Columns: petsT.Columns[1:], RefTable: usersT, RefColumns: usersT.Columns[:1]},
 	}
-
+	if tt, ok := t.(interface {
+		pets(_, _ *schema.Table) *schema.Table
+	}); ok {
+		petsT = tt.pets(usersT, postsT)
+	}
 	t.dropTables(petsT.Name, postsT.Name, usersT.Name)
 	t.Cleanup(func() {
 		t.revisionsStorage().(*rrw).clean()
