@@ -261,9 +261,20 @@ func (b *Builder) Table(t *schema.Table) *Builder {
 	return b.mayQualify(t.Schema, t.Name)
 }
 
-// Table writes the table identifier to the builder, prefixed
+// TableResource writes the table's resource identifier to the builder, prefixed
 // with the schema name if exists.
-func (b *Builder) mayQualify(s *schema.Schema, ident string) *Builder {
+func (b *Builder) TableResource(t *schema.Table, r any) *Builder {
+	switch c := r.(type) {
+	case *schema.Column:
+		return b.mayQualify(t.Schema, t.Name, c.Name)
+	case *schema.Index:
+		return b.mayQualify(t.Schema, t.Name, c.Name)
+	default:
+		return b
+	}
+}
+
+func (b *Builder) mayQualify(s *schema.Schema, idents ...string) *Builder {
 	switch {
 	// Custom qualifier.
 	case b.Schema != nil:
@@ -277,7 +288,12 @@ func (b *Builder) mayQualify(s *schema.Schema, ident string) *Builder {
 		b.Ident(s.Name)
 		b.rewriteLastByte('.')
 	}
-	b.Ident(ident)
+	for i, ident := range idents {
+		if i > 0 {
+			b.rewriteLastByte('.')
+		}
+		b.Ident(ident)
+	}
 	return b
 }
 
@@ -330,6 +346,18 @@ func (b *Builder) MapComma(x any, f func(i int, b *Builder)) *Builder {
 			b.Comma()
 		}
 		f(i, b)
+	}
+	return b
+}
+
+// Quote like Wrap but with a quote char.
+func (b *Builder) Quote(q byte, fn func(b *Builder)) *Builder {
+	b.WriteByte(q)
+	fn(b)
+	if b.lastByte() != ' ' {
+		b.WriteByte(q)
+	} else {
+		b.rewriteLastByte(q)
 	}
 	return b
 }
