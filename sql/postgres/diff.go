@@ -29,10 +29,18 @@ type diff struct{ conn }
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (*diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
 	var changes []schema.Change
-	if change := sqlx.CommentDiff(from.Attrs, to.Attrs); change != nil {
+	if change := sqlx.CommentDiff(skipDefaultComment(from), skipDefaultComment(to)); change != nil {
 		changes = append(changes, change)
 	}
 	return changes
+}
+
+func skipDefaultComment(s *schema.Schema) []schema.Attr {
+	attrs := s.Attrs
+	if c := (schema.Comment{}); sqlx.Has(attrs, &c) && c.Text == "standard public schema" && (s.Name == "" || s.Name == "public") {
+		attrs = schema.RemoveAttr[*schema.Comment](attrs)
+	}
+	return attrs
 }
 
 // SchemaObjectDiff returns a changeset for migrating schema objects from
