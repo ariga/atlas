@@ -103,12 +103,15 @@ func (t *myTest) setupScript(env *testscript.Env) error {
 	if err := replaceDBURL(env, t.url("")); err != nil {
 		return err
 	}
-	return setupScript(t.T, env, t.db, "DROP SCHEMA IF EXISTS %s", func(tt *testing.T, schema string) migrate.Driver {
-		dev, err := sqlclient.Open(context.Background(), fmt.Sprintf("mysql://root:pass@localhost:%d/%s", t.port, schema))
-		require.NoError(t, err)
-		tt.Cleanup(func() { require.NoError(t, dev.Close()) })
-		return dev.Driver
-	})
+	return setupScript(t.T, env, t.db,
+		"CREATE SCHEMA IF NOT EXISTS %s",
+		"DROP SCHEMA IF EXISTS %s",
+		func(tt *testing.T, schema string) migrate.Driver {
+			dev, err := sqlclient.Open(context.Background(), fmt.Sprintf("mysql://root:pass@localhost:%d/%s", t.port, schema))
+			require.NoError(t, err)
+			tt.Cleanup(func() { require.NoError(t, dev.Close()) })
+			return dev.Driver
+		})
 }
 
 func replaceDBURL(env *testscript.Env, url string) error {
@@ -127,15 +130,17 @@ func (t *pgTest) setupScript(env *testscript.Env) error {
 	if err := replaceDBURL(env, u); err != nil {
 		return err
 	}
-	return setupScript(t.T, env, t.db, "DROP SCHEMA IF EXISTS %s CASCADE", func(tt *testing.T, schema string) migrate.Driver {
-		dev, err := sqlclient.Open(context.Background(), fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?search_path=%s&sslmode=disable", t.port, schema))
-		require.NoError(t, err)
-		tt.Cleanup(func() { require.NoError(t, dev.Close()) })
-		return dev.Driver
-	})
+	return setupScript(t.T, env, t.db,
+		"CREATE SCHEMA IF NOT EXISTS %s",
+		"DROP SCHEMA IF EXISTS %s CASCADE", func(tt *testing.T, schema string) migrate.Driver {
+			dev, err := sqlclient.Open(context.Background(), fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?search_path=%s&sslmode=disable", t.port, schema))
+			require.NoError(t, err)
+			tt.Cleanup(func() { require.NoError(t, dev.Close()) })
+			return dev.Driver
+		})
 }
 
-func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, dropCmd string, open func(*testing.T, string) migrate.Driver) error {
+func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, createCmd, dropCmd string, open func(*testing.T, string) migrate.Driver) error {
 	ctx := context.Background()
 	conn, err := db.Conn(ctx)
 	if err != nil {
@@ -145,10 +150,10 @@ func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, dropCmd string, 
 	devname := fmt.Sprintf("%s_dev", name)
 	env.Setenv("db", name)
 	env.Setenv("dev", devname)
-	if _, err := conn.ExecContext(ctx, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", name)); err != nil {
+	if _, err := conn.ExecContext(ctx, fmt.Sprintf(createCmd, name)); err != nil {
 		return err
 	}
-	if _, err := conn.ExecContext(ctx, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", devname)); err != nil {
+	if _, err := conn.ExecContext(ctx, fmt.Sprintf(createCmd, devname)); err != nil {
 		return err
 	}
 	// Dev-driver per testscript schema to allow concurrent tests.
