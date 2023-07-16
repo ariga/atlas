@@ -79,9 +79,21 @@ func TestBuilder_Qualifier(t *testing.T) {
 	b.Reset()
 	b.P("CREATE TABLE").Table(schema.NewTable("users").SetSchema(schema.New("test")))
 	require.Equal(t, `CREATE TABLE "users"`, b.String())
-
 }
 
+func TestQuote(t *testing.T) {
+	var (
+		s = "s1"
+		b = &Builder{QuoteChar: '"', Schema: &s}
+	)
+	b.P("EXECUTE sp_rename").
+		P("@newname = N'c2'").Comma().
+		P("@objtype = N'COLUMN'").Comma()
+	b.P("@objname = ").Quote("N", func(b *Builder) {
+		b.TableResource(schema.NewTable("t1"), &schema.Column{Name: "c1"})
+	})
+	require.Equal(t, `EXECUTE sp_rename @newname = N'c2', @objtype = N'COLUMN', @objname = N'"s1"."t1"."c1"'`, b.String())
+}
 func TestMayWrap(t *testing.T) {
 	tests := []struct {
 		input   string

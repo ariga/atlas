@@ -270,11 +270,11 @@ func (b *Builder) TableResource(t *schema.Table, r any) *Builder {
 	case *schema.Index:
 		return b.mayQualify(t.Schema, t.Name, c.Name)
 	default:
-		return b
+		panic(fmt.Sprintf("unexpected table resource: %T", r))
 	}
 }
 
-func (b *Builder) mayQualify(s *schema.Schema, idents ...string) *Builder {
+func (b *Builder) mayQualify(s *schema.Schema, top string, children ...string) *Builder {
 	switch {
 	// Custom qualifier.
 	case b.Schema != nil:
@@ -288,10 +288,9 @@ func (b *Builder) mayQualify(s *schema.Schema, idents ...string) *Builder {
 		b.Ident(s.Name)
 		b.rewriteLastByte('.')
 	}
-	for i, ident := range idents {
-		if i > 0 {
-			b.rewriteLastByte('.')
-		}
+	b.Ident(top)
+	for _, ident := range children {
+		b.rewriteLastByte('.')
 		b.Ident(ident)
 	}
 	return b
@@ -350,14 +349,15 @@ func (b *Builder) MapComma(x any, f func(i int, b *Builder)) *Builder {
 	return b
 }
 
-// Quote like Wrap but with a quote char.
-func (b *Builder) Quote(q byte, fn func(b *Builder)) *Builder {
-	b.WriteByte(q)
+// Quote wraps the given function with a single quote and a prefix
+func (b *Builder) Quote(prefix string, fn func(b *Builder)) *Builder {
+	b.WriteString(prefix)
+	b.WriteByte('\'')
 	fn(b)
 	if b.lastByte() != ' ' {
-		b.WriteByte(q)
+		b.WriteByte('\'')
 	} else {
-		b.rewriteLastByte(q)
+		b.rewriteLastByte('\'')
 	}
 	return b
 }
