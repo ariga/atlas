@@ -43,7 +43,7 @@ func TestModeInspectSchema(t *testing.T) {
 
 func TestBuilder(t *testing.T) {
 	var (
-		b       = &Builder{QuoteChar: '"'}
+		b       = &Builder{QuoteOpening: '"', QuoteClosing: '"'}
 		columns = []string{"a", "b", "c"}
 	)
 	b.P("CREATE TABLE").
@@ -64,7 +64,7 @@ func TestBuilder(t *testing.T) {
 func TestBuilder_Qualifier(t *testing.T) {
 	var (
 		s = "other"
-		b = &Builder{QuoteChar: '"', Schema: &s}
+		b = &Builder{QuoteOpening: '"', QuoteClosing: '"', Schema: &s}
 	)
 	b.P("CREATE TABLE").Table(schema.NewTable("users"))
 	require.Equal(t, `CREATE TABLE "other"."users"`, b.String())
@@ -84,7 +84,7 @@ func TestBuilder_Qualifier(t *testing.T) {
 func TestQuote(t *testing.T) {
 	var (
 		s = "s1"
-		b = &Builder{QuoteChar: '"', Schema: &s}
+		b = &Builder{QuoteOpening: '[', QuoteClosing: ']', Schema: &s}
 	)
 	b.P("EXECUTE sp_rename").
 		P("@newname = N'c2'").Comma().
@@ -92,7 +92,7 @@ func TestQuote(t *testing.T) {
 	b.P("@objname = ").Quote("N", func(b *Builder) {
 		b.TableResource(schema.NewTable("t1"), &schema.Column{Name: "c1"})
 	})
-	require.Equal(t, `EXECUTE sp_rename @newname = N'c2', @objtype = N'COLUMN', @objname = N'"s1"."t1"."c1"'`, b.String())
+	require.Equal(t, `EXECUTE sp_rename @newname = N'c2', @objtype = N'COLUMN', @objname = N'[s1].[t1].[c1]'`, b.String())
 }
 func TestMayWrap(t *testing.T) {
 	tests := []struct {
