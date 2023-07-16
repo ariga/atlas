@@ -563,7 +563,7 @@ func autoincPK(pk *schema.Index) bool {
 
 // Build instantiates a new builder and writes the given phrase to it.
 func (s *state) Build(phrases ...string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteChar: '`', Schema: s.SchemaQualifier, Indent: s.Indent}
+	b := &sqlx.Builder{QuoteOpening: '`', QuoteClosing: '`', Schema: s.SchemaQualifier, Indent: s.Indent}
 	return b.P(phrases...)
 }
 
@@ -584,7 +584,7 @@ func defaultValue(c *schema.Column) (string, error) {
 }
 
 func identComma(c []string) string {
-	b := &sqlx.Builder{QuoteChar: '`'}
+	b := &sqlx.Builder{QuoteOpening: '`', QuoteClosing: '`'}
 	b.MapComma(c, func(i int, b *sqlx.Builder) {
 		if strings.ContainsRune(c[i], '`') {
 			b.WriteString(c[i])

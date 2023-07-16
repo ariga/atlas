@@ -110,7 +110,7 @@ func (s *state) plan(changes []schema.Change) error {
 		case *schema.AddView:
 			err = s.addView(c)
 		case *schema.DropView:
-			err = s.dropView( c)
+			err = s.dropView(c)
 		case *schema.ModifyView:
 			err = s.modifyView(c)
 		case *schema.RenameView:
@@ -747,7 +747,7 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 
 // Build instantiates a new builder and writes the given phrase to it.
 func (s *state) Build(phrases ...string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteChar: '`', Schema: s.SchemaQualifier, Indent: s.Indent}
+	b := &sqlx.Builder{QuoteOpening: '`', QuoteClosing: '`', Schema: s.SchemaQualifier, Indent: s.Indent}
 	return b.P(phrases...)
 }
 

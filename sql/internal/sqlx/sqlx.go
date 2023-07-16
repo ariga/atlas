@@ -214,10 +214,11 @@ func ModeInspectRealm(o *schema.InspectRealmOption) schema.InspectMode {
 // A Builder provides a syntactic sugar API for writing SQL statements.
 type Builder struct {
 	bytes.Buffer
-	QuoteChar byte    // quoting identifiers
-	Schema    *string // schema qualifier
-	Indent    string  // indentation string
-	level     int     // current indentation level
+	QuoteOpening byte    // quoting identifiers
+	QuoteClosing byte    // quoting identifiers
+	Schema       *string // schema qualifier
+	Indent       string  // indentation string
+	level        int     // current indentation level
 }
 
 // P writes a list of phrases to the builder separated and
@@ -241,9 +242,9 @@ func (b *Builder) P(phrases ...string) *Builder {
 // Ident writes the given string quoted as an SQL identifier.
 func (b *Builder) Ident(s string) *Builder {
 	if s != "" {
-		b.WriteByte(b.QuoteChar)
+		b.WriteByte(b.QuoteOpening)
 		b.WriteString(s)
-		b.WriteByte(b.QuoteChar)
+		b.WriteByte(b.QuoteClosing)
 		b.WriteByte(' ')
 	}
 	return b
@@ -415,8 +416,9 @@ func (b *Builder) WrapIndent(f func(b *Builder)) *Builder {
 // Clone returns a duplicate of the builder.
 func (b *Builder) Clone() *Builder {
 	return &Builder{
-		QuoteChar: b.QuoteChar,
-		Buffer:    *bytes.NewBufferString(b.Buffer.String()),
+		QuoteOpening: b.QuoteOpening,
+		QuoteClosing: b.QuoteClosing,
+		Buffer:       *bytes.NewBufferString(b.Buffer.String()),
 	}
 }
 

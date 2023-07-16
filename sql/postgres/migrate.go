@@ -1068,7 +1068,7 @@ func (s *state) append(c ...*migrate.Change) {
 
 // Build instantiates a new builder and writes the given phrase to it.
 func (s *state) Build(phrases ...string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteChar: '"', Schema: s.SchemaQualifier, Indent: s.Indent}
+	b := &sqlx.Builder{QuoteOpening: '"', QuoteClosing: '"', Schema: s.SchemaQualifier, Indent: s.Indent}
 	return b.P(phrases...)
 }
 

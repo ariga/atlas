@@ -463,7 +463,7 @@ func identity(attrs []schema.Attr) (*Identity, bool) {
 // formatPartition returns the string representation of the
 // partition key according to the PostgreSQL format/grammar.
 func formatPartition(p Partition) (string, error) {
-	b := &sqlx.Builder{QuoteChar: '"'}
+	b := &sqlx.Builder{QuoteOpening: '"', QuoteClosing: '"'}
 	b.P("PARTITION BY")
 	switch t := strings.ToUpper(p.T); t {
 	case PartitionTypeRange, PartitionTypeList, PartitionTypeHash:
