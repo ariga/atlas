@@ -261,9 +261,20 @@ func (b *Builder) Table(t *schema.Table) *Builder {
 	return b.mayQualify(t.Schema, t.Name)
 }
 
-// Table writes the table identifier to the builder, prefixed
+// TableResource writes the table's resource identifier to the builder, prefixed
 // with the schema name if exists.
-func (b *Builder) mayQualify(s *schema.Schema, ident string) *Builder {
+func (b *Builder) TableResource(t *schema.Table, r any) *Builder {
+	switch c := r.(type) {
+	case *schema.Column:
+		return b.mayQualify(t.Schema, t.Name, c.Name)
+	case *schema.Index:
+		return b.mayQualify(t.Schema, t.Name, c.Name)
+	default:
+		panic(fmt.Sprintf("unexpected table resource: %T", r))
+	}
+}
+
+func (b *Builder) mayQualify(s *schema.Schema, top string, children ...string) *Builder {
 	switch {
 	// Custom qualifier.
 	case b.Schema != nil:
@@ -277,7 +288,11 @@ func (b *Builder) mayQualify(s *schema.Schema, ident string) *Builder {
 		b.Ident(s.Name)
 		b.rewriteLastByte('.')
 	}
-	b.Ident(ident)
+	b.Ident(top)
+	for _, ident := range children {
+		b.rewriteLastByte('.')
+		b.Ident(ident)
+	}
 	return b
 }
 
@@ -330,6 +345,19 @@ func (b *Builder) MapComma(x any, f func(i int, b *Builder)) *Builder {
 			b.Comma()
 		}
 		f(i, b)
+	}
+	return b
+}
+
+// Quote wraps the given function with a single quote and a prefix
+func (b *Builder) Quote(prefix string, fn func(b *Builder)) *Builder {
+	b.WriteString(prefix)
+	b.WriteByte('\'')
+	fn(b)
+	if b.lastByte() != ' ' {
+		b.WriteByte('\'')
+	} else {
+		b.rewriteLastByte('\'')
 	}
 	return b
 }
