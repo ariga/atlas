@@ -522,6 +522,48 @@ func TestDiff_SchemaDiff(t *testing.T) {
 			},
 		}},
 	}, changes)
+
+	t.Run("DefaultComment", func(t *testing.T) {
+		from, to := schema.New("public").SetComment("standard public schema"), schema.New("public")
+		changes, err = drv.SchemaDiff(from, to)
+		require.NoError(t, err)
+		require.Empty(t, changes)
+
+		changes, err = drv.SchemaDiff(to, from)
+		require.NoError(t, err)
+		require.Empty(t, changes)
+
+		from.Name, to.Name = "", ""
+		changes, err = drv.SchemaDiff(from, to)
+		require.NoError(t, err)
+		require.Empty(t, changes)
+
+		from.Name, to.Name = "other", "other"
+		changes, err = drv.SchemaDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		require.EqualValues(t, []schema.Change{
+			&schema.ModifySchema{S: to, Changes: schema.Changes{
+				&schema.ModifyAttr{
+					From: &schema.Comment{Text: "standard public schema"},
+					To:   &schema.Comment{Text: ""},
+				},
+			}},
+		}, changes)
+
+		from.Name, to.Name = "public", "public"
+		from.SetComment("custom public schema")
+		changes, err = drv.SchemaDiff(from, to)
+		require.NoError(t, err)
+		require.EqualValues(t, []schema.Change{
+			&schema.ModifySchema{S: to, Changes: schema.Changes{
+				&schema.ModifyAttr{
+					From: &schema.Comment{Text: "custom public schema"},
+					To:   &schema.Comment{Text: ""},
+				},
+			}},
+		}, changes)
+	})
 }
 
 func TestDefaultDiff(t *testing.T) {
