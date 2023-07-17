@@ -696,7 +696,7 @@ var (
 	buildOnce  sync.Once
 )
 
-func cliPath(t *testing.T) string {
+func cliPath(t testing.TB) string {
 	path := filepath.Join(os.TempDir(), "atlas")
 	buildOnce.Do(func() {
 		args := append([]string{"build"}, buildFlags...)

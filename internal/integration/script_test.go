@@ -103,13 +103,13 @@ func (t *myTest) setupScript(env *testscript.Env) error {
 	if err := replaceDBURL(env, t.url("")); err != nil {
 		return err
 	}
-	return setupScript(t.T, env, t.db,
+	return setupScript(env, t.db,
 		"CREATE SCHEMA IF NOT EXISTS %s",
 		"DROP SCHEMA IF EXISTS %s",
-		func(tt *testing.T, schema string) migrate.Driver {
+		func(tt testing.TB, schema string) migrate.Driver {
 			dev, err := sqlclient.Open(context.Background(), fmt.Sprintf("mysql://root:pass@localhost:%d/%s", t.port, schema))
-			require.NoError(t, err)
-			tt.Cleanup(func() { require.NoError(t, dev.Close()) })
+			require.NoError(tt, err)
+			tt.Cleanup(func() { require.NoError(tt, dev.Close()) })
 			return dev.Driver
 		})
 }
@@ -130,17 +130,18 @@ func (t *pgTest) setupScript(env *testscript.Env) error {
 	if err := replaceDBURL(env, u); err != nil {
 		return err
 	}
-	return setupScript(t.T, env, t.db,
+	return setupScript(env, t.db,
 		"CREATE SCHEMA IF NOT EXISTS %s",
-		"DROP SCHEMA IF EXISTS %s CASCADE", func(tt *testing.T, schema string) migrate.Driver {
+		"DROP SCHEMA IF EXISTS %s CASCADE",
+		func(tt testing.TB, schema string) migrate.Driver {
 			dev, err := sqlclient.Open(context.Background(), fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?search_path=%s&sslmode=disable", t.port, schema))
-			require.NoError(t, err)
-			tt.Cleanup(func() { require.NoError(t, dev.Close()) })
+			require.NoError(tt, err)
+			tt.Cleanup(func() { require.NoError(tt, dev.Close()) })
 			return dev.Driver
 		})
 }
 
-func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, createCmd, dropCmd string, open func(*testing.T, string) migrate.Driver) error {
+func setupScript(env *testscript.Env, db *sql.DB, createCmd, dropCmd string, open func(testing.TB, string) migrate.Driver) error {
 	ctx := context.Background()
 	conn, err := db.Conn(ctx)
 	if err != nil {
@@ -156,24 +157,28 @@ func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, createCmd, dropC
 	if _, err := conn.ExecContext(ctx, fmt.Sprintf(createCmd, devname)); err != nil {
 		return err
 	}
-	// Dev-driver per testscript schema to allow concurrent tests.
-	env.Values["drv"] = open(t, name)
-	env.Values["dev"] = open(t, devname)
-	env.Defer(func() {
+	// Env has a T() method that returns the *testing.T.
+	// We need to cast it to the testing.TB interface
+	// to be able to use the Cleanup method.
+	tt := env.T().(testing.TB)
+	tt.Cleanup(func() {
 		if _, err := conn.ExecContext(ctx, fmt.Sprintf(dropCmd, name)); err != nil {
-			t.Fatal(err)
+			tt.Fatal(err)
 		}
 		if _, err := conn.ExecContext(ctx, fmt.Sprintf(dropCmd, devname)); err != nil {
-			t.Fatal(err)
+			tt.Fatal(err)
 		}
 		if err := conn.Close(); err != nil {
-			t.Fatal(err)
+			tt.Fatal(err)
 		}
 	})
+	// Dev-driver per testscript schema to allow concurrent tests.
+	env.Values["drv"] = open(tt, name)
+	env.Values["dev"] = open(tt, devname)
 	// Store the testscript.T for later use.
 	// See "only" function below.
 	env.Values[keyT] = env.T()
-	env.Setenv(atlasPathKey, cliPath(t))
+	env.Setenv(atlasPathKey, cliPath(tt))
 	return nil
 }
 
