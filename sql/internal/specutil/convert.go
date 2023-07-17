@@ -481,16 +481,38 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc) (*sqlspec.View, error) {
 			schemahcl.StringAttr("as", as),
 		},
 	}
-	deps := make([]*schemahcl.Ref, 0, len(v.Deps))
+	var (
+		deps         = make([]*schemahcl.Ref, 0, len(v.Deps))
+		nameT, nameV = make(map[string]int), make(map[string]int)
+	)
+	// Qualify table/view names if there are
+	// multiple tables/views with the same name.
+	if v.Schema.Realm != nil {
+		for _, s := range v.Schema.Realm.Schemas {
+			for _, t := range s.Tables {
+				nameT[t.Name]++
+			}
+			for _, v := range s.Views {
+				nameV[v.Name]++
+			}
+		}
+	}
 	for _, d := range v.Deps {
+		path := make([]string, 0, 2)
 		switch d := d.(type) {
 		case *schema.Table:
+			if nameT[d.Name] > 1 {
+				path = append(path, d.Schema.Name)
+			}
 			deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
-				{T: "table", V: []string{d.Name}},
+				{T: "table", V: append(path, d.Name)},
 			}))
 		case *schema.View:
+			if nameV[d.Name] > 1 {
+				path = append(path, d.Schema.Name)
+			}
 			deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
-				{T: "view", V: []string{d.Name}},
+				{T: "view", V: append(path, d.Name)},
 			}))
 		}
 	}
