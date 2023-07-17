@@ -156,10 +156,9 @@ func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, createCmd, dropC
 	if _, err := conn.ExecContext(ctx, fmt.Sprintf(createCmd, devname)); err != nil {
 		return err
 	}
-	// Dev-driver per testscript schema to allow concurrent tests.
-	env.Values["drv"] = open(t, name)
-	env.Values["dev"] = open(t, devname)
-	env.Defer(func() {
+	// Cleanup the schema after the test finishes.
+	// We need to drop the schema in a separate connection
+	t.Cleanup(func() {
 		if _, err := conn.ExecContext(ctx, fmt.Sprintf(dropCmd, name)); err != nil {
 			t.Fatal(err)
 		}
@@ -170,6 +169,9 @@ func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, createCmd, dropC
 			t.Fatal(err)
 		}
 	})
+	// Dev-driver per testscript schema to allow concurrent tests.
+	env.Values["drv"] = open(t, name)
+	env.Values["dev"] = open(t, devname)
 	// Store the testscript.T for later use.
 	// See "only" function below.
 	env.Values[keyT] = env.T()
