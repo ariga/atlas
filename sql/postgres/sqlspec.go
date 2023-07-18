@@ -112,7 +112,10 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 			d.Schemas = append(d.Schemas, doc.Schemas...)
 			d.Enums = append(d.Enums, doc.Enums...)
 		}
-		if err := specutil.QualifyDuplicates(d.Tables); err != nil {
+		if err := specutil.QualifyTables(d.Tables); err != nil {
+			return nil, err
+		}
+		if err := specutil.QualifyViews(d.Views); err != nil {
 			return nil, err
 		}
 		if err := specutil.QualifyReferences(d.Tables, s); err != nil {

@@ -1925,9 +1925,17 @@ func TestMarshalRealm(t *testing.T) {
 	// Reference is qualified with s1.
 	t5.AddForeignKeys(schema.NewForeignKey("oid2id2").AddColumns(t5.Columns[0]).SetRefTable(t2).AddRefColumns(t2.Columns[0]))
 
+	// Two views with the same name resided in different schemas.
+	v2 := schema.NewView("v2", "SELECT oid FROM s1.t2").
+		AddColumns(schema.NewIntColumn("oid", "int")).
+		AddDeps(t2)
+	v4 := schema.NewView("v2", "SELECT oid FROM s2.t2").
+		AddColumns(schema.NewIntColumn("oid", "int")).
+		AddDeps(t4)
+
 	r := schema.NewRealm(
-		schema.New("s1").AddTables(t1, t2),
-		schema.New("s2").AddTables(t3, t4, t5),
+		schema.New("s1").AddTables(t1, t2).AddViews(v2),
+		schema.New("s2").AddTables(t3, t4, t5).AddViews(v4),
 	)
 	got, err := MarshalHCL.MarshalSpec(r)
 	require.NoError(t, err)
@@ -1985,6 +1993,24 @@ table "t5" {
     columns     = [column.oid]
     ref_columns = [table.s1.t2.column.oid]
   }
+}
+view "s1" "v2" {
+  schema = schema.s1
+  column "oid" {
+    null = false
+    type = int
+  }
+  as         = "SELECT oid FROM s1.t2"
+  depends_on = [table.s1.t2]
+}
+view "s2" "v2" {
+  schema = schema.s2
+  column "oid" {
+    null = false
+    type = int
+  }
+  as         = "SELECT oid FROM s2.t2"
+  depends_on = [table.s2.t2]
 }
 schema "s1" {
 }

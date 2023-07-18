@@ -58,7 +58,10 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 			d.Views = append(d.Views, spec.Views...)
 			d.Schemas = append(d.Schemas, spec.Schema)
 		}
-		if err := QualifyDuplicates(d.Tables); err != nil {
+		if err := QualifyTables(d.Tables); err != nil {
+			return nil, err
+		}
+		if err := QualifyViews(d.Views); err != nil {
 			return nil, err
 		}
 		if err := QualifyReferences(d.Tables, s); err != nil {
@@ -70,24 +73,46 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 	return marshaler.MarshalSpec(d)
 }
 
-// QualifyDuplicates sets the Qualified field equal to the schema name in any tables
-// with duplicate names in the provided table specs.
-func QualifyDuplicates(tableSpecs []*sqlspec.Table) error {
-	seen := make(map[string]*sqlspec.Table, len(tableSpecs))
-	for _, tbl := range tableSpecs {
-		if s, ok := seen[tbl.Name]; ok {
+// QualifyTables sets the Qualifier field equal to the schema
+// name in any tables with duplicate names in the provided specs.
+func QualifyTables(specs []*sqlspec.Table) error {
+	seen := make(map[string]*sqlspec.Table, len(specs))
+	for _, t := range specs {
+		if s, ok := seen[t.Name]; ok {
 			schemaName, err := SchemaName(s.Schema)
 			if err != nil {
 				return err
 			}
 			s.Qualifier = schemaName
-			schemaName, err = SchemaName(tbl.Schema)
+			schemaName, err = SchemaName(t.Schema)
 			if err != nil {
 				return err
 			}
-			tbl.Qualifier = schemaName
+			t.Qualifier = schemaName
 		}
-		seen[tbl.Name] = tbl
+		seen[t.Name] = t
+	}
+	return nil
+}
+
+// QualifyViews sets the Qualifier field equal to the schema
+// name in any tables with duplicate names in the provided specs.
+func QualifyViews(specs []*sqlspec.View) error {
+	seen := make(map[string]*sqlspec.View, len(specs))
+	for _, v := range specs {
+		if s, ok := seen[v.Name]; ok {
+			schemaName, err := SchemaName(s.Schema)
+			if err != nil {
+				return err
+			}
+			s.Qualifier = schemaName
+			schemaName, err = SchemaName(v.Schema)
+			if err != nil {
+				return err
+			}
+			v.Qualifier = schemaName
+		}
+		seen[v.Name] = v
 	}
 	return nil
 }
