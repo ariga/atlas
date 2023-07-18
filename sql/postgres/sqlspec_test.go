@@ -398,15 +398,46 @@ view "v3" {
  as         = "SELECT * FROM v2 JOIN t1 USING (id)"
  depends_on = [view.v1, table.t1]
 }
-schema "public" {
+
+table "public" "t2" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
 }
+
+table "other" "t2" {
+  schema = schema.other
+  column "id" {
+    type = int
+  }
+}
+
+view "public" "v4" {
+  schema = schema.public
+  as     = "SELECT * FROM public.t2"
+  depends_on = [table.public.t2]
+}
+
+view "other" "v4" {
+  schema = schema.other
+  as     = "SELECT * FROM other.t2"
+  depends_on = [table.other.t2]
+}
+
+schema "public" {}
+schema "other" {}
 `
 	var (
-		r   schema.Realm
-		s   schema.Schema
-		exp = schema.New("public").
+		r      schema.Realm
+		got    schema.Realm
+		public = schema.New("public").
 			AddTables(
 				schema.NewTable("t1").
+					AddColumns(
+						schema.NewIntColumn("id", "int"),
+					),
+				schema.NewTable("t2").
 					AddColumns(
 						schema.NewIntColumn("id", "int"),
 					),
@@ -419,14 +450,27 @@ schema "public" {
 					).
 					SetComment("view comment"),
 			)
+		other = schema.New("other").
+			AddTables(
+				schema.NewTable("t2").
+					AddColumns(
+						schema.NewIntColumn("id", "int"),
+					),
+			)
 	)
-	exp.AddViews(
+	public.AddViews(
 		schema.NewView("v3", "SELECT * FROM v2 JOIN t1 USING (id)").
-			AddDeps(exp.Views[0], exp.Tables[0]),
+			AddDeps(public.Views[0], public.Tables[0]),
+		schema.NewView("v4", "SELECT * FROM public.t2").
+			AddDeps(public.Tables[1]),
 	)
-	r.AddSchemas(exp)
-	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
-	require.EqualValues(t, exp, &s)
+	other.AddViews(
+		schema.NewView("v4", "SELECT * FROM other.t2").
+			AddDeps(other.Tables[0]),
+	)
+	r.AddSchemas(public, other)
+	require.NoError(t, EvalHCLBytes([]byte(f), &got, nil))
+	require.EqualValues(t, r, got)
 }
 
 func TestUnmarshalSpec_IndexType(t *testing.T) {
