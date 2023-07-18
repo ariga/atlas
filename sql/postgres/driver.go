@@ -24,7 +24,7 @@ type (
 	// Driver represents a PostgreSQL driver for introspecting database schemas,
 	// generating diff between schema elements and apply migrations changes.
 	Driver struct {
-		conn
+		*conn
 		schema.Differ
 		schema.Inspector
 		migrate.PlanApplier
@@ -86,7 +86,7 @@ func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
 
 // Open opens a new PostgreSQL driver.
 func Open(db schema.ExecQuerier) (migrate.Driver, error) {
-	c := conn{ExecQuerier: db}
+	c := &conn{ExecQuerier: db}
 	rows, err := db.QueryContext(context.Background(), paramsQuery)
 	if err != nil {
 		return nil, fmt.Errorf("postgres: scanning system variables: %w", err)

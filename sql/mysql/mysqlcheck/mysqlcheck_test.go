@@ -5,7 +5,9 @@
 package mysqlcheck_test
 
 import (
+	"ariga.io/atlas/sql/internal/sqltest"
 	"context"
+	"github.com/DATA-DOG/go-sqlmock"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
@@ -24,7 +26,7 @@ func TestDataDepend_MySQL_ImplicitUpdate(t *testing.T) {
 		pass   = &sqlcheck.Pass{
 			Dev: &sqlclient.Client{
 				Name:   "mysql",
-				Driver: &mysql.Driver{},
+				Driver: devDriver(t, "5.7.0"),
 			},
 			File: &sqlcheck.File{
 				File: testFile{name: "1.sql"},
@@ -73,14 +75,12 @@ func TestDataDepend_MySQL_ImplicitUpdate(t *testing.T) {
 }
 
 func TestDataDepend_MySQL8_ImplicitUpdate(t *testing.T) {
-	drv := &mysql.Driver{}
-	drv.V = "8.0.19"
 	var (
 		report *sqlcheck.Report
 		pass   = &sqlcheck.Pass{
 			Dev: &sqlclient.Client{
 				Name:   "mysql",
-				Driver: drv,
+				Driver: devDriver(t, "8.0.19"),
 			},
 			File: &sqlcheck.File{
 				File: testFile{name: "1.sql"},
@@ -126,7 +126,7 @@ func TestDataDepend_MySQL_MightFail(t *testing.T) {
 		pass   = &sqlcheck.Pass{
 			Dev: &sqlclient.Client{
 				Name:   "mysql",
-				Driver: &mysql.Driver{},
+				Driver: devDriver(t, "8.0.19"),
 			},
 			File: &sqlcheck.File{
 				File: testFile{name: "1.sql"},
@@ -169,14 +169,12 @@ func TestDataDepend_MySQL_MightFail(t *testing.T) {
 }
 
 func TestDataDepend_Maria_ImplicitUpdate(t *testing.T) {
-	drv := &mysql.Driver{}
-	drv.V = "10.7.1-MariaDB"
 	var (
 		report *sqlcheck.Report
 		pass   = &sqlcheck.Pass{
 			Dev: &sqlclient.Client{
 				Name:   "mysql",
-				Driver: drv,
+				Driver: devDriver(t, "10.7.1-MariaDB"),
 			},
 			File: &sqlcheck.File{
 				File: testFile{name: "1.sql"},
@@ -238,4 +236,20 @@ type testFile struct {
 
 func (t testFile) Name() string {
 	return t.name
+}
+
+func devDriver(t *testing.T, version string) migrate.Driver {
+	db, mk, err := sqlmock.New()
+	require.NoError(t, err)
+	mk.ExpectQuery("SELECT @@version, @@collation_server, @@character_set_server, @@lower_case_table_name").
+		WillReturnRows(sqltest.Rows(`
++-----------------+--------------------+------------------------+--------------------------+ 
+| @@version       | @@collation_server | @@character_set_server | @@lower_case_table_names | 
++-----------------+--------------------+------------------------+--------------------------+ 
+|` + version + `  | utf8_general_ci    | utf8                   | 0                        | 
++-----------------+--------------------+------------------------+--------------------------+ 
+`))
+	drv, err := mysql.Open(db)
+	require.NoError(t, err)
+	return drv
 }

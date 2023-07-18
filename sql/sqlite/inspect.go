@@ -18,7 +18,7 @@ import (
 )
 
 // A diff provides an SQLite implementation for schema.Inspector.
-type inspect struct{ conn }
+type inspect struct{ *conn }
 
 var _ schema.Inspector = (*inspect)(nil)
 

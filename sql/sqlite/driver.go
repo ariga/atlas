@@ -26,7 +26,7 @@ type (
 	// Driver represents a SQLite driver for introspecting database schemas,
 	// generating diff between schema elements and apply migrations changes.
 	Driver struct {
-		conn
+		*conn
 		schema.Differ
 		schema.Inspector
 		migrate.PlanApplier
@@ -75,7 +75,7 @@ func init() {
 // Open opens a new SQLite driver.
 func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	var (
-		c   = conn{ExecQuerier: db}
+		c   = &conn{ExecQuerier: db}
 		ctx = context.Background()
 	)
 	rows, err := db.QueryContext(ctx, "SELECT sqlite_version()")

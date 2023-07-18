@@ -23,7 +23,7 @@ type (
 	// Driver represents a MySQL driver for introspecting database schemas,
 	// generating diff between schema elements and apply migrations changes.
 	Driver struct {
-		conn
+		*conn
 		schema.Differ
 		schema.Inspector
 		migrate.PlanApplier
@@ -58,7 +58,7 @@ func init() {
 
 // Open opens a new MySQL driver.
 func Open(db schema.ExecQuerier) (migrate.Driver, error) {
-	c := conn{ExecQuerier: db}
+	c := &conn{ExecQuerier: db}
 	rows, err := db.QueryContext(context.Background(), variablesQuery)
 	if err != nil {
 		return nil, fmt.Errorf("mysql: query system variables: %w", err)

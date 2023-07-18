@@ -24,7 +24,7 @@ import (
 var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{}}
 
 // A diff provides a PostgreSQL implementation for sqlx.DiffDriver.
-type diff struct{ conn }
+type diff struct{ *conn }
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (*diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {

@@ -23,7 +23,7 @@ var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{conn: noConn}}
 
 // A diff provides a MySQL implementation for sqlx.DiffDriver.
 type diff struct {
-	conn
+	*conn
 	// charset to collation mapping.
 	// See, internal directory.
 	ch2co, co2ch struct {
