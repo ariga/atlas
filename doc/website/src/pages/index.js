@@ -12,7 +12,7 @@ export default function () {
           events: [
               {
                   title: "Kubernetes-native schema migrations",  
-                  date: "Wednesday, July 19th, 2023. 13:00 UTC",
+                  date: "Wednesday, August 2nd, 2023, 13:00 UTC",
                   description: "Discover the power of the Atlas Kubernetes Operator for seamless management of your database schemas in Kubernetes.",
                   linkUrl: 'http://26565461.hs-sites-eu1.com/kubernetes-native-schema-migrations-webinar',
                   imageUrl: 'https://atlasgo.io/uploads/images/posts/v0.3.2/kubernetes_webinar3.png',
