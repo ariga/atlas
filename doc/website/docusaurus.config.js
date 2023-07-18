@@ -140,9 +140,11 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-4', // Increment on change
-      content: `Announcing v0.12.0: Cloud State Management, Read it <a href="https://atlasgo.io/blog/2023/05/31/atlas-v012"> here!</a> 🚀`,
+      id: 'announcementBar-5', // Increment on change
+      content: `<strong>Upcoming Webinar:</strong> Kubernetes-native schema migrations <a class="cta" target="_blank" href="https://page.ariga.io/kubernetes-native-schema-migrations-webinar?utm_source=atlasgo&utm_medium=announcementbar">Register now</a>`,
       isCloseable: true,
+      backgroundColor: '#008CFA',
+      textColor: '#fff',
     },
   },
   plugins: [
