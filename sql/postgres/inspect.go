@@ -21,7 +21,7 @@ import (
 )
 
 // A diff provides a PostgreSQL implementation for schema.Inspector.
-type inspect struct{ conn }
+type inspect struct{ *conn }
 
 var _ schema.Inspector = (*inspect)(nil)
 
