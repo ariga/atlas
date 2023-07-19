@@ -21,6 +21,7 @@ export default function () {
             ],
             isHidden: false,
         }}
+        projectsAmount={2000}
       />
     </LayoutProvider>
   );
