@@ -5,11 +5,10 @@
 package mysqlcheck_test
 
 import (
-	"ariga.io/atlas/sql/internal/sqltest"
 	"context"
-	"github.com/DATA-DOG/go-sqlmock"
 	"testing"
 
+	"ariga.io/atlas/sql/internal/sqltest"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
 	_ "ariga.io/atlas/sql/mysql/mysqlcheck"
@@ -17,6 +16,7 @@ import (
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
 

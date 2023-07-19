@@ -822,7 +822,7 @@ schema "users" {
 		require.NoError(t, err)
 		t.applyRealmHcl(string(hcl) + "\n" + expected)
 		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
-			Mode: ^schema.InspectViews,
+			Mode:    ^schema.InspectViews,
 			Schemas: []string{"users", "financial"},
 		})
 		require.NoError(t, err)
