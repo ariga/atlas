@@ -7,7 +7,7 @@ tags: [migrations, terraform, iac, atlas]
 ## Introduction
 
 When we started building Atlas a couple of years ago, we noticed that there was a substantial gap between what was then
-considered state-of-the-art in managing database schemas on the one hand, and on the other hand all the recent
+considered state-of-the-art in managing database schemas and the recent
 strides from Infrastructure-as-Code (IaC) to managing cloud infrastructure.
 
 In this post, we review that gap and show how [Atlas](https://github.com/ariga/atlas) – along with its
@@ -23,7 +23,7 @@ If you’re looking for a quick and practical explanation of working with Atlas 
 
 Infrastructure as Code (IaC) refers to the practice of managing and provisioning infrastructure through machine-readable
 configuration files, instead of utilizing traditional interactive configuration tools. This approach makes for
-automated, consistent, and repeatable deployment of environments that are faster and less error-prone than previous more
+automated, consistent, and repeatable deployment of environments that are faster and less error-prone than previous, more
 manual approaches.
 
 [Terraform](https://terraform.io), a popular open-source tool created by [HashiCorp](https://hashicorp.com), is
@@ -62,8 +62,8 @@ Next, let’s discuss the current state of database schema management tools (oft
 contrasting them with the properties of IaC.
 
 * **Imperative** – If Terraform embodies the declarative approach, then schema management tools often exemplify the opposite,
-  imperative (or revision-based) approach. In this case, we don’t provide the tools with the what (the desired state of
-  the database), but the how (what SQL commands need to run to migrate the database from the previous version to the
+  imperative (or revision-based) approach. In this case, we don’t provide the tools with the __what__ (the desired state of
+  the database), but the __how__ (what SQL commands need to run to migrate the database from the previous version to the
   next).
 
 * **Semi-automated** – Migration tools were revolutionary when they came out a decade ago. One idea stood as one of the
@@ -172,7 +172,7 @@ the desired schema of the database directly from your ORM, using
 ### Schema inspection
 
 Once Atlas understands the desired state of the database, it needs to inspect the existing database to understand its
-current schema. This is done by connecting to the targeting database and querying the database’s information schema to
+current schema. This is done by connecting to the target database and querying the database’s information schema to
 construct a schema graph (an in-memory representation of all the components in the database and their connections). 
 
 ### Diffing and planning
@@ -225,7 +225,7 @@ Use the arrow keys to navigate: ↓ ↑ → ←
 Abort
 ```
 
-Observing this example you may begin to understand how Atlas earned its nickname the "Terraform for Databases."
+Observing this example, you may begin to understand how Atlas earned its nickname the "Terraform for Databases."
 
 ## Integrating with Terraform
 
@@ -354,7 +354,7 @@ And that's how you bridge the gap between IaC and schema management!
 
 ## Conclusion
 
-In this blog post, we reviewed some exceptional properties of Infrastructure-as-Code tools  such as Terraform 
+In this blog post, we reviewed some exceptional properties of Infrastructure-as-Code tools, such as Terraform, 
 that have led to their widespread adoption and success in the industry. We then reviewed the current state of a similar
 problem, database schema management, in contrast to these properties. Finally, we showcased Atlas’s ability to adapt
 some IaC principles into the domain of schema management and how we can unify the two domains using the Atlas Terraform
