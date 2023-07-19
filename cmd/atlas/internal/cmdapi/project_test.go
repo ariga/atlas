@@ -21,6 +21,7 @@ import (
 
 func TestEnvByName(t *testing.T) {
 	d := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(d, "local.txt"), []byte("text"), 0600))
 	h := `
 variable "name" {
   type = string
@@ -30,6 +31,7 @@ variable "name" {
 locals {
   envName = atlas.env
   emptyEnv = getenv("NOT_SET")
+  opened = file("local.txt")
 }
 
 lint {

@@ -7,6 +7,8 @@ package schemahcl
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
@@ -246,86 +248,115 @@ func makeToFunc(wantTy cty.Type) function.Function {
 	})
 }
 
-var urlQuerySetFunc = function.New(&function.Spec{
-	Params: []function.Parameter{
-		{
-			Name: "url",
-			Type: cty.String,
+var (
+	urlQuerySetFunc = function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "url",
+				Type: cty.String,
+			},
+			{
+				Name: "key",
+				Type: cty.String,
+			},
+			{
+				Name: "value",
+				Type: cty.String,
+			},
 		},
-		{
-			Name: "key",
-			Type: cty.String,
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			u, err := url.Parse(args[0].AsString())
+			if err != nil {
+				return cty.NilVal, err
+			}
+			q := u.Query()
+			q.Set(args[1].AsString(), args[2].AsString())
+			u.RawQuery = q.Encode()
+			return cty.StringVal(u.String()), nil
 		},
-		{
-			Name: "value",
-			Type: cty.String,
+	})
+	urlSetPathFunc = function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "url",
+				Type: cty.String,
+			},
+			{
+				Name: "path",
+				Type: cty.String,
+			},
 		},
-	},
-	Type: function.StaticReturnType(cty.String),
-	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-		u, err := url.Parse(args[0].AsString())
-		if err != nil {
-			return cty.NilVal, err
-		}
-		q := u.Query()
-		q.Set(args[1].AsString(), args[2].AsString())
-		u.RawQuery = q.Encode()
-		return cty.StringVal(u.String()), nil
-	},
-})
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			u, err := url.Parse(args[0].AsString())
+			if err != nil {
+				return cty.NilVal, err
+			}
+			u.Path = args[1].AsString()
+			return cty.StringVal(u.String()), nil
+		},
+	})
 
-var urlSetPathFunc = function.New(&function.Spec{
-	Params: []function.Parameter{
-		{
-			Name: "url",
-			Type: cty.String,
+	urlEscape = function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "string",
+				Type: cty.String,
+			},
 		},
-		{
-			Name: "path",
-			Type: cty.String,
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			u := url.QueryEscape(args[0].AsString())
+			return cty.StringVal(u), nil
 		},
-	},
-	Type: function.StaticReturnType(cty.String),
-	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-		u, err := url.Parse(args[0].AsString())
-		if err != nil {
-			return cty.NilVal, err
-		}
-		u.Path = args[1].AsString()
-		return cty.StringVal(u.String()), nil
-	},
-})
+	})
 
-var urlEscape = function.New(&function.Spec{
-	Params: []function.Parameter{
-		{
-			Name: "string",
-			Type: cty.String,
+	printFunc = function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "print",
+				Type: cty.DynamicPseudoType,
+			},
 		},
-	},
-	Type: function.StaticReturnType(cty.String),
-	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-		u := url.QueryEscape(args[0].AsString())
-		return cty.StringVal(u), nil
-	},
-})
+		Type: func(args []cty.Value) (cty.Type, error) {
+			return args[0].Type(), nil
+		},
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if b, err := json.Marshal(args[0], args[0].Type()); err != nil {
+				fmt.Println(args[0].GoString())
+			} else {
+				fmt.Println(string(b))
+			}
+			return args[0], nil
+		},
+	})
+)
 
-var printFunc = function.New(&function.Spec{
-	Params: []function.Parameter{
-		{
-			Name: "print",
-			Type: cty.DynamicPseudoType,
+// MakeFileFunc returns a function that reads a file
+// from the given base directory.
+func MakeFileFunc(base string) function.Function {
+	return function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "path",
+				Type: cty.String,
+			},
 		},
-	},
-	Type: func(args []cty.Value) (cty.Type, error) {
-		return args[0].Type(), nil
-	},
-	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-		if b, err := json.Marshal(args[0], args[0].Type()); err != nil {
-			fmt.Println(args[0].GoString())
-		} else {
-			fmt.Println(string(b))
-		}
-		return args[0], nil
-	},
-})
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if !filepath.IsAbs(base) {
+				return cty.NilVal, fmt.Errorf("base directory must be an absolute path. got: %s", base)
+			}
+			path := args[0].AsString()
+			if !filepath.IsAbs(path) {
+				path = filepath.Clean(filepath.Join(base, path))
+			}
+			src, err := os.ReadFile(path)
+			if err != nil {
+				return cty.NilVal, err
+			}
+			return cty.StringVal(string(src)), nil
+		},
+	})
+}
