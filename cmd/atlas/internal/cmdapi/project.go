@@ -404,6 +404,10 @@ func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
+	base, err := filepath.Abs(filepath.Dir(path))
+	if err != nil {
+		return nil, err
+	}
 	cfg := &cmdext.AtlasConfig{}
 	state := schemahcl.New(
 		append(
@@ -416,6 +420,7 @@ func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
 				}),
 			}),
 			schemahcl.WithFunctions(map[string]function.Function{
+				"file": schemahcl.MakeFileFunc(base),
 				"getenv": function.New(&function.Spec{
 					Params: []function.Parameter{
 						{
