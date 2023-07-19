@@ -115,7 +115,12 @@ different from Terraform in many ways, but similar enough to have received the i
 Databases". 
 
 At its core lie three capabilities that make it ideal to apply a declarative workflow to schema management:
-schema loaders, schema inspection; and diffing and planning.
+
+1. Schema loaders
+2. Schema inspection
+3. Diffing and planning
+
+Let’s discuss each of these capabilities in more detail.
 
 ### Schema loaders
 
