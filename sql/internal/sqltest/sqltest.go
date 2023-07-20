@@ -17,14 +17,13 @@ import (
 // All row values are parsed as text except the "nil" and NULL keywords.
 // For example:
 //
-// 		+-------------+-------------+-------------+----------------+
-//		| column_name | column_type | is_nullable | column_default |
-//		+-------------+-------------+-------------+----------------+
-//		| c1          | float       | YES         | nil            |
-//		| c2          | int         | YES         |                |
-//		| c3          | double      | YES         | NULL           |
-//		+-------------+-------------+-------------+----------------+
-//
+//	+-------------+-------------+-------------+----------------+
+//	| column_name | column_type | is_nullable | column_default |
+//	+-------------+-------------+-------------+----------------+
+//	| c1          | float       | YES         | nil            |
+//	| c2          | int         | YES         |                |
+//	| c3          | double      | YES         | NULL           |
+//	+-------------+-------------+-------------+----------------+
 func Rows(table string) *sqlmock.Rows {
 	var (
 		nc    int
