@@ -207,6 +207,18 @@ module.exports = {
         },
         {
             type: 'category',
+            label: 'Migration directories',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/migration-dirs/template-directory',
+                    label: 'Template directories'
+                },
+            ]
+        },
+        {
+            type: 'category',
             label: 'Migration tools',
             collapsed: false,
             items: [
