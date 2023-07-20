@@ -649,11 +649,10 @@ func (d *diff) defaultCollate(attrs *[]schema.Attr) error {
 	if d.ch2co.err != nil {
 		return d.ch2co.err
 	}
-	v, ok := d.ch2co.v[charset.V]
-	if !ok {
-		return fmt.Errorf("mysql: unknown character set: %q", charset.V)
+	if v, ok := d.ch2co.v[charset.V]; ok {
+		// If charset is known, use its default collation.
+		schema.ReplaceOrAppend(attrs, &schema.Collation{V: v})
 	}
-	schema.ReplaceOrAppend(attrs, &schema.Collation{V: v})
 	return nil
 }
 
@@ -670,10 +669,9 @@ func (d *diff) defaultCharset(attrs *[]schema.Attr) error {
 	if d.co2ch.err != nil {
 		return d.co2ch.err
 	}
-	v, ok := d.co2ch.v[collate.V]
-	if !ok {
-		return fmt.Errorf("mysql: unknown collation: %q", collate.V)
+	if v, ok := d.co2ch.v[collate.V]; ok {
+		// If collation is known, use its default charset.
+		schema.ReplaceOrAppend(attrs, &schema.Charset{V: v})
 	}
-	schema.ReplaceOrAppend(attrs, &schema.Charset{V: v})
 	return nil
 }
