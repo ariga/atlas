@@ -29,6 +29,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
+	"github.com/zclconf/go-cty/cty/gocty"
 
 	"entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
@@ -259,8 +260,26 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 					vars[k.AsString()] = f
 				case cty.Bool:
 					vars[k.AsString()] = v.True()
+				case cty.List(cty.String):
+					var s []string
+					if err := gocty.FromCtyValue(v, &s); err != nil {
+						return cty.NilVal, errorf("convert strings: %w", err)
+					}
+					vars[k.AsString()] = s
+				case cty.List(cty.Number):
+					var s []float64
+					if err := gocty.FromCtyValue(v, &s); err != nil {
+						return cty.NilVal, errorf("convert floats: %w", err)
+					}
+					vars[k.AsString()] = s
+				case cty.List(cty.Bool):
+					var s []bool
+					if err := gocty.FromCtyValue(v, &s); err != nil {
+						return cty.NilVal, errorf("convert bools: %w", err)
+					}
+					vars[k.AsString()] = s
 				default:
-					return cty.NilVal, errorf(`attribute "vars" must be a map of strings, numbers or booleans, got: %s`, v.Type())
+					return cty.NilVal, errorf(`attribute "vars" must be a map of strings, numbers or booleans, got: %s`, v.Type().FriendlyName())
 				}
 			}
 		}
@@ -276,7 +295,7 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	if files, err := dir.Files(); err != nil || len(files) > 0 {
 		dir.Reset()
 	}
-	t := template.New("template_dir")
+	t := template.New("template_dir").Option("missingkey=error")
 	err := filepath.Walk(args.Path, func(path string, d os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("walk path %s: %w", path, err)
@@ -297,7 +316,7 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	for _, m := range matches {
 		var b bytes.Buffer
 		if err := t.ExecuteTemplate(&b, m, vars); err != nil {
-			return cty.NilVal, errorf("executing template %q: %w", m, err)
+			return cty.NilVal, errorf("executing template: %w", err)
 		}
 		if err := dir.WriteFile(m, b.Bytes()); err != nil {
 			return cty.NilVal, errorf("writing file %q: %w", m, err)
