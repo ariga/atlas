@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/mysql/internal/mysqlversion"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestV_SupportsGeneratedColumns(t *testing.T) {
@@ -31,4 +33,19 @@ func TestV_SupportsGeneratedColumns(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestV_CollateToCharset(t *testing.T) {
+	c2c, err := mysqlversion.V("8.0.0").CollateToCharset(nil)
+	require.NoError(t, err)
+	require.Equal(t, "utf8mb4", c2c["utf8mb4_general_ci"])
+	require.Empty(t, c2c["custom"])
+
+	db, mk, err := sqlmock.New()
+	require.NoError(t, err)
+	mk.ExpectQuery("SELECT COLLATION_NAME, CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS").
+		WillReturnRows(sqlmock.NewRows([]string{"COLLATION_NAME", "CHARACTER_SET_NAME"}).AddRow("custom", "unknown"))
+	c2c, err = mysqlversion.V("8.0.0").CollateToCharset(db)
+	require.NoError(t, err)
+	require.Equal(t, "unknown", c2c["custom"])
 }

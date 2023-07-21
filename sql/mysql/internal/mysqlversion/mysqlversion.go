@@ -5,11 +5,15 @@
 package mysqlversion
 
 import (
+	"context"
+	"database/sql"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"strings"
 
+	"ariga.io/atlas/sql/internal/sqlx"
+	"ariga.io/atlas/sql/schema"
 	"golang.org/x/mod/semver"
 )
 
@@ -91,21 +95,53 @@ func (v V) SupportsViewUsage() bool {
 }
 
 // CharsetToCollate returns the mapping from charset to its default collation.
-func (v V) CharsetToCollate() (map[string]string, error) {
+func (v V) CharsetToCollate(conn schema.ExecQuerier) (map[string]string, error) {
 	name := "is/charset2collate"
 	if v.Maria() {
 		name += ".maria"
 	}
-	return decode(name)
+	c2c, err := decode(name)
+	if err != nil {
+		return nil, err
+	}
+	if conn != nil {
+		mayExtend(conn, "SELECT CHARACTER_SET_NAME, DEFAULT_COLLATE_NAME FROM INFORMATION_SCHEMA.CHARACTER_SETS", c2c)
+	}
+	return c2c, nil
 }
 
 // CollateToCharset returns the mapping from a collation to its charset.
-func (v V) CollateToCharset() (map[string]string, error) {
+func (v V) CollateToCharset(conn schema.ExecQuerier) (map[string]string, error) {
 	name := "is/collate2charset"
 	if v.Maria() {
 		name += ".maria"
 	}
-	return decode(name)
+	c2c, err := decode(name)
+	if err != nil {
+		return nil, err
+	}
+	if conn != nil {
+		mayExtend(conn, "SELECT COLLATION_NAME, CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS", c2c)
+	}
+	return c2c, nil
+}
+
+// mayExtend the given collation/charset map from information schema.
+func mayExtend(conn schema.ExecQuerier, query string, to map[string]string) {
+	rows, err := conn.QueryContext(context.Background(), query)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var c1, c2 sql.NullString
+		if err := rows.Scan(&c1, &c2); err != nil {
+			return
+		}
+		if sqlx.ValidString(c1) && sqlx.ValidString(c2) {
+			to[c1.String] = c2.String
+		}
+	}
 }
 
 // Maria reports if the MySQL version is MariaDB.
