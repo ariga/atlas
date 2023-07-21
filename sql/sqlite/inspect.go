@@ -35,22 +35,26 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		opts = &schema.InspectRealmOption{}
 	}
 	r := schema.NewRealm(schemas...)
-	if !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
-		return sqlx.ExcludeRealm(r, opts.Exclude)
-	}
-	for _, s := range schemas {
-		tables, err := i.tables(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-		s.AddTables(tables...)
-		for _, t := range tables {
-			if err := i.inspectTable(ctx, t); err != nil {
+	if sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
+		for _, s := range schemas {
+			tables, err := i.tables(ctx, nil)
+			if err != nil {
 				return nil, err
 			}
+			s.AddTables(tables...)
+			for _, t := range tables {
+				if err := i.inspectTable(ctx, t); err != nil {
+					return nil, err
+				}
+			}
+		}
+		sqlx.LinkSchemaTables(r.Schemas)
+	}
+	if sqlx.ModeInspectRealm(opts).Is(schema.InspectViews) {
+		if err := i.inspectViews(ctx, r, nil); err != nil {
+			return nil, err
 		}
 	}
-	sqlx.LinkSchemaTables(r.Schemas)
 	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
 
@@ -75,20 +79,24 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		opts = &schema.InspectOptions{}
 	}
 	r := schema.NewRealm(schemas...)
-	if !sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
-		return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+		tables, err := i.tables(ctx, opts)
+		if err != nil {
+			return nil, err
+		}
+		r.Schemas[0].AddTables(tables...)
+		for _, t := range tables {
+			if err := i.inspectTable(ctx, t); err != nil {
+				return nil, err
+			}
+		}
+		sqlx.LinkSchemaTables(schemas)
 	}
-	tables, err := i.tables(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	r.Schemas[0].AddTables(tables...)
-	for _, t := range tables {
-		if err := i.inspectTable(ctx, t); err != nil {
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectViews) {
+		if err := i.inspectViews(ctx, r, opts); err != nil {
 			return nil, err
 		}
 	}
-	sqlx.LinkSchemaTables(schemas)
 	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 

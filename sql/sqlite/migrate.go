@@ -86,6 +86,14 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 			err = s.modifyTable(ctx, c)
 		case *schema.RenameTable:
 			s.renameTable(c)
+		case *schema.AddView:
+			err = s.addView(c)
+		case *schema.DropView:
+			err = s.dropView(c)
+		case *schema.ModifyView:
+			err = s.modifyView(c)
+		case *schema.RenameView:
+			err = s.renameView(c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
