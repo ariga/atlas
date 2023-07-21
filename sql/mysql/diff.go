@@ -644,7 +644,7 @@ func (d *diff) defaultCollate(attrs *[]schema.Attr) error {
 		return nil
 	}
 	d.ch2co.Do(func() {
-		d.ch2co.v, d.ch2co.err = d.CharsetToCollate()
+		d.ch2co.v, d.ch2co.err = d.CharsetToCollate(d.ExecQuerier)
 	})
 	if d.ch2co.err != nil {
 		return d.ch2co.err
@@ -664,7 +664,7 @@ func (d *diff) defaultCharset(attrs *[]schema.Attr) error {
 		return nil
 	}
 	d.co2ch.Do(func() {
-		d.co2ch.v, d.co2ch.err = d.CollateToCharset()
+		d.co2ch.v, d.co2ch.err = d.CollateToCharset(d.ExecQuerier)
 	})
 	if d.co2ch.err != nil {
 		return d.co2ch.err
