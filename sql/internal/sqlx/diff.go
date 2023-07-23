@@ -190,7 +190,7 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 			changes = opts.AddOrSkip(changes, &schema.DropView{V: v1})
 			continue
 		}
-		if v1.Def != v2.Def || d.ViewAttrChanged(v1, v2) {
+		if TrimViewExtra(v1.Def) != TrimViewExtra(v2.Def) || d.ViewAttrChanged(v1, v2) {
 			changes = opts.AddOrSkip(changes, &schema.ModifyView{From: v1, To: v2})
 		}
 	}
@@ -665,4 +665,10 @@ func SingleQuote(s string) (string, error) {
 	default:
 		return "'" + strings.ReplaceAll(s, "'", "''") + "'", nil
 	}
+}
+
+// TrimViewExtra trims the extra unnecessary
+// characters from the view definition.
+func TrimViewExtra(s string) string {
+	return strings.Trim(s, " \n\t;")
 }
