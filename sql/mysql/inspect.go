@@ -903,7 +903,7 @@ func (s *showTable) setAutoInc(t *schema.Table, c *CreateStmt) error {
 }
 
 // reIndexParser matches the parser name from the index definition.
-var reIndexParser = regexp.MustCompile("/*!50100 WITH PARSER `([^`]+)` */")
+var reIndexParser = regexp.MustCompile("/\\*!50100 WITH PARSER `([^`]+)` \\*/")
 
 // setIndexParser updates the FULLTEXT parser from CREATE TABLE statement.
 func (s *showTable) setIndexParser(c *CreateStmt) {

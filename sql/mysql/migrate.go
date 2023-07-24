@@ -589,7 +589,7 @@ func index(b *sqlx.Builder, idx *schema.Index) {
 		b.P("UNIQUE")
 	case t.T == IndexTypeFullText:
 		if p := (&IndexParser{}); sqlx.Has(idx.Attrs, p) {
-			defer b.P("WITH PARSER", p.P)
+			defer func() { b.P("WITH PARSER").Ident(p.P) }()
 		}
 		b.P(t.T)
 	case t.T == IndexTypeSpatial:

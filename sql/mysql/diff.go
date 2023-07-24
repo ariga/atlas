@@ -176,7 +176,14 @@ func (d *diff) IsGeneratedIndexName(_ *schema.Table, idx *schema.Index) bool {
 
 // IndexAttrChanged reports if the index attributes were changed.
 func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
-	return indexType(from).T != indexType(to).T
+	if indexType(from).T != indexType(to).T {
+		return true
+	}
+	var (
+		fromP, toP     IndexParser
+		fromHas, toHas = sqlx.Has(from, &fromP), sqlx.Has(to, &toP)
+	)
+	return fromHas != toHas || (fromHas && fromP.P != toP.P)
 }
 
 // IndexPartAttrChanged reports if the index-part attributes (collation or prefix) were changed.
