@@ -111,7 +111,7 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	return func(ctx context.Context) error {
 		for _, stmt := range []string{
 			"PRAGMA writable_schema = 1;",
-			"DELETE FROM sqlite_master WHERE type IN ('table', 'index', 'trigger');",
+			"DELETE FROM sqlite_master WHERE type IN ('table', 'view', 'index', 'trigger');",
 			"PRAGMA writable_schema = 0;",
 			"VACUUM;",
 		} {
