@@ -143,7 +143,7 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 	for _, t := range s.Tables {
 		var createStmt CreateStmt
 		if ok := sqlx.Has(t.Attrs, &createStmt); !ok {
-			if err := i.createStmt(ctx, t); err != nil {
+			if _, err := i.createStmt(ctx, t); err != nil {
 				return nil, err
 			}
 		}

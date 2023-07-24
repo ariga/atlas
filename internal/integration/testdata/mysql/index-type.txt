@@ -1,3 +1,5 @@
+only mysql8 mysql57
+
 apply 1.hcl
 cmpshow users 1.sql
 
@@ -18,11 +20,17 @@ table "users" {
     type = FULLTEXT
     columns = [column.text]
   }
+  index "ngram_text" {
+    type = FULLTEXT
+    parser = ngram
+    columns = [column.text]
+  }
 }
 
 -- 1.sql --
 CREATE TABLE `users` (
   `text` text NOT NULL,
+  FULLTEXT KEY `ngram_text` (`text`) /*!50100 WITH PARSER `ngram` */ ,
   FULLTEXT KEY `users_text` (`text`)
 )
 

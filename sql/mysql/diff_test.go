@@ -441,6 +441,7 @@ func TestDiff_TableDiff(t *testing.T) {
 						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
 						{Name: "c2", Type: &schema.ColumnType{Raw: "tinyint", Type: &schema.IntegerType{T: "tinyint"}}},
 						{Name: "c3", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
+						{Name: "c4", Type: &schema.ColumnType{Raw: "text", Type: &schema.StringType{T: "text"}}},
 					},
 				}
 				to = &schema.Table{
@@ -452,6 +453,7 @@ func TestDiff_TableDiff(t *testing.T) {
 						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
 						{Name: "c2", Type: &schema.ColumnType{Raw: "tinyint", Type: &schema.IntegerType{T: "tinyint"}}},
 						{Name: "c3", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
+						{Name: "c4", Type: &schema.ColumnType{Raw: "text", Type: &schema.StringType{T: "text"}}},
 					},
 				}
 			)
@@ -460,12 +462,14 @@ func TestDiff_TableDiff(t *testing.T) {
 				{Name: "c2_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
 				{Name: "c1_prefix", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1], Attrs: []schema.Attr{&SubPart{Len: 50}}}}},
 				{Name: "c1_desc", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
+				{Name: "parser", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[3]}}, Attrs: []schema.Attr{&IndexType{T: IndexTypeFullText}, &IndexParser{P: "ngram"}}},
 			}
 			to.Indexes = []*schema.Index{
 				{Name: "c1_index", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
 				{Name: "c3_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: to.Columns[1]}}},
 				{Name: "c1_prefix", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0], Attrs: []schema.Attr{&SubPart{Len: 100}}}}},
 				{Name: "c1_desc", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1], Desc: true}}},
+				{Name: "parser", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[3]}}, Attrs: []schema.Attr{&IndexType{T: IndexTypeFullText}}},
 			}
 			return testcase{
 				name: "indexes",
@@ -476,6 +480,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					&schema.DropIndex{I: from.Indexes[1]},
 					&schema.ModifyIndex{From: from.Indexes[2], To: to.Indexes[2], Change: schema.ChangeParts},
 					&schema.ModifyIndex{From: from.Indexes[3], To: to.Indexes[3], Change: schema.ChangeParts},
+					&schema.ModifyIndex{From: from.Indexes[4], To: to.Indexes[4], Change: schema.ChangeAttr},
 					&schema.AddIndex{I: to.Indexes[1]},
 				},
 			}

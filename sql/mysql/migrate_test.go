@@ -258,27 +258,20 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				func() schema.Change {
-					users := &schema.Table{
-						Name: "users",
-						Columns: []*schema.Column{
-							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
-							{
-								Name: "name",
-								Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}},
-								Indexes: []*schema.Index{
-									schema.NewIndex("name_index").
-										AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
-								},
-							}},
-					}
-					schema.NewTable("users").
-						Set
+					users := schema.NewTable("users").
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+							schema.NewStringColumn("name", "varchar(255)"),
+						).
+						AddIndexes(
+							schema.NewIndex("name_index").
+								AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
+						)
 					return &schema.ModifyTable{
 						T: users,
 						Changes: []schema.Change{
 							&schema.DropIndex{
-								I: schema.NewIndex("name_index").
-									AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
+								I: users.Indexes[0],
 							},
 						},
 					}
@@ -526,12 +519,22 @@ func TestPlanChanges(t *testing.T) {
 						},
 					}
 					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
+					t.AddIndexes(
+						schema.NewIndex("text").
+							AddParts(&schema.IndexPart{C: t.Columns[1]}).
+							AddAttrs(&IndexType{T: "FULLTEXT"}, &schema.Comment{Text: "text index"}, &IndexParser{P: "ngram"}),
+					)
 					return &schema.AddTable{T: t}
 				}(),
 			},
 			wantPlan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `uuid` char(36) CHARSET utf8mb4 NULL COLLATE utf8mb4_bin, PRIMARY KEY (`id`))", Reverse: "DROP TABLE `posts`"}},
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `uuid` char(36) CHARSET utf8mb4 NULL COLLATE utf8mb4_bin, PRIMARY KEY (`id`), FULLTEXT INDEX `text` (`text`) COMMENT \"text index\" WITH PARSER `ngram`)",
+						Reverse: "DROP TABLE `posts`",
+					},
+				},
 			},
 		},
 		{
