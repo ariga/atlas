@@ -271,6 +271,8 @@ func TestPlanChanges(t *testing.T) {
 								},
 							}},
 					}
+					schema.NewTable("users").
+						Set
 					return &schema.ModifyTable{
 						T: users,
 						Changes: []schema.Change{
