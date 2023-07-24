@@ -116,3 +116,24 @@ func TestClient_ReportMigrationSet(t *testing.T) {
 	})
 	require.NoError(t, err)
 }
+
+func TestClient_Visualize(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var input struct {
+			Variables struct {
+				Input VisualizeInput `json:"input"`
+			} `json:"variables"`
+		}
+		err := json.NewDecoder(r.Body).Decode(&input)
+		require.NoError(t, err)
+		// language=JSON
+		body := `{ "data": { "visualizeInspect": { "url": "https://test.ariga.io" } } }`
+		_, err = fmt.Fprint(w, body)
+		require.NoError(t, err)
+	}))
+	client := New(srv.URL, "atlas")
+	defer srv.Close()
+	u, err := client.Visualize(context.Background(), VisualizeInput{})
+	require.NoError(t, err)
+	require.Equal(t, "https://test.ariga.io", u)
+}

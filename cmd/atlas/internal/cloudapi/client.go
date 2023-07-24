@@ -143,6 +143,13 @@ type (
 		Text     string          `json:"text,omitempty"`
 		Children []ReportStepLog `json:"children,omitempty"`
 	}
+
+	// VisualizeInput represents the input type for visualizing a schema.
+	VisualizeInput struct {
+		HCL    string `json:"hcl"`
+		SQL    string `json:"sql"`
+		Driver string `json:"driver"`
+	}
 )
 
 // ReportMigrationSet reports a set of migration deployments to the Atlas Cloud API.
@@ -228,6 +235,32 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 		return scan.Errors
 	}
 	return nil
+}
+
+// Visualize a schema and return a URL to the visualization.
+func (c *Client) Visualize(ctx context.Context, input VisualizeInput) (string, error) {
+	var (
+		payload struct {
+			VisualizeInspect struct {
+				URL string `json:"url"`
+			}
+		}
+		query = `
+		query visualize($input: VisualizeInput!) {
+			visualizeInspect(input: $input) {
+				url
+			}
+		}`
+		vars = struct {
+			Input VisualizeInput `json:"input"`
+		}{
+			Input: input,
+		}
+	)
+	if err := c.post(ctx, query, vars, &payload); err != nil {
+		return "", err
+	}
+	return payload.VisualizeInspect.URL, nil
 }
 
 // roundTripper is a http.RoundTripper that adds the Authorization header.
