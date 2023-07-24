@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -270,37 +271,37 @@ func Dir(u string, create bool) (migrate.Dir, error) {
 
 // DirURL returns a migrate.Dir to use as migration directory. For now only local directories are supported.
 func DirURL(u *url.URL, create bool) (migrate.Dir, error) {
-	path := filepath.Join(u.Host, u.Path)
+	p := filepath.Join(u.Host, u.Path)
 	switch u.Scheme {
 	case "mem":
-		return migrate.OpenMemDir(path), nil
+		return migrate.OpenMemDir(path.Join(u.Host, u.Path)), nil
 	case "file":
-		if path == "" {
-			path = "migrations"
+		if p == "" {
+			p = "migrations"
 		}
 	default:
 		return nil, fmt.Errorf("unsupported driver %q", u.Scheme)
 	}
-	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(path) }
+	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(p) }
 	switch f := u.Query().Get("format"); f {
 	case "", FormatAtlas:
 		// this is the default
 	case FormatGolangMigrate:
-		fn = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(p) }
 	case FormatGoose:
-		fn = func() (migrate.Dir, error) { return sqltool.NewGooseDir(path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewGooseDir(p) }
 	case FormatFlyway:
-		fn = func() (migrate.Dir, error) { return sqltool.NewFlywayDir(path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewFlywayDir(p) }
 	case FormatLiquibase:
-		fn = func() (migrate.Dir, error) { return sqltool.NewLiquibaseDir(path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewLiquibaseDir(p) }
 	case FormatDBMate:
-		fn = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(p) }
 	default:
 		return nil, fmt.Errorf("unknown dir format %q", f)
 	}
 	d, err := fn()
 	if create && errors.Is(err, fs.ErrNotExist) {
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(p, 0755); err != nil {
 			return nil, err
 		}
 		d, err = fn()
