@@ -476,6 +476,12 @@ index "idx_operator_class" {
     ops    = jsonb_path_ops
   }
 }
+
+index "index_parser" {
+  type    = FULLTEXT
+  columns = [column.text]
+  parser  = ngram
+}
 ```
 
 #### Properties
