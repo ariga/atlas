@@ -143,6 +143,13 @@ type (
 		Text     string          `json:"text,omitempty"`
 		Children []ReportStepLog `json:"children,omitempty"`
 	}
+
+	// VisualizeInput represents the input type for visualizing a schema.
+	VisualizeInput struct {
+		HCL    string `json:"hcl"`
+		SQL    string `json:"sql"`
+		Driver string `json:"driver"`
+	}
 )
 
 // ReportMigrationSet reports a set of migration deployments to the Atlas Cloud API.
