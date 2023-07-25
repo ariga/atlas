@@ -368,6 +368,13 @@ type (
 	}
 )
 
+// A list of known view check options.
+const (
+	ViewCheckOptionNone     = "NONE"
+	ViewCheckOptionLocal    = "LOCAL"
+	ViewCheckOptionCascaded = "CASCADED"
+)
+
 // objects.
 func (*Table) obj()    {}
 func (*View) obj()     {}

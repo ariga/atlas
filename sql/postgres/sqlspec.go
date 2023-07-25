@@ -129,8 +129,9 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 
 var (
 	hclState = schemahcl.New(
-		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
 		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
+		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
+		schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, "GiST", IndexTypeSPGiST, "SPGiST"),
 		schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
 		schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),

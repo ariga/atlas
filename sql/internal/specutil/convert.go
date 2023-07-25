@@ -212,6 +212,13 @@ func View(spec *sqlspec.View, parent *schema.Schema, convertColumn ConvertViewCo
 	if err := convertCommentFromSpec(spec, &v.Attrs); err != nil {
 		return nil, err
 	}
+	if c, ok := spec.Extra.Attr("check_option"); ok {
+		o, err := c.String()
+		if err != nil {
+			return nil, fmt.Errorf("specutil: expect string definition for attribute view.%s.check_option: %w", spec.Name, err)
+		}
+		v.SetCheckOption(o)
+	}
 	return v, nil
 }
 
@@ -480,6 +487,15 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc) (*sqlspec.View, error) {
 		Attrs: []*schemahcl.Attr{
 			schemahcl.StringAttr("as", as),
 		},
+	}
+	if c := (schema.ViewCheckOption{}); sqlx.Has(v.Attrs, &c) {
+		switch strings.ToUpper(c.V) {
+		case schema.ViewCheckOptionNone, "":
+		case schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded:
+			embed.Attrs = append(embed.Attrs, VarAttr("check_option", c.V))
+		default:
+			embed.Attrs = append(embed.Attrs, schemahcl.StringAttr("check_option", c.V))
+		}
 	}
 	var (
 		deps         = make([]*schemahcl.Ref, 0, len(v.Deps))

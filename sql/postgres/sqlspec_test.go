@@ -313,7 +313,8 @@ func TestMarshalViews(t *testing.T) {
 				),
 		).
 		AddViews(
-			schema.NewView("v1", "SELECT 1"),
+			schema.NewView("v1", "SELECT 1").
+				SetCheckOption(schema.ViewCheckOptionLocal),
 			schema.NewView("v2", "SELECT * FROM t2\n\tWHERE id IS NOT NULL"),
 			schema.NewView("v3", "SELECT * FROM t3\n\tWHERE id IS NOT NULL\n\tORDER BY id").
 				AddColumns(
@@ -338,8 +339,9 @@ func TestMarshalViews(t *testing.T) {
   }
 }
 view "v1" {
-  schema = schema.public
-  as     = "SELECT 1"
+  schema       = schema.public
+  as           = "SELECT 1"
+  check_option = LOCAL
 }
 view "v2" {
   schema = schema.public
@@ -394,9 +396,10 @@ view "v2" {
  comment = "view comment"
 }
 view "v3" {
- schema     = schema.public
- as         = "SELECT * FROM v2 JOIN t1 USING (id)"
- depends_on = [view.v1, table.t1]
+ schema       = schema.public
+ as           = "SELECT * FROM v2 JOIN t1 USING (id)"
+ check_option = LOCAL
+ depends_on   = [view.v1, table.t1]
 }
 
 table "public" "t2" {
@@ -460,6 +463,7 @@ schema "other" {}
 	)
 	public.AddViews(
 		schema.NewView("v3", "SELECT * FROM v2 JOIN t1 USING (id)").
+			SetCheckOption(schema.ViewCheckOptionLocal).
 			AddDeps(public.Views[0], public.Tables[0]),
 		schema.NewView("v4", "SELECT * FROM public.t2").
 			AddDeps(public.Tables[1]),
