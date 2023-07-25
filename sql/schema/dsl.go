@@ -262,6 +262,12 @@ func (v *View) AddDeps(objs ...Object) *View {
 	return v
 }
 
+// SetCheckOption sets the check option of the view.
+func (v *View) SetCheckOption(opt string) *View {
+	ReplaceOrAppend(&v.Attrs, &ViewCheckOption{V: opt})
+	return v
+}
+
 // NewColumn creates a new column with the given name.
 func NewColumn(name string) *Column {
 	return &Column{Name: name}

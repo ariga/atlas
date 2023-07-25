@@ -85,6 +85,7 @@ var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
 		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
+		schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
 		schemahcl.WithScopedEnums("table.engine", EngineInnoDB, EngineMyISAM, EngineMemory, EngineCSV, EngineNDB),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
 		schemahcl.WithScopedEnums("table.index.parser", IndexParserNGram, IndexParserMeCab),

@@ -31,3 +31,7 @@ func (*state) modifyView(*schema.ModifyView) error {
 func (*state) renameView(*schema.RenameView) {
 	// unimplemented.
 }
+
+func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
+	return false // Not implemented.
+}
