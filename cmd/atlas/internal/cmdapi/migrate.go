@@ -41,22 +41,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	migrateCmd := migrateCmd()
-	migrateCmd.AddCommand(
-		migrateApplyCmd(),
-		migrateDiffCmd(),
-		migrateHashCmd(),
-		migrateImportCmd(),
-		migrateLintCmd(),
-		migrateNewCmd(),
-		migrateSetCmd(),
-		migrateStatusCmd(),
-		migrateValidateCmd(),
-	)
-	Root.AddCommand(migrateCmd)
-}
-
 // migrateCmd represents the subcommand 'atlas migrate'.
 func migrateCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -523,6 +507,11 @@ type migrateDiffFlags struct {
 
 // migrateDiffCmd represents the 'atlas migrate diff' subcommand.
 func migrateDiffCmd() *cobra.Command {
+	cmd, _ := migrateDiffWithFlagsCmd()
+	return cmd
+}
+
+func migrateDiffWithFlagsCmd() (*cobra.Command, *migrateDiffFlags) {
 	var (
 		flags migrateDiffFlags
 		cmd   = &cobra.Command{
@@ -567,7 +556,7 @@ directory state to the desired schema. The desired state can be another connecte
 	cmd.Flags().BoolVarP(&flags.edit, flagEdit, "", false, "edit the generated migration file(s)")
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagDevURL))
-	return cmd
+	return cmd, &flags
 }
 
 func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, env *Env) error {
