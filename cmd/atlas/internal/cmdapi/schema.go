@@ -320,6 +320,11 @@ type schemaDiffFlags struct {
 
 // schemaDiffCmd represents the 'atlas schema diff' subcommand.
 func schemaDiffCmd() *cobra.Command {
+	cmd, _ := schemaDiffCmdWithFlags()
+	return cmd
+}
+
+func schemaDiffCmdWithFlags() (*cobra.Command, *schemaDiffFlags) {
 	var (
 		flags schemaDiffFlags
 		cmd   = &cobra.Command{
@@ -353,7 +358,7 @@ The database states can be read from a connected database, an HCL project or a m
 	addFlagFormat(cmd.Flags(), &flags.format)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagFrom))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
-	return cmd
+	return cmd, &flags
 }
 
 func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *Env) error {
