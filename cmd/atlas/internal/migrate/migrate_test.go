@@ -24,6 +24,8 @@ func TestNewEntRevisions(t *testing.T) {
 	require.NoError(t, err)
 	r, err := NewEntRevisions(ctx, c)
 	require.NoError(t, err)
+	_, err = c.DB.Exec("CREATE VIEW v1 AS SELECT 1;")
+	require.NoError(t, err)
 	require.NoError(t, r.Migrate(ctx))
 
 	s, err := c.Driver.InspectSchema(ctx, "", nil)

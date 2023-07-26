@@ -192,7 +192,29 @@ func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
 			}()
 		}
 	}
-	return c.Schema.Create(ctx, entschema.WithDropColumn(true))
+	return c.Schema.Create(ctx, entschema.WithDropColumn(true), entschema.WithDiffHook(func(next entschema.Differ) entschema.Differ {
+		return entschema.DiffFunc(func(current, desired *schema.Schema) ([]schema.Change, error) {
+			changes, err := next.Diff(current, desired)
+			if err != nil {
+				return nil, err
+			}
+			// Skip all changes beside revisions
+			// table creation or modification.
+			for i := range changes {
+				switch cs := changes[i].(type) {
+				case *schema.AddTable:
+					if cs.T.Name == revision.Table {
+						return schema.Changes{cs}, nil
+					}
+				case *schema.ModifyTable:
+					if cs.T.Name == revision.Table {
+						return schema.Changes{cs}, nil
+					}
+				}
+			}
+			return nil, nil
+		})
+	}))
 }
 
 // revisionID holds the column "id" ("version") of the revision that holds the identifier of the

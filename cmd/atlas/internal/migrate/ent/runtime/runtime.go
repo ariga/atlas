@@ -9,6 +9,6 @@ package runtime
 // The schema-stitching logic is generated in ariga.io/atlas/cmd/atlas/internal/migrate/ent/runtime.go
 
 const (
-	Version = "v0.12.4-0.20230503082810-f251400818ea"           // Version of ent codegen.
-	Sum     = "h1:R0Rq0neRfHnux+a4NrCgNncloOQQaNAOvEC/YY5+Ox0=" // Sum of ent codegen.
+	Version = "v0.12.4-0.20230726082433-91c7fcc68504"           // Version of ent codegen.
+	Sum     = "h1:wUSznEj31LlsQdpc6OvMYNGqugF1s+tY/KpMZsSdonw=" // Sum of ent codegen.
 )
