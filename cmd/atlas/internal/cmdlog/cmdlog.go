@@ -651,6 +651,11 @@ func (s *SchemaInspect) MarshalJSON() ([]byte, error) {
 	return json.Marshal(realm)
 }
 
+// MarshalSQL returns the default SQL representation of the schema.
+func (s *SchemaInspect) MarshalSQL(indent ...string) (string, error) {
+	return sqlInspect(s, indent...)
+}
+
 func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 	if report.Error != nil {
 		return report.Error.Error(), nil
