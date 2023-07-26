@@ -382,7 +382,7 @@ func resetFromEnv(cmd *cobra.Command) func() {
 		if v, ok := f.Value.(*Vars); ok {
 			vs := v.Copy()
 			r = func() error {
-				v.Replace(vs)
+				v.Replace(vs.Copy())
 				return nil
 			}
 		} else if v, ok := f.Value.(pflag.SliceValue); ok {
