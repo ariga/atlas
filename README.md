@@ -50,7 +50,7 @@ This tutorial teaches you how to inspect a database, generate a migration plan a
 - **Versioned migration**: The `atlas migrate` command provides a state-of-the-art experience for planning, linting, and
   applying migrations.
 - **Terraform support**: Managing database changes as part of a Terraform deployment workflow.
-- **[SQL] and [HCL] support**: Atlas supports both SQL and HCL for describing database schemas.
+- **[SQL], [HCL] and [ORM] support**: Atlas enables users to define their desired database schema using [HCL], [SQL], or their chosen [ORM].
 - **Multi-tenancy**: Atlas includes built-in support for multi-tenant database schemas.
 - **Cloud integration**: Atlas integrates with standard cloud services and provides an easy way to read secrets from cloud
   providers such as AWS Secrets Manager and GCP Secret Manager.
