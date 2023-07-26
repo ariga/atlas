@@ -103,6 +103,27 @@ func TestSchemaInspect_MarshalJSON(t *testing.T) {
 	require.Equal(t, `{"Error":"EOF"}`, string(b))
 }
 
+func TestSchemaInspect_MarshalSQL(t *testing.T) {
+	client, err := sqlclient.Open(context.Background(), "sqlite://ci?mode=memory&_fk=1")
+	require.NoError(t, err)
+	defer client.Close()
+	report := &cmdlog.SchemaInspect{
+		Client: client,
+		Realm: schema.NewRealm(
+			schema.New("main").
+				AddTables(
+					schema.NewTable("users").
+						AddColumns(
+							schema.NewIntColumn("id", "int"),
+						),
+				),
+		),
+	}
+	b, err := report.MarshalSQL()
+	require.NoError(t, err)
+	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL);\n", b)
+}
+
 func TestSchemaInspect_EncodeSQL(t *testing.T) {
 	ctx := context.Background()
 	client, err := sqlclient.Open(ctx, "sqlite://ci?mode=memory&_fk=1")
