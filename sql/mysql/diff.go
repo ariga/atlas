@@ -245,7 +245,7 @@ func (d *diff) FindTable(s *schema.Schema, name string) (*schema.Table, error) {
 	case 1, 2:
 		var matches []*schema.Table
 		for _, t := range s.Tables {
-			if strings.ToLower(name) == strings.ToLower(t.Name) {
+			if strings.EqualFold(name, t.Name) {
 				matches = append(matches, t)
 			}
 		}
