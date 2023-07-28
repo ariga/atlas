@@ -41,6 +41,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// RevisionMigrate is a revision read-writer with migration capabilities.
+type RevisionMigrate interface {
+	migrate.RevisionReadWriter
+	ID(context.Context, string) (string, error)
+	CurrentRevision(context.Context) (*migrate.Revision, error)
+	Migrate(context.Context) error
+}
+
 func init() {
 	migrateCmd := migrateCmd()
 	migrateCmd.AddCommand(
@@ -201,12 +209,16 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 	if rrw, err = entRevisions(ctx, client, flags.revisionSchema); err != nil {
 		return err
 	}
-	if err := rrw.(*cmdmigrate.EntRevisions).Migrate(ctx); err != nil {
+	mrrw, ok := rrw.(RevisionMigrate)
+	if !ok {
+		return fmt.Errorf("unexpected revision read-writer type: %T", rrw)
+	}
+	if err := mrrw.Migrate(ctx); err != nil {
 		return err
 	}
 	// Setup reporting info.
 	report := cmdlog.NewMigrateApply(client, dir)
-	mr.Init(client, report, rrw.(*cmdmigrate.EntRevisions))
+	mr.Init(client, report, mrrw)
 	// If cloud reporting is enabled, and we cannot obtain the current
 	// target identifier, abort and report it to the user.
 	if err := mr.RecordTargetID(cmd.Context()); err != nil {
@@ -281,7 +293,7 @@ type (
 		env    *Env   // nil, if no env set
 		client *sqlclient.Client
 		log    *cmdlog.MigrateApply
-		rrw    *cmdmigrate.EntRevisions
+		rrw    RevisionMigrate
 		done   func(*cloudapi.ReportMigrationInput)
 	}
 	// MigrateReportSet is a set of reports.
@@ -405,7 +417,7 @@ func (s *MigrateReportSet) Flush(cmd *cobra.Command, cmdErr error) {
 }
 
 // Init the report if the necessary dependencies.
-func (r *MigrateReport) Init(c *sqlclient.Client, l *cmdlog.MigrateApply, rrw *cmdmigrate.EntRevisions) {
+func (r *MigrateReport) Init(c *sqlclient.Client, l *cmdlog.MigrateApply, rrw RevisionMigrate) {
 	r.client, r.log, r.rrw = c, l, rrw
 }
 
@@ -1434,7 +1446,7 @@ schema if it is unused.
 	return nil
 }
 
-func entRevisions(ctx context.Context, c *sqlclient.Client, flag string) (*cmdmigrate.EntRevisions, error) {
+func entRevisions(ctx context.Context, c *sqlclient.Client, flag string) (RevisionMigrate, error) {
 	return cmdmigrate.NewEntRevisions(ctx, c, cmdmigrate.WithSchema(revisionSchemaName(c, flag)))
 }
 
