@@ -621,6 +621,7 @@ func ConvertGenExpr(r *schemahcl.Resource, c *schema.Column, t func(string) stri
 
 // ExprValue converts a schema.Expr to a cty.Value.
 func ExprValue(expr schema.Expr) (cty.Value, error) {
+	expr = schema.UnderlyingExpr(expr)
 	switch x := expr.(type) {
 	case *schema.RawExpr:
 		return schemahcl.RawExprValue(&schemahcl.RawExpr{X: x.X}), nil

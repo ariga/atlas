@@ -310,6 +310,17 @@ type (
 
 type (
 	// Expr defines an SQL expression in schema DDL.
+	//
+	// The Expr interface can also be implemented outside this package as follows:
+	//
+	// 	type NamedDefault struct {
+	// 		schema.Expr
+	// 		Name string
+	// 	}
+	// 	// Underlying returns the underlying expression.
+	// 	func (e *NamedDefault) Underlying() schema.Expr { return e.Expr }
+	//
+	//  var e schema.Expr = &NamedDefault{Expr: &schema.Literal{V: "bar"}, Name: "foo"}
 	Expr interface {
 		expr()
 	}
@@ -405,3 +416,11 @@ func (*Charset) attr()         {}
 func (*Collation) attr()       {}
 func (*GeneratedExpr) attr()   {}
 func (*ViewCheckOption) attr() {}
+
+// UnderlyingExpr returns the underlying expression of x.
+func UnderlyingExpr(x Expr) Expr {
+	if w, ok := x.(interface{ Underlying() Expr }); ok {
+		return UnderlyingExpr(w.Underlying())
+	}
+	return x
+}
