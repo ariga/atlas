@@ -128,8 +128,11 @@ func (r *EntRevisions) CurrentRevision(ctx context.Context) (*migrate.Revision, 
 		Where(revision.IDNEQ(revisionID)).
 		Order(revision.ByID(sql.OrderDesc())).
 		First(ctx)
-	if err != nil {
+	if err != nil && !ent.IsNotFound(err) {
 		return nil, err
+	}
+	if ent.IsNotFound(err) {
+		return nil, migrate.ErrRevisionNotExist
 	}
 	return rev.AtlasRevision(), nil
 }
