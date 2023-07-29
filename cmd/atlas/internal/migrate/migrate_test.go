@@ -6,10 +6,10 @@ package migrate
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
-	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlclient"
@@ -35,7 +35,7 @@ func TestNewEntRevisions(t *testing.T) {
 	require.True(t, ok)
 
 	cur, err := r.CurrentRevision(ctx)
-	require.True(t, ent.IsNotFound(err))
+	require.True(t, errors.Is(err, migrate.ErrRevisionNotExist))
 	require.Nil(t, cur)
 
 	err = r.WriteRevision(ctx, &migrate.Revision{
@@ -91,7 +91,7 @@ func TestNewEntRevisions(t *testing.T) {
 	require.Equal(t, "1", cur.Version)
 	require.NoError(t, r.DeleteRevision(ctx, "1"))
 	cur, err = r.CurrentRevision(ctx)
-	require.True(t, ent.IsNotFound(err))
+	require.True(t, errors.Is(err, migrate.ErrRevisionNotExist))
 	require.Nil(t, cur)
 	revs, err = r.ReadRevisions(ctx)
 	require.NoError(t, err)

@@ -26,7 +26,6 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/cmd/atlas/internal/lint"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
-	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -448,7 +447,7 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 		err  = logApply(cmd, io.MultiWriter(cmd.OutOrStdout(), &clog), flags, r.log)
 	)
 	switch rev, err1 := r.rrw.CurrentRevision(cmd.Context()); {
-	case ent.IsNotFound(err1):
+	case errors.Is(err1, migrate.ErrRevisionNotExist):
 	case err1 != nil:
 		return errors.Join(err, err1)
 	default:
@@ -1247,7 +1246,7 @@ func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) (re
 			return err
 		}
 	}
-	if log.Current, err = rrw.CurrentRevision(ctx); err != nil && !ent.IsNotFound(err) {
+	if log.Current, err = rrw.CurrentRevision(ctx); err != nil && !errors.Is(err, migrate.ErrRevisionNotExist) {
 		return err
 	}
 	return cmdlog.MigrateSetTemplate.Execute(cmd.OutOrStdout(), log)
