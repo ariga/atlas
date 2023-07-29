@@ -458,10 +458,3 @@ const (
 	PartitionTypeList  = "LIST"
 	PartitionTypeHash  = "HASH"
 )
-
-// List of PARTITION KEY types.
-const (
-	ViewCheckNone    = "NONE"
-	ViewCheckCascade = "CASCADED"
-	ViewCheckLocal   = "LOCAL"
-)
