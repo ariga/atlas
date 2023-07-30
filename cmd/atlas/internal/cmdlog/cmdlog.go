@@ -702,6 +702,11 @@ Schemas are synced, no changes to be made.
 `))
 )
 
+// MarshalSQL returns the default SQL representation of the schema.
+func (s *SchemaDiff) MarshalSQL(indent ...string) (string, error) {
+	return sqlDiff(s, indent...)
+}
+
 func sqlDiff(diff *SchemaDiff, indent ...string) (string, error) {
 	return fmtPlan(diff.Client, diff.Changes, indent)
 }
