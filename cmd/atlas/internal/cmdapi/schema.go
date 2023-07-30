@@ -194,10 +194,11 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		return err
 	}
 	defer to.Close()
-	changes, err := computeDiff(ctx, client, from, to, env.DiffOptions()...)
+	diff, err := computeDiff(ctx, client, from, to, env.DiffOptions()...)
 	if err != nil {
 		return err
 	}
+	changes := diff.changes
 	// Returning at this stage should
 	// not trigger the help message.
 	cmd.SilenceUsage = true
@@ -408,13 +409,15 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	changes, err := computeDiff(ctx, c, from, to, env.DiffOptions()...)
+	diff, err := computeDiff(ctx, c, from, to, env.DiffOptions()...)
 	if err != nil {
 		return err
 	}
 	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaDiff{
 		Client:  c,
-		Changes: changes,
+		From:    diff.from,
+		To:      diff.to,
+		Changes: diff.changes,
 	})
 }
 
@@ -635,7 +638,13 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	return nil
 }
 
-func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *cmdext.StateReadCloser, opts ...schema.DiffOption) ([]schema.Change, error) {
+// diff holds the changes between two realms.
+type diff struct {
+	from, to *schema.Realm
+	changes  []schema.Change
+}
+
+func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *cmdext.StateReadCloser, opts ...schema.DiffOption) (*diff, error) {
 	current, err := from.ReadState(ctx)
 	if err != nil {
 		return nil, err
@@ -644,14 +653,14 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *cmdext
 	if err != nil {
 		return nil, err
 	}
-	var diff []schema.Change
+	var changes []schema.Change
 	switch {
 	// In case an HCL file is compared against a specific database schema (not a realm).
 	case to.HCL && len(desired.Schemas) == 1 && from.Schema != "" && desired.Schemas[0].Name != from.Schema:
 		return nil, fmt.Errorf("mismatched HCL and database schemas: %q <> %q", from.Schema, desired.Schemas[0].Name)
 	// Compare realm if the desired state is an HCL file or both connections are not bound to a schema.
 	case from.HCL, to.HCL, from.Schema == "" && to.Schema == "":
-		diff, err = differ.RealmDiff(current, desired, opts...)
+		changes, err = differ.RealmDiff(current, desired, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -661,12 +670,16 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *cmdext
 		// SchemaDiff checks for name equality which is irrelevant in the case
 		// the user wants to compare their contents, reset them to allow the comparison.
 		current.Schemas[0].Name, desired.Schemas[0].Name = "", ""
-		diff, err = differ.SchemaDiff(current.Schemas[0], desired.Schemas[0], opts...)
+		changes, err = differ.SchemaDiff(current.Schemas[0], desired.Schemas[0], opts...)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return diff, nil
+	return &diff{
+		changes: changes,
+		from:    current,
+		to:      desired,
+	}, nil
 }
 
 func summary(cmd *cobra.Command, c *sqlclient.Client, changes []schema.Change, t *template.Template) error {

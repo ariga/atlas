@@ -682,7 +682,8 @@ func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 // SchemaDiff contains a summary of the 'schema diff' command.
 type SchemaDiff struct {
 	*sqlclient.Client
-	Changes []schema.Change
+	From, To *schema.Realm
+	Changes  []schema.Change
 }
 
 var (
