@@ -71,14 +71,34 @@ target database.
 The Atlas Kubernetes Operator is available as a Helm Chart. To install the chart with the release name `atlas-operator`:
 
 ```bash
-helm install atlas-operator oci://ghcr.io/ariga/charts/atlas-operator
+helm install atlas-operator oci://ghcr.io/ariga/charts/atlas-operator --namespace atlas-operator --create-namespace
 ```
 
 ## Providing credentials
 
+### URLs
+
 In order to manage the schema of your database, you must provide the Atlas Kubernetes Operator with an [Atlas URL](https://atlasgo.io/concepts/url)
 to your database. The Atlas Kubernetes Operator will use this URL to connect to your database and apply changes to the schema.
 As this string usually contains sensitive information, we recommend storing it as a [Kubernetes secret](https://kubernetes.io/docs/concepts/configuration/secret/).
+
+Both `AtlasSchema` and `AtlasMigration` resources support defining the connection URL as a string (using the `url` field)
+or as a reference to a Kubernetes secret (using the `urlFrom` field):
+
+:::tip
+
+If you are connecting to a database that is running in your Kubernetes cluster, note that you should
+you use a namespace-qualified DNS name to connect to it. Connections are made from the Atlas Kubernetes Operator's
+namespace, so you should use a DNS name that is resolvable from that namespace. For example, to connect to the `mysql`
+service in the `app` namespace use:
+
+```
+mysql://user:pass@mysql.app:3306/myapp
+```
+
+:::
+
+#### Schema and database bound URLs
 
 Notice that depending on your use-case, you may want to use either a schema-bound or a database-bound connection.
 * Schema-bound connections are recommended for most use-cases, as they allow you to manage the schema of a database
@@ -151,6 +171,52 @@ stringData:
 
 </TabItem>
 </Tabs>
+
+### `urlFrom` {#credentials-url-from}
+
+The `urlFrom` field is used to load the URL of the target database from another resource such as a
+Kubernetes secret.
+
+```yaml
+urlFrom:
+    secretKeyRef:
+      key: url
+      name: mysql-credentials
+```
+
+### `url` {#credentials-url}
+
+The `url` field is used to define the URL of the target database directly. This is not recommended, but may
+be useful for testing purposes.
+
+```yaml
+url: "mysql://user:pass@localhost:3306/myapp"
+```
+
+### `credentials` object {#credentials-object}
+
+Alternatively, you can provide the credentials for your database as a `credentials` object.
+
+```yaml
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasSchema
+metadata:
+  name: atlasschema-postgres
+spec:
+  credentials:
+    scheme: postgres
+    host: postgres.default
+    user: root
+    passwordFrom:
+      secretKeyRef:
+        key: password
+        name: postgres-credentials
+    database: postgres
+    port: 5432
+    parameters:
+      sslmode: disable
+  # ... rest of the resource
+```
 
 ## Declarative migrations
 
@@ -233,32 +299,23 @@ spec:
   # Skipping all other fields for brevity.
 ```
 
+:::warning Overlapping schemas on a single database
+
+A word of caution: if you have multiple `AtlasSchema` resources that target the same database, you should
+ensure that the schemas defined in each resource do not overlap. Otherwise, the operator may produce
+unexpected results when attempting to reconcile the state of the database.
+
+:::
+
 ## `AtlasSchema` API reference
 
 The `AtlasSchema` resource is used to define the desired state of a target database.
 
 Available fields:
 
-#### `urlFrom`
+### Providing credentials
 
-The `urlFrom` field is used to load the URL of the target database from another resource such as a
-Kubernetes secret.
-
-```yaml
-urlFrom:
-    secretKeyRef:
-      key: url
-      name: mysql-credentials
-```
-
-### `url`
-
-The `url` field is used to define the URL of the target database directly. This is not recommended, but may
-be useful for testing purposes.
-
-```yaml
-url: "mysql://user:pass@localhost:3306/myapp"
-```
+See [`urlFrom`](#credentials-url-from), [`url`](#credentials-url) or [`credentials`](#credentials-object).
 
 ### `schema`
 
@@ -434,6 +491,10 @@ spec:
 
 ## `AtlasMigration` API reference
 
+### Providing credentials
+
+See [`urlFrom`](#credentials-url-from), [`url`](#credentials-url) or [`credentials`](#credentials-object).
+
 ### `envName`
 
 The `envName` sets the environment name used for reporting runs to Atlas Cloud.
@@ -441,27 +502,6 @@ By default, the environment name is set to `Kubernetes`.
 
 ```yaml
 envName: "production"
-```
-
-### `url`
-
-The `url` field is used to define the URL of the target database directly.
-This is not recommended, but may be useful for testing purposes.
-
-```yaml
-url: "mysql://user:pass@localhost:3306/myapp"
-```
-
-#### `urlFrom`
-
-The `urlFrom` field is used to load the URL of the target database from another resource such as a
-Kubernetes secret.
-
-```yaml
-urlFrom:
-    secretKeyRef:
-      key: url
-      name: db-credentials
 ```
 
 ### `cloud`
@@ -492,7 +532,7 @@ cloud:
 ### `dir`
 
 The `dir` field is used to define the migration directory.
-For local directory, use `configMapRef` to reference the `ConfigMap` that contains the migration files.
+For a directory defined in a `ConfigMap`, use `configMapRef` to reference the `ConfigMap` that contains the migration files.
 
 ```yaml
 dir:
@@ -509,6 +549,24 @@ dir:
     tag: "commit-id"
 ```
 
+Alternatively, you can use the `local` field to define the migration directory inline in the `AtlasMigration` resource.
+
+```yaml
+dir:
+  local:
+    20230316085611.sql: |
+      create table users (
+        id int not null auto_increment,
+        name varchar(255) not null,
+        email varchar(255) unique not null,
+        short_bio varchar(255) not null,
+        primary key (id)
+      );
+    atlas.sum: |
+      h1:W/ujmfqFLOAFDscMEVJ2wrbh4MrpVHENKEP9bVH3mlc=
+      20230316085611.sql h1:Bb6K2XoJavRLhMIsITnxtWLiBhe/Dfp5X5yNxBYP++I=
+```
+
 ### `revisionsSchema`
 
 The `revisionsSchema` field is used to define the schema name for the revisions table.
@@ -517,4 +575,3 @@ Details about the revisions table can be found in the [Revisions Schema](/versio
 ```yaml
 revisionsSchema: "atlas"
 ```
-
