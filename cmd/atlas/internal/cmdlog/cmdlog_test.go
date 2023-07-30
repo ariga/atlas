@@ -153,6 +153,26 @@ func TestSchemaInspect_EncodeSQL(t *testing.T) {
 	require.Equal(t, "failure", b.String())
 }
 
+func TestSchemaDiff_MarshalSQL(t *testing.T) {
+	client, err := sqlclient.Open(context.Background(), "sqlite://ci?mode=memory&_fk=1")
+	require.NoError(t, err)
+	defer client.Close()
+	diff := &cmdlog.SchemaDiff{
+		Client: client,
+		Changes: schema.Changes{
+			&schema.AddTable{
+				T: schema.NewTable("users").
+					AddColumns(
+						schema.NewIntColumn("id", "int"),
+					),
+			},
+		},
+	}
+	b, err := diff.MarshalSQL()
+	require.NoError(t, err)
+	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL);\n", b)
+}
+
 func TestMigrateSet(t *testing.T) {
 	var (
 		b   bytes.Buffer
