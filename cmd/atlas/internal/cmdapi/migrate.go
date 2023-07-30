@@ -40,17 +40,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// RevisionReadWriter is a revision read-writer with migration capabilities.
-type RevisionReadWriter interface {
-	migrate.RevisionReadWriter
-	// ID returns the current target identifier.
-	ID(context.Context, string) (string, error)
-	// CurrentRevision returns the current revision in the revisions table.
-	CurrentRevision(context.Context) (*migrate.Revision, error)
-	// Migrate applies the migration of the revisions table.
-	Migrate(context.Context) error
-}
-
 func init() {
 	migrateCmd := migrateCmd()
 	migrateCmd.AddCommand(
@@ -211,7 +200,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 	if rrw, err = entRevisions(ctx, client, flags.revisionSchema); err != nil {
 		return err
 	}
-	mrrw, ok := rrw.(RevisionReadWriter)
+	mrrw, ok := rrw.(cmdmigrate.RevisionReadWriter)
 	if !ok {
 		return fmt.Errorf("unexpected revision read-writer type: %T", rrw)
 	}
@@ -295,7 +284,7 @@ type (
 		env    *Env   // nil, if no env set
 		client *sqlclient.Client
 		log    *cmdlog.MigrateApply
-		rrw    RevisionReadWriter
+		rrw    cmdmigrate.RevisionReadWriter
 		done   func(*cloudapi.ReportMigrationInput)
 	}
 	// MigrateReportSet is a set of reports.
@@ -419,7 +408,7 @@ func (s *MigrateReportSet) Flush(cmd *cobra.Command, cmdErr error) {
 }
 
 // Init the report if the necessary dependencies.
-func (r *MigrateReport) Init(c *sqlclient.Client, l *cmdlog.MigrateApply, rrw RevisionReadWriter) {
+func (r *MigrateReport) Init(c *sqlclient.Client, l *cmdlog.MigrateApply, rrw cmdmigrate.RevisionReadWriter) {
 	r.client, r.log, r.rrw = c, l, rrw
 }
 
@@ -1448,8 +1437,8 @@ schema if it is unused.
 	return nil
 }
 
-func entRevisions(ctx context.Context, c *sqlclient.Client, flag string) (RevisionReadWriter, error) {
-	return cmdmigrate.NewEntRevisions(ctx, c, cmdmigrate.WithSchema(revisionSchemaName(c, flag)))
+func entRevisions(ctx context.Context, c *sqlclient.Client, flag string) (cmdmigrate.RevisionReadWriter, error) {
+	return cmdmigrate.RevisionsForClient(ctx, c, revisionSchemaName(c, flag))
 }
 
 // defaultRevisionSchema is the default schema for storing revisions table.

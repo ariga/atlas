@@ -29,6 +29,16 @@ import (
 )
 
 type (
+	// RevisionReadWriter is a revision read-writer with migration capabilities.
+	RevisionReadWriter interface {
+		migrate.RevisionReadWriter
+		// CurrentRevision returns the current revision in the revisions table.
+		CurrentRevision(context.Context) (*migrate.Revision, error)
+		// Migrate applies the migration of the revisions table.
+		Migrate(context.Context) error
+		// ID returns the current target identifier.
+		ID(context.Context, string) (string, error)
+	}
 	// EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
 	EntRevisions struct {
 		ac     *sqlclient.Client // underlying Atlas client
@@ -39,6 +49,24 @@ type (
 	// Option allows to configure EntRevisions by using functional arguments.
 	Option func(*EntRevisions) error
 )
+
+// RevisionsForClient creates a new RevisionReadWriter for the given sqlclient.Client.
+func RevisionsForClient(ctx context.Context, ac *sqlclient.Client, schema string) (RevisionReadWriter, error) {
+	// If the driver supports the RevisionReadWriter interface, use it.
+	if drv, ok := ac.Driver.(interface {
+		RevisionsReadWriter(context.Context, string) (migrate.RevisionReadWriter, error)
+	}); ok {
+		rrw, err := drv.RevisionsReadWriter(ctx, schema)
+		if err != nil {
+			return nil, err
+		}
+		if rrw, ok := rrw.(RevisionReadWriter); ok {
+			return rrw, nil
+		}
+		return nil, fmt.Errorf("unexpected revision read-writer type: %T", rrw)
+	}
+	return NewEntRevisions(ctx, ac, WithSchema(schema))
+}
 
 // NewEntRevisions creates a new EntRevisions with the given sqlclient.Client.
 func NewEntRevisions(ctx context.Context, ac *sqlclient.Client, opts ...Option) (*EntRevisions, error) {
