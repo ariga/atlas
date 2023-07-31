@@ -668,12 +668,15 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *cmdext
 		return nil, fmt.Errorf("cannot diff a schema with a database connection: %q <> %q", from.Schema, to.Schema)
 	default:
 		// SchemaDiff checks for name equality which is irrelevant in the case
-		// the user wants to compare their contents, reset them to allow the comparison.
+		// where users want to compare their contents. Thus, we reset their names
+		// only for comparison.
+		currentN, desiredN := current.Schemas[0].Name, desired.Schemas[0].Name
 		current.Schemas[0].Name, desired.Schemas[0].Name = "", ""
 		changes, err = differ.SchemaDiff(current.Schemas[0], desired.Schemas[0], opts...)
 		if err != nil {
 			return nil, err
 		}
+		current.Schemas[0].Name, desired.Schemas[0].Name = currentN, desiredN
 	}
 	return &diff{
 		changes: changes,
