@@ -698,3 +698,35 @@ v3 = data.dynamic.evaluated3.v
 	)
 	require.NoError(t, New(opts...).EvalBytes(b, &v, nil))
 }
+
+type countValidator struct{ nb, na int }
+
+func (*countValidator) Init() error  { return nil }
+func (*countValidator) Error() error { return nil }
+func (c *countValidator) ValidateBlock(*hcl.EvalContext, *hclsyntax.Block) (func() error, error) {
+	c.nb++
+	return func() error { return nil }, nil
+}
+func (c *countValidator) ValidateAttribute(*hcl.EvalContext, *hclsyntax.Attribute, cty.Value) error {
+	c.na++
+	return nil
+}
+
+func TestSchemaValidator(t *testing.T) {
+	var (
+		cv  = &countValidator{}
+		doc struct {
+			DefaultExtension
+		}
+	)
+	err := New(WithSchemaValidator(cv)).EvalBytes([]byte(`
+block "a" {}
+block "b" {}
+block "c" {}
+attr1 = "a"
+attr2 = "b"
+`), &doc, nil)
+	require.NoError(t, err)
+	require.Equal(t, 3, cv.nb)
+	require.Equal(t, 2, cv.na)
+}

@@ -30,6 +30,7 @@ type (
 		pathVars         map[string]map[string]cty.Value
 		pathFuncs        map[string]map[string]function.Function
 		datasrc, initblk map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
+		validator        SchemaValidator
 	}
 	// Option configures a Config.
 	Option func(*Config)
@@ -42,6 +43,7 @@ func New(opts ...Option) *State {
 		funcs:     make(map[string]function.Function),
 		pathVars:  make(map[string]map[string]cty.Value),
 		pathFuncs: make(map[string]map[string]function.Function),
+		validator: nopValidator{},
 	}
 	for _, opt := range opts {
 		opt(cfg)
@@ -183,6 +185,33 @@ func WithTypes(path string, typeSpecs []*TypeSpec) Option {
 	}
 }
 
+type (
+	// SchemaValidator is the interface used for validating HCL documents.
+	SchemaValidator interface {
+		Init() error
+		Error() error
+		ValidateBlock(*hcl.EvalContext, *hclsyntax.Block) (func() error, error)
+		ValidateAttribute(*hcl.EvalContext, *hclsyntax.Attribute, cty.Value) error
+	}
+	nopValidator struct{}
+)
+
+func (nopValidator) Init() error  { return nil }
+func (nopValidator) Error() error { return nil }
+func (nopValidator) ValidateBlock(*hcl.EvalContext, *hclsyntax.Block) (func() error, error) {
+	return func() error { return nil }, nil
+}
+func (nopValidator) ValidateAttribute(*hcl.EvalContext, *hclsyntax.Attribute, cty.Value) error {
+	return nil
+}
+
+// WithSchemaValidator registers a schema validator to be used during unmarshaling.
+func WithSchemaValidator(v SchemaValidator) Option {
+	return func(c *Config) {
+		c.validator = v
+	}
+}
+
 // Marshal returns the Atlas HCL encoding of v.
 var Marshal = MarshalerFunc(New().MarshalSpec)
 
@@ -285,14 +314,21 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 	sort.Slice(fileNames, func(i, j int) bool {
 		return fileNames[i] < fileNames[j]
 	})
-	for _, fn := range fileNames {
-		file := files[fn]
+	if err := s.config.validator.Init(); err != nil {
+		return err
+	}
+	for _, name := range fileNames {
+		file := files[name]
 		r, err := s.resource(ctx, file)
 		if err != nil {
 			return err
 		}
 		spec.Children = append(spec.Children, r.Children...)
 		spec.Attrs = append(spec.Attrs, r.Attrs...)
+	}
+	// Validators can fail fast or accumulate errors.
+	if err := s.config.validator.Error(); err != nil {
+		return err
 	}
 	if err := patchRefs(spec); err != nil {
 		return err
@@ -437,10 +473,16 @@ func (s *State) mayScopeContext(ctx *hcl.EvalContext, scope []string) *hcl.EvalC
 func (s *State) toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, scope []string) ([]*Attr, error) {
 	var attrs []*Attr
 	for _, hclAttr := range hclAttrs {
-		scope := append(scope, hclAttr.Name)
-		value, diag := hclAttr.Expr.Value(s.mayScopeContext(ctx, scope))
+		var (
+			scope = append(scope, hclAttr.Name)
+			nctx  = s.mayScopeContext(ctx, scope)
+		)
+		value, diag := hclAttr.Expr.Value(nctx)
 		if diag.HasErrors() {
 			return nil, s.typeError(diag, scope)
+		}
+		if err := s.config.validator.ValidateAttribute(ctx, hclAttr, value); err != nil {
+			return nil, err
 		}
 		at := &Attr{K: hclAttr.Name}
 		switch t := value.Type(); {
@@ -495,16 +537,16 @@ func (s *State) typeError(diag hcl.Diagnostics, scope []string) error {
 	return diag
 }
 
+// isRef checks if the given value is a reference or a list of references.
+// Exists here for backward compatibility, use isOneRef and isRefList instead.
 func isRef(v cty.Value) bool {
-	t := v.Type()
-	if !t.IsObjectType() {
+	if !v.Type().IsObjectType() {
 		return false
 	}
-	if t.HasAttribute("__ref") {
+	if isOneRef(v) {
 		return true
 	}
-	it := v.ElementIterator()
-	for it.Next() {
+	for it := v.ElementIterator(); it.Next(); {
 		if _, v := it.Element(); isRef(v) {
 			return true
 		}
@@ -512,10 +554,17 @@ func isRef(v cty.Value) bool {
 	return false
 }
 
-func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope []string) (*Resource, error) {
-	spec := &Resource{
-		Type: block.Type,
+func isOneRef(v cty.Value) bool {
+	t := v.Type()
+	return t.IsObjectType() && t.HasAttribute("__ref")
+}
+
+func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope []string) (spec *Resource, err error) {
+	closeScope, err := s.config.validator.ValidateBlock(ctx, block)
+	if err != nil {
+		return nil, err
 	}
+	spec = &Resource{Type: block.Type}
 	switch len(block.Labels) {
 	case 0:
 	case 1:
@@ -538,6 +587,9 @@ func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope [
 			return nil, err
 		}
 		spec.Children = append(spec.Children, r)
+	}
+	if err := closeScope(); err != nil {
+		return nil, err
 	}
 	return spec, nil
 }
