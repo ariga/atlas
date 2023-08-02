@@ -721,7 +721,11 @@ func TestSchemaValidator(t *testing.T) {
 			DefaultExtension
 		}
 	)
-	err := New(WithSchemaValidator(cv)).EvalBytes([]byte(`
+	err := New(
+		WithSchemaValidator(func() SchemaValidator {
+			return cv
+		}),
+	).EvalBytes([]byte(`
 block "a" {}
 block "b" {}
 block "c" {}
