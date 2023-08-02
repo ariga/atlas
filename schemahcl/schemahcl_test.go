@@ -701,8 +701,10 @@ v3 = data.dynamic.evaluated3.v
 
 type countValidator struct{ nb, na int }
 
-func (*countValidator) Init() error  { return nil }
-func (*countValidator) Error() error { return nil }
+func (*countValidator) Err() error { return nil }
+func (c *countValidator) ValidateBody(*hcl.EvalContext, *hclsyntax.Body) (func() error, error) {
+	return func() error { return nil }, nil
+}
 func (c *countValidator) ValidateBlock(*hcl.EvalContext, *hclsyntax.Block) (func() error, error) {
 	c.nb++
 	return func() error { return nil }, nil

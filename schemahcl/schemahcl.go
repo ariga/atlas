@@ -188,16 +188,18 @@ func WithTypes(path string, typeSpecs []*TypeSpec) Option {
 type (
 	// SchemaValidator is the interface used for validating HCL documents.
 	SchemaValidator interface {
-		Init() error
-		Error() error
+		Err() error
+		ValidateBody(*hcl.EvalContext, *hclsyntax.Body) (func() error, error)
 		ValidateBlock(*hcl.EvalContext, *hclsyntax.Block) (func() error, error)
 		ValidateAttribute(*hcl.EvalContext, *hclsyntax.Attribute, cty.Value) error
 	}
 	nopValidator struct{}
 )
 
-func (nopValidator) Init() error  { return nil }
-func (nopValidator) Error() error { return nil }
+func (nopValidator) Err() error { return nil }
+func (nopValidator) ValidateBody(*hcl.EvalContext, *hclsyntax.Body) (func() error, error) {
+	return func() error { return nil }, nil
+}
 func (nopValidator) ValidateBlock(*hcl.EvalContext, *hclsyntax.Block) (func() error, error) {
 	return func() error { return nil }, nil
 }
@@ -314,9 +316,6 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 	sort.Slice(fileNames, func(i, j int) bool {
 		return fileNames[i] < fileNames[j]
 	})
-	if err := s.config.validator.Init(); err != nil {
-		return err
-	}
 	for _, name := range fileNames {
 		file := files[name]
 		r, err := s.resource(ctx, file)
@@ -327,7 +326,7 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 		spec.Attrs = append(spec.Attrs, r.Attrs...)
 	}
 	// Validators can fail fast or accumulate errors.
-	if err := s.config.validator.Error(); err != nil {
+	if err := s.config.validator.Err(); err != nil {
 		return err
 	}
 	if err := patchRefs(spec); err != nil {
@@ -413,6 +412,10 @@ func (s *State) resource(ctx *hcl.EvalContext, file *hcl.File) (*Resource, error
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected remainder to be of type *hclsyntax.Body")
 	}
+	closeScope, err := s.config.validator.ValidateBody(ctx, body)
+	if err != nil {
+		return nil, err
+	}
 	attrs, err := s.toAttrs(ctx, body.Attributes, nil)
 	if err != nil {
 		return nil, err
@@ -434,6 +437,9 @@ func (s *State) resource(ctx *hcl.EvalContext, file *hcl.File) (*Resource, error
 			return nil, err
 		}
 		res.Children = append(res.Children, resource)
+	}
+	if err := closeScope(); err != nil {
+		return nil, err
 	}
 	return res, nil
 }
@@ -489,12 +495,19 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, sco
 		case isRef(value):
 			at.V = cty.CapsuleVal(ctyRefType, &Ref{V: value.GetAttr("__ref").AsString()})
 		case (t.IsTupleType() || t.IsListType() || t.IsSetType()) && value.LengthInt() > 0:
-			values := make([]cty.Value, 0, value.LengthInt())
+			var (
+				vt     cty.Type
+				values = make([]cty.Value, 0, value.LengthInt())
+			)
 			for it := value.ElementIterator(); it.Next(); {
 				_, v := it.Element()
 				if isRef(v) {
 					v = cty.CapsuleVal(ctyRefType, &Ref{V: v.GetAttr("__ref").AsString()})
 				}
+				if vt != cty.NilType && vt != v.Type() {
+					return nil, fmt.Errorf("%s: mixed list types used in %q attribute", hclAttr.SrcRange, hclAttr.Name)
+				}
+				vt = v.Type()
 				values = append(values, v)
 			}
 			at.V = cty.ListVal(values)
