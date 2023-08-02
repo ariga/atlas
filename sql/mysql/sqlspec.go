@@ -83,16 +83,19 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 
 var (
 	hclState = schemahcl.New(
-		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
-		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
-		schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
-		schemahcl.WithScopedEnums("table.engine", EngineInnoDB, EngineMyISAM, EngineMemory, EngineCSV, EngineNDB),
-		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
-		schemahcl.WithScopedEnums("table.index.parser", IndexParserNGram, IndexParserMeCab),
-		schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
-		schemahcl.WithScopedEnums("table.column.as.type", stored, persistent, virtual),
-		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
-		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+		append(
+			specOptions,
+			schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
+			schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
+			schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
+			schemahcl.WithScopedEnums("table.engine", EngineInnoDB, EngineMyISAM, EngineMemory, EngineCSV, EngineNDB),
+			schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
+			schemahcl.WithScopedEnums("table.index.parser", IndexParserNGram, IndexParserMeCab),
+			schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
+			schemahcl.WithScopedEnums("table.column.as.type", stored, persistent, virtual),
+			schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
+			schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+		)...,
 	)
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
 	MarshalHCL = schemahcl.MarshalerFunc(func(v any) ([]byte, error) {
