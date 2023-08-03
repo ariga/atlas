@@ -1903,7 +1903,6 @@ table "table" {
   }
   check {
     expr     = "price1 <> price2"
-    enforced = true
   }
   check {
     expr     = "price2 <> price1"
