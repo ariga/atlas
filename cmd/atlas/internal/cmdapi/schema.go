@@ -21,8 +21,8 @@ import (
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 
+	"github.com/1lann/promptui"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 )
 
