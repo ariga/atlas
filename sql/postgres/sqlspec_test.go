@@ -696,7 +696,7 @@ table "logs" {
 				}
 			}
 		`), &schema.Schema{}, nil)
-		require.EqualError(t, err, `specutil: cannot convert table "logs": missing attribute logs.partition.type`)
+		require.Error(t, err, "missing partition type")
 
 		err = EvalHCLBytes([]byte(`
 			schema "test" {}

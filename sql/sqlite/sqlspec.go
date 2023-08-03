@@ -267,13 +267,14 @@ var TypeRegistry = schemahcl.NewRegistry(
 )
 
 var (
-	hclState = schemahcl.New(
+	hclState = schemahcl.New(append(
+		specOptions,
 		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
 		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
 		schemahcl.WithScopedEnums("table.column.as.type", stored, virtual),
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
-	)
+	)...)
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
 	MarshalHCL = schemahcl.MarshalerFunc(func(v any) ([]byte, error) {
 		return MarshalSpec(v, hclState)

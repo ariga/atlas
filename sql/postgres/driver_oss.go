@@ -9,8 +9,11 @@ package postgres
 import (
 	"context"
 
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 )
+
+var specOptions []schemahcl.Option
 
 func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
