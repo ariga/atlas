@@ -515,10 +515,12 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 		}
 	}
 	s, err := r.ReadState(ctx)
+	if err != nil {
+		return err
+	}
 	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaInspect{
 		Client: client,
 		Realm:  s,
-		Error:  err,
 	})
 }
 

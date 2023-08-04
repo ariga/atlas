@@ -524,7 +524,6 @@ func (c Changes) MarshalJSON() ([]byte, error) {
 type SchemaInspect struct {
 	*sqlclient.Client `json:"-"`
 	Realm             *schema.Realm `json:"Schema,omitempty"` // Inspected realm.
-	Error             error         `json:"Error,omitempty"`  // General error that occurred during inspection.
 }
 
 var (
@@ -537,7 +536,7 @@ var (
 	// SchemaInspectTemplate holds the default template of the 'schema inspect' command.
 	SchemaInspectTemplate = template.Must(template.New("inspect").
 				Funcs(InspectTemplateFuncs).
-				Parse(`{{ with .Error }}{{ .Error }}{{ else }}{{ $.MarshalHCL }}{{ end }}`))
+				Parse(`{{ $.MarshalHCL }}`))
 )
 
 // MarshalHCL returns the default HCL representation of the schema.
@@ -552,9 +551,6 @@ func (s *SchemaInspect) MarshalHCL() (string, error) {
 
 // MarshalJSON implements json.Marshaler.
 func (s *SchemaInspect) MarshalJSON() ([]byte, error) {
-	if s.Error != nil {
-		return json.Marshal(struct{ Error string }{s.Error.Error()})
-	}
 	type (
 		Column struct {
 			Name string `json:"name"`
@@ -657,9 +653,6 @@ func (s *SchemaInspect) MarshalSQL(indent ...string) (string, error) {
 }
 
 func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
-	if report.Error != nil {
-		return report.Error.Error(), nil
-	}
 	var changes schema.Changes
 	for _, s := range report.Realm.Schemas {
 		// Generate commands for creating the schemas on realm-mode.
