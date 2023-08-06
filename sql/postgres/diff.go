@@ -224,6 +224,9 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 	if t1.T != t2.T {
 		return true
 	}
+	if indexNullsDistinct(to) != indexNullsDistinct(from) {
+		return true
+	}
 	var p1, p2 IndexPredicate
 	if sqlx.Has(from, &p1) != sqlx.Has(to, &p2) || (p1.P != p2.P && p1.P != sqlx.MayWrap(p2.P)) {
 		return true
@@ -508,6 +511,16 @@ func indexIncludeChanged(from, to []schema.Attr) bool {
 		}
 	}
 	return false
+}
+
+// indexNullsDistinct returns the NULLS [NOT] DISTINCT value from the index attributes.
+func indexNullsDistinct(attrs []schema.Attr) bool {
+	if i := (IndexNullsDistinct{}); sqlx.Has(attrs, &i) {
+		return i.V
+	}
+	// The default PostgreSQL behavior. The inverse of
+	// "indnullsnotdistinct" in pg_index which is false.
+	return true
 }
 
 func trimCast(s string) string {
