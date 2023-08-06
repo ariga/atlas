@@ -237,9 +237,7 @@ type roundTripper struct {
 
 // RoundTrip implements http.RoundTripper.
 func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Set("Authorization", "Bearer "+r.token)
-	req.Header.Set("User-Agent", "atlas-cli")
-	req.Header.Set("Content-Type", "application/json")
+	SetHeader(req, r.token)
 	return http.DefaultTransport.RoundTrip(req)
 }
 
@@ -250,4 +248,11 @@ func RedactedURL(s string) (string, error) {
 		return "", err
 	}
 	return u.Redacted(), nil
+}
+
+// SetHeader sets header fields for cloud requests.
+func SetHeader(req *http.Request, token string) {
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("User-Agent", "atlas-cli")
+	req.Header.Set("Content-Type", "application/json")
 }
