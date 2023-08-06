@@ -42,3 +42,29 @@ Yes, head over to our [live demo account](https://gh.atlasgo.cloud) to see Atlas
 Atlas Cloud comes with a free "Community" plan which should be more than enough for most teams.
 
 To learn more see the [pricing page](https://atlasgo.cloud/pricing).
+
+### How do I get access to beta drivers?
+
+Atlas Cloud users can get early access to beta drivers by joining the Atlas Cloud Beta Program. To join the program,
+you first need to create an account on Atlas Cloud, enable it in your account settings, and then login to the CLI
+using your Atlas identity.
+
+1\. Sign up first on [Atlas Cloud](https://auth.atlasgo.cloud/signup).
+
+2\. Go to the account settings by clicking your avatar. Then, select the driver you want to get access to. For example,
+Microsoft SQL Server.
+
+<details>
+<summary>Screenshot example</summary>
+
+![](https://atlasgo.io/uploads/cloud/beta-driver.png)
+
+</details>
+
+3\. Last, run `atlas login` to login or refetch your account permissions:
+
+```text
+$ atlas login a8m
+//highlight-next-line-info
+You are now connected to "a8m" on Atlas Cloud.
+```
