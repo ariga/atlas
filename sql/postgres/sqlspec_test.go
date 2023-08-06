@@ -827,6 +827,54 @@ schema "test" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestMarshalSpec_IndexNullsDistinct(t *testing.T) {
+	s := schema.New("public").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("c", "int"),
+				).
+				AddIndexes(
+					// Default behavior.
+					schema.NewUniqueIndex("without_attribute").
+						AddColumns(schema.NewColumn("c")),
+					schema.NewUniqueIndex("with_nulls_distinct").
+						AddColumns(schema.NewColumn("c")).
+						AddAttrs(&IndexNullsDistinct{V: true}),
+					// Explicitly disable (NULLS NOT DISTINCT).
+					schema.NewUniqueIndex("with_nulls_not_distinct").
+						AddColumns(schema.NewColumn("c")).
+						AddAttrs(&IndexNullsDistinct{V: false}),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.public
+  column "c" {
+    null = false
+    type = int
+  }
+  index "without_attribute" {
+    unique  = true
+    columns = [column.c]
+  }
+  index "with_nulls_distinct" {
+    unique  = true
+    columns = [column.c]
+  }
+  index "with_nulls_not_distinct" {
+    unique         = true
+    columns        = [column.c]
+    nulls_distinct = false
+  }
+}
+schema "public" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
 func TestMarshalSpec_BRINIndex(t *testing.T) {
 	s := &schema.Schema{
 		Name: "test",
