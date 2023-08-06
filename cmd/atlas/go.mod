@@ -3,7 +3,7 @@ module ariga.io/atlas/cmd/atlas
 go 1.20
 
 require (
-	ariga.io/atlas v0.12.1-0.20230726093600-73399935e167
+	ariga.io/atlas v0.12.2-0.20230806193313-117e03f96e45
 	entgo.io/ent v0.12.4-0.20230726082433-91c7fcc68504
 	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220816024939-bc8df83d7b9d
