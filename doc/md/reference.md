@@ -3,6 +3,7 @@ title: CLI Reference
 id: cli-reference
 slug: cli-reference
 ---
+<!-- This file is generated from cmd/atlas/doc.tmpl, do not edit manually -->
 ## Introduction
 
 This document serves as reference documentation for all available commands in the Atlas CLI.
@@ -23,6 +24,7 @@ The binaries and Docker images distributed in official releases are released in 
   the [Apache 2 License](https://github.com/ariga/atlas/blob/master/LICENSE).
 
 For instructions on how to install Atlas Community, see this [guide](/community-edition).
+
 
 ## atlas license
 
