@@ -317,6 +317,11 @@ func (c *conn) supportsIndexInclude() bool {
 	return c.version >= 11_00_00
 }
 
+// supportsIndexNullsDistinct reports if the server supports the NULLS [NOT] DISTINCT clause.
+func (c *conn) supportsIndexNullsDistinct() bool {
+	return c.version >= 15_00_00
+}
+
 type parser struct{}
 
 // ParseURL implements the sqlclient.URLParser interface.
