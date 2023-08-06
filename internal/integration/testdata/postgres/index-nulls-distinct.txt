@@ -1,0 +1,85 @@
+only postgres15
+
+apply 1.hcl
+cmphcl 1.inspect.hcl
+cmpshow users 1.sql
+
+# Change the nulls_distinct property of the index.
+apply 2.hcl
+cmphcl 2.inspect.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "script_index_nulls_distinct" {}
+
+table "users" {
+  schema = schema.script_index_nulls_distinct
+  column "c" {
+    type = int
+  }
+  index "nulls_not_distinct" {
+    unique         = true
+    columns        = [column.c]
+    nulls_distinct = false
+  }
+}
+
+-- 1.inspect.hcl --
+table "users" {
+  schema = schema.script_index_nulls_distinct
+  column "c" {
+    null = false
+    type = integer
+  }
+  index "nulls_not_distinct" {
+    unique         = true
+    columns        = [column.c]
+    nulls_distinct = false
+  }
+}
+schema "script_index_nulls_distinct" {
+}
+-- 1.sql --
+     Table "script_index_nulls_distinct.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ c      | integer |           | not null |
+Indexes:
+    "nulls_not_distinct" UNIQUE, btree (c) NULLS NOT DISTINCT
+
+-- 2.hcl --
+schema "script_index_nulls_distinct" {}
+
+table "users" {
+  schema = schema.script_index_nulls_distinct
+  column "c" {
+    type = int
+  }
+  index "nulls_not_distinct" {
+    unique  = true
+    columns = [column.c]
+  }
+}
+
+-- 2.inspect.hcl --
+table "users" {
+  schema = schema.script_index_nulls_distinct
+  column "c" {
+    null = false
+    type = integer
+  }
+  index "nulls_not_distinct" {
+    unique  = true
+    columns = [column.c]
+  }
+}
+schema "script_index_nulls_distinct" {
+}
+-- 2.sql --
+     Table "script_index_nulls_distinct.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ c      | integer |           | not null |
+Indexes:
+    "nulls_not_distinct" UNIQUE, btree (c)
+

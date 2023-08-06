@@ -1009,6 +1009,10 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
 			})
 		})
 	}
+	// Avoid appending the default behavior, which NULL values are distinct.
+	if n := (IndexNullsDistinct{}); sqlx.Has(idx.Attrs, &n) && !n.V {
+		b.P("NULLS NOT DISTINCT")
+	}
 	if p, ok := indexStorageParams(idx.Attrs); ok {
 		b.P("WITH")
 		b.Wrap(func(b *sqlx.Builder) {
@@ -1027,7 +1031,7 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
 	}
 	for _, attr := range idx.Attrs {
 		switch attr.(type) {
-		case *schema.Comment, *IndexType, *IndexInclude, *Constraint, *IndexPredicate, *IndexStorageParams:
+		case *schema.Comment, *IndexType, *IndexInclude, *Constraint, *IndexPredicate, *IndexStorageParams, *IndexNullsDistinct:
 		default:
 			return fmt.Errorf("postgres: unexpected index attribute: %T", attr)
 		}

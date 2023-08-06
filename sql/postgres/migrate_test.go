@@ -617,6 +617,30 @@ func TestPlanChanges(t *testing.T) {
 									},
 								},
 							},
+							&schema.AddIndex{
+								I: &schema.Index{
+									Unique: true,
+									Name:   "nulls_distinct",
+									Parts: []*schema.IndexPart{
+										{C: users.Columns[0]},
+									},
+									Attrs: []schema.Attr{
+										&IndexNullsDistinct{V: true},
+									},
+								},
+							},
+							&schema.AddIndex{
+								I: &schema.Index{
+									Unique: true,
+									Name:   "nulls_not_distinct",
+									Parts: []*schema.IndexPart{
+										{C: users.Columns[0]},
+									},
+									Attrs: []schema.Attr{
+										&IndexNullsDistinct{V: false},
+									},
+								},
+							},
 						},
 					}
 				}(),
@@ -652,6 +676,14 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     `CREATE INDEX "operator_class" ON "users" USING BRIN ("id" int8_bloom_ops, "id", "id" int8_minmax_multi_ops(values_per_range=8))`,
 						Reverse: `DROP INDEX "operator_class"`,
+					},
+					{
+						Cmd:     `CREATE UNIQUE INDEX "nulls_distinct" ON "users" ("id")`,
+						Reverse: `DROP INDEX "nulls_distinct"`,
+					},
+					{
+						Cmd:     `CREATE UNIQUE INDEX "nulls_not_distinct" ON "users" ("id") NULLS NOT DISTINCT`,
+						Reverse: `DROP INDEX "nulls_not_distinct"`,
 					},
 					{
 						Cmd:     `COMMENT ON COLUMN "users" ."name" IS 'foo'`,
