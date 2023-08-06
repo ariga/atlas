@@ -363,6 +363,13 @@ func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 		}
 		idx.Attrs = append(idx.Attrs, &IndexPredicate{P: p})
 	}
+	if attr, ok := spec.Attr("nulls_distinct"); ok {
+		v, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		idx.Attrs = append(idx.Attrs, &IndexNullsDistinct{V: v})
+	}
 	if err := convertIndexPK(spec, t, idx); err != nil {
 		return nil, err
 	}
@@ -604,6 +611,9 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	}
 	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
+	}
+	if i := (IndexNullsDistinct{}); sqlx.Has(idx.Attrs, &i) && !i.V {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("nulls_distinct", i.V))
 	}
 	spec.Extra.Attrs = indexPKSpec(idx, spec.Extra.Attrs)
 	return spec, nil
