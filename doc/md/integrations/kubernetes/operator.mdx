@@ -419,7 +419,7 @@ schemas:
 Atlas relies on a [Dev Database](/concepts/dev-database) to normalize schemas and make various
 calculations. By default, the operator will spin a new database pod to use as the Dev Database.
 However, if you have special requirements (such as have it preloaded with certain extensions or configuration),
-you can use the `devURL` field to specify a [URL](/concepts/urls) to use as the Dev Database.
+you can use the `devURL` field to specify a [URL](/concepts/url) to use as the Dev Database.
 
 ```yaml
 devURL: mysql://root:password@dev-db-svc.default:3306/dev
