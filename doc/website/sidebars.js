@@ -115,9 +115,20 @@ module.exports = {
             id: 'contributing',
         },
         {
-            type: 'doc',
-            id: 'cli-reference'
-        }
+            type: 'category',
+            label: 'CLI Reference',
+            collapsed: false,
+            link: {
+              type: 'doc',
+              id: 'cli-reference'
+            },
+            items: [
+                {
+                    type: 'doc',
+                    id: 'community-edition'
+                },
+            ]
+        },
     ],
     guides: [
         {
