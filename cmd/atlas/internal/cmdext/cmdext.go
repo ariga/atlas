@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
+	"ariga.io/atlas/cmd/atlas/internal/cmdapi"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -388,7 +389,7 @@ func (c *AtlasConfig) InitBlock() schemahcl.Option {
 			args.Cloud.Project = DefaultProjectName
 		}
 		c.Project = args.Cloud.Project
-		c.Client = cloudapi.New(args.Cloud.URL, args.Cloud.Token)
+		c.Client = cloudapi.New(args.Cloud.URL, args.Cloud.Token, cmdapi.Version())
 		cloud := cty.ObjectVal(map[string]cty.Value{
 			"client":  cty.CapsuleVal(clientType, c.Client),
 			"project": cty.StringVal(args.Cloud.Project),
