@@ -26,6 +26,8 @@ parameters:
  the target database.
 * `--exclude` (optional) - filter out resources matching the given glob pattern.
 * `--format` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
+* `--visualize` (optional) - visualize the schema as an ERD on [Atlas Cloud](https://auth.atlasgo.cloud/signup). See an
+  example [here](https://gh.atlasgo.cloud/explore/40d83919).
 
 ## Examples
 
@@ -250,10 +252,18 @@ atlas schema inspect -u '<url>' --format '{{ json . }}'
 
 ### Visualize schemas
 
-Ariga's Explore tool, available in a web browser, can generate an Entity-Relationship Diagram (ERD) for the database
-schema. Visit [gh.atlasgo.cloud/explore](https://gh.atlasgo.cloud/explore) and follow the instructions.
+Atlas can generate an Entity Relationship Diagram (ERD) for the inspected schemas. The following command shows how to
+generate an ERD for inspected schemas:
 
-<p style={{textAlign: "center"}}><a href="https://gh.atlasgo.cloud/explore/0083bc5b"><img src="https://atlasgo.io/uploads/images/atlas-erd-screenshot.jpg" alt="Schema ERD"/></a></p>
+```shell
+atlas schema inspect -u '<url>' --visualize
+```
+
+<p style={{textAlign: "center"}}>
+    <a href="https://gh.atlasgo.cloud/explore/40d83919">
+        <img src="https://atlasgo.io/uploads/erd-example.png" alt="Schema ERD"/>
+    </a>
+</p>
 
 ## Reference
 
