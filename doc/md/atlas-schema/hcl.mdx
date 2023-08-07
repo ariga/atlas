@@ -519,6 +519,12 @@ index "index_parser" {
   columns = [column.text]
   parser  = ngram
 }
+
+index "index_nulls_not_distinct" {
+  unique         = true
+  columns        = [column.text]
+  nulls_distinct = false
+}
 ```
 
 #### Properties
