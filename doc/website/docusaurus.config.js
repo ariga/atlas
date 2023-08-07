@@ -75,7 +75,7 @@ module.exports = {
           position: 'left'
         },
         {
-          to: 'https://atlasgo.cloud/',
+          to: 'https://atlasgo.cloud/?utm_term=topnav',
           label: 'Cloud',
           position: 'left',
         },
@@ -117,9 +117,9 @@ module.exports = {
         {
           "title": "Atlas Cloud",
           "items": [
-            {"label": "Discover Atlas Cloud", "to": "https://atlasgo.cloud/"},
-            {"label": "Live Demo", "to": "https://gh.atlasgo.cloud/dirs"},
-            {"label": "Sign Up", "to": "https://auth.atlasgo.cloud/signup"},
+            {"label": "Discover Atlas Cloud", "to": "https://atlasgo.cloud/?utm_term=footer"},
+            {"label": "Live Demo", "to": "https://gh.atlasgo.cloud/dirs?utm_term=footer"},
+            {"label": "Sign Up", "to": "https://auth.atlasgo.cloud/signup?utm_term=footer"},
           ]
         },
         {
@@ -247,6 +247,7 @@ module.exports = {
         disableInDev: false,
       },
     ],
+    "./plugins/utm-plugin",
   ],
   presets: [
     [
