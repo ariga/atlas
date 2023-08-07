@@ -140,8 +140,8 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-5', // Increment on change
-      content: `<strong>Upcoming Webinar:</strong> Kubernetes-native schema migrations <a class="cta" target="_blank" href="https://page.ariga.io/kubernetes-native-schema-migrations-webinar?utm_source=atlasgo&utm_medium=announcementbar">Register now</a>`,
+      id: 'announcementBar-6', // Increment on change
+      content: `<strong>Announcing Atlas v0.13: SQL Views, MSSQL, ERD, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2023/08/06/atlas-v-0-13">Read it here</a>`,
       isCloseable: true,
       backgroundColor: '#008CFA',
       textColor: '#fff',
