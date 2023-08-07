@@ -191,4 +191,6 @@ var Classes = []*Class{
 	{Name: "quad_point_ops", Method: "SPGIST", Type: "point", Default: true},
 	{Name: "range_ops", Method: "SPGIST", Type: "anyrange", Default: true},
 	{Name: "text_ops", Method: "SPGIST", Type: "text", Default: true},
+	{Name: "gin_trgm_ops", Method: "GIN", Type: "text", Default: false},
+	{Name: "gist_trgm_ops", Method: "GIN", Type: "text", Default: false},
 }
