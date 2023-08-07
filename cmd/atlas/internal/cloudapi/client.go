@@ -233,8 +233,7 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 
 // roundTripper is a http.RoundTripper that adds the Authorization header.
 type roundTripper struct {
-	token   string
-	version string
+	token, version string
 }
 
 // RoundTrip implements http.RoundTripper.
@@ -255,6 +254,6 @@ func RedactedURL(s string) (string, error) {
 // SetHeader sets header fields for cloud requests.
 func SetHeader(req *http.Request, token, version string) {
 	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("User-Agent", fmt.Sprintf("atlas-cli/%s", version))
+	req.Header.Set("User-Agent", fmt.Sprintf("Atlas/%s", version))
 	req.Header.Set("Content-Type", "application/json")
 }

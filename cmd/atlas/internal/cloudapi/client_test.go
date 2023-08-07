@@ -33,10 +33,10 @@ func TestClient_Dir(t *testing.T) {
 		require.Equal(t, "foo", input.Variables.DirInput.Name)
 		require.Equal(t, "x", input.Variables.DirInput.Tag)
 		require.Equal(t, "Bearer atlas", r.Header.Get("Authorization"))
-		require.Equal(t, "atlas-cli/v1", r.Header.Get("User-Agent"))
+		require.Equal(t, "Atlas/v1-community", r.Header.Get("User-Agent"))
 		fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(ad))
 	}))
-	client := New(srv.URL, "atlas", "v1")
+	client := New(srv.URL, "atlas", "v1-community")
 	defer srv.Close()
 	gd, err := client.Dir(context.Background(), DirInput{
 		Name: "foo",
