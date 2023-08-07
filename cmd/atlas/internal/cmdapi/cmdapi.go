@@ -144,6 +144,11 @@ func Version() string {
 	return version
 }
 
+// Flavor returns the current Atlas binary flavor.
+func Flavor() string {
+	return flavor
+}
+
 // Vars implements pflag.Value.
 type Vars map[string]cty.Value
 
