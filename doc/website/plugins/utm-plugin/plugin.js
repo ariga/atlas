@@ -6,6 +6,8 @@ const CONFIG = {
   utmMedium: "organic",
 };
 
+// Correct link: host/example?utm_term=custom#hash
+
 export default (function () {
   if (!ExecutionEnvironment.canUseDOM) {
     return null;
@@ -19,9 +21,17 @@ export default (function () {
 
         const locationPath = pathname.split("/").slice(1).join("_");
 
-        url.searchParams.set("utm_source", CONFIG.utmSource);
-        url.searchParams.set("utm_medium", CONFIG.utmMedium);
-        url.searchParams.set("utm_term", locationPath || "main");
+        if (!url.searchParams.has("utm_source")) {
+          url.searchParams.set("utm_source", CONFIG.utmSource);
+        }
+
+        if (!url.searchParams.has("utm_medium")) {
+          url.searchParams.set("utm_medium", CONFIG.utmMedium);
+        }
+
+        if (!url.searchParams.has("utm_term")) {
+          url.searchParams.set("utm_term", locationPath || "main");
+        }
 
         link.href = url.toString();
       });
