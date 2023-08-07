@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"ariga.io/atlas/sql/schema"
 )
@@ -569,4 +570,14 @@ func V[T any](p *T) (v T) {
 		v = *p
 	}
 	return
+}
+
+// IsUint reports whether the string represents an unsigned integer.
+func IsUint(s string) bool {
+	for _, r := range s {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
 }

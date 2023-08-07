@@ -246,3 +246,10 @@ func TestReverseChanges(t *testing.T) {
 		})
 	}
 }
+
+func TestIsUint(t *testing.T) {
+	require.True(t, IsUint("1"))
+	require.False(t, IsUint("-1"))
+	require.False(t, IsUint("1.2"))
+	require.False(t, IsUint("1.2.3"))
+}
