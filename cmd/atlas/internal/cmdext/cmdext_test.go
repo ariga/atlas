@@ -373,7 +373,7 @@ func TestAtlasConfig(t *testing.T) {
 			Atlas     cty.Value `spec:"atlas"`
 		}
 		cfg   = &cmdext.AtlasConfig{}
-		state = schemahcl.New(append(cmdext.DataSources, cfg.InitBlock(), schemahcl.WithVariables(map[string]cty.Value{
+		state = schemahcl.New(append(cmdext.DataSources, cfg.InitBlock(""), schemahcl.WithVariables(map[string]cty.Value{
 			"atlas": cty.ObjectVal(map[string]cty.Value{
 				"env": cty.StringVal("dev"),
 			}),
@@ -421,7 +421,7 @@ func TestRemoteDir(t *testing.T) {
 		}
 		token, tag string
 		cfg        = &cmdext.AtlasConfig{}
-		state      = schemahcl.New(append(cmdext.DataSources, cfg.InitBlock())...)
+		state      = schemahcl.New(append(cmdext.DataSources, cfg.InitBlock(""))...)
 		srv        = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token = r.Header.Get("Authorization")
 			di := struct {

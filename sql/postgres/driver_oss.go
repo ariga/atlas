@@ -9,8 +9,11 @@ package postgres
 import (
 	"context"
 
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 )
+
+var specOptions []schemahcl.Option
 
 func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
@@ -30,4 +33,8 @@ func (*state) modifyView(*schema.ModifyView) error {
 
 func (*state) renameView(*schema.RenameView) {
 	// unimplemented.
+}
+
+func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
+	return false // unimplemented.
 }

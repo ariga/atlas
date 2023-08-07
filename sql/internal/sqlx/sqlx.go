@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"ariga.io/atlas/sql/schema"
 )
@@ -489,7 +490,7 @@ func IsLiteralNumber(s string) bool {
 
 // DefaultValue returns the string represents the DEFAULT of a column.
 func DefaultValue(c *schema.Column) (string, bool) {
-	switch x := c.Default.(type) {
+	switch x := schema.UnderlyingExpr(c.Default).(type) {
 	case nil:
 		return "", false
 	case *schema.Literal:
@@ -569,4 +570,14 @@ func V[T any](p *T) (v T) {
 		v = *p
 	}
 	return
+}
+
+// IsUint reports whether the string represents an unsigned integer.
+func IsUint(s string) bool {
+	for _, r := range s {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
 }

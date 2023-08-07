@@ -23,7 +23,7 @@ var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{conn: noConn}}
 
 // A diff provides a MySQL implementation for sqlx.DiffDriver.
 type diff struct {
-	conn
+	*conn
 	// charset to collation mapping.
 	// See, internal directory.
 	ch2co, co2ch struct {
@@ -102,10 +102,6 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	return append(changes, checks...), nil
 }
 
-func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
-	return false // Not implemented.
-}
-
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
 func (d *diff) ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
 	change := sqlx.CommentChange(from.Attrs, to.Attrs)
@@ -176,7 +172,14 @@ func (d *diff) IsGeneratedIndexName(_ *schema.Table, idx *schema.Index) bool {
 
 // IndexAttrChanged reports if the index attributes were changed.
 func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
-	return indexType(from).T != indexType(to).T
+	if indexType(from).T != indexType(to).T {
+		return true
+	}
+	var (
+		fromP, toP     IndexParser
+		fromHas, toHas = sqlx.Has(from, &fromP), sqlx.Has(to, &toP)
+	)
+	return fromHas != toHas || (fromHas && fromP.P != toP.P)
 }
 
 // IndexPartAttrChanged reports if the index-part attributes (collation or prefix) were changed.
@@ -644,16 +647,15 @@ func (d *diff) defaultCollate(attrs *[]schema.Attr) error {
 		return nil
 	}
 	d.ch2co.Do(func() {
-		d.ch2co.v, d.ch2co.err = d.CharsetToCollate()
+		d.ch2co.v, d.ch2co.err = d.CharsetToCollate(d.ExecQuerier)
 	})
 	if d.ch2co.err != nil {
 		return d.ch2co.err
 	}
-	v, ok := d.ch2co.v[charset.V]
-	if !ok {
-		return fmt.Errorf("mysql: unknown character set: %q", charset.V)
+	if v, ok := d.ch2co.v[charset.V]; ok {
+		// If charset is known, use its default collation.
+		schema.ReplaceOrAppend(attrs, &schema.Collation{V: v})
 	}
-	schema.ReplaceOrAppend(attrs, &schema.Collation{V: v})
 	return nil
 }
 
@@ -665,15 +667,14 @@ func (d *diff) defaultCharset(attrs *[]schema.Attr) error {
 		return nil
 	}
 	d.co2ch.Do(func() {
-		d.co2ch.v, d.co2ch.err = d.CollateToCharset()
+		d.co2ch.v, d.co2ch.err = d.CollateToCharset(d.ExecQuerier)
 	})
 	if d.co2ch.err != nil {
 		return d.co2ch.err
 	}
-	v, ok := d.co2ch.v[collate.V]
-	if !ok {
-		return fmt.Errorf("mysql: unknown collation: %q", collate.V)
+	if v, ok := d.co2ch.v[collate.V]; ok {
+		// If collation is known, use its default charset.
+		schema.ReplaceOrAppend(attrs, &schema.Charset{V: v})
 	}
-	schema.ReplaceOrAppend(attrs, &schema.Charset{V: v})
 	return nil
 }

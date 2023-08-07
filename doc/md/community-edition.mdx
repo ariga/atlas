@@ -1,0 +1,80 @@
+---
+title: Community Edition
+id: community-edition
+slug: community-edition
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Obtaining Community Binaries
+
+Users that want to use the Community Edition of Atlas which is built directly from the
+[Atlas GitHub repository](https://github.com/ariga/atlas) and licensed under the
+Apache 2.0 license can do so by following the instructions below.
+
+<Tabs
+    defaultValue="apple-intel-plain+linux"
+    values={[
+        {label: 'macOS + Linux', value: 'apple-intel-plain+linux'},
+        {label: 'Docker', value: 'docker'},
+        {label: 'Windows', value: 'windows'},
+        {label: 'Manual Installation', value: 'manual'},
+    ]}>
+<TabItem value="apple-intel-plain+linux">
+
+To download and install the latest release of the Atlas CLI, simply run the following in your terminal:
+
+```shell
+curl -sSf https://atlasgo.sh | sh -s -- --community
+```
+
+</TabItem>
+<TabItem value="docker">
+
+To pull the Atlas image and run it as a Docker container:
+
+```shell
+docker pull arigaio/atlas:latest-community
+docker run --rm arigaio/atlas:latest-community --help
+```
+
+If the container needs access to the host network or a local directory, use the `--net=host` flag and mount the desired
+directory:
+
+```shell
+docker run --rm --net=host \
+-v $(pwd)/migrations:/migrations \
+arigaio/atlas:latest-community migrate apply
+--url "mysql://root:pass@:3306/test"
+```
+
+</TabItem>
+<TabItem value="windows">
+
+Download the [latest release](https://release.ariga.io/atlas/atlas-community-windows-amd64-latest.exe) and
+move the atlas binary to a file location on your system PATH.
+
+</TabItem>
+<TabItem value="manual">
+
+If you want to manually install the Atlas CLI, pick one of the below builds suitable for your system.
+
+* MacOS
+  * [amd64](https://release.ariga.io/atlas/atlas-community-darwin-amd64-latest) ([md5](https://release.ariga.io/atlas/atlas-community-darwin-amd64-latest.md5) / [sha256](https://release.ariga.io/atlas/atlas-community-darwin-amd64-latest.sha256))
+  * [arm64](https://release.ariga.io/atlas/atlas-community-darwin-arm64-latest) ([md5](https://release.ariga.io/atlas/atlas-community-darwin-arm64-latest.md5) / [sha256](https://release.ariga.io/atlas/atlas-community-darwin-arm64-latest.sha256))
+* Windows
+  * [amd64](https://release.ariga.io/atlas/atlas-community-windows-amd64-latest.exe) ([md5](https://release.ariga.io/atlas/atlas-community-windows-amd64-latest.exe.md5) / [sha256](https://release.ariga.io/atlas/atlas-community-windows-amd64-latest.exe.sha256))
+* Linux
+  * [amd64](https://release.ariga.io/atlas/atlas-community-linux-amd64-latest) ([md5](https://release.ariga.io/atlas/atlas-community-linux-amd64-latest.md5) / [sha256](https://release.ariga.io/atlas/atlas-community-linux-amd64-latest.sha256))
+  * [arm64](https://release.ariga.io/atlas/atlas-community-linux-arm64-latest) ([md5](https://release.ariga.io/atlas/atlas-community-linux-arm64-latest.md5) / [sha256](https://release.ariga.io/atlas/atlas-community-linux-arm64-latest.sha256))
+
+</TabItem>
+</Tabs>
+
+## Building from Source
+
+If you would like to build Atlas from source, run:
+
+```
+go get ariga.io/atlas/cmd/atlas
+```

@@ -8,8 +8,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
-	"io"
 	"testing"
 	"text/template"
 
@@ -19,6 +17,7 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 	_ "ariga.io/atlas/sql/sqlite"
 
+	"github.com/fatih/color"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
@@ -96,11 +95,27 @@ func TestSchemaInspect_MarshalJSON(t *testing.T) {
     }
   ]
 }`, string(ident))
+}
 
-	report = &cmdlog.SchemaInspect{Error: io.EOF}
-	b, err = report.MarshalJSON()
+func TestSchemaInspect_MarshalSQL(t *testing.T) {
+	client, err := sqlclient.Open(context.Background(), "sqlite://ci?mode=memory&_fk=1")
 	require.NoError(t, err)
-	require.Equal(t, `{"Error":"EOF"}`, string(b))
+	defer client.Close()
+	report := &cmdlog.SchemaInspect{
+		Client: client,
+		Realm: schema.NewRealm(
+			schema.New("main").
+				AddTables(
+					schema.NewTable("users").
+						AddColumns(
+							schema.NewIntColumn("id", "int"),
+						),
+				),
+		),
+	}
+	b, err := report.MarshalSQL()
+	require.NoError(t, err)
+	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL);\n", b)
 }
 
 func TestSchemaInspect_EncodeSQL(t *testing.T) {
@@ -127,9 +142,26 @@ func TestSchemaInspect_EncodeSQL(t *testing.T) {
 	)
 	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{Client: client, Realm: realm}))
 	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL, `name` text NOT NULL);\n", b.String())
-	b.Reset()
-	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{Error: errors.New("failure")}))
-	require.Equal(t, "failure", b.String())
+}
+
+func TestSchemaDiff_MarshalSQL(t *testing.T) {
+	client, err := sqlclient.Open(context.Background(), "sqlite://ci?mode=memory&_fk=1")
+	require.NoError(t, err)
+	defer client.Close()
+	diff := &cmdlog.SchemaDiff{
+		Client: client,
+		Changes: schema.Changes{
+			&schema.AddTable{
+				T: schema.NewTable("users").
+					AddColumns(
+						schema.NewIntColumn("id", "int"),
+					),
+			},
+		},
+	}
+	b, err := diff.MarshalSQL()
+	require.NoError(t, err)
+	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL);\n", b)
 }
 
 func TestMigrateSet(t *testing.T) {
@@ -137,6 +169,7 @@ func TestMigrateSet(t *testing.T) {
 		b   bytes.Buffer
 		log = &cmdlog.MigrateSet{}
 	)
+	color.NoColor = true
 	require.NoError(t, cmdlog.MigrateSetTemplate.Execute(&b, log))
 	require.Empty(t, b.String())
 

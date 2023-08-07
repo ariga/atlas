@@ -17,7 +17,7 @@ import (
 )
 
 // A diff provides a MySQL implementation for schema.Inspector.
-type inspect struct{ conn }
+type inspect struct{ *conn }
 
 var _ schema.Inspector = (*inspect)(nil)
 
@@ -357,20 +357,16 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		}
 		idx, ok := t.Index(name)
 		if !ok {
-			idx = &schema.Index{
-				Name:   name,
-				Unique: !nonuniq.Bool,
-				Table:  t,
-				Attrs: []schema.Attr{
-					&IndexType{T: indexType},
-				},
+			idx = schema.NewIndex(name).
+				SetUnique(!nonuniq.Bool).
+				AddAttrs(&IndexType{T: indexType})
+			if indexType == IndexTypeFullText {
+				putShow(t).addFullText(idx)
 			}
 			if sqlx.ValidString(comment) {
-				idx.Attrs = append(t.Attrs, &schema.Comment{
-					Text: comment.String,
-				})
+				idx.SetComment(comment.String)
 			}
-			t.Indexes = append(t.Indexes, idx)
+			t.AddIndexes(idx)
 		}
 		// Rows are ordered by SEQ_IN_INDEX that specifies the
 		// position of the column in the index definition.
@@ -532,10 +528,12 @@ func (i *inspect) showCreate(ctx context.Context, s *schema.Schema) error {
 		if !ok {
 			continue
 		}
-		if err := i.createStmt(ctx, t); err != nil {
+		c, err := i.createStmt(ctx, t)
+		if err != nil {
 			return err
 		}
-		if err := i.setAutoInc(st, t); err != nil {
+		st.setIndexParser(c)
+		if err := st.setAutoInc(t, c); err != nil {
 			return err
 		}
 	}
@@ -544,44 +542,19 @@ func (i *inspect) showCreate(ctx context.Context, s *schema.Schema) error {
 
 var reAutoinc = regexp.MustCompile(`(?i)\s*AUTO_INCREMENT\s*=\s*(\d+)\s*`)
 
-// setAutoInc extracts the updated AUTO_INCREMENT from CREATE TABLE.
-func (i *inspect) setAutoInc(s *showTable, t *schema.Table) error {
-	if s.auto == nil {
-		return nil
-	}
-	var c CreateStmt
-	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE TABLE statement in attributes for %q", t.Name)
-	}
-	if sqlx.Has(t.Attrs, &AutoIncrement{}) {
-		return fmt.Errorf("unexpected AUTO_INCREMENT attributes for table: %q", t.Name)
-	}
-	matches := reAutoinc.FindStringSubmatch(c.S)
-	if len(matches) != 2 {
-		return nil
-	}
-	v, err := strconv.ParseInt(matches[1], 10, 64)
-	if err != nil {
-		return err
-	}
-	s.auto.V = v
-	t.Attrs = append(t.Attrs, s.auto)
-	return nil
-}
-
 // createStmt loads the CREATE TABLE statement for the table.
-func (i *inspect) createStmt(ctx context.Context, t *schema.Table) error {
+func (i *inspect) createStmt(ctx context.Context, t *schema.Table) (*CreateStmt, error) {
 	c := &CreateStmt{}
 	b := &sqlx.Builder{QuoteOpening: '`', QuoteClosing: '`'}
 	rows, err := i.QueryContext(ctx, b.P("SHOW CREATE TABLE").Table(t).String())
 	if err != nil {
-		return fmt.Errorf("query CREATE TABLE %q: %w", t.Name, err)
+		return nil, fmt.Errorf("query CREATE TABLE %q: %w", t.Name, err)
 	}
 	if err := sqlx.ScanOne(rows, &sql.NullString{}, &c.S); err != nil {
-		return fmt.Errorf("scan CREATE TABLE %q: %w", t.Name, err)
+		return nil, fmt.Errorf("scan CREATE TABLE %q: %w", t.Name, err)
 	}
 	t.Attrs = append(t.Attrs, c)
-	return nil
+	return c, nil
 }
 
 var reCurrTimestamp = regexp.MustCompile(`(?i)^current_timestamp(?:\(\d?\))?$`)
@@ -619,18 +592,15 @@ func parseColumn(typ string) (parts []string, size int, unsigned bool, err error
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	}); parts[0] {
+	case TypeBit, TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
 	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt,
 		TypeDecimal, TypeNumeric, TypeFloat, TypeDouble, TypeReal:
 		if attr := parts[len(parts)-1]; attr == "unsigned" || attr == "zerofill" {
 			unsigned = true
 		}
-		if len(parts) > 2 || len(parts) == 2 && !unsigned {
-			size, err = strconv.Atoi(parts[1])
-		}
-	case TypeBit, TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
-		if len(parts) > 1 {
-			size, err = strconv.Atoi(parts[1])
-		}
+	}
+	if len(parts) > 1 && sqlx.IsUint(parts[1]) {
+		size, err = strconv.Atoi(parts[1])
 	}
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("parse %q to int: %w", parts[1], err)
@@ -870,6 +840,13 @@ type (
 		T string // BTREE, HASH, FULLTEXT, SPATIAL, RTREE
 	}
 
+	// IndexParser defines the parser plugin used
+	// by a FULLTEXT index.
+	IndexParser struct {
+		schema.Attr
+		P string // Name of the parser plugin. e.g., ngram or mecab.
+	}
+
 	// BitType represents the type bit.
 	BitType struct {
 		schema.Type
@@ -888,10 +865,71 @@ type (
 	// required and for what.
 	showTable struct {
 		schema.Attr
-		// AUTO_INCREMENT value to due missing value in information_schema.
+		// AUTO_INCREMENT value due to missing value in information_schema.
 		auto *AutoIncrement
+		// FULLTEXT indexes that might have custom parser.
+		idxs []*schema.Index
 	}
 )
+
+// addIndex adds an index to the list of indexes
+// that needs further processing.
+func (s *showTable) addFullText(idx *schema.Index) {
+	s.idxs = append(s.idxs, idx)
+}
+
+// setAutoInc extracts the updated AUTO_INCREMENT from CREATE TABLE.
+func (s *showTable) setAutoInc(t *schema.Table, c *CreateStmt) error {
+	if s.auto == nil {
+		return nil
+	}
+	if sqlx.Has(t.Attrs, &AutoIncrement{}) {
+		return fmt.Errorf("unexpected AUTO_INCREMENT attributes for table: %q", t.Name)
+	}
+	matches := reAutoinc.FindStringSubmatch(c.S)
+	if len(matches) != 2 {
+		return nil
+	}
+	v, err := strconv.ParseInt(matches[1], 10, 64)
+	if err != nil {
+		return err
+	}
+	s.auto.V = v
+	t.Attrs = append(t.Attrs, s.auto)
+	return nil
+}
+
+// reIndexParser matches the parser name from the index definition.
+var reIndexParser = regexp.MustCompile("/\\*!50100 WITH PARSER `([^`]+)` \\*/")
+
+// setIndexParser updates the FULLTEXT parser from CREATE TABLE statement.
+func (s *showTable) setIndexParser(c *CreateStmt) {
+	b := (&sqlx.Builder{QuoteOpening: '`', QuoteClosing: '`'}).P("FULLTEXT KEY")
+	for _, idx := range s.idxs {
+		bi := b.Clone().Ident(idx.Name).Wrap(func(b *sqlx.Builder) {
+			b.MapComma(idx.Parts, func(i int, b *sqlx.Builder) {
+				// We expect column names only, as functional
+				// fulltext indexes are not supported by MySQL.
+				if idx.Parts[i].C != nil {
+					b.Ident(idx.Parts[i].C.Name)
+				}
+			})
+		})
+		i := strings.Index(c.S, bi.String())
+		if i == -1 || i+bi.Len() >= len(c.S) {
+			continue
+		}
+		i += bi.Len()
+		j := strings.Index(c.S[i:], "\n")
+		if j == -1 {
+			continue
+		}
+		// The rest of the line holds index, algorithm and lock options.
+		if matches := reIndexParser.FindStringSubmatch(c.S[i : i+j]); len(matches) == 2 {
+			idx.AddAttrs(&IndexParser{P: matches[1]})
+		}
+	}
+}
 
 func putShow(t *schema.Table) *showTable {
 	for i := range t.Attrs {

@@ -60,16 +60,16 @@ func TestDriver_LockAcquired(t *testing.T) {
 	}
 
 	t.Run("OnPool", func(t *testing.T) {
-		d := &Driver{}
+		d := &Driver{conn: &conn{}}
 		d.ExecQuerier = &mockOpener{DB: db}
 		lock(d)
 		require.EqualValues(t, 1, d.ExecQuerier.(*mockOpener).opened)
 	})
 
 	t.Run("OnConn", func(t *testing.T) {
+		d := &Driver{conn: &conn{}}
 		conn, err := db.Conn(context.Background())
 		require.NoError(t, err)
-		d := &Driver{}
 		d.ExecQuerier = conn
 		lock(d)
 	})
@@ -78,7 +78,7 @@ func TestDriver_LockAcquired(t *testing.T) {
 		m.ExpectBegin()
 		tx, err := db.Begin()
 		require.NoError(t, err)
-		d := &Driver{}
+		d := &Driver{conn: &conn{}}
 		d.ExecQuerier = tx
 		lock(d)
 	})
@@ -88,7 +88,7 @@ func TestDriver_LockAcquired(t *testing.T) {
 func TestDriver_LockError(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
-	d := &Driver{}
+	d := &Driver{conn: &conn{}}
 	d.ExecQuerier = db
 
 	t.Run("Timeout", func(t *testing.T) {
@@ -117,8 +117,7 @@ func TestDriver_LockError(t *testing.T) {
 func TestDriver_UnlockError(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
-	d := &Driver{}
-	d.ExecQuerier = db
+	d := &Driver{conn: &conn{ExecQuerier: db}}
 	acquired := func(name string, sec int) {
 		m.ExpectQuery(sqltest.Escape("SELECT GET_LOCK(?, ?)")).
 			WithArgs(name, sec).

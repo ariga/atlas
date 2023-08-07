@@ -31,8 +31,7 @@ func TestDriver_LockAcquired(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"pg_advisory_unlock"}).AddRow(1)).
 		RowsWillBeClosed()
 
-	d := &Driver{}
-	d.ExecQuerier = db
+	d := &Driver{conn: &conn{ExecQuerier: db}}
 	unlock, err := d.Lock(context.Background(), name, 0)
 	require.NoError(t, err)
 	require.NoError(t, unlock())
@@ -42,8 +41,7 @@ func TestDriver_LockAcquired(t *testing.T) {
 func TestDriver_LockError(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
-	d := &Driver{}
-	d.ExecQuerier = db
+	d := &Driver{conn: &conn{ExecQuerier: db}}
 	name, hash := "migrate", 979249972
 
 	t.Run("Timeout", func(t *testing.T) {
@@ -70,8 +68,7 @@ func TestDriver_LockError(t *testing.T) {
 func TestDriver_UnlockError(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
-	d := &Driver{}
-	d.ExecQuerier = db
+	d := &Driver{conn: &conn{ExecQuerier: db}}
 	name, hash := "up", 1551306158
 	acquired := func() {
 		m.ExpectQuery(sqltest.Escape("SELECT pg_try_advisory_lock($1)")).
@@ -105,7 +102,7 @@ func TestDriver_UnlockError(t *testing.T) {
 
 func TestDriver_CheckClean(t *testing.T) {
 	s := schema.New("test")
-	drv := &Driver{Inspector: &mockInspector{schema: s}, conn: conn{schema: "test"}}
+	drv := &Driver{Inspector: &mockInspector{schema: s}, conn: &conn{schema: "test"}}
 	// Empty schema.
 	err := drv.CheckClean(context.Background(), nil)
 	require.NoError(t, err)

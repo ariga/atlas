@@ -207,6 +207,43 @@ table "b" "users" {
 }
 ```
 
+## View
+
+A `view` is a virtual table in the database, defined by a statement that queries rows from one or more existing
+tables or views.
+
+```hcl
+view "clean_users" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
+  column "name" {
+    type = text
+  }
+  as         = <<-SQL
+  SELECT u.id, u.name
+    FROM ${table.users.name} AS u
+    JOIN ${view.active_users.name} AS au USING (id)
+  SQL
+  depends_on = [table.users, view.t1]
+  comment    = "A view to active users without sensitive data"
+}
+
+view "comedies" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
+  column "name" {
+    type = text
+  }
+  as           = "SELECT id, name FROM films WHERE kind = 'Comedy'"
+  depends_on   = [table.films]
+  check_option = CASCADED
+}
+```
+
 ## Column
 
 A `column` is a child resource of a `table`.
@@ -475,6 +512,18 @@ index "idx_operator_class" {
     column = column.j
     ops    = jsonb_path_ops
   }
+}
+
+index "index_parser" {
+  type    = FULLTEXT
+  columns = [column.text]
+  parser  = ngram
+}
+
+index "index_nulls_not_distinct" {
+  unique         = true
+  columns        = [column.text]
+  nulls_distinct = false
 }
 ```
 

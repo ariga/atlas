@@ -11,14 +11,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 )
 
 // A diff provides an SQLite implementation for schema.Inspector.
-type inspect struct{ conn }
+type inspect struct{ *conn }
 
 var _ schema.Inspector = (*inspect)(nil)
 
@@ -35,22 +34,26 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		opts = &schema.InspectRealmOption{}
 	}
 	r := schema.NewRealm(schemas...)
-	if !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
-		return sqlx.ExcludeRealm(r, opts.Exclude)
-	}
-	for _, s := range schemas {
-		tables, err := i.tables(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-		s.AddTables(tables...)
-		for _, t := range tables {
-			if err := i.inspectTable(ctx, t); err != nil {
+	if sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
+		for _, s := range schemas {
+			tables, err := i.tables(ctx, nil)
+			if err != nil {
 				return nil, err
 			}
+			s.AddTables(tables...)
+			for _, t := range tables {
+				if err := i.inspectTable(ctx, t); err != nil {
+					return nil, err
+				}
+			}
+		}
+		sqlx.LinkSchemaTables(r.Schemas)
+	}
+	if sqlx.ModeInspectRealm(opts).Is(schema.InspectViews) {
+		if err := i.inspectViews(ctx, r, nil); err != nil {
+			return nil, err
 		}
 	}
-	sqlx.LinkSchemaTables(r.Schemas)
 	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
 
@@ -75,20 +78,24 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		opts = &schema.InspectOptions{}
 	}
 	r := schema.NewRealm(schemas...)
-	if !sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
-		return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+		tables, err := i.tables(ctx, opts)
+		if err != nil {
+			return nil, err
+		}
+		r.Schemas[0].AddTables(tables...)
+		for _, t := range tables {
+			if err := i.inspectTable(ctx, t); err != nil {
+				return nil, err
+			}
+		}
+		sqlx.LinkSchemaTables(schemas)
 	}
-	tables, err := i.tables(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	r.Schemas[0].AddTables(tables...)
-	for _, t := range tables {
-		if err := i.inspectTable(ctx, t); err != nil {
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectViews) {
+		if err := i.inspectViews(ctx, r, opts); err != nil {
 			return nil, err
 		}
 	}
-	sqlx.LinkSchemaTables(schemas)
 	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 
@@ -502,7 +509,7 @@ func columnParts(t string) []string {
 	})
 	for k := 0; k < 2; k++ {
 		// Join the type back if it was separated with space (e.g. 'varying character').
-		if len(parts) > 1 && !isNumber(parts[0]) && !isNumber(parts[1]) {
+		if len(parts) > 1 && !sqlx.IsUint(parts[0]) && !sqlx.IsUint(parts[1]) {
 			parts[1] = parts[0] + " " + parts[1]
 			parts = parts[1:]
 		}
@@ -521,16 +528,6 @@ func defaultExpr(x string) schema.Expr {
 		// as they are not parsable in most decoders.
 		return &schema.RawExpr{X: x}
 	}
-}
-
-// isNumber reports whether the string is a number (category N).
-func isNumber(s string) bool {
-	for _, r := range s {
-		if !unicode.IsNumber(r) {
-			return false
-		}
-	}
-	return true
 }
 
 // blob literals are hex strings preceded by 'x' (or 'X).

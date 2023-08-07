@@ -328,6 +328,7 @@ func TestDiff_TableDiff(t *testing.T) {
 				{Name: "c5_include_no_change", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexInclude{Columns: from.Columns[:1]}}},
 				{Name: "c5_include_added", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
 				{Name: "c5_include_dropped", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexInclude{Columns: from.Columns[:1]}}},
+				{Name: "c6_nulls_not_distinct", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexNullsDistinct{V: true}}},
 			}
 			to.Indexes = []*schema.Index{
 				{Name: "c1_index", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
@@ -338,6 +339,7 @@ func TestDiff_TableDiff(t *testing.T) {
 				{Name: "c5_include_no_change", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexInclude{Columns: from.Columns[:1]}}},
 				{Name: "c5_include_added", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexInclude{Columns: from.Columns[:1]}}},
 				{Name: "c5_include_dropped", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
+				{Name: "c6_nulls_not_distinct", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexNullsDistinct{V: false}}},
 			}
 			return testcase{
 				name: "indexes",
@@ -350,6 +352,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					&schema.ModifyIndex{From: from.Indexes[4], To: to.Indexes[4], Change: schema.ChangeAttr},
 					&schema.ModifyIndex{From: from.Indexes[6], To: to.Indexes[6], Change: schema.ChangeAttr},
 					&schema.ModifyIndex{From: from.Indexes[7], To: to.Indexes[7], Change: schema.ChangeAttr},
+					&schema.ModifyIndex{From: from.Indexes[8], To: to.Indexes[8], Change: schema.ChangeAttr},
 					&schema.AddIndex{I: to.Indexes[1]},
 				},
 			}

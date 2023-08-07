@@ -212,6 +212,13 @@ func View(spec *sqlspec.View, parent *schema.Schema, convertColumn ConvertViewCo
 	if err := convertCommentFromSpec(spec, &v.Attrs); err != nil {
 		return nil, err
 	}
+	if c, ok := spec.Extra.Attr("check_option"); ok {
+		o, err := c.String()
+		if err != nil {
+			return nil, fmt.Errorf("specutil: expect string definition for attribute view.%s.check_option: %w", spec.Name, err)
+		}
+		v.SetCheckOption(o)
+	}
 	return v, nil
 }
 
@@ -481,16 +488,47 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc) (*sqlspec.View, error) {
 			schemahcl.StringAttr("as", as),
 		},
 	}
-	deps := make([]*schemahcl.Ref, 0, len(v.Deps))
+	if c := (schema.ViewCheckOption{}); sqlx.Has(v.Attrs, &c) {
+		switch strings.ToUpper(c.V) {
+		case schema.ViewCheckOptionNone, "":
+		case schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded:
+			embed.Attrs = append(embed.Attrs, VarAttr("check_option", c.V))
+		default:
+			embed.Attrs = append(embed.Attrs, schemahcl.StringAttr("check_option", c.V))
+		}
+	}
+	var (
+		deps         = make([]*schemahcl.Ref, 0, len(v.Deps))
+		nameT, nameV = make(map[string]int), make(map[string]int)
+	)
+	// Qualify table/view names if there are
+	// multiple tables/views with the same name.
+	if v.Schema.Realm != nil {
+		for _, s := range v.Schema.Realm.Schemas {
+			for _, t := range s.Tables {
+				nameT[t.Name]++
+			}
+			for _, v := range s.Views {
+				nameV[v.Name]++
+			}
+		}
+	}
 	for _, d := range v.Deps {
+		path := make([]string, 0, 2)
 		switch d := d.(type) {
 		case *schema.Table:
+			if nameT[d.Name] > 1 {
+				path = append(path, d.Schema.Name)
+			}
 			deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
-				{T: "table", V: []string{d.Name}},
+				{T: "table", V: append(path, d.Name)},
 			}))
 		case *schema.View:
+			if nameV[d.Name] > 1 {
+				path = append(path, d.Schema.Name)
+			}
 			deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
-				{T: "view", V: []string{d.Name}},
+				{T: "view", V: append(path, d.Name)},
 			}))
 		}
 	}
@@ -583,6 +621,7 @@ func ConvertGenExpr(r *schemahcl.Resource, c *schema.Column, t func(string) stri
 
 // ExprValue converts a schema.Expr to a cty.Value.
 func ExprValue(expr schema.Expr) (cty.Value, error) {
+	expr = schema.UnderlyingExpr(expr)
 	switch x := expr.(type) {
 	case *schema.RawExpr:
 		return schemahcl.RawExprValue(&schemahcl.RawExpr{X: x.X}), nil

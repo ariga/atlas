@@ -20,10 +20,10 @@ import (
 // DefaultPlan provides basic planning capabilities for PostgreSQL dialects.
 // Note, it is recommended to call Open, create a new Driver and use its
 // migrate.PlanApplier when a database connection is available.
-var DefaultPlan migrate.PlanApplier = &planApply{conn: conn{ExecQuerier: sqlx.NoRows}}
+var DefaultPlan migrate.PlanApplier = &planApply{conn: &conn{ExecQuerier: sqlx.NoRows}}
 
 // A planApply provides migration capabilities for schema elements.
-type planApply struct{ conn }
+type planApply struct{ *conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
 func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
@@ -57,7 +57,7 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change, o
 // planApply so that multiple planning/applying can be called
 // in parallel.
 type state struct {
-	conn
+	*conn
 	migrate.Plan
 	migrate.PlanOptions
 	droppedT []*schema.Table
@@ -1009,6 +1009,10 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
 			})
 		})
 	}
+	// Avoid appending the default behavior, which NULL values are distinct.
+	if n := (IndexNullsDistinct{}); sqlx.Has(idx.Attrs, &n) && !n.V {
+		b.P("NULLS NOT DISTINCT")
+	}
 	if p, ok := indexStorageParams(idx.Attrs); ok {
 		b.P("WITH")
 		b.Wrap(func(b *sqlx.Builder) {
@@ -1027,7 +1031,7 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
 	}
 	for _, attr := range idx.Attrs {
 		switch attr.(type) {
-		case *schema.Comment, *IndexType, *IndexInclude, *Constraint, *IndexPredicate, *IndexStorageParams:
+		case *schema.Comment, *IndexType, *IndexInclude, *Constraint, *IndexPredicate, *IndexStorageParams, *IndexNullsDistinct:
 		default:
 			return fmt.Errorf("postgres: unexpected index attribute: %T", attr)
 		}

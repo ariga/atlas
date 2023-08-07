@@ -100,7 +100,7 @@ func (v *VerChecker) Check(ver string) (*Payload, error) {
 		if err := os.MkdirAll(filepath.Dir(v.statePath), os.ModePerm); err != nil {
 			return nil, err
 		}
-		if err := os.WriteFile(v.statePath, st, os.ModePerm); err != nil {
+		if err := os.WriteFile(v.statePath, st, 0666); err != nil {
 			return nil, err
 		}
 	}

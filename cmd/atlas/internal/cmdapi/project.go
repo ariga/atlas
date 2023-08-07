@@ -404,11 +404,19 @@ func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
+	base, err := filepath.Abs(filepath.Dir(path))
+	if err != nil {
+		return nil, err
+	}
 	cfg := &cmdext.AtlasConfig{}
+	v := version
+	if flavor != "" {
+		v = fmt.Sprintf("%s-%s", version, flavor)
+	}
 	state := schemahcl.New(
 		append(
 			cmdext.DataSources,
-			cfg.InitBlock(),
+			cfg.InitBlock(v),
 			schemahcl.WithScopedEnums("env.migration.format", cmdmigrate.Formats...),
 			schemahcl.WithVariables(map[string]cty.Value{
 				refAtlas: cty.ObjectVal(map[string]cty.Value{
@@ -416,6 +424,7 @@ func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
 				}),
 			}),
 			schemahcl.WithFunctions(map[string]function.Function{
+				"file": schemahcl.MakeFileFunc(base),
 				"getenv": function.New(&function.Spec{
 					Params: []function.Parameter{
 						{

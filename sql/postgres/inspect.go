@@ -21,7 +21,7 @@ import (
 )
 
 // A diff provides a PostgreSQL implementation for schema.Inspector.
-type inspect struct{ conn }
+type inspect struct{ *conn }
 
 var _ schema.Inspector = (*inspect)(nil)
 
@@ -336,12 +336,16 @@ func (i *inspect) inspectEnums(ctx context.Context, r *schema.Realm) error {
 
 // indexes queries and appends the indexes of the given table.
 func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
-	query := indexesQuery
+	var query string
 	switch {
 	case i.conn.crdb:
 		return i.crdbIndexes(ctx, s)
-	case !i.conn.supportsIndexInclude():
-		query = indexesQueryNoInclude
+	case i.supportsIndexNullsDistinct():
+		query = indexesAbove15
+	case i.supportsIndexInclude():
+		query = indexesAbove11
+	default:
+		query = indexesBelow11
 	}
 	rows, err := i.querySchema(ctx, query, s)
 	if err != nil {
@@ -359,14 +363,14 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			uniq, primary, included                                               bool
 			table, name, typ                                                      string
+			uniq, primary, included, nullsnotdistinct                             bool
 			desc, nullsfirst, nullslast, opcdefault                               sql.NullBool
 			column, constraints, pred, expr, comment, options, opcname, opcparams sql.NullString
 		)
 		if err := rows.Scan(
-			&table, &name, &typ, &column, &included, &primary, &uniq, &constraints, &pred, &expr,
-			&desc, &nullsfirst, &nullslast, &comment, &options, &opcname, &opcdefault, &opcparams,
+			&table, &name, &typ, &column, &included, &primary, &uniq, &constraints, &pred, &expr, &desc,
+			&nullsfirst, &nullslast, &comment, &options, &opcname, &opcdefault, &opcparams, &nullsnotdistinct,
 		); err != nil {
 			return fmt.Errorf("postgres: scanning indexes for schema %q: %w", s.Name, err)
 		}
@@ -393,18 +397,21 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 					return fmt.Errorf("postgres: unmarshaling index constraints: %w", err)
 				}
 				for n, t := range m {
-					idx.Attrs = append(idx.Attrs, &Constraint{N: n, T: t})
+					idx.AddAttrs(&Constraint{N: n, T: t})
 				}
 			}
 			if sqlx.ValidString(pred) {
-				idx.Attrs = append(idx.Attrs, &IndexPredicate{P: pred.String})
+				idx.AddAttrs(&IndexPredicate{P: pred.String})
 			}
 			if sqlx.ValidString(options) {
 				p, err := newIndexStorage(options.String)
 				if err != nil {
 					return err
 				}
-				idx.Attrs = append(idx.Attrs, p)
+				idx.AddAttrs(p)
+			}
+			if nullsnotdistinct {
+				idx.AddAttrs(&IndexNullsDistinct{V: false})
 			}
 			names[name] = idx
 			if primary {
@@ -873,6 +880,12 @@ type (
 		Params  []struct{ N, V string } // Optional parameters.
 	}
 
+	// IndexNullsDistinct describes the NULLS [NOT] DISTINCT clause.
+	IndexNullsDistinct struct {
+		schema.Attr
+		V bool // NULLS [NOT] DISTINCT. Defaults to true.
+	}
+
 	// Concurrently describes the CONCURRENTLY clause to instruct Postgres to
 	// build or drop the index concurrently without blocking the current table.
 	// https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
@@ -1313,9 +1326,10 @@ ORDER BY
 )
 
 var (
-	indexesQuery          = fmt.Sprintf(indexesQueryTmpl, "(a.attname <> '' AND idx.indnatts > idx.indnkeyatts AND idx.ord > idx.indnkeyatts)", "%s")
-	indexesQueryNoInclude = fmt.Sprintf(indexesQueryTmpl, "false", "%s")
-	indexesQueryTmpl      = `
+	indexesBelow11   = fmt.Sprintf(indexesQueryTmpl, "false", "false", "%s")
+	indexesAbove11   = fmt.Sprintf(indexesQueryTmpl, "(a.attname <> '' AND idx.indnatts > idx.indnkeyatts AND idx.ord > idx.indnkeyatts)", "false", "%s")
+	indexesAbove15   = fmt.Sprintf(indexesQueryTmpl, "(a.attname <> '' AND idx.indnatts > idx.indnkeyatts AND idx.ord > idx.indnkeyatts)", "idx.indnullsnotdistinct", "%s")
+	indexesQueryTmpl = `
 SELECT
 	t.relname AS table_name,
 	i.relname AS index_name,
@@ -1334,7 +1348,8 @@ SELECT
 	i.reloptions AS options,
 	op.opcname AS opclass_name,
 	op.opcdefault AS opclass_default,
-	a2.attoptions AS opclass_params
+	a2.attoptions AS opclass_params,
+    %s AS indnullsnotdistinct
 FROM
 	(
 		select

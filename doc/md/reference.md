@@ -3,6 +3,7 @@ title: CLI Reference
 id: cli-reference
 slug: cli-reference
 ---
+<!-- This file is generated from cmd/atlas/doc.tmpl, do not edit manually -->
 ## Introduction
 
 This document serves as reference documentation for all available commands in the Atlas CLI.
@@ -14,15 +15,16 @@ For a more detailed introduction to the CLI capabilities, head over to the
 
 ## Distributed Binaries
 
-The binaries distributed in official releases are released under the  [Apache 2 License](https://github.com/ariga/atlas/blob/master/LICENSE).
-If you would like to build Atlas from source follow the instructions [here](https://atlasgo.io/cli-reference#building-from-source).
+The binaries and Docker images distributed in official releases are released in two flavors:
 
-### Building from Source
+* Atlas - A binary built from the OSS repository in addition to proprietary code maintained by
+  [Ariga](https://ariga.io), including access to the Atlas Cloud service and commercial driver support.
+  Atlas is distributed under the [Atlas EULA](https://ariga.io/legal/atlas/eula).
+* Atlas Community - A binary built from the OSS repository only. Atlas Community is distributed under
+  the [Apache 2 License](https://github.com/ariga/atlas/blob/master/LICENSE).
 
-If you would like to build Atlas from source without the UI code run:
-```shell
-go get ariga.io/atlas/cmd/atlas
-```
+For instructions on how to install Atlas Community, see this [guide](/community-edition).
+
 
 ## atlas license
 

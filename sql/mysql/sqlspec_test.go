@@ -747,6 +747,100 @@ table "users" {
 	require.EqualValues(t, exp, &s)
 }
 
+func TestMarshalSpec_IndexParser(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewStringColumn("id", "text"),
+				).
+				AddIndexes(
+					schema.NewIndex("idx1").
+						AddColumns(
+							schema.NewStringColumn("id", "text"),
+						).
+						AddAttrs(&IndexType{T: IndexTypeFullText}, &IndexParser{P: IndexParserNGram}),
+					schema.NewIndex("idx2").
+						AddColumns(
+							schema.NewStringColumn("id", "text"),
+						).
+						AddAttrs(&IndexType{T: IndexTypeFullText}, &IndexParser{P: "custom"}),
+				),
+		)
+	s.Tables[0].SetPrimaryKey(
+		schema.NewPrimaryKey(s.Tables[0].Columns...).
+			AddAttrs(&IndexType{T: IndexTypeHash}),
+	)
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	require.Equal(t, `table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+    type    = HASH
+  }
+  index "idx1" {
+    columns = [column.id]
+    type    = FULLTEXT
+    parser  = ngram
+  }
+  index "idx2" {
+    columns = [column.id]
+    type    = FULLTEXT
+    parser  = "custom"
+  }
+}
+schema "test" {
+}
+`, string(buf))
+}
+
+func TestUnmarshalSpec_IndexParser(t *testing.T) {
+	var s schema.Schema
+	err := EvalHCLBytes([]byte(`table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = text
+  }
+  index "idx1" {
+    columns = [column.id]
+    type    = FULLTEXT
+    parser  = ngram
+  }
+  index "idx2" {
+    columns = [column.id]
+    type    = FULLTEXT
+    parser  = "custom"
+  }
+}
+schema "test" {
+}`), &s, nil)
+	require.NoError(t, err)
+	c := schema.NewStringColumn("id", "text")
+	exp := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(c).
+				AddIndexes(
+					schema.NewIndex("idx1").
+						AddColumns(c).
+						AddAttrs(&IndexType{T: IndexTypeFullText}, &IndexParser{P: IndexParserNGram}),
+					schema.NewIndex("idx2").
+						AddColumns(c).
+						AddAttrs(&IndexType{T: IndexTypeFullText}, &IndexParser{P: "custom"}),
+
+				),
+		)
+	c.Indexes = nil
+	schema.NewRealm(exp)
+	require.EqualValues(t, exp, &s)
+}
+
 func TestMarshalSpec_PrimaryKeyType(t *testing.T) {
 	s := schema.New("test").
 		AddTables(

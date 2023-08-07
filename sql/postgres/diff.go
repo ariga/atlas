@@ -24,7 +24,7 @@ import (
 var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{}}
 
 // A diff provides a PostgreSQL implementation for sqlx.DiffDriver.
-type diff struct{ conn }
+type diff struct{ *conn }
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (*diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
@@ -93,10 +93,6 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	return append(changes, sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
 		return sqlx.Has(c1.Attrs, &NoInherit{}) == sqlx.Has(c2.Attrs, &NoInherit{})
 	})...), nil
-}
-
-func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
-	return false // Not implemented.
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
@@ -226,6 +222,9 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 		t2.T = strings.ToUpper(t2.T)
 	}
 	if t1.T != t2.T {
+		return true
+	}
+	if indexNullsDistinct(to) != indexNullsDistinct(from) {
 		return true
 	}
 	var p1, p2 IndexPredicate
@@ -512,6 +511,16 @@ func indexIncludeChanged(from, to []schema.Attr) bool {
 		}
 	}
 	return false
+}
+
+// indexNullsDistinct returns the NULLS [NOT] DISTINCT value from the index attributes.
+func indexNullsDistinct(attrs []schema.Attr) bool {
+	if i := (IndexNullsDistinct{}); sqlx.Has(attrs, &i) {
+		return i.V
+	}
+	// The default PostgreSQL behavior. The inverse of
+	// "indnullsnotdistinct" in pg_index which is false.
+	return true
 }
 
 func trimCast(s string) string {

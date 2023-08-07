@@ -83,14 +83,19 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 
 var (
 	hclState = schemahcl.New(
-		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
-		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
-		schemahcl.WithScopedEnums("table.engine", EngineInnoDB, EngineMyISAM, EngineMemory, EngineCSV, EngineNDB),
-		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
-		schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
-		schemahcl.WithScopedEnums("table.column.as.type", stored, persistent, virtual),
-		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
-		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+		append(
+			specOptions,
+			schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
+			schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
+			schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
+			schemahcl.WithScopedEnums("table.engine", EngineInnoDB, EngineMyISAM, EngineMemory, EngineCSV, EngineNDB),
+			schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
+			schemahcl.WithScopedEnums("table.index.parser", IndexParserNGram, IndexParserMeCab),
+			schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
+			schemahcl.WithScopedEnums("table.column.as.type", stored, persistent, virtual),
+			schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
+			schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+		)...,
 	)
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
 	MarshalHCL = schemahcl.MarshalerFunc(func(v any) ([]byte, error) {
@@ -154,6 +159,9 @@ func convertPK(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, e
 	if err := convertIndexType(spec, idx); err != nil {
 		return nil, err
 	}
+	if err := convertIndexParser(spec, idx); err != nil {
+		return nil, err
+	}
 	return idx, nil
 }
 
@@ -166,6 +174,9 @@ func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, err
 	if err := convertIndexType(spec, idx); err != nil {
 		return nil, err
 	}
+	if err := convertIndexParser(spec, idx); err != nil {
+		return nil, err
+	}
 	return idx, nil
 }
 
@@ -176,6 +187,17 @@ func convertIndexType(spec specutil.Attrer, idx *schema.Index) error {
 			return err
 		}
 		idx.AddAttrs(&IndexType{T: t})
+	}
+	return nil
+}
+
+func convertIndexParser(spec specutil.Attrer, idx *schema.Index) error {
+	if attr, ok := spec.Attr("parser"); ok {
+		p, err := attr.String()
+		if err != nil {
+			return err
+		}
+		idx.AddAttrs(&IndexParser{P: p})
 	}
 	return nil
 }
@@ -327,6 +349,17 @@ func indexTypeSpec(idx *schema.Index, attrs []*schemahcl.Attr) []*schemahcl.Attr
 	// Avoid printing the index type if it is the default.
 	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && i.T != IndexTypeBTree {
 		attrs = append(attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
+	}
+	// Print fulltext index parser. Use the pre-defined parser variables if known.
+	if p := (IndexParser{}); sqlx.Has(idx.Attrs, &p) && p.P != "" {
+		attr := schemahcl.StringAttr("parser", p.P)
+		for _, p1 := range []string{IndexParserNGram, IndexParserMeCab} {
+			if strings.EqualFold(p.P, p1) {
+				attr = specutil.VarAttr("parser", p1)
+				break
+			}
+		}
+		attrs = append(attrs, attr)
 	}
 	return attrs
 }

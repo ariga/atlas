@@ -115,9 +115,20 @@ module.exports = {
             id: 'contributing',
         },
         {
-            type: 'doc',
-            id: 'cli-reference'
-        }
+            type: 'category',
+            label: 'CLI Reference',
+            collapsed: false,
+            link: {
+              type: 'doc',
+              id: 'cli-reference'
+            },
+            items: [
+                {
+                    type: 'doc',
+                    id: 'community-edition'
+                },
+            ]
+        },
     ],
     guides: [
         {
@@ -203,6 +214,18 @@ module.exports = {
                     id: 'guides/terraform/named-databases',
                     label: 'Named Databases'
                 }
+            ]
+        },
+        {
+            type: 'category',
+            label: 'Migration directories',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/migration-dirs/template-directory',
+                    label: 'Template directories'
+                },
             ]
         },
         {

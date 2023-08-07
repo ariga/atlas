@@ -112,7 +112,10 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 			d.Schemas = append(d.Schemas, doc.Schemas...)
 			d.Enums = append(d.Enums, doc.Enums...)
 		}
-		if err := specutil.QualifyDuplicates(d.Tables); err != nil {
+		if err := specutil.QualifyTables(d.Tables); err != nil {
+			return nil, err
+		}
+		if err := specutil.QualifyViews(d.Views); err != nil {
 			return nil, err
 		}
 		if err := specutil.QualifyReferences(d.Tables, s); err != nil {
@@ -125,9 +128,10 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 }
 
 var (
-	hclState = schemahcl.New(
-		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
+	hclState = schemahcl.New(append(specOptions,
 		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
+		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
+		schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, "GiST", IndexTypeSPGiST, "SPGiST"),
 		schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
 		schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
@@ -139,7 +143,7 @@ var (
 				ops = append(ops, op.Name)
 			}
 			return ops
-		}()...),
+		}()...))...,
 	)
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
 	MarshalHCL = schemahcl.MarshalerFunc(func(v any) ([]byte, error) {
@@ -358,6 +362,13 @@ func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 			return nil, err
 		}
 		idx.Attrs = append(idx.Attrs, &IndexPredicate{P: p})
+	}
+	if attr, ok := spec.Attr("nulls_distinct"); ok {
+		v, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		idx.Attrs = append(idx.Attrs, &IndexNullsDistinct{V: v})
 	}
 	if err := convertIndexPK(spec, t, idx); err != nil {
 		return nil, err
@@ -600,6 +611,9 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	}
 	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
+	}
+	if i := (IndexNullsDistinct{}); sqlx.Has(idx.Attrs, &i) && !i.V {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("nulls_distinct", i.V))
 	}
 	spec.Extra.Attrs = indexPKSpec(idx, spec.Extra.Attrs)
 	return spec, nil

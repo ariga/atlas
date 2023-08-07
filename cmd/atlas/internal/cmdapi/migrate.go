@@ -26,7 +26,6 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/cmd/atlas/internal/lint"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
-	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -201,12 +200,16 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 	if rrw, err = entRevisions(ctx, client, flags.revisionSchema); err != nil {
 		return err
 	}
-	if err := rrw.(*cmdmigrate.EntRevisions).Migrate(ctx); err != nil {
+	mrrw, ok := rrw.(cmdmigrate.RevisionReadWriter)
+	if !ok {
+		return fmt.Errorf("unexpected revision read-writer type: %T", rrw)
+	}
+	if err := mrrw.Migrate(ctx); err != nil {
 		return err
 	}
 	// Setup reporting info.
 	report := cmdlog.NewMigrateApply(client, dir)
-	mr.Init(client, report, rrw.(*cmdmigrate.EntRevisions))
+	mr.Init(client, report, mrrw)
 	// If cloud reporting is enabled, and we cannot obtain the current
 	// target identifier, abort and report it to the user.
 	if err := mr.RecordTargetID(cmd.Context()); err != nil {
@@ -281,7 +284,7 @@ type (
 		env    *Env   // nil, if no env set
 		client *sqlclient.Client
 		log    *cmdlog.MigrateApply
-		rrw    *cmdmigrate.EntRevisions
+		rrw    cmdmigrate.RevisionReadWriter
 		done   func(*cloudapi.ReportMigrationInput)
 	}
 	// MigrateReportSet is a set of reports.
@@ -405,7 +408,7 @@ func (s *MigrateReportSet) Flush(cmd *cobra.Command, cmdErr error) {
 }
 
 // Init the report if the necessary dependencies.
-func (r *MigrateReport) Init(c *sqlclient.Client, l *cmdlog.MigrateApply, rrw *cmdmigrate.EntRevisions) {
+func (r *MigrateReport) Init(c *sqlclient.Client, l *cmdlog.MigrateApply, rrw cmdmigrate.RevisionReadWriter) {
 	r.client, r.log, r.rrw = c, l, rrw
 }
 
@@ -433,7 +436,7 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 		err  = logApply(cmd, io.MultiWriter(cmd.OutOrStdout(), &clog), flags, r.log)
 	)
 	switch rev, err1 := r.rrw.CurrentRevision(cmd.Context()); {
-	case ent.IsNotFound(err1):
+	case errors.Is(err1, migrate.ErrRevisionNotExist):
 	case err1 != nil:
 		return errors.Join(err, err1)
 	default:
@@ -1232,7 +1235,7 @@ func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) (re
 			return err
 		}
 	}
-	if log.Current, err = rrw.CurrentRevision(ctx); err != nil && !ent.IsNotFound(err) {
+	if log.Current, err = rrw.CurrentRevision(ctx); err != nil && !errors.Is(err, migrate.ErrRevisionNotExist) {
 		return err
 	}
 	return cmdlog.MigrateSetTemplate.Execute(cmd.OutOrStdout(), log)
@@ -1434,8 +1437,8 @@ schema if it is unused.
 	return nil
 }
 
-func entRevisions(ctx context.Context, c *sqlclient.Client, flag string) (*cmdmigrate.EntRevisions, error) {
-	return cmdmigrate.NewEntRevisions(ctx, c, cmdmigrate.WithSchema(revisionSchemaName(c, flag)))
+func entRevisions(ctx context.Context, c *sqlclient.Client, flag string) (cmdmigrate.RevisionReadWriter, error) {
+	return cmdmigrate.RevisionsForClient(ctx, c, revisionSchemaName(c, flag))
 }
 
 // defaultRevisionSchema is the default schema for storing revisions table.

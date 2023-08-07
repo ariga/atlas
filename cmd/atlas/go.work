@@ -1,7 +1,5 @@
 go 1.20
 
-use (
-	./
-)
+use ./
 
 replace ariga.io/atlas => ../../

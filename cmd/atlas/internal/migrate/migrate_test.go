@@ -6,10 +6,10 @@ package migrate
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
-	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlclient"
@@ -18,22 +18,52 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRevisionsForClient(t *testing.T) {
+	ctx := context.Background()
+	c, err := sqlclient.Open(ctx, "sqlite://?mode=memory")
+	require.NoError(t, err)
+	var rrw RevisionReadWriter
+
+	rrw, err = RevisionsForClient(ctx, c, "")
+	require.NoError(t, err)
+	require.NotNil(t, rrw)
+	_, ok := rrw.(*EntRevisions)
+	require.True(t, ok, "RevisionsForClient should return an EntRevisions")
+
+	drvMock := &mockDriver{Driver: c.Driver, rrw: &migrate.NopRevisionReadWriter{}}
+	c.Driver = drvMock
+	rrw, err = RevisionsForClient(ctx, c, "")
+	require.ErrorContains(t, err, "unexpected revision read-writer type: *migrate.NopRevisionReadWriter")
+
+	drvMock.rrw = &mockrrw{RevisionReadWriter: &migrate.NopRevisionReadWriter{}}
+	rrw, err = RevisionsForClient(ctx, c, "")
+	require.NoError(t, err)
+	_, ok = rrw.(*mockrrw)
+	require.True(t, ok, "RevisionsForClient should return a mockrrw")
+}
+
 func TestNewEntRevisions(t *testing.T) {
 	ctx := context.Background()
 	c, err := sqlclient.Open(ctx, "sqlite://?mode=memory")
 	require.NoError(t, err)
 	r, err := NewEntRevisions(ctx, c)
 	require.NoError(t, err)
+	runRevisionsTests(ctx, t, c.Driver, r)
+}
+
+func runRevisionsTests(ctx context.Context, t *testing.T, drv migrate.Driver, r RevisionReadWriter) {
+	_, err := drv.ExecContext(ctx, "CREATE VIEW v1(c1) AS SELECT 1;")
+	require.NoError(t, err)
 	require.NoError(t, r.Migrate(ctx))
 
-	s, err := c.Driver.InspectSchema(ctx, "", nil)
+	s, err := drv.InspectSchema(ctx, "", nil)
 	require.NoError(t, err)
 	require.Len(t, s.Tables, 1)
 	_, ok := s.Table(revision.Table)
 	require.True(t, ok)
 
 	cur, err := r.CurrentRevision(ctx)
-	require.True(t, ent.IsNotFound(err))
+	require.True(t, errors.Is(err, migrate.ErrRevisionNotExist))
 	require.Nil(t, cur)
 
 	err = r.WriteRevision(ctx, &migrate.Revision{
@@ -89,7 +119,7 @@ func TestNewEntRevisions(t *testing.T) {
 	require.Equal(t, "1", cur.Version)
 	require.NoError(t, r.DeleteRevision(ctx, "1"))
 	cur, err = r.CurrentRevision(ctx)
-	require.True(t, ent.IsNotFound(err))
+	require.True(t, errors.Is(err, migrate.ErrRevisionNotExist))
 	require.Nil(t, cur)
 	revs, err = r.ReadRevisions(ctx)
 	require.NoError(t, err)
@@ -98,3 +128,21 @@ func TestNewEntRevisions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, id, id1)
 }
+
+type (
+	mockDriver struct {
+		migrate.Driver
+		rrw migrate.RevisionReadWriter
+	}
+	mockrrw struct {
+		migrate.RevisionReadWriter
+	}
+)
+
+func (m *mockDriver) RevisionsReadWriter(context.Context, string) (migrate.RevisionReadWriter, error) {
+	return m.rrw, nil
+}
+
+func (*mockrrw) CurrentRevision(context.Context) (*migrate.Revision, error) { return nil, nil }
+func (*mockrrw) Migrate(context.Context) error                              { return nil }
+func (*mockrrw) ID(context.Context, string) (string, error)                 { return "", nil }

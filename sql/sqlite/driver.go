@@ -26,7 +26,7 @@ type (
 	// Driver represents a SQLite driver for introspecting database schemas,
 	// generating diff between schema elements and apply migrations changes.
 	Driver struct {
-		conn
+		*conn
 		schema.Differ
 		schema.Inspector
 		migrate.PlanApplier
@@ -75,7 +75,7 @@ func init() {
 // Open opens a new SQLite driver.
 func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	var (
-		c   = conn{ExecQuerier: db}
+		c   = &conn{ExecQuerier: db}
 		ctx = context.Background()
 	)
 	rows, err := db.QueryContext(ctx, "SELECT sqlite_version()")
@@ -111,7 +111,7 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	return func(ctx context.Context) error {
 		for _, stmt := range []string{
 			"PRAGMA writable_schema = 1;",
-			"DELETE FROM sqlite_master WHERE type IN ('table', 'index', 'trigger');",
+			"DELETE FROM sqlite_master WHERE type IN ('table', 'view', 'index', 'trigger');",
 			"PRAGMA writable_schema = 0;",
 			"VACUUM;",
 		} {

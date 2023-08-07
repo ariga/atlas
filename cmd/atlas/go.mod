@@ -3,8 +3,9 @@ module ariga.io/atlas/cmd/atlas
 go 1.20
 
 require (
-	ariga.io/atlas v0.12.1-0.20230601120453-c847ec90d7c9
-	entgo.io/ent v0.12.4-0.20230503082810-f251400818ea
+	ariga.io/atlas v0.12.2-0.20230806193313-117e03f96e45
+	entgo.io/ent v0.12.4-0.20230726082433-91c7fcc68504
+	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220816024939-bc8df83d7b9d
 	github.com/auxten/postgresql-parser v1.0.1
 	github.com/fatih/color v1.13.0
@@ -13,7 +14,6 @@ require (
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/lib/pq v1.10.7
 	github.com/libsql/libsql-client-go v0.0.0-20230602133133-5905f0c4f8a5
-	github.com/manifoldco/promptui v0.9.0
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/olekukonko/tablewriter v0.0.5

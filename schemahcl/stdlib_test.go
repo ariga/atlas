@@ -7,8 +7,10 @@ package schemahcl
 import (
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -107,6 +109,18 @@ func TestURLEscapeFunc(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMakeFileFunc(t *testing.T) {
+	fn := MakeFileFunc("testdata")
+	_, err := fn.Call([]cty.Value{cty.StringVal("foo")})
+	require.EqualError(t, err, "base directory must be an absolute path. got: testdata")
+	base, err := filepath.Abs("testdata")
+	require.NoError(t, err)
+	fn = MakeFileFunc(base)
+	v, err := fn.Call([]cty.Value{cty.StringVal("a.hcl")})
+	require.NoError(t, err)
+	require.Equal(t, "person \"rotemtam\" {\n  hobby = var.hobby\n}", v.AsString())
 }
 
 func Example_PrintFunc() {

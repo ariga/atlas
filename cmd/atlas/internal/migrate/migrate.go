@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -28,6 +29,16 @@ import (
 )
 
 type (
+	// RevisionReadWriter is a revision read-writer with migration capabilities.
+	RevisionReadWriter interface {
+		migrate.RevisionReadWriter
+		// CurrentRevision returns the current revision in the revisions table.
+		CurrentRevision(context.Context) (*migrate.Revision, error)
+		// Migrate applies the migration of the revisions table.
+		Migrate(context.Context) error
+		// ID returns the current target identifier.
+		ID(context.Context, string) (string, error)
+	}
 	// EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
 	EntRevisions struct {
 		ac     *sqlclient.Client // underlying Atlas client
@@ -38,6 +49,24 @@ type (
 	// Option allows to configure EntRevisions by using functional arguments.
 	Option func(*EntRevisions) error
 )
+
+// RevisionsForClient creates a new RevisionReadWriter for the given sqlclient.Client.
+func RevisionsForClient(ctx context.Context, ac *sqlclient.Client, schema string) (RevisionReadWriter, error) {
+	// If the driver supports the RevisionReadWriter interface, use it.
+	if drv, ok := ac.Driver.(interface {
+		RevisionsReadWriter(context.Context, string) (migrate.RevisionReadWriter, error)
+	}); ok {
+		rrw, err := drv.RevisionsReadWriter(ctx, schema)
+		if err != nil {
+			return nil, err
+		}
+		if rrw, ok := rrw.(RevisionReadWriter); ok {
+			return rrw, nil
+		}
+		return nil, fmt.Errorf("unexpected revision read-writer type: %T", rrw)
+	}
+	return NewEntRevisions(ctx, ac, WithSchema(schema))
+}
 
 // NewEntRevisions creates a new EntRevisions with the given sqlclient.Client.
 func NewEntRevisions(ctx context.Context, ac *sqlclient.Client, opts ...Option) (*EntRevisions, error) {
@@ -127,8 +156,11 @@ func (r *EntRevisions) CurrentRevision(ctx context.Context) (*migrate.Revision, 
 		Where(revision.IDNEQ(revisionID)).
 		Order(revision.ByID(sql.OrderDesc())).
 		First(ctx)
-	if err != nil {
+	if err != nil && !ent.IsNotFound(err) {
 		return nil, err
+	}
+	if ent.IsNotFound(err) {
+		return nil, migrate.ErrRevisionNotExist
 	}
 	return rev.AtlasRevision(), nil
 }
@@ -191,7 +223,29 @@ func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
 			}()
 		}
 	}
-	return c.Schema.Create(ctx, entschema.WithDropColumn(true))
+	return c.Schema.Create(ctx, entschema.WithDropColumn(true), entschema.WithDiffHook(func(next entschema.Differ) entschema.Differ {
+		return entschema.DiffFunc(func(current, desired *schema.Schema) ([]schema.Change, error) {
+			changes, err := next.Diff(current, desired)
+			if err != nil {
+				return nil, err
+			}
+			// Skip all changes beside revisions
+			// table creation or modification.
+			for i := range changes {
+				switch cs := changes[i].(type) {
+				case *schema.AddTable:
+					if cs.T.Name == revision.Table {
+						return schema.Changes{cs}, nil
+					}
+				case *schema.ModifyTable:
+					if cs.T.Name == revision.Table {
+						return schema.Changes{cs}, nil
+					}
+				}
+			}
+			return nil, nil
+		})
+	}))
 }
 
 // revisionID holds the column "id" ("version") of the revision that holds the identifier of the
@@ -201,11 +255,11 @@ const revisionID = ".atlas_cloud_identifier"
 // ID returns the identifier of the connected revisions table.
 func (r *EntRevisions) ID(ctx context.Context, operatorV string) (string, error) {
 	err := r.ec.Revision.Create().
-		SetID(revisionID). // identifier key
+		SetID(revisionID).                // identifier key
 		SetDescription(uuid.NewString()). // actual revision identifier
-		SetOperatorVersion(operatorV). // operator version
-		SetExecutedAt(time.Now()). // when it was set
-		SetExecutionTime(0). // dummy values
+		SetOperatorVersion(operatorV).    // operator version
+		SetExecutedAt(time.Now()).        // when it was set
+		SetExecutionTime(0).              // dummy values
 		SetHash("").
 		OnConflict(sql.ConflictColumns(revision.FieldID)).
 		Ignore().
@@ -270,37 +324,37 @@ func Dir(u string, create bool) (migrate.Dir, error) {
 
 // DirURL returns a migrate.Dir to use as migration directory. For now only local directories are supported.
 func DirURL(u *url.URL, create bool) (migrate.Dir, error) {
-	path := filepath.Join(u.Host, u.Path)
+	p := filepath.Join(u.Host, u.Path)
 	switch u.Scheme {
 	case "mem":
-		return migrate.OpenMemDir(path), nil
+		return migrate.OpenMemDir(path.Join(u.Host, u.Path)), nil
 	case "file":
-		if path == "" {
-			path = "migrations"
+		if p == "" {
+			p = "migrations"
 		}
 	default:
 		return nil, fmt.Errorf("unsupported driver %q", u.Scheme)
 	}
-	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(path) }
+	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(p) }
 	switch f := u.Query().Get("format"); f {
 	case "", FormatAtlas:
 		// this is the default
 	case FormatGolangMigrate:
-		fn = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(p) }
 	case FormatGoose:
-		fn = func() (migrate.Dir, error) { return sqltool.NewGooseDir(path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewGooseDir(p) }
 	case FormatFlyway:
-		fn = func() (migrate.Dir, error) { return sqltool.NewFlywayDir(path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewFlywayDir(p) }
 	case FormatLiquibase:
-		fn = func() (migrate.Dir, error) { return sqltool.NewLiquibaseDir(path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewLiquibaseDir(p) }
 	case FormatDBMate:
-		fn = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(p) }
 	default:
 		return nil, fmt.Errorf("unknown dir format %q", f)
 	}
 	d, err := fn()
 	if create && errors.Is(err, fs.ErrNotExist) {
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(p, 0755); err != nil {
 			return nil, err
 		}
 		d, err = fn()

@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	noConn = conn{ExecQuerier: sqlx.NoRows, V: "8.0.31"}
+	noConn = &conn{ExecQuerier: sqlx.NoRows, V: "8.0.31"}
 	// DefaultPlan provides basic planning capabilities for MySQL dialects.
 	// Note, it is recommended to call Open, create a new Driver and use its
 	// migrate.PlanApplier when a database connection is available.
@@ -25,7 +25,7 @@ var (
 )
 
 // A planApply provides migration capabilities for schema elements.
-type planApply struct{ conn }
+type planApply struct{ *conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
 func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
@@ -61,7 +61,7 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change, o
 // planApply so that multiple planning/applying can be called
 // in parallel.
 type state struct {
-	conn
+	*conn
 	migrate.Plan
 	migrate.PlanOptions
 }
@@ -587,7 +587,12 @@ func index(b *sqlx.Builder, idx *schema.Index) {
 	switch t := indexType(idx.Attrs); {
 	case idx.Unique:
 		b.P("UNIQUE")
-	case t.T == IndexTypeFullText || t.T == IndexTypeSpatial:
+	case t.T == IndexTypeFullText:
+		if p := (&IndexParser{}); sqlx.Has(idx.Attrs, p) {
+			defer func() { b.P("WITH PARSER").Ident(p.P) }()
+		}
+		b.P(t.T)
+	case t.T == IndexTypeSpatial:
 		b.P(t.T)
 	}
 	b.P("INDEX").Ident(idx.Name)

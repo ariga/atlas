@@ -44,7 +44,7 @@ func (r *StatusReporter) Report(ctx context.Context) (*cmdlog.MigrateStatus, err
 		rep.Pending = rep.Available
 	} else {
 		// Both exist, fetch their data.
-		rrw, err := NewEntRevisions(ctx, r.Client, WithSchema(r.Schema))
+		rrw, err := RevisionsForClient(ctx, r.Client, r.Schema)
 		if err != nil {
 			return nil, err
 		}

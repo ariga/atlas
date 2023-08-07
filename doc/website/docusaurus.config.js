@@ -75,7 +75,7 @@ module.exports = {
           position: 'left'
         },
         {
-          to: 'https://atlasgo.cloud/',
+          to: 'https://atlasgo.cloud/?utm_term=topnav',
           label: 'Cloud',
           position: 'left',
         },
@@ -117,9 +117,9 @@ module.exports = {
         {
           "title": "Atlas Cloud",
           "items": [
-            {"label": "Discover Atlas Cloud", "to": "https://atlasgo.cloud/"},
-            {"label": "Live Demo", "to": "https://gh.atlasgo.cloud/dirs"},
-            {"label": "Sign Up", "to": "https://auth.atlasgo.cloud/signup"},
+            {"label": "Discover Atlas Cloud", "to": "https://atlasgo.cloud/?utm_term=footer"},
+            {"label": "Live Demo", "to": "https://gh.atlasgo.cloud/dirs?utm_term=footer"},
+            {"label": "Sign Up", "to": "https://auth.atlasgo.cloud/signup?utm_term=footer"},
           ]
         },
         {
@@ -140,9 +140,11 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-4', // Increment on change
-      content: `Announcing v0.12.0: Cloud State Management, Read it <a href="https://atlasgo.io/blog/2023/05/31/atlas-v012"> here!</a> 🚀`,
+      id: 'announcementBar-6', // Increment on change
+      content: `<strong>Announcing Atlas v0.13: SQL Views, MSSQL, ERD, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2023/08/06/atlas-v-0-13">Read it here</a>`,
       isCloseable: true,
+      backgroundColor: '#008CFA',
+      textColor: '#fff',
     },
   },
   plugins: [
@@ -245,6 +247,7 @@ module.exports = {
         disableInDev: false,
       },
     ],
+    "./plugins/utm-plugin",
   ],
   presets: [
     [

@@ -288,6 +288,7 @@ CREATE TABLE users(
 			tt.before(mk)
 			s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
 				Tables: []string{"users"},
+				Mode:   ^schema.InspectViews,
 			})
 			require.NoError(t, err)
 			tt.expect(require.New(t), s.Tables[0], err)
@@ -480,6 +481,7 @@ func TestRegex_Checks(t *testing.T) {
 		require.NoError(t, err)
 		s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
 			Tables: []string{name},
+			Mode:   ^schema.InspectViews,
 		})
 		require.NoError(t, err)
 		table := s.Tables[0]
@@ -545,6 +547,7 @@ func TestRegex_GeneratedExpr(t *testing.T) {
 		require.NoError(t, err)
 		s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
 			Tables: []string{name},
+			Mode:   ^schema.InspectViews,
 		})
 		require.NoError(t, err)
 		require.Equal(t, tt.column.Attrs, s.Tables[0].Columns[0].Attrs)

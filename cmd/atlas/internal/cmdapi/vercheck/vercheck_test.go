@@ -82,7 +82,7 @@ func TestState(t *testing.T) {
 			t.Cleanup(srv.Close)
 			path := filepath.Join(t.TempDir(), "release.json")
 			if tt.state != "" {
-				err := os.WriteFile(path, []byte(tt.state), os.ModePerm)
+				err := os.WriteFile(path, []byte(tt.state), 0666)
 				require.NoError(t, err)
 			}
 			vc := New(srv.URL, path)

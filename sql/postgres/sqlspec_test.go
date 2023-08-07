@@ -313,7 +313,8 @@ func TestMarshalViews(t *testing.T) {
 				),
 		).
 		AddViews(
-			schema.NewView("v1", "SELECT 1"),
+			schema.NewView("v1", "SELECT 1").
+				SetCheckOption(schema.ViewCheckOptionLocal),
 			schema.NewView("v2", "SELECT * FROM t2\n\tWHERE id IS NOT NULL"),
 			schema.NewView("v3", "SELECT * FROM t3\n\tWHERE id IS NOT NULL\n\tORDER BY id").
 				AddColumns(
@@ -338,8 +339,9 @@ func TestMarshalViews(t *testing.T) {
   }
 }
 view "v1" {
-  schema = schema.public
-  as     = "SELECT 1"
+  schema       = schema.public
+  as           = "SELECT 1"
+  check_option = LOCAL
 }
 view "v2" {
   schema = schema.public
@@ -394,19 +396,51 @@ view "v2" {
  comment = "view comment"
 }
 view "v3" {
- schema     = schema.public
- as         = "SELECT * FROM v2 JOIN t1 USING (id)"
- depends_on = [view.v1, table.t1]
+ schema       = schema.public
+ as           = "SELECT * FROM v2 JOIN t1 USING (id)"
+ check_option = LOCAL
+ depends_on   = [view.v1, table.t1]
 }
-schema "public" {
+
+table "public" "t2" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
 }
+
+table "other" "t2" {
+  schema = schema.other
+  column "id" {
+    type = int
+  }
+}
+
+view "public" "v4" {
+  schema = schema.public
+  as     = "SELECT * FROM public.t2"
+  depends_on = [table.public.t2]
+}
+
+view "other" "v4" {
+  schema = schema.other
+  as     = "SELECT * FROM other.t2"
+  depends_on = [table.other.t2]
+}
+
+schema "public" {}
+schema "other" {}
 `
 	var (
-		r   schema.Realm
-		s   schema.Schema
-		exp = schema.New("public").
+		r      schema.Realm
+		got    schema.Realm
+		public = schema.New("public").
 			AddTables(
 				schema.NewTable("t1").
+					AddColumns(
+						schema.NewIntColumn("id", "int"),
+					),
+				schema.NewTable("t2").
 					AddColumns(
 						schema.NewIntColumn("id", "int"),
 					),
@@ -419,14 +453,28 @@ schema "public" {
 					).
 					SetComment("view comment"),
 			)
+		other = schema.New("other").
+			AddTables(
+				schema.NewTable("t2").
+					AddColumns(
+						schema.NewIntColumn("id", "int"),
+					),
+			)
 	)
-	exp.AddViews(
+	public.AddViews(
 		schema.NewView("v3", "SELECT * FROM v2 JOIN t1 USING (id)").
-			AddDeps(exp.Views[0], exp.Tables[0]),
+			SetCheckOption(schema.ViewCheckOptionLocal).
+			AddDeps(public.Views[0], public.Tables[0]),
+		schema.NewView("v4", "SELECT * FROM public.t2").
+			AddDeps(public.Tables[1]),
 	)
-	r.AddSchemas(exp)
-	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
-	require.EqualValues(t, exp, &s)
+	other.AddViews(
+		schema.NewView("v4", "SELECT * FROM other.t2").
+			AddDeps(other.Tables[0]),
+	)
+	r.AddSchemas(public, other)
+	require.NoError(t, EvalHCLBytes([]byte(f), &got, nil))
+	require.EqualValues(t, r, got)
 }
 
 func TestUnmarshalSpec_IndexType(t *testing.T) {
@@ -648,7 +696,7 @@ table "logs" {
 				}
 			}
 		`), &schema.Schema{}, nil)
-		require.EqualError(t, err, `specutil: cannot convert table "logs": missing attribute logs.partition.type`)
+		require.Error(t, err, "missing partition type")
 
 		err = EvalHCLBytes([]byte(`
 			schema "test" {}
@@ -774,6 +822,54 @@ func TestMarshalSpec_IndexPredicate(t *testing.T) {
   }
 }
 schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_IndexNullsDistinct(t *testing.T) {
+	s := schema.New("public").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("c", "int"),
+				).
+				AddIndexes(
+					// Default behavior.
+					schema.NewUniqueIndex("without_attribute").
+						AddColumns(schema.NewColumn("c")),
+					schema.NewUniqueIndex("with_nulls_distinct").
+						AddColumns(schema.NewColumn("c")).
+						AddAttrs(&IndexNullsDistinct{V: true}),
+					// Explicitly disable (NULLS NOT DISTINCT).
+					schema.NewUniqueIndex("with_nulls_not_distinct").
+						AddColumns(schema.NewColumn("c")).
+						AddAttrs(&IndexNullsDistinct{V: false}),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.public
+  column "c" {
+    null = false
+    type = int
+  }
+  index "without_attribute" {
+    unique  = true
+    columns = [column.c]
+  }
+  index "with_nulls_distinct" {
+    unique  = true
+    columns = [column.c]
+  }
+  index "with_nulls_not_distinct" {
+    unique         = true
+    columns        = [column.c]
+    nulls_distinct = false
+  }
+}
+schema "public" {
 }
 `
 	require.EqualValues(t, expected, string(buf))
@@ -1925,9 +2021,17 @@ func TestMarshalRealm(t *testing.T) {
 	// Reference is qualified with s1.
 	t5.AddForeignKeys(schema.NewForeignKey("oid2id2").AddColumns(t5.Columns[0]).SetRefTable(t2).AddRefColumns(t2.Columns[0]))
 
+	// Two views with the same name resided in different schemas.
+	v2 := schema.NewView("v2", "SELECT oid FROM s1.t2").
+		AddColumns(schema.NewIntColumn("oid", "int")).
+		AddDeps(t2)
+	v4 := schema.NewView("v2", "SELECT oid FROM s2.t2").
+		AddColumns(schema.NewIntColumn("oid", "int")).
+		AddDeps(t4)
+
 	r := schema.NewRealm(
-		schema.New("s1").AddTables(t1, t2),
-		schema.New("s2").AddTables(t3, t4, t5),
+		schema.New("s1").AddTables(t1, t2).AddViews(v2),
+		schema.New("s2").AddTables(t3, t4, t5).AddViews(v4),
 	)
 	got, err := MarshalHCL.MarshalSpec(r)
 	require.NoError(t, err)
@@ -1985,6 +2089,24 @@ table "t5" {
     columns     = [column.oid]
     ref_columns = [table.s1.t2.column.oid]
   }
+}
+view "s1" "v2" {
+  schema = schema.s1
+  column "oid" {
+    null = false
+    type = int
+  }
+  as         = "SELECT oid FROM s1.t2"
+  depends_on = [table.s1.t2]
+}
+view "s2" "v2" {
+  schema = schema.s2
+  column "oid" {
+    null = false
+    type = int
+  }
+  as         = "SELECT oid FROM s2.t2"
+  depends_on = [table.s2.t2]
 }
 schema "s1" {
 }
