@@ -592,18 +592,15 @@ func parseColumn(typ string) (parts []string, size int, unsigned bool, err error
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	}); parts[0] {
+	case TypeBit, TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
 	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt,
 		TypeDecimal, TypeNumeric, TypeFloat, TypeDouble, TypeReal:
 		if attr := parts[len(parts)-1]; attr == "unsigned" || attr == "zerofill" {
 			unsigned = true
 		}
-		if len(parts) > 2 || len(parts) == 2 && !unsigned {
-			size, err = strconv.Atoi(parts[1])
-		}
-	case TypeBit, TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
-		if len(parts) > 1 {
-			size, err = strconv.Atoi(parts[1])
-		}
+	}
+	if len(parts) > 1 && sqlx.IsUint(parts[1]) {
+		size, err = strconv.Atoi(parts[1])
 	}
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("parse %q to int: %w", parts[1], err)

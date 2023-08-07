@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
@@ -510,7 +509,7 @@ func columnParts(t string) []string {
 	})
 	for k := 0; k < 2; k++ {
 		// Join the type back if it was separated with space (e.g. 'varying character').
-		if len(parts) > 1 && !isNumber(parts[0]) && !isNumber(parts[1]) {
+		if len(parts) > 1 && !sqlx.IsUint(parts[0]) && !sqlx.IsUint(parts[1]) {
 			parts[1] = parts[0] + " " + parts[1]
 			parts = parts[1:]
 		}
@@ -529,16 +528,6 @@ func defaultExpr(x string) schema.Expr {
 		// as they are not parsable in most decoders.
 		return &schema.RawExpr{X: x}
 	}
-}
-
-// isNumber reports whether the string is a number (category N).
-func isNumber(s string) bool {
-	for _, r := range s {
-		if !unicode.IsNumber(r) {
-			return false
-		}
-	}
-	return true
 }
 
 // blob literals are hex strings preceded by 'x' (or 'X).

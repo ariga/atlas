@@ -158,7 +158,7 @@ func (d *diff) Normalize(from, to *schema.Table) error {
 			if used[i] {
 				continue
 			}
-			if fk2.Symbol == fk1.Symbol && !isNumber(fk1.Symbol) || sameFK(fk1, fk2) {
+			if fk2.Symbol == fk1.Symbol && !sqlx.IsUint(fk1.Symbol) || sameFK(fk1, fk2) {
 				fk1.Symbol = fk2.Symbol
 				used[i] = true
 			}

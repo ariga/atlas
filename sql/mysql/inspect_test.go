@@ -236,14 +236,15 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+------------+-------------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
-| table_name |    column_name    | column_type        | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name | generation_expression     |
-+------------+-------------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
-| users      |  float            | float              |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
-| users      |  double           | double             |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
-| users      |  float_unsigned   | float unsigned     |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
-| users      |  double_unsigned  | double unsigned    |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
-| users      |  float_unsigned_p | float(10) unsigned |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
++------------+----------------------------+--------------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
+| table_name |    column_name             | column_type              | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name | generation_expression     |
++------------+----------------------------+--------------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
+| users      |  float                     | float                    |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
+| users      |  double                    | double                   |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
+| users      |  float_unsigned            | float unsigned           |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
+| users      |  double_unsigned           | double unsigned          |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
+| users      |  float_unsigned_p          | float(10) unsigned       |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
+| users      |  doubled_zerofill_unsigned | double unsigned zerofill |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
 +------------+-------------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
 `))
 				m.noIndexes()
@@ -258,6 +259,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "float_unsigned", Type: &schema.ColumnType{Raw: "float unsigned", Type: &schema.FloatType{T: "float", Unsigned: true}}},
 					{Name: "double_unsigned", Type: &schema.ColumnType{Raw: "double unsigned", Type: &schema.FloatType{T: "double", Unsigned: true}}},
 					{Name: "float_unsigned_p", Type: &schema.ColumnType{Raw: "float(10) unsigned", Type: &schema.FloatType{T: "float", Precision: 10, Unsigned: true}}},
+					{Name: "doubled_zerofill_unsigned", Type: &schema.ColumnType{Raw: "double unsigned zerofill", Type: &schema.FloatType{T: "double", Unsigned: true}}},
 				}, t.Columns)
 			},
 		},
