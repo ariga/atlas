@@ -37,6 +37,12 @@ brew install ariga/tap/atlas
 docker pull arigaio/atlas
 ```
 
+**NPM:**
+
+```bash
+npx @ariga/atlas
+```
+
 Click [here](https://atlasgo.io/getting-started#installation) to read instructions for other platforms.
 
 ## Getting started
