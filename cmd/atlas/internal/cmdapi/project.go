@@ -412,7 +412,7 @@ func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
 	state := schemahcl.New(
 		append(
 			cmdext.DataSources,
-			cfg.InitBlock(),
+			cfg.InitBlock(version),
 			schemahcl.WithScopedEnums("env.migration.format", cmdmigrate.Formats...),
 			schemahcl.WithVariables(map[string]cty.Value{
 				refAtlas: cty.ObjectVal(map[string]cty.Value{
