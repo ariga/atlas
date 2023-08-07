@@ -409,10 +409,14 @@ func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
 		return nil, err
 	}
 	cfg := &cmdext.AtlasConfig{}
+	v := version
+	if flavor != "" {
+		v = fmt.Sprintf("%s-%s", version, flavor)
+	}
 	state := schemahcl.New(
 		append(
 			cmdext.DataSources,
-			cfg.InitBlock(),
+			cfg.InitBlock(v),
 			schemahcl.WithScopedEnums("env.migration.format", cmdmigrate.Formats...),
 			schemahcl.WithVariables(map[string]cty.Value{
 				refAtlas: cty.ObjectVal(map[string]cty.Value{
