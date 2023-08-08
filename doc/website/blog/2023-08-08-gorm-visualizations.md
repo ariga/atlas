@@ -9,7 +9,7 @@ in Atlas that enables developers to quickly create ERD (Entity Relationship Diag
 of their database schemas.  Today, I want to show how this feature can be used in tandem with one
 of Atlas's core capabilities - "Schema Loaders" - to produce visualizations of GORM models.
 
-But first let's introduce the different characters in this story:
+But first, let's introduce the different characters in this story:
 * [Atlas](https://atlasgo.io) - an open-source tool for managing database schemas.
 * [GORM](https://gorm.io) - one of the most popular ORMs for Go.
 * [ERD](https://en.wikipedia.org/wiki/Entity%E2%80%93relationship_model) - a diagram that shows the relationships between entities in a database.
@@ -22,7 +22,7 @@ the database schema that GORM generates for you.
 
 ### Step 1: Bootstrap the GORM application
 
-Start by creating a new directory for our project, and initialize a new Go module:
+Start by creating a new directory for our project. Then, initialize a new Go module:
 
 ```shell
 mkdir gormviz
@@ -60,7 +60,7 @@ type Pet struct {
 
 ### Step 2: Setup Atlas
 
-Now that we have a GORM application, let's setup Atlas. First, we will install the Atlas CLI:
+Now that we have a GORM application, let's set up Atlas. First, we will install the Atlas CLI:
 
 ```shell
 curl -sSf https://atlasgo.sh | sh
@@ -86,7 +86,7 @@ import _ "ariga.io/atlas-provider-gorm/gormschema"
 Alternatively, you can simply add a blank import to the `models.go` file we created
 above.
 
-Finally, to tidy things up run: 
+Finally, to tidy things up, run: 
 
 ```text
 go mod tidy
@@ -122,7 +122,7 @@ This file defines two things:
 
 ### Step 3: Visualize the GORM models
 
-Now that we have everything setup, let's run Atlas and see what we get:
+Now that we have everything set up, let's run Atlas and see what we get:
 
 ```shell
 atlas schema inspect --env gorm --visualize
