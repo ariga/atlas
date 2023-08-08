@@ -92,7 +92,6 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
       --revisions-schema string   name of the schema the revisions table resides in
       --dry-run                   print SQL without executing it
       --lock-timeout duration     set how long to wait for the database lock (default 10s)
-      --from string               calculate pending files from the given version (including it)
       --baseline string           start the first migration after the given baseline version
       --tx-mode string            set transaction mode [none, file, all] (default "file")
       --allow-dirty               allow start working on a non-clean database

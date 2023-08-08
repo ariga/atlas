@@ -75,7 +75,6 @@ type migrateApplyFlags struct {
 	logFormat       string
 	lockTimeout     time.Duration
 	allowDirty      bool   // allow working on a database that already has resources
-	fromVersion     string // compute pending files based on this version
 	baselineVersion string // apply with this version as baseline
 	txMode          string // (none, file, all)
 }
@@ -86,9 +85,6 @@ func (f *migrateApplyFlags) migrateOptions() (opts []migrate.ExecutorOption) {
 	}
 	if v := f.baselineVersion; v != "" {
 		opts = append(opts, migrate.WithBaselineVersion(v))
-	}
-	if v := f.fromVersion; v != "" {
-		opts = append(opts, migrate.WithFromVersion(v))
 	}
 	return
 }
@@ -141,11 +137,9 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)
 	addFlagDryRun(cmd.Flags(), &flags.dryRun)
 	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
-	cmd.Flags().StringVarP(&flags.fromVersion, flagFrom, "", "", "calculate pending files from the given version (including it)")
 	cmd.Flags().StringVarP(&flags.baselineVersion, flagBaseline, "", "", "start the first migration after the given baseline version")
 	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file, all]")
 	cmd.Flags().BoolVarP(&flags.allowDirty, flagAllowDirty, "", false, "allow start working on a non-clean database")
-	cmd.MarkFlagsMutuallyExclusive(flagFrom, flagBaseline)
 	cmd.MarkFlagsMutuallyExclusive(flagLog, flagFormat)
 	return cmd
 }

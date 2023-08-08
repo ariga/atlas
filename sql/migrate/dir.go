@@ -38,12 +38,6 @@ type (
 		Checksum() (HashFile, error)
 	}
 
-	// Formatter wraps the Format method.
-	Formatter interface {
-		// Format formats the given Plan into one or more migration files.
-		Format(*Plan) ([]File, error)
-	}
-
 	// File represents a single migration file.
 	File interface {
 		// Name returns the name of the migration file.
@@ -59,6 +53,50 @@ type (
 		// StmtDecls returns the set of SQL statements this file holds alongside its preceding comments.
 		StmtDecls() ([]*Stmt, error)
 	}
+
+	// Formatter wraps the Format method.
+	Formatter interface {
+		// Format formats the given Plan into one or more migration files.
+		Format(*Plan) ([]File, error)
+	}
+)
+
+type (
+	// CheckpointDir wraps the functionality used to interact
+	// with a migration directory that support checkpoints.
+	CheckpointDir interface {
+		// WriteCheckpoint writes the given checkpoint file to the migration directory.
+		WriteCheckpoint(name, tag string, content []byte) error
+
+		// CheckpointFiles returns a set of checkpoint files stored in this Dir,
+		// ordered by name.
+		CheckpointFiles() ([]File, error)
+
+		// FilesFromCheckpoint returns the files to be executed on a database from
+		// the given checkpoint file, including it. An ErrCheckpointNotFound if the
+		// checkpoint file is not found in the directory.
+		FilesFromCheckpoint(string) ([]File, error)
+	}
+
+	// CheckpointFile wraps the functionality used to interact with files
+	// returned from a CheckpointDir.
+	CheckpointFile interface {
+		// IsCheckpoint returns true if the file is a checkpoint file.
+		IsCheckpoint() bool
+
+		// CheckpointTag returns the tag of the checkpoint file, if defined. The tag
+		// can be derived from the file name, internal metadata or directive comments.
+		//
+		// An ErrNotCheckpoint is returned if the file is not a checkpoint file.
+		CheckpointTag() (string, error)
+	}
+)
+
+var (
+	// ErrNotCheckpoint is returned when calling CheckpointFile methods on a non-checkpoint file.
+	ErrNotCheckpoint = errors.New("not a checkpoint file")
+	// ErrCheckpointNotFound is returned when a checkpoint file is not found in the directory.
+	ErrCheckpointNotFound = errors.New("no checkpoint found")
 )
 
 // LocalDir implements Dir for a local migration
@@ -67,7 +105,10 @@ type LocalDir struct {
 	path string
 }
 
-var _ Dir = (*LocalDir)(nil)
+var _ interface {
+	Dir
+	CheckpointDir
+} = (*LocalDir)(nil)
 
 // NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
 func NewLocalDir(path string) (*LocalDir, error) {
@@ -110,15 +151,15 @@ func (d *LocalDir) Files() ([]File, error) {
 	sort.Slice(names, func(i, j int) bool {
 		return names[i] < names[j]
 	})
-	ret := make([]File, len(names))
-	for i, n := range names {
+	files := make([]File, 0, len(names))
+	for _, n := range names {
 		b, err := fs.ReadFile(d, n)
 		if err != nil {
 			return nil, fmt.Errorf("sql/migrate: read file %q: %w", n, err)
 		}
-		ret[i] = NewLocalFile(n, b)
+		files = append(files, NewLocalFile(n, b))
 	}
-	return ret, nil
+	return files, nil
 }
 
 // Checksum implements Dir.Checksum. By default, it calls Files() and creates a checksum from them.
@@ -130,13 +171,33 @@ func (d *LocalDir) Checksum() (HashFile, error) {
 	return NewHashFile(files)
 }
 
+// WriteCheckpoint is like WriteFile, but marks the file as a checkpoint file.
+func (d *LocalDir) WriteCheckpoint(name, tag string, b []byte) error {
+	f := NewLocalFile(name, b)
+	f.AddDirective(directiveCheckpoint, tag)
+	return d.WriteFile(name, f.Bytes())
+}
+
+// CheckpointFiles implements CheckpointDir.CheckpointFiles.
+func (d *LocalDir) CheckpointFiles() ([]File, error) {
+	return checkpointFiles(d)
+}
+
+// FilesFromCheckpoint implements CheckpointDir.FilesFromCheckpoint.
+func (d *LocalDir) FilesFromCheckpoint(name string) ([]File, error) {
+	return filesFromCheckpoint(d, name)
+}
+
 // LocalFile is used by LocalDir to implement the Scanner interface.
 type LocalFile struct {
 	n string
 	b []byte
 }
 
-var _ File = (*LocalFile)(nil)
+var _ interface {
+	File
+	CheckpointFile
+} = (*LocalFile)(nil)
 
 // NewLocalFile returns a new local file.
 func NewLocalFile(name string, data []byte) *LocalFile {
@@ -144,12 +205,12 @@ func NewLocalFile(name string, data []byte) *LocalFile {
 }
 
 // Name implements File.Name.
-func (f LocalFile) Name() string {
+func (f *LocalFile) Name() string {
 	return f.n
 }
 
 // Desc implements File.Desc.
-func (f LocalFile) Desc() string {
+func (f *LocalFile) Desc() string {
 	parts := strings.SplitN(f.n, "_", 2)
 	if len(parts) == 1 {
 		return ""
@@ -158,12 +219,12 @@ func (f LocalFile) Desc() string {
 }
 
 // Version implements File.Version.
-func (f LocalFile) Version() string {
+func (f *LocalFile) Version() string {
 	return strings.SplitN(strings.TrimSuffix(f.n, ".sql"), "_", 2)[0]
 }
 
 // Stmts returns the SQL statement exists in the local file.
-func (f LocalFile) Stmts() ([]string, error) {
+func (f *LocalFile) Stmts() ([]string, error) {
 	s, err := Stmts(string(f.b))
 	if err != nil {
 		return nil, err
@@ -176,19 +237,85 @@ func (f LocalFile) Stmts() ([]string, error) {
 }
 
 // StmtDecls returns the all statement declarations exist in the local file.
-func (f LocalFile) StmtDecls() ([]*Stmt, error) {
+func (f *LocalFile) StmtDecls() ([]*Stmt, error) {
 	return Stmts(string(f.b))
 }
 
 // Bytes returns local file data.
-func (f LocalFile) Bytes() []byte {
+func (f *LocalFile) Bytes() []byte {
 	return f.b
+}
+
+// IsCheckpoint reports whether the file is a checkpoint file.
+func (f *LocalFile) IsCheckpoint() bool {
+	return len(f.Directive(directiveCheckpoint)) > 0
+}
+
+// CheckpointTag returns the tag of the checkpoint file, if defined.
+func (f *LocalFile) CheckpointTag() (string, error) {
+	ds := f.Directive(directiveCheckpoint)
+	if len(ds) == 0 {
+		return "", ErrNotCheckpoint
+	}
+	return ds[0], nil
+}
+
+const (
+	// atlas:sum directive.
+	directiveSum  = "sum"
+	sumModeIgnore = "ignore"
+	// atlas:delimiter directive.
+	directiveDelimiter = "delimiter"
+	// atlas:checkpoint directive.
+	directiveCheckpoint = "checkpoint"
+	directivePrefixSQL  = "-- "
+)
+
+var reDirective = regexp.MustCompile(`^([ -~]*)atlas:(\w+)(?: +([ -~]*))*`)
+
+// directive searches in the content a line that matches a directive
+// with the given prefix and name. For example:
+//
+//	directive(c, "delimiter", "-- ")	// '-- atlas:delimiter.*'
+//	directive(c, "sum", "")				// 'atlas:sum.*'
+//	directive(c, "sum")					// '.*atlas:sum'
+func directive(content, name string, prefix ...string) (string, bool) {
+	m := reDirective.FindStringSubmatch(content)
+	// In case the prefix was provided ensures it is matched.
+	if len(m) == 4 && m[2] == name && (len(prefix) == 0 || prefix[0] == m[1]) {
+		return m[3], true
+	}
+	return "", false
 }
 
 // Directive returns the (global) file directives that match the provided name.
 // File directives are located at the top of the file and should not be associated with any
 // statement. Hence, double new lines are used to separate file directives from its content.
-func (f LocalFile) Directive(name string) (ds []string) {
+func (f *LocalFile) Directive(name string) (ds []string) {
+	for _, c := range f.comments() {
+		if d, ok := directive(c, name); ok {
+			ds = append(ds, d)
+		}
+	}
+	return ds
+}
+
+// AddDirective adds a new directive to the file.
+func (f *LocalFile) AddDirective(name string, args ...string) {
+	var b strings.Builder
+	b.WriteString("-- atlas:" + name)
+	if len(args) > 0 {
+		b.WriteByte(' ')
+		b.WriteString(strings.Join(args, " "))
+	}
+	b.WriteByte('\n')
+	if len(f.comments()) == 0 {
+		b.WriteByte('\n')
+	}
+	f.b = append([]byte(b.String()), f.b...)
+}
+
+func (f *LocalFile) comments() []string {
 	var (
 		comments []string
 		content  = string(f.b)
@@ -203,23 +330,18 @@ func (f LocalFile) Directive(name string) (ds []string) {
 		comments = append(comments, strings.TrimSpace(content[:idx]))
 		content = content[idx+1:]
 	}
-	// File directives are separated by
-	// double newlines from file content.
+	// File comments are separated by double newlines from
+	// file content (detached from actual statements).
 	if !strings.HasPrefix(content, "\n") {
 		return nil
 	}
-	for _, c := range comments {
-		if d, ok := directive(c, name); ok {
-			ds = append(ds, d)
-		}
-	}
-	return ds
+	return comments
 }
 
 type (
 	// MemDir provides an in-memory Dir implementation.
 	MemDir struct {
-		files  map[string]File
+		files  map[string]*LocalFile
 		syncTo []func(string, []byte) error
 	}
 	// An opened MemDir.
@@ -229,11 +351,17 @@ type (
 	}
 )
 
-// A list of the opened memory-based directories.
-var memDirs struct {
-	sync.Mutex
-	opened map[string]*openedMem
-}
+var (
+	// A list of the opened memory-based directories.
+	memDirs struct {
+		sync.Mutex
+		opened map[string]*openedMem
+	}
+	_ interface {
+		Dir
+		CheckpointDir
+	} = (*MemDir)(nil)
+)
 
 // OpenMemDir opens an in-memory directory and registers it in the process namespace
 // with the given name. Hence, calling OpenMemDir with the same name will return the
@@ -292,7 +420,7 @@ func (d *MemDir) Close() error {
 // WriteFile adds a new file in-memory.
 func (d *MemDir) WriteFile(name string, data []byte) error {
 	if d.files == nil {
-		d.files = make(map[string]File)
+		d.files = make(map[string]*LocalFile)
 	}
 	d.files[name] = NewLocalFile(name, data)
 	for _, f := range d.syncTo {
@@ -301,6 +429,23 @@ func (d *MemDir) WriteFile(name string, data []byte) error {
 		}
 	}
 	return nil
+}
+
+// WriteCheckpoint is like WriteFile, but marks the file as a checkpoint file.
+func (d *MemDir) WriteCheckpoint(name, tag string, b []byte) error {
+	f := NewLocalFile(name, b)
+	f.AddDirective(directiveCheckpoint, tag)
+	return d.WriteFile(name, f.Bytes())
+}
+
+// CheckpointFiles implements CheckpointDir.CheckpointFiles.
+func (d *MemDir) CheckpointFiles() ([]File, error) {
+	return checkpointFiles(d)
+}
+
+// FilesFromCheckpoint implements CheckpointDir.FilesFromCheckpoint.
+func (d *MemDir) FilesFromCheckpoint(name string) ([]File, error) {
+	return filesFromCheckpoint(d, name)
 }
 
 // SyncWrites allows syncing writes from in-memory directory
@@ -512,7 +657,7 @@ func Validate(dir Dir) error {
 
 // FilesLastIndex returns the index of the last file
 // satisfying f(i), or -1 if none do.
-func FilesLastIndex(files []File, f func(File) bool) int {
+func FilesLastIndex[F File](files []F, f func(F) bool) int {
 	for i := len(files) - 1; i >= 0; i-- {
 		if f(files[i]) {
 			return i
@@ -521,30 +666,66 @@ func FilesLastIndex(files []File, f func(File) bool) int {
 	return -1
 }
 
-const (
-	// atlas:sum directive.
-	directiveSum  = "sum"
-	sumModeIgnore = "ignore"
-	// atlas:delimiter directive.
-	directiveDelimiter = "delimiter"
-	directivePrefixSQL = "-- "
-)
-
-var reDirective = regexp.MustCompile(`^([ -~]*)atlas:(\w+)(?: +([ -~]*))*`)
-
-// directive searches in the content a line that matches a directive
-// with the given prefix and name. For example:
-//
-//	directive(c, "delimiter", "-- ")	// '-- atlas:delimiter.*'
-//	directive(c, "sum", "")				// 'atlas:sum.*'
-//	directive(c, "sum")					// '.*atlas:sum'
-func directive(content, name string, prefix ...string) (string, bool) {
-	m := reDirective.FindStringSubmatch(content)
-	// In case the prefix was provided ensures it is matched.
-	if len(m) == 4 && m[2] == name && (len(prefix) == 0 || prefix[0] == m[1]) {
-		return m[3], true
+// SkipCheckpointFiles returns a filtered set of files that are not checkpoint files.
+func SkipCheckpointFiles(all []File) []File {
+	files := make([]File, 0, len(all))
+	for _, f := range all {
+		if ck, ok := f.(CheckpointFile); ok && ck.IsCheckpoint() {
+			continue
+		}
+		files = append(files, f)
 	}
-	return "", false
+	return files
+}
+
+// FilesFromLastCheckpoint returns a set of files created after the last checkpoint,
+// if exists, to be executed on a database (on the first time). Note, if the Dir is
+// not a CheckpointDir, or no checkpoint file was found, all files are returned.
+func FilesFromLastCheckpoint(dir Dir) ([]File, error) {
+	ck, ok := dir.(CheckpointDir)
+	if !ok {
+		return dir.Files()
+	}
+	cks, err := ck.CheckpointFiles()
+	if err != nil {
+		return nil, err
+	}
+	if len(cks) == 0 {
+		return dir.Files()
+	}
+	return ck.FilesFromCheckpoint(cks[len(cks)-1].Name())
+}
+
+// checkpointFiles returns all checkpoint files in a migration directory.
+func checkpointFiles(d Dir) ([]File, error) {
+	files, err := d.Files()
+	if err != nil {
+		return nil, err
+	}
+	var cks []File
+	for _, f := range files {
+		if ck, ok := f.(CheckpointFile); ok && ck.IsCheckpoint() {
+			cks = append(cks, f)
+		}
+	}
+	return cks, nil
+}
+
+// filesFromCheckpoint returns all files from the given checkpoint
+// to be executed on the database, including the checkpoint file.
+func filesFromCheckpoint(d Dir, name string) ([]File, error) {
+	files, err := d.Files()
+	if err != nil {
+		return nil, err
+	}
+	i := FilesLastIndex(files, func(f File) bool {
+		c, ok := f.(CheckpointFile)
+		return ok && c.IsCheckpoint() && f.Name() == name
+	})
+	if i == -1 {
+		return nil, ErrCheckpointNotFound
+	}
+	return files[i:], nil
 }
 
 // readHashFile reads the HashFile from the given Dir.
