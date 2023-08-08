@@ -30,7 +30,7 @@ type Client struct {
 }
 
 // New creates a new Client for the Atlas Cloud API.
-func New(endpoint, token, version string) *Client {
+func New(endpoint, token string) *Client {
 	if endpoint == "" {
 		endpoint = defaultURL
 	}
@@ -38,8 +38,7 @@ func New(endpoint, token, version string) *Client {
 		endpoint: endpoint,
 		client: &http.Client{
 			Transport: &roundTripper{
-				token:   token,
-				version: version,
+				token: token,
 			},
 			Timeout: time.Second * 30,
 		},
@@ -233,12 +232,12 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 
 // roundTripper is a http.RoundTripper that adds the Authorization header.
 type roundTripper struct {
-	token, version string
+	token string
 }
 
 // RoundTrip implements http.RoundTripper.
 func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	SetHeader(req, r.token, r.version)
+	SetHeader(req, r.token)
 	return http.DefaultTransport.RoundTrip(req)
 }
 
@@ -251,8 +250,20 @@ func RedactedURL(s string) (string, error) {
 	return u.Redacted(), nil
 }
 
+// version of the CLI set by cmdapi.
+var version = "development"
+
+// SetVersion allow cmdapi to set the version
+// of the CLI provided at build time.
+func SetVersion(v, flavor string) {
+	version = v
+	if flavor != "" {
+		version += "-" + flavor
+	}
+}
+
 // SetHeader sets header fields for cloud requests.
-func SetHeader(req *http.Request, token, version string) {
+func SetHeader(req *http.Request, token string) {
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("User-Agent", fmt.Sprintf("Atlas/%s", version))
 	req.Header.Set("Content-Type", "application/json")

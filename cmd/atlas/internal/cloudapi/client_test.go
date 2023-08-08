@@ -22,6 +22,7 @@ func TestClient_Dir(t *testing.T) {
 	require.NoError(t, dir.WriteFile("1.sql", []byte("create table foo (id int)")))
 	ad, err := migrate.ArchiveDir(&dir)
 	require.NoError(t, err)
+	SetVersion("v0.13.0", "")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var input struct {
 			Variables struct {
@@ -33,10 +34,10 @@ func TestClient_Dir(t *testing.T) {
 		require.Equal(t, "foo", input.Variables.DirInput.Name)
 		require.Equal(t, "x", input.Variables.DirInput.Tag)
 		require.Equal(t, "Bearer atlas", r.Header.Get("Authorization"))
-		require.Equal(t, "Atlas/v1-community", r.Header.Get("User-Agent"))
+		require.Equal(t, "Atlas/v0.13.0", r.Header.Get("User-Agent"))
 		fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(ad))
 	}))
-	client := New(srv.URL, "atlas", "v1-community")
+	client := New(srv.URL, "atlas")
 	defer srv.Close()
 	gd, err := client.Dir(context.Background(), DirInput{
 		Name: "foo",
@@ -63,7 +64,7 @@ func TestClient_ReportMigration(t *testing.T) {
 		require.Equal(t, env, input.Variables.Input.EnvName)
 		require.Equal(t, project, input.Variables.Input.ProjectName)
 	}))
-	client := New(srv.URL, "atlas", "v1")
+	client := New(srv.URL, "atlas")
 	defer srv.Close()
 	err := client.ReportMigration(context.Background(), ReportMigrationInput{
 		EnvName:     env,
@@ -95,7 +96,7 @@ func TestClient_ReportMigrationSet(t *testing.T) {
 		require.Equal(t, project, input.Variables.Input.Completed[1].ProjectName)
 		require.Equal(t, "dir-2", input.Variables.Input.Completed[1].DirName)
 	}))
-	client := New(srv.URL, "atlas", "v1")
+	client := New(srv.URL, "atlas")
 	defer srv.Close()
 	err := client.ReportMigrationSet(context.Background(), ReportMigrationSetInput{
 		ID:      id,
