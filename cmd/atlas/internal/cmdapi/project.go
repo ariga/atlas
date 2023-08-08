@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/schemahcl"
@@ -409,14 +410,10 @@ func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
 		return nil, err
 	}
 	cfg := &cmdext.AtlasConfig{}
-	v := version
-	if flavor != "" {
-		v = fmt.Sprintf("%s-%s", version, flavor)
-	}
 	state := schemahcl.New(
 		append(
 			cmdext.DataSources,
-			cfg.InitBlock(v),
+			cfg.InitBlock(),
 			schemahcl.WithScopedEnums("env.migration.format", cmdmigrate.Formats...),
 			schemahcl.WithVariables(map[string]cty.Value{
 				refAtlas: cty.ObjectVal(map[string]cty.Value{
@@ -451,6 +448,7 @@ func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
 }
 
 func init() {
+	cloudapi.SetVersion(version, flavor)
 	schemahcl.Register(blockEnv, &Env{})
 }
 
