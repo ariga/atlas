@@ -14,7 +14,7 @@ But first, let's introduce the different characters in this story:
 * [GORM](https://gorm.io) - one of the most popular ORMs for Go.
 * [ERD](https://en.wikipedia.org/wiki/Entity%E2%80%93relationship_model) - a diagram that shows the relationships between entities in a database.
   (we'll see an example in a minute)
-* [Schema Loaders](https://atlasgo.io/docs/schema-loaders) - a feature in Atlas that allows users to load their
+* [Schema Loaders](https://atlasgo.io/atlas-schema/external) - a feature in Atlas that allows users to load their
   database schemas from different sources.
 
 In this blog post, we will create a toy GORM application, and show how you can use Atlas to visualize
