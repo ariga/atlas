@@ -488,43 +488,6 @@ func TestExecutor_Baseline(t *testing.T) {
 	require.Equal(t, migrate.RevisionTypeBaseline, rrw[0].Type)
 }
 
-func TestExecutor_FromVersion(t *testing.T) {
-	var (
-		drv = &mockDriver{}
-		log = &mockLogger{}
-		rrw = &mockRevisionReadWriter{
-			{
-				Version:     "1.a",
-				Description: "sub.up",
-				Applied:     2,
-				Total:       2,
-				Hash:        "nXyZR020M/mH7LxkoTkJr7BcQkipVg90imQ9I4595dw=",
-			},
-		}
-	)
-	dir, err := migrate.NewLocalDir(filepath.Join("testdata/migrate", "sub"))
-	require.NoError(t, err)
-	ex, err := migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log))
-	require.NoError(t, err)
-	files, err := ex.Pending(context.Background())
-	require.NoError(t, err)
-	require.Len(t, files, 2)
-
-	// Control the starting point.
-	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithFromVersion("3"))
-	require.NoError(t, err)
-	files, err = ex.Pending(context.Background())
-	require.NoError(t, err)
-	require.Len(t, files, 1)
-
-	// Starting point was not found.
-	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithFromVersion("4"))
-	require.NoError(t, err)
-	files, err = ex.Pending(context.Background())
-	require.EqualError(t, err, `starting point version "4" not found in the migration directory`)
-	require.Nil(t, files)
-}
-
 type (
 	mockDriver struct {
 		migrate.Driver

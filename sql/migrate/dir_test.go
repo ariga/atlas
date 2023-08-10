@@ -199,6 +199,92 @@ func TestLocalDir(t *testing.T) {
 	require.Equal(t, "description", files[1].Desc())
 }
 
+func TestCheckpointDir(t *testing.T) {
+	local, err := migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+	for _, d := range []interface {
+		migrate.Dir
+		migrate.CheckpointDir
+	}{&migrate.MemDir{}, local} {
+		files, err := d.Files()
+		require.NoError(t, err)
+		require.Empty(t, files)
+		cks, err := d.CheckpointFiles()
+		require.NoError(t, err)
+		require.Empty(t, cks)
+		require.NoError(t, migrate.Validate(d))
+
+		require.NoError(t, d.WriteFile("1.sql", []byte("create table t1(c int);")))
+		sum, err := d.Checksum()
+		require.NoError(t, err)
+		require.NoError(t, migrate.WriteSumFile(d, sum))
+		require.NoError(t, migrate.Validate(d))
+		files, err = d.Files()
+		require.NoError(t, err)
+		require.Len(t, files, 1)
+		cks, err = d.CheckpointFiles()
+		require.NoError(t, err)
+		require.Empty(t, cks)
+
+		require.NoError(t, d.WriteCheckpoint("2_checkpoint.sql", "", []byte("create table t1(c int);")))
+		sum, err = d.Checksum()
+		require.NoError(t, err)
+		require.NoError(t, migrate.WriteSumFile(d, sum))
+		require.NoError(t, migrate.Validate(d))
+		files, err = d.Files()
+		require.NoError(t, err)
+		require.Len(t, files, 2)
+		require.Equal(t, []string{"1.sql", "2_checkpoint.sql"}, []string{files[0].Name(), files[1].Name()})
+		files = migrate.SkipCheckpointFiles(files)
+		require.Len(t, files, 1)
+		require.Equal(t, "1.sql", files[0].Name())
+		cks, err = d.CheckpointFiles()
+		require.NoError(t, err)
+		require.Len(t, cks, 1)
+		require.Equal(t, "2_checkpoint.sql", cks[0].Name())
+
+		require.NoError(t, d.WriteFile("3.sql", []byte("create table t2(c int);")))
+		sum, err = d.Checksum()
+		require.NoError(t, err)
+		require.NoError(t, migrate.WriteSumFile(d, sum))
+		require.NoError(t, migrate.Validate(d))
+		files, err = d.Files()
+		require.NoError(t, err)
+		require.Len(t, files, 3)
+		require.Equal(t, []string{"1.sql", "2_checkpoint.sql", "3.sql"}, []string{files[0].Name(), files[1].Name(), files[2].Name()})
+		files = migrate.SkipCheckpointFiles(files)
+		require.Len(t, files, 2)
+		require.Equal(t, []string{"1.sql", "3.sql"}, []string{files[0].Name(), files[1].Name()})
+		cks, err = d.CheckpointFiles()
+		require.NoError(t, err)
+		require.Len(t, cks, 1)
+		require.Equal(t, "2_checkpoint.sql", cks[0].Name())
+
+		require.NoError(t, d.WriteCheckpoint("4_checkpoint.sql", "v4", []byte("create table t1(c int);\ncreate table t2(c int);")))
+		sum, err = d.Checksum()
+		require.NoError(t, err)
+		require.NoError(t, migrate.WriteSumFile(d, sum))
+		require.NoError(t, migrate.Validate(d))
+		files, err = d.Files()
+		require.NoError(t, err)
+		require.Len(t, files, 4)
+		require.Equal(t, []string{"1.sql", "2_checkpoint.sql", "3.sql", "4_checkpoint.sql"}, []string{files[0].Name(), files[1].Name(), files[2].Name(), files[3].Name()})
+		files = migrate.SkipCheckpointFiles(files)
+		require.Len(t, files, 2)
+		require.Equal(t, []string{"1.sql", "3.sql"}, []string{files[0].Name(), files[1].Name()})
+		cks, err = d.CheckpointFiles()
+		require.NoError(t, err)
+		require.Len(t, cks, 2)
+		require.Equal(t, []string{"2_checkpoint.sql", "4_checkpoint.sql"}, []string{cks[0].Name(), cks[1].Name()})
+		tag, err := cks[0].(migrate.CheckpointFile).CheckpointTag()
+		require.NoError(t, err)
+		require.Equal(t, "", tag)
+		tag, err = cks[1].(migrate.CheckpointFile).CheckpointTag()
+		require.NoError(t, err)
+		require.Equal(t, "v4", tag)
+	}
+}
+
 func TestMemDir(t *testing.T) {
 	var d migrate.MemDir
 	files, err := d.Files()
@@ -305,6 +391,12 @@ alter table pets drop column id;
 	require.Equal(t, []string{"ignore"}, f.Directive("lint"), "first directive from two")
 	require.Equal(t, []string{"none"}, f.Directive("txmode"), "second directive from two")
 
+	f = migrate.NewLocalFile("1.sql", []byte(`-- atlas:nolint
+
+alter table users drop column id;
+`))
+	require.Equal(t, []string{""}, f.Directive("nolint"), "directives without arguments returned as empty string")
+
 	f = migrate.NewLocalFile("1.sql", nil)
 	require.Empty(t, f.Directive("lint"))
 	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:lint ignore"))
@@ -313,6 +405,54 @@ alter table pets drop column id;
 	require.Empty(t, f.Directive("lint"))
 	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:lint ignore\n\n"))
 	require.Equal(t, []string{"ignore"}, f.Directive("lint"), "double newline as directive separator")
+}
+
+func TestLocalFile_AddDirective(t *testing.T) {
+	f := migrate.NewLocalFile("1.sql", []byte("SELECT 1;"))
+	f.AddDirective("lint", "ignore")
+	require.Equal(t, []string{"ignore"}, f.Directive("lint"))
+	require.Equal(t, "-- atlas:lint ignore\n\nSELECT 1;", string(f.Bytes()))
+	f.AddDirective("checkpoint")
+	require.Equal(t, []string{"ignore"}, f.Directive("lint"))
+	require.Equal(t, []string{""}, f.Directive("checkpoint"))
+	require.Equal(t, `-- atlas:checkpoint
+-- atlas:lint ignore
+
+SELECT 1;`, string(f.Bytes()))
+
+	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:directive statement directive\nSELECT 1;"))
+	f.AddDirective("lint", "ignore")
+	require.Equal(t, []string{"ignore"}, f.Directive("lint"))
+	require.Equal(t, `-- atlas:lint ignore
+
+-- atlas:directive statement directive
+SELECT 1;`, string(f.Bytes()))
+}
+
+func TestLocalFile_CheckpointTag(t *testing.T) {
+	// Not a checkpoint.
+	for _, b := range []string{
+		"SELECT 1;",
+		"-- atlas:checkpoint\nSELECT 1;",
+		"-- atlas:checkpoint tag\nSELECT 1;",
+	} {
+		f := migrate.NewLocalFile("1.sql", []byte(b))
+		require.False(t, f.IsCheckpoint())
+		tag, err := f.CheckpointTag()
+		require.ErrorIs(t, err, migrate.ErrNotCheckpoint)
+		require.Empty(t, tag)
+	}
+	// Checkpoint.
+	f := migrate.NewLocalFile("1.sql", []byte("-- atlas:checkpoint\n\nSELECT 1;"))
+	require.True(t, f.IsCheckpoint())
+	tag, err := f.CheckpointTag()
+	require.NoError(t, err)
+	require.Empty(t, tag)
+	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:checkpoint tag\n\nSELECT 1;"))
+	require.True(t, f.IsCheckpoint())
+	tag, err = f.CheckpointTag()
+	require.NoError(t, err)
+	require.Equal(t, "tag", tag)
 }
 
 func TestDirTar(t *testing.T) {
