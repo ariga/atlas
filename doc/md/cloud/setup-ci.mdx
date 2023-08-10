@@ -48,11 +48,19 @@ After logging in to Atlas Cloud, create a new migration directory by clicking on
 "Migrations Directories" in the sidebar and then clicking on the "Add Directory"
 button.
 
+<details><summary>Screenshot Example</summary>
+
 ![](https://atlasgo.io/uploads/cloud/ci-guide/create-dir-1.png)
+
+</details>
 
 Click "Connect with GitHub" to initiate the GitHub App installation flow.
 
+<details>
+<summary>Screenshot Example</summary>
+
 ![](https://atlasgo.io/uploads/cloud/ci-guide/create-dir-2.png)
+</details>
 
 ### Step 2: Connect Your Repository
 
@@ -60,12 +68,20 @@ Once you've installed the GitHub App, you need to grant it access to
 the relevant repositories. Click on the "Organization" field and choose
 "Add Organization" from the dropdown:
 
+<details>
+<summary>Screenshot Example</summary>
+
 ![](https://atlasgo.io/uploads/cloud/ci-guide/create-dir-3.png)
+</details>
 
 A popup requesting you to grant permission to specific repositories will appear.
 Select the repositories you want to grant access to and click "Install and Authorize".
 
+<details>
+<summary>Screenshot Example</summary>
+
 ![](https://atlasgo.io/uploads/cloud/ci-guide/create-dir-4.png)
+</details>
 
 ### Step 3: Configure the Migration Directory
 
@@ -76,7 +92,11 @@ Fill the rest of the form with the relevant configuration details:
   format, but also supports `golang-migrate`, Flyway and Liquibase.
 * **Database** - the database engine for the target database.
 
+<details>
+<summary>Screenshot Example</summary>
+
 ![](https://atlasgo.io/uploads/cloud/ci-guide/create-dir-5.png)
+</details>
 
 Click "Connect Directory" to finish the process.
 
@@ -117,7 +137,12 @@ After a few seconds, Atlas Cloud will pick up the changes and run CI against
 them. Shortly after, you will see a comment on your pull request with the
 results of the CI run:
 
+<details>
+<summary>Screenshot Example</summary>
+
 ![](https://atlasgo.io/uploads/cloud/ci-guide/app-ci.png)
+</details>
+
 
 Amazing! Atlas Cloud caught the destructive change and prevented it from being
 accidentally merged to your main branch.
@@ -125,8 +150,11 @@ accidentally merged to your main branch.
 To see a more detailed report of the CI run, click on the "Full Report on Atlas Cloud"
 link in the comment:
 
-![](https://atlasgo.io/uploads/cloud/ci-guide/app-cloud-report.png)
+<details>
+<summary>Screenshot Example</summary>
 
+![](https://atlasgo.io/uploads/cloud/ci-guide/app-cloud-report.png)
+</details>
 
 ## Push (GitHub Action) Workflow
 
@@ -196,61 +224,71 @@ GitHub CLI extension that will do most of the work for you:
   Next, the GitHub extension will save your bot token to a GitHub secret and create a
   pull request with the necessary configuration for the GitHub Action.
 
+  <details>
+  <summary>Screenshot Example</summary>
+
   ![](https://atlasgo.io/uploads/cloud/ci-guide/gh-ext-pr-main.png)
+  </details>
 
   The PR contains a GitHub Actions workflow similar to this:
-```yaml
-name: Atlas
-on:
-  push:
-    branches:
-      - master
-  pull_request:
-    paths:
-      - 'migrations/*'
-# Permissions to write comments on the pull request.
-permissions:
-  contents: read
-  pull-requests: write
-jobs:
-  lint:
-    services:
-      # Spin up a mysql:8 container to be used as the dev-database for analysis.
-      mysql:
-        image: mysql:8
-        env:
-          MYSQL_DATABASE: dev
-          MYSQL_ROOT_PASSWORD: pass
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd "mysqladmin ping -ppass"
-          --health-interval 10s
-          --health-start-period 10s
-          --health-timeout 5s
-          --health-retries 10
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: ariga/atlas-action@v0
-        with:
-          dir: 'migrations'
-          dev-url: "mysql://root:pass@localhost:3306/dev"
-          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN_PfddoG }}
-  sync:
-    needs: lint
-    if: github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: ariga/atlas-sync-action@v0
-        with:
-          dir: 'migrations'
-          driver: mysql
-          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN_PfddoG }}
-```
+
+  <details>
+  
+  <summary>Code Example</summary>
+  
+      name: Atlas
+      on:
+        push:
+          branches:
+            - master
+        pull_request:
+          paths:
+            - 'migrations/*'
+      # Permissions to write comments on the pull request.
+      permissions:
+        contents: read
+        pull-requests: write
+      jobs:
+        lint:
+          services:
+            # Spin up a mysql:8 container to be used as the dev-database for analysis.
+            mysql:
+              image: mysql:8
+              env:
+                MYSQL_DATABASE: dev
+                MYSQL_ROOT_PASSWORD: pass
+              ports:
+                - 3306:3306
+              options: >-
+                --health-cmd "mysqladmin ping -ppass"
+                --health-interval 10s
+                --health-start-period 10s
+                --health-timeout 5s
+                --health-retries 10
+          runs-on: ubuntu-latest
+          steps:
+            - uses: actions/checkout@v3
+              with:
+                fetch-depth: 0
+            - uses: ariga/atlas-action@v0
+              with:
+                dir: 'migrations'
+                dev-url: "mysql://root:pass@localhost:3306/dev"
+                cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN_PfddoG }}
+        sync:
+          needs: lint
+          if: github.ref == 'refs/heads/master'
+          runs-on: ubuntu-latest
+          steps:
+            - uses: actions/checkout@v3
+            - uses: ariga/atlas-sync-action@v0
+              with:
+                dir: 'migrations'
+                driver: mysql
+                cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN_PfddoG }}
+  
+  </details>
+
 
   After reviewing the changes, merge the pull request to enable the GitHub Action.
 
@@ -301,18 +339,29 @@ and sync the migrations to Atlas Cloud on every push to `master`.
   ```
 
 5. Open a pull request for the `test-ci` branch and wait for the GitHub Action to run.
+  <details>
+  <summary>Screenshot Example</summary>
 
   ![](https://atlasgo.io/uploads/cloud/ci-guide/open-pr.png)
+  </details>
+
+
 
 6. Notice that after a few moments, a comment appears on the pull request with the results of the linting run:
+  <details>
+  <summary>Screenshot Example</summary>
 
   ![](https://atlasgo.io/uploads/cloud/ci-guide/pr-comment.png)
+  </details>
 
   The linting run failed because of the syntax error we introduced in the migration file.
 
 7. Click on "Full Report on Atlas Cloud" to see the full report on Atlas Cloud:
+  <details>
+  <summary>Screenshot Example</summary>
 
   ![](https://atlasgo.io/uploads/cloud/ci-guide/fixed-cloud-report-2.png)
+  </details>
 
 ## Summary
 
