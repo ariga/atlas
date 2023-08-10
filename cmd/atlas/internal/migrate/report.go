@@ -29,10 +29,7 @@ type StatusReporter struct {
 
 // Report creates and writes a MigrateStatus.
 func (r *StatusReporter) Report(ctx context.Context) (*cmdlog.MigrateStatus, error) {
-	rep, err := cmdlog.NewMigrateStatus(r.Client, r.Dir)
-	if err != nil {
-		return nil, err
-	}
+	rep := &cmdlog.MigrateStatus{Env: cmdlog.NewEnv(r.Client, r.Dir)}
 	// Check if there already is a revision table in the defined schema.
 	// Inspect schema and check if the table does already exist.
 	sch, err := r.Client.InspectSchema(ctx, r.Schema, &schema.InspectOptions{Tables: []string{revision.Table}})
@@ -41,6 +38,9 @@ func (r *StatusReporter) Report(ctx context.Context) (*cmdlog.MigrateStatus, err
 	}
 	if schema.IsNotExistError(err) || func() bool { _, ok := sch.Table(revision.Table); return !ok }() {
 		// Either schema or table does not exist.
+		if rep.Available, err = migrate.FilesFromLastCheckpoint(r.Dir); err != nil {
+			return nil, err
+		}
 		rep.Pending = rep.Available
 	} else {
 		// Both exist, fetch their data.
@@ -55,12 +55,18 @@ func (r *StatusReporter) Report(ctx context.Context) (*cmdlog.MigrateStatus, err
 		if err != nil {
 			return nil, err
 		}
-		rep.Pending, err = ex.Pending(ctx)
-		if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
-			return nil, err
-		}
 		rep.Applied, err = rrw.ReadRevisions(ctx)
 		if err != nil {
+			return nil, err
+		}
+		if rep.Pending, err = ex.Pending(ctx); err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
+			return nil, err
+		}
+		// If no files were applied, all pending files are
+		// available. The first one might be a checkpoint.
+		if len(rep.Applied) == 0 {
+			rep.Available = rep.Pending
+		} else if rep.Available, err = r.Dir.Files(); err != nil {
 			return nil, err
 		}
 	}
