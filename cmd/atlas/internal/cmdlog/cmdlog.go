@@ -103,7 +103,7 @@ var (
 {{- if eq .Status "PENDING" }} {{ yellow .Status }}{{ end }}
   {{ yellow "--" }} Current Version: {{ cyan .Current }}
 {{- if gt .Total 0 }}{{ printf " (%s statements applied)" (yellow "%d" .Count) }}{{ end }}
-  {{ yellow "--" }} Next Version:    {{ cyan .Next }}
+  {{ yellow "--" }} Next Version:    {{ cyan .Next }}{{ if .FromCheckpoint }} (checkpoint){{ end }}
 {{- if gt .Total 0 }}{{ printf " (%s statements left)" (yellow "%d" .Left) }}{{ end }}
   {{ yellow "--" }} Executed Files:  {{ len .Applied }}{{ if gt .Total 0 }} (last one partially){{ end }}
   {{ yellow "--" }} Pending Files:   {{ len .Pending }}
@@ -139,20 +139,18 @@ type MigrateStatus struct {
 	SQL       string              `json:"SQL,omitempty"`       // SQL that caused the last Error
 }
 
-// NewMigrateStatus returns a new MigrateStatus.
-func NewMigrateStatus(c *sqlclient.Client, dir migrate.Dir) (*MigrateStatus, error) {
-	files, err := dir.Files()
-	if err != nil {
-		return nil, err
-	}
-	return &MigrateStatus{
-		Env:       NewEnv(c, dir),
-		Available: files,
-	}, nil
-}
-
 // Left returns the amount of statements left to apply (if any).
 func (r *MigrateStatus) Left() int { return r.Total - r.Count }
+
+// FromCheckpoint reports if we start from a checkpoint version
+// Hence, the first file to be executed on the database is checkpoint.
+func (r *MigrateStatus) FromCheckpoint() bool {
+	if len(r.Applied) > 0 || len(r.Pending) == 0 || r.Pending[0].Version() != r.Next {
+		return false
+	}
+	ck, ok := r.Pending[0].(migrate.CheckpointFile)
+	return ok && ck.IsCheckpoint()
+}
 
 func table(report *MigrateStatus) (string, error) {
 	var buf strings.Builder
