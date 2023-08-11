@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package lint_test
+package migratelint_test
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"testing"
 	"text/template"
 
-	"ariga.io/atlas/cmd/atlas/internal/lint"
+	"ariga.io/atlas/cmd/atlas/internal/migratelint"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
@@ -25,7 +25,7 @@ func TestRunner_Run(t *testing.T) {
 	b := &bytes.Buffer{}
 	c, err := sqlclient.Open(ctx, "sqlite://run?mode=memory&cache=shared&_fk=1")
 	require.NoError(t, err)
-	r := &lint.Runner{
+	r := &migratelint.Runner{
 		Dir: testDir{},
 		Dev: c,
 		ChangeDetector: testDetector{
@@ -39,8 +39,8 @@ func TestRunner_Run(t *testing.T) {
 		Analyzers: []sqlcheck.Analyzer{
 			&testAnalyzer{},
 		},
-		ReportWriter: &lint.TemplateWriter{
-			T: lint.DefaultTemplate,
+		ReportWriter: &migratelint.TemplateWriter{
+			T: migratelint.DefaultTemplate,
 			W: b,
 		},
 	}
@@ -59,8 +59,8 @@ func TestRunner_Run(t *testing.T) {
 `, b.String())
 
 	b.Reset()
-	r.ReportWriter.(*lint.TemplateWriter).T = template.Must(template.New("").
-		Funcs(lint.TemplateFuncs).
+	r.ReportWriter.(*migratelint.TemplateWriter).T = template.Must(template.New("").
+		Funcs(migratelint.TemplateFuncs).
 		Parse(`
 Env:
 {{ .Env.Driver }}, {{ .Env.Dir }}
