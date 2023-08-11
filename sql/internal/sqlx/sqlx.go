@@ -114,11 +114,14 @@ func SchemaFKs(s *schema.Schema, rows *sql.Rows) error {
 				OnUpdate: schema.ReferenceOption(updateRule),
 			}
 			switch {
-			case refTable == table:
-			case tSchema == refSchema:
+			// Self reference.
+			case tSchema == refSchema && refTable == table:
+			// Reference to the same schema.
+			case tSchema == refSchema && refTable != table:
 				if fk.RefTable, ok = s.Table(refTable); !ok {
 					fk.RefTable = &schema.Table{Name: refTable, Schema: s}
 				}
+			// Reference to an external schema.
 			case tSchema != refSchema:
 				fk.RefTable = &schema.Table{Name: refTable, Schema: &schema.Schema{Name: refSchema}}
 			}
