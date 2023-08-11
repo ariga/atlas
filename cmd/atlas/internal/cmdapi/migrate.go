@@ -24,9 +24,9 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
-	"ariga.io/atlas/cmd/atlas/internal/lint"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
+	"ariga.io/atlas/cmd/atlas/internal/migratelint"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -928,28 +928,28 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 	if err != nil {
 		return err
 	}
-	var detect lint.ChangeDetector
+	var detect migratelint.ChangeDetector
 	switch {
 	case flags.latest == 0 && flags.gitBase == "":
 		return fmt.Errorf("--%s or --%s is required", flagLatest, flagGitBase)
 	case flags.latest > 0 && flags.gitBase != "":
 		return fmt.Errorf("--%s and --%s are mutually exclusive", flagLatest, flagGitBase)
 	case flags.latest > 0:
-		detect = lint.LatestChanges(dir, int(flags.latest))
+		detect = migratelint.LatestChanges(dir, int(flags.latest))
 	case flags.gitBase != "":
-		detect, err = lint.NewGitChangeDetector(
+		detect, err = migratelint.NewGitChangeDetector(
 			dir,
-			lint.WithWorkDir(flags.gitDir),
-			lint.WithBase(flags.gitBase),
-			lint.WithMigrationsPath(dir.(interface{ Path() string }).Path()),
+			migratelint.WithWorkDir(flags.gitDir),
+			migratelint.WithBase(flags.gitBase),
+			migratelint.WithMigrationsPath(dir.(interface{ Path() string }).Path()),
 		)
 		if err != nil {
 			return err
 		}
 	}
-	format := lint.DefaultTemplate
+	format := migratelint.DefaultTemplate
 	if f := flags.logFormat; f != "" {
-		format, err = template.New("format").Funcs(lint.TemplateFuncs).Parse(f)
+		format, err = template.New("format").Funcs(migratelint.TemplateFuncs).Parse(f)
 		if err != nil {
 			return fmt.Errorf("parse format: %w", err)
 		}
@@ -962,11 +962,11 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 	if err != nil {
 		return err
 	}
-	r := &lint.Runner{
+	r := &migratelint.Runner{
 		Dev:            dev,
 		Dir:            dir,
 		ChangeDetector: detect,
-		ReportWriter: &lint.TemplateWriter{
+		ReportWriter: &migratelint.TemplateWriter{
 			T: format,
 			W: cmd.OutOrStdout(),
 		},
@@ -974,7 +974,7 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 	}
 	err = r.Run(cmd.Context())
 	// Print the error in case it was not printed before.
-	cmd.SilenceErrors = errors.As(err, &lint.SilentError{})
+	cmd.SilenceErrors = errors.As(err, &migratelint.SilentError{})
 	cmd.SilenceUsage = cmd.SilenceErrors
 	return err
 }
@@ -1085,10 +1085,6 @@ func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) (re
 	if err != nil {
 		return err
 	}
-	files, err := dir.Files()
-	if err != nil {
-		return err
-	}
 	client, err := sqlclient.Open(ctx, flags.url)
 	if err != nil {
 		return err
@@ -1131,6 +1127,10 @@ func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) (re
 		return err
 	}
 	revs, err := rrw.ReadRevisions(ctx)
+	if err != nil {
+		return err
+	}
+	files, err := dir.Files()
 	if err != nil {
 		return err
 	}

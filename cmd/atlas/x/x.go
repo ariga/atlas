@@ -12,7 +12,7 @@ import (
 	"context"
 	"errors"
 
-	"ariga.io/atlas/cmd/atlas/internal/lint"
+	"ariga.io/atlas/cmd/atlas/internal/migratelint"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
@@ -20,8 +20,8 @@ import (
 
 // Exposes the lint reporting types.
 type (
-	FileReport    = lint.FileReport
-	SummaryReport = lint.SummaryReport
+	FileReport    = migratelint.FileReport
+	SummaryReport = migratelint.SummaryReport
 )
 
 // ErrEmptyReport is returned when the report is empty.
@@ -29,17 +29,17 @@ var ErrEmptyReport = errors.New("empty report")
 
 // lintLatest runs the lint command on the latest changes (files) in the given directory.
 func lintLatest(ctx context.Context, dev *sqlclient.Client, dir migrate.Dir, latest int, az []sqlcheck.Analyzer) (report *SummaryReport, err error) {
-	r := lint.Runner{
+	r := migratelint.Runner{
 		Dev:            dev,
 		Dir:            dir,
 		Analyzers:      az,
-		ChangeDetector: lint.LatestChanges(dir, latest),
+		ChangeDetector: migratelint.LatestChanges(dir, latest),
 		ReportWriter: reporterFunc(func(r *SummaryReport) error {
 			report = r
 			return nil
 		}),
 	}
-	if err = r.Run(ctx); err != nil && !errors.As(err, &lint.SilentError{}) {
+	if err = r.Run(ctx); err != nil && !errors.As(err, &migratelint.SilentError{}) {
 		return nil, err
 	}
 	if report == nil {

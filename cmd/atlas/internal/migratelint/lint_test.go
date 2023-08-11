@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package lint_test
+package migratelint_test
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"ariga.io/atlas/cmd/atlas/internal/lint"
+	"ariga.io/atlas/cmd/atlas/internal/migratelint"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
@@ -51,7 +51,7 @@ func TestGitChangeDetector(t *testing.T) {
 	// Test change detector.
 	dir, err := migrate.NewLocalDir(mdir)
 	require.NoError(t, err)
-	cs, err := lint.NewGitChangeDetector(dir, lint.WithWorkDir(root))
+	cs, err := migratelint.NewGitChangeDetector(dir, migratelint.WithWorkDir(root))
 	require.NoError(t, err)
 	base, feat, err := cs.DetectChanges(context.Background())
 	require.NoError(t, err)
@@ -75,7 +75,7 @@ func TestGitChangeDetector(t *testing.T) {
 	require.Equal(t, "6_new.sql", feat[3].Name())
 
 	// Compare feature and feature-1.
-	cs, err = lint.NewGitChangeDetector(dir, lint.WithWorkDir(root), lint.WithBase("feature"))
+	cs, err = migratelint.NewGitChangeDetector(dir, migratelint.WithWorkDir(root), migratelint.WithBase("feature"))
 	require.NoError(t, err)
 	base, feat, err = cs.DetectChanges(context.Background())
 	require.NoError(t, err)
@@ -94,22 +94,22 @@ func TestLatestChanges(t *testing.T) {
 		testFile{name: "1.sql", content: "CREATE TABLE t1 (id INT)"},
 		testFile{name: "2.sql", content: "CREATE TABLE t2 (id INT)\nDROP TABLE users"},
 	}
-	base, feat, err := lint.LatestChanges(testDir{files: files}, 0).DetectChanges(context.Background())
+	base, feat, err := migratelint.LatestChanges(testDir{files: files}, 0).DetectChanges(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, files, base)
 	require.Empty(t, feat)
 
-	base, feat, err = lint.LatestChanges(testDir{files: files}, 2).DetectChanges(context.Background())
+	base, feat, err = migratelint.LatestChanges(testDir{files: files}, 2).DetectChanges(context.Background())
 	require.NoError(t, err)
 	require.Empty(t, base)
 	require.Equal(t, files, feat)
 
-	base, feat, err = lint.LatestChanges(testDir{files: files}, -1).DetectChanges(context.Background())
+	base, feat, err = migratelint.LatestChanges(testDir{files: files}, -1).DetectChanges(context.Background())
 	require.NoError(t, err)
 	require.Empty(t, base)
 	require.Equal(t, files, feat)
 
-	base, feat, err = lint.LatestChanges(testDir{files: files}, 1).DetectChanges(context.Background())
+	base, feat, err = migratelint.LatestChanges(testDir{files: files}, 1).DetectChanges(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, files[:1], base)
 	require.Equal(t, files[1:], feat)
@@ -120,7 +120,7 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	c, err := sqlclient.Open(ctx, "sqlite://ci?mode=memory&cache=shared&_fk=1")
 	require.NoError(t, err)
 	defer c.Close()
-	l := &lint.DevLoader{Dev: c}
+	l := &migratelint.DevLoader{Dev: c}
 	diff, err := l.LoadChanges(ctx, nil, nil)
 	require.NoError(t, err)
 	require.Empty(t, diff.Files)
@@ -130,7 +130,7 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	}, nil)
 	require.Error(t, err)
 	require.Nil(t, diff)
-	fr := err.(*lint.FileError)
+	fr := err.(*migratelint.FileError)
 	require.Equal(t, `executing statement: near "INVALID": syntax error`, fr.Err.Error())
 	require.Equal(t, 5, fr.Pos)
 
