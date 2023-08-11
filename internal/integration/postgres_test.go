@@ -559,11 +559,37 @@ func TestPostgres_HCL_ForeignKeyCrossSchema(t *testing.T) {
     on_delete   = NO_ACTION
   }
 }
+table "financial" "t" {
+  schema = schema.financial
+  column "t_id" {
+    null = false
+    type = uuid
+  }
+  primary_key {
+    columns = [column.t_id]
+  }
+  foreign_key "fk_t_id" {
+    columns     = [column.t_id]
+    ref_columns = [table.users.t.column.id]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+}
 table "financial" "users" {
   schema = schema.financial
   column "id" {
     null = false
     type = serial
+  }
+}
+table "users" "t" {
+  schema = schema.users
+  column "id" {
+    null = false
+    type = uuid
+  }
+  primary_key {
+    columns = [column.id]
   }
 }
 table "users" "users" {
