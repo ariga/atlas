@@ -514,7 +514,6 @@ type migrateDiffFlags struct {
 	schemas           []string
 	lockTimeout       time.Duration
 	format            string
-	revisionSchema    string // revision schema name
 	qualifier         string // optional table qualifier
 }
 
@@ -556,7 +555,6 @@ directory state to the desired schema. The desired state can be another connecte
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
 	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
-	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
 	addFlagFormat(cmd.Flags(), &flags.format)
