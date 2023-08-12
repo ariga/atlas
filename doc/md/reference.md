@@ -123,16 +123,15 @@ directory state to the desired schema. The desired state can be another connecte
 ```
 #### Flags
 ```
-      --to strings                [driver://username:password@address/dbname?param=value] select a desired state using the URL format
-      --dev-url string            [driver://username:password@address/dbname?param=value] select a dev database using the URL format
-      --dir string                select migration directory using URL format (default "file://migrations")
-      --dir-format string         select migration file format (default "atlas")
-      --revisions-schema string   name of the schema the revisions table resides in
-  -s, --schema strings            set schema names
-      --lock-timeout duration     set how long to wait for the database lock (default 10s)
-      --format string             Go template to use to format the output
-      --qualifier string          qualify tables with custom qualifier when working on a single schema
-      --edit                      edit the generated migration file(s)
+      --to strings              [driver://username:password@address/dbname?param=value] select a desired state using the URL format
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string              select migration directory using URL format (default "file://migrations")
+      --dir-format string       select migration file format (default "atlas")
+  -s, --schema strings          set schema names
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+      --format string           Go template to use to format the output
+      --qualifier string        qualify tables with custom qualifier when working on a single schema
+      --edit                    edit the generated migration file(s)
 
 ```
 
