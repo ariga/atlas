@@ -183,13 +183,17 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 	}
 	defer func() {
 		if err2 := restore(ctx); err2 != nil {
-			if err != nil {
-				err2 = fmt.Errorf("%w: %v", err, err2)
-			}
-			err = err2
+			err = errors.Join(err, fmt.Errorf("restore dev-database snapshot: %w", err2))
 		}
 	}()
-	// Bring the dev environment to the base point.
+	// Bring the dev environment to the base point. Skip to the first checkpoint, if there is one,
+	// assuming the history is replay-able before that point as this was tested in previous runs.
+	if i := migrate.FilesLastIndex(base, func(f migrate.File) bool {
+		ck, ok := f.(migrate.CheckpointFile)
+		return ok && ck.IsCheckpoint()
+	}); i != -1 {
+		base = base[i:]
+	}
 	for _, f := range base {
 		stmt, err := f.StmtDecls()
 		if err != nil {
@@ -209,40 +213,69 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 		From:  current,
 		Files: make([]*sqlcheck.File, len(files)),
 	}
+	cks := make([]int, 0, len(files))
 	for i, f := range files {
 		diff.Files[i] = &sqlcheck.File{
 			File:   f,
 			Parser: sqlparse.ParserFor(d.Dev.Name),
 		}
-		stmts, err := f.StmtDecls()
-		if err != nil {
-			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
+		// Skip checkpoint files and process them separately at the end.
+		if ck, ok := f.(migrate.CheckpointFile); ok && ck.IsCheckpoint() {
+			cks = append(cks, i)
+			continue
 		}
-		start := current
-		for _, s := range stmts {
-			if _, err := d.Dev.ExecContext(ctx, s.Text); err != nil {
-				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err), Pos: s.Pos}
-			}
-			target, err := d.inspect(ctx)
-			if err != nil {
-				return nil, err
-			}
-			changes, err := d.Dev.RealmDiff(current, target)
-			if err != nil {
-				return nil, err
-			}
-			current = target
-			diff.Files[i].Changes = append(diff.Files[i].Changes, &sqlcheck.Change{
-				Stmt:    s,
-				Changes: d.mayFix(s.Text, changes),
-			})
-		}
-		if diff.Files[i].Sum, err = d.Dev.RealmDiff(start, current); err != nil {
+		if current, err = d.next(ctx, diff.Files[i], current); err != nil {
 			return nil, err
 		}
 	}
 	diff.To = current
+	// For each checkpoint file, restore the dev environment
+	// to the base point (clean) and load its changes.
+	for _, i := range cks {
+		if err := restore(ctx); err != nil {
+			return nil, err
+		}
+		current, err := d.inspect(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := d.next(ctx, diff.Files[i], current); err != nil {
+			return nil, err
+		}
+	}
 	return diff, nil
+}
+
+// next returns the next state of the database after executing the statements in
+// the file. The changes detected by the statements are attached to the file.
+func (d *DevLoader) next(ctx context.Context, f *sqlcheck.File, start *schema.Realm) (current *schema.Realm, err error) {
+	stmts, err := f.StmtDecls()
+	if err != nil {
+		return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
+	}
+	current = start
+	for _, s := range stmts {
+		if _, err := d.Dev.ExecContext(ctx, s.Text); err != nil {
+			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err), Pos: s.Pos}
+		}
+		next, err := d.inspect(ctx)
+		if err != nil {
+			return nil, err
+		}
+		changes, err := d.Dev.RealmDiff(current, next)
+		if err != nil {
+			return nil, err
+		}
+		current = next
+		f.Changes = append(f.Changes, &sqlcheck.Change{
+			Stmt:    s,
+			Changes: d.mayFix(s.Text, changes),
+		})
+	}
+	if f.Sum, err = d.Dev.RealmDiff(start, current); err != nil {
+		return nil, err
+	}
+	return current, nil
 }
 
 // mayFix uses the sqlparse package for fixing or attaching more info to the changes.

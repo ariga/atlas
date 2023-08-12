@@ -117,7 +117,7 @@ func TestLatestChanges(t *testing.T) {
 
 func TestDevLoader_LoadChanges(t *testing.T) {
 	ctx := context.Background()
-	c, err := sqlclient.Open(ctx, "sqlite://ci?mode=memory&cache=shared&_fk=1")
+	c, err := sqlclient.Open(ctx, "sqlite://ci?mode=memory&_fk=1")
 	require.NoError(t, err)
 	defer c.Close()
 	l := &migratelint.DevLoader{Dev: c}
@@ -192,6 +192,54 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	require.ErrorAs(t, err, new(*migrate.NotCleanError))
 }
 
+func TestDevLoader_LoadCheckpoints(t *testing.T) {
+	ctx := context.Background()
+	c, err := sqlclient.Open(ctx, "sqlite://ci?mode=memory&_fk=1")
+	require.NoError(t, err)
+	defer c.Close()
+	dir := &migrate.MemDir{}
+	l := &migratelint.DevLoader{Dev: c}
+	require.NoError(t, dir.WriteFile("1.sql", []byte("CREATE TABLE t1 (id INT);")))
+	require.NoError(t, dir.WriteFile("2.sql", []byte("CREATE TABLE t2 (id INT);")))
+	require.NoError(t, dir.WriteCheckpoint("3_checkpoint.sql", "", []byte("CREATE TABLE t1 (id INT);\nCREATE TABLE t2 (id INT);")))
+	require.NoError(t, dir.WriteFile("4.sql", []byte("CREATE TABLE t3 (id INT);")))
+
+	files, err := dir.Files()
+	require.NoError(t, err)
+	// Base contains a checkpoint file.
+	diff, err := l.LoadChanges(ctx, files[:3], files[3:])
+	require.NoError(t, err)
+	require.Len(t, diff.Files, 1)
+	require.Equal(t, "4.sql", diff.Files[0].File.Name())
+	isAddTable(t, diff.Files[0].Changes[0].Changes[0], "t3")
+
+	// Changed files contain a checkpoint file.
+	diff, err = l.LoadChanges(ctx, files[:2], files[2:])
+	require.NoError(t, err)
+	require.Len(t, diff.Files, 2)
+	require.Equal(t, "3_checkpoint.sql", diff.Files[0].File.Name())
+	require.Len(t, diff.Files[0].Changes, 2)
+	isAddTable(t, diff.Files[0].Changes[0].Changes[0], "t1")
+	isAddTable(t, diff.Files[0].Changes[1].Changes[0], "t2")
+	require.Equal(t, "4.sql", diff.Files[1].File.Name())
+	isAddTable(t, diff.Files[1].Changes[0].Changes[0], "t3")
+
+	// Both base and changed files contain a checkpoint file.
+	require.NoError(t, dir.WriteCheckpoint("5_checkpoint.sql", "", []byte("CREATE TABLE t1(id INT);\nCREATE TABLE t2(id INT);\nCREATE TABLE t3(id INT);")))
+	files, err = dir.Files()
+	require.NoError(t, err)
+	diff, err = l.LoadChanges(ctx, files[:3], files[3:])
+	require.NoError(t, err)
+	require.Len(t, diff.Files, 2)
+	require.Equal(t, "4.sql", diff.Files[0].File.Name())
+	isAddTable(t, diff.Files[0].Changes[0].Changes[0], "t3")
+	require.Equal(t, "5_checkpoint.sql", diff.Files[1].File.Name())
+	require.Len(t, diff.Files[1].Changes, 3)
+	isAddTable(t, diff.Files[1].Changes[0].Changes[0], "t1")
+	isAddTable(t, diff.Files[1].Changes[1].Changes[0], "t2")
+	isAddTable(t, diff.Files[1].Changes[2].Changes[0], "t3")
+}
+
 type testDir struct {
 	migrate.Dir
 	files []migrate.File
@@ -228,4 +276,9 @@ func (f testFile) Stmts() ([]string, error) {
 
 func (f testFile) StmtDecls() (stmts []*migrate.Stmt, err error) {
 	return migrate.Stmts(f.content)
+}
+
+func isAddTable(t *testing.T, c schema.Change, name string) {
+	require.IsType(t, (*schema.AddTable)(nil), c)
+	require.Equal(t, name, c.(*schema.AddTable).T.Name)
 }
