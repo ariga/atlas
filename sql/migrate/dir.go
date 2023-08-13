@@ -172,8 +172,14 @@ func (d *LocalDir) Checksum() (HashFile, error) {
 
 // WriteCheckpoint is like WriteFile, but marks the file as a checkpoint file.
 func (d *LocalDir) WriteCheckpoint(name, tag string, b []byte) error {
-	f := NewLocalFile(name, b)
-	f.AddDirective(directiveCheckpoint, tag)
+	var (
+		args []string
+		f    = NewLocalFile(name, b)
+	)
+	if tag != "" {
+		args = append(args, tag)
+	}
+	f.AddDirective(directiveCheckpoint, args...)
 	return d.WriteFile(name, f.Bytes())
 }
 
@@ -426,8 +432,14 @@ func (d *MemDir) WriteFile(name string, data []byte) error {
 
 // WriteCheckpoint is like WriteFile, but marks the file as a checkpoint file.
 func (d *MemDir) WriteCheckpoint(name, tag string, b []byte) error {
-	f := NewLocalFile(name, b)
-	f.AddDirective(directiveCheckpoint, tag)
+	var (
+		args []string
+		f    = NewLocalFile(name, b)
+	)
+	if tag != "" {
+		args = append(args, tag)
+	}
+	f.AddDirective(directiveCheckpoint, args...)
 	return d.WriteFile(name, f.Bytes())
 }
 
