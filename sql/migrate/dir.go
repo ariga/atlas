@@ -65,6 +65,7 @@ type (
 	// CheckpointDir wraps the functionality used to interact
 	// with a migration directory that support checkpoints.
 	CheckpointDir interface {
+		Dir
 		// WriteCheckpoint writes the given checkpoint file to the migration directory.
 		WriteCheckpoint(name, tag string, content []byte) error
 
@@ -81,6 +82,7 @@ type (
 	// CheckpointFile wraps the functionality used to interact with files
 	// returned from a CheckpointDir.
 	CheckpointFile interface {
+		File
 		// IsCheckpoint returns true if the file is a checkpoint file.
 		IsCheckpoint() bool
 
@@ -105,10 +107,7 @@ type LocalDir struct {
 	path string
 }
 
-var _ interface {
-	Dir
-	CheckpointDir
-} = (*LocalDir)(nil)
+var _ CheckpointDir = (*LocalDir)(nil)
 
 // NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
 func NewLocalDir(path string) (*LocalDir, error) {
@@ -194,10 +193,7 @@ type LocalFile struct {
 	b []byte
 }
 
-var _ interface {
-	File
-	CheckpointFile
-} = (*LocalFile)(nil)
+var _ CheckpointFile = (*LocalFile)(nil)
 
 // NewLocalFile returns a new local file.
 func NewLocalFile(name string, data []byte) *LocalFile {
@@ -357,10 +353,7 @@ var (
 		sync.Mutex
 		opened map[string]*openedMem
 	}
-	_ interface {
-		Dir
-		CheckpointDir
-	} = (*MemDir)(nil)
+	_ CheckpointDir = (*MemDir)(nil)
 )
 
 // OpenMemDir opens an in-memory directory and registers it in the process namespace
