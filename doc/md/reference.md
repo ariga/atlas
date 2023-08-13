@@ -99,6 +99,42 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
 ```
 
 
+### atlas migrate checkpoint
+
+Generate a checkpoint file representing the state of the migration directory.
+
+#### Usage
+```
+atlas migrate checkpoint [flags] [tag]
+```
+
+#### Details
+The 'atlas migrate checkpoint' command uses the dev-database to calculate the current state of the migration directory
+by executing its files. It then creates a checkpoint file that represents this state, enabling new environments to bypass
+previous files and immediately skip to this checkpoint when executing the 'atlas migrate apply' command.
+
+#### Example
+
+```
+  atlas migrate checkpoint --dev-url docker://mysql/8/dev
+  atlas migrate checkpoint --dev-url "docker://postgres/15/dev?search_path=public"
+  atlas migrate checkpoint --dev-url "sqlite://dev?mode=memory"
+  atlas migrate checkpoint --env dev --format '{{ sql . "  " }}'
+```
+#### Flags
+```
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string              select migration directory using URL format (default "file://migrations")
+      --dir-format string       select migration file format (default "atlas")
+  -s, --schema strings          set schema names
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+      --format string           Go template to use to format the output
+      --qualifier string        qualify tables with custom qualifier when working on a single schema
+      --edit                    edit the generated migration file(s)
+
+```
+
+
 ### atlas migrate diff
 
 Compute the diff between the migration directory and a desired state and create a new migration file.
@@ -109,15 +145,16 @@ atlas migrate diff [flags] [name]
 ```
 
 #### Details
-'atlas migrate diff' uses the dev-database to re-run all migration files in the migration directory, compares
-it to a given desired state and create a new migration file containing SQL statements to migrate the migration
-directory state to the desired schema. The desired state can be another connected database or an HCL file.
+The 'atlas migrate diff' command uses the dev-database to calculate the current state of the migration directory
+by executing its files. It then compares its state to the desired state and create a new migration file containing
+SQL statements for moving from the current to the desired state. The desired state can be another another database,
+an HCL, SQL, or ORM schema. See: https://atlasgo.io/versioned/diff
 
 #### Example
 
 ```
-  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://schema.hcl
-  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
+  atlas migrate diff --dev-url docker://mysql/8/dev --to file://schema.hcl
+  atlas migrate diff --dev-url "docker://postgres/15/dev?search_path=public" --to file://atlas.hcl add_users_table
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
   atlas migrate diff --env dev --format '{{ sql . "  " }}'
 ```

@@ -1496,6 +1496,107 @@ table "users" {
 	})
 }
 
+func TestMigrate_Checkpoint(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "migrations")
+	_, err := runCmd(
+		migrateCheckpointCmd(),
+		"--dir", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.Error(t, err)
+
+	require.NoError(t, os.MkdirAll(p, 0755))
+	s, err := runCmd(
+		migrateCheckpointCmd(),
+		"--dir", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.Equal(t, "The migration directory is empty, no checkpoint to be made\n", s)
+
+	// Add t1.
+	_, err = runCmd(
+		migrateDiffCmd(),
+		"add_t1",
+		"--dir", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+		"--to", openSQLite(t, "CREATE TABLE t1(c int);"),
+	)
+	require.NoError(t, err)
+	_, err = runCmd(
+		migrateCheckpointCmd(),
+		"--dir", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	dir, err := migrate.NewLocalDir(p)
+	require.NoError(t, err)
+	files, err := dir.Files()
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		`-- Create "t1" table`,
+		"CREATE TABLE `t1` (`c` int NULL);",
+	}, lines(files[0]))
+	require.Equal(t, []string{
+		"-- atlas:checkpoint",
+		"",
+		`-- Create "t1" table`,
+		"CREATE TABLE `t1` (`c` int NULL);",
+	}, lines(files[1]))
+
+	// Rename the checkpoint file to avoid timestamp conflicts.
+	ck := files[1].Name()
+	require.NoError(t, os.Rename(filepath.Join(p, ck), filepath.Join(p, strings.Replace(ck, "checkpoint", "add_t1_checkpoint", -1))))
+	_, err = runCmd(migrateHashCmd(), "--dir", "file://"+p)
+	require.NoError(t, err)
+
+	// Add t2 and t3 in two different files (after checkpoint).
+	_, err = runCmd(
+		migrateDiffCmd(),
+		"add_t2",
+		"--dir", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+		"--to", openSQLite(t, "CREATE TABLE t1(c int); CREATE TABLE t2(c int);"),
+	)
+	require.NoError(t, err)
+	_, err = runCmd(
+		migrateDiffCmd(),
+		"add_t3",
+		"--dir", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+		"--to", openSQLite(t, "CREATE TABLE t1(c int); CREATE TABLE t2(c int); CREATE TABLE t3(c int);"),
+	)
+	require.NoError(t, err)
+	_, err = runCmd(
+		migrateCheckpointCmd(),
+		"v2",
+		"--dir", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+	)
+	files2, err := dir.Files()
+	require.NoError(t, err)
+	require.Equal(t, files2[0].Bytes(), files[0].Bytes())
+	require.Equal(t, files2[1].Bytes(), files[1].Bytes())
+	require.Equal(t, []string{
+		`-- Create "t2" table`,
+		"CREATE TABLE `t2` (`c` int NULL);",
+	}, lines(files2[2]))
+	require.Equal(t, []string{
+		`-- Create "t3" table`,
+		"CREATE TABLE `t3` (`c` int NULL);",
+	}, lines(files2[3]))
+	require.Equal(t, []string{
+		"-- atlas:checkpoint v2",
+		"",
+		`-- Create "t1" table`,
+		"CREATE TABLE `t1` (`c` int NULL);",
+		`-- Create "t2" table`,
+		"CREATE TABLE `t2` (`c` int NULL);",
+		`-- Create "t3" table`,
+		"CREATE TABLE `t3` (`c` int NULL);",
+	}, lines(files2[4]))
+}
+
 func TestMigrate_StatusJSON(t *testing.T) {
 	p := t.TempDir()
 	s, err := runCmd(
@@ -1978,4 +2079,8 @@ func sed(t *testing.T, r, p string) {
 	}
 	buf, err := exec.Command("sed", append(args, r, p)...).CombinedOutput()
 	require.NoError(t, err, string(buf))
+}
+
+func lines(f migrate.File) []string {
+	return strings.Split(strings.TrimSpace(string(f.Bytes())), "\n")
 }

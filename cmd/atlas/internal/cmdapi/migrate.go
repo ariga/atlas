@@ -44,6 +44,7 @@ func init() {
 	migrateCmd := migrateCmd()
 	migrateCmd.AddCommand(
 		migrateApplyCmd(),
+		migrateCheckpointCmd(),
 		migrateDiffCmd(),
 		migrateHashCmd(),
 		migrateImportCmd(),
@@ -524,11 +525,12 @@ func migrateDiffCmd() *cobra.Command {
 		cmd   = &cobra.Command{
 			Use:   "diff [flags] [name]",
 			Short: "Compute the diff between the migration directory and a desired state and create a new migration file.",
-			Long: `'atlas migrate diff' uses the dev-database to re-run all migration files in the migration directory, compares
-it to a given desired state and create a new migration file containing SQL statements to migrate the migration
-directory state to the desired schema. The desired state can be another connected database or an HCL file.`,
-			Example: `  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://schema.hcl
-  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
+			Long: `The 'atlas migrate diff' command uses the dev-database to calculate the current state of the migration directory
+by executing its files. It then compares its state to the desired state and create a new migration file containing
+SQL statements for moving from the current to the desired state. The desired state can be another another database,
+an HCL, SQL, or ORM schema. See: https://atlasgo.io/versioned/diff`,
+			Example: `  atlas migrate diff --dev-url docker://mysql/8/dev --to file://schema.hcl
+  atlas migrate diff --dev-url "docker://postgres/15/dev?search_path=public" --to file://atlas.hcl add_users_table
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
   atlas migrate diff --env dev --format '{{ sql . "  " }}'`,
 			Args: cobra.MaximumNArgs(1),
@@ -656,6 +658,135 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 		// Write the plan to a new file.
 		return pl.WritePlan(plan)
 	}
+}
+
+type migrateCheckpointFlags struct {
+	edit              bool
+	dirURL, dirFormat string
+	devURL            string
+	schemas           []string
+	lockTimeout       time.Duration
+	format            string
+	qualifier         string // optional table qualifier
+}
+
+// migrateCheckpointCmd represents the 'atlas migrate checkpoint' subcommand.
+func migrateCheckpointCmd() *cobra.Command {
+	var (
+		flags migrateCheckpointFlags
+		cmd   = &cobra.Command{
+			Use:   "checkpoint [flags] [tag]",
+			Short: "Generate a checkpoint file representing the state of the migration directory.",
+			Long: `The 'atlas migrate checkpoint' command uses the dev-database to calculate the current state of the migration directory
+by executing its files. It then creates a checkpoint file that represents this state, enabling new environments to bypass
+previous files and immediately skip to this checkpoint when executing the 'atlas migrate apply' command.`,
+			Example: `  atlas migrate checkpoint --dev-url docker://mysql/8/dev
+  atlas migrate checkpoint --dev-url "docker://postgres/15/dev?search_path=public"
+  atlas migrate checkpoint --dev-url "sqlite://dev?mode=memory"
+  atlas migrate checkpoint --env dev --format '{{ sql . "  " }}'`,
+			Args: cobra.MaximumNArgs(1),
+			PreRunE: func(cmd *cobra.Command, args []string) error {
+				if err := migrateFlagsFromConfig(cmd); err != nil {
+					return err
+				}
+				if err := dirFormatBC(flags.dirFormat, &flags.dirURL); err != nil {
+					return err
+				}
+				return checkDir(cmd, flags.dirURL, false)
+			},
+			RunE: func(cmd *cobra.Command, args []string) error {
+				env, err := selectEnv(cmd)
+				if err != nil {
+					return err
+				}
+				return migrateCheckpointRun(cmd, args, flags, env)
+			},
+		}
+	)
+	cmd.Flags().SortFlags = false
+	addFlagDevURL(cmd.Flags(), &flags.devURL)
+	addFlagDirURL(cmd.Flags(), &flags.dirURL)
+	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
+	addFlagSchemas(cmd.Flags(), &flags.schemas)
+	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
+	addFlagFormat(cmd.Flags(), &flags.format)
+	cmd.Flags().StringVar(&flags.qualifier, flagQualifier, "", "qualify tables with custom qualifier when working on a single schema")
+	cmd.Flags().BoolVarP(&flags.edit, flagEdit, "", false, "edit the generated migration file(s)")
+	cobra.CheckErr(cmd.MarkFlagRequired(flagDevURL))
+	return cmd
+}
+
+func migrateCheckpointRun(cmd *cobra.Command, args []string, flags migrateCheckpointFlags, env *Env) error {
+	ctx := cmd.Context()
+	dev, err := sqlclient.Open(ctx, flags.devURL)
+	if err != nil {
+		return err
+	}
+	defer dev.Close()
+	if l, ok := dev.Driver.(schema.Locker); ok {
+		unlock, err := l.Lock(ctx, "atlas_migrate_diff", flags.lockTimeout)
+		if err != nil {
+			return fmt.Errorf("acquiring database lock: %w", err)
+		}
+		defer func() { cobra.CheckErr(unlock()) }()
+	}
+	u, err := url.Parse(flags.dirURL)
+	if err != nil {
+		return err
+	}
+	dir, err := cmdmigrate.DirURL(u, false)
+	if err != nil {
+		return err
+	}
+	dir, ok := dir.(migrate.CheckpointDir)
+	if !ok {
+		return fmt.Errorf("migration directory %s does not support checkpoint files", u)
+	}
+	files, err := dir.Files()
+	if err != nil {
+		return err
+	}
+	if len(files) == 0 {
+		cmd.Println("The migration directory is empty, no checkpoint to be made")
+		return nil
+	}
+	if flags.edit {
+		dir = &editDir{dir}
+	}
+	var (
+		tag, indent string
+		name        = "checkpoint"
+	)
+	if len(args) > 0 {
+		tag = args[0]
+	}
+	f, err := cmdmigrate.Formatter(u)
+	if err != nil {
+		return err
+	}
+	if f, indent, err = mayIndent(u, f, flags.format); err != nil {
+		return err
+	}
+	opts := []migrate.PlannerOption{
+		migrate.PlanFormat(f),
+		migrate.PlanWithIndent(indent),
+		migrate.PlanWithDiffOptions(env.DiffOptions()...),
+	}
+	if dev.URL.Schema != "" {
+		// Disable tables qualifier in schema-mode.
+		opts = append(opts, migrate.PlanWithSchemaQualifier(flags.qualifier))
+	}
+	pl := migrate.NewPlanner(dev.Driver, dir, opts...)
+	plan, err := func() (*migrate.Plan, error) {
+		if s := dev.URL.Schema; s != "" {
+			return pl.CheckpointSchema(ctx, name)
+		}
+		return pl.Checkpoint(ctx, name)
+	}()
+	if err != nil {
+		return err
+	}
+	return pl.WriteCheckpoint(plan, tag)
 }
 
 func mayIndent(dir *url.URL, f migrate.Formatter, format string) (migrate.Formatter, string, error) {
@@ -1700,7 +1831,7 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 		if err := maySetFlag(cmd, flagLockTimeout, env.Migration.LockTimeout); err != nil {
 			return err
 		}
-	case "diff":
+	case "diff", "checkpoint":
 		if err := maySetFlag(cmd, flagLockTimeout, env.Migration.LockTimeout); err != nil {
 			return err
 		}
