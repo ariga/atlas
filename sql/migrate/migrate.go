@@ -185,7 +185,7 @@ func SchemaConn(drv Driver, name string, opts *schema.InspectOptions) StateReade
 }
 
 type (
-	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed Dir to write
+	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed Dir to
 	// those changes to versioned migration files.
 	Planner struct {
 		drv      Driver              // driver to use
@@ -382,18 +382,7 @@ func (p *Planner) PlanSchema(ctx context.Context, name string, to StateReader) (
 }
 
 func (p *Planner) plan(ctx context.Context, name string, to StateReader, realmScope bool) (*Plan, error) {
-	from, err := NewExecutor(p.drv, p.dir, NopRevisionReadWriter{})
-	if err != nil {
-		return nil, err
-	}
-	current, err := from.Replay(ctx, func() StateReader {
-		if realmScope {
-			return RealmConn(p.drv, nil)
-		}
-		// In case the scope is the schema connection,
-		// inspect it and return its connected realm.
-		return SchemaConn(p.drv, "", nil)
-	}())
+	current, err := p.current(ctx, realmScope)
 	if err != nil {
 		return nil, err
 	}
@@ -434,6 +423,63 @@ func (p *Planner) plan(ctx context.Context, name string, to StateReader, realmSc
 	return p.drv.PlanChanges(ctx, name, changes, p.planOpts...)
 }
 
+// Checkpoint calculate the current state of the migration directory by executing its files,
+// and return a migration (checkpoint) Plan that represents its states.
+func (p *Planner) Checkpoint(ctx context.Context, name string) (*Plan, error) {
+	return p.checkpoint(ctx, name, true)
+}
+
+// CheckpointSchema is like Checkpoint but limits its scope to the schema connection.
+// Note, the operation fails in case the connection was not set to a schema.
+func (p *Planner) CheckpointSchema(ctx context.Context, name string) (*Plan, error) {
+	return p.checkpoint(ctx, name, false)
+}
+
+func (p *Planner) checkpoint(ctx context.Context, name string, realmScope bool) (*Plan, error) {
+	current, err := p.current(ctx, realmScope)
+	if err != nil {
+		return nil, err
+	}
+	var changes []schema.Change
+	switch {
+	case realmScope:
+		changes, err = p.drv.RealmDiff(schema.NewRealm(), current, p.diffOpts...)
+	default:
+		switch n := len(current.Schemas); {
+		case n == 0:
+			return nil, errors.New("no schema was found in current state after replaying migration directory")
+		case n > 1:
+			return nil, fmt.Errorf("%d schemas were found in current state after replaying migration directory", len(current.Schemas))
+		default:
+			changes, err = p.drv.SchemaDiff(schema.New(current.Schemas[0].Name), current.Schemas[0], p.diffOpts...)
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	// No changes mean an empty checkpoint.
+	if len(changes) == 0 {
+		return &Plan{Name: name}, nil
+	}
+	return p.drv.PlanChanges(ctx, name, changes, p.planOpts...)
+}
+
+// current returns the current realm state.
+func (p *Planner) current(ctx context.Context, realmScope bool) (*schema.Realm, error) {
+	from, err := NewExecutor(p.drv, p.dir, NopRevisionReadWriter{})
+	if err != nil {
+		return nil, err
+	}
+	return from.Replay(ctx, func() StateReader {
+		if realmScope {
+			return RealmConn(p.drv, nil)
+		}
+		// In case the scope is the schema connection,
+		// inspect it and return its connected realm.
+		return SchemaConn(p.drv, "", nil)
+	}())
+}
+
 // WritePlan writes the given Plan to the Dir based on the configured Formatter.
 func (p *Planner) WritePlan(plan *Plan) error {
 	// Format the plan into files.
@@ -447,15 +493,39 @@ func (p *Planner) WritePlan(plan *Plan) error {
 			return err
 		}
 	}
-	// If enabled, update the sum file.
-	if p.sum {
-		sum, err := p.dir.Checksum()
-		if err != nil {
-			return err
-		}
-		return WriteSumFile(p.dir, sum)
+	return p.writeSum()
+}
+
+// WriteCheckpoint writes the given Plan as a checkpoint file to the Dir based on the configured Formatter.
+func (p *Planner) WriteCheckpoint(plan *Plan, tag string) error {
+	ck, ok := p.dir.(CheckpointDir)
+	if !ok {
+		return fmt.Errorf("checkpoint is not supported by %T", p.dir)
 	}
-	return nil
+	// Format the plan into files.
+	files, err := p.fmt.Format(plan)
+	if err != nil {
+		return err
+	}
+	if len(files) != 1 {
+		return fmt.Errorf("expected one checkpoint file, got %d", len(files))
+	}
+	if err := ck.WriteCheckpoint(files[0].Name(), tag, files[0].Bytes()); err != nil {
+		return err
+	}
+	return p.writeSum()
+}
+
+// writeSum writes the sum file to the Dir, if enabled.
+func (p *Planner) writeSum() error {
+	if !p.sum {
+		return nil
+	}
+	sum, err := p.dir.Checksum()
+	if err != nil {
+		return err
+	}
+	return WriteSumFile(p.dir, sum)
 }
 
 var (

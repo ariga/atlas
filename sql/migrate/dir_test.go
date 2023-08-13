@@ -202,10 +202,7 @@ func TestLocalDir(t *testing.T) {
 func TestCheckpointDir(t *testing.T) {
 	local, err := migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
-	for _, d := range []interface {
-		migrate.Dir
-		migrate.CheckpointDir
-	}{&migrate.MemDir{}, local} {
+	for _, d := range []migrate.CheckpointDir{&migrate.MemDir{}, local} {
 		files, err := d.Files()
 		require.NoError(t, err)
 		require.Empty(t, files)

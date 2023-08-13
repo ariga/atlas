@@ -76,6 +76,32 @@ func TestPlanner_WritePlan(t *testing.T) {
 	requireFileEqual(t, d, "add_t1_and_t2.down.sql", "DROP TABLE t1 IF EXISTS\nDROP TABLE t2\n")
 }
 
+func TestPlanner_WriteCheckpoint(t *testing.T) {
+	p := t.TempDir()
+	d, err := migrate.NewLocalDir(p)
+	require.NoError(t, err)
+	plan := &migrate.Plan{
+		Name: "checkpoint",
+		Changes: []*migrate.Change{
+			{Cmd: "CREATE TABLE t1(c int)", Reverse: "DROP TABLE t1 IF EXISTS"},
+			{Cmd: "CREATE TABLE t2(c int)", Reverse: "DROP TABLE t2"},
+		},
+	}
+
+	// DefaultFormatter
+	pl := migrate.NewPlanner(nil, d)
+	require.NotNil(t, pl)
+	require.NoError(t, pl.WriteCheckpoint(plan, "v1"))
+	files, err := d.Files()
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+	require.Equal(t, `-- atlas:checkpoint v1
+
+CREATE TABLE t1(c int);
+CREATE TABLE t2(c int);
+`, string(files[0].Bytes()))
+}
+
 func TestPlanner_Plan(t *testing.T) {
 	var (
 		drv = &mockDriver{}
@@ -137,6 +163,56 @@ func TestPlanner_PlanSchema(t *testing.T) {
 	plan, err = pl.PlanSchema(ctx, "multi", migrate.Realm(schema.NewRealm(schema.New("test"))))
 	require.ErrorIs(t, err, migrate.ErrNoPlan)
 	require.Nil(t, plan)
+}
+
+func TestPlanner_Checkpoint(t *testing.T) {
+	var (
+		drv = &mockDriver{}
+		ctx = context.Background()
+	)
+	d, err := migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+
+	// Nothing to do.
+	pl := migrate.NewPlanner(drv, d)
+	plan, err := pl.Checkpoint(ctx, "empty")
+	require.NoError(t, err)
+	require.Equal(t, &migrate.Plan{Name: "empty"}, plan)
+
+	// There are changes.
+	drv.changes = []schema.Change{
+		&schema.AddTable{T: schema.NewTable("t1").AddColumns(schema.NewIntColumn("c", "int"))},
+		&schema.AddTable{T: schema.NewTable("t2").AddColumns(schema.NewIntColumn("c", "int"))},
+	}
+	drv.plan = &migrate.Plan{
+		Changes: []*migrate.Change{
+			{Cmd: "CREATE TABLE t1(c int);"},
+			{Cmd: "CREATE TABLE t2(c int);"},
+		},
+	}
+	plan, err = pl.Checkpoint(ctx, "checkpoint")
+	require.NoError(t, err)
+	require.Equal(t, drv.plan, plan)
+}
+
+func TestPlanner_CheckpointSchema(t *testing.T) {
+	var (
+		drv = &mockDriver{}
+		ctx = context.Background()
+	)
+	d, err := migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+
+	// Schema is missing in dev connection.
+	pl := migrate.NewPlanner(drv, d)
+	plan, err := pl.CheckpointSchema(ctx, "empty")
+	require.EqualError(t, err, `not found`)
+	require.Nil(t, plan)
+
+	drv.realm = *schema.NewRealm(schema.New("test"))
+	pl = migrate.NewPlanner(drv, d)
+	plan, err = pl.CheckpointSchema(ctx, "empty")
+	require.Equal(t, &migrate.Plan{Name: "empty"}, plan)
 }
 
 func TestExecutor_Replay(t *testing.T) {
