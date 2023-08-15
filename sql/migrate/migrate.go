@@ -451,7 +451,9 @@ func (p *Planner) checkpoint(ctx context.Context, name string, realmScope bool) 
 		case n > 1:
 			return nil, fmt.Errorf("%d schemas were found in current state after replaying migration directory", len(current.Schemas))
 		default:
-			changes, err = p.drv.SchemaDiff(schema.New(current.Schemas[0].Name), current.Schemas[0], p.diffOpts...)
+			s1 := current.Schemas[0]
+			s2 := schema.New(s1.Name).AddAttrs(s1.Attrs...)
+			changes, err = p.drv.SchemaDiff(s2, s1, p.diffOpts...)
 		}
 	}
 	if err != nil {
