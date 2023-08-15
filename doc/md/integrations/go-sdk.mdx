@@ -8,9 +8,9 @@ import InstallationInstructions from '../components/_installation_instructions.m
 
 Atlas was meant to be used as a CLI tool. Despite being written in Go, it is targeted for the
 engineering community at large, agnostic to which programming language you use in your project.
-For this reason the public API which the project commits to support is the CLI.
+For this reason, the public API which the project commits to support is the CLI.
 
-Having said that, Atlas is widely popular in the Go community, and we want to make sure that
+Having said that, Atlas is widely popular in the Go community and we want to make sure that
 Go developers can easily integrate Atlas into their projects. To support these kind of integrations,
 we provide a simple wrapper SDK called [`atlasexec`](https://github.com/ariga/atlas-go-sdk/tree/master/atlasexec) 
 around the Atlas CLI which can be used to drive the CLI from Go code. This SDK is used by official 
@@ -65,7 +65,7 @@ A migration file along with an `atlas.sum` file will be created in the current d
 ```
 
 
-Now you can use the `atlasexec` package to drive the CLI from  Go code, create a new file named `main.go` with the following content:
+Now, you can use the `atlasexec` package to drive the CLI from Go code, create a new file named `main.go` with the following content:
 
 ```go
 package main
@@ -121,7 +121,7 @@ Observe the output:
 Applied 1 migrations
 ```
 
-You can also run the program again, and observe that no migrations are applied:
+You can also run the program again and observe that no migrations are applied:
 
 ```bash
 Applied 0 migrations
