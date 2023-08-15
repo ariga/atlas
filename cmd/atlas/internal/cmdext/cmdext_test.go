@@ -69,11 +69,12 @@ v = data.runtimevar.pass
 }
 
 func TestRDSToken(t *testing.T) {
+	t.Cleanup(
+		backupEnv("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"),
+	)
 	// Mock AWS env vars.
-	restoreEnv := backupEnv("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
-	defer restoreEnv()
-	require.NoError(t, os.Setenv("AWS_ACCESS_KEY_ID", "AKIAIOSFODNN7EXAMPLE"))
-	require.NoError(t, os.Setenv("AWS_SECRET_ACCESS_KEY", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"))
+	require.NoError(t, os.Setenv("AWS_ACCESS_KEY_ID", "EXAMPLE_KEY_ID"))
+	require.NoError(t, os.Setenv("AWS_SECRET_ACCESS_KEY", "EXAMPLE_SECRET_KEY"))
 	var (
 		v struct {
 			V string `spec:"v"`
@@ -93,7 +94,7 @@ v = data.aws_rds_token.token
 	require.NoError(t, err)
 	q := parse.Query()
 	require.Equal(t, "connect", q.Get("Action"))
-	require.Contains(t, q.Get("X-Amz-Credential"), "AKIAIOSFODNN7EXAMPLE")
+	require.Contains(t, q.Get("X-Amz-Credential"), "EXAMPLE_KEY_ID")
 }
 
 func TestQuerySrc(t *testing.T) {
