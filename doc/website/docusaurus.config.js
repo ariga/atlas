@@ -228,6 +228,10 @@ module.exports = {
             from: '/atlas-schema/sql-types',
             to: '/atlas-schema/hcl-types',
           },
+          {
+            from: '/integrations/go-api',
+            to: '/integrations/go-sdk',
+          }
         ],
       },
     ],

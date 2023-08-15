@@ -1,0 +1,134 @@
+---
+title: Go SDK
+id: go-sdk
+slug: /integrations/go-sdk
+---
+
+import InstallationInstructions from '../components/_installation_instructions.mdx'
+
+Atlas was meant to be used as a CLI tool. Despite being written in Go, it is targeted for the
+engineering community at large, agnostic to which programming language you use in your project.
+For this reason the public API which the project commits to support is the CLI.
+
+Having said that, Atlas is widely popular in the Go community, and we want to make sure that
+Go developers can easily integrate Atlas into their projects. To support these kind of integrations,
+we provide a simple wrapper SDK called [`atlasexec`](https://github.com/ariga/atlas-go-sdk/tree/master/atlasexec) 
+around the Atlas CLI which can be used to drive the CLI from Go code. This SDK is used by official 
+integrations of Atlas, such as some [GitHub Actions](/integrations/github-actions), the [Kubernetes Operator](/integrations/kubernetes),
+and the [Terraform Provider](/integrations/terraform-provider).
+
+## Installation
+
+To get started, make sure you have the Atlas CLI installed:
+
+<InstallationInstructions />
+
+Next, add the `atlasexec` package to your Go project:
+
+```bash
+go get ariga.io/atlas-go-sdk/atlasexec
+```
+
+## Example
+
+Let's create a dummy migration directory to demonstrate how to use the SDK:
+
+```bash
+mkdir atlasgosdk
+cd atlasgosdk
+```
+
+Next, let's create a simple migration:
+
+```bash
+atlas migrate new --edit create_users
+```
+
+This will open an editor where you can type the migration code. Let's add a statement
+that creates a `users` table:
+
+```sql
+CREATE TABLE users (
+    id int PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+```
+A migration file along with an `atlas.sum` file will be created in the current directory:
+
+```
+.
+└── migrations
+    ├── 20230815103743_create_users.sql
+    └── atlas.sum
+
+1 directory, 2 files
+```
+
+
+Now you can use the `atlasexec` package to drive the CLI from  Go code, create a new file named `main.go` with the following content:
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"ariga.io/atlas-go-sdk/atlasexec"
+)
+
+func main() {
+	// Define the execution context, supplying a migration directory
+	// and potentially an `atlas.hcl` configuration file using `atlasexec.WithHCL`.
+	workdir, err := atlasexec.NewWorkingDir(
+		atlasexec.WithMigrations(
+			os.DirFS("./migrations"),
+		),
+	)
+	if err != nil {
+		panic(err)
+	}
+	// atlasexec works on a temporary directory, so we need to close it
+	defer workdir.Close()
+
+	// Initialize the client.
+	client, err := atlasexec.NewClientWithDir(workdir.Path(), "atlas")
+	if err != nil {
+        panic(err)
+    }
+    // Run `atlas migrate apply` on a SQLite database under /tmp.
+	res, err := client.Apply(context.Background(), &atlasexec.ApplyParams{
+		URL: "sqlite:///tmp/demo.db?_fk=1&cache=shared",
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Applied %d migrations\n", len(res.Applied))
+}
+```
+
+Now, run the program:
+
+```bash
+go run main.go
+```
+
+Observe the output:
+
+```bash
+Applied 1 migrations
+```
+
+You can also run the program again, and observe that no migrations are applied:
+
+```bash
+Applied 0 migrations
+```
+
+## Wrapping up
+
+In this tutorial, we have seen how to use the `atlasexec` package to drive the Atlas CLI from Go code.
+We focused on the `Apply` method, but the SDK also provides methods for `SchemaApply`, `Status`, `Inspect`, and more.
+For more information, please refer to the [package documentation](https://pkg.go.dev/ariga.io/atlas-go-sdk@master/atlasexec).
+
