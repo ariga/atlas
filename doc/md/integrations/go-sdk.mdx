@@ -73,6 +73,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"ariga.io/atlas-go-sdk/atlasexec"
@@ -87,7 +88,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		panic(err)
+		log.Fatalf("failed to load working directory: %v", err)
 	}
 	// atlasexec works on a temporary directory, so we need to close it
 	defer workdir.Close()
@@ -95,14 +96,14 @@ func main() {
 	// Initialize the client.
 	client, err := atlasexec.NewClientWithDir(workdir.Path(), "atlas")
 	if err != nil {
-        panic(err)
-    }
-    // Run `atlas migrate apply` on a SQLite database under /tmp.
+		log.Fatalf("failed to initialize client: %v", err)
+	}
+	// Run `atlas migrate apply` on a SQLite database under /tmp.
 	res, err := client.Apply(context.Background(), &atlasexec.ApplyParams{
 		URL: "sqlite:///tmp/demo.db?_fk=1&cache=shared",
 	})
 	if err != nil {
-		panic(err)
+		log.Fatalf("failed to apply migrations: %v", err)
 	}
 	fmt.Printf("Applied %d migrations\n", len(res.Applied))
 }
