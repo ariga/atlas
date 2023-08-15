@@ -161,7 +161,7 @@ module.exports = {
             from: '/terraform-provider'
           },
           {
-            to: '/integrations/go-api',
+            to: '/integrations/go-sdk',
             from: ['/go-api/intro','/go-api/inspect'],
           },
           {
@@ -228,6 +228,10 @@ module.exports = {
             from: '/atlas-schema/sql-types',
             to: '/atlas-schema/hcl-types',
           },
+          {
+            from: '/integrations/go-api',
+            to: '/integrations/go-sdk',
+          }
         ],
       },
     ],

@@ -108,7 +108,7 @@ module.exports = {
                 },
                 {type: 'doc', id: 'integrations/github-actions', label: 'GitHub Actions'},
                 {type: 'doc', id: 'integrations/terraform-provider', label: 'Terraform Provider'},
-                {type: 'doc', id: 'integrations/go-api', label: 'Go API'},
+                {type: 'doc', id: 'integrations/go-sdk', label: 'Go SDK'},
             ]
         },
         {
