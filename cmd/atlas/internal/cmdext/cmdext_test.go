@@ -68,6 +68,35 @@ v = data.runtimevar.pass
 	require.Equal(t, v.V, "hello world")
 }
 
+func TestRDSToken(t *testing.T) {
+	t.Cleanup(
+		backupEnv("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"),
+	)
+	// Mock AWS env vars.
+	require.NoError(t, os.Setenv("AWS_ACCESS_KEY_ID", "EXAMPLE_KEY_ID"))
+	require.NoError(t, os.Setenv("AWS_SECRET_ACCESS_KEY", "EXAMPLE_SECRET_KEY"))
+	var (
+		v struct {
+			V string `spec:"v"`
+		}
+		state = schemahcl.New(cmdext.DataSources...)
+	)
+	err := state.EvalBytes([]byte(`
+data "aws_rds_token" "token" {
+	endpoint = "localhost:3306"
+	region = "us-east-1"
+	username = "root"
+}
+v = data.aws_rds_token.token
+`), &v, nil)
+	require.NoError(t, err)
+	parse, err := url.Parse(v.V)
+	require.NoError(t, err)
+	q := parse.Query()
+	require.Equal(t, "connect", q.Get("Action"))
+	require.Contains(t, q.Get("X-Amz-Credential"), "EXAMPLE_KEY_ID")
+}
+
 func TestQuerySrc(t *testing.T) {
 	ctx := context.Background()
 	u := fmt.Sprintf("sqlite3://file:%s?cache=shared&_fk=1", filepath.Join(t.TempDir(), "test.db"))
@@ -497,4 +526,25 @@ dir = data.remote_dir.hello.url
 	require.NoError(t, migrate.Validate(md))
 	_, err = md.Open(migrate.HashFileName)
 	require.NoError(t, err)
+}
+
+// backupEnv backs up the current value of an environment variable
+// and returns a function to restore it.
+func backupEnv(keys ...string) (restoreFunc func()) {
+	backup := make(map[string]string, len(keys))
+	for _, key := range keys {
+		originalValue, exists := os.LookupEnv(key)
+		if exists {
+			backup[key] = originalValue
+		}
+	}
+	return func() {
+		for _, key := range keys {
+			if originalValue, exists := backup[key]; exists {
+				os.Setenv(key, originalValue)
+			} else {
+				os.Unsetenv(key)
+			}
+		}
+	}
 }
