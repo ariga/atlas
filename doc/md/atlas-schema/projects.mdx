@@ -724,6 +724,50 @@ env "local" {
 </TabItem>
 </Tabs>
 
+#### Data source: `aws_rds_token`
+
+The `aws_rds_token` data source generates a short-lived token for an [AWS RDS](https://aws.amazon.com/rds/) database
+using [IAM Authentication](https://aws.github.io/aws-sdk-go-v2/docs/sdk-utilities/rds/#iam-authentication).
+
+To use this data source:
+1. Enable IAM Authentication for your database. For instructions on how to do this,
+   [see the AWS documentation](https://aws.github.io/aws-sdk-go-v2/docs/sdk-utilities/rds/#iam-authentication).
+2. Create a database user and grant it permission to authenticate using IAM, see
+   [the AWS documentation](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html)
+   for instructions.
+3. Create an IAM role with the `rds-db:connect` permission for the specific database and user. For instructions on how to do this,
+   [see the AWS documentation](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html).
+
+##### Arguments {#data-source-aws_rds_token-arguments}
+
+- `region` - The AWS region of the database (Optional).
+- `endpoint` - The endpoint of the database (hostname:port).
+- `username` - The database user to authenticate as.
+
+##### Attributes {#data-source-aws_rds_token-attributes}
+
+- The loaded variable is a `string` type with no attributes. Notice that the token contains special characters that
+  need to be escaped when used in a URL. To escape the token, use the `urlescape` function.
+
+##### Example
+
+```hcl title="atlas.hcl"
+locals {
+  user = "iamuser"
+  endpoint = "hostname-of-db.example9y7k.us-east-1.rds.amazonaws.com:5432"
+}
+
+data "aws_rds_token" "db" {
+	region = "us-east-1"
+	endpoint = local.endpoint
+	username = local.user
+}
+
+env "rds" {
+  url = "postgres://${local.user}:${urlescape(data.aws_rds_token.db)}@${local.endpoint}/postgres"
+}
+```
+
 ### Environments
 
 The `env` block defines an environment block that can be selected by using the `--env` flag.

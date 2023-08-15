@@ -119,11 +119,11 @@ func RuntimeVar(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 
 // AWSRDSToken exposes an AWS RDS token as a schemahcl datasource.
 //
-//		data "aws_rds_token" "token" {
-//		  endpoint = "db.hostname.io:3306"
-//		  region   = "us-east-1"
-//	       username = "admin"
-//	   }
+//	data "aws_rds_token" "token" {
+//		endpoint = "db.hostname.io:3306"
+//		region   = "us-east-1"
+//		username = "admin"
+//	}
 func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
