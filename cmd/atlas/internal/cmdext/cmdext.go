@@ -29,6 +29,9 @@ import (
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
+
 	"github.com/zclconf/go-cty/cty/gocty"
 
 	"entgo.io/ent/dialect/sql"
@@ -55,6 +58,7 @@ var DataSources = []schemahcl.Option{
 	schemahcl.WithDataSource("remote_dir", RemoteDir),
 	schemahcl.WithDataSource("hcl_schema", SchemaHCL),
 	schemahcl.WithDataSource("external_schema", SchemaExternal),
+	schemahcl.WithDataSource("aws_rds_token", AWSRDSToken),
 }
 
 // RuntimeVar exposes the gocloud.dev/runtimevar as a schemahcl datasource.
@@ -111,6 +115,37 @@ func RuntimeVar(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 		return cty.Value{}, errorf("unexpected snapshot value type: %T", snap.Value)
 	}
 	return cty.StringVal(sv), nil
+}
+
+// AWSRDSToken exposes an AWS RDS token as a schemahcl datasource.
+//
+//		data "aws_rds_token" "token" {
+//		  endpoint = "db.hostname.io:3306"
+//		  region   = "us-east-1"
+//	       username = "admin"
+//	   }
+func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+	var (
+		args struct {
+			Endpoint string `hcl:"endpoint"`
+			Region   string `hcl:"region"`
+			Username string `hcl:"username"`
+		}
+		errorf = blockError("data.aws_rds_token", block)
+	)
+	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+		return cty.NilVal, errorf("decoding body: %v", diags)
+	}
+	bgctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(bgctx)
+	if err != nil {
+		return cty.NilVal, errorf("loading aws config: %v", err)
+	}
+	token, err := auth.BuildAuthToken(bgctx, args.Endpoint, args.Region, args.Username, cfg.Credentials)
+	if err != nil {
+		return cty.NilVal, errorf("building auth token: %v", err)
+	}
+	return cty.StringVal(token), nil
 }
 
 // Query exposes the database/sql.Query as a schemahcl datasource.

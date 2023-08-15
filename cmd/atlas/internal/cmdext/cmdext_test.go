@@ -68,6 +68,25 @@ v = data.runtimevar.pass
 	require.Equal(t, v.V, "hello world")
 }
 
+func TestRDSToken(t *testing.T) {
+	var (
+		v struct {
+			V string `spec:"v"`
+		}
+		state = schemahcl.New(cmdext.DataSources...)
+	)
+	err := state.EvalBytes([]byte(`
+data "aws_rds_token" "token" {
+	endpoint = "localhost:3306"
+	region = "us-east-1"
+	username = "root"
+}
+v = data.aws_rds_token.token
+`), &v, nil)
+	require.NoError(t, err)
+	require.Equal(t, v.V, "root")
+}
+
 func TestQuerySrc(t *testing.T) {
 	ctx := context.Background()
 	u := fmt.Sprintf("sqlite3://file:%s?cache=shared&_fk=1", filepath.Join(t.TempDir(), "test.db"))
