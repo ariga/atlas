@@ -69,6 +69,11 @@ v = data.runtimevar.pass
 }
 
 func TestRDSToken(t *testing.T) {
+	// Mock AWS env vars.
+	restoreEnv := backupEnv("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
+	defer restoreEnv()
+	require.NoError(t, os.Setenv("AWS_ACCESS_KEY_ID", "AKIAIOSFODNN7EXAMPLE"))
+	require.NoError(t, os.Setenv("AWS_SECRET_ACCESS_KEY", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"))
 	var (
 		v struct {
 			V string `spec:"v"`
@@ -84,7 +89,11 @@ data "aws_rds_token" "token" {
 v = data.aws_rds_token.token
 `), &v, nil)
 	require.NoError(t, err)
-	require.Equal(t, v.V, "root")
+	parse, err := url.Parse(v.V)
+	require.NoError(t, err)
+	q := parse.Query()
+	require.Equal(t, "connect", q.Get("Action"))
+	require.Contains(t, q.Get("X-Amz-Credential"), "AKIAIOSFODNN7EXAMPLE")
 }
 
 func TestQuerySrc(t *testing.T) {
@@ -516,4 +525,25 @@ dir = data.remote_dir.hello.url
 	require.NoError(t, migrate.Validate(md))
 	_, err = md.Open(migrate.HashFileName)
 	require.NoError(t, err)
+}
+
+// backupEnv backs up the current value of an environment variable
+// and returns a function to restore it.
+func backupEnv(keys ...string) (restoreFunc func()) {
+	backup := make(map[string]string, len(keys))
+	for _, key := range keys {
+		originalValue, exists := os.LookupEnv(key)
+		if exists {
+			backup[key] = originalValue
+		}
+	}
+	return func() {
+		for _, key := range keys {
+			if originalValue, exists := backup[key]; exists {
+				os.Setenv(key, originalValue)
+			} else {
+				os.Unsetenv(key)
+			}
+		}
+	}
 }

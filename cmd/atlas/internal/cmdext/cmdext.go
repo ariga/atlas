@@ -128,7 +128,7 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	var (
 		args struct {
 			Endpoint string `hcl:"endpoint"`
-			Region   string `hcl:"region"`
+			Region   string `hcl:"region,optional"`
 			Username string `hcl:"username"`
 		}
 		errorf = blockError("data.aws_rds_token", block)
@@ -140,6 +140,9 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	cfg, err := config.LoadDefaultConfig(bgctx)
 	if err != nil {
 		return cty.NilVal, errorf("loading aws config: %v", err)
+	}
+	if args.Region == "" {
+		args.Region = cfg.Region
 	}
 	token, err := auth.BuildAuthToken(bgctx, args.Endpoint, args.Region, args.Username, cfg.Credentials)
 	if err != nil {
