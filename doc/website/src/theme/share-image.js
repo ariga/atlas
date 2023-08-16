@@ -1,4 +1,4 @@
-const defaultImg = "https://atlas-og-img.vercel.app/**Atlas%20%7C**%20Open-source%20database%20schema%20management.png?theme=dark"
+const defaultImg = "https://og.atlasgo.io/image?title=Open-source%20database%20schema%20management"
 
 // getImage returns the share image URL for a page/blog post. Order of evaluation is:
 // the `image` attribute in the document front-matter, the `shareText` attribute in the
@@ -9,10 +9,10 @@ export function getImage(metadata) {
         return frontMatter.image
     }
     if (frontMatter.shareText) {
-        return `https://atlas-og-img.vercel.app/${encodeURIComponent(frontMatter.shareText)}.png?theme=dark`
+        return `https://og.atlasgo.io/image?title=${encodeURIComponent(frontMatter.shareText)}`
     }
     if (title) {
-        return `https://atlas-og-img.vercel.app/${encodeURIComponent(title)}.png?theme=dark`
+        return `https://og.atlasgo.io/image?title=${encodeURIComponent(title)}`
     }
     return defaultImg
 }
