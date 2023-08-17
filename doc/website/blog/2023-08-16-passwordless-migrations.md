@@ -7,7 +7,7 @@ tags: [migrations, rds, iam, atlas]
 ## TL;DR
 
 Atlas now supports AWS IAM authentication, which enables you to perform passwordless schema migrations on your
-RDS databases. To use it with Atlas, add the `aws_rds_token` to your `atlas.hcl` configuration file:
+RDS databases. To use it with Atlas, add the `aws_rds_token` data source to your `atlas.hcl` configuration file:
 
 ```hcl
 data "aws_rds_token" "mydb" {
