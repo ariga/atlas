@@ -14,7 +14,23 @@ jobs:
   push-docker:
     strategy:
       matrix:
-        dialect: [ "mysql:latest", "mysql:5.6", "mysql:5.6.35", "mysql:5.7", "mysql:5.7.26", "mysql:8", "mariadb:latest", "mariadb:10.2", "mariadb:10.2.32", "mariadb:10.3", "mariadb:10.3.13", "mariadb:10.7"]
+        include:
+          - dialect: mysql:latest
+          - dialect: mysql:5.6
+            platforms: linux/amd64
+          - dialect: mysql:5.6.35
+            platforms: linux/amd64
+          - dialect: mysql:5.7
+            platforms: linux/amd64
+          - dialect: mysql:5.7.26
+            platforms: linux/amd64
+          - dialect: mysql:8
+          - dialect: mariadb:latest
+          - dialect: mariadb:10.2
+          - dialect: mariadb:10.2.32
+          - dialect: mariadb:10.3
+          - dialect: mariadb:10.3.13
+          - dialect: mariadb:10.7
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -30,5 +46,6 @@ jobs:
           file: ./.github/ops/mysql/Dockerfile
           push: true
           tags: arigaio/${{ matrix.dialect }}
-          build-args:
+          platforms: ${{ matrix.platforms || 'linux/amd64,linux/arm64' }}
+          build-args: |
             DIALECT=${{ matrix.dialect }}
