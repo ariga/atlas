@@ -9,7 +9,7 @@ on:
   schedule:
     # Runs at 00:00 on Sunday
     - cron: '0 0 * * 0'
-
+  workflow_dispatch:
 jobs:
   push-docker:
     strategy:
@@ -32,6 +32,7 @@ jobs:
           - dialect: mariadb:10.2.32
           - dialect: mariadb:10.3
           - dialect: mariadb:10.3.13
+            platforms: linux/amd64
           - dialect: mariadb:10.7
     runs-on: ubuntu-latest
     steps:
