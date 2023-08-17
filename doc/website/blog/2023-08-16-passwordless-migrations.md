@@ -72,21 +72,21 @@ First, enable IAM authentication on your RDS instance. This installs a plugin on
 allows it to authenticate users with IAM credentials instead of passwords. Read how to do this in the 
 [AWS documentation](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.Enabling.html)
 
-Next, you create a database user and grant it permission to authenticate using IAM. 
+Next, create a database user and grant it permission to authenticate using IAM. 
   
-In MySQL, you execute a statement like this:
+In MySQL, execute a statement like this:
 ```sql
 CREATE USER 'atlas' IDENTIFIED WITH AWSAuthenticationPlugin as 'RDS';
 ```
 
-In PostgreSQL, you execute a statement like this:
+In PostgreSQL, execute a statement like this:
 
 ```sql
 CREATE USER atlas; 
 GRANT rds_iam TO atlas;
 ```
 
-Finally, you need to create an IAM policy that allows subjects to create RDS connection tokens. This policy can then
+Finally, create an IAM policy that allows subjects to create RDS connection tokens. This policy can then
 be attached to roles for developers or services that need to connect to the database. Read how to do this in the
 [AWS documentation](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html).
 
@@ -95,11 +95,13 @@ be attached to roles for developers or services that need to connect to the data
 Tools that perform schema migrations such as Atlas require elevated permissions to perform their tasks. For example,
 they need to be able to inspect the database's information schema tables as well as create and drop resources. For this
 reason, any mechanism that can further protect the security of their credentials is essential, making IAM authentication
-a great fit.  To support this use case, we have recently added support for AWS IAM authentication to Atlas.
+a great fit. To support this use case, we have recently added support for AWS IAM authentication to Atlas.
 
 ## Demo Time!
 
-Let's see how to use Atlas to perform passwordless schema migrations on an RDS database. For the purpose of this demo,
+Let's see how to use Atlas to perform passwordless schema migrations on an RDS database.
+
+For the purpose of this demo,
 we assume that we have a PostgreSQL database running in RDS with IAM authentication enabled. We also assume that we have
 a user named `atlas` that has been granted the `rds_iam` permission and that we have created an IAM policy that allows
 us to generate RDS tokens.
@@ -127,10 +129,10 @@ env "rds" {
 ```
 
 Lets break this example down:
-* The `locals` block defines two variables, `endpoint` and `username`, that we use to store the database endpoint and
-  the username of the user that we created in the database.
-* Next, we define a `aws_rds_token` data source to generate a token for the database. To read more about this
-  data source, see the [documentation](/atlas-schema/projects#data-source-aws_rds_token)
+* The `locals` block defines two variables – `endpoint` and `username` – that we use to store the database endpoint and
+  the username of the user created in the database.
+* Next, we define an `aws_rds_token` data source to generate a token for the database. To read more about this
+  data source, see the [documentation](/atlas-schema/projects#data-source-aws_rds_token).
 * Finally, we define an environment named `rds` that uses the generated token. The `url` property defines the
   [connection URL](/concepts/urls) that Atlas will use to connect to the database. Notice that we use the `urlescape`
   function to escape the token before embedding it in the URL.
@@ -148,12 +150,12 @@ schema "public" {
 }
 ```
 
-Amazing! This output indicates that Atlas was able to connect to the database and inspect the schema and we didn't have
+Amazing! This output indicates that Atlas was able to both connect to the database and inspect the schema without us having
 to provide it with any credentials!
 
 ## Wrapping up
 
-In this post, we've discussed the security concerns around passwords and how IAM authentication can help mitigate them. We
+In this post, we discussed the security concerns around passwords and how IAM authentication can help mitigate them. We
 also demonstrated how to use Atlas to perform passwordless schema migrations on an RDS database using IAM authentication.
 If you use Atlas to perform schema migrations on RDS databases, we encourage you to give IAM authentication a try!
 
