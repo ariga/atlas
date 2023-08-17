@@ -16,4 +16,18 @@ func init() {
 		schemaInspectCmd(),
 	)
 	Root.AddCommand(schemaCmd)
+	migrateCmd := migrateCmd()
+	migrateCmd.AddCommand(
+		migrateApplyCmd(),
+		migrateCheckpointCmd(),
+		migrateDiffCmd(),
+		migrateHashCmd(),
+		migrateImportCmd(),
+		migrateLintCmd(),
+		migrateNewCmd(),
+		migrateSetCmd(),
+		migrateStatusCmd(),
+		migrateValidateCmd(),
+	)
+	Root.AddCommand(migrateCmd)
 }

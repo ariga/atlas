@@ -40,23 +40,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	migrateCmd := migrateCmd()
-	migrateCmd.AddCommand(
-		migrateApplyCmd(),
-		migrateCheckpointCmd(),
-		migrateDiffCmd(),
-		migrateHashCmd(),
-		migrateImportCmd(),
-		migrateLintCmd(),
-		migrateNewCmd(),
-		migrateSetCmd(),
-		migrateStatusCmd(),
-		migrateValidateCmd(),
-	)
-	Root.AddCommand(migrateCmd)
-}
-
 // migrateCmd represents the subcommand 'atlas migrate'.
 func migrateCmd() *cobra.Command {
 	cmd := &cobra.Command{
