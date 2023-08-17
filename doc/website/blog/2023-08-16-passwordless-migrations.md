@@ -133,7 +133,7 @@ Lets break this example down:
 * Next, we define an `aws_rds_token` data source to generate a token for the database. To read more about this
   data source, see the [documentation](/atlas-schema/projects#data-source-aws_rds_token).
 * Finally, we define an environment named `rds` that uses the generated token. The `url` property defines the
-  [connection URL](/concepts/urls) that Atlas will use to connect to the database. Notice that we use the `urlescape`
+  [connection URL](/concepts/url) that Atlas will use to connect to the database. Notice that we use the `urlescape`
   function to escape the token before embedding it in the URL.
 
 Now that we have our project configuration, let's use Atlas to inspect the database schema. Run the following command:
