@@ -39,10 +39,10 @@ In this post, we'll focus on the security concerns of passwords (or API Tokens) 
 CI/CD pipelines), which are used to perform schema migrations. Such tokens pose a challenge to securing systems in a few ways:
 
 * **Leaks.** When stored in configuration files, passwords are typically in plain text, increasing the risk of leaks.
-* **Granularity.** When passwords are shared among multiple users, it becomes challenging to audit system usage and to revoke access for
+* **Granularity.** When passwords are shared among multiple users, it becomes challenging to grant and revoke access for
   individual users based on role changes or emerging security concerns.
 * **Visibility.** Because passwords are usually visible to operators and are shared by multiple users, it's hard to track
-  which user performed which operation once authenticated.
+  who performed which operation once authenticated.
 * **Rotation.** Because passwords tend to be long-lived, their rotation becomes a cumbersome task.
 
 ## IAM Authentication
@@ -101,10 +101,9 @@ a great fit. To support this use case, we have recently added support for AWS IA
 
 Let's see how to use Atlas to perform passwordless schema migrations on an RDS database.
 
-For the purpose of this demo,
-we assume that we have a PostgreSQL database running in RDS with IAM authentication enabled. We also assume that we have
-a user named `atlas` that has been granted the `rds_iam` permission and that we have created an IAM policy that allows
-us to generate RDS tokens.
+For the purpose of this demo, we assume that we have a PostgreSQL database running in RDS with IAM authentication
+enabled. We also assume that we have a user named `atlas` that has been granted the `rds_iam` permission and that 
+we have created an IAM policy that allows us to generate RDS tokens.
 
 Start by creating a new file named `atlas.hcl` to store our project configuration and add the following content:
 
