@@ -21,24 +21,24 @@ To skip the intro and jump straight to the tutorial, click [here](#demo-time).
 ## Introduction
 
 Passwords have long been the default mechanism for authentication, but they come with a set of known vulnerabilities. In recent years, 
-our industry is shifting towards alternative authentication methods due to these weaknesses. For databases, which store
+our industry has shifted towards alternative authentication methods due to these weaknesses. For databases, which store
 critical data, this security concern is even more important.
 
-Schema migrations require elevated permissions making it even more essential to approach them with
-utmost care to prevent security breaches. In this post, we'll show how to use Atlas to perform passwordless schema
+Schema migrations require elevated permissions, making it even more essential to approach them with
+utmost care in order to prevent security breaches. In this post, we'll show how to use Atlas to perform passwordless schema
 migrations on databases hosted in AWS's [RDS](https://aws.amazon.com/rds/) service.
 
 ## The Problem with Passwords
 
 Passwords are considered a weak authentication mechanism for humans logging in to systems since
-they can be leaked or guessed.  For this reason, many services offer more robust authentication
+they can be leaked or guessed. For this reason, many services offer more robust authentication
 methods, such as [multi-factor authentication](https://en.wikipedia.org/wiki/Multi-factor_authentication)
 or [single sign-on](https://en.wikipedia.org/wiki/Single_sign-on).
 
-In this post, we'll focus on the security concerns of passwords (or API Tokens) for automated systems, such as
-CI/CD pipelines, which are used to perform schema migrations. Such tokens pose a challenge to securing systems in a few ways:
+In this post, we'll focus on the security concerns of passwords (or API Tokens) for automated systems (such as
+CI/CD pipelines), which are used to perform schema migrations. Such tokens pose a challenge to securing systems in a few ways:
 
-* **Leaks.** Passwords, when stored in configuration files, are typically in plain text, increasing the risk of leaks.
+* **Leaks.** When stored in configuration files, passwords are typically in plain text, increasing the risk of leaks.
 * **Granularity.** When passwords are shared among multiple users, it becomes challenging to audit system usage and to revoke access for
   individual users based on role changes or emerging security concerns.
 * **Visibility.** Because passwords are usually visible to operators and are shared by multiple users, it's hard to track
@@ -48,7 +48,7 @@ CI/CD pipelines, which are used to perform schema migrations. Such tokens pose a
 ## IAM Authentication
 
 IAM, short for [Identity and Access Management](https://en.wikipedia.org/wiki/Identity_management), is a framework that
-was adopted by virtually all cloud providers for managing digital identities and their permissions. Unlike traditional 
+has been adopted by virtually all cloud providers for managing digital identities and their permissions. Unlike traditional 
 password-based systems where credentials are stored and checked, IAM verifies who (or what) is making a request and 
 then checks the permissions associated with that identity.
 
@@ -56,20 +56,20 @@ IAM services supply mechanisms for generating short-lived tokens based on the id
 these services provide a centralized way to manage permissions (by creating granular access policies and grouping them
 into roles) and auditing capabilities to track how subjects (users or services) use the system.
 
-Configured correctly, under IAM, every subject can access exactly what it needs, and nothing more, without
-ever using a password or other token that can be leaked or stolen. When a person leaves your organization, or no 
-longer needs access to a particular resource, you can revoke their access by updating their IAM role.
+Configured correctly, under IAM, every subject can access exactly what it needs and nothing more, without
+ever having to use a password or some other token that might be leaked or stolen. When a person leaves your organization (or no 
+longer needs access to a particular resource), you can revoke their access by updating their IAM role.
 
 ## IAM authentication for Databases
 
-Most databases that are in use today predate IAM and have developed their own internal mechanisms for authentication
+Most databases in use today predate IAM and have developed their own internal mechanisms for authentication
 and authorization. In recent years, cloud vendors have worked to create a bridge between IAM and databases, allowing
-users to authenticate to databases using IAM credentials.  In this post, we'll focus on AWS's implementation of IAM
+users to authenticate their identity to databases using IAM credentials. In this post, we'll focus on AWS's implementation of IAM
 authentication for RDS databases.
 
 #### How does it work? 
-First, you enable IAM authentication on your RDS instance. Essentially this installs a plugin on the database that
-allows it to authenticate users using IAM credentials instead of passwords. Read how to do this in the 
+First, enable IAM authentication on your RDS instance. This installs a plugin on the database that
+allows it to authenticate users with IAM credentials instead of passwords. Read how to do this in the 
 [AWS documentation](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.Enabling.html)
 
 Next, you create a database user and grant it permission to authenticate using IAM. 
