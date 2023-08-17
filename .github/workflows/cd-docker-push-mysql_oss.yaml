@@ -3,7 +3,7 @@ on:
   push:
     paths:
       - .github/ops/mysql/**
-      - .github/workflows/cd-push-docker-mysql.yaml
+      - .github/workflows/cd-docker-push-mysql_oss.yaml
     branches:
       - master
   schedule:
@@ -26,6 +26,7 @@ jobs:
             platforms: linux/amd64
           - dialect: mysql:8
           - dialect: mariadb:latest
+            build-args: SERVER=mariadbd
           - dialect: mariadb:10.2
           - dialect: mariadb:10.2.32
           - dialect: mariadb:10.3
@@ -53,3 +54,4 @@ jobs:
           platforms: ${{ matrix.platforms || 'linux/amd64,linux/arm64' }}
           build-args: |
             DIALECT=${{ matrix.dialect }}
+            ${{ matrix.build-args }}
