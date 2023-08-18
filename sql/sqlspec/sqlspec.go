@@ -94,6 +94,30 @@ type (
 	Type string
 )
 
+// Label returns the defaults label used for the table resource.
+func (t *Table) Label() string { return t.Name }
+
+// QualifierLabel returns the qualifier label used for the table resource, if any.
+func (t *Table) QualifierLabel() string { return t.Qualifier }
+
+// SetQualifier sets the qualifier label used for the table resource.
+func (t *Table) SetQualifier(q string) { t.Qualifier = q }
+
+// SchemaRef returns the schema reference for the table.
+func (t *Table) SchemaRef() *schemahcl.Ref { return t.Schema }
+
+// Label returns the defaults label used for the view resource.
+func (v *View) Label() string { return v.Name }
+
+// QualifierLabel returns the qualifier label used for the table resource, if any.
+func (v *View) QualifierLabel() string { return v.Qualifier }
+
+// SetQualifier sets the qualifier label used for the view resource.
+func (v *View) SetQualifier(q string) { v.Qualifier = q }
+
+// SchemaRef returns the schema reference for the view.
+func (v *View) SchemaRef() *schemahcl.Ref { return v.Schema }
+
 func init() {
 	schemahcl.Register("view", &View{})
 	schemahcl.Register("table", &Table{})
