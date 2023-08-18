@@ -30,12 +30,25 @@ type (
 	}
 	// Enum holds a specification for an enum, that can be referenced as a column type.
 	Enum struct {
-		Name   string         `spec:",name"`
-		Schema *schemahcl.Ref `spec:"schema"`
-		Values []string       `spec:"values"`
+		Name      string         `spec:",name"`
+		Qualifier string         `spec:",qualifier"`
+		Schema    *schemahcl.Ref `spec:"schema"`
+		Values    []string       `spec:"values"`
 		schemahcl.DefaultExtension
 	}
 )
+
+// Label returns the defaults label used for the enum resource.
+func (e *Enum) Label() string { return e.Name }
+
+// QualifierLabel returns the qualifier label used for the enum resource, if any.
+func (e *Enum) QualifierLabel() string { return e.Qualifier }
+
+// SetQualifier sets the qualifier label used for the enum resource.
+func (e *Enum) SetQualifier(q string) { e.Qualifier = q }
+
+// SchemaRef returns the schema reference for the enum.
+func (e *Enum) SchemaRef() *schemahcl.Ref { return e.Schema }
 
 func init() {
 	schemahcl.Register("enum", &Enum{})
@@ -112,10 +125,13 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 			d.Schemas = append(d.Schemas, doc.Schemas...)
 			d.Enums = append(d.Enums, doc.Enums...)
 		}
-		if err := specutil.QualifyTables(d.Tables); err != nil {
+		if err := specutil.QualifyObjects(d.Tables); err != nil {
 			return nil, err
 		}
-		if err := specutil.QualifyViews(d.Views); err != nil {
+		if err := specutil.QualifyObjects(d.Views); err != nil {
+			return nil, err
+		}
+		if err := specutil.QualifyObjects(d.Enums); err != nil {
 			return nil, err
 		}
 		if err := specutil.QualifyReferences(d.Tables, s); err != nil {

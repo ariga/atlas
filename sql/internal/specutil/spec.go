@@ -58,10 +58,10 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 			d.Views = append(d.Views, spec.Views...)
 			d.Schemas = append(d.Schemas, spec.Schema)
 		}
-		if err := QualifyTables(d.Tables); err != nil {
+		if err := QualifyObjects(d.Tables); err != nil {
 			return nil, err
 		}
-		if err := QualifyViews(d.Views); err != nil {
+		if err := QualifyObjects(d.Views); err != nil {
 			return nil, err
 		}
 		if err := QualifyReferences(d.Tables, s); err != nil {
@@ -73,46 +73,53 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 	return marshaler.MarshalSpec(d)
 }
 
-// QualifyTables sets the Qualifier field equal to the schema
-// name in any tables with duplicate names in the provided specs.
-func QualifyTables(specs []*sqlspec.Table) error {
-	seen := make(map[string]*sqlspec.Table, len(specs))
-	for _, t := range specs {
-		if s, ok := seen[t.Name]; ok {
-			schemaName, err := SchemaName(s.Schema)
-			if err != nil {
-				return err
-			}
-			s.Qualifier = schemaName
-			schemaName, err = SchemaName(t.Schema)
-			if err != nil {
-				return err
-			}
-			t.Qualifier = schemaName
-		}
-		seen[t.Name] = t
-	}
-	return nil
+// SchemaObject describes a top-level schema object
+// that might be qualified, e.g. a table or a view.
+type SchemaObject interface {
+	Label() string
+	QualifierLabel() string
+	SetQualifier(string)
+	SchemaRef() *schemahcl.Ref
 }
 
-// QualifyViews sets the Qualifier field equal to the schema
-// name in any tables with duplicate names in the provided specs.
-func QualifyViews(specs []*sqlspec.View) error {
-	seen := make(map[string]*sqlspec.View, len(specs))
+// QualifyObjects sets the Qualifier field equal to the schema
+// name in any objects with duplicate names in the provided specs.
+func QualifyObjects[T SchemaObject](specs []T) error {
+	var (
+		seen    = make(map[string]T, len(specs))
+		schemas = make(map[string]bool, len(specs))
+	)
+	// Loop first and qualify schema objects with the same label.
+	// For example, two tables named "users" reside in different
+	// schemas are converted to: ("s1", "users") and ("s2", "users").
 	for _, v := range specs {
-		if s, ok := seen[v.Name]; ok {
-			schemaName, err := SchemaName(s.Schema)
+		if s, ok := seen[v.Label()]; ok {
+			schemaName, err := SchemaName(s.SchemaRef())
 			if err != nil {
 				return err
 			}
-			s.Qualifier = schemaName
-			schemaName, err = SchemaName(v.Schema)
+			s.SetQualifier(schemaName)
+			schemas[schemaName] = true
+			schemaName, err = SchemaName(v.SchemaRef())
 			if err != nil {
 				return err
 			}
-			v.Qualifier = schemaName
+			v.SetQualifier(schemaName)
+			schemas[schemaName] = true
 		}
-		seen[v.Name] = v
+		seen[v.Label()] = v
+	}
+	// After objects were qualified, they might be conflicted with different
+	// resources that labeled with the schema name. e.g., ("s1", "users") and
+	// ("s1"). To resolve this conflict, we qualify these objects as well.
+	for _, v := range specs {
+		if v.QualifierLabel() == "" && schemas[v.Label()] {
+			schemaName, err := SchemaName(v.SchemaRef())
+			if err != nil {
+				return err
+			}
+			v.SetQualifier(schemaName)
+		}
 	}
 	return nil
 }

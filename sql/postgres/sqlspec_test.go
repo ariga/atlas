@@ -2116,6 +2116,53 @@ schema "s2" {
 		string(got))
 }
 
+func TestMarshalQualifiers(t *testing.T) {
+	var (
+		s1 = schema.New("s1").
+			AddTables(
+				schema.NewTable("t1").AddColumns(schema.NewIntColumn("id", "int")),
+			)
+		s2 = schema.New("s2").
+			AddTables(
+				schema.NewTable("t1").AddColumns(schema.NewIntColumn("id", "int")),
+			)
+		s3 = schema.New("s3").
+			AddTables(
+				schema.NewTable("s1").AddColumns(schema.NewIntColumn("id", "int")),
+			)
+	)
+	buf, err := MarshalHCL.MarshalSpec(schema.NewRealm(s1, s2, s3))
+	require.NoError(t, err)
+	require.Equal(t, `table "s1" "t1" {
+  schema = schema.s1
+  column "id" {
+    null = false
+    type = int
+  }
+}
+table "s2" "t1" {
+  schema = schema.s2
+  column "id" {
+    null = false
+    type = int
+  }
+}
+table "s3" "s1" {
+  schema = schema.s3
+  column "id" {
+    null = false
+    type = int
+  }
+}
+schema "s1" {
+}
+schema "s2" {
+}
+schema "s3" {
+}
+`, string(buf))
+}
+
 func TestEvalHCLError(t *testing.T) {
 	for _, tt := range []struct {
 		text, err string
