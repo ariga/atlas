@@ -99,42 +99,6 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
 ```
 
 
-### atlas migrate checkpoint
-
-Generate a checkpoint file representing the state of the migration directory.
-
-#### Usage
-```
-atlas migrate checkpoint [flags] [tag]
-```
-
-#### Details
-The 'atlas migrate checkpoint' command uses the dev-database to calculate the current state of the migration directory
-by executing its files. It then creates a checkpoint file that represents this state, enabling new environments to bypass
-previous files and immediately skip to this checkpoint when executing the 'atlas migrate apply' command.
-
-#### Example
-
-```
-  atlas migrate checkpoint --dev-url docker://mysql/8/dev
-  atlas migrate checkpoint --dev-url "docker://postgres/15/dev?search_path=public"
-  atlas migrate checkpoint --dev-url "sqlite://dev?mode=memory"
-  atlas migrate checkpoint --env dev --format '{{ sql . "  " }}'
-```
-#### Flags
-```
-      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
-      --dir string              select migration directory using URL format (default "file://migrations")
-      --dir-format string       select migration file format (default "atlas")
-  -s, --schema strings          set schema names
-      --lock-timeout duration   set how long to wait for the database lock (default 10s)
-      --format string           Go template to use to format the output
-      --qualifier string        qualify tables with custom qualifier when working on a single schema
-      --edit                    edit the generated migration file(s)
-
-```
-
-
 ### atlas migrate diff
 
 Compute the diff between the migration directory and a desired state and create a new migration file.
