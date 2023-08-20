@@ -19,7 +19,6 @@ func init() {
 	migrateCmd := migrateCmd()
 	migrateCmd.AddCommand(
 		migrateApplyCmd(),
-		migrateCheckpointCmd(),
 		migrateDiffCmd(),
 		migrateHashCmd(),
 		migrateImportCmd(),
