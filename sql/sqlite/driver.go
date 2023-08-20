@@ -65,7 +65,7 @@ func init() {
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterTxOpener(OpenTx),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("libsql+wss"),
+		sqlclient.RegisterFlavours("libsql+ws", "libsql+wss"),
 		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
 			return &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), "libsql+"), Schema: mainFile}
 		})),

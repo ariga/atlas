@@ -5,11 +5,11 @@ slug: /guides/sqlite/turso
 ---
 [Turso](https://turso.tech) is an edge-hosted, distributed database based on
 [libSQL](https://github.com/libsql/libsql), an open-source and open-contribution
-fork of SQLite. It was designed to minimize query latency for applications where 
-queries come from anywhere in the world. 
+fork of SQLite. It was designed to minimize query latency for applications where
+queries come from anywhere in the world.
 
 Engineers can use Atlas to manage their Turso databases using the SQLite driver by
-using the `libsql+wss://` schema in their connection URLs.
+using the `libsql+ws://` (for local environments) or `libsql+wss://` schemas in their connection URLs.
 
 This guide will walk you through the process of setting up Turso and using Atlas to manage
 your Turso databases.
@@ -28,8 +28,8 @@ your Turso databases.
    ```
    turso auth signup
    ```
-   The CLI launches your default browser and asks to log in with GitHub. 
-   The first time you log in, you are asked to grant the GitHub Turso 
+   The CLI launches your default browser and asks to log in with GitHub.
+   The first time you log in, you are asked to grant the GitHub Turso
    app some permissions to your account. Accept this in order to continue.
 
 ## Create your first Turso edge-database
@@ -53,8 +53,8 @@ your Turso databases.
    ```
    turso db tokens create atlas
    ```
-   The CLI will print the access token to the console. Make note of this token  
-   as we will use it in the next section as well. 
+   The CLI will print the access token to the console. Make note of this token
+   as we will use it in the next section as well.
 
 ## Create a configuration file for Atlas
 
@@ -153,7 +153,7 @@ Use the arrow keys to navigate: ↓ ↑ → ←
 ```
 After approving the changes, Atlas will apply the schema to the Turso database.
 
-### Inspection 
+### Inspection
 
 We can use the `atlas schema inspect` command to inspect the schema of our Turso database.
 After applying the changes we mentioned above, we can run the following command to inspect
