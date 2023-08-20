@@ -51,6 +51,21 @@ func TestClient_Dir(t *testing.T) {
 	require.Equal(t, dcheck.Sum(), gcheck.Sum())
 }
 
+func TestClient_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, err := w.Write([]byte(`{"errors":[{"message":"error\n","path":["variable","input","driver"],"extensions":{}}],"data":null}`))
+		require.NoError(t, err)
+	}))
+	client := New(srv.URL, "atlas")
+	defer srv.Close()
+	err := client.ReportMigration(context.Background(), ReportMigrationInput{
+		EnvName:     "foo",
+		ProjectName: "bar",
+	})
+	require.EqualError(t, err, "input: variable.input.driver error", "error is trimmed")
+}
+
 func TestClient_ReportMigration(t *testing.T) {
 	const project, env = "atlas", "dev"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
