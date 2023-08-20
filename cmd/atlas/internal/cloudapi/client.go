@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
@@ -213,11 +214,17 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 	}
 	defer req.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		var v struct {
+			Errors errlist `json:"errors,omitempty"`
+		}
+		if err := json.NewDecoder(res.Body).Decode(&v); err != nil || len(v.Errors) == 0 {
+			return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		}
+		return v.Errors
 	}
 	var scan = struct {
-		Data   any           `json:"data"`
-		Errors gqlerror.List `json:"errors,omitempty"`
+		Data   any     `json:"data"`
+		Errors errlist `json:"errors,omitempty"`
 	}{
 		Data: data,
 	}
@@ -230,9 +237,17 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 	return nil
 }
 
-// roundTripper is a http.RoundTripper that adds the Authorization header.
-type roundTripper struct {
-	token string
+type (
+	// errlist wraps the gqlerror.List to print errors without extra newlines.
+	errlist gqlerror.List
+	// roundTripper is a http.RoundTripper that adds the Authorization header.
+	roundTripper struct {
+		token string
+	}
+)
+
+func (e errlist) Error() string {
+	return strings.TrimSpace(gqlerror.List(e).Error())
 }
 
 // RoundTrip implements http.RoundTripper.
