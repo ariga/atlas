@@ -238,7 +238,8 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 }
 
 type (
-	// errlist wraps the gqlerror.List to print errors without extra newlines.
+	// errlist wraps the gqlerror.List to print errors without
+	// extra newlines and prefix info added.
 	errlist gqlerror.List
 	// roundTripper is a http.RoundTripper that adds the Authorization header.
 	roundTripper struct {
@@ -247,7 +248,8 @@ type (
 )
 
 func (e errlist) Error() string {
-	return strings.TrimSpace(gqlerror.List(e).Error())
+	s := strings.TrimPrefix(gqlerror.List(e).Error(), "input:")
+	return strings.TrimSpace(s)
 }
 
 // RoundTrip implements http.RoundTripper.

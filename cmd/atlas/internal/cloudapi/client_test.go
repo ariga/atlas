@@ -63,7 +63,7 @@ func TestClient_Error(t *testing.T) {
 		EnvName:     "foo",
 		ProjectName: "bar",
 	})
-	require.EqualError(t, err, "input: variable.input.driver error", "error is trimmed")
+	require.EqualError(t, err, "variable.input.driver error", "error is trimmed")
 }
 
 func TestClient_ReportMigration(t *testing.T) {
