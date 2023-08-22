@@ -104,7 +104,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 					if err != nil {
 						return err
 					}
-					set := NewReportProvider(project, envs)
+					set := NewReportProvider(cmd.Context(), project, envs)
 					defer func() { set.Flush(cmd, cmdErr) }()
 					return cmdEnvsRun(envs, setMigrateEnvFlags, cmd, func(env *Env) error {
 						return migrateApplyRun(cmd, args, flags, set.ReportFor(flags, env))
@@ -143,7 +143,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		}
 	}
 	// Open and validate the migration directory.
-	dir, err := cmdmigrate.Dir(flags.dirURL, false)
+	dir, err := cmdmigrate.Dir(ctx, flags.dirURL, false)
 	if err != nil {
 		return err
 	}
@@ -274,9 +274,13 @@ type (
 )
 
 // NewReportProvider returns a new ReporterProvider.
-func NewReportProvider(project *Project, envs []*Env) *MigrateReportSet {
+func NewReportProvider(ctx context.Context, p *Project, envs []*Env) *MigrateReportSet {
+	c := cloudapi.FromContext(ctx)
+	if p.cfg.Client != nil {
+		c = p.cfg.Client
+	}
 	s := &MigrateReportSet{
-		client: project.cfg.Client,
+		client: c,
 		ReportMigrationSetInput: cloudapi.ReportMigrationSetInput{
 			ID:        uuid.NewString(),
 			StartTime: time.Now(),
@@ -571,7 +575,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	if err != nil {
 		return err
 	}
-	dir, err := cmdmigrate.DirURL(u, false)
+	dir, err := cmdmigrate.DirURL(ctx, u, false)
 	if err != nil {
 		return err
 	}
@@ -719,7 +723,7 @@ This command should be used whenever a manual change in the migration directory 
 				return dirFormatBC(flags.dirFormat, &flags.dirURL)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
-				dir, err := cmdmigrate.Dir(flags.dirURL, false)
+				dir, err := cmdmigrate.Dir(cmd.Context(), flags.dirURL, false)
 				if err != nil {
 					return err
 				}
@@ -757,7 +761,7 @@ func migrateImportCmd() *cobra.Command {
 				if err := dirFormatBC(flags.dirFormat, &flags.fromURL); err != nil {
 					return err
 				}
-				d, err := cmdmigrate.Dir(flags.fromURL, false)
+				d, err := cmdmigrate.Dir(cmd.Context(), flags.fromURL, false)
 				if err != nil {
 					return err
 				}
@@ -787,11 +791,11 @@ func migrateImportRun(cmd *cobra.Command, _ []string, flags migrateImportFlags) 
 	if f := p.Query().Get("format"); f == "" || f == cmdmigrate.FormatAtlas {
 		return fmt.Errorf("cannot import a migration directory already in %q format", cmdmigrate.FormatAtlas)
 	}
-	src, err := cmdmigrate.Dir(flags.fromURL, false)
+	src, err := cmdmigrate.Dir(cmd.Context(), flags.fromURL, false)
 	if err != nil {
 		return err
 	}
-	trgt, err := cmdmigrate.Dir(flags.toURL, true)
+	trgt, err := cmdmigrate.Dir(cmd.Context(), flags.toURL, true)
 	if err != nil {
 		return err
 	}
@@ -907,7 +911,7 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 		return err
 	}
 	defer dev.Close()
-	dir, err := cmdmigrate.Dir(flags.dirURL, false)
+	dir, err := cmdmigrate.Dir(cmd.Context(), flags.dirURL, false)
 	if err != nil {
 		return err
 	}
@@ -999,12 +1003,12 @@ func migrateNewCmd() *cobra.Command {
 	return cmd
 }
 
-func migrateNewRun(_ *cobra.Command, args []string, flags migrateNewFlags) error {
+func migrateNewRun(cmd *cobra.Command, args []string, flags migrateNewFlags) error {
 	u, err := url.Parse(flags.dirURL)
 	if err != nil {
 		return err
 	}
-	dir, err := cmdmigrate.DirURL(u, true)
+	dir, err := cmdmigrate.DirURL(cmd.Context(), u, true)
 	if err != nil {
 		return err
 	}
@@ -1064,7 +1068,7 @@ to be applied. This command is usually used after manually making changes to the
 
 func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) (rerr error) {
 	ctx := cmd.Context()
-	dir, err := cmdmigrate.Dir(flags.dirURL, false)
+	dir, err := cmdmigrate.Dir(ctx, flags.dirURL, false)
 	if err != nil {
 		return err
 	}
@@ -1261,11 +1265,12 @@ func migrateStatusCmd() *cobra.Command {
 }
 
 func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) error {
-	dir, err := cmdmigrate.Dir(flags.dirURL, false)
+	ctx := cmd.Context()
+	dir, err := cmdmigrate.Dir(ctx, flags.dirURL, false)
 	if err != nil {
 		return err
 	}
-	client, err := sqlclient.Open(cmd.Context(), flags.url)
+	client, err := sqlclient.Open(ctx, flags.url)
 	if err != nil {
 		return err
 	}
@@ -1277,7 +1282,7 @@ func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) 
 		Client: client,
 		Dir:    dir,
 		Schema: revisionSchemaName(client, flags.revisionSchema),
-	}).Report(cmd.Context())
+	}).Report(ctx)
 	if err != nil {
 		return err
 	}
@@ -1343,7 +1348,7 @@ func migrateValidateRun(cmd *cobra.Command, _ []string, flags migrateValidateFla
 	}
 	defer dev.Close()
 	// Currently, only our own migration file format is supported.
-	dir, err := cmdmigrate.Dir(flags.dirURL, false)
+	dir, err := cmdmigrate.Dir(cmd.Context(), flags.dirURL, false)
 	if err != nil {
 		return err
 	}
@@ -1568,7 +1573,7 @@ func dirFormatBC(flag string, urls ...*string) error {
 }
 
 func checkDir(cmd *cobra.Command, url string, create bool) error {
-	d, err := cmdmigrate.Dir(url, create)
+	d, err := cmdmigrate.Dir(cmd.Context(), url, create)
 	if err != nil {
 		return err
 	}

@@ -255,11 +255,11 @@ const revisionID = ".atlas_cloud_identifier"
 // ID returns the identifier of the connected revisions table.
 func (r *EntRevisions) ID(ctx context.Context, operatorV string) (string, error) {
 	err := r.ec.Revision.Create().
-		SetID(revisionID).                // identifier key
+		SetID(revisionID). // identifier key
 		SetDescription(uuid.NewString()). // actual revision identifier
-		SetOperatorVersion(operatorV).    // operator version
-		SetExecutedAt(time.Now()).        // when it was set
-		SetExecutionTime(0).              // dummy values
+		SetOperatorVersion(operatorV). // operator version
+		SetExecutedAt(time.Now()). // when it was set
+		SetExecutionTime(0). // dummy values
 		SetHash("").
 		OnConflict(sql.ConflictColumns(revision.FieldID)).
 		Ignore().
@@ -314,16 +314,16 @@ func Formatter(u *url.URL) (migrate.Formatter, error) {
 }
 
 // Dir parses u and calls dirURL.
-func Dir(u string, create bool) (migrate.Dir, error) {
+func Dir(ctx context.Context, u string, create bool) (migrate.Dir, error) {
 	parsed, err := url.Parse(u)
 	if err != nil {
 		return nil, err
 	}
-	return DirURL(parsed, create)
+	return DirURL(ctx, parsed, create)
 }
 
 // DirURL returns a migrate.Dir to use as migration directory. For now only local directories are supported.
-func DirURL(u *url.URL, create bool) (migrate.Dir, error) {
+func DirURL(ctx context.Context, u *url.URL, create bool) (migrate.Dir, error) {
 	p := filepath.Join(u.Host, u.Path)
 	switch u.Scheme {
 	case "mem":
@@ -332,6 +332,8 @@ func DirURL(u *url.URL, create bool) (migrate.Dir, error) {
 		if p == "" {
 			p = "migrations"
 		}
+	case "atlas":
+		return openAtlasDir(ctx, u)
 	default:
 		return nil, fmt.Errorf("unsupported driver %q", u.Scheme)
 	}

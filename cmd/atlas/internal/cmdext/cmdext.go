@@ -398,9 +398,6 @@ type AtlasConfig struct {
 	Project string           // Optional project.
 }
 
-// DefaultProjectName is the default name for projects.
-const DefaultProjectName = "default"
-
 // InitBlock returns the handler for the "atlas" init block.
 //
 //	atlas {
@@ -423,7 +420,7 @@ func (c *AtlasConfig) InitBlock() schemahcl.Option {
 			return cty.NilVal, fmt.Errorf("atlas.cloud: decoding body: %v", diags)
 		}
 		if args.Cloud.Project == "" {
-			args.Cloud.Project = DefaultProjectName
+			args.Cloud.Project = cloudapi.DefaultProjectName
 		}
 		c.Project = args.Cloud.Project
 		c.Client = cloudapi.New(args.Cloud.URL, args.Cloud.Token)
@@ -572,16 +569,16 @@ func SchemaExternal(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, er
 	}), nil
 }
 
-func memdir(client *cloudapi.Client, dirName string, tag string) (string, error) {
-	input := cloudapi.DirInput{
-		Name: dirName,
+// memdir converts the given (cloud) migrate.Dir to a memory migrate.Dir.
+func memdir(client *cloudapi.Client, name, tag string) (string, error) {
+	dir, err := client.Dir(context.Background(), cloudapi.DirInput{
+		Name: name,
 		Tag:  tag,
-	}
-	dir, err := client.Dir(context.Background(), input)
+	})
 	if err != nil {
 		return "", err
 	}
-	md := migrate.OpenMemDir(dirName)
+	md := migrate.OpenMemDir(name)
 	files, err := dir.Files()
 	if err != nil {
 		return "", err
@@ -600,7 +597,7 @@ func memdir(client *cloudapi.Client, dirName string, tag string) (string, error)
 			return "", err
 		}
 	}
-	return "mem://" + dirName, nil
+	return "mem://" + name, nil
 }
 
 func blockError(name string, b *hclsyntax.Block) func(string, ...any) error {

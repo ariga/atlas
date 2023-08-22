@@ -409,7 +409,9 @@ func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg := &cmdext.AtlasConfig{}
+	cfg := &cmdext.AtlasConfig{
+		Project: cloudapi.DefaultProjectName,
+	}
 	state := schemahcl.New(
 		append(
 			cmdext.DataSources,

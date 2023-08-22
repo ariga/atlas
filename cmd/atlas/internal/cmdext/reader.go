@@ -72,7 +72,7 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 		}
 	// A migration directory.
 	default:
-		if dir, err = cmdmigrate.DirURL(config.URLs[0], false); err != nil {
+		if dir, err = cmdmigrate.DirURL(ctx, config.URLs[0], false); err != nil {
 			return nil, err
 		}
 		if v := config.URLs[0].Query().Get("version"); v != "" {

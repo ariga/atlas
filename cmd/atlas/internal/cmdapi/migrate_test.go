@@ -812,7 +812,7 @@ func TestMigrate_ApplyCloudReport(t *testing.T) {
 				// Archive and send.
 				arc, err := migrate.ArchiveDir(&dir)
 				require.NoError(t, err)
-				fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(arc))
+				fmt.Fprintf(w, `{"data":{"dirState":{"content":%q}}}`, base64.StdEncoding.EncodeToString(arc))
 			case strings.Contains(m.Query, "mutation") && strings.Contains(m.Query, "ReportMigrationSet"):
 				if status != 0 {
 					w.WriteHeader(status)
@@ -994,7 +994,7 @@ func TestMigrate_ApplyCloudReportSet(t *testing.T) {
 				// Archive and send.
 				arc, err := migrate.ArchiveDir(&dir)
 				require.NoError(t, err)
-				fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(arc))
+				fmt.Fprintf(w, `{"data":{"dirState":{"content":%q}}}`, base64.StdEncoding.EncodeToString(arc))
 			case strings.Contains(m.Query, "mutation"):
 				if status != 0 {
 					w.WriteHeader(status)

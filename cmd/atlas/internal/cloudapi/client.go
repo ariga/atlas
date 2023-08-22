@@ -21,8 +21,12 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-// defaultURL for Atlas Cloud.
-const defaultURL = "https://api.atlasgo.cloud/query"
+const (
+	// defaultURL for Atlas Cloud.
+	defaultURL = "https://api.atlasgo.cloud/query"
+	// DefaultProjectName is the default name for projects.
+	DefaultProjectName = "default"
+)
 
 // Client is a client for the Atlas Cloud API.
 type Client struct {
@@ -61,7 +65,8 @@ func FromContext(ctx context.Context) *Client {
 
 // DirInput is the input type for retrieving a single directory.
 type DirInput struct {
-	Name string `json:"name"`
+	Slug string `json:"slug,omitempty"`
+	Name string `json:"name,omitempty"`
 	Tag  string `json:"tag,omitempty"`
 }
 
@@ -71,11 +76,11 @@ func (c *Client) Dir(ctx context.Context, input DirInput) (migrate.Dir, error) {
 		payload struct {
 			Dir struct {
 				Content []byte `json:"content"`
-			} `json:"dir"`
+			} `json:"dirState"`
 		}
 		query = `
-		query getDir($input: DirInput!) {
-		   dir(input: $input) {
+		query dirState($input: DirStateInput!) {
+		   dirState(input: $input) {
 		     content
 		   }
 		}`

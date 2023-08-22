@@ -440,7 +440,7 @@ atlas {
 }
 `), &v, map[string]cty.Value{})
 	require.NoError(t, err)
-	require.Equal(t, cmdext.DefaultProjectName, cfg.Project)
+	require.Equal(t, cloudapi.DefaultProjectName, cfg.Project)
 }
 
 func TestRemoteDir(t *testing.T) {
@@ -476,7 +476,7 @@ func TestRemoteDir(t *testing.T) {
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
-			fmt.Fprintf(w, `{"data":{"dir":{"content":%q}}}`, base64.StdEncoding.EncodeToString(arch))
+			fmt.Fprintf(w, `{"data":{"dirState":{"content":%q}}}`, base64.StdEncoding.EncodeToString(arch))
 		}))
 	)
 	defer srv.Close()
