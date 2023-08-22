@@ -10,6 +10,7 @@ import (
 	"sort"
 	"testing"
 
+	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/schemahcl"
@@ -150,7 +151,9 @@ env "multi" {
 					},
 				},
 			},
-			cfg: &cmdext.AtlasConfig{},
+			cfg: &cmdext.AtlasConfig{
+				Project: cloudapi.DefaultProjectName,
+			},
 		}, env)
 		sources, err := env.Sources()
 		require.NoError(t, err)

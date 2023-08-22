@@ -4,6 +4,8 @@ run:
 issues:
   include:
     - EXC0012
+  exclude:
+    - G601
   exclude-rules:
     - path: _test\.go
       linters:
