@@ -361,7 +361,10 @@ func (s *MigrateReportSet) Flush(cmd *cobra.Command, cmdErr error) {
 	if cmdErr != nil && s.Error == nil {
 		s.StepLogError(cmdErr.Error())
 	}
-	var err error
+	var (
+		err  error
+		link string
+	)
 	switch {
 	// Skip reporting if set is empty,
 	// or there is no cloud connectivity.
@@ -369,23 +372,28 @@ func (s *MigrateReportSet) Flush(cmd *cobra.Command, cmdErr error) {
 		return
 	// Single migration that was completed.
 	case s.Planned == 1 && len(s.Completed) == 1:
-		err = s.client.ReportMigration(cmd.Context(), s.Completed[0])
+		link, err = s.client.ReportMigration(cmd.Context(), s.Completed[0])
 	// Single migration that failed to start.
 	case s.Planned == 1 && len(s.Completed) == 0:
 		s.EndTime = time.Now()
-		err = s.client.ReportMigrationSet(cmd.Context(), s.ReportMigrationSetInput)
+		link, err = s.client.ReportMigrationSet(cmd.Context(), s.ReportMigrationSetInput)
 	// Multi environment migration (e.g., multi-tenancy).
 	case s.Planned > 1:
 		s.EndTime = time.Now()
-		err = s.client.ReportMigrationSet(cmd.Context(), s.ReportMigrationSetInput)
+		link, err = s.client.ReportMigrationSet(cmd.Context(), s.ReportMigrationSetInput)
 	}
-	if err != nil {
+	switch {
+	case err != nil:
 		txt := fmt.Sprintf("Error: %s", strings.TrimRight(err.Error(), "\n"))
 		// Ensure errors are printed in new lines.
 		if cmd.Flags().Changed(flagFormat) {
 			txt = "\n" + txt
 		}
 		cmd.PrintErrln(txt)
+	// Unlike errors that are printed to stderr, links are printed to stdout.
+	// We do it only if the format was not customized by the user (e.g., JSON).
+	case link != "" && !cmd.Flags().Changed(flagFormat):
+		cmd.Println(link)
 	}
 }
 
@@ -397,7 +405,7 @@ func (r *MigrateReport) Init(c *sqlclient.Client, l *cmdlog.MigrateApply, rrw cm
 // RecordTargetID asks the revisions-table to allow or provide
 // the target identifier if cloud reporting is enabled.
 func (r *MigrateReport) RecordTargetID(ctx context.Context) error {
-	if r.CloudEnabled() {
+	if r.CloudEnabled(ctx) {
 		id, err := r.rrw.ID(ctx, operatorVersion())
 		if err != nil {
 			return err
@@ -409,7 +417,7 @@ func (r *MigrateReport) RecordTargetID(ctx context.Context) error {
 
 // Done closes and flushes this report.
 func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error {
-	if !r.CloudEnabled() {
+	if !r.CloudEnabled(cmd.Context()) {
 		return logApply(cmd, cmd.OutOrStdout(), flags, r.log)
 	}
 	var (
@@ -470,8 +478,8 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 }
 
 // CloudEnabled reports if cloud reporting is enabled.
-func (r *MigrateReport) CloudEnabled() bool {
-	return r.env != nil && r.env.cfg != nil && r.env.cfg.Client != nil && r.env.cfg.Project != ""
+func (r *MigrateReport) CloudEnabled(ctx context.Context) bool {
+	return r.env != nil && r.env.cfg != nil && r.env.cfg.Project != "" && (r.env.cfg.Client != nil || cloudapi.FromContext(ctx) != nil)
 }
 
 func logApply(cmd *cobra.Command, w io.Writer, flags migrateApplyFlags, r *cmdlog.MigrateApply) error {

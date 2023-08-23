@@ -59,11 +59,12 @@ func TestClient_Error(t *testing.T) {
 	}))
 	client := New(srv.URL, "atlas")
 	defer srv.Close()
-	err := client.ReportMigration(context.Background(), ReportMigrationInput{
+	link, err := client.ReportMigration(context.Background(), ReportMigrationInput{
 		EnvName:     "foo",
 		ProjectName: "bar",
 	})
 	require.EqualError(t, err, "variable.input.driver error", "error is trimmed")
+	require.Empty(t, link)
 }
 
 func TestClient_ReportMigration(t *testing.T) {
@@ -78,14 +79,16 @@ func TestClient_ReportMigration(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, env, input.Variables.Input.EnvName)
 		require.Equal(t, project, input.Variables.Input.ProjectName)
+		fmt.Fprintf(w, `{"data":{"reportMigration":{"url":"https://atlas.com"}}}`)
 	}))
 	client := New(srv.URL, "atlas")
 	defer srv.Close()
-	err := client.ReportMigration(context.Background(), ReportMigrationInput{
+	link, err := client.ReportMigration(context.Background(), ReportMigrationInput{
 		EnvName:     env,
 		ProjectName: project,
 	})
 	require.NoError(t, err)
+	require.NotEmpty(t, link)
 }
 
 func TestClient_ReportMigrationSet(t *testing.T) {
@@ -110,10 +113,11 @@ func TestClient_ReportMigrationSet(t *testing.T) {
 		require.Equal(t, env, input.Variables.Input.Completed[1].EnvName)
 		require.Equal(t, project, input.Variables.Input.Completed[1].ProjectName)
 		require.Equal(t, "dir-2", input.Variables.Input.Completed[1].DirName)
+		fmt.Fprintf(w, `{"data":{"reportMigrationSet":{"url":"https://atlas.com"}}}`)
 	}))
 	client := New(srv.URL, "atlas")
 	defer srv.Close()
-	err := client.ReportMigrationSet(context.Background(), ReportMigrationSetInput{
+	link, err := client.ReportMigrationSet(context.Background(), ReportMigrationSetInput{
 		ID:      id,
 		Planned: planned,
 		Log:     []ReportStep{{Text: log}},
@@ -131,4 +135,5 @@ func TestClient_ReportMigrationSet(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
+	require.NotEmpty(t, link)
 }
