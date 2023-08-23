@@ -818,11 +818,13 @@ func TestMigrate_ApplyCloudReport(t *testing.T) {
 					w.WriteHeader(status)
 				}
 				require.NoError(t, json.Unmarshal(m.Variables.Input, &reports))
+				fmt.Fprint(w, `{"data":{"reportMigrationSet":{"url": "https://gh.atlasgo.cloud/deployments/sets/94489280524"}}}`)
 			case strings.Contains(m.Query, "mutation") && strings.Contains(m.Query, "ReportMigration"):
 				if status != 0 {
 					w.WriteHeader(status)
 				}
 				require.NoError(t, json.Unmarshal(m.Variables.Input, &report))
+				fmt.Fprint(w, `{"data":{"reportMigration":{"url": "https://gh.atlasgo.cloud/deployments/51539607559"}}}`)
 			default:
 				t.Fatalf("unexpected query: %s", m.Query)
 			}
@@ -869,7 +871,7 @@ env {
 			"--var", "cloud_url="+srv.URL,
 		)
 		require.NoError(t, err)
-		require.Equal(t, "No migration files to execute\n", s)
+		require.Equal(t, "No migration files to execute\nhttps://gh.atlasgo.cloud/deployments/51539607559\n", s)
 		require.NotEmpty(t, report.Target.ID)
 		_, err = uuid.Parse(report.Target.ID)
 		require.NoError(t, err, "target id is not a valid uuid")
@@ -908,7 +910,7 @@ env {
 		require.NoError(t, err)
 		// Reporting does not affect the output.
 		require.True(t, strings.HasPrefix(s, "Migrating to version 2 (2 migrations in total):"))
-		require.True(t, strings.HasSuffix(s, "  -- 2 migrations \n  -- 2 sql statements\n"))
+		require.True(t, strings.HasSuffix(s, "  -- 2 migrations \n  -- 2 sql statements\nhttps://gh.atlasgo.cloud/deployments/51539607559\n"))
 		require.Equal(t, "", report.FromVersion, "from empty database")
 		require.Equal(t, "2", report.ToVersion)
 		require.Equal(t, "2", report.CurrentVersion)
@@ -998,6 +1000,8 @@ func TestMigrate_ApplyCloudReportSet(t *testing.T) {
 			case strings.Contains(m.Query, "mutation"):
 				if status != 0 {
 					w.WriteHeader(status)
+				} else {
+					fmt.Fprint(w, `{"data":{"reportMigrationSet":{"url":"https://gh.atlasgo.cloud/deployments/sets/94489280524"}}}`)
 				}
 				require.NoError(t, json.Unmarshal(m.Variables.Input, &report))
 			default:
@@ -1053,7 +1057,7 @@ env {
 			"--var", "cloud_url="+srv.URL,
 		)
 		require.NoError(t, err)
-		require.Equal(t, "No migration files to execute\nNo migration files to execute\n", s)
+		require.Equal(t, "No migration files to execute\nNo migration files to execute\nhttps://gh.atlasgo.cloud/deployments/sets/94489280524\n", s)
 		require.NotEmpty(t, report.ID)
 		_, err = uuid.Parse(report.ID)
 		require.NoError(t, err, "set id is not a valid uuid")

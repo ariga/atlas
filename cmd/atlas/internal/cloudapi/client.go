@@ -165,17 +165,17 @@ type (
 )
 
 // ReportMigrationSet reports a set of migration deployments to the Atlas Cloud API.
-func (c *Client) ReportMigrationSet(ctx context.Context, input ReportMigrationSetInput) error {
+func (c *Client) ReportMigrationSet(ctx context.Context, input ReportMigrationSetInput) (string, error) {
 	var (
 		payload struct {
 			ReportMigrationSet struct {
-				Success bool `json:"success"`
+				URL string `json:"url"`
 			} `json:"reportMigrationSet"`
 		}
 		query = `
 		mutation ReportMigrationSet($input: ReportMigrationSetInput!) {
 		   reportMigrationSet(input: $input) {
-		     success
+		     url
 		   }
 		}`
 		vars = struct {
@@ -184,21 +184,24 @@ func (c *Client) ReportMigrationSet(ctx context.Context, input ReportMigrationSe
 			Input: input,
 		}
 	)
-	return c.post(ctx, query, vars, &payload)
+	if err := c.post(ctx, query, vars, &payload); err != nil {
+		return "", err
+	}
+	return payload.ReportMigrationSet.URL, nil
 }
 
 // ReportMigration reports a migration deployment to the Atlas Cloud API.
-func (c *Client) ReportMigration(ctx context.Context, input ReportMigrationInput) error {
+func (c *Client) ReportMigration(ctx context.Context, input ReportMigrationInput) (string, error) {
 	var (
 		payload struct {
 			ReportMigration struct {
-				Success bool `json:"success"`
+				URL string `json:"url"`
 			} `json:"reportMigration"`
 		}
 		query = `
 		mutation ReportMigration($input: ReportMigrationInput!) {
 		   reportMigration(input: $input) {
-		     success
+		     url
 		   }
 		}`
 		vars = struct {
@@ -207,7 +210,10 @@ func (c *Client) ReportMigration(ctx context.Context, input ReportMigrationInput
 			Input: input,
 		}
 	)
-	return c.post(ctx, query, vars, &payload)
+	if err := c.post(ctx, query, vars, &payload); err != nil {
+		return "", err
+	}
+	return payload.ReportMigration.URL, nil
 }
 
 func (c *Client) post(ctx context.Context, query string, vars, data any) error {
