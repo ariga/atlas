@@ -34,6 +34,7 @@ module.exports = {
             label: "Versioned Workflows",
             collapsed: false,
             items: [
+                {type: 'doc', id: 'versioned/intro', label: 'Quick Introduction'},
                 {type: 'doc', id: 'versioned/diff', label: 'Generating Migrations'},
                 {
                     type: 'category', label: 'Migration Linting',

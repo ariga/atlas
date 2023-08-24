@@ -1,0 +1,449 @@
+---
+id: intro
+slug: /versioned/intro
+title: Introduction to Atlas Migrations
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import Discord from '../../website/src/assets/icons/discord-white.svg'
+
+This guide offers a high-level overview of the Atlas versioned migration workflow. It walks you through the steps of
+creating a migration directory, automatically generating SQL migration from its desired schema, pushing the migration
+directory to Atlas, and applying changes to databases. For a more in-depth guides, please check out the other pages in
+this section or visit our [guides](/guides).
+
+## Creating the first migration
+
+One of Atlas's most popular features is its ability to automatically generate SQL migration scripts based on a desired
+schema. A schema can be defined in several ways: through Atlas's HCL language, standard SQL external ORMs or programs.
+In this guide, we will use an SQL schema to define our desired state.
+
+First, let's create a simple SQL schema containing 2 tables: `users` and `repos` and name it `schema.sql`:
+
+<Tabs>
+<TabItem value="postgres" label="PostgreSQL">
+
+```sql title="schema.sql"
+CREATE TABLE "users" (
+  "id" bigint,
+  "name" varchar NOT NULL,
+  PRIMARY KEY ("id")
+);
+
+CREATE TABLE "repos" (
+  "id" bigint,
+  "name" varchar NOT NULL,
+  "owner_id" bigint NOT NULL,
+  PRIMARY KEY ("id"),
+  CONSTRAINT "owner_id" FOREIGN KEY ("owner_id") REFERENCES "users" ("id")
+);
+```
+
+</TabItem>
+<TabItem value="mysql" label="MySQL">
+
+```sql title="schema.sql"
+CREATE TABLE `users` (
+  `id` bigint,
+  `name` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+
+CREATE TABLE `repos` (
+  `id` bigint,
+  `name` varchar(255) NOT NULL,
+  `owner_id` bigint NOT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `owner_id` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`)
+);
+```
+
+</TabItem>
+</Tabs>
+
+After creating our desired schema (`schema.sql`), let's run Atlas to generate the migration script needed to apply it to
+a database.
+
+<Tabs>
+<TabItem value="postgres" label="PostgreSQL">
+
+```bash
+atlas migrate diff initial \
+  --to file://schema.sql \
+  --dev-url "docker://postgres/15/dev?search_path=public" \
+  --format '{{ sql . "  " }}'
+```
+
+</TabItem>
+<TabItem value="mysql" label="MySQL">
+
+```bash
+atlas migrate diff initial \
+  --to file://schema.sql \
+  --dev-url "docker://mysql/8/dev" \
+  --format '{{ sql . "  " }}'
+```
+
+</TabItem>
+</Tabs>
+
+:::info Migrate Diff Flags
+- `dev-url` - The concept of the [_Dev Database_](/atlas-schema/sql#dev-database) is explained in detail in this
+  [link](/atlas-schema/sql#dev-database).
+- `format` - Instructs Atlas to generate migration scripts with two-space indentation. Without this flag, the migrations
+  won't have any indentation.
+:::
+
+Run `ls migrations`, and you'll notice that Atlas has created two files:
+
+<Tabs
+defaultValue="migration_file"
+values={[
+{label: '20230823134343_initial.sql', value: 'migration_file'},
+{label: 'atlas.sum', value: 'sum_file'},
+]}>
+<TabItem value="migration_file">
+
+```sql
+-- Create "users" table
+CREATE TABLE "users" (
+  "id" bigint NOT NULL,
+  "name" character varying NOT NULL,
+  PRIMARY KEY ("id")
+);
+-- Create "repos" table
+CREATE TABLE "repos" (
+  "id" bigint NOT NULL,
+  "name" character varying NOT NULL,
+  "owner_id" bigint NOT NULL,
+  PRIMARY KEY ("id"),
+  CONSTRAINT "owner_id" FOREIGN KEY ("owner_id") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+```
+
+</TabItem>
+<TabItem value="sum_file">
+
+In addition to the migration directory, Atlas maintains a file name `atlas.sum` which is used
+to ensure the integrity of the migration directory and force developers to deal with situations
+where migration order or contents was modified after the fact.
+
+```text
+h1:kGsXTVLtL0vs9Un8aaGKwMHZ2iMibgTQxwyAt7+Elcw=
+20230823134343_initial.sql h1:OQUf1t0+0UWHRjZrShFt8Wn+0If4HRka1fpy8JdH6G4=
+```
+
+</TabItem>
+</Tabs>
+
+## Pushing migrations to Atlas
+
+Now that we have our first migration, we can apply it to a database. There are multiple ways to accomplish this, with
+most methods covered in the [guides](/guides) section. In this example, we'll demonstrate how to push migrations to
+Atlas Cloud, much like how Docker images are pushed to Docker Hub.
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/versioned/migrate-push1.jpg" alt="atlas migrate push" width="100%"/>
+    <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
+</div>
+
+Firstly, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time, you'll be
+prompted to create both an account and a workspace.
+
+<Tabs>
+<TabItem value="web" label="Via Web">
+
+```bash
+atlas login
+```
+
+</TabItem>
+<TabItem value="token" label="Via Token">
+
+```bash
+atlas login --token "ATLAS_TOKEN"
+```
+
+</TabItem>
+</Tabs>
+
+After logging in, let's name our new migration project `app` and run `atlas migrate push`:
+
+<Tabs>
+<TabItem value="postgres" label="PostgreSQL">
+
+```bash
+atlas migrate push app \
+  --dev-url "docker://postgres/15/dev?search_path=public"
+```
+
+</TabItem>
+<TabItem value="mysql" label="MySQL">
+
+```bash
+atlas migrate push app \
+  --dev-url "docker://mysql/8/dev" \
+```
+
+</TabItem>
+</Tabs>
+
+After our migration directory is pushed, Atlas prints a URL to the created directory, similar to the one shown in the
+image above.
+
+## Applying migrations
+
+Once our `app` migration directory has been pushed, we can apply it to a database from any CD platform without
+necessarily having our directory there. For the sake of this example, let's spin up a local database that represents
+our production database to apply the migrations to it:
+
+<Tabs>
+<TabItem value="postgres" label="PostgreSQL">
+
+```bash
+docker run --rm -d --name atlas-demo -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=example -p 5432:5432 postgres
+```
+
+</TabItem>
+<TabItem value="mysql" label="MySQL">
+
+```bash
+docker run --rm -d --name atlas-demo -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=example -p 3306:3306 mysql
+```
+
+</TabItem>
+</Tabs>
+
+Then, we'll create a simple Atlas configuration file (`atlas.hcl`) to store the settings for our environment:
+
+<Tabs>
+<TabItem value="postgres" label="PostgreSQL">
+
+```hcl title="atlas.hcl" {1}
+# The "local" environment represents our local testings.
+env "local" {
+  url = "postgres://postgres:pass@:5432/example?search_path=public&sslmode=disable"
+  migration {
+    dir = "atlas://app"
+  }
+}
+```
+
+</TabItem>
+<TabItem value="mysql" label="MySQL">
+
+```hcl title="atlas.hcl" {1}
+# The "dev" environment represents our local testings.
+env "local" {
+  url = "mysql://root:pass@:3306/example"
+  migration {
+    dir = "atlas://app"
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+The final step is to apply the migrations to the database. Let's run `atlas migrate apply` with the `--env` flag
+to instruct Atlas to select the environment configuration from the `atlas.hcl` file:
+
+```bash
+atlas migrate apply --env local
+```
+
+Boom! After applying the migration, you should receive a link to the deployment and the database where the migration
+was applied. Here's an example of what it looks like:
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/versioned/migrate-target-1.jpg" alt="atlas migrate apply" width="100%"/>
+    <p style={{fontSize: 12}}>Migration history of a database schema created with <code>atlas migrate apply</code></p>
+</div>
+
+By clicking on the most recent deployment, you can view the full migration report from the latest run:
+
+<details>
+<summary>Screenshot example</summary>
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/versioned/migrate-deployment-1.jpg" alt="atlas migrate apply" width="100%"/>
+    <p style={{fontSize: 12}}>Migration deployment reported created with <code>atlas migrate apply</code></p>
+</div>
+
+</details>
+
+## Generating another migration
+
+After applying the first migration, it's time to update our schema defined in `schema.sql` and tell Atlas to generate
+another migration. This will bring the migration directory (and the databases) in line with the new state defined by
+the desired schema (`schema.sql`).
+
+Let's make **two changes** to our schema:
+
+- Add a new `description` column to our `repos` table.
+- Add a new `commits` table with foreign keys linking to both the `repos` and `users` tables.
+
+<Tabs>
+<TabItem value="postgres" label="PostgreSQL">
+
+```sql title="schema.sql"
+CREATE TABLE "users" (
+  "id" bigint,
+  "name" varchar NOT NULL,
+  PRIMARY KEY ("id")
+);
+
+CREATE TABLE "repos" (
+  "id" bigint,
+  "name" varchar NOT NULL,
+// highlight-next-line
+  "description" varchar NULL,
+  "owner_id" bigint NOT NULL,
+  PRIMARY KEY ("id"),
+  CONSTRAINT "owner_id" FOREIGN KEY ("owner_id") REFERENCES "users" ("id")
+);
+
+// highlight-start
+CREATE TABLE "commits" (
+  "id" bigint,
+  "message" varchar NOT NULL,
+  "repo_id" bigint NOT NULL,
+  "author_id" bigint NOT NULL,
+  PRIMARY KEY ("id"),
+  CONSTRAINT "repo_id" FOREIGN KEY ("repo_id") REFERENCES "repos" ("id"),
+  CONSTRAINT "author_id" FOREIGN KEY ("author_id") REFERENCES "users" ("id")
+);
+// highlight-end
+```
+
+</TabItem>
+<TabItem value="mysql" label="MySQL">
+
+```sql title="schema.sql"
+CREATE TABLE `users` (
+  `id` bigint,
+  `name` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+
+CREATE TABLE `repos` (
+  `id` bigint,
+  `name` varchar(255) NOT NULL,
+// highlight-next-line
+  `description` varchar(255) NULL,
+  `owner_id` bigint NOT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `owner_id` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`)
+);
+
+// highlight-start
+CREATE TABLE `commits` (
+  `id` bigint,
+  `message` varchar(255) NOT NULL,
+  `repo_id` bigint NOT NULL,
+  `author_id` bigint NOT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `repo_id` FOREIGN KEY (`repo_id`) REFERENCES `repos` (`id`),
+  CONSTRAINT `author_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`)
+);
+// highlight-end
+```
+
+</TabItem>
+</Tabs>
+
+Next, we're ready to run `atlas migrate diff` again to generate the new migration:
+
+<Tabs>
+<TabItem value="postgres" label="PostgreSQL">
+
+```bash
+atlas migrate diff add_commits \
+  --to file://schema.sql \
+  --dev-url "docker://postgres/15/dev?search_path=public" \
+  --format '{{ sql . "  " }}'
+```
+
+</TabItem>
+<TabItem value="mysql" label="MySQL">
+
+```bash
+atlas migrate diff add_commits \
+  --to file://schema.sql \
+  --dev-url "docker://mysql/8/dev" \
+  --format '{{ sql . "  " }}'
+```
+
+</TabItem>
+</Tabs>
+
+Run `ls migrations`, and you'll notice that a new migration has been generated. Let's run `atlas migrate push` again
+and observe the update on the migration directory page:
+
+
+<Tabs>
+<TabItem value="postgres" label="PostgreSQL">
+
+```bash
+atlas migrate push app \
+  --dev-url "docker://postgres/15/dev?search_path=public"
+```
+
+</TabItem>
+<TabItem value="mysql" label="MySQL">
+
+```bash
+atlas migrate push app \
+  --dev-url "docker://mysql/8/dev" \
+```
+
+</TabItem>
+</Tabs>
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/versioned/atlas-push-2.jpg" alt="atlas migrate push" width="100%"/>
+    <p style={{fontSize: 12}}>Migration Directory updated with <code>atlas migrate push</code></p>
+</div>
+
+Once pushed, you'll notice in the Databases tab that our database is in a _Pending_ state. This means that the latest
+migration has been pushed but not yet applied to it.
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/versioned/migrate-target-pending.jpg" alt="atlas migrate push" width="100%"/>
+    <p style={{fontSize: 12}}>Database schema <code>public</code> is in <i>Pending</i> mode</p>
+</div>
+
+Let's apply our latest migration and then check our database again:
+
+```bash
+atlas migrate apply --env local
+```
+
+As you can see below, the database is now _In Sync_ with the migration directory:
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/versioned/migrate-target-in-sync.jpg" alt="atlas migrate push" width="100%"/>
+    <p style={{fontSize: 12}}>Database schema <code>public</code> is in <i>In Sync</i> mode</p>
+</div>
+
+### Next Steps
+
+In this short tutorial we learned how to use `atlas` to generate migrations, push them to Atlas and apply them to
+databases. For a more in-depth guides, please check out the other pages in this section or visit our [Guides](/guides) section.
+
+:::info Need help getting started?
+
+We have a super friendly [#getting-started](https://discord.gg/8mvDUG22) channel on our community
+chat on Discord.
+
+For web-based, free, and fun (GIFs included) support:
+
+<a href={"https://discord.gg/zZ6sWVg6NT"} className={"join-discord"}>
+    <Discord />
+    <span>
+        Join our Discord server
+    </span>
+</a>
+
+:::
