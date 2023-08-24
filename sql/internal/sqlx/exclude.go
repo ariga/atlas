@@ -8,6 +8,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"ariga.io/atlas/sql/schema"
@@ -89,69 +90,138 @@ func split(patterns []string) ([][]string, error) {
 }
 
 func excludeS(s *schema.Schema, glob []string) error {
-	var tables []*schema.Table
-	for _, t := range s.Tables {
-		match, err := filepath.Match(glob[0], t.Name)
-		if err != nil {
-			return err
-		}
-		if match {
-			// In case there is a match, and it is
-			// a single glob we exclude this table.
-			if len(glob) == 1 {
-				continue
-			}
-			if err := excludeT(t, glob[1]); err != nil {
+	if globT, exclude := excludeType(typeT, glob[0]); exclude {
+		var tables []*schema.Table
+		for _, t := range s.Tables {
+			match, err := filepath.Match(globT, t.Name)
+			if err != nil {
 				return err
 			}
+			if match {
+				// In case there is a match, and it is
+				// a single glob we exclude this table.
+				if len(glob) == 1 {
+					continue
+				}
+				if err := excludeT(t, glob[1]); err != nil {
+					return err
+				}
+			}
+			// No match or glob has more than one pattern.
+			tables = append(tables, t)
 		}
-		// No match or glob has more than one pattern.
-		tables = append(tables, t)
+		s.Tables = tables
 	}
-	s.Tables = tables
+	if globV, exclude := excludeType(typeV, glob[0]); exclude {
+		var views []*schema.View
+		for _, v := range s.Views {
+			match, err := filepath.Match(globV, v.Name)
+			if err != nil {
+				return err
+			}
+			if match {
+				if len(glob) == 1 {
+					continue
+				}
+				if err := excludeV(v, glob[1]); err != nil {
+					return err
+				}
+			}
+			views = append(views, v)
+		}
+		s.Views = views
+	}
 	return nil
 }
 
 func excludeT(t *schema.Table, pattern string) (err error) {
 	ex := make(map[*schema.Index]struct{})
 	ef := make(map[*schema.ForeignKey]struct{})
-	t.Columns, err = filter(t.Columns, func(c *schema.Column) (bool, error) {
-		match, err := filepath.Match(pattern, c.Name)
-		if !match || err != nil {
-			return false, err
-		}
-		for _, idx := range c.Indexes {
-			ex[idx] = struct{}{}
-		}
-		for _, fk := range c.ForeignKeys {
-			ef[fk] = struct{}{}
-		}
-		return true, nil
-	})
-	t.Indexes, err = filter(t.Indexes, func(idx *schema.Index) (bool, error) {
-		if _, ok := ex[idx]; ok {
+	if p, exclude := excludeType(typeC, pattern); exclude {
+		t.Columns, err = filter(t.Columns, func(c *schema.Column) (bool, error) {
+			match, err := filepath.Match(p, c.Name)
+			if !match || err != nil {
+				return false, err
+			}
+			for _, idx := range c.Indexes {
+				ex[idx] = struct{}{}
+			}
+			for _, fk := range c.ForeignKeys {
+				ef[fk] = struct{}{}
+			}
 			return true, nil
-		}
-		return filepath.Match(pattern, idx.Name)
-	})
-	t.ForeignKeys, err = filter(t.ForeignKeys, func(fk *schema.ForeignKey) (bool, error) {
-		if _, ok := ef[fk]; ok {
+		})
+	}
+	if p, exclude := excludeType(typeI, pattern); exclude {
+		t.Indexes, err = filter(t.Indexes, func(idx *schema.Index) (bool, error) {
+			if _, ok := ex[idx]; ok {
+				return true, nil
+			}
+			return filepath.Match(p, idx.Name)
+		})
+	}
+	if p, exclude := excludeType(typeF, pattern); exclude {
+		t.ForeignKeys, err = filter(t.ForeignKeys, func(fk *schema.ForeignKey) (bool, error) {
+			if _, ok := ef[fk]; ok {
+				return true, nil
+			}
+			return filepath.Match(p, fk.Symbol)
+		})
+	}
+	if p, exclude := excludeType(typeK, pattern); exclude {
+		t.Attrs, err = filter(t.Attrs, func(a schema.Attr) (bool, error) {
+			c, ok := a.(*schema.Check)
+			if !ok {
+				return false, nil
+			}
+			match, err := filepath.Match(p, c.Name)
+			if !match || err != nil {
+				return false, err
+			}
 			return true, nil
-		}
-		return filepath.Match(pattern, fk.Symbol)
-	})
-	t.Attrs, err = filter(t.Attrs, func(a schema.Attr) (bool, error) {
-		c, ok := a.(*schema.Check)
-		if !ok {
-			return false, nil
-		}
-		match, err := filepath.Match(pattern, c.Name)
-		if !match || err != nil {
-			return false, err
-		}
-		return true, nil
-	})
+		})
+	}
 	return
+}
+
+func excludeV(t *schema.View, pattern string) (err error) {
+	if p, exclude := excludeType(typeC, pattern); exclude {
+		t.Columns, err = filter(t.Columns, func(c *schema.Column) (bool, error) {
+			match, err := filepath.Match(p, c.Name)
+			if !match || err != nil {
+				return false, err
+			}
+			return true, nil
+		})
+	}
+	return
+}
+
+const (
+	typeV = "view"
+	typeT = "table"
+	typeC = "column"
+	typeI = "index"
+	typeF = "fk"
+	typeK = "check"
+)
+
+var reTypeVT = regexp.MustCompile(`\[type=([a-z|]+)+\]$`)
+
+func excludeType(t, v string) (string, bool) {
+	matches := reTypeVT.FindStringSubmatch(v)
+	if len(matches) != 2 {
+		return v, true
+	}
+	v = strings.TrimSuffix(v, matches[0])
+	for _, m := range strings.Split(matches[1], "|") {
+		if m == t {
+			// Selector matches.
+			return v, true
+		}
+	}
+	// There is a selector with no match.
+	return v, false
 }
 
 func filter[T any](s []T, f func(T) (bool, error)) ([]T, error) {

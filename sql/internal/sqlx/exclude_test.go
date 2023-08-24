@@ -94,6 +94,63 @@ func TestExcludeRealm_Tables(t *testing.T) {
 	require.Empty(t, r.Schemas[2].Tables)
 }
 
+func TestExcludeRealm_Selector(t *testing.T) {
+	r := schema.NewRealm(
+		schema.New("s1").
+			AddTables(
+				schema.NewTable("t1"),
+			).
+			AddViews(
+				schema.NewView("v1", "SELECT * FROM t1"),
+			),
+	)
+	r, err := ExcludeRealm(r, []string{"*.*[type=table]"})
+	require.NoError(t, err)
+	require.Empty(t, r.Schemas[0].Tables)
+	require.Len(t, r.Schemas[0].Views, 1)
+
+	r.Schemas[0].AddTables(
+		schema.NewTable("t1"),
+		schema.NewTable("t2"),
+		schema.NewTable("t3"),
+	)
+	r, err = ExcludeRealm(r, []string{"*.*[type=view]"})
+	require.NoError(t, err)
+	require.Empty(t, r.Schemas[0].Views)
+	require.Len(t, r.Schemas[0].Tables, 3)
+
+	r, err = ExcludeRealm(r, []string{"*.t[12][type=table]"})
+	require.Empty(t, r.Schemas[0].Views)
+	require.Len(t, r.Schemas[0].Tables, 1)
+
+	r.Schemas[0].AddViews(
+		schema.NewView("v1", "SELECT * FROM t1"),
+	)
+	r, err = ExcludeRealm(r, []string{"*.*[type=view|table]"})
+	require.NoError(t, err)
+	require.Empty(t, r.Schemas[0].Views)
+	require.Empty(t, r.Schemas[0].Tables)
+
+	r.Schemas[0].
+		AddTables(
+			schema.NewTable("t1").AddColumns(schema.NewColumn("c1")).AddIndexes(schema.NewIndex("i1")).AddChecks(schema.NewCheck().SetName("k1")),
+		).
+		AddViews(
+			schema.NewView("v1", "SELECT * FROM t1").AddColumns(schema.NewColumn("c1")),
+		)
+	r, err = ExcludeRealm(r, []string{"*.*[type=table].*1[type=column|check]"})
+	require.NoError(t, err)
+	require.Empty(t, r.Schemas[0].Tables[0].Attrs)
+	require.Empty(t, r.Schemas[0].Tables[0].Columns)
+	require.Len(t, r.Schemas[0].Tables[0].Indexes, 1)
+	require.Len(t, r.Schemas[0].Views[0].Columns, 1)
+
+	r, err = ExcludeRealm(r, []string{"*.*[type=table|view].*1[type=column|check|index]"})
+	require.NoError(t, err)
+	require.Empty(t, r.Schemas[0].Tables[0].Indexes)
+	require.Empty(t, r.Schemas[0].Views[0].Columns)
+}
+
 func TestExcludeRealm_Checks(t *testing.T) {
 	r := schema.NewRealm(
 		schema.New("s1").AddTables(
