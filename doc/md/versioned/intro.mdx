@@ -10,16 +10,16 @@ import Discord from '../../website/src/assets/icons/discord-white.svg'
 
 This guide offers a high-level overview of the Atlas versioned migration workflow. It walks you through the steps of
 creating a migration directory, automatically generating SQL migration from its desired schema, pushing the migration
-directory to Atlas, and applying changes to databases. For a more in-depth guides, please check out the other pages in
+directory to Atlas, and applying changes to databases. For more in-depth guides, please check out the other pages in
 this section or visit our [guides](/guides).
 
 ## Creating the first migration
 
 One of Atlas's most popular features is its ability to automatically generate SQL migration scripts based on a desired
-schema. A schema can be defined in several ways: through Atlas's HCL language, standard SQL external ORMs or programs.
-In this guide, we will use an SQL schema to define our desired state.
+schema. A schema can be defined in several ways: through Atlas's HCL language, standard SQL, external ORMs or programs.
+In this guide, we will use a SQL schema to define our desired state.
 
-First, let's create a simple SQL schema containing 2 tables: `users` and `repos` and name it `schema.sql`:
+First, let's create a simple SQL schema containing two tables: `users` and `repos` and name it `schema.sql`:
 
 <Tabs>
 <TabItem value="postgres" label="PostgreSQL">
@@ -149,7 +149,7 @@ Atlas Cloud, much like how Docker images are pushed to Docker Hub.
 </div>
 
 Firstly, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time, you'll be
-prompted to create both an account and a workspace.
+prompted to create both an account and an organization.
 
 <Tabs>
 <TabItem value="web" label="Via Web">
@@ -254,7 +254,7 @@ atlas migrate apply --env local
 ```
 
 Boom! After applying the migration, you should receive a link to the deployment and the database where the migration
-was applied. Here's an example of what it looks like:
+was applied. Here's an example of what it should look like:
 
 <div style={{textAlign: 'center'}}>
     <img src="https://atlasgo.io/uploads/versioned/migrate-target-1.jpg" alt="atlas migrate apply" width="100%"/>
@@ -407,14 +407,14 @@ atlas migrate push app \
 </div>
 
 Once pushed, you'll notice in the Databases tab that our database is in a _Pending_ state. This means that the latest
-migration has been pushed but not yet applied to it.
+migration has been pushed but not yet applied to the database.
 
 <div style={{textAlign: 'center'}}>
     <img src="https://atlasgo.io/uploads/versioned/migrate-target-pending.jpg" alt="atlas migrate push" width="100%"/>
     <p style={{fontSize: 12}}>Database schema <code>public</code> is in <i>Pending</i> mode</p>
 </div>
 
-Let's apply our latest migration and then check our database again:
+Let's apply our latest migration and check our database again:
 
 ```bash
 atlas migrate apply --env local
@@ -429,7 +429,7 @@ As you can see below, the database is now _In Sync_ with the migration directory
 
 ### Next Steps
 
-In this short tutorial we learned how to use `atlas` to generate migrations, push them to Atlas and apply them to
+In this short tutorial we learned how to use `atlas` to generate migrations, push them to Atlas Cloud and apply them to
 databases. For a more in-depth guides, please check out the other pages in this section or visit our [Guides](/guides) section.
 
 :::info Need help getting started?
