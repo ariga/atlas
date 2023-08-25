@@ -116,7 +116,9 @@ Now, consider we want to add a `blog_posts` table and have our schema represent 
 blogging system.
 
 
-<p style={{textAlign: "center"}}><a href="https://gh.atlasgo.cloud/explore/9717d499"><img src="https://atlasgo.io/uploads/images/blog-erd.png" alt="Blog ERD"/></a></p>
+<p style={{textAlign: "center"}}>
+    <a href="https://gh.atlasgo.cloud/explore/9717d499"><img src="https://atlasgo.io/uploads/users-blogs-explore.jpg" alt="Blog ERD"/></a>
+</p>
 
 Let's add the following to our inspected schema, and use Atlas to plan and apply the changes to our database.
 
@@ -221,23 +223,18 @@ Use the arrow keys to navigate: ↓ ↑ → ←
 ```
 Apply the changes, and that's it! You have successfully run a declarative migration.
 
-You can reinspect the database by running the `inspect` command again to ensure that the changes have been made to the
-schema:
+To ensure that the changes have been made to the schema, you can run the `inspect` command again. This time, we use
+the `--web`/`-w` flag to open the Atlas Web UI and view the schema.
 
-<Tabs>
-<TabItem value="hcl" label="Atlas DDL (HCL)" default>
-
-```shell
-atlas schema inspect -u "mysql://root:pass@localhost:3306/example"
+```shell {3}
+atlas schema inspect \
+  -u "mysql://root:pass@localhost:3306/example" \
+  --web
 ```
-</TabItem>
-<TabItem value="sql" label="SQL">
 
-```shell
-atlas schema inspect -u "mysql://root:pass@localhost:3306/example" --format '{{ sql . }}'
-```
-</TabItem>
-</Tabs>
+:::note
+If you are using an old version of Atlas, you may need to replace the `--web` flag with `--visualize`.
+:::
 
 ### Versioned Migrations
 Alternatively, the versioned migration workflow, sometimes called "change-based migrations", allows each change to the
