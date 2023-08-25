@@ -39,13 +39,13 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.DecimalType:
 		if f = strings.ToLower(t.T); f != TypeDecimal && f != TypeNumeric {
-			return "", fmt.Errorf("mysql: unexpected decimal type: %q", t.T)
+			return "", fmt.Errorf("unexpected decimal type: %q", t.T)
 		}
 		switch p, s := t.Precision, t.Scale; {
 		case p < 0 || s < 0:
-			return "", fmt.Errorf("mysql: decimal type must have precision > 0 and scale >= 0: %d, %d", p, s)
+			return "", fmt.Errorf("decimal type must have precision > 0 and scale >= 0: %d, %d", p, s)
 		case p < s:
-			return "", fmt.Errorf("mysql: decimal type must have precision >= scale: %d < %d", p, s)
+			return "", fmt.Errorf("decimal type must have precision >= scale: %d < %d", p, s)
 		case p == 0 && s == 0:
 			// The default value for precision is 10 (i.e. decimal(0,0) = decimal(10)).
 			p = 10
@@ -205,7 +205,7 @@ func ParseType(raw string) (schema.Type, error) {
 		// github.com/mysql/mysql-server/blob/8.0/sql/field.cc#Field_enum::sql_type
 		rv := strings.TrimSuffix(strings.TrimPrefix(raw, t+"("), ")")
 		if rv == "" {
-			return nil, fmt.Errorf("mysql: unexpected enum type: %q", raw)
+			return nil, fmt.Errorf("unexpected enum type: %q", raw)
 		}
 		values := strings.Split(rv, "','")
 		for i := range values {
