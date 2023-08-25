@@ -262,7 +262,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	}
 	ct, err := ParseType(c.Type.Raw)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse %q.%q type %q: %w", t.Name, c.Name, c.Type.Raw, err)
 	}
 	c.Type.Type = ct
 	attr, err := parseExtra(extra.String)
