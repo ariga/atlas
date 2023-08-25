@@ -185,6 +185,8 @@ the table name:
 atlas schema inspect -u "mysql://localhost" --exclude "*.prefix_*"
 
 atlas schema inspect -u "mysql://localhost" --exclude "schema.table"
+
+atlas schema inspect -u "mysql://localhost" --exclude "schema.t*[type=table]"
 ```
 
 </TabItem>
@@ -196,6 +198,8 @@ When inspecting a specific schema, the first glob pattern matches the table name
 atlas schema inspect -u "mysql://localhost" --exclude "prefix_*"
 
 atlas schema inspect -u "mysql://localhost" --exclude "table"
+
+atlas schema inspect -u "mysql://localhost" --exclude "t*[type=table]"
 ```
 
 </TabItem>
@@ -216,6 +220,8 @@ the table name:
 atlas schema inspect -u "mysql://localhost" --exclude "*.*.prefix_*"
 
 atlas schema inspect -u "mysql://localhost" --exclude "public.*.c1"
+
+atlas schema inspect -u "mysql://localhost" --exclude "public.*.c*[type=column|index]"
 ```
 
 </TabItem>
@@ -227,6 +233,8 @@ When inspecting a specific schema, the first glob pattern matches the table name
 atlas schema inspect -u "mysql://localhost" --exclude "*.prefix_*"
 
 atlas schema inspect -u "mysql://localhost" --exclude "*.c1"
+
+atlas schema inspect -u "mysql://localhost" --exclude "*.c*[type=column|index]"
 ```
 
 </TabItem>
