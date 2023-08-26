@@ -9,7 +9,7 @@ module.exports = {
   organizationName: 'ariga',
   projectName: 'atlas',
   themeConfig: {
-    image: "https://og.atlasgo.io/image?title=Schema%20Migration%20Tool%20for%20Any%20Language",
+    image: "https://og.atlasgo.io/image?title=Schema%20Migration%20Tool%20for%20any%20Language",
     prism: {
       additionalLanguages: ['hcl'],
       magicComments: [
