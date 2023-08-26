@@ -1267,8 +1267,8 @@ SELECT
     fk.referenced_table_name,
     a2.attname AS referenced_column_name,
     fk.referenced_schema_name,
-    rc.update_rule,
-    rc.delete_rule
+    fk.update_rule,
+    fk.delete_rule
 	FROM 
 	    (
 	    	SELECT
@@ -1281,7 +1281,23 @@ SELECT
 	      		ns2.nspname AS referenced_schema_name,
 	      		generate_series(1,array_length(con.conkey,1)) as ord,
 	      		unnest(con.conkey) AS conkey,
-	      		unnest(con.confkey) AS confkey
+	      		unnest(con.confkey) AS confkey,
+				CASE con.confupdtype
+					WHEN 'c'::"char" THEN 'CASCADE'::text
+					WHEN 'n'::"char" THEN 'SET NULL'::text
+					WHEN 'd'::"char" THEN 'SET DEFAULT'::text
+					WHEN 'r'::"char" THEN 'RESTRICT'::text
+					WHEN 'a'::"char" THEN 'NO ACTION'::text
+					ELSE NULL::text
+				END::information_schema.character_data AS update_rule,
+				CASE con.confdeltype
+					WHEN 'c'::"char" THEN 'CASCADE'::text
+					WHEN 'n'::"char" THEN 'SET NULL'::text
+					WHEN 'd'::"char" THEN 'SET DEFAULT'::text
+					WHEN 'r'::"char" THEN 'RESTRICT'::text
+ 					WHEN 'a'::"char" THEN 'NO ACTION'::text
+ 					ELSE NULL::text
+ 				END::information_schema.character_data AS delete_rule
 	    	FROM pg_constraint con
 	    	JOIN pg_class t1 ON t1.oid = con.conrelid
 	    	JOIN pg_class t2 ON t2.oid = con.confrelid
@@ -1293,7 +1309,6 @@ SELECT
 	) AS fk
 	JOIN pg_attribute a1 ON a1.attnum = fk.conkey AND a1.attrelid = fk.conrelid
 	JOIN pg_attribute a2 ON a2.attnum = fk.confkey AND a2.attrelid = fk.confrelid
-	JOIN information_schema.referential_constraints rc ON rc.constraint_name = fk.constraint_name AND rc.constraint_schema = fk.schema_name
 	ORDER BY
 	    fk.conrelid, fk.constraint_name, fk.ord
 `
