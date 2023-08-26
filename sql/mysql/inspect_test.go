@@ -194,7 +194,6 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "jsonc", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
 				}, t.Columns)
 				require.EqualValues([]schema.Attr{
-					&schema.Check{Name: "jsonc", Expr: "json_valid(`jsonc`)"},
 					&schema.Check{Name: "users_chk_1", Expr: `longtext <> '\'\'""'`},
 				}, t.Attrs)
 			},

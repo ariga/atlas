@@ -1268,21 +1268,11 @@ create table atlas_types_sanity
 			require.True(t, ok)
 			expected := schema.Table{
 				Name: n,
-				Attrs: func() []schema.Attr {
-					if t.version == "maria107" {
-						return []schema.Attr{
-							&schema.Charset{V: "latin1"},
-							&schema.Collation{V: "latin1_swedish_ci"},
-							&mysql.Engine{V: "InnoDB", Default: true},
-							&schema.Check{Name: "tJSON", Expr: "json_valid(`tJSON`)"},
-						}
-					}
-					return []schema.Attr{
-						&schema.Charset{V: "latin1"},
-						&schema.Collation{V: "latin1_swedish_ci"},
-						&mysql.Engine{V: "InnoDB", Default: true},
-					}
-				}(),
+				Attrs: []schema.Attr{
+					&schema.Charset{V: "latin1"},
+					&schema.Collation{V: "latin1_swedish_ci"},
+					&mysql.Engine{V: "InnoDB", Default: true},
+				},
 				Schema: realm.Schemas[0],
 				Columns: []*schema.Column{
 					func() *schema.Column {
