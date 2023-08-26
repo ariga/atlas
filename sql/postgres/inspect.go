@@ -1283,21 +1283,19 @@ SELECT
 	      		unnest(con.conkey) AS conkey,
 	      		unnest(con.confkey) AS confkey,
 				CASE con.confupdtype
-					WHEN 'c'::"char" THEN 'CASCADE'::text
-					WHEN 'n'::"char" THEN 'SET NULL'::text
-					WHEN 'd'::"char" THEN 'SET DEFAULT'::text
-					WHEN 'r'::"char" THEN 'RESTRICT'::text
-					WHEN 'a'::"char" THEN 'NO ACTION'::text
-					ELSE NULL::text
-				END::information_schema.character_data AS update_rule,
+					WHEN 'c' THEN 'CASCADE'
+					WHEN 'n' THEN 'SET NULL'
+					WHEN 'd' THEN 'SET DEFAULT'
+					WHEN 'r' THEN 'RESTRICT'
+					WHEN 'a' THEN 'NO ACTION'
+				END AS update_rule,
 				CASE con.confdeltype
-					WHEN 'c'::"char" THEN 'CASCADE'::text
-					WHEN 'n'::"char" THEN 'SET NULL'::text
-					WHEN 'd'::"char" THEN 'SET DEFAULT'::text
-					WHEN 'r'::"char" THEN 'RESTRICT'::text
- 					WHEN 'a'::"char" THEN 'NO ACTION'::text
- 					ELSE NULL::text
- 				END::information_schema.character_data AS delete_rule
+					WHEN 'c' THEN 'CASCADE'
+					WHEN 'n' THEN 'SET NULL'
+					WHEN 'd' THEN 'SET DEFAULT'
+					WHEN 'r' THEN 'RESTRICT'
+ 					WHEN 'a' THEN 'NO ACTION'
+ 				END AS delete_rule
 	    	FROM pg_constraint con
 	    	JOIN pg_class t1 ON t1.oid = con.conrelid
 	    	JOIN pg_class t2 ON t2.oid = con.confrelid
