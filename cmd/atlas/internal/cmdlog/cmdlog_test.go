@@ -26,8 +26,10 @@ func TestSchemaInspect_MarshalJSON(t *testing.T) {
 	report := &cmdlog.SchemaInspect{
 		Realm: schema.NewRealm(
 			schema.New("test").
+				SetComment("schema comment").
 				AddTables(
 					schema.NewTable("users").
+						SetCharset("charset").
 						AddColumns(
 							&schema.Column{
 								Name: "id",
@@ -36,6 +38,9 @@ func TestSchemaInspect_MarshalJSON(t *testing.T) {
 							&schema.Column{
 								Name: "name",
 								Type: &schema.ColumnType{Raw: "varchar(255)"},
+								Attrs: []schema.Attr{
+									&schema.Collation{V: "collate"},
+								},
 							},
 						),
 					schema.NewTable("posts").
@@ -71,9 +76,11 @@ func TestSchemaInspect_MarshalJSON(t *testing.T) {
             },
             {
               "name": "name",
-              "type": "varchar(255)"
+              "type": "varchar(255)",
+              "collate": "collate"
             }
-          ]
+          ],
+          "charset": "charset"
         },
         {
           "name": "posts",
@@ -88,7 +95,8 @@ func TestSchemaInspect_MarshalJSON(t *testing.T) {
             }
           ]
         }
-      ]
+      ],
+      "comment": "schema comment"
     },
     {
       "name": "temp"

@@ -550,10 +550,16 @@ func (s *SchemaInspect) MarshalHCL() (string, error) {
 // MarshalJSON implements json.Marshaler.
 func (s *SchemaInspect) MarshalJSON() ([]byte, error) {
 	type (
+		Attrs struct {
+			Comment string `json:"comment,omitempty"`
+			Charset string `json:"charset,omitempty"`
+			Collate string `json:"collate,omitempty"`
+		}
 		Column struct {
 			Name string `json:"name"`
 			Type string `json:"type,omitempty"`
 			Null bool   `json:"null,omitempty"`
+			Attrs
 		}
 		IndexPart struct {
 			Desc   bool   `json:"desc,omitempty"`
@@ -579,25 +585,45 @@ func (s *SchemaInspect) MarshalJSON() ([]byte, error) {
 			Indexes     []Index      `json:"indexes,omitempty"`
 			PrimaryKey  *Index       `json:"primary_key,omitempty"`
 			ForeignKeys []ForeignKey `json:"foreign_keys,omitempty"`
+			Attrs
 		}
 		Schema struct {
 			Name   string  `json:"name"`
 			Tables []Table `json:"tables,omitempty"`
+			Attrs
 		}
 	)
-	var realm struct {
-		Schemas []Schema `json:"schemas,omitempty"`
-	}
+	var (
+		realm struct {
+			Schemas []Schema `json:"schemas,omitempty"`
+		}
+		setAttrs = func(from []schema.Attr, to *Attrs) {
+			for i := range from {
+				switch a := from[i].(type) {
+				case *schema.Comment:
+					to.Comment = a.Text
+				case *schema.Charset:
+					to.Charset = a.V
+				case *schema.Collation:
+					to.Collate = a.V
+				}
+			}
+		}
+	)
 	for _, s1 := range s.Realm.Schemas {
 		s2 := Schema{Name: s1.Name}
+		setAttrs(s1.Attrs, &s2.Attrs)
 		for _, t1 := range s1.Tables {
 			t2 := Table{Name: t1.Name}
+			setAttrs(t1.Attrs, &t2.Attrs)
 			for _, c1 := range t1.Columns {
-				t2.Columns = append(t2.Columns, Column{
+				c2 := Column{
 					Name: c1.Name,
 					Type: c1.Type.Raw,
 					Null: c1.Type.Null,
-				})
+				}
+				setAttrs(c1.Attrs, &c2.Attrs)
+				t2.Columns = append(t2.Columns, c2)
 			}
 			idxParts := func(idx *schema.Index) (parts []IndexPart) {
 				for _, p1 := range idx.Parts {
