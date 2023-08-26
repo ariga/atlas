@@ -451,6 +451,9 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 				// Unset the inspected CHARSET/COLLATE attributes
 				// as they are valid only for character types.
 				c.UnsetCharset().UnsetCollation()
+				// Skip adding this CHECK constraint to the table definition
+				// as it is implicitly created by MariaDB for this JSON column.
+				continue
 			}
 		} else if enforced.String == "NO" {
 			// The ENFORCED attribute is not supported by MariaDB.

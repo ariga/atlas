@@ -1,0 +1,53 @@
+only maria*
+
+apply 1.hcl
+cmpshow users 1.sql
+
+# The CHECK "json_valid(`name`)" should not be present in the HCL
+# description because the "longtext" is converted to "json" type.
+cmphcl 1.inspect.hcl
+
+-- 1.hcl --
+schema "script_column_json" {}
+
+table "users" {
+  schema = schema.script_column_json
+  column "id" {
+    null = false
+    type = int
+  }
+  column "name" {
+    null = false
+    type = json
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  `name` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`name`)),
+  PRIMARY KEY (`id`)
+)
+
+-- 1.inspect.hcl --
+table "users" {
+  schema = schema.script_column_json
+  column "id" {
+    null = false
+    type = int
+  }
+  column "name" {
+    null = false
+    type = json
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+schema "script_column_json" {
+  charset = "$charset"
+  collate = "$collate"
+}
