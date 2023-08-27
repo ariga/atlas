@@ -161,7 +161,7 @@ func ParseType(raw string) (schema.Type, error) {
 		}
 		if len(parts) > 1 && parts[1] != "unsigned" {
 			if dt.Precision, err = strconv.Atoi(parts[1]); err != nil {
-				return nil, fmt.Errorf("parse precision %q", parts[1])
+				return nil, fmt.Errorf("parse decimal precision %q", parts[1])
 			}
 		}
 		if len(parts) > 2 && parts[2] != "unsigned" {
@@ -177,7 +177,7 @@ func ParseType(raw string) (schema.Type, error) {
 		}
 		if len(parts) > 1 && parts[1] != "unsigned" {
 			if ft.Precision, err = strconv.Atoi(parts[1]); err != nil {
-				return nil, fmt.Errorf("parse precision %q", parts[1])
+				return nil, fmt.Errorf("parse double precision %q", parts[1])
 			}
 		}
 		return ft, nil
@@ -227,7 +227,7 @@ func ParseType(raw string) (schema.Type, error) {
 		if len(parts) > 1 {
 			p, err := strconv.Atoi(parts[1])
 			if err != nil {
-				return nil, fmt.Errorf("parse precision %q", parts[1])
+				return nil, fmt.Errorf("parse timestamp precision %q", parts[1])
 			}
 			tt.Precision = &p
 		}

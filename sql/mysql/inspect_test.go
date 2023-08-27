@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -161,14 +162,17 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+------------+----------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+---------------------------+
-| table_name |  column_name   | column_type                  | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name | generation_expression     |
-+------------+----------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+---------------------------+
-| users      |  id            | bigint(20)                   |                      | NO          | PRI        | NULL           |                | NULL               | NULL           | NULL                      |
-| users      |  tiny_int      | tinyint(1)                   |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
-| users      |  longtext      | longtext                     |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
-| users      |  jsonc         | longtext                     |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
-+------------+----------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+---------------------------+
++------------+----------------+-------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+---------------------------+
+| table_name |  column_name   | column_type                   | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name | generation_expression     |
++------------+----------------+-------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+---------------------------+
+| users      |  id            | bigint(20)                    |                      | NO          | PRI        | NULL           |                | NULL               | NULL           | NULL                      |
+| users      |  tiny_int      | tinyint(1)                    |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
+| users      |  longtext      | longtext                      |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
+| users      |  jsonc         | longtext                      |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
+| users      |  dt0           | datetime /* mariadb-5.3 */    |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
+| users      |  dt1           | datetime(6) /* mariadb-5.3 */ |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
+| users      |  dt2           | time(1) /* mariadb-5.3 */     |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
++------------+----------------+-------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+---------------------------+
 `))
 				m.ExpectQuery(queryIndexes).
 					WillReturnRows(sqlmock.NewRows([]string{"table_name", "index_name", "column_name", "non_unique", "key_part", "expression"}))
@@ -192,6 +196,9 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "tiny_int", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "bool"}}},
 					{Name: "longtext", Type: &schema.ColumnType{Raw: "longtext", Type: &schema.StringType{T: "longtext"}}},
 					{Name: "jsonc", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
+					{Name: "dt0", Type: &schema.ColumnType{Raw: "datetime /* mariadb-5.3 */", Type: &schema.TimeType{T: "datetime"}}},
+					{Name: "dt1", Type: &schema.ColumnType{Raw: "datetime(6) /* mariadb-5.3 */", Type: &schema.TimeType{T: "datetime", Precision: sqlx.P(6)}}},
+					{Name: "dt2", Type: &schema.ColumnType{Raw: "time(1) /* mariadb-5.3 */", Type: &schema.TimeType{T: "time", Precision: sqlx.P(1)}}},
 				}, t.Columns)
 				require.EqualValues([]schema.Attr{
 					&schema.Check{Name: "users_chk_1", Expr: `longtext <> '\'\'""'`},
