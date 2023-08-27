@@ -102,7 +102,10 @@ Connecting to a local SQLServer database named `master` (all schemas). The user 
 sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master&mode=database
 ```
 
-Note: The `mode` parameter isn't part of the default connection string used by Atlas and the default value is `schema`.
+:::note
+- The `mode` parameter is Atlas-specific and isn't used for opening the underlying connection.
+- The default `mode` is `schema`.
+:::
 </TabItem>
 <TabItem value="sqlite">
 
