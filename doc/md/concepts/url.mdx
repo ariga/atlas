@@ -24,6 +24,7 @@ values={[
 {label: 'MySQL', value: 'mysql'},
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLServer', value: 'sqlserver'},
 {label: 'SQLite', value: 'sqlite'},
 {label: 'Docker', value: 'docker'},
 ]}>
@@ -88,6 +89,23 @@ Connecting to a local PostgreSQL with credentials and SSL disabled:
 postgres://postgres:pass@0.0.0.0:5432/database?search_path=public&sslmode=disable
 ```
 
+</TabItem>
+<TabItem value="sqlserver">
+
+Connecting to a default schema of current user:
+```shell
+sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master&mode=schema
+```
+
+Connecting to a local SQLServer database named `master` (all schemas). The user need to have `db_owner` role:
+```shell
+sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master&mode=database
+```
+
+:::note
+- The `mode` parameter is Atlas-specific and isn't used for opening the underlying connection.
+- The default `mode` is `schema`.
+:::
 </TabItem>
 <TabItem value="sqlite">
 
