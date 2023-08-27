@@ -592,6 +592,11 @@ func (i *inspect) myDefaultExpr(c *schema.Column, x string, attr *extraAttr) sch
 
 // parseColumn returns column parts, size and signed-info from a MySQL type.
 func parseColumn(typ string) (parts []string, size int, unsigned bool, err error) {
+	// Remove MariaDB like comments embedded in the type
+	// for compatibility. For example: /* mariadb-5.3 */.
+	if i := strings.Index(typ, "/*"); i > 0 && strings.HasSuffix(strings.TrimSpace(typ), "*/") {
+		typ = strings.TrimSpace(typ[:i])
+	}
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	}); parts[0] {
