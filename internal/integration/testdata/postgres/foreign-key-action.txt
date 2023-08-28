@@ -1,0 +1,141 @@
+apply 1.hcl
+cmpshow table_a table_a.sql
+cmpshow table_b table_b.sql
+cmpshow table_c table_c.sql
+cmphcl 1.inspect.hcl
+
+-- 1.hcl --
+schema "script_foreign_key_action" {}
+
+table "table_a" {
+  schema = schema.script_foreign_key_action
+  column "id" {
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+
+table "table_b" {
+  schema = schema.script_foreign_key_action
+  column "id" {
+    type = text
+  }
+  column "table_a_id" {
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "table_a_fk" {
+    columns     = [column.table_a_id]
+    ref_columns = [table.table_a.column.id]
+    on_delete   = "CASCADE"
+    on_update   = "CASCADE"
+  }
+}
+
+table "table_c" {
+  schema = schema.script_foreign_key_action
+  column "id" {
+    type = text
+  }
+  column "table_a_id" {
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "table_a_fk" {
+    columns     = [column.table_a_id]
+    ref_columns = [table.table_a.column.id]
+  }
+}
+
+-- table_a.sql --
+   Table "script_foreign_key_action.table_a"
+ Column | Type | Collation | Nullable | Default
+--------+------+-----------+----------+---------
+ id     | text |           | not null |
+Indexes:
+    "table_a_pkey" PRIMARY KEY, btree (id)
+Referenced by:
+    TABLE "script_foreign_key_action.table_b" CONSTRAINT "table_a_fk" FOREIGN KEY (table_a_id) REFERENCES script_foreign_key_action.table_a(id) ON UPDATE CASCADE ON DELETE CASCADE
+    TABLE "script_foreign_key_action.table_c" CONSTRAINT "table_a_fk" FOREIGN KEY (table_a_id) REFERENCES script_foreign_key_action.table_a(id)
+
+-- table_b.sql --
+     Table "script_foreign_key_action.table_b"
+   Column   | Type | Collation | Nullable | Default
+------------+------+-----------+----------+---------
+ id         | text |           | not null |
+ table_a_id | text |           | not null |
+Indexes:
+    "table_b_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "table_a_fk" FOREIGN KEY (table_a_id) REFERENCES script_foreign_key_action.table_a(id) ON UPDATE CASCADE ON DELETE CASCADE
+
+-- table_c.sql --
+     Table "script_foreign_key_action.table_c"
+   Column   | Type | Collation | Nullable | Default
+------------+------+-----------+----------+---------
+ id         | text |           | not null |
+ table_a_id | text |           | not null |
+Indexes:
+    "table_c_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "table_a_fk" FOREIGN KEY (table_a_id) REFERENCES script_foreign_key_action.table_a(id)
+
+-- 1.inspect.hcl --
+table "table_a" {
+  schema = schema.script_foreign_key_action
+  column "id" {
+    null = false
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+table "table_b" {
+  schema = schema.script_foreign_key_action
+  column "id" {
+    null = false
+    type = text
+  }
+  column "table_a_id" {
+    null = false
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "table_a_fk" {
+    columns     = [column.table_a_id]
+    ref_columns = [table.table_a.column.id]
+    on_update   = CASCADE
+    on_delete   = CASCADE
+  }
+}
+table "table_c" {
+  schema = schema.script_foreign_key_action
+  column "id" {
+    null = false
+    type = text
+  }
+  column "table_a_id" {
+    null = false
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "table_a_fk" {
+    columns     = [column.table_a_id]
+    ref_columns = [table.table_a.column.id]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+}
+schema "script_foreign_key_action" {
+}

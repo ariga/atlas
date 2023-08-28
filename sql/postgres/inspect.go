@@ -529,7 +529,7 @@ func (i *inspect) fks(ctx context.Context, s *schema.Schema) error {
 		return fmt.Errorf("postgres: querying schema %q foreign keys: %w", s.Name, err)
 	}
 	defer rows.Close()
-	if err := sqlx.SchemaFKs(s, rows); err != nil {
+	if err := sqlx.TypedSchemaFKs[*ReferenceOption](s, rows); err != nil {
 		return fmt.Errorf("postgres: %w", err)
 	}
 	return rows.Err()
@@ -934,7 +934,38 @@ type (
 	Cascade struct {
 		schema.Clause
 	}
+
+	// ReferenceOption describes the ON DELETE and ON UPDATE options for foreign keys.
+	ReferenceOption schema.ReferenceOption
 )
+
+// String implements fmt.Stringer interface.
+func (o ReferenceOption) String() string {
+	return string(o)
+}
+
+// Scan implements sql.Scanner interface.
+func (o *ReferenceOption) Scan(v any) error {
+	var s sql.NullString
+	if err := s.Scan(v); err != nil {
+		return err
+	}
+	switch strings.ToLower(s.String) {
+	case "a":
+		*o = ReferenceOption(schema.NoAction)
+	case "r":
+		*o = ReferenceOption(schema.Restrict)
+	case "c":
+		*o = ReferenceOption(schema.Cascade)
+	case "n":
+		*o = ReferenceOption(schema.SetNull)
+	case "d":
+		*o = ReferenceOption(schema.SetDefault)
+	default:
+		return fmt.Errorf("unknown reference option: %q", s.String)
+	}
+	return nil
+}
 
 // IsUnique reports if the type is unique constraint.
 func (c Constraint) IsUnique() bool { return strings.ToLower(c.T) == "u" }
@@ -1267,8 +1298,8 @@ SELECT
     fk.referenced_table_name,
     a2.attname AS referenced_column_name,
     fk.referenced_schema_name,
-    fk.update_rule,
-    fk.delete_rule
+    fk.confupdtype,
+    fk.confdeltype
 	FROM 
 	    (
 	    	SELECT
@@ -1282,20 +1313,8 @@ SELECT
 	      		generate_series(1,array_length(con.conkey,1)) as ord,
 	      		unnest(con.conkey) AS conkey,
 	      		unnest(con.confkey) AS confkey,
-				CASE con.confupdtype
-					WHEN 'c' THEN 'CASCADE'
-					WHEN 'n' THEN 'SET NULL'
-					WHEN 'd' THEN 'SET DEFAULT'
-					WHEN 'r' THEN 'RESTRICT'
-					WHEN 'a' THEN 'NO ACTION'
-				END AS update_rule,
-				CASE con.confdeltype
-					WHEN 'c' THEN 'CASCADE'
-					WHEN 'n' THEN 'SET NULL'
-					WHEN 'd' THEN 'SET DEFAULT'
-					WHEN 'r' THEN 'RESTRICT'
- 					WHEN 'a' THEN 'NO ACTION'
- 				END AS delete_rule
+	      		con.confupdtype,
+	      		con.confdeltype
 	    	FROM pg_constraint con
 	    	JOIN pg_class t1 ON t1.oid = con.conrelid
 	    	JOIN pg_class t2 ON t2.oid = con.confrelid

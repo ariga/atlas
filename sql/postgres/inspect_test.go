@@ -247,13 +247,13 @@ users      | uid         | integer             | int       | NO          |      
 				m.ExpectQuery(queryFKs).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-constraint_name | table_name | column_name | table_schema | referenced_table_name | referenced_column_name | referenced_schema_name | update_rule | delete_rule
+constraint_name | table_name | column_name | table_schema | referenced_table_name | referenced_column_name | referenced_schema_name | confupdtype | condeltype
 -----------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------
-multi_column    | users      | id          | public       | t1                    | gid                    | public                 | NO ACTION   | CASCADE
-multi_column    | users      | id          | public       | t1                    | xid                    | public                 | NO ACTION   | CASCADE
-multi_column    | users      | oid         | public       | t1                    | gid                    | public                 | NO ACTION   | CASCADE
-multi_column    | users      | oid         | public       | t1                    | xid                    | public                 | NO ACTION   | CASCADE
-self_reference  | users      | uid         | public       | users                 | id                     | public                 | NO ACTION   | CASCADE
+multi_column    | users      | id          | public       | t1                    | gid                    | public                 | a            | c
+multi_column    | users      | id          | public       | t1                    | xid                    | public                 | a            | c
+multi_column    | users      | oid         | public       | t1                    | gid                    | public                 | a            | c
+multi_column    | users      | oid         | public       | t1                    | xid                    | public                 | a            | c
+self_reference  | users      | uid         | public       | users                 | id                     | public                 | a            | c
 `))
 				m.noChecks()
 				m.noEnums()
