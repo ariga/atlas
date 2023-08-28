@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strings"
 	"time"
 
@@ -306,6 +307,11 @@ func SetVersion(v, flavor string) {
 // SetHeader sets header fields for cloud requests.
 func SetHeader(req *http.Request, token string) {
 	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("User-Agent", fmt.Sprintf("Atlas/%s", version))
+	req.Header.Set("User-Agent", UserAgent())
 	req.Header.Set("Content-Type", "application/json")
+}
+
+// UserAgent is the value the CLI uses in the User-Agent HTTP header.
+func UserAgent() string {
+	return fmt.Sprintf("Atlas/%s (%s/%s)", version, runtime.GOOS, runtime.GOARCH)
 }
