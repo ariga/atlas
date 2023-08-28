@@ -524,6 +524,294 @@ schema "c" {
 
 }
 
+func TestTable_Basic(t *testing.T) {
+	f := `schema "account_a" {
+}
+table "t1" {
+  schema = schema.account_a
+  column "id" {
+	type = int
+  }
+  column "name" {
+	type = text
+  }
+}
+`
+
+	for _, tt := range dialects {
+		t.Run(tt.name, func(t *testing.T) {
+			var r schema.Realm
+			err := tt.Eval([]byte(f), &r, nil)
+			require.NoError(t, err)
+			exp := &schema.Realm{
+				Schemas: []*schema.Schema{
+					{
+						Name:  "account_a",
+						Realm: &r,
+						Tables: []*schema.Table{
+							{
+								Name: "t1",
+								Columns: []*schema.Column{
+									{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+									{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}},
+								},
+							},
+						},
+					},
+				},
+			}
+			exp.Schemas[0].Tables[0].Schema = exp.Schemas[0]
+			require.EqualValues(t, exp, &r)
+			hcl, err := tt.MarshalSpec(&r)
+			require.NoError(t, err)
+			var after schema.Realm
+			err = tt.Eval(hcl, &after, nil)
+			require.NoError(t, err)
+			require.EqualValues(t, exp, &after)
+		})
+	}
+}
+
+func TestTable_Mixin(t *testing.T) {
+	f := `schema "account_a" {
+}
+table "t1" {
+	schema = schema.account_a
+	embed = mixin.base
+}
+mixin "base" {
+  column "id" {
+    type = int
+  }
+  column "name" {
+	type = text
+  }
+}
+`
+
+	for _, tt := range dialects {
+		t.Run(tt.name, func(t *testing.T) {
+			var r schema.Realm
+			err := tt.Eval([]byte(f), &r, nil)
+			require.NoError(t, err)
+			exp := &schema.Realm{
+				Schemas: []*schema.Schema{
+					{
+						Name:  "account_a",
+						Realm: &r,
+						Tables: []*schema.Table{
+							{
+								Name: "t1",
+								Columns: []*schema.Column{
+									{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+									{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}},
+								},
+							},
+						},
+					},
+				},
+			}
+			exp.Schemas[0].Tables[0].Schema = exp.Schemas[0]
+			require.EqualValues(t, exp, &r)
+			hcl, err := tt.MarshalSpec(&r)
+			require.NoError(t, err)
+			var after schema.Realm
+			err = tt.Eval(hcl, &after, nil)
+			require.NoError(t, err)
+			require.EqualValues(t, exp, &after)
+		})
+	}
+}
+
+func TestTable_Mixin_PK(t *testing.T) {
+	f := `schema "account_a" {
+}
+table "t1" {
+	schema = schema.account_a
+	embed = mixin.base
+}
+mixin "base" {
+  column "id" {
+    type = int
+  }
+  column "name" {
+	type = text
+  }
+  primary_key {
+	columns = [column.id]
+  }
+}
+`
+
+	for _, tt := range dialects {
+		t.Run(tt.name, func(t *testing.T) {
+			var r schema.Realm
+			err := tt.Eval([]byte(f), &r, nil)
+			require.NoError(t, err)
+			exp := &schema.Realm{
+				Schemas: []*schema.Schema{
+					{
+						Name:  "account_a",
+						Realm: &r,
+						Tables: []*schema.Table{
+							{
+								Name: "t1",
+								Columns: []*schema.Column{
+									{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+									{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}},
+								},
+								PrimaryKey: &schema.Index{
+									Parts: []*schema.IndexPart{
+										{},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			exp.Schemas[0].Tables[0].Schema = exp.Schemas[0]
+			exp.Schemas[0].Tables[0].PrimaryKey.Table = exp.Schemas[0].Tables[0]
+			exp.Schemas[0].Tables[0].PrimaryKey.Parts[0].C = exp.Schemas[0].Tables[0].Columns[0]
+			require.EqualValues(t, exp, &r)
+			hcl, err := tt.MarshalSpec(&r)
+			require.NoError(t, err)
+			var after schema.Realm
+			err = tt.Eval(hcl, &after, nil)
+			require.NoError(t, err)
+			require.EqualValues(t, exp, &after)
+		})
+	}
+}
+
+func TestTable_Mixin_MultiPK(t *testing.T) {
+	f := `schema "account_a" {
+}
+table "t1" {
+	schema = schema.account_a
+	embed = mixin.base
+	column "account_name" {
+		type = text
+	}
+	primary_key {
+		columns = [column.account_name]
+	}
+}
+
+mixin "base" {
+  column "id" {
+    type = int
+  }
+  column "name" {
+	type = text
+  }
+  primary_key {
+	columns = [column.id]
+  }
+}
+`
+
+	for _, tt := range dialects {
+		t.Run(tt.name, func(t *testing.T) {
+			var r schema.Realm
+			err := tt.Eval([]byte(f), &r, nil)
+			require.NoError(t, err)
+			exp := &schema.Realm{
+				Schemas: []*schema.Schema{
+					{
+						Name:  "account_a",
+						Realm: &r,
+						Tables: []*schema.Table{
+							{
+								Name: "t1",
+								Columns: []*schema.Column{
+									{Name: "account_name", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}},
+									{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+									{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}},
+								},
+								PrimaryKey: &schema.Index{
+									Parts: []*schema.IndexPart{
+										{},
+										{SeqNo: 1},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			exp.Schemas[0].Tables[0].Schema = exp.Schemas[0]
+			exp.Schemas[0].Tables[0].PrimaryKey.Table = exp.Schemas[0].Tables[0]
+			exp.Schemas[0].Tables[0].PrimaryKey.Parts[0].C = exp.Schemas[0].Tables[0].Columns[0]
+			exp.Schemas[0].Tables[0].PrimaryKey.Parts[1].C = exp.Schemas[0].Tables[0].Columns[1]
+			require.EqualValues(t, exp, &r)
+			hcl, err := tt.MarshalSpec(&r)
+			require.NoError(t, err)
+			var after schema.Realm
+			err = tt.Eval(hcl, &after, nil)
+			require.NoError(t, err)
+			require.EqualValues(t, exp, &after)
+		})
+	}
+}
+
+func TestTable_MultiMixin(t *testing.T) {
+	f := `schema "account_a" {
+}
+table "t1" {
+	schema = schema.account_a
+	embed = [mixin.base, mixin.deletable]
+}
+mixin "base" {
+  column "id" {
+    type = int
+  }
+  column "name" {
+	type = text
+  }
+}
+mixin "deletable" {
+  column "is_deleted" {
+    type = bool
+  }
+}
+`
+
+	for _, tt := range dialects {
+		t.Run(tt.name, func(t *testing.T) {
+			var r schema.Realm
+			err := tt.Eval([]byte(f), &r, nil)
+			require.NoError(t, err)
+			exp := &schema.Realm{
+				Schemas: []*schema.Schema{
+					{
+						Name:  "account_a",
+						Realm: &r,
+						Tables: []*schema.Table{
+							{
+								Name: "t1",
+								Columns: []*schema.Column{
+									{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+									{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}},
+									{Name: "is_deleted", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}},
+								},
+							},
+						},
+					},
+				},
+			}
+			exp.Schemas[0].Tables[0].Schema = exp.Schemas[0]
+			require.EqualValues(t, exp, &r)
+			hcl, err := tt.MarshalSpec(&r)
+			require.NoError(t, err)
+			var after schema.Realm
+			err = tt.Eval(hcl, &after, nil)
+			require.NoError(t, err)
+			require.EqualValues(t, exp, &after)
+		})
+	}
+}
+
 func decode(f string) (*db, error) {
 	d := &db{}
 	if err := hcl.EvalBytes([]byte(f), d, nil); err != nil {

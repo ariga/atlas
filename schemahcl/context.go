@@ -399,12 +399,14 @@ const (
 	BlockData     = "data"
 	BlockLocals   = "locals"
 	BlockVariable = "variable"
+	BlockMixin    = "mixin"
 	RefData       = "data"
 	RefVar        = "var"
 	RefLocal      = "local"
 	AttrName      = "name"
 	forEachAttr   = "for_each"
 	eachRef       = "each"
+	embedAttr     = "embed"
 )
 
 // Variables represents the dynamic variables used in a body.
