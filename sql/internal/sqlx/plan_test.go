@@ -5,6 +5,7 @@
 package sqlx
 
 import (
+	"fmt"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
@@ -106,6 +107,26 @@ func TestDetachCycles(t *testing.T) {
 	planned, err = DetachCycles(changes)
 	require.NoError(t, err)
 	require.Equal(t, []schema.Change{changes[1], changes[0]}, planned)
+}
+
+func TestConsistentOrder(t *testing.T) {
+	newT := func(n string) *schema.Table { return schema.NewTable(n).AddColumns(schema.NewIntColumn("id", "int")) }
+	t1, t2, t3 := newT("t1"), newT("t2"), newT("t3")
+	t2.AddForeignKeys(schema.NewForeignKey("t1").AddColumns(t2.Columns[0]).SetRefTable(t1).AddRefColumns(t1.Columns[0]))
+	t3.AddForeignKeys(schema.NewForeignKey("t1").AddColumns(t3.Columns[0]).SetRefTable(t1).AddRefColumns(t1.Columns[0]))
+	order := func() string {
+		planned, err := DetachCycles([]schema.Change{
+			&schema.AddTable{T: t1},
+			&schema.AddTable{T: t2},
+			&schema.AddTable{T: t3},
+		})
+		require.NoError(t, err)
+		return fmt.Sprintf("%s,%s,%s", planned[0].(*schema.AddTable).T.Name, planned[1].(*schema.AddTable).T.Name, planned[2].(*schema.AddTable).T.Name)
+	}
+	v := order()
+	for i := 0; i < 100; i++ {
+		require.Equal(t, v, order(), "inconsistent order")
+	}
 }
 
 func TestCheckChangesScope(t *testing.T) {
