@@ -78,7 +78,7 @@ func (v *VerChecker) Check(ver string) (*Payload, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Ariga-Atlas-CLI")
+	addHeaders(req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err

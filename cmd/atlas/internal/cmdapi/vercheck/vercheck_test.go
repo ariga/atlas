@@ -7,10 +7,12 @@ package vercheck
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -31,7 +33,8 @@ func TestVerCheck(t *testing.T) {
 	check, err := vc.Check("v0.1.2")
 
 	require.EqualValues(t, "/atlas/v0.1.2", path)
-	require.EqualValues(t, "Ariga-Atlas-CLI", ua)
+	expUA := fmt.Sprintf("Atlas-CLI (%s/%s)", runtime.GOOS, runtime.GOARCH)
+	require.EqualValues(t, expUA, ua)
 	require.NoError(t, err)
 	require.EqualValues(t, &Payload{
 		Latest: &Latest{
