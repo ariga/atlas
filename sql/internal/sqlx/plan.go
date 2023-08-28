@@ -204,8 +204,8 @@ func sortMap(changes []schema.Change) (map[string]int, error) {
 		sorted[name] = len(sorted)
 		return false
 	}
-	for node := range deps {
-		if visit(node) {
+	for _, node := range byKeys(deps) {
+		if visit(node.K) {
 			return nil, errCycle
 		}
 	}
@@ -358,4 +358,25 @@ func CheckChangesScope(opts migrate.PlanOptions, changes []schema.Change) error 
 		return fmt.Errorf("found %d schemas when migration plan is scoped to one: %q", len(names), ks)
 	}
 	return nil
+}
+
+// byKeys sorts a map by keys.
+func byKeys[T any](m map[string]T) []struct {
+	K string
+	V T
+} {
+	vs := make([]struct {
+		K string
+		V T
+	}, len(m))
+	for k, v := range m {
+		vs = append(vs, struct {
+			K string
+			V T
+		}{k, v})
+	}
+	sort.Slice(vs, func(i, j int) bool {
+		return vs[i].K < vs[j].K
+	})
+	return vs
 }
