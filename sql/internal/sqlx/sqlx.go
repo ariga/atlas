@@ -91,13 +91,35 @@ func ScanStrings(rows *sql.Rows) ([]string, error) {
 	return vs, nil
 }
 
+type (
+	// ScanStringer groups the fmt.Stringer and sql.Scanner interfaces.
+	ScanStringer interface {
+		fmt.Stringer
+		sql.Scanner
+	}
+	// nullString is a sql.NullString that implements the ScanStringer interface.
+	nullString struct{ sql.NullString }
+)
+
+func (s nullString) String() string    { return s.NullString.String }
+func (s *nullString) Scan(v any) error { return s.NullString.Scan(v) }
+
 // SchemaFKs scans the rows and adds the foreign-key to the schema table.
 // Reference elements are added as stubs and should be linked manually by the
 // caller.
 func SchemaFKs(s *schema.Schema, rows *sql.Rows) error {
+	return TypedSchemaFKs[*nullString](s, rows)
+}
+
+// TypedSchemaFKs is a version of SchemaFKs that allows to specify the type of
+// used to scan update and delete actions from the database.
+func TypedSchemaFKs[T ScanStringer](s *schema.Schema, rows *sql.Rows) error {
 	for rows.Next() {
-		var name, table, column, tSchema, refTable, refColumn, refSchema, updateRule, deleteRule string
-		if err := rows.Scan(&name, &table, &column, &tSchema, &refTable, &refColumn, &refSchema, &updateRule, &deleteRule); err != nil {
+		var (
+			updateAction, deleteAction                                   = V(new(T)), V(new(T))
+			name, table, column, tSchema, refTable, refColumn, refSchema string
+		)
+		if err := rows.Scan(&name, &table, &column, &tSchema, &refTable, &refColumn, &refSchema, &updateAction, &deleteAction); err != nil {
 			return err
 		}
 		t, ok := s.Table(table)
@@ -110,8 +132,8 @@ func SchemaFKs(s *schema.Schema, rows *sql.Rows) error {
 				Symbol:   name,
 				Table:    t,
 				RefTable: t,
-				OnDelete: schema.ReferenceOption(deleteRule),
-				OnUpdate: schema.ReferenceOption(updateRule),
+				OnUpdate: schema.ReferenceOption(updateAction.String()),
+				OnDelete: schema.ReferenceOption(deleteAction.String()),
 			}
 			switch {
 			// Self reference.
