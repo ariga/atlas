@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,10 +31,12 @@ func TestVerCheck(t *testing.T) {
 	defer srv.Close()
 
 	vc := New(srv.URL, "")
-	check, err := vc.Check("v0.1.2")
+	ver := "v0.1.2"
+	check, err := vc.Check(ver)
 
-	require.EqualValues(t, "/atlas/v0.1.2", path)
-	expUA := fmt.Sprintf("Atlas-CLI (%s/%s)", runtime.GOOS, runtime.GOARCH)
+	require.EqualValues(t, "/atlas/"+ver, path)
+	cloudapi.SetVersion(ver, "")
+	expUA := fmt.Sprintf("Atlas/development (%s/%s)", runtime.GOOS, runtime.GOARCH)
 	require.EqualValues(t, expUA, ua)
 	require.NoError(t, err)
 	require.EqualValues(t, &Payload{

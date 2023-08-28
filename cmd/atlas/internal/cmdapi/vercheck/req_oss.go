@@ -3,14 +3,11 @@
 package vercheck
 
 import (
-	"fmt"
 	"net/http"
-	"runtime"
+
+	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 )
 
 func addHeaders(req *http.Request) {
-	req.Header.Set(
-		"User-Agent",
-		fmt.Sprintf("Atlas-CLI (%s/%s)", runtime.GOOS, runtime.GOARCH),
-	)
+	req.Header.Set("User-Agent", cloudapi.UserAgent())
 }
