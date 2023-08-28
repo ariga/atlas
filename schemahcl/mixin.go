@@ -31,7 +31,6 @@ func (s *State) applyMixin(b *hclsyntax.Block, mixins map[string]*hclsyntax.Bloc
 		if err := mergeBlocks(b, mixin); err != nil {
 			return err
 		}
-		mergeAttributes(b, mixin)
 	}
 
 	delete(b.Body.Attributes, embedAttr)
@@ -136,12 +135,4 @@ func mergeAttributeValue(existingBlock *hclsyntax.Block, k string, valuesToAdd *
 		return nil
 	}
 	return fmt.Errorf("schemahcl: failed to merge attributes: %w", errors.New("invalid source attribute type"))
-}
-
-func mergeAttributes(b *hclsyntax.Block, mixin *hclsyntax.Block) {
-	for k, v := range mixin.Body.Attributes {
-		if _, ok := b.Body.Attributes[k]; !ok {
-			b.Body.Attributes[k] = v
-		}
-	}
 }
