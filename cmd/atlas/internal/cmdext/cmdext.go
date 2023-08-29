@@ -154,8 +154,9 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	return cty.StringVal(token), nil
 }
 
-// data "gcp_cloudsql_token" "hello" {
-// }
+// GCPCloudSQLToken exposes a CloudSQL token as a schemahcl datasource.
+//
+//	data "gcp_cloudsql_token" "hello" {}
 func GCPCloudSQLToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	errorf := blockError("data.gcp_cloudsql_token", block)
 	bgctx := context.Background()
