@@ -98,11 +98,9 @@ v = data.aws_rds_token.token
 }
 
 func TestGCPToken(t *testing.T) {
-	t.Cleanup(
-		backupEnv("GOOGLE_APPLICATION_CREDENTIALS"),
-	)
-	// Mock AWS env vars.
-	require.NoError(t, os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "/Users/giautm/Downloads/giau-playground-17f0ddb10536.json"))
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+		t.Skip("skipping test; GOOGLE_APPLICATION_CREDENTIALS is not set")
+	}
 	var (
 		v struct {
 			V string `spec:"v"`
@@ -110,19 +108,11 @@ func TestGCPToken(t *testing.T) {
 		state = schemahcl.New(cmdext.DataSources...)
 	)
 	err := state.EvalBytes([]byte(`
-data "gcp_cloudsql_url" "helloworld" {
-	connection_name = "giau-playground:asia-southeast1:helloworld"
-	ip_address_type = "PRIMARY"
-}
-v = data.gcp_cloudsql_url.helloworld
+data "gcp_cloudsql_token" "helloworld" {}
+v = data.gcp_cloudsql_token.helloworld
 `), &v, nil)
 	require.NoError(t, err)
-	parse, err := url.Parse(v.V)
-	fmt.Printf(v.V)
-	require.NoError(t, err)
-	q := parse.Query()
-	require.Equal(t, "connect", q.Get("Action"))
-	require.Contains(t, q.Get("X-Amz-Credential"), "EXAMPLE_KEY_ID")
+	require.NotEmpty(t, v.V)
 }
 
 func TestQuerySrc(t *testing.T) {

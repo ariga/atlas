@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
-	"strings"
 	"text/template"
 	"time"
 
@@ -32,9 +31,7 @@ import (
 	"ariga.io/atlas/sql/sqltool"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
-	"golang.org/x/exp/slices"
 	"golang.org/x/oauth2/google"
-	"google.golang.org/api/option"
 	sqladmin "google.golang.org/api/sqladmin/v1beta4"
 
 	"github.com/zclconf/go-cty/cty/gocty"
@@ -64,7 +61,7 @@ var DataSources = []schemahcl.Option{
 	schemahcl.WithDataSource("hcl_schema", SchemaHCL),
 	schemahcl.WithDataSource("external_schema", SchemaExternal),
 	schemahcl.WithDataSource("aws_rds_token", AWSRDSToken),
-	schemahcl.WithDataSource("gcp_cloudsql_url", GCPCloudSQLURL),
+	schemahcl.WithDataSource("gcp_cloudsql_token", GCPCloudSQLToken),
 }
 
 // RuntimeVar exposes the gocloud.dev/runtimevar as a schemahcl datasource.
@@ -157,78 +154,20 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	return cty.StringVal(token), nil
 }
 
-//	data "gcp_cloudsql_url" "hello" {
-//		name = "<PROJECT>:<REGION>:<INSTANCE>"
-//		address_type = "" // "PRIMARY" (default) or "PRIVATE"
-//	}
-func GCPCloudSQLURL(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
-	var (
-		args struct {
-			Name        string `hcl:"name"`
-			AddressType string `hcl:"address_type,optional"`
-		}
-		errorf = blockError("data.gcp_cloudsql_url", block)
-	)
-	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
-		return cty.NilVal, errorf("decoding body: %v", diags)
-	}
-	p := strings.Split(args.Name, ":")
-	if len(p) != 3 {
-		return cty.NilVal, errorf("invalid connection name: %q, expected <PROJECT>:<REGION>:<INSTANCE>", args.Name)
-	}
-	ipAddressType := "PRIMARY"
-	if args.AddressType != "" {
-		ipAddressType = strings.ToUpper(args.AddressType)
-	}
+// data "gcp_cloudsql_token" "hello" {
+// }
+func GCPCloudSQLToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+	errorf := blockError("data.gcp_cloudsql_token", block)
 	bgctx := context.Background()
-	creds, err := google.FindDefaultCredentials(bgctx, sqladmin.SqlserviceAdminScope)
+	ts, err := google.DefaultTokenSource(bgctx, sqladmin.SqlserviceAdminScope)
 	if err != nil {
 		return cty.NilVal, errorf("finding default credentials: %v", err)
 	}
-	config, err := google.JWTConfigFromJSON(creds.JSON)
-	if err != nil {
-		return cty.NilVal, errorf("invalid service account: %v", err)
-	}
-	srv, err := sqladmin.NewService(bgctx, option.WithCredentials(creds))
-	if err != nil {
-		return cty.NilVal, errorf("creating service: %v", err)
-	}
-	instance, err := srv.Instances.Get(p[0], p[2]).Context(bgctx).Do()
-	if err != nil {
-		return cty.NilVal, errorf("getting instance: %v", err)
-	}
-	idx := slices.IndexFunc(instance.IpAddresses, func(ip *sqladmin.IpMapping) bool {
-		return ip.Type == ipAddressType
-	})
-	if idx == -1 {
-		return cty.NilVal, errorf("ip address type %q not found on instance %q", ipAddressType, p[2])
-	}
-	ipAddress := instance.IpAddresses[idx].IpAddress
-	token, err := creds.TokenSource.Token()
+	token, err := ts.Token()
 	if err != nil {
 		return cty.NilVal, errorf("getting token: %v", err)
 	}
-	u := &url.URL{}
-	q := u.Query()
-	switch {
-	case strings.HasPrefix(instance.DatabaseVersion, "MYSQL_"):
-		idxAt := strings.LastIndex(config.Email, "@")
-		u.User = url.UserPassword(config.Email[:idxAt], token.AccessToken)
-		u.Host = fmt.Sprintf("%s:3306", ipAddress)
-		u.Scheme = "mysql"
-		q.Add("allowCleartextPasswords", "1")
-		q.Add("tls", "skip-verify")
-	case strings.HasPrefix(instance.DatabaseVersion, "POSTGRES_"):
-		user := strings.TrimSuffix(config.Email, ".gserviceaccount.com")
-		u.User = url.UserPassword(user, token.AccessToken)
-		u.Host = fmt.Sprintf("%s:5432", ipAddress)
-		u.Scheme = "postgres"
-		q.Add("sslmode", "require")
-	default:
-		return cty.NilVal, errorf("unsupported database version: %q", instance.DatabaseVersion)
-	}
-	u.RawQuery = q.Encode()
-	return cty.StringVal(u.String()), nil
+	return cty.StringVal(token.AccessToken), nil
 }
 
 // Query exposes the database/sql.Query as a schemahcl datasource.
