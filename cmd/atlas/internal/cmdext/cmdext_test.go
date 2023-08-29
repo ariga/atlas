@@ -98,9 +98,38 @@ v = data.aws_rds_token.token
 }
 
 func TestGCPToken(t *testing.T) {
-	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
-		t.Skip("skipping test; GOOGLE_APPLICATION_CREDENTIALS is not set")
-	}
+	t.Cleanup(
+		backupEnv("GOOGLE_APPLICATION_CREDENTIALS"),
+	)
+	credsFile := filepath.Join(t.TempDir(), "foo.json")
+	require.NoError(t, os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", credsFile))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.String() != "/token" {
+			t.Errorf("Unexpected exchange request URL, %v is found.", r.URL)
+		}
+		jwt := r.FormValue("assertion")
+		payload, err := base64.RawStdEncoding.DecodeString(strings.Split(jwt, ".")[1])
+		require.NoError(t, err)
+		// Ensure we request correct scopes
+		require.Contains(t, string(payload), `"https://www.googleapis.com/auth/sqlservice.admin"`)
+		w.Header().Set("Content-Type", "application/json")
+		// Write a fake access token to the client
+		w.Write([]byte(`{"access_token":"foo-bar-token","scope":"user","token_type":"bearer","expires_in":86400}`))
+	}))
+	defer ts.Close()
+	require.NoError(t, os.WriteFile(credsFile, []byte(fmt.Sprintf(`{
+		"type": "service_account",
+		"project_id": "foo-bar",
+		"private_key_id": "foo-bar",
+		"private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCxLnH1p8E1IiWw\nQrSv8BtXfOaFzPvYt6tcwsti9O3LhG6KtTEbXXbUe72tga5B8awQXYkRtdST2uV6\nhjvFHzmHzLOJVa/Qm1duO4iTkjz7Hj7kbfEI4dF5iLRn8+QF8YwGJCewSS8IXmbl\nu/4w64dtdC5h880p33gW73oNSLr6d6tlifc/oUAVdu4Bz8qSARpF+4nIN3uZGqr1\n8wqsHx9N5twaEO7Ky5ezNWv2TfiBk4hPtGJUWXPM++mKZpZcmpzXT9dP9gfPX0mN\np45FNXhjN8uA7aauqVzl2dWYmED32k1EGK2/m66lPq+IEo7p/90FUbvR/x+pbx0r\nYOgGKrhfAgMBAAECggEAVUWqGPVcmirOAq+H8GjZb9ivxVNrHdj/gwxJAF4ql9kr\nrlwXvzjTON444mlYKWqbSeEKV9iv71zZNoel+m/Vq1LMUVtI21f30xiZ2ZP2/1CG\nKj/zUjgELb6qPKF3a5jdsBL0evYtyZRNZ2F7q6WfLwFMVV4VroJbdIZaskv/mQzx\ny45FWU14/J/Vuk6Bqv0AtWb3ZSGnKGRWjOSlr9OI8nXEDg69LE3pGB3/XrPtfrbo\n7YdFC24DFUXRUIkNHnktQZ14U+0HmbPgs6OWUNvMfdvckP87e+7eoBiUkPrJA1wi\nrSm2ZW70Wvf1sD2h9kgpABe+cuWoqWTWBBXlfkuwUQKBgQD3MjGN8QIfhIKMEz9X\nFkL9BdFPswcawVaiTXfrhHtPmcJLmT5VGEnyh6jvigdKSpQe/s5IzLnFglqKO5Ge\nW57YiBVwfNREpzahJULaAL45NtwJtasSz1tNz3EKm00Z5o6tcCk2dZ6rzFKRY3Sz\nUfSo0lc7+rfNQzC4+GVlxTcNNwKBgQC3feTmNL917xceMwAA3g0nh+aHi4rPIN3H\nkhghDvCYMg4gYml/vZnUMkjfTsdS/TrXvIE1Pd6QDCSRx/VZFIBFA2P5c+g6l5fo\nBSS5CUm+R3j27NsGQXIfr5bANuKECjugZtbmsZ2taAtzLVjoO1yDDFBf9FWie9I8\nnbKmr9ACGQKBgQD2yt/6jEHIYa1MV/MG6SzcHDDK1zwilCAATkOJmWzbHfGDNG2s\n22EIiDQ7YpzAqRCUmWQt/mcCL5BhLfPGHEbMe6Cb+6SZHjBGVkMWD2PbD1BDSWKQ\nlwDbAF4lbsNdNnf/5FjhDDDr6EQO7zKVzR7sZYO+WCOlBI3iPexN3MWHpQKBgGYA\nxk5y5DxbPS68izPwPL/M/Io9OF0MmD1pKaC2/Wid6tx12M/6Rpl/mqMI2CV6QEvN\nrsY6Lo9FMM8ZqXpruyKiT+FMXby0qO2CbneugiAU+1nJMbi4iQi0Q8l2uVVNmvgA\nM1brRgwv2q2cd+Ahn7v6DHRLD4/T5Xts7vNaqPeBAoGAQZ/Yzp40aDvlv9D6MUKi\ngDvmjQPeI6H08MlCLTnbzJusf1nL3whVa5xbbp7+iVl0nMLzogxNC0dCNUUzdXov\n/PxhteomqwnQb9He0PSSYKQUoL+iHoTy3BY+jNPsCNsWgNm04k/vaB5le4zipc6M\npEWCIJtjmdEC1tzBtTEN1aY=\n-----END PRIVATE KEY-----\n",
+		"client_email": "foo@bar.iam.gserviceaccount.com",
+		"client_id": "100000000000000000000",
+		"auth_uri": "https://accounts.google.com/o/oauth2/auth",
+		"token_uri": "%s/token",
+		"auth_provider_x509_cert_url": "",
+		"client_x509_cert_url": "",
+		"universe_domain": "googleapis.com"
+	}`, ts.URL)), 0644))
 	var (
 		v struct {
 			V string `spec:"v"`
@@ -112,7 +141,7 @@ data "gcp_cloudsql_token" "helloworld" {}
 v = data.gcp_cloudsql_token.helloworld
 `), &v, nil)
 	require.NoError(t, err)
-	require.NotEmpty(t, v.V)
+	require.Equal(t, "foo-bar-token", v.V)
 }
 
 func TestQuerySrc(t *testing.T) {
