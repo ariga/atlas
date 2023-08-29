@@ -339,6 +339,7 @@ data sources are:
 - [`remote_dir`](#data-source-remote_dir)
 - [`template_dir`](#data-source-template_dir)
 - [`aws_rds_token`](#data-source-aws_rds_token)
+- [`gcp_cloudsql_token`](#data-source-gcp_cloudsql_token)
 
 :::note
 Data sources are evaluated only if they are referenced by top-level blocks like `locals` or `variables`, or by the
@@ -768,6 +769,41 @@ env "rds" {
   url = "postgres://${local.user}:${urlescape(data.aws_rds_token.db)}@${local.endpoint}/postgres"
 }
 ```
+
+#### Data source: `gcp_cloudsql_token`
+
+The `gcp_cloudsql_token` data source generates a short-lived token for an [GCP CloudSQL](https://cloud.google.com/sql) database
+using [IAM Authentication](https://cloud.google.com/sql/docs/mysql/authentication#manual).
+
+To use this data source:
+1. Enable IAM Authentication for your database. For instructions on how to do this,
+   [see the GCP documentation](https://cloud.google.com/sql/docs/mysql/create-edit-iam-instances).
+2. Create a database user and grant it permission to authenticate using IAM, see
+   [the GCP documentation](https://cloud.google.com/sql/docs/mysql/add-manage-iam-users)
+   for instructions.
+
+##### Attributes {#data-source-gcp_cloudsql_token-attributes}
+
+- The loaded variable is a `string` type with no attributes. Notice that the token contains special characters that
+  need to be escaped when used in a URL. To escape the token, use the `urlescape` function.
+
+##### Example
+
+```hcl title="atlas.hcl"
+locals {
+  user = "iamuser"
+  endpoint = "34.143.100.1:3306"
+}
+
+data "gcp_cloudsql_token" "db" {}
+
+env "rds" {
+  url = "mysql://${local.user}:${urlescape(data.gcp_cloudsql_token.db)}@${local.endpoint}/?allowCleartextPasswords=1&tls=skip-verify&parseTime=true"
+}
+```
+:::note
+The `allowCleartextPasswords` and `tls` parameters are required for the MySQL driver to connect to CloudSQL. For PostgreSQL, use `sslmode=require` to connect to the database.
+:::
 
 ### Environments
 

@@ -1,5 +1,3 @@
-ariga.io/atlas v0.12.2-0.20230806193313-117e03f96e45 h1:LwtsFmBfWKkJSzUoRmMt7XU83QBpTJTJwF94CmINP1Q=
-ariga.io/atlas v0.12.2-0.20230806193313-117e03f96e45/go.mod h1:+TR129FJZ5Lvzms6dvCeGWh1yR6hMvmXBhug4hrNIGk=
 ariga.io/atlas v0.13.2-0.20230813181001-1fef462e7670 h1:8vx+vdcylzEWQUI+zf6JVEGwtQIHr/+L2wYSLusvnPo=
 ariga.io/atlas v0.13.2-0.20230813181001-1fef462e7670/go.mod h1:+TR129FJZ5Lvzms6dvCeGWh1yR6hMvmXBhug4hrNIGk=
 bazil.org/fuse v0.0.0-20160811212531-371fbbdaa898/go.mod h1:Xbm+BRKSBEpa4q4hTSxohYNQpsxXPbPry4JJWOB3LB8=

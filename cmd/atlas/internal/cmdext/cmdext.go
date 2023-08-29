@@ -31,6 +31,8 @@ import (
 	"ariga.io/atlas/sql/sqltool"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
+	"golang.org/x/oauth2/google"
+	sqladmin "google.golang.org/api/sqladmin/v1beta4"
 
 	"github.com/zclconf/go-cty/cty/gocty"
 
@@ -59,6 +61,7 @@ var DataSources = []schemahcl.Option{
 	schemahcl.WithDataSource("hcl_schema", SchemaHCL),
 	schemahcl.WithDataSource("external_schema", SchemaExternal),
 	schemahcl.WithDataSource("aws_rds_token", AWSRDSToken),
+	schemahcl.WithDataSource("gcp_cloudsql_token", GCPCloudSQLToken),
 }
 
 // RuntimeVar exposes the gocloud.dev/runtimevar as a schemahcl datasource.
@@ -149,6 +152,23 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 		return cty.NilVal, errorf("building auth token: %v", err)
 	}
 	return cty.StringVal(token), nil
+}
+
+// GCPCloudSQLToken exposes a CloudSQL token as a schemahcl datasource.
+//
+//	data "gcp_cloudsql_token" "hello" {}
+func GCPCloudSQLToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+	errorf := blockError("data.gcp_cloudsql_token", block)
+	bgctx := context.Background()
+	ts, err := google.DefaultTokenSource(bgctx, sqladmin.SqlserviceAdminScope)
+	if err != nil {
+		return cty.NilVal, errorf("finding default credentials: %v", err)
+	}
+	token, err := ts.Token()
+	if err != nil {
+		return cty.NilVal, errorf("getting token: %v", err)
+	}
+	return cty.StringVal(token.AccessToken), nil
 }
 
 // Query exposes the database/sql.Query as a schemahcl datasource.
