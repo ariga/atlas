@@ -97,7 +97,7 @@ This is helpful when there is a need to make sure other resources exist before t
 
 The diagram shows our application dependency graph:
 
-![Application Architecture](https://atlasgo.io/uploads/k8s/argocd/deployment-flow.png)
+![Application Architecture](https://atlasgo.io/uploads/k8s/argocd/deployment-flow.png](https://github.com/jmushiri/atlas/blob/flux-cd/doc/md/guides/deploying/dependencies.png)
 
 With the theoretical background out of the way, let’s take a look at a practical example of how to deploy an application with Flux CD and the Atlas Operator.
 
