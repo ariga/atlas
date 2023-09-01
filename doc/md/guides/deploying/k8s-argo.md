@@ -1,289 +1,420 @@
 ---
-id: cloud-sql-via-github-actions
-slug: /guides/deploying/cloud-sql-via-github-actions
-title: Deploying schema migrations to Google CloudSQL using Atlas
+id: k8s-argo
+title: Deploying to Kubernetes with the Atlas Operator and Argo CD
+slug: /guides/deploying/k8s-argo
 ---
 
-## In this article
-* [Overview](#overview)
-* [What is Cloud SQL?](#what-is-cloud-sql)
-* [What is Cloud SQL Auth Proxy?](#what-is-cloud-sql-auth-proxy)
-* [What is GitHub Actions?](#what-is-github-actions])
-* [Deploying Schema Migrations to Cloud SQL](#deploying-schema-migrations-to-cloud-sql)
-* [Prerequisites](#prerequisites)
-* [Step-by-Step](#step-by-step)
-   1. [Authenticate to Google Cloud](#step-by-step)
-   2. [Retrieve your instance connection name](#retrieve-your-instance-connection-name)
-   3. [Store your password in GitHub Secrets](#store-your-password-in-github-secrets)
-   4. [Setup GitHub Actions](#setup-github-actions)
-   5. [Execute your GitHub Actions Workflow](#execute-your-github-actions-workflow)
-* [Wrapping Up](#wrapping-up)
+[GitOps](https://www.gitops.tech/) is a software development and deployment methodology that uses Git as the central repository
+for both code and infrastructure configurations, enabling automated and auditable deployments.
 
-## Overview
+[ArgoCD](https://argoproj.github.io/cd/) is a Kubernetes-native continuous delivery tool that implements GitOps principles.
+It uses a declarative approach to deploy applications to Kubernetes, ensuring that the desired state of the 
+application is always maintained.
 
-In this guide, we demonstrate how to handle database schema changes when working with Cloud SQL. Within the framework of this topic, we are going to introduce how to set up a GitHub Actions workflow to automatically deploy database schema changes to a Cloud SQL instance. This approach is meant to enhance automation, version control, CI/CD, DevOps practices, and scalability, contributing to more efficient and reliable database management.
+[Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) are software extensions to 
+Kubernetes that enable the automation and management of complex, application-specific operational tasks and 
+domain-specific knowledge within a Kubernetes cluster.
 
-Before diving into the practical implementation, let's first look at some of the underlying technologies that we will be working with.
+In this guide, we will demonstrate how to use the [Atlas Kubernetes Operator](/integrations/kubernetes/operator) and 
+ArgoCD to achieve a GitOps-based deployment workflow for your database schema.
 
-## What is Cloud SQL?
-Cloud SQL is a fully-managed database service that makes it easy to set up, maintain, manage, and administer your relational databases in the cloud. With Cloud SQL, you can deploy your databases in a highly available and scalable manner, with automatic failover and load balancing, so that your applications can handle a large number of concurrent requests and traffic spikes. You can also choose from different machine types and storage sizes to meet your specific performance and storage requirements.
+## Pre-requisites
 
-## What is Cloud SQL Auth Proxy?
-The Cloud SQL Auth Proxy is a utility for ensuring simple, secure connections to your Cloud SQL instances. It provides a convenient way to control access to your database using Identity and Access Management (IAM) permissions while ensuring a secure connection to your Cloud SQL instance. Like most proxy tools, it serves as the intermediary authority on connection authorizations. Using the Cloud SQL Auth proxy is the recommended method for connecting to a Cloud SQL instance.
+* A running Kubernetes cluster  - For learning purposes, you can use 
+ [Minikube](https://minikube.sigs.k8s.io/docs/start/), which is a tool that runs a single-node
+ Kubernetes cluster inside a VM on your laptop.
+* [kubectl](https://kubernetes.io/docs/tasks/tools/) - a command-line tool for interacting with Kubernetes clusters.
+* [Helm](https://helm.sh/docs/intro/install/) - a package manager for Kubernetes.
 
-## What is GitHub Actions?
-GitHub Actions is a continuous integration and continuous delivery (CI/CD) platform that allows you to automate your build, test, and deployment pipeline. You can create workflows that build and test every pull request to your repository, or deploy merged pull requests to production. GitHub Actions goes beyond just DevOps and lets you run workflows when other events happen in your repository. For example, in this guide, you will run a workflow to automatically deploy migrations to a Cloud SQL database whenever someone pushes changes to the main branch in your repository.
+## High-level architecture
 
-## Deploying Schema Migrations to Cloud SQL
+Before we dive into the details of the deployment flow, let’s take a look at the high-level architecture of our application.
 
-### Prerequisites
+![Application Architecture](https://atlasgo.io/uploads/k8s/argocd/app-diagram.png)
 
-Prerequisites to the guide:
+On a high level, our application consists of the following components:
 
-1. You will need to have the GCP **Project Editor** role. This role grants you full read and write access to resources within your project.
-2. Google Cloud SDK installed on your workstation. If you have not installed the SDK, you can find [instructions for installing the SDK from the official documentation](https://cloud.google.com/sdk/docs/install/).
-3. A running Cloud SQL instance to work against. If you have not created the instance yet, see [Creating instances at cloud.google.com](https://cloud.google.com/sql/docs/postgres/create-instance).
-4. A GitHub repository to create and run a GitHub Actions workflow.
+1. A backend application - in our example we will use a plain NGINX server
+   as a placeholder for a real backend application.
+2. A database - in our example we will use a MySQL pod for the database.
+   In a more realistic scenario, you might want to use a managed database service like AWS RDS or GCP Cloud SQL.
+3. An `AtlasSchema`  Custom Resource that defines the database schema and is managed by the Atlas Operator.
 
-### Step-by-Step
-#### 1—Authenticate to Google Cloud
-There are two approaches to authenticating with Google Cloud: Authentication via a Google Cloud Service Account Key JSON or authentication via [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation).
+In our application architecture, we have a database that is connected to our application and managed using 
+Atlas CR (Custom Resource). The database plays a crucial role in storing and retrieving data for the application,
+while the Atlas CR provides seamless integration and management of the database schema within our Kubernetes environment.
 
-**Setup Workload Identity Federation** 
-Identity federation allows you to grant applications running outside Google Cloud access to Google Cloud resources, without using Service Account Keys. It is recommended over Service Account Keys as it eliminates the maintenance and security burden associated with service account keys and also establishes a trust delegation relationship between a particular GitHub Actions workflow invocation and permissions on Google Cloud.
+## How should you run schema changes in an Argo CD deployment? 
 
-For authenticating via Workload Identity Federation, you must create and configure a Google Cloud Workload Identity Provider. A Workload Identity Provider is an entity that describes a relationship between Google Cloud and an external identity provider, such as GitHub, AWS, Azure Active Directory, etc.
+Integrating GitOps practices with a database in our application stack poses a unique challenge. 
 
-To create and configure a Workload Identity Provider:
+Argo CD provides a declarative approach to GitOps, allowing us to define an Argo CD application
+and seamlessly handle the synchronization process. By pushing changes to the database schema or 
+application code to the Git repository, Argo CD automatically syncs those changes to the Kubernetes cluster.
 
-1. Save your project ID as an environment variable. The rest of these steps assume this environment variable is set:
+However, as we discussed in the [introduction](/guides/deploying/intro#running-migrations-as-part-of-deployment-pipelines),
+ensuring the proper order of deployments is critical. In our scenario, the database deployment
+must succeed before rolling out the application to ensure its functionality. If the database deployment
+encounters an issue, it is essential to address it before proceeding with the application deployment. 
 
-```bash
-$ export PROJECT_ID="my-project" # update with your value
-```
-2. Create a Google Cloud Service Account. If you already have a Service Account, take note of the email address and skip this step.
+Argo CD provides [Sync Waves](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/) 
+and Sync Hooks as features that help to control the order in which 
+manifests are applied within an application. Users may add an annotation to each resource
+to specify in which "wave" it should be applied. Argo CD will then apply the resources in the order of the waves.
 
-```bash
-$ gcloud iam service-accounts create "my-service-account" \
-  --project "${PROJECT_ID}"
-```
+By using annotations with specific order numbers, you can determine the sequence of manifest applications. 
+Lower numbers indicate the earlier application and negative numbers are also allowed.
 
-3. Enable the IAM Credentials API:
+To ensure that database resources are created and applied before our application, 
+we will utilize Argo CD Sync Waves. The diagram shows our application deployment order:
 
-```bash
-$ gcloud services enable iamcredentials.googleapis.com
-```
+![Application Architecture](https://atlasgo.io/uploads/k8s/argocd/deployment-flow.png)
 
-4. Grant the Google Cloud Service Account permissions to edit Cloud SQL resources.
-
-```bash
-$ gcloud projects add-iam-policy-binding [PROJECT_NAME] \
---member serviceAccount:[SERVICE_ACCOUNT_EMAIL] \
---role roles/editor
-```
-
-Replace **[PROJECT_NAME]** with the name of your project, and **[SERVICE_ACCOUNT_EMAIL]** with the email address of the service account you want to grant access to.
-
-5. Create a new workload identity pool:
-
-```bash
-$ gcloud iam workload-identity-pools create "my-pool" \
-  --project="${PROJECT_ID}" \
-  --location="global" \
-  --display-name="My pool"
-```
-
-6. Get the full ID of the Workload Identity Pool:
-
-```bash
-$ gcloud iam workload-identity-pools describe "my-pool" \
-  --project="${PROJECT_ID}" \
-  --location="global" \
-  --format="value(name)"
-```
-
-Save this value as an environment variable:
-
-```bash
-$ export WORKLOAD_IDENTITY_POOL_ID="..." # value from above
-
-# This should look like:
-#
-#   projects/123456789/locations/global/workloadIdentityPools/my-pool
-#
-```
-
-7. Create a Workload Identity Provider in that pool:
-
-```bash
-$ gcloud iam workload-identity-pools providers create-oidc "my-provider" \
-  --project="${PROJECT_ID}" \
-  --location="global" \
-  --workload-identity-pool="my-pool" \
-  --display-name="GitHub provider" \
- --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
-  --issuer-uri="https://token.actions.githubusercontent.com"
-```
-
-8. Allow authentications from the Workload Identity Provider originating from your repository to impersonate the Service Account created above:
-
-```bash
-# Update this value to your GitHub repository.
-
-$ export REPO="username/repo_name" # e.g. "ariga/atlas"
-
-$ gcloud iam service-accounts add-iam-policy-binding "my-service-account@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --project="${PROJECT_ID}" \
-  --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/${WORKLOAD_IDENTITY_POOL_ID}/attribute.repository/${REPO}"
-```
-
-Note that **$WORKLOAD_IDENTITY_POOL_ID** should be the full Workload Identity Pool resource ID, like:
-
-**projects/123456789/locations/global/workloadIdentityPools/my-pool**
-
-9. Extract the Workload Identity Provider resource name:
-
-```bash
-$ gcloud iam workload-identity-pools providers describe "my-provider" \
-  --project="${PROJECT_ID}" \
-  --location="global" \
-  --workload-identity-pool="my-pool" \
-  --format="value(name)"
-```
-
-Use this value as the **workload_identity_provider** value in your GitHub Actions YAML.
-
-Using the Workload Identity Provider ID and Service Account email, the GitHub Action will mint a GitHub OIDC token and exchange the GitHub token for a Google Cloud access token.
-
-**Note:** It can take up to **5 minutes** from when you configure the Workload Identity Pool mapping until the permissions are available.
-
-#### 2—Retrieve your Instance Connection Name 
-The instance connection name is a connection string that identifies a Cloud SQL instance, and you need this string to establish a connection to your database.  The format of the connection name is **projectID:region:instanceID**.
-
-To retrieve the Cloud SQL instance connection name, run the following command:
-
-```bash
-$ gcloud sql instances describe <INSTANCE_NAME> --format='value(connectionName)'
-```
-
-For example, if your instance name is **"my-instance"**, you can retrieve its connection name using the following command:
-
-```bash
-$ gcloud sql instances describe my-instance --format='value(connectionName)' 
-```
-
-#### 3—Store your Password in GitHub Secrets
-Secrets are a way to store sensitive information securely in a repository, such as passwords, API keys, and access tokens. To use secrets in your workflow, you must first create the secret in your repository's settings by following these steps:
-
-1. Navigate to your repository on GitHub.
-2. Click on the **"Settings"** tab.
-3. Click on **"Secrets"** in the left sidebar.
-4. Click on **"New repository secret"**.
-5. Enter **"DB_PASSWORD"** in the **"Name"** field.
-6. Enter the actual password in the **"Value"** field.
-7. Click on **"Add secret"**.
-
-Once you have added the secret, you can reference it in your workflow using **`${{ secrets.DB_PASSWORD }}`**. The action will retrieve the actual password value from the secret and use it in the **`DB_PASSWORD`** environment variable during the workflow run.
-
-#### 4—Setup GitHub Actions
-Here is an example GitHub Actions workflow for authenticating to GCP with workload identity federation and deploying migrations to a Cloud SQL MySQL database using Cloud SQL Proxy:
+To achieve the above order we'll annotate each resource with a sync wave annotation order number:
 
 ```yaml
-name: Deploy Migrations
-
-on:
-  push:
-    branches:
-      - main
-
-env:
-  PROJECT_ID: my-project-id
-  INSTANCE_CONNECTION_NAME: my-instance-connection-name
-  DB_HOST: 127.0.0.1
-  DB_PORT: 3306
-  DB_NAME: my-db-name
-  DB_USER: my-db-user
-  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-
-jobs:
-  deploy-migrations:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Download and install Atlas CLI
-        run: |
-          curl -sSf https://atlasgo.sh | sh -s -- -y
-
-      - name: Download wait-for-it.sh
-        run: |
-          wget https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh
-          chmod +x wait-for-it.sh
-
-      - id: 'auth'
-        uses: 'google-github-actions/auth@v1'
-        with:
-          workload_identity_provider: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
-          service_account: 'my-service-account@my-project.iam.gserviceaccount.com'
-
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v1'
-        with:
-          version: '>= 416.0.0'
-
-      - name: Download Cloud SQL Proxy
-        run: |
-          wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy
-          chmod +x cloud_sql_proxy
-
-      - name: Start Cloud SQL Proxy
-        run: ./cloud_sql_proxy -instances=$INSTANCE_CONNECTION_NAME=tcp:3306 &
-
-      - name: Wait for Cloud SQL Proxy to Start
-        run: |
-          ./wait-for-it.sh $DB_HOST:$DB_PORT -s -t 10 -- echo "Cloud SQL Proxy is running"
-
-      - name: Deploy Migrations
-        run: |
-          echo -ne '\n' | atlas migrate apply   --url "mysql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"   --dir file://migrations
-
-      - name: Stop Cloud SQL Proxy
-        run: kill $(ps aux | grep cloud_sql_proxy | grep -v grep | awk '{print $2}')
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "<order-number>"
 ```
 
-Note that for this workflow to work, you will need to replace the placeholders in the environment variables with your own values. Your migrations directory should be stored in your repository's root directory.
+For more information refer to the [official documentation](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/).
 
-Here's what this workflow does:
+With the theoretical background out of the way, let’s take a look at a practical example of how to deploy an application
+with Argo CD and the Atlas Operator.
 
-1. Sets the name of the workflow to **"Deploy Migrations"**.
-2. Triggers on a push to the **main** branch.
-3. Sets the environment variables required for the Cloud SQL instance and the database we want to deploy migrations to.
-4. Defines a job named **"deploy-migrations"** that runs on the latest version of Ubuntu.
-5. Checkout the code.
-6. Downloads and installs the Atlas CLI.
-7. Uses the Google Cloud Workload Identity Federation to authenticate with Google Cloud. 
-8. Configures the [Google Cloud SDK](https://cloud.google.com/sdk/) in the GitHub Actions environment. 
-9. Downloads the Cloud SQL Proxy and makes it executable.
-10. Starts the Cloud SQL Proxy, to create a secure tunnel between your GitHub Actions runner and your Cloud SQL instance.
-11. Wait for Cloud SQL Proxy to start up before proceeding with the subsequent steps.
-12. Deploys all pending migration files in the migration directory on a Cloud SQL database.
-13. Stops the Cloud SQL Proxy
+## Installation
 
-#### 5—Execute your GitHub Actions Workflow 
-To execute this workflow once you commit to the main branch, follow these steps:
+### 1. Install ArgoCD
 
-1. Create a new file named **atlas_migrate_db.yml** in the **.github/workflows/** directory of your repository.
-2. Add the code block we've just discussed to the **atlas_migrate_db.yml** file.
-3. Commit the **atlas_migrate_db.yml** file to your repository's **main** branch.
+To install ArgoCD run the following commands:
 
-Now, whenever you push changes to the **main** branch, all pending migrations will be executed. You can monitor the progress of the GitHub Action in the "Actions" tab of your repository.
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+```
 
-## Wrapping Up
-In this guide, you learned how to deploy schema migrations to Cloud SQL using Atlas, while ensuring secure connections via a Cloud SQL Proxy. With this knowledge, you can leverage the power of Atlas and Cloud SQL to manage your database schema changes with ease and confidence.
+Wait until all the pods in the `argocd` namespace are running:
 
-In addition to the specific steps outlined in this guide, you also gained valuable experience with various concepts and tools that are widely used in database management, such as GitHub Actions, Cloud SQL, Cloud SQL Proxy, and the Google Cloud SDK. We hope that this guide has been helpful in expanding your knowledge and skills.
+```bash
+kubectl wait --for=condition=ready pod --all -n argocd
+```
+
+`kubectl` will print something like this:
+
+```bash
+pod/argocd-application-controller-0 condition met
+pod/argocd-applicationset-controller-69dbc8585c-6qbwr condition met
+pod/argocd-dex-server-59f89468dc-xl7rg condition met
+pod/argocd-notifications-controller-55565589db-gnjdh condition met
+pod/argocd-redis-74cb89f466-gzk4f condition met
+pod/argocd-repo-server-68444f6479-mn5gl condition met
+pod/argocd-server-579f659dd5-5djb5 condition met
+```
+
+For more information or if you run into some error refer to the
+[Argo CD Documentation](https://argo-cd.readthedocs.io/en/stable/getting_started/).
+
+### 2. Install the Atlas Operator
+
+```bash
+helm install atlas-operator oci://ghcr.io/ariga/charts/atlas-operator
+```
+
+Helm will print something like this:
+
+```bash
+Pulled: ghcr.io/ariga/charts/atlas-operator:0.1.9
+Digest: sha256:4dfed310f0197827b330d2961794e7fc221aa1da1d1b95736dde65c090e6c714
+NAME: atlas-operator
+LAST DEPLOYED: Tue Jun 27 16:58:30 2023
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+```
+
+Wait until the atlas-operator pod is running:
+
+```bash
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=atlas-operator -n default
+```
+
+`kubectl` will print something like this:
+
+```bash
+pod/atlas-operator-866dfbc56d-qkkkn condition met
+```
+
+For more information on the installation process refer to the [Atlas Operator Documentation](/integrations/kubernetes/operator#getting-started)
+
+## Define the application manifests
+
+### 1. Set up a Git repo
+
+Argo CD works by tracking changes to a Git repository and applying them to the cluster, so let's
+set up a Git repository to serve as the central storage for all your application configuration.
+
+In this example, we’re using the [rotemtam/atlas-argocd-demo](https://github.com/rotemtam/atlas-argocd-demo)
+repository, which contains all of the Kubernetes manifests necessary to deploy our application.
+
+### 2. Define the database resources
+
+Recall that in our first sync-wave, we want to deploy the database resources to our cluster. For the
+purposes of this example we're deploying a simple MySQL pod to our cluster, but in a realistic scenario
+you will probably want to use a managed database service such as AWS RDS, GCP Cloud SQL or one of the available
+database operators for Kubernetes.
+
+In your repository, create a new directory named `manifests` and under it create a new file named `db.yaml`:
+
+```yaml title="manifests/db.yaml"
+apiVersion: v1
+kind: Service
+metadata:
+   annotations:
+      argocd.argoproj.io/sync-wave: "0"
+   name: mysql
+spec:
+   ports:
+      - port: 3306
+   selector:
+      app: mysql
+   clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+   annotations:
+      argocd.argoproj.io/sync-wave: "0"
+   name: mysql
+spec:
+   selector:
+      matchLabels:
+         app: mysql
+   template:
+      metadata:
+         labels:
+            app: mysql
+      spec:
+         containers:
+            - image: mysql:8
+              name: mysql
+              env:
+                 - name: MYSQL_ROOT_PASSWORD
+                   value: pass
+                 - name: MYSQL_DATABASE
+                   value: example
+              readinessProbe:
+                 tcpSocket:
+                    port: 3306
+                 initialDelaySeconds: 10
+                 periodSeconds: 10
+              livenessProbe:
+                 tcpSocket:
+                    port: 3306
+                 initialDelaySeconds: 15
+                 periodSeconds: 15
+              ports:
+                 - containerPort: 3306
+                   name: mysql
+```
+
+### 3. Create the AtlasSchema Custom Resource
+
+Create the AtlasSchema custom resource to define the desired schema for your database, 
+refer to the [Atlas Operator documentation](/integrations/kubernetes/operator#configuration-for-the-atlasschema-resource) 
+and determine the specifications, such as the desired database schema, configuration options, and additional parameters.
+
+Here we’re creating a ***users*** table in an ***example*** database and annotating it with a sync wave order number of 1. 
+This annotation informs Argo CD to deploy them after the database has been successfully deployed.
+
+```yaml title="schema.yaml"
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasSchema
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: myapp
+spec:
+  url: mysql://root:pass@mysql:3306/example
+  schema:
+    sql: |
+      create table users (
+        id int not null auto_increment,
+        name varchar(255) not null,
+        email varchar(255) unique not null,
+        short_bio varchar(255) not null,
+        primary key (id)
+      );
+```
+
+
+### 4. Create your backend application deployment
+
+For the purpose of this guide, we will deploy a simple NGINX server to act as a placeholder for a real
+backend server. Notice that we annotate the backend deployment with a sync wave order number of 2. 
+This informs Argo CD to deploy the backend application after the Atlas CR is deployed and confirmed to be in healthy.
+
+```yaml title="app.yaml"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: nginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+```
+
+### 5. Create a custom health check for Atlas objects
+
+To decide whether a SyncWave is complete and the next SyncWave can be started, Argo CD performs 
+a health check on the resources in the current SyncWave. If the health check fails, Argo CD will 
+not proceed with the next SyncWave.
+
+Argo CD has built-in health assessment for standard Kubernetes types, such as `Deployment` and `ReplicaSet`,
+but it does not have a built-in health check for custom resources such as `AtlasSchema`. 
+
+To bridge this gap, Argo CD supports custom health checks written in [Lua](https://lua.org), 
+allowing us to define our custom health assessment logic for the Atlas custom resource.
+
+To define the custom logic for the Atlas object in Argo CD, we can add 
+the custom health check configuration to the ***argocd-cm*** ConfigMap. 
+This ConfigMap is a global configuration for Argo CD that should be placed 
+in the same namespace as the rest of the Argo CD resources. Below is a custom 
+health check for the Atlas object:
+
+```yaml title="argocd-cm.yaml"
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  resource.customizations: |
+    db.atlasgo.io/AtlasSchema:
+      health.lua: |
+        hs = {}
+        if obj.status ~= nil then
+          if obj.status.conditions ~= nil then
+            for i, condition in ipairs(obj.status.conditions) do
+              if condition.type == "Ready" and condition.status == "False" then
+                hs.status = "Degraded"
+                hs.message = condition.message
+                return hs
+              end
+              if condition.type == "Ready" and condition.status == "True" then
+                hs.status = "Healthy"
+                hs.message = condition.message
+                return hs
+              end
+            end
+          end
+        end
+
+        hs.status = "Progressing"
+        hs.message = "Waiting for reconciliation"
+        return hs
+```
+
+### 6. Create the Argo CD Application manifest
+
+Finally, create an Argo CD ***Application.yaml***  file which defines our Argo application:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: atlas-argocd-demo
+  namespace: argocd
+spec:
+  source:
+    path: manifests
+    repoURL: 'https://github.com/rotemtam/atlas-argocd-demo' # <-- replace with your repo URL
+    targetRevision: master # <-- replace with your mainline
+  destination:
+    namespace: default
+    server: 'https://kubernetes.default.svc'
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        maxDuration: 3m0s
+        factor: 2
+    syncOptions:
+      - CreateNamespace=true
+```
+
+## Deploying 
+
+Make sure all of these files are pushed to your Git repository. If you want to follow along
+you can use the [example repository](https://github.com/rotemtam/atlas-argocd-demo) for this guide.
+
+### 1. Apply the custom health check
+
+Before deploying our application, we need to apply the custom health check configuration to the Argo CD ConfigMap.
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/rotemtam/atlas-argocd-demo/master/argo-cm.yaml -n argocd
+```
+
+### 2. Deploy our application
+
+With the custom health check in place, we can now deploy our application.
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/rotemtam/atlas-argocd-demo/master/Application.yaml
+```
+
+Once you create an Argo CD application, Argo automatically pulls the configuration files from your Git 
+repository and applies them to your Kubernetes cluster. As a result, the corresponding resources are
+created based on the manifests. This streamlined process ensures that the desired state of your 
+application is synchronized with the actual state in the cluster.
+
+To verify  the application is successfully deployed and the resources are healthy:
+
+```bash
+kubectl get -n argocd applications.argoproj.io atlas-argocd-demo -o=jsonpath='{range .status.resources[*]}{"\n"}{.kind}: {"\t"} {.name} {"\t"} ({.status}) {"\t"} ({.health}){end}'
+```
+`kubectl` will print something like this:
+
+```
+Service:       mysql   (Synced)    ({"status":"Healthy"})
+Deployment:    mysql   (Synced)    ({"status":"Healthy"})
+Deployment:    nginx   (Synced)    ({"status":"Healthy"})
+AtlasSchema:   myapp   (Synced)    ({"message":"The schema has been applied successfully. Apply response: {\"Changes\":{}}","status":"Healthy"})%
+```
+
+Finally, on the ArgoCD UI we can see the health and dependency and status of all the resources:
+
+![ArgoCD UI](https://atlasgo.io/uploads/k8s/argocd/argo-flow.png)
+
+## Conclusion
+
+In this guide, we demonstrated how to use Argo CD to deploy an application that uses the Atlas Operator 
+to manage the lifecycle of the database schema. We also showed how to use Argo CD's custom health check
+to ensure that the schema changes were successfully applied before deploying the backend application.
+
+Using the techniques described in this guide, you can now integrate schema management into your CI/CD
+pipeline and ensure that your database schema is always in sync with your application code.
