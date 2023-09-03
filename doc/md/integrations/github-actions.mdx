@@ -349,8 +349,6 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: pass
           MYSQL_DATABASE: test
-        ports:
-          - "3306:3306"
         options: >-
           --health-cmd "mysqladmin ping -ppass"
           --health-interval 10s
