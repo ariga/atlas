@@ -28,8 +28,8 @@ Let's dive right in!
 
 Suppose your project has been going on for a while, and you have a migration directory with 100 migrations. Whenever
 you need to install your application from scratch (such as during development or testing), you need to replay all 
-of them from start to finish to set up your database. Depending on your setup this  can take a few seconds or more.
-If you have a checkpoint, you can replay only the migrations that were added since the latest checkpoint, which 
+of them from start to finish to set up your database. Depending on your setup, this may take a few seconds or more.
+If you have a checkpoint, you can replay *only* the migrations that were added since the latest checkpoint, which
 can be much faster.
 
 Here's a short example. Let's say we have a migration directory with 2 migration files, managing a
