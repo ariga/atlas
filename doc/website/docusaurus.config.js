@@ -58,7 +58,7 @@ module.exports = {
           className: 'header-newsletter-link',
           position: 'right',
         },
-        
+
         {
           to: 'getting-started',
           label: 'Docs',
@@ -231,6 +231,14 @@ module.exports = {
           {
             from: '/integrations/go-api',
             to: '/integrations/go-sdk',
+          },
+          {
+            from: '/deployment/intro',
+            to: '/cloud/deployment',
+          },
+          {
+            from: '/ui/intro',
+            to: '/cloud/getting-started',
           }
         ],
       },
