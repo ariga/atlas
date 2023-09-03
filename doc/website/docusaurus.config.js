@@ -233,7 +233,7 @@ module.exports = {
             to: '/integrations/go-sdk',
           },
           {
-            from: '/deployment/go-intro',
+            from: '/deployment/intro',
             to: '/cloud/deployment',
           },
           {
