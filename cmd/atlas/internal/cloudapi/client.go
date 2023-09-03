@@ -27,6 +27,9 @@ const (
 	defaultURL = "https://api.atlasgo.cloud/query"
 	// DefaultProjectName is the default name for projects.
 	DefaultProjectName = "default"
+	// DefaultDirName is the default directory for reporting
+	// if no directory was specified by the user.
+	DefaultDirName = ".atlas"
 )
 
 // Client is a client for the Atlas Cloud API.
