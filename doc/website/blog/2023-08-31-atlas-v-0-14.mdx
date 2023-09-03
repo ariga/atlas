@@ -159,6 +159,10 @@ JetBrains makes some of the most popular IDEs for software developers, including
 We are happy to announce that following our recent release of the [VSCode Extension](2023-05-16-vscode-extension.md),
 we now have a plugin for JetBrains IDEs as well!
 
+The plugin is built to make editing Atlas HCL files much easier by providing developers with
+syntax highlighting, code completion, and warnings.  It supports both `atlas.hcl` project configuration
+files as well as schema definition files (`.my.hcl`, `.pg.hcl`, and `.lt.hcl`).
+
 The plugin is available for download from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/22307-atlas-hcl).
 
 1. To install the plugin, open your IDE and go to `Preferences > Plugins > Marketplace` and search for `Atlas`:
@@ -170,7 +174,7 @@ The plugin is available for download from the [JetBrains Marketplace](https://pl
 3. Create a new file named `schema.my.hcl` (the `.my.hcl` suffix signifies to the plugin that
    this file is a MySQL schema (you can use `.pg.hcl` for Postgres or `.lt.hcl` for SQLite)
 
-4. Edit away! (and enjoy syntax highlighting, code completion and warnings)
+4. Edit away!
 
    ![](https://atlasgo.io/uploads/v0.14.0-announcement/jbhcl.png)
 
