@@ -89,6 +89,25 @@ func TestGitChangeDetector(t *testing.T) {
 	require.Equal(t, "6_new.sql", feat[1].Name())
 }
 
+func TestDirChangeDetector(t *testing.T) {
+	base, head := &migrate.MemDir{}, &migrate.MemDir{}
+	require.NoError(t, base.WriteFile("1.sql", []byte("create table t1 (id int)")))
+	require.NoError(t, head.WriteFile("1.sql", []byte("create table t1 (id int)")))
+	require.NoError(t, base.WriteFile("2.sql", []byte("create table t2 (id int)")))
+	require.NoError(t, head.WriteFile("2.sql", []byte("create table t2 (id int)")))
+
+	baseF, newF, err := migratelint.DirChangeDetector{Base: base, Head: head}.DetectChanges(context.Background())
+	require.NoError(t, err)
+	require.Len(t, baseF, 2)
+	require.Empty(t, newF)
+
+	require.NoError(t, head.WriteFile("3.sql", []byte("create table t3 (id int)")))
+	baseF, newF, err = migratelint.DirChangeDetector{Base: base, Head: head}.DetectChanges(context.Background())
+	require.NoError(t, err)
+	require.Len(t, baseF, 2)
+	require.Len(t, newF, 1)
+}
+
 func TestLatestChanges(t *testing.T) {
 	files := []migrate.File{
 		testFile{name: "1.sql", content: "CREATE TABLE t1 (id INT)"},

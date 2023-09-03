@@ -130,7 +130,40 @@ func (d *GitChangeDetector) DetectChanges(ctx context.Context) ([]migrate.File, 
 	return files, nil, nil
 }
 
-var _ ChangeDetector = (*GitChangeDetector)(nil)
+var (
+	_ ChangeDetector = (*GitChangeDetector)(nil)
+	_ ChangeDetector = (*DirChangeDetector)(nil)
+)
+
+// A DirChangeDetector implements the ChangeDetector
+// interface by comparing two migration directories.
+type DirChangeDetector struct {
+	// Base and Head are the migration directories to compare.
+	// Base represents the current state, Head the desired state.
+	Base, Head migrate.Dir
+}
+
+// DetectChanges implements migratelint.ChangeDetector.
+func (d DirChangeDetector) DetectChanges(context.Context) ([]migrate.File, []migrate.File, error) {
+	baseS, err := d.Base.Checksum()
+	if err != nil {
+		return nil, nil, err
+	}
+	headS, err := d.Head.Checksum()
+	if err != nil {
+		return nil, nil, err
+	}
+	files, err := d.Head.Files()
+	if err != nil {
+		return nil, nil, err
+	}
+	for i := range headS {
+		if len(baseS)-1 < i || baseS[i] != headS[i] {
+			return files[:i], files[i:], nil
+		}
+	}
+	return files, nil, nil
+}
 
 // latestChange implements the ChangeDetector by selecting the latest N files.
 type latestChange struct {
