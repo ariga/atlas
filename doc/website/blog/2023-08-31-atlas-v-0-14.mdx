@@ -28,7 +28,7 @@ Let's dive right in!
 
 Suppose your project has been going on for a while, and you have a migration directory with 100 migrations. Whenever
 you need to install your application from scratch (such as during development or testing), you need to replay all 
-of them from start to finish to set up your database. Depending on your setup, this may take a few seconds or more.
+migrations from start to finish to set up your database. Depending on your setup, this may take a few seconds or more.
 If you have a checkpoint, you can replay *only* the migrations that were added since the latest checkpoint, which
 can be much faster.
 
@@ -88,7 +88,7 @@ Migrating to version 20230830123813 (1 migrations in total):
   -- 2 sql statements
 ```
 
-Observe that as expected, Atlas skipped all of the migrations up to the checkpoint and only applied the last one!
+As expected, Atlas skipped all of the migrations up to the checkpoint and only applied the last one!
 
 ### Push to Cloud
 
@@ -138,7 +138,7 @@ After our migration directory is pushed, Atlas prints a URL to the created direc
 image above.
 
 Once your migration directory is pushed, you can use it to apply migrations to your database directly from
-the cloud, just as you would execute `docker run` to run a container image that is stored in Docker container registry.
+the cloud, just as you would execute `docker run` to run a container image that is stored in a Docker container registry.
 
 To apply a migration directory directly from the cloud, run:
 
@@ -148,7 +148,7 @@ atlas migrate apply --dir atlas://pushdemo --url sqlite://local.db
 
 Notice two flags that we used here:
 * `--dir` - specifies the URL of the migration directory. We used `atlas://pushdemo` to indicate that we want to use
-  the migration directory named `pushdemo` that we pushed earlier.  This directory is accessible to us because we used
+  the migration directory named `pushdemo` that we pushed earlier. This directory is accessible to us because we used
   `atlas login` in a previous step.
 * `--url` - specifies the URL of the database we want to apply the migrations to. In this case, we used the same SQLite
   database that we used earlier.
@@ -160,7 +160,7 @@ We are happy to announce that following our recent release of the [VSCode Extens
 we now have a plugin for JetBrains IDEs as well!
 
 The plugin is built to make editing Atlas HCL files much easier by providing developers with
-syntax highlighting, code completion, and warnings.  It supports both `atlas.hcl` project configuration
+syntax highlighting, code completion, and warnings. It supports both `atlas.hcl` project configuration
 files as well as schema definition files (`.my.hcl`, `.pg.hcl`, and `.lt.hcl`).
 
 The plugin is available for download from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/22307-atlas-hcl).
