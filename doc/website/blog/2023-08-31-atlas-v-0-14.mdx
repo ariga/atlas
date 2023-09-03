@@ -1,0 +1,184 @@
+---
+title: "Announcing v0.14.0: Checkpoints, Push to Cloud and JetBrains Editor Support"
+authors: rotemtam
+tags: [announcement, atlas, checkpoint, cloud, jetbrains]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Hi everyone!
+
+It's been a few weeks since our last version announcement and today I'm happy to share with you  
+[v0.14](https://github.com/ariga/atlas/releases/tag/v0.14.0), which includes some
+very exciting improvements for Atlas:
+
+* **Checkpoints** - as your migration directory grows, replaying it from scratch can become annoyingly slow. Checkpoints
+  allow you to save the state of your database at a specific point in time and replay migrations from that point forward.
+* **Push to the Cloud** - you can now push your migration directory to [Atlas Cloud](https://atlasgo.cloud)
+  directly from the CLI. Think of it like `docker push` for your database migrations.
+* **JetBrains Editor Support** - After launching our [VSCode Extension](2023-05-16-vscode-extension.md) a few months
+  ago, our team has been hard at work to bring the same experience to JetBrains IDEs. Starting today, you can use
+  Atlas directly from your favorite JetBrains IDEs (IntelliJ, PyCharm, GoLand, etc.) using the new
+  [Atlas plugin](https://plugins.jetbrains.com/plugin/22307-atlas-hcl).
+
+Let's dive right in!
+
+### Checkpoints
+
+Suppose your project has been going on for a while, and you have a migration directory with 100 migrations. Whenever
+you need to install your application from scratch (such as during development or testing), you need to replay all 
+migrations from start to finish to set up your database. Depending on your setup, this may take a few seconds or more.
+If you have a checkpoint, you can replay *only* the migrations that were added since the latest checkpoint, which
+can be much faster.
+
+Here's a short example. Let's say we have a migration directory with 2 migration files, managing a
+SQLite database. The first one creates a table named `t1`:
+
+```sql title="migrations/20230830122359_start.sql"
+create table t1 ( c1 int );
+```
+And the second adds a table named `t2` and adds a column named `c2` to `t1`:
+
+```sql title="migrations/20230830122414_t2.sql.sql"
+create table t2 ( c1 int, c2 int );
+
+alter table t1 add column c2 int;
+```
+
+To create a checkpoint, we can run the following command:
+
+```shell
+atlas migrate checkpoint --dev-url "sqlite://file?mode=memory&_fk=1"
+```
+
+This will create a SQL file, which is our checkpoint:
+```sql title="20230830123813_checkpoint.sql"
+-- atlas:checkpoint
+
+-- Create "t1" table
+CREATE TABLE `t1` (`c1` int NULL, `c2` int NULL);
+-- Create "t2" table
+CREATE TABLE `t2` (`c1` int NULL, `c2` int NULL);
+```
+
+Notice two things:
+1. The `atlas:checkpoint` directive which indicates that this file is a checkpoint.
+2. The SQL statement to create the `t1` table included both the `c1` and `c2` columns and does not contain the
+   `alter table` statement. This is because the checkpoint includes the state of the database at the time it was created,
+   which can be thought of as the sum of all migrations that were applied up to that point.
+
+Next, let's apply these migrations on a local SQLite database:
+
+```shell
+atlas migrate apply --url sqlite://local.db
+```
+Atlas prints:
+```text
+Migrating to version 20230830123813 (1 migrations in total):
+
+  -- migrating version 20230830123813
+    -> CREATE TABLE `t1` (`c1` int NULL, `c2` int NULL);
+    -> CREATE TABLE `t2` (`c1` int NULL, `c2` int NULL);
+  -- ok (960.465µs)
+
+  -------------------------
+  -- 6.895124ms
+  -- 1 migrations
+  -- 2 sql statements
+```
+
+As expected, Atlas skipped all of the migrations up to the checkpoint and only applied the last one!
+
+### Push to Cloud
+
+As we demonstrated above, once we have a migration directory, we can apply it to a database. If your database
+is running locally this is easy enough, but building deployment pipelines to production databases is more involved.
+There are multiple ways to accomplish this, such as building custom Docker images, as shown in most methods covered in the
+[guides](/guides) section. 
+
+In this release, we simplified the process of pushing migration directories to 
+[Atlas Cloud](https://atlasgo.cloud) by adding a new `atlas migrate push` command.
+You can think of it as `docker push` for your database migrations.
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/versioned/migrate-push1.jpg" alt="atlas migrate push" width="100%"/>
+    <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
+</div>
+
+Continuing with our example from above, let's push our migration directory to Atlas Cloud.
+
+To start, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time, you'll be
+prompted to create both an account and a workspace.
+
+<Tabs>
+<TabItem value="web" label="Via Web">
+
+```bash
+atlas login
+```
+
+</TabItem>
+<TabItem value="token" label="Via Token">
+
+```bash
+atlas login --token "ATLAS_TOKEN"
+```
+
+</TabItem>
+</Tabs>
+
+After logging in, let's name our new migration project `pushdemo` and run:
+
+```shell
+atlas migrate push pushdemo --dev-url "sqlite://file?mode=memory&_fk=1"
+```
+
+After our migration directory is pushed, Atlas prints a URL to the created directory, similar to the one shown in the
+image above.
+
+Once your migration directory is pushed, you can use it to apply migrations to your database directly from
+the cloud, just as you would execute `docker run` to run a container image that is stored in a Docker container registry.
+
+To apply a migration directory directly from the cloud, run:
+
+```shell
+atlas migrate apply --dir atlas://pushdemo --url sqlite://local.db
+```
+
+Notice two flags that we used here:
+* `--dir` - specifies the URL of the migration directory. We used `atlas://pushdemo` to indicate that we want to use
+  the migration directory named `pushdemo` that we pushed earlier. This directory is accessible to us because we used
+  `atlas login` in a previous step.
+* `--url` - specifies the URL of the database we want to apply the migrations to. In this case, we used the same SQLite
+  database that we used earlier.
+
+### JetBrains Editor Support
+
+JetBrains makes some of the most popular IDEs for software developers, including IntelliJ, PyCharm, GoLand, and more.
+We are happy to announce that following our recent release of the [VSCode Extension](2023-05-16-vscode-extension.md),
+we now have a plugin for JetBrains IDEs as well!
+
+The plugin is built to make editing Atlas HCL files much easier by providing developers with
+syntax highlighting, code completion, and warnings. It supports both `atlas.hcl` project configuration
+files as well as schema definition files (`.my.hcl`, `.pg.hcl`, and `.lt.hcl`).
+
+The plugin is available for download from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/22307-atlas-hcl).
+
+1. To install the plugin, open your IDE and go to `Preferences > Plugins > Marketplace` and search for `Atlas`:
+
+   ![](https://atlasgo.io/uploads/v0.14.0-announcement/jetbrains.png)
+
+2. Click on the `Install` button to install the plugin.
+
+3. Create a new file named `schema.my.hcl` (the `.my.hcl` suffix signifies to the plugin that
+   this file is a MySQL schema (you can use `.pg.hcl` for Postgres or `.lt.hcl` for SQLite)
+
+4. Edit away!
+
+   ![](https://atlasgo.io/uploads/v0.14.0-announcement/jbhcl.png)
+
+### Wrapping up
+
+That's it! I hope you try out (and enjoy) all of these new features and find them useful.
+As always, we would love to hear your feedback and suggestions on our [Discord server](https://discord.gg/zZ6sWVg6NT).
