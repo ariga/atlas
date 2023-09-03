@@ -1,0 +1,35 @@
+name: Atlas
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    paths:
+      - 'cmd/atlas/internal/cmdapi/testdata/sqlitetx/*'
+# Permissions to write comments on the pull request.
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: ariga/atlas-action@v0
+        with:
+          dir: 'cmd/atlas/internal/cmdapi/testdata/sqlitetx'
+          dev-url: 'sqlite://dev?mode=memory'
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN_3HYXNE }}
+  sync:
+    needs: lint
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/atlas-sync-action@v0
+        with:
+          dir: 'cmd/atlas/internal/cmdapi/testdata/sqlitetx'
+          driver: sqlite
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN_3HYXNE }}
