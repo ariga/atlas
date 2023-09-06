@@ -26,10 +26,8 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
-	"ariga.io/atlas/cmd/atlas/internal/migratelint"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
 
@@ -873,8 +871,12 @@ type migrateLintFlags struct {
 	dirURL, dirFormat string
 	devURL            string
 	logFormat         string
-	latest            uint
-	gitBase, gitDir   string
+	latest            uint   // --latest 1
+	gitBase, gitDir   string // --git-base master --git-dir /path/to/git/repo
+	// Not enabled by default.
+	dirBase string // --base atlas://graph
+	web     bool   // Open the web browser
+	context string // Run context. See cloudapi.ContextInput.
 }
 
 // migrateLintCmd represents the 'atlas migrate lint' subcommand.
@@ -885,9 +887,9 @@ func migrateLintCmd() *cobra.Command {
 			Use:   "lint [flags]",
 			Short: "Run analysis on the migration directory",
 			Example: `  atlas migrate lint --env dev
-  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --latest 1
-  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --git-base master
-  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --format '{{ json .Files }}'`,
+  atlas migrate lint --dir file:///path/to/migrations --dev-url docker://mysql/8/dev --latest 1
+  atlas migrate lint --dir file:///path/to/migrations --dev-url mysql://root:pass@localhost:3306 --git-base master
+  atlas migrate lint --dir file:///path/to/migrations --dev-url mysql://root:pass@localhost:3306 --format '{{ json .Files }}'`,
 			PreRunE: func(cmd *cobra.Command, args []string) error {
 				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
@@ -910,68 +912,8 @@ func migrateLintCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&flags.gitDir, flagGitDir, "", ".", "path to the repository working directory")
 	cobra.CheckErr(cmd.MarkFlagRequired(flagDevURL))
 	cmd.MarkFlagsMutuallyExclusive(flagLog, flagFormat)
+	migrateLintSetFlags(cmd, &flags)
 	return cmd
-}
-
-func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) error {
-	dev, err := sqlclient.Open(cmd.Context(), flags.devURL)
-	if err != nil {
-		return err
-	}
-	defer dev.Close()
-	dir, err := cmdmigrate.Dir(cmd.Context(), flags.dirURL, false)
-	if err != nil {
-		return err
-	}
-	var detect migratelint.ChangeDetector
-	switch {
-	case flags.latest == 0 && flags.gitBase == "":
-		return fmt.Errorf("--%s or --%s is required", flagLatest, flagGitBase)
-	case flags.latest > 0 && flags.gitBase != "":
-		return fmt.Errorf("--%s and --%s are mutually exclusive", flagLatest, flagGitBase)
-	case flags.latest > 0:
-		detect = migratelint.LatestChanges(dir, int(flags.latest))
-	case flags.gitBase != "":
-		detect, err = migratelint.NewGitChangeDetector(
-			dir,
-			migratelint.WithWorkDir(flags.gitDir),
-			migratelint.WithBase(flags.gitBase),
-			migratelint.WithMigrationsPath(dir.(interface{ Path() string }).Path()),
-		)
-		if err != nil {
-			return err
-		}
-	}
-	format := migratelint.DefaultTemplate
-	if f := flags.logFormat; f != "" {
-		format, err = template.New("format").Funcs(migratelint.TemplateFuncs).Parse(f)
-		if err != nil {
-			return fmt.Errorf("parse format: %w", err)
-		}
-	}
-	env, err := selectEnv(cmd)
-	if err != nil {
-		return err
-	}
-	az, err := sqlcheck.AnalyzerFor(dev.Name, env.Lint.Remain())
-	if err != nil {
-		return err
-	}
-	r := &migratelint.Runner{
-		Dev:            dev,
-		Dir:            dir,
-		ChangeDetector: detect,
-		ReportWriter: &migratelint.TemplateWriter{
-			T: format,
-			W: cmd.OutOrStdout(),
-		},
-		Analyzers: az,
-	}
-	err = r.Run(cmd.Context())
-	// Print the error in case it was not printed before.
-	cmd.SilenceErrors = errors.As(err, &migratelint.SilentError{})
-	cmd.SilenceUsage = cmd.SilenceErrors
-	return err
 }
 
 type migrateNewFlags struct {
