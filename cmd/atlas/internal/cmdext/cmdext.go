@@ -810,7 +810,7 @@ func (EntLoader) tables(u *url.URL) ([]*entschema.Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	opts := []entc.Option{}
+	var opts []entc.Option
 	if tags, ok := u.Query()["build-tags"]; ok {
 		opts = append(opts, entc.BuildTags(tags...))
 	}
