@@ -323,10 +323,19 @@ var (
 			return args[0].Type(), nil
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			if b, err := json.Marshal(args[0], args[0].Type()); err != nil {
-				fmt.Println(args[0].GoString())
-			} else {
-				fmt.Println(string(b))
+			switch args[0].Type() {
+			case cty.String:
+				fmt.Println(args[0].AsString())
+			case cty.Number:
+				fmt.Println(args[0].AsBigFloat().String())
+			case cty.Bool:
+				fmt.Println(args[0].True())
+			default:
+				if b, err := json.Marshal(args[0], args[0].Type()); err != nil {
+					fmt.Println(args[0].GoString())
+				} else {
+					fmt.Println(string(b))
+				}
 			}
 			return args[0], nil
 		},

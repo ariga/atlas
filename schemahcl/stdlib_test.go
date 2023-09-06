@@ -93,6 +93,17 @@ func TestURLQuerySetFunc(t *testing.T) {
 			if !got.RawEquals(test.Want) {
 				t.Errorf("wrong result\ngot:  %#v\nwant: %#v", got, test.Want)
 			}
+			var (
+				f = fmt.Sprintf(
+					`v = urlqueryset(%q, %q, %q)`,
+					test.URL.AsString(), test.Key.AsString(), test.Value.AsString(),
+				)
+				d struct {
+					V cty.Value `spec:"v"`
+				}
+			)
+			require.NoError(t, New().EvalBytes([]byte(f), &d, nil))
+			require.True(t, d.V.RawEquals(got))
 		})
 	}
 }
@@ -125,6 +136,8 @@ func TestMakeFileFunc(t *testing.T) {
 
 func Example_PrintFunc() {
 	for _, f := range []string{
+		`v  = print("a")`,
+		`v  = print("a&b")`,
 		`v  = print(1)`,
 		`v  = print(true)`,
 		`v  = print("hello, world")`,
@@ -141,13 +154,19 @@ func Example_PrintFunc() {
 		fmt.Printf("%#v\n\n", d.V)
 	}
 	// Output:
+	// a
+	// cty.StringVal("a")
+	//
+	// a&b
+	// cty.StringVal("a&b")
+	//
 	// 1
 	// cty.NumberIntVal(1)
 	//
 	// true
 	// cty.True
 	//
-	// "hello, world"
+	// hello, world
 	// cty.StringVal("hello, world")
 	//
 	// {"hello":"world"}
