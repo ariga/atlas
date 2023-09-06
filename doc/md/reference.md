@@ -199,9 +199,9 @@ atlas migrate lint [flags]
 
 ```
   atlas migrate lint --env dev
-  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --latest 1
-  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --git-base master
-  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --format '{{ json .Files }}'
+  atlas migrate lint --dir file:///path/to/migrations --dev-url docker://mysql/8/dev --latest 1
+  atlas migrate lint --dir file:///path/to/migrations --dev-url mysql://root:pass@localhost:3306 --git-base master
+  atlas migrate lint --dir file:///path/to/migrations --dev-url mysql://root:pass@localhost:3306 --format '{{ json .Files }}'
 ```
 #### Flags
 ```
