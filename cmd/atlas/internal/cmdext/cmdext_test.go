@@ -182,11 +182,18 @@ func TestEntLoader_LoadState(t *testing.T) {
 	ctx := context.Background()
 	drv, err := sqlclient.Open(ctx, "sqlite://test?mode=memory&_fk=1")
 	require.NoError(t, err)
-	u, err := url.Parse("ent://../migrate/ent/schema")
+	u, err := url.Parse("ent://./testdata/schema")
 	require.NoError(t, err)
 	l, ok := cmdext.States.Loader("ent")
 	require.True(t, ok)
 	state, err := l.LoadState(ctx, &cmdext.StateReaderConfig{
+		Dev:  drv,
+		URLs: []*url.URL{u},
+	})
+	require.ErrorContains(t, err, "build constraints exclude all Go files in")
+	u, err = url.Parse("ent://./testdata/schema?build-tags=foo&build-tags=testdata")
+	require.NoError(t, err)
+	state, err = l.LoadState(ctx, &cmdext.StateReaderConfig{
 		Dev:  drv,
 		URLs: []*url.URL{u},
 	})

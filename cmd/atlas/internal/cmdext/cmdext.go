@@ -810,7 +810,17 @@ func (EntLoader) tables(u *url.URL) ([]*entschema.Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	graph, err := entc.LoadGraph(abs, &gen.Config{})
+	opts := []entc.Option{}
+	if tags, ok := u.Query()["build-tags"]; ok {
+		opts = append(opts, entc.BuildTags(tags...))
+	}
+	cfg := &gen.Config{}
+	for _, opt := range opts {
+		if err = opt(cfg); err != nil {
+			return nil, err
+		}
+	}
+	graph, err := entc.LoadGraph(abs, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("loading schema: %w", err)
 	}
