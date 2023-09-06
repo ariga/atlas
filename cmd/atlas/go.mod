@@ -1,6 +1,6 @@
 module ariga.io/atlas/cmd/atlas
 
-go 1.20
+go 1.21
 
 require (
 	ariga.io/atlas v0.13.2-0.20230813181001-1fef462e7670
