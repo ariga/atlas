@@ -174,7 +174,7 @@ GitHub CLI extension that will do most of the work for you:
    ```shell
    brew install gh
    ```
-   See [here](https://cli.github.com/manual/installation) for more installation options.
+   See [here](https://github.com/cli/cli#installation) for more installation options.
 
 2. Install the Atlas GitHub CLI extension:
 
@@ -233,9 +233,9 @@ GitHub CLI extension that will do most of the work for you:
   The PR contains a GitHub Actions workflow similar to this:
 
   <details>
-  
+
   <summary>Code Example</summary>
-  
+
       name: Atlas
       on:
         push:
@@ -274,19 +274,32 @@ GitHub CLI extension that will do most of the work for you:
               with:
                 dir: 'migrations'
                 dev-url: "mysql://root:pass@localhost:3306/dev"
-                cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN_PfddoG }}
+                cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
         sync:
           needs: lint
           if: github.ref == 'refs/heads/master'
           runs-on: ubuntu-latest
+          services:
+            # Spin up a mysql:8 container to be used as the dev-database for analysis.
+            mysql:
+              image: mysql:8
+              env:
+                MYSQL_DATABASE: dev
+                MYSQL_ROOT_PASSWORD: pass
+              options: >-
+                --health-cmd "mysqladmin ping -ppass"
+                --health-interval 10s
+                --health-start-period 10s
+                --health-timeout 5s
+                --health-retries 10
           steps:
             - uses: actions/checkout@v3
             - uses: ariga/atlas-sync-action@v0
               with:
                 dir: 'migrations'
-                driver: mysql
-                cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN_PfddoG }}
-  
+                dev-url: 'mysql://root:pass@mysql:3306/dev' # Use the service name "mysql" as the hostname
+                cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+
   </details>
 
 

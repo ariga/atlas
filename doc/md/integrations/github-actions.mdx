@@ -80,14 +80,14 @@ on:
 jobs:
   lint:
     services:
-      # Spin up a mysql:8.0.29 container to be used as the dev-database for analysis.
+      # Spin up a mysql:8 container to be used as the dev-database for analysis.
       mysql:
-        image: mysql:8.0.29
+        image: mysql:8
         env:
           MYSQL_ROOT_PASSWORD: pass
           MYSQL_DATABASE: test
         ports:
-          - "3307:3306"
+          - "3306:3306"
         options: >-
           --health-cmd "mysqladmin ping -ppass"
           --health-interval 10s
@@ -103,7 +103,7 @@ jobs:
         with:
           dir: path/to/migrations
           dir-format: atlas # Or: golang-migrate, liquibase, flyway, goose, dbmate
-          dev-url: mysql://root:pass@localhost:3307/test
+          dev-url: mysql://root:pass@localhost:3306/test
 ```
 
 </TabItem>
@@ -342,12 +342,26 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    services:
+      # Spin up a mysql:8 container to be used as the dev-database for analysis.
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: pass
+          MYSQL_DATABASE: test
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v3
       - uses: ariga/atlas-sync-action@v0
         with:
+          name: dir_name
           dir: path/to/migrations
-          driver: mysql # or: postgres | sqlite
+          dev-url: 'mysql://root:pass@mysql:3306/dev'
           cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
 ```
 
