@@ -23,7 +23,7 @@ database schema management tasks.
 | Action                                                | Use Case                                            |
 |-------------------------------------------------------|-----------------------------------------------------|
 | [ariga/atlas-action](https://github.com/ariga/atlas-action)        | CI for schema changes                               |
-| [ariga/atlas-sync-action](https://github.com/ariga/atlas-sync-action)   | Sync your migration directory to Atlas Cloud (atlasgo.cloud) |
+| [ariga/atlas-push-action](https://github.com/ariga/atlas-push-action)   | Push your migration directory to Atlas Cloud (atlasgo.cloud) |
 | [ariga/atlas-deploy-action](https://github.com/ariga/atlas-deploy-action) | Deploy versioned migrations from GitHub Actions    |
 
 
@@ -319,12 +319,12 @@ Note: Either `dir` or `cloud-dir` must be set. If both are provided, an error wi
 - `pending_count`: Number of pending migrations.
 - `applied_count`: Number of applied migrations.
 
-## `ariga/atlas-sync-action`
+## `ariga/atlas-push-action`
 
-You can use [ariga/atlas-sync-action](https://github.com/ariga/atlas-sync-action) to sync your
+You can use [ariga/atlas-push-action](https://github.com/ariga/atlas-push-action) to sync your
 migration directory from your GitHub repository to [Atlas Cloud](https://atlasgo.cloud).
 
-Use this action in your workflow to sync your migration directory to Atlas Cloud.
+Use this action in your workflow to push your migration directory to Atlas Cloud.
 It is highly recommended that you only run this action on the main branch of your repository,
 as its purpose is to persist the desired state of your migration directory.
 
@@ -340,7 +340,7 @@ on:
     branches:
       - master # Only run on our main branch
 jobs:
-  sync:
+  push:
     runs-on: ubuntu-latest
     services:
       # Spin up a mysql:8 container to be used as the dev-database for analysis.
@@ -357,7 +357,7 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v3
-      - uses: ariga/atlas-sync-action@v0
+      - uses: ariga/atlas-push-action@v0
         with:
           name: dir_name
           dir: path/to/migrations
