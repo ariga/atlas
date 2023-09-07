@@ -297,7 +297,7 @@ GitHub CLI extension that will do most of the work for you:
             - uses: ariga/atlas-sync-action@v0
               with:
                 dir: 'migrations'
-                dev-url: 'mysql://root:pass@mysql:3306/dev'
+                dev-url: 'mysql://root:pass@mysql:3306/dev' # Use the service name "mysql" as the hostname
                 cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
 
   </details>
