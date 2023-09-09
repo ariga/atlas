@@ -202,22 +202,25 @@ type (
 			Dir    string         `json:"Dir,omitempty"`    // Path to migration directory.
 		}
 
-		// Steps of the analysis. Added in verbose mode.
-		Steps []struct {
-			Name   string      `json:"Name,omitempty"`   // Step name.
-			Text   string      `json:"Text,omitempty"`   // Step description.
-			Error  string      `json:"Error,omitempty"`  // Error that cause the execution to halt.
-			Result *FileReport `json:"Result,omitempty"` // Result of the step. For example, a diagnostic.
-		}
-
 		// Schema versions found by the runner.
 		Schema struct {
 			Current string `json:"Current,omitempty"` // Current schema.
 			Desired string `json:"Desired,omitempty"` // Desired schema.
 		}
 
+		// Steps of the analysis. Added in verbose mode.
+		Steps []*StepReport `json:"Steps,omitempty"`
+
 		// Files reports. Non-empty in case there are findings.
 		Files []*FileReport `json:"Files,omitempty"`
+	}
+
+	// StepReport contains a summary of the analysis of a single step.
+	StepReport struct {
+		Name   string      `json:"Name,omitempty"`   // Step name.
+		Text   string      `json:"Text,omitempty"`   // Step description.
+		Error  string      `json:"Error,omitempty"`  // Error that cause the execution to halt.
+		Result *FileReport `json:"Result,omitempty"` // Result of the step. For example, a diagnostic.
 	}
 
 	// FileReport contains a summary of the analysis of a single file.
@@ -265,12 +268,7 @@ func NewSummaryReport(c *sqlclient.Client, dir migrate.Dir) *SummaryReport {
 
 // StepResult appends step result to the summary.
 func (f *SummaryReport) StepResult(name, text string, result *FileReport) {
-	f.Steps = append(f.Steps, struct {
-		Name   string      `json:"Name,omitempty"`
-		Text   string      `json:"Text,omitempty"`
-		Error  string      `json:"Error,omitempty"`
-		Result *FileReport `json:"Result,omitempty"`
-	}{
+	f.Steps = append(f.Steps, &StepReport{
 		Name:   name,
 		Text:   text,
 		Result: result,
@@ -279,12 +277,7 @@ func (f *SummaryReport) StepResult(name, text string, result *FileReport) {
 
 // StepError appends step error to the summary.
 func (f *SummaryReport) StepError(name, text string, err error) error {
-	f.Steps = append(f.Steps, struct {
-		Name   string      `json:"Name,omitempty"`
-		Text   string      `json:"Text,omitempty"`
-		Error  string      `json:"Error,omitempty"`
-		Result *FileReport `json:"Result,omitempty"`
-	}{
+	f.Steps = append(f.Steps, &StepReport{
 		Name:  name,
 		Text:  text,
 		Error: err.Error(),
