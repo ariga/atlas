@@ -163,19 +163,15 @@ a direct link to your Atlas Cloud account:
 ```text
 $ which atlas || (curl -sSf https://atlasgo.sh | sh)
 Downloading https://release.ariga.io/atlas/atlas-linux-amd64-latest
-######################################################################## 100.0%
-/builds/rotemtam/atlas-demo
-atlas version v0.14.1-eb3661f-canary
-https://github.com/ariga/atlas/releases/latest
 Installation successful!
+
 $ atlas login --token $ATLAS_CLOUD_TOKEN
 You are now connected to "rotemtam85" on Atlas Cloud.
-$ ATLAS_CONTEXT=$(cat <<EOF # collapsed multi-line command
+
 $ atlas migrate lint --base atlas://gitlab -w --dev-url "sqlite://demo?mode=memory" --context "$ATLAS_CONTEXT"
 // highlight-next-line
 https://rotemtam85.atlasgo.cloud/ci-runs/8589934616
 Cleaning up project directory and file based variables
-Job succeeded
 ```
 
 Once you merge your changes to your default branch, the pipeline will
@@ -185,21 +181,14 @@ representation of your database schema, follow the link from the logs to Atlas C
 ```text
 $ which atlas || (curl -sSf https://atlasgo.sh | sh)
 Downloading https://release.ariga.io/atlas/atlas-linux-amd64-latest
-######################################################################## 100.0%
-/builds/rotemtam/atlas-demo
-atlas version v0.14.1-eb3661f-canary
-https://github.com/ariga/atlas/releases/latest
 Installation successful!
+
 $ atlas login --token $ATLAS_CLOUD_TOKEN
 You are now connected to "rotemtam85" on Atlas Cloud.
-$ ATLAS_CONTEXT=$(cat <<EOF # collapsed multi-line command
-$ echo $ATLAS_CONTEXT
-{ "repo": "rotemtam/atlas-demo", "branch": "main", "commit": "65ee9f161dfab8698a1673f7ae0a588cd83784e1", "url": "https://gitlab.com/rotemtam/atlas-demo" }
+
 $ atlas migrate push gitlab --dev-url "sqlite://demo?mode=memory" --context "$ATLAS_CONTEXT"
 // highlight-next-line
 https://rotemtam85.atlasgo.cloud/dirs/4294967302
-Cleaning up project directory and file based variables
-Job succeeded
 ```
 
 ## Next Steps: Deployments
