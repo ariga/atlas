@@ -25,7 +25,7 @@ database schema management tasks.
 | [ariga/atlas-action](https://github.com/ariga/atlas-action)        | CI for schema changes                               |
 | [ariga/atlas-sync-action](https://github.com/ariga/atlas-sync-action)   | Sync your migration directory to Atlas Cloud (atlasgo.cloud) |
 | [ariga/atlas-deploy-action](https://github.com/ariga/atlas-deploy-action) | Deploy versioned migrations from GitHub Actions    |
-| [ariga/setup-atlas](https://github.com/ariga/set-uatlas) | Install Atlas from a Github Action    |
+| [ariga/setup-atlas](https://github.com/ariga/setup-atlas) | Install Atlas from a GitHub Actions workflow    |
 
 
 ## `ariga/atlas-action` (CI)
@@ -405,8 +405,8 @@ jobs:
 
 ### Reference
 
-The action supports the `Version` input:
+The action supports the `version` input:
 
-#### `Version`
+#### `version`
 
 By default, the latest version of Atlas is being used. If you want to lock a specific version of Atlas, you can do so by specifing the version parameter.
