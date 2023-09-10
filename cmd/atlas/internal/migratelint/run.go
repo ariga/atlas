@@ -69,11 +69,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 }
 
+// A list of steps in CI report.
 const (
-	stepIntegrityCheck = "Migration Integrity Check"
-	stepDetectChanges  = "Detect New Migration Files"
-	stepLoadChanges    = "Replay Migration Files"
-	stepAnalyzeFile    = "Analyze %s"
+	StepIntegrityCheck = "Migration Integrity Check"
+	StepDetectChanges  = "Detect New Migration Files"
+	StepLoadChanges    = "Replay Migration Files"
+	StepAnalyzeFile    = "Analyze %s"
 )
 
 func (r *Runner) summary(ctx context.Context) error {
@@ -85,20 +86,26 @@ func (r *Runner) summary(ctx context.Context) error {
 	case err != nil:
 		err := &FileError{File: migrate.HashFileName, Err: err}
 		r.sum.Files = append(r.sum.Files, &FileReport{Name: migrate.HashFileName, Error: err.Error()})
-		return r.sum.StepError(stepIntegrityCheck, fmt.Sprintf("File %s is invalid", migrate.HashFileName), err)
+		return r.sum.StepError(StepIntegrityCheck, fmt.Sprintf("File %s is invalid", migrate.HashFileName), err)
 	default:
 		// If the hash file exists, it is valid.
 		if _, err := fs.Stat(r.Dir, migrate.HashFileName); err == nil {
-			r.sum.StepResult(stepIntegrityCheck, fmt.Sprintf("File %s is valid", migrate.HashFileName), nil)
+			r.sum.StepResult(StepIntegrityCheck, fmt.Sprintf("File %s is valid", migrate.HashFileName), nil)
 		}
 	}
 
 	// Detect new migration files.
 	base, feat, err := r.ChangeDetector.DetectChanges(ctx)
-	if err != nil {
-		return r.sum.StepError(stepDetectChanges, "Failed find new migration files", err)
+	switch err := err.(type) {
+	// No error.
+	case nil:
+		r.sum.StepResult(StepDetectChanges, fmt.Sprintf("Found %d new migration files (from %d total)", len(feat), len(base)+len(feat)), nil)
+	// Error that should be reported, but not halt the lint.
+	case interface{ StepReport() *StepReport }:
+		r.sum.Steps = append(r.sum.Steps, err.StepReport())
+	default:
+		return r.sum.StepError(StepDetectChanges, "Failed find new migration files", err)
 	}
-	r.sum.StepResult(stepDetectChanges, fmt.Sprintf("Found %d new migration files (from %d total)", len(feat), len(base)+len(feat)), nil)
 
 	// Load files into changes.
 	l := &DevLoader{Dev: r.Dev}
@@ -107,9 +114,9 @@ func (r *Runner) summary(ctx context.Context) error {
 		if fr := (&FileError{}); errors.As(err, &fr) {
 			r.sum.Files = append(r.sum.Files, &FileReport{Name: fr.File, Error: err.Error()})
 		}
-		return r.sum.StepError(stepLoadChanges, "Failed loading changes on dev database", err)
+		return r.sum.StepError(StepLoadChanges, "Failed loading changes on dev database", err)
 	}
-	r.sum.StepResult(stepLoadChanges, fmt.Sprintf("Loaded %d changes on dev database", len(diff.Files)), nil)
+	r.sum.StepResult(StepLoadChanges, fmt.Sprintf("Loaded %d changes on dev database", len(diff.Files)), nil)
 	r.sum.WriteSchema(r.Dev, diff)
 
 	// Analyze files.
@@ -137,7 +144,7 @@ func (r *Runner) summary(ctx context.Context) error {
 		fr.Error = strings.Join(es, "; ")
 		r.sum.Files = append(r.sum.Files, fr)
 		r.sum.StepResult(
-			fmt.Sprintf(stepAnalyzeFile, f.Name()),
+			fmt.Sprintf(StepAnalyzeFile, f.Name()),
 			fmt.Sprintf("%d reports were found in analysis", len(fr.Reports)),
 			fr,
 		)
