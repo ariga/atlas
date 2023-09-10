@@ -25,6 +25,7 @@ database schema management tasks.
 | [ariga/atlas-action](https://github.com/ariga/atlas-action)        | CI for schema changes                               |
 | [ariga/atlas-sync-action](https://github.com/ariga/atlas-sync-action)   | Sync your migration directory to Atlas Cloud (atlasgo.cloud) |
 | [ariga/atlas-deploy-action](https://github.com/ariga/atlas-deploy-action) | Deploy versioned migrations from GitHub Actions    |
+| [ariga/setup-atlas](https://github.com/ariga/set-uatlas) | Install Atlas from a Github Action    |
 
 
 ## `ariga/atlas-action` (CI)
@@ -380,3 +381,32 @@ Configure this action with the following inputs:
 #### `cloud-token`
 
 **Required** The Atlas Cloud token to use for authentication.
+
+## `ariga/setup-atlas`
+
+The [ariga/setup-atlas](https://github.com/ariga/setup-atlas) action can be used to install Atlas from a github action.
+
+This is useful if your team wants to use Atlas via scripts or when you want to use features that are not exposed by other actions.
+
+### Example
+
+```yaml
+name: Deploy schema changes
+run-name: I'm using Atlas 🚀
+on: [push]
+jobs:
+  use-atlas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ariga/setup-atlas@master
+      - run: atlas version
+      # - run: atlas schema apply ... 
+```
+
+### Reference
+
+The action supports the `Version` input:
+
+#### `Version`
+
+By default, the latest version of Atlas is being used. If you want to lock a specific version of Atlas, you can do so by specifing the version parameter.
