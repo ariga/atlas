@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -228,10 +229,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		if err := summary(cmd, client, changes, format); err != nil {
 			return err
 		}
-		if !flags.dryRun && (flags.autoApprove || promptUser()) {
-			return apply(ctx, changes)
-		}
-		return nil
+		return promptApply(ctx, cmd, changes, flags, client)
 	}
 }
 
@@ -302,7 +300,7 @@ func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemeCleanFlags) erro
 	if err := summary(cmd, c, drop, cmdlog.SchemaPlanTemplate); err != nil {
 		return err
 	}
-	if flags.AutoApprove || promptUser() {
+	if flags.AutoApprove || promptUser(cmd) {
 		if err := c.ApplyChanges(cmd.Context(), drop); err != nil {
 			return err
 		}
@@ -700,11 +698,18 @@ const (
 	answerAbort = "Abort"
 )
 
-func promptUser() bool {
-	prompt := promptui.Select{
-		Label: "Are you sure?",
-		Items: []string{answerApply, answerAbort},
+// cmdPrompt returns a promptui.Select that uses the given command's input and output.
+func cmdPrompt(cmd *cobra.Command) *promptui.Select {
+	return &promptui.Select{
+		Stdin:  io.NopCloser(cmd.InOrStdin()),
+		Stdout: nopCloser{cmd.OutOrStdout()},
 	}
+}
+
+func promptUser(cmd *cobra.Command) bool {
+	prompt := cmdPrompt(cmd)
+	prompt.Items = []string{answerApply, answerAbort}
+
 	_, result, err := prompt.Run()
 	if err != nil && err != promptui.ErrInterrupt {
 		// Fail in case of unexpected errors.
@@ -712,6 +717,10 @@ func promptUser() bool {
 	}
 	return result == answerApply
 }
+
+type nopCloser struct{ io.Writer }
+
+func (nopCloser) Close() error { return nil }
 
 func tasks(path string) ([]fmttask, error) {
 	var tasks []fmttask
