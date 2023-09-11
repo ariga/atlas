@@ -229,7 +229,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		if err := summary(cmd, client, changes, format); err != nil {
 			return err
 		}
-		return promptApply(cmd, changes, flags, apply)
+		return promptApply(cmd, changes, flags, apply, client)
 	}
 }
 
