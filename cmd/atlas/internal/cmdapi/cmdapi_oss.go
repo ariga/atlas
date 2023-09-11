@@ -7,12 +7,15 @@
 package cmdapi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"text/template"
 
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migratelint"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 
@@ -107,4 +110,11 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 	cmd.SilenceErrors = errors.As(err, &migratelint.SilentError{})
 	cmd.SilenceUsage = cmd.SilenceErrors
 	return err
+}
+
+func promptApply(ctx context.Context, changes []schema.Change, flags schemaApplyFlags, client migrate.PlanApplier) error {
+	if !flags.dryRun && (flags.autoApprove || promptUser()) {
+		return client.ApplyChanges(ctx, changes)
+	}
+	return nil
 }
