@@ -112,9 +112,9 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 	return err
 }
 
-func promptApply(ctx context.Context, changes []schema.Change, flags schemaApplyFlags, client migrate.PlanApplier) error {
-	if !flags.dryRun && (flags.autoApprove || promptUser()) {
-		return client.ApplyChanges(ctx, changes)
+func promptApply(cmd *cobra.Command, changes []schema.Change, flags schemaApplyFlags, apply func(context.Context, []schema.Change, ...migrate.PlanOption) error) error {
+	if !flags.dryRun && (flags.autoApprove || promptUser(cmd)) {
+		return apply(cmd.Context(), changes)
 	}
 	return nil
 }
