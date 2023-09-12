@@ -41,7 +41,7 @@ migration directory is important:
   directory, as the state of the database might be different than the state of the migration directory. Applying the migration
   directory in consistent order promises deterministic behavior.
 
-Luckily, Atlas supports detecting non-linear and non-additive changes to the migration directory made by mistake by developers.
+Luckily, Atlas detects non-linear and non-additive changes made to a migration directory.
 The way to enable it to your project is by integrating Atlas to your [GitHub Actions](/cloud/setup-ci) or [GitLab](/guides/ci-platforms/gitlab)
 CI pipelines, and Atlas will automatically detect and report non-linear changes during the CI run.
 
