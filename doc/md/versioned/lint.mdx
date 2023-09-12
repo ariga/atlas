@@ -7,29 +7,179 @@ title: Verifying migration safety
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-With the `atlas migrate lint` command, users can analyze the migration directory
-to detect potentially dangerous changes to the database schema. This command may be
-incorporated in _continuous integration_ pipelines to enable teams to enforce desired
-policies with regard to schema changes. 
+The `atlas migrate lint` command enables team members to work together on database schemas, ensuring they are synchronized
+and avoid stepping on each other's toes. Atlas analyzes new schema changes in the migration directory that might
+be dangerous, violate best practices, or break the team's policies. Learn more about [Atlas's analyzers](/lint/analyzers).
 
-[Learn more about Atlas's analyzers](/lint/analyzers)
+While this command is commonly used locally, migration linting is frequently incorporated into CI pipelines, allowing
+teams to detect changes early before merging them into the main branch. Learn more on how to integrate Atlas into
+your [GitHub Actions](/cloud/setup-ci) or [GitLab](/guides/ci-platforms/gitlab) CI pipelines.
 
 ### Flags
 
 When using `migrate lint` to analyze migrations, users must supply multiple parameters:
-* `--dev-url` a [URL](/concepts/url) to a [Dev-database](/concepts/dev-database) that will be used
+* `--dev-url` - [URL](/concepts/url) to a [Dev-database](/concepts/dev-database) that will be used
  to simulate the changes and verify their correctness.
-* `--dir` the URL of the migration directory, by default it is `file://migrations`, e.g a
+* `--dir` - URL of the migration directory, by default it is `file://migrations`, e.g a
  directory named `migrations` in the current working directory.
+* `--web` / `-w` (optional) - open the lint report in the browser.
 
 ### Changeset detection
 
-When we run the `lint` command, we need to instruct Atlas on how to decide what 
-set of migration files to analyze. Currently, two modes are supported.
+When we run the `lint` command, we need to instruct Atlas on how to decide which set of migration files to analyze.
+Currently, three ways are supported. Let's go over them one by one:
 
-* `--git-base <branchName>`: which selects the diff between the provided branch and 
- the current one as the changeset.
-* `--latest <n>` which selects the latest n migration files as the changeset.
+#### Compare against the latest state of the migration directory
+
+Teams that have connected their project to Atlas Cloud (see [setup](/cloud/setup-ci) for more details), can simply run
+the following command to analyze the changes detected by comparing the **local state** of the migration directory
+to the **latest state**, as defined in Atlas Cloud. For example, either by running `atlas migrate push` or by connecting
+it to a CI pipeline.
+
+<Tabs>
+<TabItem value="mysql" label="MySQL">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://mysql/8/dev" \
+  -w
+```
+
+</TabItem>
+<TabItem value="maria" label="MariaDB">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://mariadb/latest/dev" \
+  -w
+```
+
+</TabItem>
+<TabItem value="postgres" label="PostgreSQL">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://postgres/15/test?search_path=public" \
+  -w
+```
+
+</TabItem>
+<TabItem value="sqlite" label="SQLite">
+
+```shell
+atlas migrate lint \
+  --dev-url "sqlite://file?mode=memory" \
+  -w
+```
+
+</TabItem>
+</Tabs>
+
+:::info Preventing non-additive changes
+By using this method, Atlas warns you if your local migration directory is not up-to-date with the latest state
+of the project and rebasing is required. For example, while working on a feature branch, another team member might have
+pushed a new migration file to the main branch.
+:::
+
+Here is an example of how a report of `atlas migrate lint` looks like:
+
+![CI for schema changes](https://atlasgo.io/uploads/lint-report-non-additive.png)
+
+
+#### Analyze the latest N migration files
+
+Users can instruct Atlas to analyze the latest N migration files by running `atlas migrate lint --latest N`:
+
+<Tabs>
+<TabItem value="mysql" label="MySQL">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://mysql/8/dev" \
+  --latest 1
+```
+
+</TabItem>
+<TabItem value="maria" label="MariaDB">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://mariadb/latest/dev" \
+  --latest 1
+```
+
+</TabItem>
+<TabItem value="postgres" label="PostgreSQL">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://postgres/15/test?search_path=public" \
+  --latest 1
+```
+
+</TabItem>
+<TabItem value="sqlite" label="SQLite">
+
+```shell
+atlas migrate lint \
+  --dev-url "sqlite://file?mode=memory" \
+  --latest 1
+```
+
+</TabItem>
+</Tabs>
+
+Similarly to the previous method, the `-w`/`--web` can be used to open the report in the browser, see the changes in ERD
+format, and more.
+
+#### Compare against a specific branch
+
+Users can instruct Atlas to detect which changes to analyze by comparing the current branch to a specific branch.
+For example, in order to analyze the changes between the current branch and the `main` branch, and open the report in the
+browser, run the following command:
+
+<Tabs>
+<TabItem value="mysql" label="MySQL">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://mysql/8/dev" \
+  --git-base "master" \
+  -w
+```
+
+</TabItem>
+<TabItem value="maria" label="MariaDB">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://mariadb/latest/dev" \
+  --git-base "master" \
+  -w
+```
+
+</TabItem>
+<TabItem value="postgres" label="PostgreSQL">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://postgres/15/test?search_path=public" \
+  --git-base "master" \
+  -w
+```
+
+</TabItem>
+<TabItem value="sqlite" label="SQLite">
+
+```shell
+atlas migrate lint \
+  --dev-url "sqlite://file?mode=memory" \
+  --git-base "master" \
+  -w
+```
+
+</TabItem>
+</Tabs>
 
 ### `nolint` directive
 
@@ -141,78 +291,80 @@ lines are used to separate file directives from its content.
 </TabItem>
 </Tabs>
 
-### Output
+### Open in the browser
 
-Users may supply a [Go template](https://pkg.go.dev/text/template) string as the `--format` parameter to
-format the output of the `lint` command.
-
-### Examples
-
-Analyze the latest migration file using the `docker` driver:
+In order to open the migration linting report in the browser, you first need to be logged in to Atlas, then use one of
+the example commands above with the `-w`/`--web` flag. For example:
 
 <Tabs>
-<TabItem value="MySQL">
+<TabItem value="mysql" label="MySQL">
+
+```shell
+atlas login
+```
 
 ```shell
 atlas migrate lint \
+  --dev-url "docker://mysql/8/dev" \
   --latest 1 \
-  --dir "file://migrations" \
-  --dev-url "docker://mysql/8/test"
+  -w
 ```
 
 </TabItem>
-<TabItem value="MariaDB">
+<TabItem value="maria" label="MariaDB">
+
+```shell
+atlas login
+```
 
 ```shell
 atlas migrate lint \
+  --dev-url "docker://mariadb/latest/dev" \
   --latest 1 \
-  --dir "file://migrations" \
-  --dev-url "docker://mariadb/latest/test"
+  -w
 ```
 
 </TabItem>
-<TabItem value="PostgreSQL">
+<TabItem value="postgres" label="PostgreSQL">
+
+```shell
+atlas login
+```
 
 ```shell
 atlas migrate lint \
+  --dev-url "docker://postgres/15/test?search_path=public" \
   --latest 1 \
-  --dir "file://migrations" \
-  --dev-url "docker://postgres/15/test?search_path=public"
+  -w
 ```
 
 </TabItem>
-<TabItem value="SQLite">
+<TabItem value="sqlite" label="SQLite">
+
+```shell
+atlas login
+```
 
 ```shell
 atlas migrate lint \
+  --dev-url "sqlite://file?mode=memory" \
   --latest 1 \
-  --dir "file://migrations" \
-  --dev-url "sqlite://file?mode=memory"
+  -w
 ```
 
 </TabItem>
 </Tabs>
 
-Analyze all changes relative to the `master` Git branch:
-```shell
-atlas migrate lint \
-  --dir "file://my/project/migrations" \
-  --dev-url "mysql://root:pass@localhost:3306/dev" \
-  --git-base "master"
-```
+<details><summary>Screenshot example</summary>
 
-Format output as JSON:
-```shell
-atlas migrate lint \
-  --dir "file://my/project/migrations" \
-  --dev-url "mysql://root:pass@localhost:3306/dev" \
-  --git-base "master" \
-  --format "{{ json .Files }}"
-```
-Use the configuration defined in [`atlas.hcl`](../atlas-schema/projects#configure-migration-linting):
-```shell
-atlas migrate lint --env "local"
-```
+![CI for schema changes](https://atlasgo.io/uploads/lint-report-non-additive.png)
+
+</details>
+
+### Output
+
+Users may supply a [Go template](https://pkg.go.dev/text/template) string as the `--format` parameter to
+format the output of the `lint` command.
 
 ### Reference
 
