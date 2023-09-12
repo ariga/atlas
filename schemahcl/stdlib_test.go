@@ -111,7 +111,7 @@ func TestURLQuerySetFunc(t *testing.T) {
 func TestURLEscapeFunc(t *testing.T) {
 	for _, tt := range []string{"foo", "foo?", "foo&"} {
 		t.Run(tt, func(t *testing.T) {
-			got, err := urlEscape.Call([]cty.Value{cty.StringVal(tt)})
+			got, err := urlEscapeFunc.Call([]cty.Value{cty.StringVal(tt)})
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
