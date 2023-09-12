@@ -1,0 +1,208 @@
+---
+title: "Automatic migrations for Microsoft SQL Server"
+authors: rotemtam
+tags: [atlas, sqlserver, mssql, migrations]
+---
+
+:::info TL;DR
+
+In this guide we will demonstrate how to use Atlas to automatically generate migrations
+for Microsoft SQL Server databases.
+
+To skip the intro and go straight to the demo, click [here](#demo).
+
+:::
+
+## Introduction
+
+As your application's data model evolves, you will need to make changes to your database schema.
+In today's world, where teams are expected to own their infrastructure and ship code faster than ever,
+it is important to have a reliable and repeatable process for managing database schema changes.
+
+Atlas lets you manage your database schema as code. It is a modern schema management tool that applies
+concepts from modern DevOps tools to database schema management. Using Atlas, teams can automatically
+plan, verify, deploy and monitor database schema changes.
+
+Microsoft SQL Server, one of the longest-standing database engines in our business, was
+first released by Microsoft in 1989. MS-SQL is the go-to database for Windows environments in many industries.
+
+In this guide, we will demonstrate how to use Atlas to automatically generate migrations for your
+Microsoft SQL Server databases.
+
+## Setting up
+
+1. Start by installing the Atlas CLI, if you haven't already. On macOS and Linux simply run:
+
+    ```shell
+    curl -sSf https://atlasgo.sh | sh
+    ```
+
+    For other platforms, see the [installation instructions](https://atlasgo.io/getting-started#installation).
+
+2. The SQL Server driver is currently available to users of Atlas Cloud Beta Program. To join the program (for free),
+   first [sign up](https://auth.atlasgo.cloud/signup) for an Atlas Cloud account.
+
+3. Once your inside your Atlas account, go to the account settings by clicking your avatar. Then, select the  "Microsoft SQL Server" and click the "Save"
+   button.
+   ![](https://atlasgo.io/uploads/cloud/beta-driver.png)
+
+4. After you have opted-in to the Beta Program, log in to your Atlas account using the CLI:
+
+    ```shell
+    $ atlas login
+    You are now connected to "a8m" on Atlas Cloud.
+    ```
+
+## Demo time!
+
+In this guide, we will demonstrate some of the basic capabilities of Atlas by working against a
+local Microsoft SQL Server database.
+
+To spin up a local SQL Server instance using docker run:
+
+```
+docker run --rm -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=P@ssw0rd0995' -p 1433:1433 -d mcr.microsoft.com/mssql/server:latest
+```
+
+Notice that by passing the `ACCEPT_EULA` environment variable, we are accepting the terms of Microsoft's
+[EULA](https://go.microsoft.com/fwlink/?linkid=857698).
+
+### Managing your database schema as code
+
+Atlas supports a workflow called _declarative schema migrations_. In this workflow, you first define
+the desired state of your database schema (in one of many supported formats and languages) and then
+let Atlas calculate the diff between the desired state and the actual state of your database. Atlas
+then generates the needed SQL commands that will bring your database to the desired state.
+
+Let's see this in action. First, create a new file name `schema.sql`. This file will contain the desired
+state of our database in plain SQL.
+
+```sql title="schema.sql"
+-- Create the users table
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    email NVARCHAR(255) UNIQUE,
+    display_name NVARCHAR(255)
+);
+
+-- Create the posts table with a custom name for the FK constraint
+CREATE TABLE posts (
+    id INT PRIMARY KEY,
+    title NVARCHAR(255),
+    body TEXT,
+    author_id INT,
+    CONSTRAINT FK_Author_User FOREIGN KEY (author_id) REFERENCES users(id)
+);
+```
+
+### Spinning up a Dev-Database
+
+Atlas relies on a [_Dev-Database_](/concepts/dev-database), a temporary empty database to normalize schemas and make various
+calculations.  Because we are providing the desired state of our database in plain SQL, Atlas must somehow transform
+our schema to a normalized form which requires such a database. Let's spin up an additional SQL Server instance
+on port 1434:
+
+```
+docker run --rm -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=P@ssw0rd0995' -p 1434:1433 -d mcr.microsoft.com/mssql/server:latest
+```
+
+### Applying our schema
+
+Next, let's apply this schema to our database. To do so, we will use the `atlas schema apply` command.
+
+```shell
+atlas schema apply -u "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master" \
+  --to file://schema.sql \
+  --dev-url "sqlserver://sa:P@ssw0rd0995@localhost:1434?database=master"
+```
+Atlas will connect to our target database to inspect it's current state, then it will use the dev-database to
+normalize our schema and then generate the SQL commands that will bring our database to the desired state:
+```sql
+-- Planned Changes:
+-- Create "users" table
+CREATE TABLE [users] ([id] int NOT NULL, [email] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NULL, [display_name] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NULL, CONSTRAINT [PK_users] PRIMARY KEY CLUSTERED ([id] ASC));
+-- Create index "UQ__users__AB6E61643C9DEB30" to table: "users"
+CREATE UNIQUE NONCLUSTERED INDEX [UQ__users__AB6E61643C9DEB30] ON [users] ([email] ASC);
+-- Create "posts" table
+CREATE TABLE [posts] ([id] int NOT NULL, [title] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NULL, [body] text COLLATE SQL_Latin1_General_CP1_CI_AS NULL, [author_id] int NULL, CONSTRAINT [PK_posts] PRIMARY KEY CLUSTERED ([id] ASC), CONSTRAINT [post_author_fk] FOREIGN KEY ([author_id]) REFERENCES [users] ([id]) ON UPDATE NO ACTION ON DELETE NO ACTION);
+```
+Atlas prompts use to approve the changes before applying them to the database:
+```
+Use the arrow keys to navigate: ↓ ↑ → ←
+? Are you sure?:
+  ▸ Apply
+    Abort
+```
+After applying the schema, Atlas confirms that the changes were applied:
+```
+✔ Apply
+```
+
+Next, let's re-run the `atlas schema apply` command. This time, Atlas will detect that the database is
+already in the desired state and will not generate any changes:
+```
+Schema is synced, no changes to be made.
+```
+
+### Altering our schema
+
+Now, let's make some changes to our schema. Open the `schema.sql` file and add a new column to the `users` table:
+
+```diff title="schema.sql"
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    email NVARCHAR(255) UNIQUE,
+    display_name NVARCHAR(255),
++    bio text
+);
+```
+
+Next, let's re-run the `atlas schema apply` command. This time, Atlas will detect that the schema has changed
+and will generate the needed SQL commands to bring the database to the desired state:
+
+```sql
+-- Planned Changes:
+-- Modify "users" table
+ALTER TABLE [users] ADD [bio] text COLLATE SQL_Latin1_General_CP1_CI_AS NULL;
+```
+
+After applying the changes, Atlas confirms once again that the changes were applied:
+
+```
+✔ Apply
+```
+
+### Visualizing our schema
+
+One of the most useful features of Atlas is the ability to visualize your database schema. To do so, run the
+`atlas schema inspect` command with the `-w` (web) flag:
+
+```shell
+atlas schema inspect -u "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master" -w
+```
+
+Atlas will prompt you to ask whether you would like to create your visualization publicly (in a publicly
+accessible URL) or privately (in your Atlas Cloud account):
+
+```
+Use the arrow keys to navigate: ↓ ↑ → ←
+? Where would you like to share your schema visualization?:
+  ▸ Publicly (gh.atlasgo.cloud)
+    Privately (rotemtam85.atlasgo.cloud)
+```
+
+For this demo, let's choose the public option. Atlas will create the visualization and open it in your
+default browser:
+
+![](https:/atlasgo.io/uploads/blog/sqlserver/mssql-viz.png)
+
+See it for yourself at: [https://gh.atlasgo.cloud/explore/5e15289a](https://gh.atlasgo.cloud/explore/5e15289a)
+
+### Wrapping up
+
+In this guide we have demonstrated how to set up Atlas to manage your Microsoft SQL Server database schema.
+We have also demonstrated some of the basic capabilities of Atlas, such as declarative schema migrations, and
+schema visualization.  These two features are just the tip of the iceberg. Atlas has many more features that
+can help you better manage your database! To learn more, check out the [Atlas documentation](https://atlasgo.io/getting-started).
+
+As always, we would love to hear your feedback and suggestions on our [Discord server](https://discord.gg/zZ6sWVg6NT).
