@@ -8,6 +8,8 @@ import InstallationInstructions from '../../components/_installation_instruction
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
+![](https://atlasgo.io/uploads/gitlab/gitlab-ci-edited.png)
+
 GitLab is a popular, open-source alternative to GitHub.  In addition to a self-hosted version,
 GitLab also offers a hosted version at [gitlab.com](https://gitlab.com). Similar to GitHub, GitLab offers
 users storage for Git repositories, issue tracking, and CI/CD pipelines.
@@ -111,16 +113,21 @@ lint migrations:
       allow_failure: false
   script:
     - |
+      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
+        URL="${CI_PROJECT_URL}/-/merge_requests/${CI_MERGE_REQUEST_IID}"
+      else
+        URL="${CI_PROJECT_URL}/-/commit/${CI_COMMIT_SHA}"
+      fi
+
       ATLAS_CONTEXT=$(cat <<EOF
       {
         "repo": "$CI_PROJECT_PATH",
         "branch": "$CI_COMMIT_REF_NAME",
         "commit": "$CI_COMMIT_SHA",
-        "url": "${CI_MERGE_REQUEST_PROJECT_URL}/-/merge_requests/${CI_MERGE_REQUEST_IID}"
+        "url": "$URL"
       }
       EOF
       )
-    - echo $ATLAS_CONTEXT
     - atlas migrate lint --base atlas://gitlab -w --dev-url "sqlite://demo?mode=memory" --context "$ATLAS_CONTEXT"
 
 push migrations:
