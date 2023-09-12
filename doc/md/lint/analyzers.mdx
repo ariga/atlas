@@ -35,7 +35,7 @@ migration directory is important:
   of generating an incorrect file that might conflict with the actual schema and cause a failure during deployment.
 - When a developer merges a feature branch to the main branch with a new migration file that is not positioned at the
   end of the directory, there is a risk that Atlas will skip this migration file as there might be some databases that already
-  contains a higher version of the migration directory. This scenario can cause an unexpected and surprising behavior during
+  contains a higher version of the migration directory. This scenario can cause unexpected and surprising behavior during
   deployments.
 - Having non-linear history can make it challenging to roll back (or revert changes) to a specific version of the migration
   directory as the state of the database might be different than the state of the migration directory. Applying the migration
