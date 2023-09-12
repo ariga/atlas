@@ -111,7 +111,7 @@ func TestURLQuerySetFunc(t *testing.T) {
 func TestURLEscapeFunc(t *testing.T) {
 	for _, tt := range []string{"foo", "foo?", "foo&"} {
 		t.Run(tt, func(t *testing.T) {
-			got, err := urlEscape.Call([]cty.Value{cty.StringVal(tt)})
+			got, err := urlEscapeFunc.Call([]cty.Value{cty.StringVal(tt)})
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
@@ -120,6 +120,22 @@ func TestURLEscapeFunc(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestURLUserinfoFunc(t *testing.T) {
+	u := cty.StringVal("mysql://localhost:3306")
+	// Only user is provided
+	got, err := urlUserinfoFunc.Call([]cty.Value{u, cty.StringVal("user")})
+	require.NoError(t, err)
+	require.Equal(t, cty.StringVal("mysql://user@localhost:3306"), got)
+	// The password is null
+	got, err = urlUserinfoFunc.Call([]cty.Value{u, cty.StringVal("user"), cty.NullVal(cty.String)})
+	require.NoError(t, err)
+	require.Equal(t, cty.StringVal("mysql://user@localhost:3306"), got)
+	// Both user and password are provided
+	got, err = urlUserinfoFunc.Call([]cty.Value{u, cty.StringVal("user"), cty.StringVal("pass")})
+	require.NoError(t, err)
+	require.Equal(t, cty.StringVal("mysql://user:pass@localhost:3306"), got)
 }
 
 func TestMakeFileFunc(t *testing.T) {

@@ -161,7 +161,8 @@ func stdFuncs() map[string]function.Function {
 		"trimsuffix":      stdlib.TrimSuffixFunc,
 		"try":             tryfunc.TryFunc,
 		"upper":           stdlib.UpperFunc,
-		"urlescape":       urlEscape,
+		"urlescape":       urlEscapeFunc,
+		"urluserinfo":     urlUserinfoFunc,
 		"urlqueryset":     urlQuerySetFunc,
 		"urlsetpath":      urlSetPathFunc,
 		"values":          stdlib.ValuesFunc,
@@ -276,6 +277,37 @@ var (
 			return cty.StringVal(u.String()), nil
 		},
 	})
+	urlUserinfoFunc = function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "url",
+				Type: cty.String,
+			},
+			{
+				Name: "user",
+				Type: cty.String,
+			},
+		},
+		VarParam: &function.Parameter{
+			Name:      "pass",
+			Type:      cty.String,
+			AllowNull: true,
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			u, err := url.Parse(args[0].AsString())
+			if err != nil {
+				return cty.NilVal, err
+			}
+			user := args[1].AsString()
+			if len(args) > 2 && !args[2].IsNull() {
+				u.User = url.UserPassword(user, args[2].AsString())
+			} else {
+				u.User = url.User(user)
+			}
+			return cty.StringVal(u.String()), nil
+		},
+	})
 	urlSetPathFunc = function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -298,7 +330,7 @@ var (
 		},
 	})
 
-	urlEscape = function.New(&function.Spec{
+	urlEscapeFunc = function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
 				Name: "string",
