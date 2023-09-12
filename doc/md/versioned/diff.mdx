@@ -14,7 +14,125 @@ where each change is explicitly defined as a migration script with a specific ve
 
 Practically speaking, this means developers define the desired state and Atlas maintains the `migrations` directory,
 which contains the explicit SQL scripts to move from one version to the next. The desired state can be defined using an
-[HCL](/atlas-schema/hcl) or SQL schema definition, or a database [URL](../concepts/url).
+[HCL](/atlas-schema/hcl) or SQL schema definition, a database [URL](../concepts/url), external schemas like
+[ORM](/atlas-schema/external).
+
+### Summary
+
+To get started with versioned migration, run `atlas migrate diff`. This command generates a new migration file that aligns
+the migration directory with the state defined by the desired schema. Below are a few examples of how to use this command
+to generate migrations from various sources:
+
+<Tabs>
+<TabItem label="SQL Schema" value="sql">
+
+**MySQL/MariaDB:**
+
+```shell {3}
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.sql" \
+  --dev-url "docker://mysql/8/dev" # Or: "docker://mariadb/latest/dev"
+```
+
+**PostgreSQL:**
+
+```shell {3}
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.sql" \
+  --dev-url "docker://postgres/15/dev?search_path=public"
+```
+</TabItem>
+<TabItem label="HCL Schema" value="hcl">
+
+**MySQL/MariaDB:**
+
+```shell {3}
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "docker://mysql/8/dev" # Or: "docker://mariadb/latest/dev"
+```
+
+**PostgreSQL:**
+
+```shell {3}
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "docker://postgres/15/dev?search_path=public"
+```
+</TabItem>
+<TabItem label="ORM" value="orm">
+
+**MySQL/MariaDB:**
+
+```shell {2}
+atlas migrate diff create_users \
+  --env "gorm"
+  --dev-url "docker://mysql/8/dev" # Or: "docker://mariadb/latest/dev"
+```
+
+**PostgreSQL:**
+
+```shell {2}
+atlas migrate diff create_users \
+  --env "gorm"
+  --dev-url "docker://postgres/15/dev?search_path=public"
+```
+
+To learn more on how to configure Atlas to read the desired state of the schema from ORM definition, see the
+[external schema documentation](/atlas-schema/external).
+
+</TabItem>
+<TabItem label="Database Schema" value="database-schema">
+
+**MySQL/MariaDB:**
+
+```shell {3}
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "mysql://root:pass@:3306/public" \
+  --dev-url "docker://mysql/8/dev" # Or: "docker://mariadb/latest/dev"
+```
+
+**PostgreSQL:**
+
+```shell {3}
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable" \
+  --dev-url "docker://postgres/15/dev?search_path=public"
+```
+</TabItem>
+<TabItem label="Database (multiple schemas)" value="database">
+
+**MySQL/MariaDB:**
+
+```shell {3}
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "mysql://root:pass@:3306/" \
+  --dev-url "docker://mysql/8" # Or: "docker://mariadb"
+```
+
+**PostgreSQL:**
+
+```shell {3}
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "postgres://postgres:pass@localhost:5432/database?sslmode=disable" \
+  --dev-url "docker://postgres/15/dev"
+```
+</TabItem>
+</Tabs>
+
+:::info [Ensure linear migration history](/lint/analyzers#non-linear-changes)
+By utilizing the [`atlas migrate lint`](/versioned/lint) command, teams can ensure that changes are added to the
+migration directory in a sequential order to prevent unexpected behavior. Learn more on how to integrate Atlas into your
+[**GitHub Actions**](/cloud/setup-ci) or [**GitLab**](/guides/ci-platforms/gitlab) CI pipelines.
+:::
 
 ### Generate migrations from HCL schemas
 
@@ -40,42 +158,19 @@ creating our `users` table:
 * `--format` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
 
 <Tabs
-defaultValue="docker"
 values={[
-{label: 'Docker', value: 'docker'},
 {label: 'MySQL', value: 'mysql'},
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
 ]}>
-<TabItem value="docker">
-
-**MySQL/MariaDB:**
-
-```shell
-atlas migrate diff create_users \
-  --dir "file://migrations" \
-  --to "file://schema.hcl" \
-  --dev-url "docker://mysql/8/test" # Or: "docker://mariadb/latest/test"
-```
-
-**PostgreSQL:**
-
-```shell
-atlas migrate diff create_users \
-  --dir "file://migrations" \
-  --to "file://schema.hcl" \
-  --dev-url "docker://postgres/15/test?search_path=public"
-```
-
-</TabItem>
 <TabItem value="mysql">
 
 ```shell
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "mysql://root:pass@:3306/test"
+  --dev-url "docker://mysql/8/test"
 ```
 
 </TabItem>
@@ -85,7 +180,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "maria://root:pass@:3306/test"
+  --dev-url "docker://mariadb/latest/test"
 ```
 
 </TabItem>
@@ -95,7 +190,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+  --dev-url "docker://postgres/15/test?search_path=public"
 ```
 
 </TabItem>
@@ -170,42 +265,19 @@ table "users" {
 Then, run `atlas migrate diff`:
 
 <Tabs
-defaultValue="docker"
 values={[
-{label: 'Docker', value: 'docker'},
 {label: 'MySQL', value: 'mysql'},
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
 ]}>
-<TabItem value="docker">
-
-**MySQL/MariaDB:**
-
-```shell
-atlas migrate diff create_users \
-  --dir "file://migrations" \
-  --to "file://schema.hcl" \
-  --dev-url "docker://mysql/8/test" # Or: "docker://mariadb/latest/test"
-```
-
-**PostgreSQL:**
-
-```shell
-atlas migrate diff create_users \
-  --dir "file://migrations" \
-  --to "file://schema.hcl" \
-  --dev-url "docker://postgres/15/test?search_path=public"
-```
-
-</TabItem>
 <TabItem value="mysql">
 
 ```shell
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "mysql://root:pass@:3306/test"
+  --dev-url "docker://mysql/8/dev"
 ```
 
 </TabItem>
@@ -215,7 +287,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "maria://root:pass@:3306/test"
+  --dev-url "docker://mariadb/latest/dev"
 ```
 
 </TabItem>
@@ -225,7 +297,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+  --dev-url "docker://postgres/15/dev?search_path=public"
 ```
 
 </TabItem>
@@ -235,7 +307,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "sqlite://file?mode=memory"
+  --dev-url "sqlite://dev?mode=memory"
 ```
 
 </TabItem>
@@ -311,42 +383,19 @@ creating our `users` table:
 * `--dev-url` a [URL](/concepts/url) to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
 
 <Tabs
-defaultValue="docker"
 values={[
-{label: 'Docker', value: 'docker'},
 {label: 'MySQL', value: 'mysql'},
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
 ]}>
-<TabItem value="docker">
-
-**MySQL/MariaDB:**
-
-```shell
-atlas migrate diff create_users \
-  --dir "file://migrations" \
-  --to "file://schema.sql" \
-  --dev-url "docker://mysql/8/test" # Or: "docker://mariadb/latest/test"
-```
-
-**PostgreSQL:**
-
-```shell
-atlas migrate diff create_users \
-  --dir "file://migrations" \
-  --to "file://schema.sql" \
-  --dev-url "docker://postgres/15/test?search_path=public"
-```
-
-</TabItem>
 <TabItem value="mysql">
 
 ```shell
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.sql" \
-  --dev-url "mysql://root:pass@:3306/test"
+  --dev-url "docker://mysql/8/dev"
 ```
 
 </TabItem>
@@ -356,7 +405,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.sql" \
-  --dev-url "maria://root:pass@:3306/test"
+  --dev-url "docker://mariadb/latest/dev"
 ```
 
 </TabItem>
@@ -366,7 +415,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.sql" \
-  --dev-url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+  --dev-url "docker://postgres/15/dev?search_path=public"
 ```
 
 </TabItem>
@@ -435,42 +484,19 @@ Then, run `atlas migrate diff`:
 
 
 <Tabs
-defaultValue="docker"
 values={[
-{label: 'Docker', value: 'docker'},
 {label: 'MySQL', value: 'mysql'},
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
 ]}>
-<TabItem value="docker">
-
-**MySQL/MariaDB:**
-
-```shell
-atlas migrate diff create_users \
-  --dir "file://migrations" \
-  --to "file://schema.sql" \
-  --dev-url "docker://mysql/8/test" # Or: "docker://mariadb/latest/test"
-```
-
-**PostgreSQL:**
-
-```shell
-atlas migrate diff create_users \
-  --dir "file://migrations" \
-  --to "file://schema.sql" \
-  --dev-url "docker://postgres/15/test?search_path=public"
-```
-
-</TabItem>
 <TabItem value="mysql">
 
 ```shell
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.sql" \
-  --dev-url "mysql://root:pass@:3306/test"
+  --dev-url "docker://mysql/8/dev"
 ```
 
 </TabItem>
@@ -480,7 +506,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.sql" \
-  --dev-url "maria://root:pass@:3306/test"
+  --dev-url "docker://mariadb/latest/dev"
 ```
 
 </TabItem>
@@ -490,7 +516,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.sql" \
-  --dev-url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+  --dev-url "docker://postgres/15/dev?search_path=public"
 ```
 
 </TabItem>
@@ -574,7 +600,7 @@ creating our `users` table:
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "mysql://root:pass@:3306/public" \
-  --dev-url "mysql://root:pass@:3306/test"
+  --dev-url "docker://mysql/8/dev"
 ```
 
 Run `ls migrations`, and you will notice Atlas created 2 files:
@@ -623,7 +649,7 @@ the output:
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "mysql://root:pass@:3306/test" \
+  --dev-url "docker://mysql/8/dev" \
   --qualifier "market"
 ```
 
@@ -644,7 +670,7 @@ directory by passing in the `format` query parameter to the migration directory 
 atlas migrate diff create_users \
   --dir "file://migrations?format=golang-migrate" \
   --to "file://schema.hcl" \
-  --dev-url "mysql://root:pass@:3306/test"
+  --dev-url "docker://mysql/8/dev"
 ```
 
 Run `ls migrations`, and you will notice Atlas created 3 files:
@@ -729,7 +755,7 @@ values={[
 atlas migrate diff create_all \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "mysql://root:pass@:3306/"
+  --dev-url "docker://mysql/8"
 ```
 
 Running `cat migrations/*.sql` will print the followings:
@@ -752,7 +778,7 @@ CREATE TABLE `market`.`users` (`name` int NOT NULL) CHARSET utf8mb4 COLLATE utf8
 atlas migrate diff create_all \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "postgres://root:pass@:5434/database?sslmode=disable"
+  --dev-url "docker://postgres/15"
 ```
 
 Running `cat migrations/*.sql` will print the followings:
@@ -836,7 +862,7 @@ generate the SQL statements with indentation, use the `--format` flag. For examp
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "docker://mysql/8/test" \
+  --dev-url "docker://mysql/8/dev" \
   --format '{{ sql . "  " }}'
 ```
 

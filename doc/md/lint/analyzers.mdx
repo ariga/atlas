@@ -24,6 +24,27 @@ safety of migration scripts.
 
 Below are the `Analyzer` implementations currently supported by Atlas.
 
+### Non-Linear Changes
+
+Non-additive changes, often referred to as non-linear changes, are changes to the migration directory that are not added
+in a sequential order. This is a bit like the linear history in version control systems where the migration files are
+commits and the migration directory is the repository. Let's explain with three examples why ensuring the linearity of the
+migration directory is important:
+
+- When a developer introduce a new migration file without having the **latest state** of the directory, there is a risk
+  of generating an incorrect file that might be conflicted with the actual schema and cause a failure during the deployment.
+- When a developer merges a feature branch to the main branch with a new migration file that is not positioned at the
+  end of the directory, there is a risk that Atlas will skip this migration file as there might be some databases that already
+  contains a higher version of the migration directory. This scenario can cause an unexpected and surprising behavior during
+  deployments.
+- Having non-linear history can make it challenging to roll back (or revert changes) to a specific version of the migration
+  directory as the state of the database might be different than the state of the migration directory. Applying the migration
+  directory in consistent order promises deterministic behavior.
+
+Luckily, Atlas supports detecting non-linear and non-additive changes to the migration directory made by mistake by developers.
+The way to enable it to your project is by integrating Atlas to your [GitHub Actions](/cloud/setup-ci) or [GitLab](/guides/ci-platforms/gitlab)
+CI pipelines, and Atlas will automatically detect and report non-linear changes during the CI run.
+
 ### Destructive Changes
 
 Destructive changes are changes to a database schema that result in loss of data. For instance,
