@@ -448,11 +448,18 @@ func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 
 // similarUnnamedIndex searches for an unnamed index with the same index-parts in the table.
 func (d *Diff) similarUnnamedIndex(t *schema.Table, idx1 *schema.Index) (*schema.Index, bool) {
-	for _, idx2 := range t.Indexes {
-		if idx2.Name != "" || len(idx2.Parts) != len(idx1.Parts) || idx2.Unique != idx1.Unique {
-			continue
+	match := func(idx1, idx2 *schema.Index) bool {
+		return idx1.Unique == idx2.Unique && d.partsChange(idx1, idx2) == schema.NoChange
+	}
+	if f, ok := d.DiffDriver.(interface {
+		FindGeneratedIndex(*schema.Table, *schema.Index) (*schema.Index, bool)
+	}); ok {
+		if idx2, ok := f.FindGeneratedIndex(t, idx1); ok && match(idx1, idx2) {
+			return idx2, true
 		}
-		if d.partsChange(idx1, idx2) == schema.NoChange {
+	}
+	for _, idx2 := range t.Indexes {
+		if idx2.Name == "" && match(idx1, idx2) {
 			return idx2, true
 		}
 	}
