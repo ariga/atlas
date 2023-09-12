@@ -287,11 +287,11 @@ var (
 				Name: "user",
 				Type: cty.String,
 			},
-			{
-				Name:      "pass",
-				Type:      cty.String,
-				AllowNull: true,
-			},
+		},
+		VarParam: &function.Parameter{
+			Name:      "pass",
+			Type:      cty.String,
+			AllowNull: true,
 		},
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
