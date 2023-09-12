@@ -15,7 +15,7 @@ on:
 jobs:
 {{- range $.Jobs }}
   integration-{{ .Version }}:
-    runs-on: ubuntu-latest
+    runs-on: {{ $.Runner }}
     {{ if .Image }}services:
       {{ .Version }}:
         image: {{ .Image }}
