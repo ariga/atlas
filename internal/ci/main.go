@@ -165,17 +165,18 @@ var (
 )
 
 func main() {
-	var flavor, tags, suffix string
+	var flavor, tags, suffix, runner string
 	flag.StringVar(&flavor, "flavor", "", "")
 	flag.StringVar(&tags, "tags", "", "")
 	flag.StringVar(&suffix, "suffix", "", "")
+	flag.StringVar(&runner, "runner", "ubuntu-latest", "")
 	flag.Parse()
 	for _, n := range []string{"dialect", "go", "revisions"} {
 		var buf bytes.Buffer
 		if err := tpl.ExecuteTemplate(&buf, fmt.Sprintf("ci_%s.tmpl", n), struct {
-			Jobs         []Job
-			Flavor, Tags string
-		}{jobs, flavor, tags}); err != nil {
+			Jobs                 []Job
+			Flavor, Tags, Runner string
+		}{jobs, flavor, tags, runner}); err != nil {
 			log.Fatalln(err)
 		}
 		err := os.WriteFile(filepath.Clean(fmt.Sprintf("../../.github/workflows/ci-%s_%s.yaml", n, suffix)), buf.Bytes(), 0600)

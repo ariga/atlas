@@ -14,7 +14,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: {{ $.Runner }}
     steps:
       - uses: actions/setup-go@v4
         with:
@@ -26,7 +26,7 @@ jobs:
           args: --verbose
 
   generate-cmp:
-    runs-on: ubuntu-latest
+    runs-on: {{ $.Runner }}
     steps:
       - uses: actions/checkout@v2.4.0
       - uses: actions/setup-go@v4
@@ -48,7 +48,7 @@ jobs:
             exit 1
           fi
   unit:
-    runs-on: ubuntu-latest
+    runs-on: {{ $.Runner }}
     strategy:
       matrix:
         go: [ '1.20', '1.21' ]
@@ -65,7 +65,7 @@ jobs:
         working-directory: schemahcl
 
   cli:
-    runs-on: ubuntu-latest
+    runs-on: {{ $.Runner }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v4
@@ -76,7 +76,7 @@ jobs:
         working-directory: cmd/atlas
 
   integration:
-    runs-on: ubuntu-latest
+    runs-on: {{ $.Runner }}
     steps:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v4
