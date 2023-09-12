@@ -122,6 +122,35 @@ func TestURLEscapeFunc(t *testing.T) {
 	}
 }
 
+func TestURLUserinfoFunc(t *testing.T) {
+	tests := []struct {
+		URL  cty.Value
+		User cty.Value
+		Pass cty.Value
+		Want cty.Value
+	}{
+		{
+			cty.StringVal("mysql://localhost:3306"),
+			cty.StringVal("user"),
+			cty.NullVal(cty.String),
+			cty.StringVal("mysql://user@localhost:3306"),
+		},
+		{
+			cty.StringVal("mysql://localhost:3306"),
+			cty.StringVal("user"),
+			cty.StringVal("pass"),
+			cty.StringVal("mysql://user:pass@localhost:3306"),
+		},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("(%#v,%#v,%#v)", test.URL, test.User, test.Pass), func(t *testing.T) {
+			got, err := urlUserinfoFunc.Call([]cty.Value{test.URL, test.User, test.Pass})
+			require.NoError(t, err)
+			require.Equal(t, test.Want, got)
+		})
+	}
+}
+
 func TestMakeFileFunc(t *testing.T) {
 	fn := MakeFileFunc("testdata")
 	_, err := fn.Call([]cty.Value{cty.StringVal("foo")})
