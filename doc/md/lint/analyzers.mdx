@@ -31,7 +31,7 @@ in a sequential order. This is a bit like the linear history in version control 
 commits and the migration directory is the repository. Let's explain with three examples why ensuring the linearity of the
 migration directory is important:
 
-- When a developer introduce a new migration file without having the **latest state** of the directory, there is a risk
+- When a developer introduces a new migration file without having the **latest state** of the directory, there is a risk
   of generating an incorrect file that might be conflicted with the actual schema and cause a failure during the deployment.
 - When a developer merges a feature branch to the main branch with a new migration file that is not positioned at the
   end of the directory, there is a risk that Atlas will skip this migration file as there might be some databases that already
