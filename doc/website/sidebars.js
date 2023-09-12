@@ -208,6 +208,18 @@ module.exports = {
         },
         {
             type: 'category',
+            label: 'CI Platforms',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    label: 'GitLab',
+                    id: 'guides/ci-platforms/gitlab',
+                }
+            ]
+        },
+        {
+            type: 'category',
             label: 'Terraform',
             collapsed: false,
             items: [
