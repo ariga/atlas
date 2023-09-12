@@ -123,6 +123,18 @@ func (d *diff) IsGeneratedIndexName(t *schema.Table, idx *schema.Index) bool {
 	return err == nil && i > 0
 }
 
+// FindGeneratedIndex finds the table index that represents the generated index.
+// This is useful because unlike MySQL/PostgreSQL, SQLite does not allow creating
+// the generated indexes with their internal names. Therefore, they are renamed in
+// normalization phase. See migrate.go#normalizeIdxName for more details.
+func (d *diff) FindGeneratedIndex(t *schema.Table, idx *schema.Index) (*schema.Index, bool) {
+	nr := schema.NewIndex(idx.Name)
+	if normalizeIdxName(nr, t) != nil {
+		return nil, false
+	}
+	return t.Index(nr.Name)
+}
+
 // IndexAttrChanged reports if the index attributes were changed.
 func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 	var p1, p2 IndexPredicate

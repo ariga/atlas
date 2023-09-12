@@ -4,6 +4,9 @@ cmpmig 0 diff.sql
 atlas migrate diff --dev-url sqlite://dev --to file://schema.sql --dir file://migrations
 stdout 'The migration directory is synced with the desired state, no changes to be made'
 
+atlas schema diff --dev-url sqlite://dev?mode=memory --from file://migrations --to file://schema.sql --exclude atlas_schema_revisions
+stdout 'Schemas are synced, no changes to be made.'
+
 -- schema.sql --
 -- Create "records" table
 CREATE TABLE IF NOT EXISTS `records` (
@@ -13,6 +16,21 @@ CREATE TABLE IF NOT EXISTS `records` (
 );
 CREATE INDEX `records_price` ON `records` (`price`);
 
+-- Create "categories" table
+CREATE TABLE IF NOT EXISTS categories (
+  id INTEGER NOT NULL PRIMARY KEY,
+  category_name VARCHAR(255) NOT NULL
+);
+
+-- Create "products" table
+CREATE TABLE IF NOT EXISTS products (
+  id INTEGER NOT NULL PRIMARY KEY,
+  product_name VARCHAR(255) NOT NULL UNIQUE,
+  price DECIMAL(10,2) NOT NULL,
+  category_id INTEGER,
+  FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE SET NULL
+);
+
 -- diff.sql --
 -- Create "records" table
 CREATE TABLE `records` (`id` integer NOT NULL PRIMARY KEY AUTOINCREMENT, `name` varchar NOT NULL DEFAULT '', `price` decimal NOT NULL DEFAULT 0);
@@ -20,3 +38,9 @@ CREATE TABLE `records` (`id` integer NOT NULL PRIMARY KEY AUTOINCREMENT, `name` 
 CREATE UNIQUE INDEX `records_name` ON `records` (`name`);
 -- Create index "records_price" to table: "records"
 CREATE INDEX `records_price` ON `records` (`price`);
+-- Create "categories" table
+CREATE TABLE `categories` (`id` integer NOT NULL, `category_name` varchar NOT NULL, PRIMARY KEY (`id`));
+-- Create "products" table
+CREATE TABLE `products` (`id` integer NOT NULL, `product_name` varchar NOT NULL, `price` decimal NOT NULL, `category_id` integer NULL, PRIMARY KEY (`id`), CONSTRAINT `0` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON UPDATE NO ACTION ON DELETE SET NULL);
+-- Create index "products_product_name" to table: "products"
+CREATE UNIQUE INDEX `products_product_name` ON `products` (`product_name`);
