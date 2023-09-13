@@ -296,7 +296,7 @@ var Formats = []string{FormatAtlas, FormatGolangMigrate, FormatGoose, FormatFlyw
 // Formatter returns the dir formatter for its URL.
 func Formatter(u *url.URL) (migrate.Formatter, error) {
 	switch f := u.Query().Get("format"); f {
-	case FormatAtlas:
+	case "", FormatAtlas:
 		return migrate.DefaultFormatter, nil
 	case FormatGolangMigrate:
 		return sqltool.GolangMigrateFormatter, nil

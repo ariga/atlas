@@ -7,16 +7,36 @@ package migrate
 import (
 	"context"
 	"errors"
+	"net/url"
 	"testing"
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/sqltool"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
+
+func TestFormatter(t *testing.T) {
+	u, err := url.Parse("file://migrations")
+	require.NoError(t, err)
+	f, err := Formatter(u)
+	require.NoError(t, err)
+	require.Equal(t, migrate.DefaultFormatter, f)
+
+	u, err = url.Parse("file://migrations?format=atlas")
+	require.NoError(t, err)
+	f, err = Formatter(u)
+
+	u, err = url.Parse("file://migrations?format=flyway")
+	require.NoError(t, err)
+	f, err = Formatter(u)
+	require.NoError(t, err)
+	require.Equal(t, sqltool.FlywayFormatter, f)
+}
 
 func TestRevisionsForClient(t *testing.T) {
 	ctx := context.Background()
