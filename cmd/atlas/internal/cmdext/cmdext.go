@@ -415,6 +415,7 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 // defined and executed on schemahcl Eval functions.
 type AtlasConfig struct {
 	Client  *cloudapi.Client // Client attached to Atlas Cloud.
+	Token   string           // User token.
 	Project string           // Optional project.
 }
 
@@ -424,7 +425,7 @@ type AtlasConfig struct {
 //	  cloud {
 //	    token   = data.runtimevar.token  // User token.
 //	    url     = var.cloud_url          // Optional URL.
-//	    project = var.project            // Optional project. If set, cloud reporting is enabled.
+//	    project = var.project            // Optional project. Defaults to DefaultProjectName.
 //	  }
 //	}
 func (c *AtlasConfig) InitBlock() schemahcl.Option {
@@ -442,6 +443,7 @@ func (c *AtlasConfig) InitBlock() schemahcl.Option {
 		if args.Cloud.Project == "" {
 			args.Cloud.Project = cloudapi.DefaultProjectName
 		}
+		c.Token = args.Cloud.Token
 		c.Project = args.Cloud.Project
 		c.Client = cloudapi.New(args.Cloud.URL, args.Cloud.Token)
 		cloud := cty.ObjectVal(map[string]cty.Value{

@@ -16,6 +16,7 @@ import (
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -100,7 +101,7 @@ env "multi" {
 	require.NoError(t, os.Setenv("ATLAS_TOKEN", "token_atlas"))
 	t.Cleanup(func() { require.NoError(t, os.Unsetenv("ATLAS_TOKEN")) })
 	t.Run("ok", func(t *testing.T) {
-		_, envs, err := EnvByName("local")
+		_, envs, err := EnvByName(&cobra.Command{}, "local")
 		require.NoError(t, err)
 		require.Len(t, envs, 1)
 		env := envs[0]
@@ -160,7 +161,7 @@ env "multi" {
 		require.EqualValues(t, []string{"local/app.hcl"}, sources)
 	})
 	t.Run("multi", func(t *testing.T) {
-		_, envs, err := EnvByName("multi")
+		_, envs, err := EnvByName(&cobra.Command{}, "multi")
 		require.NoError(t, err)
 		require.Len(t, envs, 1)
 		srcs, err := envs[0].Sources()
@@ -168,7 +169,7 @@ env "multi" {
 		require.EqualValues(t, []string{"./a.hcl", "./b.hcl"}, srcs)
 	})
 	t.Run("with input", func(t *testing.T) {
-		_, envs, err := EnvByName("local", WithInput(map[string]cty.Value{
+		_, envs, err := EnvByName(&cobra.Command{}, "local", WithInput(map[string]cty.Value{
 			"name": cty.StringVal("goodbye"),
 		}))
 		require.NoError(t, err)
@@ -180,12 +181,12 @@ env "multi" {
 		require.EqualValues(t, "goodbye", val)
 	})
 	t.Run("wrong env", func(t *testing.T) {
-		_, _, err = EnvByName("home")
+		_, _, err = EnvByName(&cobra.Command{}, "home")
 		require.EqualError(t, err, `env "home" not defined in project file`)
 	})
 	t.Run("wrong dir", func(t *testing.T) {
 		GlobalFlags.ConfigURL = defaultConfigPath
-		_, _, err = EnvByName("home")
+		_, _, err = EnvByName(&cobra.Command{}, "home")
 		require.ErrorContains(t, err, `no such file or directory`)
 	})
 }
@@ -204,7 +205,7 @@ env {
 	err := os.WriteFile(path, []byte(h), 0600)
 	require.NoError(t, err)
 	GlobalFlags.ConfigURL = "file://" + path
-	_, envs, err := EnvByName("local")
+	_, envs, err := EnvByName(&cobra.Command{}, "local")
 	require.NoError(t, err)
 	require.Len(t, envs, 1)
 	require.Equal(t, "local", envs[0].Name)
@@ -244,7 +245,7 @@ diff {
 	err := os.WriteFile(path, []byte(h), 0600)
 	require.NoError(t, err)
 	GlobalFlags.ConfigURL = "file://" + path
-	project, envs, err := EnvByName("")
+	project, envs, err := EnvByName(&cobra.Command{}, "")
 	require.NoError(t, err)
 	require.Len(t, envs, 0)
 	require.Equal(t, 1, project.Lint.Latest)
@@ -280,13 +281,13 @@ env "dev" {
 	err := os.WriteFile(path, []byte(h), 0600)
 	require.NoError(t, err)
 	GlobalFlags.ConfigURL = "file://" + path
-	_, envs, err := EnvByName("unnamed")
+	_, envs, err := EnvByName(&cobra.Command{}, "unnamed")
 	require.NoError(t, err)
 	require.Len(t, envs, 1)
 	require.Equal(t, "unnamed", envs[0].Name)
 	require.Equal(t, "b", envs[0].Format.Schema.Diff)
 	require.Equal(t, "env: unnamed", envs[0].Format.Schema.Apply)
-	_, envs, err = EnvByName("dev")
+	_, envs, err = EnvByName(&cobra.Command{}, "dev")
 	require.NoError(t, err)
 	require.Len(t, envs, 2)
 	for _, e := range envs {

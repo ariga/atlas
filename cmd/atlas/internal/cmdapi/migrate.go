@@ -98,7 +98,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 					}
 					return migrateApplyRun(cmd, args, flags, &MigrateReport{}) // nop reporter
 				default:
-					project, envs, err := EnvByName(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
+					project, envs, err := EnvByName(cmd, GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
 					if err != nil {
 						return err
 					}

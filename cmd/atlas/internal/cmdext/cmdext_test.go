@@ -483,6 +483,7 @@ cloud_keys = keys(atlas.cloud)
 	require.Equal(t, []string{"client", "project"}, v.CloudKeys, "token and url should not be exported")
 	// Config options should be populated from the init block.
 	require.NotNil(t, cfg.Client)
+	require.Equal(t, "token", cfg.Token)
 	require.Equal(t, "atlasgo.io", cfg.Project)
 
 	err = state.EvalBytes([]byte(`
