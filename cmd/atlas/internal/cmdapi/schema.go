@@ -88,7 +88,7 @@ migration.`,
 					}
 					return schemaApplyRun(cmd, flags, env)
 				default:
-					_, envs, err := EnvByName(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
+					_, envs, err := EnvByName(cmd, GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
 					if err != nil {
 						return err
 					}
@@ -570,7 +570,7 @@ func selectEnv(cmd *cobra.Command) (*Env, error) {
 	switch name := GlobalFlags.SelectedEnv; {
 	// A config file was passed without an env.
 	case name == "" && cmd.Flags().Changed(flagConfig):
-		p, envs, err := EnvByName(name, WithInput(GlobalFlags.Vars))
+		p, envs, err := EnvByName(cmd, name, WithInput(GlobalFlags.Vars))
 		if err != nil {
 			return nil, err
 		}
@@ -583,7 +583,7 @@ func selectEnv(cmd *cobra.Command) (*Env, error) {
 		return &Env{Lint: &Lint{}, Migration: &Migration{}}, nil
 	// Env was passed.
 	default:
-		_, envs, err := EnvByName(name, WithInput(GlobalFlags.Vars))
+		_, envs, err := EnvByName(cmd, name, WithInput(GlobalFlags.Vars))
 		if err != nil {
 			return nil, err
 		}

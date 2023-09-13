@@ -123,3 +123,8 @@ func promptApply(cmd *cobra.Command,
 	}
 	return nil
 }
+
+// withTokenContext allows attaching token to the context.
+func withTokenContext(ctx context.Context, _ string) (context.Context, error) {
+	return ctx, nil
+}

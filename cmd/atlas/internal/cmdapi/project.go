@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/spf13/cobra"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 )
@@ -335,7 +336,7 @@ func (e *Env) asMap() (map[string]string, error) {
 }
 
 // EnvByName parses and returns the project configuration with selected environments.
-func EnvByName(name string, opts ...LoadOption) (*Project, []*Env, error) {
+func EnvByName(cmd *cobra.Command, name string, opts ...LoadOption) (*Project, []*Env, error) {
 	u, err := url.Parse(GlobalFlags.ConfigURL)
 	if err != nil {
 		return nil, nil, err
@@ -353,6 +354,15 @@ func EnvByName(name string, opts ...LoadOption) (*Project, []*Env, error) {
 	project, err := parseConfig(path, name, opts...)
 	if err != nil {
 		return nil, nil, err
+	}
+	// The project token predates 'atlas login' command. If exists,
+	// attach it to the context to indicate the user is authenticated.
+	if t := project.cfg.Token; t != "" {
+		ctx, err := withTokenContext(cmd.Context(), t)
+		if err != nil {
+			return nil, nil, err
+		}
+		cmd.SetContext(ctx)
 	}
 	if err := project.Lint.remainedLog(); err != nil {
 		return nil, nil, err
