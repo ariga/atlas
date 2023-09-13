@@ -25,6 +25,7 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 	_ "ariga.io/atlas/sql/sqlite"
 	"ariga.io/atlas/sql/sqltool"
+	"gocloud.dev/runtimevar"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
@@ -601,4 +602,17 @@ func backupEnv(keys ...string) (restoreFunc func()) {
 			}
 		}
 	}
+}
+
+func TestOpenVariable(t *testing.T) {
+	t.Setenv("FOO", "bar")
+	ctx := context.Background()
+	v, err := runtimevar.OpenVariable(ctx, "env://FOO")
+	if err != nil {
+		return
+	}
+	defer v.Close()
+	snapshot, err := v.Watch(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "bar", snapshot.Value)
 }
