@@ -400,17 +400,10 @@ kubectl get -n argocd applications.argoproj.io atlas-argocd-demo -o=jsonpath='{r
 `kubectl` will print something like this:
 
 ```
-<<<<<<< HEAD
 Service:       mysql   (Synced)    ({"status":"Healthy"})
 Deployment:    mysql   (Synced)    ({"status":"Healthy"})
 Deployment:    nginx   (Synced)    ({"status":"Healthy"})
 AtlasSchema:   myapp   (Synced)    ({"message":"The schema has been applied successfully. Apply response: {\"Changes\":{}}","status":"Healthy"})%
-=======
-Service: 	     mysql 	 (Synced) 	 ({"status":"Healthy"})
-Deployment: 	 mysql 	 (Synced) 	 ({"status":"Healthy"})
-Deployment: 	 nginx 	 (Synced) 	 ({"status":"Healthy"})
-AtlasSchema: 	 myapp 	 (Synced) 	 ({"message":"The schema has been applied successfully. Apply response: {\"Changes\":{}}","status":"Healthy"})%
->>>>>>> 5dcc8c3adbd54a23619a52defdf09e45f940b073
 ```
 
 Finally, on the ArgoCD UI we can see the health and dependency and status of all the resources:
