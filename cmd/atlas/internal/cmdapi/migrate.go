@@ -431,7 +431,14 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 		ver = rev.Version
 	}
 	dirName := flags.dirURL
-	if u, err := url.Parse(flags.dirURL); err == nil {
+	switch u, err := url.Parse(flags.dirURL); {
+	case err != nil:
+	// Local directories are reported as (dangling)
+	// deployments without a directory.
+	case u.Scheme == cmdmigrate.DirTypeFile:
+		dirName = cloudapi.DefaultDirName
+	// Directory slug.
+	default:
 		dirName = filepath.Join(u.Host, u.Path)
 	}
 	r.done(&cloudapi.ReportMigrationInput{
