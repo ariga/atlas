@@ -44,9 +44,11 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+	"gocloud.dev/gcerrors"
 	"gocloud.dev/runtimevar"
 	_ "gocloud.dev/runtimevar/awssecretsmanager"
 	_ "gocloud.dev/runtimevar/constantvar"
+	"gocloud.dev/runtimevar/driver"
 	_ "gocloud.dev/runtimevar/filevar"
 	_ "gocloud.dev/runtimevar/gcpsecretmanager"
 	_ "gocloud.dev/runtimevar/httpvar"
@@ -844,4 +846,73 @@ func dirFormatter(dir migrate.Dir) migrate.Formatter {
 	default:
 		return migrate.DefaultFormatter
 	}
+}
+
+func init() {
+	runtimevar.DefaultURLMux().RegisterVariable(Scheme, &URLOpener{})
+}
+
+// Scheme is the URL scheme envvar registers its URLOpener under on runtimevar.DefaultURLMux.
+const Scheme = "env"
+
+// URLOpener opens envvar URLs like "env://VARIABLE".
+type URLOpener struct {
+}
+
+// OpenVariableURL opens the variable at the URL's path. See the package doc
+// for more details.
+func (o *URLOpener) OpenVariableURL(_ context.Context, u *url.URL) (*runtimevar.Variable, error) {
+	q := u.Query()
+	for param := range q {
+		return nil, fmt.Errorf("open variable %v: invalid query parameter %q", u, param)
+	}
+	return New(os.Getenv(u.Host)), nil
+}
+
+// New constructs a *runtimevar.Variable holding value.
+func New(value string) *runtimevar.Variable {
+	return runtimevar.New(&watcher{value: value, t: time.Now()})
+}
+
+// watcher implements driver.Watcher and driver.State.
+type watcher struct {
+	value string
+	err   error
+	t     time.Time
+}
+
+// Value implements driver.State.Value.
+func (w *watcher) Value() (interface{}, error) {
+	return w.value, w.err
+}
+
+// UpdateTime implements driver.State.UpdateTime.
+func (w *watcher) UpdateTime() time.Time {
+	return w.t
+}
+
+// As implements driver.State.As.
+func (w *watcher) As(any) bool { return false }
+
+// WatchVariable implements driver.WatchVariable.
+func (w *watcher) WatchVariable(ctx context.Context, prev driver.State) (driver.State, time.Duration) {
+	// The first time this is called, return the constant value.
+	if prev == nil {
+		return w, 0
+	}
+	// On subsequent calls, block forever as the value will never change.
+	<-ctx.Done()
+	w.err = ctx.Err()
+	return w, 0
+}
+
+// Close implements driver.Close.
+func (*watcher) Close() error { return nil }
+
+// ErrorAs implements driver.ErrorAs.
+func (*watcher) ErrorAs(error, any) bool { return false }
+
+// ErrorCode implements driver.ErrorCode
+func (*watcher) ErrorCode(error) gcerrors.ErrorCode {
+	return gcerrors.Unknown
 }
