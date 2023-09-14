@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"text/template"
 
+	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migratelint"
 	"ariga.io/atlas/sql/migrate"
@@ -125,6 +126,6 @@ func promptApply(cmd *cobra.Command,
 }
 
 // withTokenContext allows attaching token to the context.
-func withTokenContext(ctx context.Context, _ string) (context.Context, error) {
+func withTokenContext(ctx context.Context, _ string, _ *cloudapi.Client) (context.Context, error) {
 	return ctx, nil
 }

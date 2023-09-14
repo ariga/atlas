@@ -357,8 +357,8 @@ func EnvByName(cmd *cobra.Command, name string, opts ...LoadOption) (*Project, [
 	}
 	// The project token predates 'atlas login' command. If exists,
 	// attach it to the context to indicate the user is authenticated.
-	if t := project.cfg.Token; t != "" {
-		ctx, err := withTokenContext(cmd.Context(), t)
+	if project.cfg.Token != "" && project.cfg.Client != nil {
+		ctx, err := withTokenContext(cmd.Context(), project.cfg.Token, project.cfg.Client)
 		if err != nil {
 			return nil, nil, err
 		}
