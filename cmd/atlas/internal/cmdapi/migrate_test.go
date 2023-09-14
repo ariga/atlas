@@ -973,7 +973,8 @@ env {
 		require.Equal(t, "Error: openerror", *reports.Error)
 	})
 
-	t.Run("LocalFile", func(t *testing.T) {
+	t.Run("LocalDirectory", func(t *testing.T) {
+		report.DirName = "NotReported"
 		cmd := migrateCmd()
 		cmd.AddCommand(migrateApplyCmd())
 		_, err := runCmd(
@@ -985,7 +986,7 @@ env {
 			"--var", "cloud_url="+srv.URL,
 		)
 		require.NoError(t, err)
-		require.Equal(t, cloudapi.DefaultDirName, report.DirName)
+		require.Equal(t, "NotReported", report.DirName)
 	})
 }
 
