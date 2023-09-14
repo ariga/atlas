@@ -21,7 +21,7 @@ import (
 // DefaultDiff provides basic diffing capabilities for PostgreSQL dialects.
 // Note, it is recommended to call Open, create a new Driver and use its Differ
 // when a database connection is available.
-var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{}}
+var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{&conn{ExecQuerier: sqlx.NoRows}}}
 
 // A diff provides a PostgreSQL implementation for sqlx.DiffDriver.
 type diff struct{ *conn }
