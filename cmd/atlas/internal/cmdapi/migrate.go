@@ -102,9 +102,20 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 					if err != nil {
 						return err
 					}
-					set := NewReportProvider(cmd.Context(), project, envs)
-					defer func() { set.Flush(cmd, cmdErr) }()
+					var (
+						hasRemote bool
+						set       = NewReportProvider(cmd.Context(), project, envs)
+					)
+					defer func() {
+						if hasRemote {
+							set.Flush(cmd, cmdErr)
+						}
+					}()
 					return cmdEnvsRun(envs, setMigrateEnvFlags, cmd, func(env *Env) error {
+						// Report deployments only if one of the migration directories is a cloud directory.
+						if u, err := url.Parse(flags.dirURL); err == nil && u.Scheme != cmdmigrate.DirTypeFile {
+							hasRemote = true
+						}
 						return migrateApplyRun(cmd, args, flags, set.ReportFor(flags, env))
 					})
 				}
