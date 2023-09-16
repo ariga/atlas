@@ -120,7 +120,12 @@ func (r *Runner) summary(ctx context.Context) error {
 	r.sum.WriteSchema(r.Dev, diff)
 
 	// Analyze files.
-	for _, f := range diff.Files {
+	return r.analyze(ctx, diff.Files)
+}
+
+// analyze runs the analysis on the given files.
+func (r *Runner) analyze(ctx context.Context, files []*sqlcheck.File) error {
+	for _, f := range files {
 		var (
 			es []string
 			nl = nolintRules(f)
@@ -196,6 +201,10 @@ var (
 	{{- end }}
 {{- end -}}
 `))
+	// JSONTemplate is the JSON template used by CI wrappers.
+	JSONTemplate = template.Must(template.New("json").
+			Funcs(TemplateFuncs).
+			Parse("{{ json . }}"))
 )
 
 type (

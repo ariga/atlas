@@ -208,7 +208,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 	// Clean up after ourselves.
 	snap, ok := d.Dev.Driver.(migrate.Snapshoter)
 	if !ok {
-		return nil, errors.New("driver does not implement migrate.Snapshoter")
+		return nil, migrate.ErrSnapshotUnsupported
 	}
 	restore, err := snap.Snapshot(ctx)
 	if err != nil {
@@ -219,26 +219,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 			err = errors.Join(err, fmt.Errorf("restore dev-database snapshot: %w", err2))
 		}
 	}()
-	// Bring the dev environment to the base point. Skip to the first checkpoint, if there is one,
-	// assuming the history is replay-able before that point as this was tested in previous runs.
-	if i := migrate.FilesLastIndex(base, func(f migrate.File) bool {
-		ck, ok := f.(migrate.CheckpointFile)
-		return ok && ck.IsCheckpoint()
-	}); i != -1 {
-		base = base[i:]
-	}
-	for _, f := range base {
-		stmt, err := f.StmtDecls()
-		if err != nil {
-			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
-		}
-		for _, s := range stmt {
-			if _, err := d.Dev.ExecContext(ctx, s.Text); err != nil {
-				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err), Pos: s.Pos}
-			}
-		}
-	}
-	current, err := d.inspect(ctx)
+	current, err := d.base(ctx, base)
 	if err != nil {
 		return nil, err
 	}
@@ -277,6 +258,29 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 		}
 	}
 	return diff, nil
+}
+
+// base brings the dev environment to the base point and returns its state. It skips to the first checkpoint,
+// if there is one, assuming the history is replay-able before that point as this was tested in previous runs.
+func (d *DevLoader) base(ctx context.Context, base []migrate.File) (*schema.Realm, error) {
+	if i := migrate.FilesLastIndex(base, func(f migrate.File) bool {
+		ck, ok := f.(migrate.CheckpointFile)
+		return ok && ck.IsCheckpoint()
+	}); i != -1 {
+		base = base[i:]
+	}
+	for _, f := range base {
+		stmt, err := f.StmtDecls()
+		if err != nil {
+			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
+		}
+		for _, s := range stmt {
+			if _, err := d.Dev.ExecContext(ctx, s.Text); err != nil {
+				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err), Pos: s.Pos}
+			}
+		}
+	}
+	return d.inspect(ctx)
 }
 
 // next returns the next state of the database after executing the statements in
