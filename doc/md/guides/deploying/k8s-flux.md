@@ -7,11 +7,15 @@ slug: /guides/deploying/k8s-flux
 [GitOps](https://www.gitops.tech/) is a software development and deployment methodology that uses Git as the central repository
 for both code and infrastructure configurations, enabling automated and auditable deployments.
 
-[FluxCD](https://fluxcd.io/) is a Continuous Delivery tool that implements GitOps principles. It uses a declarative approach to keep Kubernetes clusters in sync with sources of configuration (like Git repositories), and automating updates to configuration when there is new code to deploy.
+[FluxCD](https://fluxcd.io/) is a Continuous Delivery tool that implements GitOps principles. It uses a declarative approach
+to keep Kubernetes clusters in sync with sources of configuration (like Git repositories), and automating 
+updates to configuration when there is new code to deploy.
 
-[Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) are software extensions to Kubernetes that enable the automation and management of complex, application-specific operational tasks and domain-specific knowledge within a Kubernetes cluster.
+[Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) are software extensions to Kubernetes that enable the automation and management 
+of complex, application-specific operational tasks and domain-specific knowledge within a Kubernetes cluster.
 
-In this guide, we will demonstrate how to use the [Atlas Kubernetes Operator](/integrations/kubernetes/operator) and Flux CD to achieve a GitOps-based deployment workflow for your database schema.
+In this guide, we will demonstrate how to use the [Atlas Kubernetes Operator](/integrations/kubernetes/operator) and Flux CD to achieve a 
+GitOps-based deployment workflow for your database schema.
 
 ## Pre-requisites
 
@@ -23,7 +27,8 @@ In this guide, we will demonstrate how to use the [Atlas Kubernetes Operator](/i
 
 ## High-level architecture
 
-Before we dive into the details of the deployment flow, let’s take a look at the high-level architecture of our application.
+Before we dive into the details of the deployment flow, let’s take a look at the high-level 
+architecture of our application.
 
 ![Application Architecture](https://atlasgo.io/uploads/k8s/argocd/app-diagram.png)
 
@@ -31,36 +36,53 @@ On a high level, our application consists of the following components:
 
 1. A backend application - in our example we will use a plain NGINX server
    as a placeholder for a real backend application.
-2.  A database - in our example we will use a MySQL pod for the database. In a more realistic scenario, you might want to use a managed database service like AWS RDS or GCP Cloud SQL.
+2.  A database - in our example we will use a MySQL pod for the database. In a more realistic scenario,
+    you might want to use a managed database service like AWS RDS or GCP Cloud SQL.
 3. An `AtlasSchema`  Custom Resource that defines the database schema and is managed by the Atlas Operator.
 
-In our application architecture, we have a database that is connected to our application and managed using Atlas CR (Custom Resource). The database plays a crucial role in storing and retrieving data for the application, while the Atlas CR provides seamless integration and management of the database schema within our Kubernetes environment.
+In our application architecture, we have a database that is connected to our application and managed 
+using Atlas CR (Custom Resource). The database plays a crucial role in storing and retrieving
+data for the application, while the Atlas CR provides seamless integration and management of the 
+database schema within our Kubernetes environment.
 
-## How should you run schema changes in a Flux CD deployment? 
+## Incorporating schema changes into a GitOps flow 
+
+### Databases should be migrated before the application is deployed
 
 Integrating GitOps practices with a database in our application stack poses a unique challenge. 
 
-Flux CD provides a declarative approach to GitOps, allowing us to define a Flux CD application and seamlessly handle the synchronization process. By pushing changes to the database schema or application code to the Git repository, Flux CD automatically syncs those changes to the Kubernetes cluster.
+Flux CD provides a declarative approach to GitOps, allowing us to define a Flux CD application and
+seamlessly handle the synchronization process. By pushing changes to the database schema or application
+code to the Git repository, Flux CD automatically syncs those changes to the Kubernetes cluster.
 
-However, as we discussed in the introduction, ensuring the proper order of deployments is critical. In our scenario, the database deployment must succeed before rolling out the application to ensure its functionality. If the database deployment encounters an issue, it is essential to address it before proceeding with the application deployment. 
+However, as we discussed in the introduction, ensuring the proper order of deployments is critical. 
+In our scenario, the database deployment must succeed before rolling out the application to ensure its
+functionality. If the database deployment encounters an issue, it is essential to address it before
+proceeding with the application deployment. 
 
-Flux CD provides a mechanism to orchestrate multiple deployments in a specific ordered sequence to ensure certain resources are healthy before subsequent resources are synced/reconciled.
+### Flux CD Dependencies 101
 
-By using `.spec.dependsOn`, you can define the apply order and thus determine the sequence of manifest applications. `.spec.dependsOn` is used to refer to other Kustomization objects that the Kustomization depends on. If specified, then the Kustomization is only applied after the referred Kustomizations are ready, i.e. have the `Ready` condition marked as `True`. The readiness state of a Kustomization is determined by its last applied status condition.
+Flux CD supports [Dependencies](https://fluxcd.io/flux/components/kustomize/kustomizations/#dependencies),
+via `.spec.dependsOn`, a mechanism to orchestrate multiple deployments in a specific ordered sequence to ensure certain resources 
+are healthy before subsequent resources are synced/reconciled.
 
-For example, assuming we have a scenario where the apps have the dependency:
+By using `.spec.dependsOn`, you can define the apply order and thus determine the sequence of manifest
+applications. `.spec.dependsOn` is used to refer to other Kustomization objects that the Kustomization 
+depends on. If specified, then the Kustomization is only applied after the referred Kustomizations 
+are ready, i.e. have the `Ready` condition marked as `True`. The readiness state of a Kustomization
+is determined by its last applied status condition.
 
-`MySQL service → Nginx Service`
-
-If the `Nginx` service starts without the `MySQL` pod being ready, it will not be able to read requested data in the `MySQL` database.
-You can instruct the controller to apply the `Nginx` Kustomization before backend by defining a `dependsOn` relationship between the two:
+For example, assuming we have a scenario where our application is comprised of two services, a `backend` 
+service and a `database` service. The `backend` service depends on the `database` service, and we want
+to ensure that the `database` service is ready before the `backend` service is applied. We can codify this
+dependency in the following way:
 
 ```yaml
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: mysql
+  name: database
   namespace: flux-system
 spec:
   interval: 5m
@@ -69,20 +91,24 @@ spec:
   sourceRef:
   kind: GitRepository
   name: flux-system
+  // highlight-start
   healthChecks:
   - apiVersion: apps/v1
     kind: Deployment
     name: mysql
     namespace: default
+  // highlight-end
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: nginx
+  name: backend
   namespace: flux-system
 spec:
+  // highlight-start
   dependsOn:
   - name: mysql
+  // highlight-end
   interval: 5m
   path: "./kustomize"
   prune: true
@@ -91,15 +117,16 @@ spec:
   name: flux-system
 ```
 
-`.spec.healthChecks` in this manifest is used to refer to resources for which the Flux controller will perform health checks. This is used to determine the rollout status of deployed workloads and the `Ready` status of custom resources.
+`.spec.healthChecks` in this manifest is used to refer to resources for which the Flux
+controller will perform health checks. This is used to determine the rollout status of
+deployed workloads and the `Ready` status of custom resources.
 
-This is helpful when there is a need to make sure other resources exist before the workloads defined in a Kustomization are deployed. To ensure that database resources are created and applied before our application, we will utilize Flux CD `dependsOn` and `health checks` feature.
+This is helpful when there is a need to make sure other resources exist before the workloads
+defined in a Kustomization are deployed. To ensure that database resources are created and applied 
+before our application, we will utilize Flux CD `dependsOn` and `health checks` feature.
 
-The diagram shows our application dependency graph:
-
-![Application Architecture](https://github.com/jmushiri/atlas/blob/flux-cd/doc/md/guides/deploying/dependencies.png)
-
-With the theoretical background out of the way, let’s take a look at a practical example of how to deploy an application with Flux CD and the Atlas Operator.
+With the theoretical background out of the way, let’s take a look at a practical example of how 
+to deploy an application with Flux CD and the Atlas Operator.
 
 ## Installation
 
@@ -140,13 +167,13 @@ pod/atlas-operator-866dfbc56d-qkkkn condition met
 
 The flux command-line interface (CLI) is used to bootstrap and interact with Flux.
 
-To install the CLI with [bash] (https://www.gnu.org/software/bash/) for macOS or Linux, run:
+To install it on  macOS or Linux, run:
 
 ```bash
-curl -s https://fluxcd.io/install.sh | sudo bash
+curl -s https://fluxcd.io/install.sh | sh
 ```
 
-To install the CLI with [Chocolatey] (https://chocolatey.org/) for Windows, run:
+To install the CLI with [Chocolatey](https://chocolatey.org/) for Windows, run:
 
 ```bash
 choco install flux
@@ -196,7 +223,7 @@ Run the bootstrap command:
 ```bash
 flux bootstrap github \
   --owner=$GITHUB_USER \
-  --repository=flux-infrastucture \
+  --repository=flux-infrastructure \
   --branch=main \
   --path=./clusters/dev \
   --personal
@@ -225,7 +252,8 @@ deployment "notification-controller" successfully rolled out
 ✔ bootstrap finished
 ```
 
-Using the flux bootstrap command you can install Flux on a Kubernetes cluster and configure it to manage itself from a Git repository. The bootstrap command above does the following:
+Using the flux bootstrap command you can install Flux on a Kubernetes cluster and configure it to manage itself 
+from a Git repository. The bootstrap command above does the following:
 
 - Creates a git repository flux-infrastructure on your GitHub account.
 - Adds Flux component manifests to the repository.
@@ -234,42 +262,48 @@ Using the flux bootstrap command you can install Flux on a Kubernetes cluster an
 
 ## Deploy the Sample Application on your Cluster
 
-In this example, we’re using the `jmushiri/atlas-flux-demo` repository, which contains all of the Kubernetes manifests necessary to deploy our application.
+In this example, we're using the `jmushiri/atlas-flux-demo` repository, which contains all of the
+Kubernetes manifests necessary to deploy our application.
 
 ### 1. Fork the Sample Application
 
-To get started, you need to fork and then clone the sample application repository to your local machine. Open your web browser and go to the sample application repository on GitHub:
-https://github.com/jmushiri/atlas-flux-demo
-Click on the `"Fork"` button in the top-right corner of the GitHub page. This will create a copy of the repository under your GitHub account.
+To get started, you need to fork and then clone the sample application repository to your local machine.
+1. Open your web browser and go to the [rotemtam/atlas-operator-flux-demo](https://github.com/jmushiri/atlas-flux-demo)
+   repo on GitHub.
+2. Click on the `"Fork"` button in the top-right corner of the GitHub page. This will create a copy
+   of the repository under your GitHub account.
  
 ### 2. Clone the Sample Application
 
-Once the forking process is complete, you will be redirected to your own forked repository. Open your terminal or command prompt and run the following command to clone the forked repository to your local machine:
-git clone https://github.com/$GITHUB_USER/atlas-flux-demo.git
+Once the forking process is complete, you will be redirected to your own forked repository. Open your terminal 
+or command prompt and run the following command to clone the forked repository to your local machine:
 
-### 3. Deploy the Sample Application
-
-Navigate into the cloned repository by running the following command:
-
-```bash
-cd atlas-flux-demo
+```shell
+git clone https://github.com/$GITHUB_USER/atlas-operator-flux-demo.git
 ```
 
-Deploy the application:
+Observe this repository's structure:
 
-```bash
-kubectl apply -k kustomize
+```text
+.
+├── LICENSE
+├── README.md
+└── kustomize
+    ├── app.yaml
+    ├── db.yaml
+    ├── kustomization.yaml
+    └── schema.yaml
 ```
 
-The output is similar to:
+* `kustomize/app.yaml` - contains the `Kustomization` manifest for the application, in our case, a dummy
+   nginx server.
+* `kustomize/db.yaml` - contains the `Kustomization` manifest for the database, in our case, a MySQL pod, a service
+   that exposes it, and a secret that contains the database credentials.
+* `kustomize/schema.yaml` - contains the `AtlasSchema` manifest that defines the database schema.
+* `kustomize/kustomization.yaml` - contains the `Kustomization` manifest that defines the different resources
+   that are managed by this `Kustomization`.
 
-```bash
-service/mysql created
-deployment.apps/mysql created
-deployment.apps/nginx created
-```
-
-### 4. Clone the git Repository
+### 3. Clone the Infra Repository
 
 Clone the `flux-infrastructure` repository to your local machine:
  
@@ -279,12 +313,12 @@ git clone https://github.com/$GITHUB_USER/flux-infrastructure
 cd flux-infrastructure
 ```
 
-### 5. Add the Repository (atlas-flux-demo repository) to Flux
+### 4. Add the Repository (atlas-flux-demo repository) to Flux
  
 Create a GitRepository manifest pointing to `atlas-flux-demo` repository’s main branch:
 
 ```bash
-flux create source git atlas-flux-demo --url=https://github.com/jmushiri/atlas-flux-demo --branch=main --interval=30s --export > ./clusters/dev/atlas-flux-demo-source.yaml
+flux create source git atlas-operator-flux-demo --url=https://github.com/$GITHUB_USER/atlas-operator-flux-demo --branch=main --interval=30s --export > ./clusters/dev/atlas-operator-flux-demo-source.yaml
 ```
 
 The output is similar to:
@@ -293,13 +327,13 @@ The output is similar to:
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
-  name: atlas-flux-demo
+  name: atlas-operator-flux-demo
   namespace: flux-system
 spec:
   interval: 30s
   ref:
     branch: main
-  url: https://github.com/$GITHUB_USER/atlas-flux-demo
+  url: https://github.com/$GITHUB_USER/atlas-operator-flux-demo
 ```
 
 Commit and push the `atlas-flux-demo-source.yaml` file to the `flux-infrastructure` repository:
@@ -312,18 +346,18 @@ git push
 
 ## Implement a Continuous Deployment (CD) Flow
 
-It's time to configure Flux to build and apply the kustomize directory located in the `atlas-flux-demo` repository.
+It's time to configure Flux to build and apply the kustomize directory located in the `atlas-operator-flux-demo` repository.
  
-Use the `flux create` command to create a `Kustomization` that applies the `atlas-flux-demo` deployment.
+Use the `flux create` command to create a `Kustomization` that applies the `atlas-operator-flux-demo` deployment.
 
 ```bash
 flux create kustomization atlas-flux-demo \
   --target-namespace=default \
-  --source=atlas-flux-demo \
+  --source=atlas-operator-flux-demo \
   --path="./kustomize" \
   --prune=true \
   --interval=5m \
-  --export > ./clusters/dev/atlas-flux-demo-kustomization.yaml
+  --export > ./clusters/dev/atlas-operator-flux-demo-kustomization.yaml
 ```
 
 The output is similar to:
@@ -340,11 +374,11 @@ spec:
   prune: true
   sourceRef:
     kind: GitRepository
-    name: atlas-flux-demo
+    name: atlas-operator-flux-demo
   targetNamespace: default
 ```
 
-The structure of the `flux-infrasture` repo should be similar to:
+The structure of the `flux-infrastructure` repo should be similar to:
 
 ```bash
 flux-infrastructure
@@ -360,9 +394,10 @@ flux-infrastructure
 
 ## Implement the Deployment Flow
 
-To implement the deployment flow in a specific ordered sequence, we will use Flux CD’s `.spec.dependsOn` and `.spec.healthChecks` feature.
+To implement the deployment flow in a specific ordered sequence, we will use Flux CD’s `.spec.dependsOn`
+and `.spec.healthChecks` features.
 
-Edit the `atlas-flux-demo-kustomization.yaml` file as follows:
+Edit the `atlas-operator-flux-demo-kustomization.yaml` file as follows:
 
 ```yaml
 ---
@@ -377,29 +412,40 @@ spec:
   prune: true
   sourceRef:
     kind: GitRepository
-    name: atlas-flux-demo
+    name: atlas-operator-flux-demo
   targetNamespace: default
+  // highlight-start
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment
       name: mysql
       namespace: default
+  // highlight-end
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: myapp
+  name: app-schema
   namespace: flux-system
 spec:
+  // highlight-start
   dependsOn:
     - name: mysql
+  // highlight-end
   interval: 30s
   path: ./kustomize
   prune: true
   sourceRef:
     kind: GitRepository
-    name: atlas-flux-demo
+    name: atlas-operator-flux-demo
   targetNamespace: default
+  // highlight-start
+  healthChecks:
+    - apiVersion: db.atlasgo.io/v1alpha1
+      kind: AtlasSchema
+      name: app-schema
+      namespace: default
+  // highlight-end
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -407,21 +453,29 @@ metadata:
   name: nginx
   namespace: flux-system
 spec:
+  // highlight-start
   dependsOn:
-    - name: myapp
+    - name: app-schema
+  // highlight-end
   interval: 30s
   path: ./kustomize
   prune: true
   sourceRef:
     kind: GitRepository
-    name: atlas-flux-demo
+    name: atlas-operator-flux-demo
   targetNamespace: default
-  healthChecks:
-    - apiVersion: db.atlasgo.io/v1alpha1
-      kind: AtlasSchema
-      name: myapp
-      namespace: default
 ```
+
+Notice the highlighted sections in the manifest above: 
+* We define health checks for the `mysql` deployment and the `app-schema` Atlas CR. This instructs Flux CD
+  explicitly when to consider each of these resources as ready.
+* We declare the dependency of the `app-schema` Atlas CR on the `mysql` deployment. This ensures that the
+  `mysql` deployment is ready before the `app-schema` Atlas CR is applied. In addition, we declare the dependency
+  of the `nginx` deployment on the `app-schema` Atlas CR. This ensures that the `app-schema` Atlas CR is ready
+  before the `nginx` deployment is applied.
+
+Together, these declarations achieve our requirement of ensuring that the database schema is applied before
+the application is deployed.  
 
 Commit and push the `Kustomization` manifest to the repository:
 
@@ -439,22 +493,81 @@ Use the `flux get` command to watch the deployment flow.
 flux get kustomizations --watch  
 ```
 
-This command allows you to fetch and observe the status of `Kustomize` resources managed by Flux in your Kubernetes cluster, with real-time updates as changes are made.
+This command allows you to fetch and observe the status of `Kustomize` resources managed by Flux in your
+Kubernetes cluster, with real-time updates as changes are made.
 
-To check whether the schema migrations have been successfully applied, you can follow these steps:
-
-1. Identify the name of the `MySQL` pod using the following command:
-
-```bash
-kubectl get pods -n default 
-```
-
-Run a command inside the `MySQL` pod to describe the columns of the `users` table. Using the following command:
+To check whether the schema migrations have been successfully applied, run:
 
 ```bash
-kubectl exec -it -n default <pod name> -- mysql -u root -ppass -e "USE example; DESCRIBE users;"
+kubectl exec -it $(kubectl get pods -l app=mysql -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -ppass -e "describe example.users"
 ```
+
+Our schema migrations have been successfully applied:
+
+```text
++-----------+--------------+------+-----+---------+----------------+
+| Field     | Type         | Null | Key | Default | Extra          |
++-----------+--------------+------+-----+---------+----------------+
+| id        | int          | NO   | PRI | NULL    | auto_increment |
+| name      | varchar(255) | NO   |     | NULL    |                |
+| email     | varchar(255) | NO   | UNI | NULL    |                |
+| short_bio | varchar(255) | NO   |     | NULL    |                |
++-----------+--------------+------+-----+---------+----------------+
+```
+
+### Make a change to the Application Database Schema
+
+To show how the continuous deployment flow works, let's make a change to the database schema.
+
+Open the `kustomize/schema.yaml` file and add the a column to the `users` table in the `AtlasSchema` manifest:
+
+```yaml
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasSchema
+metadata:
+  name: app-schema
+spec:
+  url: mysql://root:pass@mysql:3306/example
+  schema:
+    sql: |
+      create table users (
+        id int not null auto_increment,
+        name varchar(255) not null,
+        email varchar(255) unique not null,
+        short_bio varchar(255) not null,
+        // highlight-next-line
+        new_col varchar(255) not null,
+        primary key (id)
+      );
+```
+
+Commit and push the change to the repository:
+
+```bash
+git add kustomize/schema.yaml
+git commit -m "Add new column to users table"
+git push
+```
+
+Next, let's wait for Flux to sync the changes, and check our schema migrations have been successfully applied:
+
+```text
++-----------+--------------+------+-----+---------+----------------+
+| Field     | Type         | Null | Key | Default | Extra          |
++-----------+--------------+------+-----+---------+----------------+
+| id        | int          | NO   | PRI | NULL    | auto_increment |
+| name      | varchar(255) | NO   |     | NULL    |                |
+| email     | varchar(255) | NO   | UNI | NULL    |                |
+// highlight-next-line
+| short_bio | varchar(255) | NO   |     | NULL    |                |
+| new_col   | varchar(255) | NO   |     | NULL    |                |
++-----------+--------------+------+-----+---------+----------------+
+```
+Amazing, our schema migrations have been successfully applied!
 
 ## Conclusion
 
-In this guide, we demonstrated how to use Flux CD to deploy an application that uses the Atlas Operator to manage the lifecycle of the database schema. We also showed how to use Flux dependency management to ensure that the schema changes were successfully applied before deploying the application.
+In this guide, we demonstrated how to use Flux CD to deploy an application that uses the
+Atlas Operator to manage the lifecycle of the database schema. We also showed how to use Flux
+dependency management to ensure that the schema changes were successfully applied before 
+deploying the application.

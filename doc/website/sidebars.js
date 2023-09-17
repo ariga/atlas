@@ -175,7 +175,12 @@ module.exports = {
                 {
                     type: 'doc',
                     id: 'guides/deploying/k8s-argo',
-                    label: 'Kubernetes (ArgoCD)'
+                    label: 'Kubernetes (Argo CD)'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/k8s-flux',
+                    label: 'Kubernetes (Flux CD)'
                 },
                 {
                     type: 'doc',
