@@ -34,8 +34,7 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	if opts == nil {
 		opts = &schema.InspectRealmOption{}
 	}
-	r := schema.NewRealm(schemas...).SetCollation(i.collate)
-	r.Attrs = append(r.Attrs, &CType{V: i.ctype})
+	r := schema.NewRealm(schemas...)
 	if len(schemas) > 0 {
 		mode := sqlx.ModeInspectRealm(opts)
 		if mode.Is(schema.InspectTables) {
@@ -72,8 +71,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	if opts == nil {
 		opts = &schema.InspectOptions{}
 	}
-	r := schema.NewRealm(schemas...).SetCollation(i.collate)
-	r.Attrs = append(r.Attrs, &CType{V: i.ctype})
+	r := schema.NewRealm(schemas...)
 	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
 		if err := i.inspectTables(ctx, r, opts); err != nil {
 			return nil, err
@@ -702,12 +700,6 @@ func canConvert(t *schema.ColumnType, x string) (string, bool) {
 }
 
 type (
-	// CType describes the character classification setting (LC_CTYPE).
-	CType struct {
-		schema.Attr
-		V string
-	}
-
 	// UserDefinedType defines a user-defined type attribute.
 	UserDefinedType struct {
 		schema.Type
@@ -1161,7 +1153,7 @@ func newEnumType(t string, id int64) *enumType {
 
 const (
 	// Query to list runtime parameters.
-	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('lc_collate', 'lc_ctype', 'server_version_num', 'crdb_version') ORDER BY name DESC`
+	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('server_version_num', 'crdb_version') ORDER BY name DESC`
 
 	// Query to list database schemas.
 	schemasQuery = `

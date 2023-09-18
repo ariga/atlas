@@ -36,8 +36,6 @@ type (
 		// The schema in the `search_path` parameter (if given).
 		schema string
 		// System variables that are set on `Open`.
-		collate string
-		ctype   string
 		version int
 		crdb    bool
 	}
@@ -95,10 +93,9 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("postgres: failed scanning rows: %w", err)
 	}
-	if len(params) != 3 && len(params) != 4 {
+	if len(params) != 1 && len(params) != 2 {
 		return nil, fmt.Errorf("postgres: unexpected number of rows: %d", len(params))
 	}
-	c.ctype, c.collate = params[1], params[2]
 	if c.version, err = strconv.Atoi(params[0]); err != nil {
 		return nil, fmt.Errorf("postgres: malformed version: %s: %w", params[0], err)
 	}
@@ -106,7 +103,7 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		return nil, fmt.Errorf("postgres: unsupported postgres version: %d", c.version)
 	}
 	// Means we are connected to CockroachDB because we have a result for name='crdb_version'. see `paramsQuery`.
-	if c.crdb = len(params) == 4; c.crdb {
+	if c.crdb = len(params) == 2; c.crdb {
 		return noLockDriver{
 			&Driver{
 				conn:        c,

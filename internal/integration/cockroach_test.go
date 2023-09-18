@@ -897,10 +897,6 @@ func (t *crdbTest) realm() *schema.Realm {
 				Name: "public",
 			},
 		},
-		Attrs: []schema.Attr{
-			&schema.Collation{V: "C.UTF-8"},
-			&postgres.CType{V: "C.UTF-8"},
-		},
 	}
 	r.Schemas[0].Realm = r
 	return r
