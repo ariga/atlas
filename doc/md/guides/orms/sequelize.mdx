@@ -1,0 +1,251 @@
+---
+id: sequelize
+title: Automatic migration planning for Sequelize
+slug: /guides/orms/sequelize
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## TL;DR
+* [Sequelize](https://sequelize.org/) is an ORM library that's widely used in the Node.js community.
+* [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, linting and
+  executing schema changes to your database.
+* Developers using Sequelize can use Atlas to automatically plan schema migrations
+  for them, based on the desired state of their schema instead of crafting them by hand.
+
+## Automatic migration planning for Sequelize
+Sequelize is a popular ORM widely used in the Node.js community. Sequelize allows users to
+manage their database schemas using its [sync](https://sequelize.org/docs/v6/core-concepts/model-basics/#model-synchronization/) feature,
+which is usually sufficient during development and in many simple cases.
+
+An alternative to `sync` is to use [migrations](https://sequelize.org/master/manual/migrations.html),
+which is a more robust way to manage your database schema.
+
+The problem with [creating migrations](https://sequelize.org/docs/v6/other-topics/migrations/#creating-the-first-model-and-migration)
+in Sequelize is that they are usually written by hand, which is error-prone and
+time-consuming. In addition, it's easy to make mistakes when writing migrations, which can lead to
+downtime and data loss.
+
+Atlas can automatically plan database schema migrations for developers using Sequelize.
+Atlas plans migrations by calculating the diff between the _current_ state of the database,
+and its _desired_ state.
+
+In the context of [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) , the current state can be thought of as the database schema that would have
+been created by applying all previous migration scripts.
+
+The desired schema of your application can be provided to Atlas via an [External Schema Datasource](/atlas-schema/projects#data-source-external_schema)
+which is any program that can output a SQL schema definition to stdout.
+
+To use Atlas with Sequelize, users can utilize the [Sequelize Atlas Provider](https://github.com/ariga/atlas-provider-sequelize),
+a small program that can be used to load the schema of a Sequelize project into Atlas.
+
+In this guide, we will show how Atlas can be used to automatically plan schema migrations for
+Sequelize users.
+
+## Prerequisites
+
+* A local [sequelize](https://github.com/sequelize/sequelize) project.
+
+If you don't have a Sequelize project handy, you can use [sequelize/express-example](https://github.com/sequelize/express-example)
+as a starting point:
+
+```
+git clone git@github.com:sequelize/express-example.git
+```
+
+## Using the Atlas Sequelize Provider
+In this guide, we will use the [Sequelize Atlas Provider](https://github.com/ariga/atlas-provider-sequelize)
+to automatically plan schema migrations for a Sequelize project.
+
+### Installation
+
+Install Atlas from macOS or Linux by running:
+```bash
+curl -sSf https://atlasgo.sh | sh
+```
+See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more installation options.
+
+Make sure all you dependencies are installed by running:
+```bash
+npm install
+```
+
+Install the provider by running:
+
+<Tabs>
+<TabItem value="js" label="JavaScript" default>
+
+```bash
+npm install @ariga/atlas-provider-sequelize
+```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+
+```bash
+npm install @ariga/ts-atlas-provider-sequelize
+```
+</TabItem>
+</Tabs>
+
+### Standalone vs Script mode
+
+The Atlas Sequelize Provider can be used in two modes:
+* **Standalone** - If all of your Sequelize models exist in single directory, you can use the
+  provider to load the schema of your Sequelize project into Atlas.
+* **Script** - In other cases, can use the provider as a library in your own program to load the
+  schema of your Sequelize project into Atlas.
+
+### Standalone mode
+
+In your project directory, create a new file named `atlas.hcl` with the following contents:
+
+<Tabs>
+<TabItem value="js" label="JavaScript" default>
+
+```hcl
+data "external_schema" "sequelize" {
+    program = [
+        "npx",
+        "@ariga/ts-atlas-provider-sequelize",
+        "load",
+        "--path", "./path/to/models",
+        "--dialect", "mysql", // mariadb | postgres | sqlite | mssql
+    ]
+}
+
+env "sequelize" {
+    src = data.external_schema.sequelize.url
+    dev = "docker://mysql/8/dev"
+    migration {
+        dir = "file://migrations"
+    }
+    format {
+        migrate {
+            diff = "{{ sql . \"  \" }}"
+        }
+    }
+}
+```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+
+```hcl
+data "external_schema" "sequelize" {
+    program = [
+        "npx",
+        "@ariga/atlas-provider-sequelize",
+        "load",
+        "--path", "./path/to/models",
+        "--dialect", "mysql", // mariadb | postgres | sqlite | mssql
+    ]
+}
+
+env "sequelize" {
+    src = data.external_schema.sequelize.url
+    dev = "docker://mysql/8/dev"
+    migration {
+        dir = "file://migrations"
+    }
+    format {
+        migrate {
+            diff = "{{ sql . \"  \" }}"
+        }
+    }
+}
+```
+</TabItem>
+</Tabs>
+
+### Script mode
+
+<Tabs>
+<TabItem value="js" label="JavaScript" default>
+
+Create a new script file named `load.js` with the following contents:
+
+```js
+#!/usr/bin/env node
+
+const ingredient = require("./sequelize/models/instrument.model");
+const recipe = require("./sequelize/models/orchestra.model");
+const recipeIngredient = require("./sequelize/models/user.model");
+const loadModels = require("@ariga/atlas-provider-sequelize");
+
+console.log(loadModels("mysql", ingredient, recipe, recipeIngredient));
+```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+
+Create a new script file named `load.ts` with the following contents:
+
+```ts
+#!/usr/bin/env ts-node-script
+
+import Phone from "./models/Phone";
+import Email from "./models/Email";
+import Contact from "./models/Contact";
+import { loadModels } from "@ariga/ts-atlas-provider-sequelize/src/sequelize_schema";
+
+console.log(loadModels("mysql", [Phone, Email, Contact]));
+```
+</TabItem>
+</Tabs>
+
+Next, in your project directory, create a new file named `atlas.hcl` with the following contents:
+
+<Tabs>
+<TabItem value="js" label="JavaScript" default>
+
+```hcl
+data "external_schema" "sequelize" {
+    program = [
+        "node",
+        "load.js",
+        "mysql"
+    ]
+}
+
+env "sequelize" {
+    src = data.external_schema.sequelize.url
+    dev = "docker://mysql/8/dev"
+    migration {
+        dir = "file://migrations"
+    }
+    format {
+        migrate {
+            diff = "{{ sql . \"  \" }}"
+        }
+    }
+}
+```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+
+```hcl
+data "external_schema" "sequelize" {
+    program = [
+        "npx",
+        "ts-node",
+        "load.ts",
+        "mysql"
+    ]
+}
+
+env "sequelize" {
+    src = data.external_schema.sequelize.url
+    dev = "docker://mysql/8/dev"
+    migration {
+        dir = "file://migrations"
+    }
+    format {
+        migrate {
+            diff = "{{ sql . \"  \" }}"
+        }
+    }
+}
+```
+</TabItem>
+</Tabs>
+
+## Usage
