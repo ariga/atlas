@@ -431,12 +431,10 @@ func TestDriver_InspectCRDBSchema(t *testing.T) {
 	mk := mock{m}
 	mk.ExpectQuery(sqltest.Escape(paramsQuery)).
 		WillReturnRows(sqltest.Rows(`
-					setting
-				------------
-				130000
-				en_US.utf8
-				en_US.utf8
-				cockroach
+	setting
+------------
+130000
+cockroach
 				`))
 	drv, err := Open(db)
 	require.NoError(t, err)
@@ -527,15 +525,6 @@ func TestDriver_InspectSchema(t *testing.T) {
 			Schemas: []*schema.Schema{
 				schema.New("test").SetComment("boring"),
 			},
-			// Server default configuration.
-			Attrs: []schema.Attr{
-				&schema.Collation{
-					V: "en_US.utf8",
-				},
-				&CType{
-					V: "en_US.utf8",
-				},
-			},
 		}
 		r.Schemas[0].Realm = r
 		return r.Schemas[0]
@@ -575,15 +564,6 @@ func TestDriver_Realm(t *testing.T) {
 					Name: "public",
 				},
 			},
-			// Server default configuration.
-			Attrs: []schema.Attr{
-				&schema.Collation{
-					V: "en_US.utf8",
-				},
-				&CType{
-					V: "en_US.utf8",
-				},
-			},
 		}
 		r.Schemas[0].Realm = r
 		r.Schemas[1].Realm = r
@@ -618,15 +598,6 @@ func TestDriver_Realm(t *testing.T) {
 					Name: "public",
 				},
 			},
-			// Server default configuration.
-			Attrs: []schema.Attr{
-				&schema.Collation{
-					V: "en_US.utf8",
-				},
-				&CType{
-					V: "en_US.utf8",
-				},
-			},
 		}
 		r.Schemas[0].Realm = r
 		r.Schemas[1].Realm = r
@@ -654,15 +625,6 @@ func TestDriver_Realm(t *testing.T) {
 			Schemas: []*schema.Schema{
 				{
 					Name: "test",
-				},
-			},
-			// Server default configuration.
-			Attrs: []schema.Attr{
-				&schema.Collation{
-					V: "en_US.utf8",
-				},
-				&CType{
-					V: "en_US.utf8",
 				},
 			},
 		}
@@ -698,15 +660,6 @@ func TestInspectMode_InspectRealm(t *testing.T) {
 					Name: "public",
 				},
 			},
-			// Server default configuration.
-			Attrs: []schema.Attr{
-				&schema.Collation{
-					V: "en_US.utf8",
-				},
-				&CType{
-					V: "en_US.utf8",
-				},
-			},
 		}
 		r.Schemas[0].Realm = r
 		r.Schemas[1].Realm = r
@@ -737,8 +690,6 @@ func (m mock) version(version string) {
   setting
 ------------
  ` + version + `
- en_US.utf8
- en_US.utf8
 `))
 }
 

@@ -1611,10 +1611,6 @@ func (t *pgTest) realm() *schema.Realm {
 				},
 			},
 		},
-		Attrs: []schema.Attr{
-			&schema.Collation{V: "en_US.utf8"},
-			&postgres.CType{V: "en_US.utf8"},
-		},
 	}
 	r.Schemas[0].Realm = r
 	return r
