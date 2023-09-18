@@ -8,8 +8,8 @@ slug: /guides/deploying/k8s-flux
 for both code and infrastructure configurations, enabling automated and auditable deployments.
 
 [FluxCD](https://fluxcd.io/) is a Continuous Delivery tool that implements GitOps principles. It uses a declarative approach
-to keep Kubernetes clusters in sync with sources of configuration (like Git repositories), and automating 
-updates to configuration when there is new code to deploy.
+to keep Kubernetes clusters in sync with sources of configuration (like Git repositories), and automates 
+configuration updates when there is new code to deploy.
 
 [Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) are software extensions to Kubernetes that enable the automation and management 
 of complex, application-specific operational tasks and domain-specific knowledge within a Kubernetes cluster.
@@ -17,7 +17,7 @@ of complex, application-specific operational tasks and domain-specific knowledge
 In this guide, we will demonstrate how to use the [Atlas Kubernetes Operator](/integrations/kubernetes/operator) and Flux CD to achieve a 
 GitOps-based deployment workflow for your database schema.
 
-## Pre-requisites
+## Prerequisites
 
 * A running Kubernetes cluster  - For learning purposes, you can use 
  [Minikube](https://minikube.sigs.k8s.io/docs/start/), which is a tool that runs a single-node
@@ -52,18 +52,18 @@ database schema within our Kubernetes environment.
 Integrating GitOps practices with a database in our application stack poses a unique challenge. 
 
 Flux CD provides a declarative approach to GitOps, allowing us to define a Flux CD application and
-seamlessly handle the synchronization process. By pushing changes to the database schema or application
+effortlessly handle the synchronization process. When pushing changes to the database schema or application
 code to the Git repository, Flux CD automatically syncs those changes to the Kubernetes cluster.
 
 However, as we discussed in the introduction, ensuring the proper order of deployments is critical. 
-In our scenario, the database deployment must succeed before rolling out the application to ensure its
+In our scenario, the database deployment must succeed before rolling out the application to guarantee its
 functionality. If the database deployment encounters an issue, it is essential to address it before
 proceeding with the application deployment. 
 
 ### Flux CD Dependencies 101
 
 Flux CD supports [Dependencies](https://fluxcd.io/flux/components/kustomize/kustomizations/#dependencies),
-via `.spec.dependsOn`, a mechanism to orchestrate multiple deployments in a specific ordered sequence to ensure certain resources 
+via `.spec.dependsOn`, a mechanism used to orchestrate multiple deployments in a specific ordered sequence to ensure certain resources 
 are healthy before subsequent resources are synced/reconciled.
 
 By using `.spec.dependsOn`, you can define the apply order and thus determine the sequence of manifest
@@ -72,7 +72,7 @@ depends on. If specified, then the Kustomization is only applied after the refer
 are ready, i.e. have the `Ready` condition marked as `True`. The readiness state of a Kustomization
 is determined by its last applied status condition.
 
-For example, assuming we have a scenario where our application is comprised of two services, a `backend` 
+For example, let's assume we have a scenario where our application is comprised of two services, a `backend` 
 service and a `database` service. The `backend` service depends on the `database` service, and we want
 to ensure that the `database` service is ready before the `backend` service is applied. We can codify this
 dependency in the following way:
@@ -117,7 +117,7 @@ spec:
   name: flux-system
 ```
 
-`.spec.healthChecks` in this manifest is used to refer to resources for which the Flux
+In this manifest, `.spec.healthChecks` is used to refer to resources for which the Flux
 controller will perform health checks. This is used to determine the rollout status of
 deployed workloads and the `Ready` status of custom resources.
 
@@ -252,7 +252,7 @@ deployment "notification-controller" successfully rolled out
 ✔ bootstrap finished
 ```
 
-Using the flux bootstrap command you can install Flux on a Kubernetes cluster and configure it to manage itself 
+Using the flux bootstrap command, you can install Flux on a Kubernetes cluster and configure it to manage itself 
 from a Git repository. The bootstrap command above does the following:
 
 - Creates a git repository flux-infrastructure on your GitHub account.
@@ -519,7 +519,7 @@ Our schema migrations have been successfully applied:
 
 To show how the continuous deployment flow works, let's make a change to the database schema.
 
-Open the `kustomize/schema.yaml` file and add the a column to the `users` table in the `AtlasSchema` manifest:
+Open the `kustomize/schema.yaml` file and add a column to the `users` table in the `AtlasSchema` manifest:
 
 ```yaml
 apiVersion: db.atlasgo.io/v1alpha1
@@ -549,7 +549,7 @@ git commit -m "Add new column to users table"
 git push
 ```
 
-Next, let's wait for Flux to sync the changes, and check our schema migrations have been successfully applied:
+Next, let's wait for Flux to sync the changes, and check that our schema migrations have been successfully applied:
 
 ```text
 +-----------+--------------+------+-----+---------+----------------+
@@ -568,6 +568,6 @@ Amazing, our schema migrations have been successfully applied!
 ## Conclusion
 
 In this guide, we demonstrated how to use Flux CD to deploy an application that uses the
-Atlas Operator to manage the lifecycle of the database schema. We also showed how to use Flux
+Atlas Operator to manage the lifecycle of a database schema. We also showed how to use Flux
 dependency management to ensure that the schema changes were successfully applied before 
 deploying the application.
