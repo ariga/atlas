@@ -15,8 +15,6 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migratelint"
-	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 
@@ -113,14 +111,9 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 	return err
 }
 
-func promptApply(cmd *cobra.Command,
-	changes []schema.Change,
-	flags schemaApplyFlags,
-	apply func(context.Context, []schema.Change, ...migrate.PlanOption) error,
-	_ *sqlclient.Client,
-) error {
+func promptApply(cmd *cobra.Command, flags schemaApplyFlags, diff *diff, client, _ *sqlclient.Client) error {
 	if !flags.dryRun && (flags.autoApprove || promptUser(cmd)) {
-		return apply(cmd.Context(), changes)
+		return applyChanges(cmd.Context(), client, diff.changes, flags.txMode)
 	}
 	return nil
 }

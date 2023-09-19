@@ -167,22 +167,6 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 	if !ok {
 		return errors.New("--url must be a database connection")
 	}
-	apply := client.ApplyChanges
-	if !flags.dryRun && flags.txMode == txModeFile {
-		apply = func(ctx context.Context, cs []schema.Change, _ ...migrate.PlanOption) error {
-			tx, err := client.Tx(ctx, nil)
-			if err != nil {
-				return err
-			}
-			if err := tx.ApplyChanges(ctx, cs); err != nil {
-				// Rollback on error but the underlying error
-				// is still returned to make type-assertion pass.
-				_ = tx.Rollback()
-				return err
-			}
-			return tx.Commit()
-		}
-	}
 	to, err := stateReader(ctx, &stateReaderConfig{
 		urls:    flags.toURLs,
 		dev:     dev,
@@ -199,11 +183,10 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 	if err != nil {
 		return err
 	}
-	changes := diff.changes
 	// Returning at this stage should
 	// not trigger the help message.
 	cmd.SilenceUsage = true
-	switch {
+	switch changes := diff.changes; {
 	case len(changes) == 0:
 		return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaApply{})
 	case flags.logFormat != "" && flags.autoApprove:
@@ -216,7 +199,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		if plan, err = client.PlanChanges(ctx, "", changes); err != nil {
 			return err
 		}
-		if err = apply(ctx, changes); err == nil {
+		if err = applyChanges(ctx, client, changes, flags.txMode); err == nil {
 			applied = len(plan.Changes)
 		} else if i, ok := err.(interface{ Applied() int }); ok && i.Applied() < len(plan.Changes) {
 			applied, cause = i.Applied(), &cmdlog.StmtError{Stmt: plan.Changes[i.Applied()].Cmd, Text: err.Error()}
@@ -226,11 +209,34 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		err1 := format.Execute(out, cmdlog.NewSchemaApply(cmdlog.NewEnv(client, nil), plan.Changes[:applied], plan.Changes[applied:], cause))
 		return errors.Join(err, err1)
 	default:
-		if err := summary(cmd, client, changes, format); err != nil {
+		switch err := summary(cmd, client, changes, format); {
+		case err != nil:
 			return err
+		case flags.dryRun:
+			return nil
+		case flags.autoApprove:
+			return applyChanges(ctx, client, changes, flags.txMode)
+		default:
+			return promptApply(cmd, flags, diff, client, dev)
 		}
-		return promptApply(cmd, changes, flags, apply, client)
 	}
+}
+
+func applyChanges(ctx context.Context, client *sqlclient.Client, changes []schema.Change, txMode string) error {
+	if txMode == txModeNone {
+		return client.ApplyChanges(ctx, changes)
+	}
+	tx, err := client.Tx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	if err := tx.ApplyChanges(ctx, changes); err != nil {
+		// Rollback on error but the underlying error is still
+		// returned to make type-assertion in schemaApplyRun pass.
+		_ = tx.Rollback()
+		return err
+	}
+	return tx.Commit()
 }
 
 type schemeCleanFlags struct {
