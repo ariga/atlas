@@ -30,8 +30,9 @@ Atlas can automatically plan database schema migrations for developers using Seq
 Atlas plans migrations by calculating the diff between the _current_ state of the database,
 and its _desired_ state.
 
-In the context of [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations), the current state can be thought of as the database schema that would have
-been created by applying all previous migration scripts.
+In the context of [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations),
+the current state can be thought of as the database schema that would have been created by applying
+all previous migration scripts.
 
 The desired schema of your application can be provided to Atlas via an [External Schema Datasource](/atlas-schema/projects#data-source-external_schema)
 which is any program that can output a SQL schema definition to stdout.
@@ -44,7 +45,7 @@ Sequelize users.
 
 ## Prerequisites
 
-* A local [sequelize](https://github.com/sequelize/sequelize) project.
+* A local [Sequelize](https://github.com/sequelize/sequelize) project.
 
 If you don't have a Sequelize project handy, you can use [sequelize/express-example](https://github.com/sequelize/express-example)
 as a starting point:
@@ -54,6 +55,7 @@ git clone git@github.com:sequelize/express-example.git
 ```
 
 ## Using the Atlas Sequelize Provider
+
 In this guide, we will use the [Sequelize Atlas Provider](https://github.com/ariga/atlas-provider-sequelize)
 to automatically plan schema migrations for a Sequelize project.
 
@@ -82,7 +84,7 @@ npm install @ariga/ts-atlas-provider-sequelize
 </TabItem>
 </Tabs>
 
-Make sure all you Node dependencies are installed by running:
+Make sure all your Node dependencies are installed by running:
 ```bash
 npm install
 ```
@@ -90,9 +92,9 @@ npm install
 ### Standalone vs Script mode
 
 The Atlas Sequelize Provider can be used in two modes:
-* **Standalone** - If all of your Sequelize models exist in single directory,
+* **Standalone** - If all of your Sequelize models exist in a single Node module,
  you can use the provider directly to load your Sequelize schema into Atlas.
-* **Script** - In other cases, you can use the provider as a npm package to write a script
+* **Script** - In other cases, you can use the provider as an npm package to write a script
  that loads your Sequelize schema into Atlas.
 ### Standalone mode
 
@@ -426,7 +428,7 @@ CREATE TABLE `Tasks` (
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 ```
 
-Amazing, Atlas automatically generated a migration file that will create the `Users` and `Tasks` tables in our database!
+Amazing! Atlas automatically generated a migration file that will create the `Users` and `Tasks` tables in our database!
 
 Next, alter the `User` model to add a new `age` field:
 
