@@ -281,6 +281,11 @@ module.exports = {
                 },
                 {
                     type: 'doc',
+                    id: 'guides/orms/sequelize',
+                    label: 'Sequelize'
+                },
+                {
+                    type: 'doc',
                     id: 'guides/frameworks/sqlc-declarative',
                     label: 'sqlc (declarative)'
                 },
