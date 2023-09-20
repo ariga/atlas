@@ -140,7 +140,7 @@ module.exports = {
         },
         {
           type: 'category',
-          label: 'Overview',
+          label: 'For Platform Teams',
           collapsed: false,
             items: [
                 {
