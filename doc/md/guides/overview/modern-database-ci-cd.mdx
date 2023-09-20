@@ -21,7 +21,7 @@ and continuous delivery for their databases.
    state.
 2. **Changes to the database schema are stored in a versioned migration directory.** All planned changes
    to the database are checked in to a versioned migration directory. This directory contains SQL scripts,
-   which are executed in order to apply the changes to the database.
+   which are executed in lexicographic order to apply the changes to the database.
 3. **Changes to the database are validated during CI.**  All changes to the database are tested and evaluated
    against a set of governing policies.
 4. **Changes to the database are deployed via automation.**  No manual steps are required to deploy changes to the
