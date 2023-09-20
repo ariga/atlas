@@ -12,7 +12,7 @@ CI/CD is not just for application code.  Teams can also apply CI/CD principles t
 to extend the benefits of CI/CD to one of the most critical components of their stack.
 
 This document describes the recommended workflow for teams using Atlas to achieve continuous integration
-and continuous delivery (CI/CD) for their databases.
+and continuous delivery for their databases.
 
 ## Principles
 
@@ -20,12 +20,12 @@ and continuous delivery (CI/CD) for their databases.
    the system should automatically generate a plan for how to get from the current state to the desired
    state.
 2. **Changes to the database schema are stored in a versioned migration directory.** All planned changes
-   to the database are checked in to a versioned migration directory.  This directory contains SQL scripts,
+   to the database are checked in to a versioned migration directory. This directory contains SQL scripts,
    which are executed in order to apply the changes to the database.
 3. **Changes to the database are validated during CI.**  All changes to the database are tested and evaluated
    against a set of governing policies.
 4. **Changes to the database are deployed via automation.**  No manual steps are required to deploy changes to the
-   database.  All changes are deployed via a CI/CD pipeline.
+   database. All changes are deployed via a CI/CD pipeline.
 
 ## Workflow
 
@@ -35,7 +35,7 @@ rather to provide a high-level overview of the recommended workflow.
 
 ### 1. Create a new branch
 
-Create a new branch to track this change to the database.
+Create a new branch to track a change to the database.
 
 Example:
 
@@ -82,7 +82,7 @@ resources for you to learn more about them:
 
 ### 3. Automatically plan the change
 
-Use the Atlas CLI to plan the change.  This will generate a plan for how to get from the current state
+Use the Atlas CLI to plan the change. This will generate a plan for how to get from the current state
 of the database to the desired state of the database.
 
 Example:
@@ -134,16 +134,16 @@ EOF
 )
 
 # Run analysis against the latest revision of the database.
-atlas migrate lint --base atlas://project-id --context $ATLAS_CONTEXT
+atlas migrate lint --base atlas://dir-name --context $ATLAS_CONTEXT
 ```
 
 This way, whenever a change is made to the desired state of the database, the CI pipeline will automatically
-simulate and analyze the changes and verify that they are valid and safe.  Atlas will generate a detailed
+simulate and analyze the changes, and verify that they are valid and safe.  Atlas will generate a detailed
 analysis report, an example of which you can see [here](https://gh.atlasgo.cloud/dirs/4294967383/ci-runs/8589934684).
 
 :::info Further reading
 
-It is possible to push your changes to Atlas Cloud directly with the CLI
+It is possible to push your changes to Atlas Cloud directly with the CLI to
 your CI pipeline, but official integrations are also available:
 
 * The `atlas-action` [GitHub Action](/integrations/github-actions#arigaatlas-action-ci)
@@ -165,12 +165,12 @@ This is typically done by running the following steps in your workflow:
 atlas login --token $ATLAS_TOKEN
 
 # push the migration directory to Atlas Cloud
-atlas migrate push project-id:$GIT_COMMIT
-atlas migrate push project-id:latest
+atlas migrate push dir-name:$GIT_COMMIT
+atlas migrate push dir-name:latest
 ```
 
 Once the migration directory is pushed to Atlas Cloud, you can view a visual representation of the
-database schema and its revision history in the Atlas Cloud UI, you can see an example of this
+database schema and its revision history in the Atlas Cloud UI. You can see an example of this
 [here](https://gh.atlasgo.cloud/dirs/4294967383).
 
 :::info Further reading
@@ -192,11 +192,11 @@ environment.  This is typically done by running the following steps in your work
 atlas login --token $ATLAS_TOKEN
 
 # deploy the latest revision of the database to the staging environment
-atlas migrate apply --url mysql://user:pass@host:port/dbname --dir atlas://project-id:latest
+atlas migrate apply --url mysql://user:pass@host:port/dbname --dir atlas://project-id
 ```
 
 When you run the `atlas migrate apply` command, Atlas will connect to the target database,
-and apply any pending migrations.  If there are no pending migrations, Atlas will do nothing.
+and apply any pending migrations. If there are no pending migrations, Atlas will do nothing.
 When Atlas finishes running, it will send a report to your Atlas Cloud account, with a summary
 of the changes that were applied, and any errors that occurred. You can view an example of this
 report [here](https://gh.atlasgo.cloud/deployments/sets/94489280523).
@@ -221,13 +221,13 @@ and continuous delivery (CI/CD) for their databases.  As we've demonstrated, thi
 down into four phases:
 
 1. Develop - Create a new branch, change the desired state and plan the change.
-2. Review - create a pull request, let Atlas analyze the change and report back.
-3. Deliver - merge the change, push the latest revision of the database to Atlas Cloud.
-4. Deploy - deploy the latest revision of the database to any environment.
+2. Review - Create a pull request, let Atlas analyze the change and report back.
+3. Deliver - Merge the change, push the latest revision of the database to Atlas Cloud.
+4. Deploy - Deploy the latest revision of the database to any environment.
 
 By implementing this workflow, teams can achieve the following benefits:
-* **Faster development.** - Developers can focus on writing application code, and let Atlas be responsible for planning schema changes.
-* **Lower defect rate.** - By simulating and validating changes to the database during CI, teams can catch errors
+* **Faster development** - Developers can focus on writing application code, and let Atlas be responsible for planning schema changes.
+* **Lower defect rate** - By simulating and validating changes to the database during CI, teams can catch errors
   before they are deployed to production.
-* **Automation.** - By integrating with your team's existing deployment tools, Atlas obviates the need for manual
+* **Automation** - By integrating with your team's existing deployment tools, Atlas obviates the need for manual
   steps to deploy changes to the database, making your system more reliable and less error-prone.
