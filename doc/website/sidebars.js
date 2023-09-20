@@ -19,6 +19,7 @@ module.exports = {
                 'getting-started/getting-started',
             ]
         },
+
         {
             type: "category",
             label: "Declarative Workflows",
@@ -136,6 +137,18 @@ module.exports = {
         {
             type: 'doc',
             id: 'guides/guides'
+        },
+        {
+          type: 'category',
+          label: 'Overview',
+          collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    label: 'Modern Database CI/CD',
+                    id: 'guides/overview/modern-database-ci-cd',
+                },
+            ]
         },
         {
             type: 'category',
