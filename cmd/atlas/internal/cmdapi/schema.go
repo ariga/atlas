@@ -74,11 +74,9 @@ the project file (see: https://atlasgo.io/cli/projects).
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
 			Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" --to file://atlas.hcl
-  atlas schema apply -u "mysql://localhost" --to file://schema.hcl --schema prod --schema staging
-  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" --to file://schema.hcl --dry-run
-  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" --to file://schema.hcl
-  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" --to file://schema.hcl
-  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" --to file://schema.hcl`,
+  atlas schema apply -u "mysql://localhost" --to file://schema.sql --dev-url docker://mysql/8/dev
+  atlas schema apply --env local --dev-url "docker://postgres/15/dev" --dry-run
+  atlas schema apply -u "sqlite://file.db" --to file://schema.sql --dev-url "sqlite://dev?mode=memory"`,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				switch {
 				case GlobalFlags.SelectedEnv == "":
