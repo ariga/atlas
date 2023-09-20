@@ -250,3 +250,7 @@ div[class^='announcementBar_']  a.cta {
   color: white;
   text-decoration: none;
 }
+
+.theme-admonition a {
+  text-decoration: underline;
+}
