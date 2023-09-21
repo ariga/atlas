@@ -420,7 +420,7 @@ func (c *stateReaderConfig) Exported() (*cmdext.StateReaderConfig, error) {
 		parsed = make([]*url.URL, len(c.urls))
 	)
 	for i, u := range c.urls {
-		if parsed[i], err = url.Parse(u); err != nil {
+		if parsed[i], err = sqlclient.ParseURL(u); err != nil {
 			return nil, err
 		}
 	}

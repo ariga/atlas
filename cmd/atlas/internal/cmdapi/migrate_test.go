@@ -983,9 +983,9 @@ env {
 			"--url", "    sqlite://my:pass@file.db",
 			"--var", "cloud_url="+srv.URL,
 		)
-		// URL errors are reported to the client, but not deployment set.
-		require.EqualError(t, err, `sql/sqlclient: parse open url: parse "    sqlite://my:pass@file.db": first path segment in URL cannot contain colon`)
-		require.Equal(t, `Error: parse "": first path segment in URL cannot contain colon`, *reports.Error)
+		// Open errors are reported without URLs.
+		require.EqualError(t, err, `sql/sqlclient: parse open url: first path segment in URL cannot contain colon`)
+		require.Equal(t, `Error: sql/sqlclient: parse open url: first path segment in URL cannot contain colon`, *reports.Error)
 	})
 
 	t.Run("LocalDirectory", func(t *testing.T) {

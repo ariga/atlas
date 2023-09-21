@@ -67,6 +67,21 @@ func TestOpen_Errors(t *testing.T) {
 	c, err = sqlclient.Open(context.Background(), "unknown://")
 	require.EqualError(t, err, `sql/sqlclient: unknown driver "unknown". See: https://atlasgo.io/url`)
 	require.Nil(t, c)
+
+	// URLs are not attached to errors.
+	_, err = sqlclient.Open(context.Background(), " postgres://user:pass:3306/")
+	require.EqualError(t, err, "sql/sqlclient: parse open url: first path segment in URL cannot contain colon")
+	_, err = sqlclient.Open(context.Background(), "scheme://hello world")
+	require.EqualError(t, err, `sql/sqlclient: parse open url: invalid character " " in host name`)
+}
+
+func TestParseURL(t *testing.T) {
+	_, err := sqlclient.ParseURL("boring ://")
+	require.EqualError(t, err, "first path segment in URL cannot contain colon")
+	_, err = sqlclient.ParseURL("\bboring://foo.com:3000")
+	require.EqualError(t, err, "net/url: invalid control character in URL")
+	_, err = sqlclient.ParseURL("boring:// : @foo.com:3000")
+	require.EqualError(t, err, "net/url: invalid userinfo")
 }
 
 func TestClient_AddClosers(t *testing.T) {
