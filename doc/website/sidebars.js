@@ -146,7 +146,7 @@ module.exports = {
                 {
                     type: 'doc',
                     label: 'Modern Database CI/CD',
-                    id: 'guides/overview/modern-database-ci-cd',
+                    id: 'guides/modern-database-ci-cd',
                 },
             ]
         },
