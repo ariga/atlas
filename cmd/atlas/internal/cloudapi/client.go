@@ -289,10 +289,13 @@ func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 // RedactedURL returns a URL string with the userinfo redacted.
 func RedactedURL(s string) (string, error) {
 	u, err := url.Parse(s)
-	if err != nil {
-		return "", err
+	switch err := err.(type) {
+	case nil:
+		return u.Redacted(), nil
+	case *url.Error:
+		err.URL = ""
 	}
-	return u.Redacted(), nil
+	return "", err
 }
 
 // version of the CLI set by cmdapi.

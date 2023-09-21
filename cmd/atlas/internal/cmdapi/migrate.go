@@ -368,6 +368,11 @@ func (s *MigrateReportSet) ReportFor(flags migrateApplyFlags, e *Env) *MigrateRe
 // Note that reporting errors are logged, but not cause Atlas to fail.
 func (s *MigrateReportSet) Flush(cmd *cobra.Command, cmdErr error) {
 	if cmdErr != nil && s.Error == nil {
+		var uerr *url.Error
+		if errors.As(cmdErr, &uerr) {
+			uerr.URL = ""
+			cmdErr = uerr
+		}
 		s.StepLogError(cmdErr.Error())
 	}
 	var (

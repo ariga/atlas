@@ -973,6 +973,21 @@ env {
 		require.Equal(t, "Error: openerror", *reports.Error)
 	})
 
+	t.Run("RedactedURL", func(t *testing.T) {
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		_, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--url", "    sqlite://my:pass@file.db",
+			"--var", "cloud_url="+srv.URL,
+		)
+		// URL errors are reported to the client, but not deployment set.
+		require.EqualError(t, err, `sql/sqlclient: parse open url: parse "    sqlite://my:pass@file.db": first path segment in URL cannot contain colon`)
+		require.Equal(t, `Error: parse "": first path segment in URL cannot contain colon`, *reports.Error)
+	})
+
 	t.Run("LocalDirectory", func(t *testing.T) {
 		report.DirName = "NotReported"
 		cmd := migrateCmd()
