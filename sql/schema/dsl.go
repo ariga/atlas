@@ -231,6 +231,12 @@ func NewView(name, def string) *View {
 	return &View{Name: name, Def: def}
 }
 
+// NewMaterializedView creates a new materialized View.
+func NewMaterializedView(name, def string) *View {
+	return NewView(name, def).
+		SetMaterialized(true)
+}
+
 // SetSchema sets the schema (named-database) of the view.
 func (v *View) SetSchema(s *Schema) *View {
 	v.Schema = s

@@ -321,11 +321,18 @@ func TestMarshalViews(t *testing.T) {
 					schema.NewIntColumn("id", "id"),
 				).
 				SetComment("view comment"),
+			schema.NewMaterializedView("m1", "SELECT * FROM t1"),
 		)
 	s.AddViews(
 		schema.NewView("v4", "SELECT * FROM v2 JOIN t1 USING (id)").
 			AddDeps(
 				s.Views[1],
+				s.Tables[0],
+			),
+		schema.NewMaterializedView("m2", "SELECT * FROM t1").
+			AddDeps(
+				s.Views[1],
+				s.Views[3],
 				s.Tables[0],
 			),
 	)
@@ -368,6 +375,15 @@ view "v4" {
   as         = "SELECT * FROM v2 JOIN t1 USING (id)"
   depends_on = [view.v2, table.t1]
 }
+materialized "m1" {
+  schema = schema.public
+  as     = "SELECT * FROM t1"
+}
+materialized "m2" {
+  schema     = schema.public
+  as         = "SELECT * FROM t1"
+  depends_on = [view.v2, materialized.m1, table.t1]
+}
 schema "public" {
 }
 `
@@ -385,6 +401,15 @@ func TestUnmarshalViews(t *testing.T) {
 view "v1" {
   schema = schema.public
   as     = "SELECT * FROM t2 WHERE id IS NOT NULL"
+}
+materialized "m1" {
+  schema = schema.public
+  as     = "SELECT * FROM t2 WHERE id IS NOT NULL"
+}
+materialized "m2" {
+  schema     = schema.public
+  as         = "SELECT * FROM multi"
+  depends_on = [view.v1, materialized.m1, table.t1]
 }
 view "v2" {
  schema = schema.public
@@ -467,6 +492,12 @@ schema "other" {}
 			AddDeps(public.Views[0], public.Tables[0]),
 		schema.NewView("v4", "SELECT * FROM public.t2").
 			AddDeps(public.Tables[1]),
+		schema.NewMaterializedView("m1", "SELECT * FROM t2 WHERE id IS NOT NULL"),
+	)
+	m1, _ := public.Materialized("m1")
+	public.AddViews(
+		schema.NewMaterializedView("m2", "SELECT * FROM multi").
+			AddDeps(public.Views[0], m1, public.Tables[0]),
 	)
 	other.AddViews(
 		schema.NewView("v4", "SELECT * FROM other.t2").
@@ -2125,12 +2156,20 @@ func TestMarshalQualifiers(t *testing.T) {
 		s2 = schema.New("s2").
 			AddTables(
 				schema.NewTable("t1").AddColumns(schema.NewIntColumn("id", "int")),
+			).
+			AddViews(
+				schema.NewMaterializedView("m1", "SELECT id FROM s2.t1"),
 			)
 		s3 = schema.New("s3").
 			AddTables(
 				schema.NewTable("s1").AddColumns(schema.NewIntColumn("id", "int")),
+			).
+			AddViews(
+				schema.NewMaterializedView("m1", "SELECT id FROM s3.t1"),
 			)
 	)
+	s2.Views[0].AddDeps(s2.Tables[0])
+	s3.Views[0].AddDeps(s3.Tables[0])
 	buf, err := MarshalHCL.MarshalSpec(schema.NewRealm(s1, s2, s3))
 	require.NoError(t, err)
 	require.Equal(t, `table "s1" "t1" {
@@ -2153,6 +2192,16 @@ table "s3" "s1" {
     null = false
     type = int
   }
+}
+materialized "s2" "m1" {
+  schema     = schema.s2
+  as         = "SELECT id FROM s2.t1"
+  depends_on = [table.s2.t1]
+}
+materialized "s3" "m1" {
+  schema     = schema.s3
+  as         = "SELECT id FROM s3.t1"
+  depends_on = [table.s1]
 }
 schema "s1" {
 }

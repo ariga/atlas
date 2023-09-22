@@ -126,9 +126,19 @@ func (s *Schema) Table(name string) (*Table, bool) {
 
 // View returns the first view that matched the given name.
 func (s *Schema) View(name string) (*View, bool) {
-	for _, t := range s.Views {
-		if t.Name == name {
-			return t, true
+	for _, v := range s.Views {
+		if v.Name == name && !v.Materialized() {
+			return v, true
+		}
+	}
+	return nil, false
+}
+
+// Materialized returns the first materialized view that matched the given name.
+func (s *Schema) Materialized(name string) (*View, bool) {
+	for _, v := range s.Views {
+		if v.Name == name && v.Materialized() {
+			return v, true
 		}
 	}
 	return nil, false
@@ -172,6 +182,26 @@ func (t *Table) ForeignKey(symbol string) (*ForeignKey, bool) {
 		}
 	}
 	return nil, false
+}
+
+// Materialized reports if the view is materialized.
+func (v *View) Materialized() bool {
+	for _, a := range v.Attrs {
+		if _, ok := a.(*Materialized); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// SetMaterialized reports if the view is materialized.
+func (v *View) SetMaterialized(b bool) *View {
+	if b {
+		ReplaceOrAppend(&v.Attrs, &Materialized{})
+	} else {
+		v.Attrs = RemoveAttr[*Materialized](v.Attrs)
+	}
+	return v
 }
 
 // Column returns the first column that matched the given name.
@@ -376,6 +406,12 @@ type (
 	// ViewCheckOption describes the standard 'WITH CHECK OPTION clause' of a view.
 	ViewCheckOption struct {
 		V string // LOCAL, CASCADED, NONE, or driver specific.
+	}
+
+	// Materialized is a schema attribute that attached to views to indicates
+	// they are MATERIALIZED VIEWs.
+	Materialized struct {
+		Attr
 	}
 )
 
