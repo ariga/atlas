@@ -120,6 +120,7 @@ func (v *View) SchemaRef() *schemahcl.Ref { return v.Schema }
 
 func init() {
 	schemahcl.Register("view", &View{})
+	schemahcl.Register("materialized", &View{})
 	schemahcl.Register("table", &Table{})
 	schemahcl.Register("schema", &Schema{})
 }

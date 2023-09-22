@@ -41,9 +41,10 @@ type (
 type (
 	// ScanDoc represents a scanned HCL document.
 	ScanDoc struct {
-		Schemas []*sqlspec.Schema
-		Tables  []*sqlspec.Table
-		Views   []*sqlspec.View
+		Schemas      []*sqlspec.Schema
+		Tables       []*sqlspec.Table
+		Views        []*sqlspec.View
+		Materialized []*sqlspec.View
 	}
 	// ScanFuncs represents a set of scan functions
 	// used to convert the HCL document to the Realm.
@@ -51,6 +52,14 @@ type (
 		Table ConvertTableFunc
 		View  ConvertViewFunc
 	}
+)
+
+const (
+	typeView         = "view"
+	typeTable        = "table"
+	typeColumn       = "column"
+	typeSchema       = "schema"
+	typeMaterialized = "materialized"
 )
 
 // Scan populates the Realm from the schemas and table specs.
@@ -110,36 +119,74 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 			viewDeps[v] = refs
 		}
 	}
+	for _, m := range doc.Materialized {
+		name, err := SchemaName(m.Schema)
+		if err != nil {
+			return fmt.Errorf("specutil: cannot extract schema name for materialized %q: %w", m.Name, err)
+		}
+		s, ok := byName[name]
+		if !ok {
+			return fmt.Errorf("specutil: schema %q not found for materialized %q", name, m.Name)
+		}
+		v, err := funcs.View(m, s)
+		if err != nil {
+			return fmt.Errorf("specutil: cannot convert materialized %q: %w", m.Name, err)
+		}
+		s.AddViews(v.SetMaterialized(true))
+		if deps, ok := m.Attr("depends_on"); ok {
+			refs, err := deps.Refs()
+			if err != nil {
+				return fmt.Errorf("specutil: expect list of references for attribute materialized.%s.depends_on: %w", m.Name, err)
+			}
+			viewDeps[v] = refs
+		}
+	}
 	// Link views' dependencies.
 	for v, refs := range viewDeps {
+		srcT := typeView
+		if v.Materialized() {
+			srcT = typeMaterialized
+		}
 		for i, r := range refs {
 			switch p, err := r.Path(); {
 			case err != nil:
-				return fmt.Errorf("specutil: extract reference for view.%s: %w", v.Name, err)
+				return fmt.Errorf("specutil: extract reference for %s.%s: %w", srcT, v.Name, err)
 			case len(p) == 0:
-				return fmt.Errorf("specutil: empty reference for view.%s", v.Name)
-			case p[0].T == "view":
-				q, n, err := viewName(r)
+				return fmt.Errorf("specutil: empty reference for %s.%s", srcT, v.Name)
+			case p[0].T == typeView:
+				q, n, err := refName(r, typeView)
 				if err != nil {
-					return fmt.Errorf("specutil: extract view name from view.%s.depends_on[%d]: %w", v.Name, i, err)
+					return fmt.Errorf("specutil: extract view name from %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
 				}
 				v1, err := findT(v.Schema, q, n, func(s *schema.Schema, name string) (*schema.View, bool) {
 					return s.View(name)
 				})
 				if err != nil {
-					return fmt.Errorf("specutil: find view refrence for view.%s.depends_on[%d]: %w", v.Name, i, err)
+					return fmt.Errorf("specutil: find view refrence for %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
 				}
 				v.AddDeps(v1)
-			case p[0].T == "table":
-				q, n, err := tableName(r)
+			case p[0].T == typeMaterialized:
+				q, n, err := refName(r, typeMaterialized)
 				if err != nil {
-					return fmt.Errorf("specutil: extract view name from view.%s.depends_on[%d]: %w", v.Name, i, err)
+					return fmt.Errorf("specutil: extract materialized name from %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
+				}
+				v1, err := findT(v.Schema, q, n, func(s *schema.Schema, name string) (*schema.View, bool) {
+					return s.Materialized(name)
+				})
+				if err != nil {
+					return fmt.Errorf("specutil: find materialized refrence for %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
+				}
+				v.AddDeps(v1)
+			case p[0].T == typeTable:
+				q, n, err := refName(r, typeTable)
+				if err != nil {
+					return fmt.Errorf("specutil: extract table name from %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
 				}
 				t1, err := findT(v.Schema, q, n, func(s *schema.Schema, name string) (*schema.Table, bool) {
 					return s.Table(name)
 				})
 				if err != nil {
-					return fmt.Errorf("specutil: find table refrence for view.%s.depends_on[%d]: %w", v.Name, i, err)
+					return fmt.Errorf("specutil: find table refrence for %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
 				}
 				v.AddDeps(t1)
 			}
@@ -392,6 +439,7 @@ func FromSchema(s *schema.Schema, specT TableSpecFunc, specV ViewSpecFunc) (*Sch
 			Name: s.Name,
 		}
 		views  = make([]*sqlspec.View, 0, len(s.Views))
+		mviews = make([]*sqlspec.View, 0, len(s.Views))
 		tables = make([]*sqlspec.Table, 0, len(s.Tables))
 	)
 	for _, t := range s.Tables {
@@ -412,13 +460,18 @@ func FromSchema(s *schema.Schema, specT TableSpecFunc, specV ViewSpecFunc) (*Sch
 		if s.Name != "" {
 			view.Schema = SchemaRef(s.Name)
 		}
-		views = append(views, view)
+		if v.Materialized() {
+			mviews = append(mviews, view)
+		} else {
+			views = append(views, view)
+		}
 	}
 	convertCommentFromSchema(s.Attrs, &spec.Extra.Attrs)
 	return &SchemaSpec{
-		Schema: spec,
-		Tables: tables,
-		Views:  views,
+		Schema:       spec,
+		Tables:       tables,
+		Views:        views,
+		Materialized: mviews,
 	}, nil
 }
 
@@ -521,14 +574,18 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc) (*sqlspec.View, error) {
 				path = append(path, d.Schema.Name)
 			}
 			deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
-				{T: "table", V: append(path, d.Name)},
+				{T: typeTable, V: append(path, d.Name)},
 			}))
 		case *schema.View:
+			vt := typeView
+			if d.Materialized() {
+				vt = typeMaterialized
+			}
 			if nameV[d.Name] > 1 {
 				path = append(path, d.Schema.Name)
 			}
 			deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
-				{T: "view", V: append(path, d.Name)},
+				{T: vt, V: append(path, d.Name)},
 			}))
 		}
 	}
@@ -743,7 +800,7 @@ func FromCheck(s *schema.Check) *sqlspec.Check {
 
 // SchemaName returns the name from a ref to a schema.
 func SchemaName(ref *schemahcl.Ref) (string, error) {
-	vs, err := ref.ByType("schema")
+	vs, err := ref.ByType(typeSchema)
 	if err != nil {
 		return "", err
 	}
@@ -755,7 +812,7 @@ func SchemaName(ref *schemahcl.Ref) (string, error) {
 
 // ColumnByRef returns a column from the table by its reference.
 func ColumnByRef(t *schema.Table, ref *schemahcl.Ref) (*schema.Column, error) {
-	vs, err := ref.ByType("column")
+	vs, err := ref.ByType(typeColumn)
 	if err != nil {
 		return nil, err
 	}
@@ -822,24 +879,12 @@ func findT[T schema.View | schema.Table](sch *schema.Schema, qualifier, name str
 	}
 }
 
-func tableName(ref *schemahcl.Ref) (qualifier, name string, err error) {
-	vs, err := ref.ByType("table")
-	if err != nil {
-		return "", "", err
-	}
-	switch len(vs) {
-	case 1:
-		name = vs[0]
-	case 2:
-		qualifier, name = vs[0], vs[1]
-	default:
-		return "", "", fmt.Errorf("sqlspec: unexpected number of references in %q", vs)
-	}
-	return
+func tableName(ref *schemahcl.Ref) (string, string, error) {
+	return refName(ref, typeTable)
 }
 
-func viewName(ref *schemahcl.Ref) (qualifier, name string, err error) {
-	vs, err := ref.ByType("view")
+func refName(ref *schemahcl.Ref, typeName string) (qualifier, name string, err error) {
+	vs, err := ref.ByType(typeName)
 	if err != nil {
 		return "", "", err
 	}
@@ -861,28 +906,28 @@ func isLocalRef(r *schemahcl.Ref) bool {
 // ColumnRef returns the reference of a column by its name.
 func ColumnRef(cName string) *schemahcl.Ref {
 	return schemahcl.BuildRef([]schemahcl.PathIndex{
-		{T: "column", V: []string{cName}},
+		{T: typeColumn, V: []string{cName}},
 	})
 }
 
 func externalColRef(cName string, tName string) *schemahcl.Ref {
 	return schemahcl.BuildRef([]schemahcl.PathIndex{
-		{T: "table", V: []string{tName}},
-		{T: "column", V: []string{cName}},
+		{T: typeTable, V: []string{tName}},
+		{T: typeColumn, V: []string{cName}},
 	})
 }
 
 func qualifiedExternalColRef(cName, tName, sName string) *schemahcl.Ref {
 	return schemahcl.BuildRef([]schemahcl.PathIndex{
-		{T: "table", V: []string{sName, tName}},
-		{T: "column", V: []string{cName}},
+		{T: typeTable, V: []string{sName, tName}},
+		{T: typeColumn, V: []string{cName}},
 	})
 }
 
 // SchemaRef returns the schemahcl.Ref to the schema with the given name.
 func SchemaRef(name string) *schemahcl.Ref {
 	return schemahcl.BuildRef([]schemahcl.PathIndex{
-		{T: "schema", V: []string{name}},
+		{T: typeSchema, V: []string{name}},
 	})
 }
 

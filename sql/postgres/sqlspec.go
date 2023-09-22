@@ -23,10 +23,11 @@ import (
 
 type (
 	doc struct {
-		Tables  []*sqlspec.Table  `spec:"table"`
-		Views   []*sqlspec.View   `spec:"view"`
-		Enums   []*Enum           `spec:"enum"`
-		Schemas []*sqlspec.Schema `spec:"schema"`
+		Tables       []*sqlspec.Table  `spec:"table"`
+		Views        []*sqlspec.View   `spec:"view"`
+		Materialized []*sqlspec.View   `spec:"materialized"`
+		Enums        []*Enum           `spec:"enum"`
+		Schemas      []*sqlspec.Schema `spec:"schema"`
 	}
 	// Enum holds a specification for an enum, that can be referenced as a column type.
 	Enum struct {
@@ -37,6 +38,15 @@ type (
 		schemahcl.DefaultExtension
 	}
 )
+
+// merge merges the doc d1 into d.
+func (d *doc) merge(d1 *doc) {
+	d.Tables = append(d.Tables, d1.Tables...)
+	d.Views = append(d.Views, d1.Views...)
+	d.Materialized = append(d.Materialized, d1.Materialized...)
+	d.Enums = append(d.Enums, d1.Enums...)
+	d.Schemas = append(d.Schemas, d1.Schemas...)
+}
 
 // Label returns the defaults label used for the enum resource.
 func (e *Enum) Label() string { return e.Name }
@@ -63,7 +73,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return err
 		}
 		if err := specutil.Scan(v,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Materialized: d.Materialized},
 			&specutil.ScanFuncs{Table: convertTable, View: convertView},
 		); err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
@@ -83,7 +93,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		}
 		r := &schema.Realm{}
 		if err := specutil.Scan(r,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Materialized: d.Materialized},
 			&specutil.ScanFuncs{Table: convertTable, View: convertView},
 		); err != nil {
 			return err
@@ -105,30 +115,26 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 	var d doc
 	switch s := v.(type) {
 	case *schema.Schema:
-		var err error
-		doc, err := schemaSpec(s)
+		d1, err := schemaSpec(s)
 		if err != nil {
 			return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 		}
-		d.Tables = doc.Tables
-		d.Views = doc.Views
-		d.Schemas = doc.Schemas
-		d.Enums = doc.Enums
+		d.merge(d1)
 	case *schema.Realm:
 		for _, s := range s.Schemas {
-			doc, err := schemaSpec(s)
+			d1, err := schemaSpec(s)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 			}
-			d.Tables = append(d.Tables, doc.Tables...)
-			d.Views = append(d.Views, doc.Views...)
-			d.Schemas = append(d.Schemas, doc.Schemas...)
-			d.Enums = append(d.Enums, doc.Enums...)
+			d.merge(d1)
 		}
 		if err := specutil.QualifyObjects(d.Tables); err != nil {
 			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Views); err != nil {
+			return nil, err
+		}
+		if err := specutil.QualifyObjects(d.Materialized); err != nil {
 			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Enums); err != nil {
@@ -147,6 +153,7 @@ var (
 	hclState = schemahcl.New(append(specOptions,
 		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
 		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
+		schemahcl.WithTypes("materialized.column.type", TypeRegistry.Specs()),
 		schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, "GiST", IndexTypeSPGiST, "SPGiST"),
 		schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
@@ -560,10 +567,11 @@ func schemaSpec(s *schema.Schema) (*doc, error) {
 		return nil, err
 	}
 	d := &doc{
-		Tables:  spec.Tables,
-		Views:   spec.Views,
-		Schemas: []*sqlspec.Schema{spec.Schema},
-		Enums:   make([]*Enum, 0, len(s.Objects)),
+		Tables:       spec.Tables,
+		Views:        spec.Views,
+		Materialized: spec.Materialized,
+		Schemas:      []*sqlspec.Schema{spec.Schema},
+		Enums:        make([]*Enum, 0, len(s.Objects)),
 	}
 	for _, o := range s.Objects {
 		if e, ok := o.(*schema.EnumType); ok {

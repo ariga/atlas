@@ -24,14 +24,16 @@ type (
 	// SchemaSpec is returned by driver convert functions to
 	// marshal a *schema.Schema into top-level spec objects.
 	SchemaSpec struct {
-		Schema *sqlspec.Schema
-		Tables []*sqlspec.Table
-		Views  []*sqlspec.View
+		Schema       *sqlspec.Schema
+		Tables       []*sqlspec.Table
+		Views        []*sqlspec.View
+		Materialized []*sqlspec.View
 	}
 	doc struct {
-		Tables  []*sqlspec.Table  `spec:"table"`
-		Views   []*sqlspec.View   `spec:"view"`
-		Schemas []*sqlspec.Schema `spec:"schema"`
+		Tables       []*sqlspec.Table  `spec:"table"`
+		Views        []*sqlspec.View   `spec:"view"`
+		Materialized []*sqlspec.View   `spec:"materialized"`
+		Schemas      []*sqlspec.Schema `spec:"schema"`
 	}
 )
 
@@ -47,6 +49,7 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 		}
 		d.Tables = spec.Tables
 		d.Views = spec.Views
+		d.Materialized = spec.Materialized
 		d.Schemas = []*sqlspec.Schema{spec.Schema}
 	case *schema.Realm:
 		for _, s := range s.Schemas {
@@ -56,12 +59,16 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 			}
 			d.Tables = append(d.Tables, spec.Tables...)
 			d.Views = append(d.Views, spec.Views...)
+			d.Materialized = spec.Materialized
 			d.Schemas = append(d.Schemas, spec.Schema)
 		}
 		if err := QualifyObjects(d.Tables); err != nil {
 			return nil, err
 		}
 		if err := QualifyObjects(d.Views); err != nil {
+			return nil, err
+		}
+		if err := QualifyObjects(d.Materialized); err != nil {
 			return nil, err
 		}
 		if err := QualifyReferences(d.Tables, s); err != nil {
