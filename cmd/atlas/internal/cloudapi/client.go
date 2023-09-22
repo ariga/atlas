@@ -12,12 +12,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"runtime"
 	"strings"
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
@@ -288,14 +288,11 @@ func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // RedactedURL returns a URL string with the userinfo redacted.
 func RedactedURL(s string) (string, error) {
-	u, err := url.Parse(s)
-	switch err := err.(type) {
-	case nil:
-		return u.Redacted(), nil
-	case *url.Error:
-		err.URL = ""
+	u, err := sqlclient.ParseURL(s)
+	if err != nil {
+		return "", err
 	}
-	return "", err
+	return u.Redacted(), nil
 }
 
 // version of the CLI set by cmdapi.

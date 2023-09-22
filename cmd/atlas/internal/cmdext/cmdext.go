@@ -86,7 +86,7 @@ func RuntimeVar(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	if diags := gohcl.DecodeBody(block.Body, c, &args); diags.HasErrors() {
 		return cty.NilVal, errorf("decoding body: %v", diags)
 	}
-	u, err := url.Parse(args.URL)
+	u, err := sqlclient.ParseURL(args.URL)
 	if err != nil {
 		return cty.NilVal, errorf("parsing url: %v", err)
 	}
@@ -769,7 +769,7 @@ func (l EntLoader) MigrateDiff(ctx context.Context, opts *MigrateDiffOptions) er
 	if opts.Dev.URL.Schema == "" {
 		return errNotSchemaURL
 	}
-	u, err := url.Parse(opts.To[0])
+	u, err := sqlclient.ParseURL(opts.To[0])
 	if err != nil {
 		return nil
 	}

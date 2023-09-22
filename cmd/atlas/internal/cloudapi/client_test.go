@@ -145,6 +145,6 @@ func TestRedactedURL(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "mysql://user:xxxxx@:3306/db", u)
 	u, err = RedactedURL("\\n mysql://user:pass@:3306/db")
-	require.EqualError(t, err, `parse "": first path segment in URL cannot contain colon`)
+	require.EqualError(t, err, `first path segment in URL cannot contain colon`)
 	require.Empty(t, u)
 }

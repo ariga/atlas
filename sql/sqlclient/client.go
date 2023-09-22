@@ -167,6 +167,19 @@ func (f URLParserFunc) ParseURL(u *url.URL) *URL {
 	return f(u)
 }
 
+// ParseURL is similar to url.Parse but returns errors without
+// the raw URL attached to avoid printing userinfo in errors.
+func ParseURL(s string) (*url.URL, error) {
+	u, err := url.Parse(s)
+	if err != nil {
+		if err1, ok := err.(*url.Error); ok {
+			err = err1.Err
+		}
+		return nil, err
+	}
+	return u, nil
+}
+
 var drivers sync.Map
 
 type (
@@ -184,7 +197,7 @@ var ErrUnsupported = errors.New("sql/sqlclient: driver does not support changing
 
 // Open opens an Atlas client by its provided url string.
 func Open(ctx context.Context, s string, opts ...OpenOption) (*Client, error) {
-	u, err := url.Parse(s)
+	u, err := ParseURL(s)
 	if err != nil {
 		return nil, fmt.Errorf("sql/sqlclient: parse open url: %w", err)
 	}
