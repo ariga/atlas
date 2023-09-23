@@ -366,6 +366,44 @@ func TestSchema_Apply(t *testing.T) {
 	)
 }
 
+func TestSchema_ApplyTemplateDir(t *testing.T) {
+	p := t.TempDir()
+	cfg := filepath.Join(p, "atlas.hcl")
+	src := filepath.Join(p, "schema.sql")
+	err := os.WriteFile(cfg, []byte(`
+variable "path" {
+  type        = string
+  description = "A path to the template directory"
+}
+
+data "template_dir" "schema" {
+  path = var.path
+  vars = {
+    table = "table_name"
+  }
+}
+
+env "dev" {
+  src = data.template_dir.schema.url
+  dev = "sqlite://dev?mode=memory"
+}`), 0600)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(src, []byte(`create table {{ .table }} (c text);`), 0600))
+
+	cmd := schemaCmd()
+	cmd.AddCommand(schemaApplyCmd())
+	s, err := runCmd(
+		cmd, "apply",
+		"--url", openSQLite(t, ""),
+		"-c", "file://"+cfg,
+		"--var", "path="+p,
+		"--env", "dev",
+		"--auto-approve",
+	)
+	require.NoError(t, err)
+	require.Equal(t, "-- Planned Changes:\n-- Create \"table_name\" table\nCREATE TABLE `table_name` (`c` text NULL);\n", s)
+}
+
 func TestSchema_ApplyMultiEnv(t *testing.T) {
 	p := t.TempDir()
 	cfg := filepath.Join(p, "atlas.hcl")
