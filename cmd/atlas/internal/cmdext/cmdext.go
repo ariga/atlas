@@ -348,6 +348,9 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	if len(attrs) > 0 {
 		return cty.NilVal, errorf("unexpected attributes: %v", attrs)
 	}
+	if d, err := os.Stat(args.Path); err != nil || !d.IsDir() {
+		return cty.NilVal, errorf("path %s is not a directory", args.Path)
+	}
 	dirname := path.Join(args.Path, block.Labels[1])
 	dir := migrate.OpenMemDir(dirname)
 	// Clear existing directories in case the config was called
@@ -407,8 +410,13 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 		}
 		return migrate.WriteSumFile(l, sum)
 	})
+	u := fmt.Sprintf("mem://%s", dirname)
+	// Allow using reading the computed dir as a state source.
+	memLoader.states[u] = StateLoaderFunc(func(ctx context.Context, config *StateReaderConfig) (*StateReadCloser, error) {
+		return stateReaderSQL(ctx, config, dir)
+	})
 	return cty.ObjectVal(map[string]cty.Value{
-		"url": cty.StringVal(fmt.Sprintf("mem://%s", dirname)),
+		"url": cty.StringVal(u),
 	}), nil
 }
 

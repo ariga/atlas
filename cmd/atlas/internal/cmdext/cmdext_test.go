@@ -281,11 +281,10 @@ func TestTemplateDir(t *testing.T) {
 			Dir string `spec:"dir"`
 		}
 		dir   = t.TempDir()
+		ctx   = context.Background()
 		state = schemahcl.New(cmdext.DataSources...)
-	)
-	err := os.WriteFile(filepath.Join(dir, "1.sql"), []byte("create table {{ .Schema }}.t(c int);"), 0644)
-	require.NoError(t, err)
-	err = state.EvalBytes([]byte(`
+		// language=hcl
+		cfg = `
 variable "path" {
   type = string
 }
@@ -293,12 +292,16 @@ variable "path" {
 data "template_dir" "tenant" {
   path = var.path
   vars = {
-    Schema = "a8m"
+    Schema = "main"
   }
 }
 
 dir = data.template_dir.tenant.url
-`), &v, map[string]cty.Value{
+`
+	)
+	err := os.WriteFile(filepath.Join(dir, "1.sql"), []byte("create table {{ .Schema }}.t(c int);"), 0644)
+	require.NoError(t, err)
+	err = state.EvalBytes([]byte(cfg), &v, map[string]cty.Value{
 		"path": cty.StringVal(dir),
 	})
 	require.NoError(t, err)
@@ -309,7 +312,30 @@ dir = data.template_dir.tenant.url
 	require.NoError(t, err)
 	require.Len(t, files, 1)
 	require.Equal(t, "1.sql", files[0].Name())
-	require.Equal(t, "create table a8m.t(c int);", string(files[0].Bytes()))
+	require.Equal(t, "create table main.t(c int);", string(files[0].Bytes()))
+
+	// Directory was loaded to memory as source for readers.
+	mem, ok := cmdext.States.Loader("mem")
+	require.True(t, ok)
+	u, err := url.Parse(v.Dir)
+	require.NoError(t, err)
+	dev, err := sqlclient.Open(ctx, "sqlite://test?mode=memory")
+	require.NoError(t, err)
+	sr, err := mem.LoadState(ctx, &cmdext.StateReaderConfig{
+		URLs: []*url.URL{u},
+		Dev:  dev,
+	})
+	require.NoError(t, err)
+	r, err := sr.ReadState(ctx)
+	require.NoError(t, err)
+	require.Len(t, r.Schemas[0].Tables, 1)
+
+	// Should not accept non-directories.
+	err = state.EvalBytes([]byte(cfg), &v, map[string]cty.Value{
+		"path": cty.StringVal(filepath.Join(dir, "1.sql")),
+	})
+	require.ErrorContains(t, err, "data.template_dir.tenant: path", "error prefix")
+	require.ErrorContains(t, err, "1.sql is not a directory", "error suffix")
 }
 
 func TestSchemaHCL(t *testing.T) {
