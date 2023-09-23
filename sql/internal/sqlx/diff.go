@@ -185,8 +185,10 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 	}
 	// Drop or modify views.
 	for _, v1 := range from.Views {
-		v2, ok := to.View(v1.Name)
+		v2, ok := findView(to, v1)
 		if !ok {
+			// Changing a view to materialized (and vice versa)
+			// generates a drop and add.
 			changes = opts.AddOrSkip(changes, &schema.DropView{V: v1})
 			continue
 		}
@@ -196,7 +198,7 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 	}
 	// Add views.
 	for _, v1 := range to.Views {
-		if _, ok := from.View(v1.Name); !ok {
+		if _, ok := findView(from, v1); !ok {
 			changes = opts.AddOrSkip(changes, &schema.AddView{V: v1})
 		}
 	}
@@ -678,4 +680,12 @@ func SingleQuote(s string) (string, error) {
 // characters from the view definition.
 func TrimViewExtra(s string) string {
 	return strings.Trim(s, " \n\t;")
+}
+
+// findView finds the view by its name and its type.
+func findView(s *schema.Schema, v1 *schema.View) (*schema.View, bool) {
+	if v1.Materialized() {
+		return s.Materialized(v1.Name)
+	}
+	return s.View(v1.Name)
 }
