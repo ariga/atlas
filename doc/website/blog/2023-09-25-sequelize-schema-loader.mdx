@@ -9,7 +9,7 @@ import TabItem from '@theme/TabItem';
 
 :::info TL;DR
 
-You can now import the desired database schema from Sequelize project into Atlas, 
+You can now import the desired database schema from your Sequelize project into Atlas,
 and use it to automatically plan migrations for you.
 
 [See an example](#demo-time)
@@ -24,20 +24,20 @@ PostgreSQL, SQLite, and Microsoft SQL Server.
 [Atlas](https://atlasgo.io) is a modern tool for managing your database schema. It allows you to inspect, plan, lint and execute schema changes
 to your database. It is designed to be used by developers, DBAs and DevOps engineers alike.
 
-Atlas supports many ways to describe database schemas. Using [Schema Loaders](https://atlasgo.io/blog/2023/01/05/atlas-v090#schema-loaders),
+Atlas supports many ways to describe database schemas: Using [Schema Loaders](https://atlasgo.io/blog/2023/01/05/atlas-v090#schema-loaders),
 plain SQL, a connection to another database or using [Atlas HCL](https://atlasgo.io/atlas-schema/sql-resources).
 
-Today, I'm happy to announce that Atlas supports loading the desired schema from Sequelize Projects.
+Today, I'm happy to announce that Atlas supports loading the desired schema from Sequelize projects.
 This means that Sequelize users can now use Atlas instead of the existing Sequelize CLI to manage
 their database schema.
 
 By using Atlas, Sequelize users can now enjoy these benefits:
 
 * A declarative migration flow - Atlas can operate like a "Terraform for databases", where
-  you run `atlas schema apply` and your application schema is applied on a target database.
+  by running `atlas schema apply` the application schema is applied on a target database.
 * Automatic schema migration planning - Alternatively, Atlas can operate using a more traditional
-  versioned migration flow.  However, contrary to most tools, Atlas will automatically analyze the diff between
-  your migration directory and your current application data model and produce correct and
+  versioned migration flow. However, contrary to most tools, Atlas will automatically analyze the diff between
+  the migration directory and the current application data model, and will produce correct and
   safe SQL migration files.
 * CI for schema changes - Atlas can be used during CI to make sure you never merge a pull request
   that will break your database schema.
@@ -64,7 +64,7 @@ the [migrations](https://sequelize.org/master/manual/migrations.html)
 methodology, which is a more robust way to manage your database schema.
 The problem with [creating migrations](https://sequelize.org/docs/v6/other-topics/migrations/#creating-the-first-model-and-migration)
 in Sequelize is that they are usually written by hand in a very specific DSL, which is error-prone and
-time-consuming:
+time consuming:
 
 ```js
 module.exports = {
