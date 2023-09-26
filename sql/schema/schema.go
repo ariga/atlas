@@ -48,6 +48,7 @@ type (
 		Columns []*Column
 		Attrs   []Attr   // Attrs and options.
 		Deps    []Object // Tables and views used in view definition.
+		Indexes []*Index // Indexes on materialized view.
 	}
 
 	// A Column represents a column definition.
@@ -73,9 +74,11 @@ type (
 	Index struct {
 		Name   string
 		Unique bool
-		Table  *Table
-		Attrs  []Attr
-		Parts  []*IndexPart
+		// Table or View that this index belongs to.
+		Table *Table
+		View  *View
+		Attrs []Attr
+		Parts []*IndexPart
 	}
 
 	// An IndexPart represents an index part that
@@ -212,6 +215,23 @@ func (v *View) Column(name string) (*Column, bool) {
 		}
 	}
 	return nil, false
+}
+
+// Index returns the first index that matched the given name.
+func (v *View) Index(name string) (*Index, bool) {
+	for _, i := range v.Indexes {
+		if i.Name == name {
+			return i, true
+		}
+	}
+	return nil, false
+}
+
+// AsTable returns a table that represents the view.
+func (v *View) AsTable() *Table {
+	return NewTable(v.Name).
+		SetSchema(v.Schema).
+		AddColumns(v.Columns...)
 }
 
 // Column returns the first column that matches the given name.

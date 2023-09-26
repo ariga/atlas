@@ -36,6 +36,9 @@ type (
 		Qualifier string         `spec:",qualifier"`
 		Schema    *schemahcl.Ref `spec:"schema"`
 		Columns   []*Column      `spec:"column"`
+		// Indexes on (materialized) views are supported
+		// by some databases, like PostgreSQL.
+		Indexes []*Index `spec:"index"`
 		// The definition is appended as additional attribute
 		// by the spec creator to marshal it after the columns.
 		schemahcl.DefaultExtension

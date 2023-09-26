@@ -26,6 +26,7 @@ type (
 	ConvertTypeFunc        func(*sqlspec.Column) (schema.Type, error)
 	ConvertPrimaryKeyFunc  func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
 	ConvertIndexFunc       func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
+	ConvertViewIndexFunc   func(*sqlspec.Index, *schema.View) (*schema.Index, error)
 	ConvertCheckFunc       func(*sqlspec.Check) (*schema.Check, error)
 	ColumnTypeSpecFunc     func(schema.Type) (*sqlspec.Column, error)
 	TableSpecFunc          func(*schema.Table) (*sqlspec.Table, error)
@@ -200,46 +201,46 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 // at this point. Instead, the linking is done by the Schema function.
 func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertTableColumnFunc,
 	convertPK ConvertPrimaryKeyFunc, convertIndex ConvertIndexFunc, convertCheck ConvertCheckFunc) (*schema.Table, error) {
-	tbl := &schema.Table{
+	t := &schema.Table{
 		Name:   spec.Name,
 		Schema: parent,
 	}
 	for _, csp := range spec.Columns {
-		col, err := convertColumn(csp, tbl)
+		col, err := convertColumn(csp, t)
 		if err != nil {
 			return nil, err
 		}
-		tbl.Columns = append(tbl.Columns, col)
+		t.AddColumns(col)
 	}
 	if spec.PrimaryKey != nil {
-		pk, err := convertPK(spec.PrimaryKey, tbl)
+		pk, err := convertPK(spec.PrimaryKey, t)
 		if err != nil {
 			return nil, err
 		}
-		tbl.PrimaryKey = pk
+		t.SetPrimaryKey(pk)
 	}
 	for _, idx := range spec.Indexes {
-		i, err := convertIndex(idx, tbl)
+		i, err := convertIndex(idx, t)
 		if err != nil {
 			return nil, err
 		}
-		tbl.Indexes = append(tbl.Indexes, i)
+		t.AddIndexes(i)
 	}
 	for _, c := range spec.Checks {
 		c, err := convertCheck(c)
 		if err != nil {
 			return nil, err
 		}
-		tbl.AddChecks(c)
+		t.AddChecks(c)
 	}
-	if err := convertCommentFromSpec(spec, &tbl.Attrs); err != nil {
+	if err := convertCommentFromSpec(spec, &t.Attrs); err != nil {
 		return nil, err
 	}
-	return tbl, nil
+	return t, nil
 }
 
 // View converts a sqlspec.View to a schema.View.
-func View(spec *sqlspec.View, parent *schema.Schema, convertColumn ConvertViewColumnFunc) (*schema.View, error) {
+func View(spec *sqlspec.View, parent *schema.Schema, convertC ConvertViewColumnFunc, convertI ConvertViewIndexFunc) (*schema.View, error) {
 	as, ok := spec.Extra.Attr("as")
 	if !ok {
 		return nil, fmt.Errorf("specutil: missing 'as' definition for view %q", spec.Name)
@@ -250,11 +251,18 @@ func View(spec *sqlspec.View, parent *schema.Schema, convertColumn ConvertViewCo
 	}
 	v := schema.NewView(spec.Name, def).SetSchema(parent)
 	for _, c := range spec.Columns {
-		c, err := convertColumn(c, v)
+		c, err := convertC(c, v)
 		if err != nil {
 			return nil, err
 		}
 		v.AddColumns(c)
+	}
+	for _, idx := range spec.Indexes {
+		i, err := convertI(idx, v)
+		if err != nil {
+			return nil, err
+		}
+		v.AddIndexes(i)
 	}
 	if err := convertCommentFromSpec(spec, &v.Attrs); err != nil {
 		return nil, err
@@ -519,7 +527,7 @@ func FromTable(t *schema.Table, colFn TableColumnSpecFunc, pkFn PrimaryKeySpecFu
 }
 
 // FromView converts a schema.View to a sqlspec.View.
-func FromView(v *schema.View, colFn ViewColumnSpecFunc) (*sqlspec.View, error) {
+func FromView(v *schema.View, colFn ViewColumnSpecFunc, idxFn IndexSpecFunc) (*sqlspec.View, error) {
 	spec := &sqlspec.View{
 		Name: v.Name,
 	}
@@ -529,6 +537,13 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc) (*sqlspec.View, error) {
 			return nil, err
 		}
 		spec.Columns = append(spec.Columns, cs)
+	}
+	for _, idx := range v.Indexes {
+		i, err := idxFn(idx)
+		if err != nil {
+			return nil, err
+		}
+		spec.Indexes = append(spec.Indexes, i)
 	}
 	as := v.Def
 	// In case the view definition is multi-line,

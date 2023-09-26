@@ -192,8 +192,9 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 			changes = opts.AddOrSkip(changes, &schema.DropView{V: v1})
 			continue
 		}
-		if TrimViewExtra(v1.Def) != TrimViewExtra(v2.Def) || d.ViewAttrChanged(v1, v2) {
-			changes = opts.AddOrSkip(changes, &schema.ModifyView{From: v1, To: v2})
+		change := d.indexDiffV(v1, v2, opts)
+		if ViewDefChanged(v1, v2) || d.ViewAttrChanged(v1, v2) || len(change) > 0 {
+			changes = opts.AddOrSkip(changes, &schema.ModifyView{From: v1, To: v2, Changes: change})
 		}
 	}
 	// Add views.
@@ -271,7 +272,7 @@ func (d *Diff) tableDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]sc
 
 	// Primary-key and index changes.
 	changes = append(changes, d.pkDiff(from, to, opts)...)
-	changes = append(changes, d.indexDiff(from, to, opts)...)
+	changes = append(changes, d.indexDiffT(from, to, opts)...)
 
 	// Drop or modify foreign-keys.
 	for _, fk1 := range from.ForeignKeys {
@@ -329,9 +330,9 @@ func (d *Diff) pkDiff(from, to *schema.Table, opts *schema.DiffOptions) (changes
 	return
 }
 
-// indexDiff returns the schema changes (if any) for migrating table
+// indexDiffT returns the schema changes (if any) for migrating table
 // indexes from current state to the desired state.
-func (d *Diff) indexDiff(from, to *schema.Table, opts *schema.DiffOptions) []schema.Change {
+func (d *Diff) indexDiffT(from, to *schema.Table, opts *schema.DiffOptions) []schema.Change {
 	var (
 		changes []schema.Change
 		exists  = make(map[*schema.Index]bool)
@@ -357,6 +358,42 @@ func (d *Diff) indexDiff(from, to *schema.Table, opts *schema.DiffOptions) []sch
 				exists[idx2] = true
 				continue
 			}
+		}
+		// Not found.
+		changes = opts.AddOrSkip(changes, &schema.DropIndex{I: idx1})
+	}
+	// Add indexes.
+	for _, idx := range to.Indexes {
+		if exists[idx] {
+			continue
+		}
+		if _, ok := from.Index(idx.Name); !ok {
+			changes = opts.AddOrSkip(changes, &schema.AddIndex{I: idx})
+		}
+	}
+	return changes
+}
+
+// indexDiffV returns the schema changes (if any) for migrating view
+// indexes from current state to the desired state.
+func (d *Diff) indexDiffV(from, to *schema.View, opts *schema.DiffOptions) []schema.Change {
+	var (
+		changes []schema.Change
+		exists  = make(map[*schema.Index]bool)
+	)
+	// Drop or modify indexes.
+	for _, idx1 := range from.Indexes {
+		idx2, ok := to.Index(idx1.Name)
+		if ok {
+			if change := d.indexChange(idx1, idx2); change != schema.NoChange {
+				changes = opts.AddOrSkip(changes, &schema.ModifyIndex{
+					From:   idx1,
+					To:     idx2,
+					Change: change,
+				})
+			}
+			exists[idx2] = true
+			continue
 		}
 		// Not found.
 		changes = opts.AddOrSkip(changes, &schema.DropIndex{I: idx1})
@@ -680,6 +717,26 @@ func SingleQuote(s string) (string, error) {
 // characters from the view definition.
 func TrimViewExtra(s string) string {
 	return strings.Trim(s, " \n\t;")
+}
+
+// ViewDefChanged returns true if the view definition has changed.
+// There is small work here that normalizes the indentation that
+// might be extra added on inspection or by the user.
+func ViewDefChanged(from, to *schema.View) bool {
+	if from.Def == to.Def || TrimViewExtra(from.Def) == TrimViewExtra(to.Def) {
+		return false
+	}
+	noident := func(v string) string {
+		var b strings.Builder
+		for i, s := range strings.Split(v, "\n") {
+			if s = TrimViewExtra(s); s != "" && i > 0 {
+				b.WriteByte(' ')
+			}
+			b.WriteString(s)
+		}
+		return b.String()
+	}
+	return noident(from.Def) != noident(to.Def)
 }
 
 // findView finds the view by its name and its type.

@@ -97,17 +97,7 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 		if len(s.Tables) == 0 {
 			continue
 		}
-		if err := i.columns(ctx, s, queryScope{
-			exec: i.querySchema,
-			append: func(s *schema.Schema, table string, column *schema.Column) error {
-				t, ok := s.Table(table)
-				if !ok {
-					return fmt.Errorf("table %q was not found in schema", table)
-				}
-				t.AddColumns(column)
-				return nil
-			},
-		}); err != nil {
+		if err := i.columns(ctx, s); err != nil {
 			return err
 		}
 		if err := i.indexes(ctx, s); err != nil {
@@ -174,24 +164,19 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 	return rows.Close()
 }
 
-type queryScope struct {
-	exec   func(context.Context, string, *schema.Schema) (*sql.Rows, error)
-	append func(*schema.Schema, string, *schema.Column) error
-}
-
 // columns queries and appends the columns of the given table.
-func (i *inspect) columns(ctx context.Context, s *schema.Schema, scope queryScope) error {
+func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 	query := columnsQuery
 	if i.crdb {
 		query = crdbColumnsQuery
 	}
-	rows, err := scope.exec(ctx, query, s)
+	rows, err := i.querySchema(ctx, query, s)
 	if err != nil {
 		return fmt.Errorf("postgres: querying schema %q columns: %w", s.Name, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := i.addColumn(s, rows, scope); err != nil {
+		if err := i.addColumn(s, rows); err != nil {
 			return fmt.Errorf("postgres: %w", err)
 		}
 	}
@@ -199,7 +184,7 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema, scope queryScop
 }
 
 // addColumn scans the current row and adds a new column from it to the scope (table or view).
-func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) (err error) {
+func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 	var (
 		typid, typelem, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast                                                  sql.NullInt64
 		table, name, typ, fmtype, nullable, defaults, identity, genidentity, genexpr, charset, collate, comment, typtype, elemtyp, interval sql.NullString
@@ -209,6 +194,10 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) 
 		&collate, &identity, &seqstart, &seqinc, &seqlast, &genidentity, &genexpr, &comment, &typtype, &typelem, &elemtyp, &typid,
 	); err != nil {
 		return err
+	}
+	t, ok := s.Table(table.String)
+	if !ok {
+		return fmt.Errorf("table %q was not found in schema", table.String)
 	}
 	c := &schema.Column{
 		Name: name.String,
@@ -257,7 +246,8 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows, scope queryScope) 
 	if sqlx.ValidString(collate) {
 		c.SetCollation(collate.String)
 	}
-	return scope.append(s, table.String, c)
+	t.AddColumns(c)
+	return nil
 }
 
 // enumValues fills enum columns with their values from the database.
@@ -334,30 +324,66 @@ func (i *inspect) inspectEnums(ctx context.Context, r *schema.Realm) error {
 
 // indexes queries and appends the indexes of the given table.
 func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
-	var query string
-	switch {
-	case i.conn.crdb:
+	if i.crdb {
 		return i.crdbIndexes(ctx, s)
-	case i.supportsIndexNullsDistinct():
-		query = indexesAbove15
-	case i.supportsIndexInclude():
-		query = indexesAbove11
-	default:
-		query = indexesBelow11
 	}
-	rows, err := i.querySchema(ctx, query, s)
+	rows, err := i.querySchema(ctx, i.indexesQuery(), s)
 	if err != nil {
 		return fmt.Errorf("postgres: querying schema %q indexes: %w", s.Name, err)
 	}
 	defer rows.Close()
-	if err := i.addIndexes(s, rows); err != nil {
+	if err := i.addIndexes(s, rows, queryScope{
+		hasT: func(tv string) bool {
+			_, ok := s.Table(tv)
+			return ok
+		},
+		setPK: func(tv string, idx *schema.Index) error {
+			if t, ok := s.Table(tv); ok {
+				t.SetPrimaryKey(idx)
+				return nil
+			}
+			return fmt.Errorf("postgres: table %q for primary key was not found in schema", tv)
+		},
+		addIndex: func(tv string, idx *schema.Index) error {
+			if t, ok := s.Table(tv); ok {
+				t.AddIndexes(idx)
+				return nil
+			}
+			return fmt.Errorf("postgres: table %q for index was not found in schema", tv)
+		},
+		column: func(tv, name string) (*schema.Column, bool) {
+			if t, ok := s.Table(tv); ok {
+				return t.Column(name)
+			}
+			return nil, false
+		},
+	}); err != nil {
 		return err
 	}
 	return rows.Err()
 }
 
+func (i *inspect) indexesQuery() (q string) {
+	switch {
+	case i.supportsIndexNullsDistinct():
+		q = indexesAbove15
+	case i.supportsIndexInclude():
+		q = indexesAbove11
+	default:
+		q = indexesBelow11
+	}
+	return
+}
+
+type queryScope struct {
+	hasT     func(tv string) bool
+	setPK    func(tv string, idx *schema.Index) error
+	addIndex func(tv string, idx *schema.Index) error
+	column   func(tv, name string) (*schema.Column, bool)
+}
+
 // addIndexes scans the rows and adds the indexes to the table.
-func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
+func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows, scope queryScope) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
@@ -372,8 +398,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		); err != nil {
 			return fmt.Errorf("postgres: scanning indexes for schema %q: %w", s.Name, err)
 		}
-		t, ok := s.Table(table)
-		if !ok {
+		if !scope.hasT(table) {
 			return fmt.Errorf("table %q was not found in schema", table)
 		}
 		idx, ok := names[name]
@@ -381,7 +406,6 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			idx = &schema.Index{
 				Name:   name,
 				Unique: uniq,
-				Table:  t,
 				Attrs: []schema.Attr{
 					&IndexType{T: typ},
 				},
@@ -412,10 +436,14 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 				idx.AddAttrs(&IndexNullsDistinct{V: false})
 			}
 			names[name] = idx
+			var err error
 			if primary {
-				t.PrimaryKey = idx
+				err = scope.setPK(table, idx)
 			} else {
-				t.Indexes = append(t.Indexes, idx)
+				err = scope.addIndex(table, idx)
+			}
+			if err != nil {
+				return err
 			}
 		}
 		part := &schema.IndexPart{SeqNo: len(idx.Parts) + 1, Desc: desc.Bool}
@@ -427,7 +455,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		}
 		switch {
 		case included:
-			c, ok := t.Column(column.String)
+			c, ok := scope.column(table, column.String)
 			if !ok {
 				return fmt.Errorf("postgres: INCLUDE column %q was not found for index %q", column.String, idx.Name)
 			}
@@ -436,7 +464,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			include.Columns = append(include.Columns, c)
 			schema.ReplaceOrAppend(&idx.Attrs, &include)
 		case sqlx.ValidString(column):
-			part.C, ok = t.Column(column.String)
+			part.C, ok = scope.column(table, column.String)
 			if !ok {
 				return fmt.Errorf("postgres: column %q was not found for index %q", column.String, idx.Name)
 			}

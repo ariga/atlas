@@ -118,6 +118,9 @@ func (s *state) plan(changes []schema.Change) error {
 		case *schema.RenameView:
 			s.renameView(c)
 		}
+		if err != nil {
+			return err
+		}
 	}
 	for _, c := range dropT {
 		if err := s.dropTable(c); err != nil {
