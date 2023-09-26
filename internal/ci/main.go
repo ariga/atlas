@@ -13,6 +13,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"text/template"
 )
 
@@ -164,19 +166,24 @@ var (
 	}
 )
 
+type goVersions []string
+
+var data struct {
+	Jobs                 []Job
+	Flavor, Tags, Runner string
+	GoVersions           goVersions
+}
+
 func main() {
-	var flavor, tags, suffix, runner string
-	flag.StringVar(&flavor, "flavor", "", "")
-	flag.StringVar(&tags, "tags", "", "")
+	var suffix string
+	flag.StringVar(&data.Flavor, "flavor", "", "")
+	flag.StringVar(&data.Tags, "tags", "", "")
+	flag.StringVar(&data.Runner, "runner", "ubuntu-latest", "")
 	flag.StringVar(&suffix, "suffix", "", "")
-	flag.StringVar(&runner, "runner", "ubuntu-latest", "")
 	flag.Parse()
 	for _, n := range []string{"dialect", "go", "revisions"} {
 		var buf bytes.Buffer
-		if err := tpl.ExecuteTemplate(&buf, fmt.Sprintf("ci_%s.tmpl", n), struct {
-			Jobs                 []Job
-			Flavor, Tags, Runner string
-		}{jobs, flavor, tags, runner}); err != nil {
+		if err := tpl.ExecuteTemplate(&buf, fmt.Sprintf("ci_%s.tmpl", n), data); err != nil {
 			log.Fatalln(err)
 		}
 		err := os.WriteFile(filepath.Clean(fmt.Sprintf("../../.github/workflows/ci-%s_%s.yaml", n, suffix)), buf.Bytes(), 0600)
@@ -184,4 +191,11 @@ func main() {
 			log.Fatalln(err)
 		}
 	}
+}
+
+func (v goVersions) String() (s string) {
+	for i := range v {
+		v[i] = strconv.Quote(v[i])
+	}
+	return fmt.Sprintf("[ %s ]", strings.Join(v, ", "))
 }

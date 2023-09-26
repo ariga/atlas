@@ -9,7 +9,8 @@ package main
 //go:generate go run . -flavor Community -suffix oss
 
 func init() {
-	jobs = append(jobs,
+	data.GoVersions = goVersions{"1.20", "1.21"}
+	data.Jobs = append(jobs,
 		Job{
 			Version: "tidb5",
 			Image:   "pingcap/tidb:v5.4.0",

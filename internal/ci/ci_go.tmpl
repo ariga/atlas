@@ -51,7 +51,7 @@ jobs:
     runs-on: {{ $.Runner }}
     strategy:
       matrix:
-        go: [ '1.20', '1.21' ]
+        go: {{ with $.GoVersions }}{{ . }}{{ end }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v4
