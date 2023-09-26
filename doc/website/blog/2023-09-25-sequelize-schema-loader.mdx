@@ -18,7 +18,8 @@ and use it to automatically plan migrations for you.
 
 ## Introduction
 
-[Sequelize](https://sequelize.org/) is one of the most popular ORMs for Node.js. It supports a variety of databases, including MySQL, PostgreSQL, SQLite, and Microsoft SQL Server.
+[Sequelize](https://sequelize.org/) is one of the most popular ORMs for Node.js. It supports a variety of databases, including MySQL,
+PostgreSQL, SQLite, and Microsoft SQL Server.
 
 [Atlas](https://atlasgo.io) is a modern tool for managing your database schema. It allows you to inspect, plan, lint and execute schema changes
 to your database. It is designed to be used by developers, DBAs and DevOps engineers alike.
@@ -26,24 +27,70 @@ to your database. It is designed to be used by developers, DBAs and DevOps engin
 Atlas supports many ways to describe database schemas. Using [Schema Loaders](https://atlasgo.io/blog/2023/01/05/atlas-v090#schema-loaders),
 plain SQL, a connection to another database or using [Atlas HCL](https://atlasgo.io/atlas-schema/sql-resources).
 
-Today, I'm happy to announce that Atlas now supports loading the schema state from Sequelize Projects.
+Today, I'm happy to announce that Atlas supports loading the desired schema from Sequelize Projects.
+This means that Sequelize users can now use Atlas instead of the existing Sequelize CLI to manage
+their database schema.
 
-## Demo Time
+By using Atlas, Sequelize users can now enjoy these benefits:
 
-Sequelize allows users to
-manage their database schemas using its [sync](https://sequelize.org/docs/v6/core-concepts/model-basics/#model-synchronization/) feature,
-which is usually sufficient during development and in many simple cases.
+* A declarative migration flow - Atlas can operate like a "Terraform for databases", where
+  you run `atlas schema apply` and your application schema is applied on a target database.
+* Automatic schema migration planning - Alternatively, Atlas can operate using a more traditional
+  versioned migration flow.  However, contrary to most tools, Atlas will automatically analyze the diff between
+  your migration directory and your current application data model and produce correct and
+  safe SQL migration files.
+* CI for schema changes - Atlas can be used during CI to make sure you never merge a pull request
+  that will break your database schema.
+* Modern CD integrations - Atlas integrates seamlessly with modern deployment tools such as Kubernetes,
+  Terraform, Helm, Flux, and ArgoCD. This allows you to deploy changes to your database schema
+  as part of your existing deployment pipelines.
+* Visualization - Atlas users can create beautiful, shareable ERDs of their application data model
+  with a single command.
+* .. and much more (read more about [Atlas features](/))
+
+## Evolving beyond Sequelize's native migration support
+
+Sequelize allows users to manage their database schemas using its
+[sync](https://sequelize.org/docs/v6/core-concepts/model-basics/#model-synchronization/) feature,
+which is usually sufficient during development and in many simple cases:
+
+```js
+await sequelize.sync({ force: true });
+console.log("All models were synchronized successfully.");
+```
 
 However, at some point, teams need more control and decide to employ
 the [migrations](https://sequelize.org/master/manual/migrations.html)
 methodology, which is a more robust way to manage your database schema.
 The problem with [creating migrations](https://sequelize.org/docs/v6/other-topics/migrations/#creating-the-first-model-and-migration)
-in Sequelize is that they are usually written by hand, which is error-prone and
-time-consuming.
+in Sequelize is that they are usually written by hand in a very specific DSL, which is error-prone and
+time-consuming:
+
+```js
+module.exports = {
+  up: (queryInterface, Sequelize) => {
+    return queryInterface.createTable('Person', {
+      name: Sequelize.DataTypes.STRING,
+      isBetaMember: {
+        type: Sequelize.DataTypes.BOOLEAN,
+        defaultValue: false,
+        allowNull: false
+      }
+    });
+  },
+  down: (queryInterface, Sequelize) => {
+    return queryInterface.dropTable('Person');
+  }
+};
+```
 
 Atlas can automatically plan database schema migrations for developers using Sequelize.
 Atlas plans migrations by calculating the diff between the _current_ state of the database,
 and its _desired_ state.
+
+## Demo time
+
+Let's demonstrate how to set up Atlas to manage your Sequelize schema.
 
 ### Installation
 
@@ -51,7 +98,7 @@ If you haven't already, install Atlas from macOS or Linux by running:
 ```bash
 curl -sSf https://atlasgo.sh | sh
 ```
-See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more installation options.
+See [the documentation](https://atlasgo.io/getting-started#installation) for more installation options.
 
 Install the [Atlas Sequelize Provider](https://github.com/ariga/atlas-provider-sequelize) by running:
 
