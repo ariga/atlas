@@ -268,6 +268,15 @@ func (v *View) AddDeps(objs ...Object) *View {
 	return v
 }
 
+// AddIndexes appends the given indexes to the table index list.
+func (v *View) AddIndexes(indexes ...*Index) *View {
+	for _, idx := range indexes {
+		idx.View = v
+	}
+	v.Indexes = append(v.Indexes, indexes...)
+	return v
+}
+
 // SetCheckOption sets the check option of the view.
 func (v *View) SetCheckOption(opt string) *View {
 	ReplaceOrAppend(&v.Attrs, &ViewCheckOption{V: opt})

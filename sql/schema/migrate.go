@@ -102,6 +102,9 @@ type (
 	// ModifyView describes a view modification change.
 	ModifyView struct {
 		From, To *View
+		// Changes that are extra to the view definition.
+		// For example, adding or dropping indexes.
+		Changes []Change
 	}
 
 	// RenameView describes a view rename change.

@@ -196,9 +196,20 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 
 // convertView converts a sqlspec.View to a schema.View.
 func convertView(spec *sqlspec.View, parent *schema.Schema) (*schema.View, error) {
-	v, err := specutil.View(spec, parent, func(c *sqlspec.Column, _ *schema.View) (*schema.Column, error) {
-		return specutil.Column(c, convertColumnType)
-	})
+	v, err := specutil.View(
+		spec, parent,
+		func(c *sqlspec.Column, _ *schema.View) (*schema.Column, error) {
+			return specutil.Column(c, convertColumnType)
+		},
+		func(i *sqlspec.Index, v *schema.View) (*schema.Index, error) {
+			idx, err := convertIndex(i, v.AsTable())
+			if err != nil {
+				return nil, err
+			}
+			idx.Table, idx.View = nil, v
+			return idx, nil
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -606,9 +617,13 @@ func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
 
 // viewSpec converts from a concrete PostgreSQL schema.View to a sqlspec.View.
 func viewSpec(view *schema.View) (*sqlspec.View, error) {
-	spec, err := specutil.FromView(view, func(c *schema.Column, _ *schema.View) (*sqlspec.Column, error) {
-		return specutil.FromColumn(c, columnTypeSpec)
-	})
+	spec, err := specutil.FromView(
+		view,
+		func(c *schema.Column, _ *schema.View) (*sqlspec.Column, error) {
+			return specutil.FromColumn(c, columnTypeSpec)
+		},
+		indexSpec,
+	)
 	if err != nil {
 		return nil, err
 	}
