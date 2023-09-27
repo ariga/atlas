@@ -585,7 +585,7 @@ func defaultValue(c *schema.Column) (string, error) {
 			return sqlx.SingleQuote(x.V)
 		}
 	case *schema.RawExpr:
-		return x.X, nil
+		return sqlx.MayWrap(x.X), nil
 	default:
 		return "", fmt.Errorf("unexpected default value type: %T", x)
 	}
