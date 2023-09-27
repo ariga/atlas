@@ -84,9 +84,9 @@ module.exports = {
 };
 ```
 
-Atlas can automatically plan database schema migrations for developers using Sequelize.
-Atlas plans migrations by calculating the diff between the _current_ state of the database,
-and its _desired_ state.
+Atlas can automatically plan database schema migrations for developers using Sequelize by
+calculating the diff between the **current** state of the migration directory and its
+**desired** state defined by the Sequelize schema.
 
 ## Demo time
 
@@ -125,7 +125,7 @@ npm install
 ### Standalone vs Script mode
 
 The provider can be used in two modes:
-* **Standalone** - If all of your Sequelize models exist in a single Node module,
+* **Standalone** - If all of your Sequelize models exist in a single Node.js module,
  you can use the provider directly to load your Sequelize schema into Atlas.
 * **Script** - In other cases, you can use the provider as an npm package to write a script
  that loads your Sequelize schema into Atlas.
