@@ -1214,12 +1214,10 @@ func (s *state) enumIdent(e *schema.EnumType) string {
 		if *s.SchemaQualifier != "" {
 			return fmt.Sprintf("%q.%q", *s.SchemaQualifier, e.T)
 		}
-		return strconv.Quote(e.T)
-	case e.Schema != nil:
+	case e.Schema != nil && e.Schema.Name != "":
 		return fmt.Sprintf("%q.%q", e.Schema.Name, e.T)
-	default:
-		return strconv.Quote(e.T)
 	}
+	return strconv.Quote(e.T)
 }
 
 // schemaPrefix returns the schema prefix based on the planner config.
