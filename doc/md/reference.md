@@ -382,9 +382,9 @@ migration.
 
 ```
   atlas schema apply -u "mysql://user:pass@localhost/dbname" --to file://atlas.hcl
-  atlas schema apply -u "mysql://localhost" --to file://schema.sql --dev-url docker://mysql/8/dev
-  atlas schema apply --env local --dev-url "docker://postgres/15/dev" --dry-run
-  atlas schema apply -u "sqlite://file.db" --to file://schema.sql --dev-url "sqlite://dev?mode=memory"
+  atlas schema apply -u mysql://localhost --to file://schema.sql --dev-url docker://mysql/8/dev
+  atlas schema apply --env local --dev-url "docker://postgres/15/dev?search_path=public" --dry-run
+  atlas schema apply -u sqlite://file.db --to file://schema.sql --dev-url "sqlite://dev?mode=memory"
 ```
 #### Flags
 ```
