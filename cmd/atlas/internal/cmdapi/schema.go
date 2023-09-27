@@ -707,6 +707,7 @@ const (
 // cmdPrompt returns a promptui.Select that uses the given command's input and output.
 func cmdPrompt(cmd *cobra.Command) *promptui.Select {
 	return &promptui.Select{
+		Label:  "Are you sure?",
 		Stdin:  io.NopCloser(cmd.InOrStdin()),
 		Stdout: nopCloser{cmd.OutOrStdout()},
 	}
@@ -715,7 +716,6 @@ func cmdPrompt(cmd *cobra.Command) *promptui.Select {
 func promptUser(cmd *cobra.Command) bool {
 	prompt := cmdPrompt(cmd)
 	prompt.Items = []string{answerApply, answerAbort}
-
 	_, result, err := prompt.Run()
 	if err != nil && err != promptui.ErrInterrupt {
 		// Fail in case of unexpected errors.
