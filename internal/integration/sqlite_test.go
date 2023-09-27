@@ -224,7 +224,7 @@ func TestSQLite_AddColumns(t *testing.T) {
 			&schema.Column{Name: "null_real", Type: &schema.ColumnType{Type: &schema.FloatType{T: "real"}, Null: true}},
 			&schema.Column{Name: "notnull_real", Type: &schema.ColumnType{Type: &schema.FloatType{T: "real"}}, Default: &schema.Literal{V: "1.0"}},
 			&schema.Column{Name: "null_text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
-			&schema.Column{Name: "notnull_text1", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}, Default: &schema.RawExpr{X: "hello"}},
+			&schema.Column{Name: "notnull_text1", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}, Default: &schema.Literal{V: "hello"}},
 			&schema.Column{Name: "notnull_text2", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}, Default: &schema.Literal{V: "'hello'"}},
 			&schema.Column{Name: "null_blob", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob"}, Null: true}},
 			&schema.Column{Name: "notnull_blob", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob"}}, Default: &schema.Literal{V: "'blob'"}},
