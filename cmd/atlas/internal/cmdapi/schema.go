@@ -65,18 +65,18 @@ migration, Atlas will print the migration plan and prompt the user for approval.
 
 The schema is provided by one or more URLs (to a HCL file or 
 directory, database or migration directory) using the "--to, -t" flag:
-  atlas schema apply -u URL --to file://file1.hcl --to file://file2.hcl
-  atlas schema apply -u URL --to file://schema/ --to file://override.hcl
+  atlas schema apply -u URL --to "file://file1.hcl" --to "file://file2.hcl"
+  atlas schema apply -u URL --to "file://schema/" --to "file://override.hcl"
 
 As a convenience, schema URLs may also be provided via an environment definition in
 the project file (see: https://atlasgo.io/cli/projects).
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
-			Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" --to file://atlas.hcl
-  atlas schema apply -u mysql://localhost --to file://schema.sql --dev-url docker://mysql/8/dev
+			Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" --to "file://atlas.hcl"
+  atlas schema apply -u "mysql://localhost" --to "file://schema.sql" --dev-url "docker://mysql/8/dev"
   atlas schema apply --env local --dev-url "docker://postgres/15/dev?search_path=public" --dry-run
-  atlas schema apply -u sqlite://file.db --to file://schema.sql --dev-url "sqlite://dev?mode=memory"`,
+  atlas schema apply -u "sqlite://file.db" --to "file://schema.sql" --dev-url "sqlite://dev?mode=memory"`,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				switch {
 				case GlobalFlags.SelectedEnv == "":
@@ -251,8 +251,8 @@ func schemaCleanCmd() *cobra.Command {
 			Short: "Removes all objects from the connected database.",
 			Long: `'atlas schema clean' drops all objects in the connected database and leaves it in an empty state.
 As a safety feature, 'atlas schema clean' will ask for confirmation before attempting to execute any SQL.`,
-			Example: `  atlas schema clean -u mysql://user:pass@localhost:3306/dbname
-  atlas schema clean -u mysql://user:pass@localhost:3306/`,
+			Example: `  atlas schema clean -u "mysql://user:pass@localhost:3306/dbname"
+  atlas schema clean -u "mysql://user:pass@localhost:3306/"`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
 				return schemaFlagsFromConfig(cmd)
 			},
@@ -337,9 +337,9 @@ func schemaDiffCmdWithFlags() (*cobra.Command, *schemaDiffFlags) {
 calculates the difference in their schemas, and prints a plan of
 SQL statements to migrate the "from" database to the schema of the "to" database.
 The database states can be read from a connected database, an HCL project or a migration directory.`,
-			Example: `  atlas schema diff --from mysql://user:pass@localhost:3306/test --to file://schema.hcl
-  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://schema_1.hcl --to file://schema_2.hcl
-  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations --format '{{ sql . "  " }}'`,
+			Example: `  atlas schema diff --from "mysql://user:pass@localhost:3306/test" --to "file://schema.hcl"
+  atlas schema diff --from "mysql://user:pass@localhost:3306" --to "file://schema_1.hcl" --to "file://schema_2.hcl"
+  atlas schema diff --from "mysql://user:pass@localhost:3306" --to "file://migrations" --format '{{ sql . "  " }}'`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
 				return schemaFlagsFromConfig(cmd)
 			},

@@ -79,8 +79,8 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
 #### Example
 
 ```
-  atlas migrate apply -u mysql://user:pass@localhost:3306/dbname
-  atlas migrate apply --dir file:///path/to/migration/directory --url mysql://user:pass@localhost:3306/dbname 1
+  atlas migrate apply -u "mysql://user:pass@localhost:3306/dbname"
+  atlas migrate apply --dir "file:///path/to/migration/directory" --url "mysql://user:pass@localhost:3306/dbname" 1
   atlas migrate apply --env dev 1
   atlas migrate apply --dry-run --env dev 1
 ```
@@ -117,9 +117,9 @@ an HCL, SQL, or ORM schema. See: https://atlasgo.io/versioned/diff
 #### Example
 
 ```
-  atlas migrate diff --dev-url docker://mysql/8/dev --to file://schema.hcl
-  atlas migrate diff --dev-url "docker://postgres/15/dev?search_path=public" --to file://atlas.hcl add_users_table
-  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
+  atlas migrate diff "--dev-url docker://mysql/8/dev" --to "file://schema.hcl"
+  atlas migrate diff --dev-url "docker://postgres/15/dev?search_path=public" --to "file://atlas.hcl" add_users_table
+  atlas migrate diff --dev-url "mysql://user:pass@localhost:3306/dev" --to "mysql://user:pass@localhost:3306/dbname"
   atlas migrate diff --env dev --format '{{ sql . "  " }}'
 ```
 #### Flags
@@ -175,7 +175,7 @@ atlas migrate import [flags]
 #### Example
 
 ```
-  atlas migrate import --from file:///path/to/source/directory?format=liquibase --to file:///path/to/migration/directory
+  atlas migrate import --from "file:///path/to/source/directory?format=liquibase" --to "file:///path/to/migration/directory"
 ```
 #### Flags
 ```
@@ -199,9 +199,9 @@ atlas migrate lint [flags]
 
 ```
   atlas migrate lint --env dev
-  atlas migrate lint --dir file:///path/to/migrations --dev-url docker://mysql/8/dev --latest 1
-  atlas migrate lint --dir file:///path/to/migrations --dev-url mysql://root:pass@localhost:3306 --git-base master
-  atlas migrate lint --dir file:///path/to/migrations --dev-url mysql://root:pass@localhost:3306 --format '{{ json .Files }}'
+  atlas migrate lint --dir "file:///path/to/migrations" --dev-url "docker://mysql/8/dev" --latest 1
+  atlas migrate lint --dir "file:///path/to/migrations" --dev-url "mysql://root:pass@localhost:3306" --git-base master
+  atlas migrate lint --dir "file:///path/to/migrations" --dev-url "mysql://root:pass@localhost:3306" --format '{{ json .Files }}'
 ```
 #### Flags
 ```
@@ -258,9 +258,9 @@ to be applied. This command is usually used after manually making changes to the
 #### Example
 
 ```
-  atlas migrate set 3 --url mysql://user:pass@localhost:3306/
+  atlas migrate set 3 --url "mysql://user:pass@localhost:3306/"
   atlas migrate set --env local
-  atlas migrate set 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions
+  atlas migrate set 1.2.4 --url "mysql://user:pass@localhost:3306/my_db" --revision-schema my_revisions
 ```
 #### Flags
 ```
@@ -287,8 +287,8 @@ atlas migrate status [flags]
 #### Example
 
 ```
-  atlas migrate status --url mysql://user:pass@localhost:3306/
-  atlas migrate status --url mysql://user:pass@localhost:3306/ --dir file:///path/to/migration/directory
+  atlas migrate status --url "mysql://user:pass@localhost:3306/"
+  atlas migrate status --url "mysql://user:pass@localhost:3306/" --dir "file:///path/to/migration/directory"
 ```
 #### Flags
 ```
@@ -319,8 +319,8 @@ files are executed on the connected database in order to validate SQL semantics.
 
 ```
   atlas migrate validate
-  atlas migrate validate --dir file:///path/to/migration/directory
-  atlas migrate validate --dir file:///path/to/migration/directory --dev-url docker://mysql/8/dev
+  atlas migrate validate --dir "file:///path/to/migration/directory"
+  atlas migrate validate --dir "file:///path/to/migration/directory" --dev-url "docker://mysql/8/dev"
   atlas migrate validate --env dev --dev-url "docker://postgres/15/dev?search_path=public"
 ```
 #### Flags
@@ -369,8 +369,8 @@ migration, Atlas will print the migration plan and prompt the user for approval.
 
 The schema is provided by one or more URLs (to a HCL file or 
 directory, database or migration directory) using the "--to, -t" flag:
-  atlas schema apply -u URL --to file://file1.hcl --to file://file2.hcl
-  atlas schema apply -u URL --to file://schema/ --to file://override.hcl
+  atlas schema apply -u URL --to "file://file1.hcl" --to "file://file2.hcl"
+  atlas schema apply -u URL --to "file://schema/" --to "file://override.hcl"
 
 As a convenience, schema URLs may also be provided via an environment definition in
 the project file (see: https://atlasgo.io/cli/projects).
@@ -381,10 +381,10 @@ migration.
 #### Example
 
 ```
-  atlas schema apply -u "mysql://user:pass@localhost/dbname" --to file://atlas.hcl
-  atlas schema apply -u mysql://localhost --to file://schema.sql --dev-url docker://mysql/8/dev
+  atlas schema apply -u "mysql://user:pass@localhost/dbname" --to "file://atlas.hcl"
+  atlas schema apply -u "mysql://localhost" --to "file://schema.sql" --dev-url "docker://mysql/8/dev"
   atlas schema apply --env local --dev-url "docker://postgres/15/dev?search_path=public" --dry-run
-  atlas schema apply -u sqlite://file.db --to file://schema.sql --dev-url "sqlite://dev?mode=memory"
+  atlas schema apply -u "sqlite://file.db" --to "file://schema.sql" --dev-url "sqlite://dev?mode=memory"
 ```
 #### Flags
 ```
@@ -417,8 +417,8 @@ As a safety feature, 'atlas schema clean' will ask for confirmation before attem
 #### Example
 
 ```
-  atlas schema clean -u mysql://user:pass@localhost:3306/dbname
-  atlas schema clean -u mysql://user:pass@localhost:3306/
+  atlas schema clean -u "mysql://user:pass@localhost:3306/dbname"
+  atlas schema clean -u "mysql://user:pass@localhost:3306/"
 ```
 #### Flags
 ```
@@ -446,9 +446,9 @@ The database states can be read from a connected database, an HCL project or a m
 #### Example
 
 ```
-  atlas schema diff --from mysql://user:pass@localhost:3306/test --to file://schema.hcl
-  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://schema_1.hcl --to file://schema_2.hcl
-  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations --format '{{ sql . "  " }}'
+  atlas schema diff --from "mysql://user:pass@localhost:3306/test" --to "file://schema.hcl"
+  atlas schema diff --from "mysql://user:pass@localhost:3306" --to "file://schema_1.hcl" --to "file://schema_2.hcl"
+  atlas schema diff --from "mysql://user:pass@localhost:3306" --to "file://migrations" --format '{{ sql . "  " }}'
 ```
 #### Flags
 ```
