@@ -244,6 +244,37 @@ view "comedies" {
 }
 ```
 
+## Materialized View
+
+A `materialized` view is a table-like structure that holds the results of a query. Unlike a regular view, the results of
+a materialized view are stored in the database and can be refreshed periodically to reflect changes in the underlying data.
+
+```hcl
+materialized "mat_view" {
+  schema = schema.public
+  column "total" {
+    null = true
+    type = numeric
+  }
+  index "idx_expr" {
+    unique = true
+    on {
+      expr = "((total > (0)::numeric))"
+    }
+  }
+  index "idx_pred" {
+    unique  = true
+    columns = [column.total]
+    where   = "(total < (0)::numeric)"
+  }
+  as         = <<-SQL
+   SELECT sum(total) AS total
+     FROM m1;
+  SQL
+  depends_on = [materialized.m1]
+}
+```
+
 ## Column
 
 A `column` is a child resource of a `table`.

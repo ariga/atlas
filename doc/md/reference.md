@@ -320,8 +320,8 @@ files are executed on the connected database in order to validate SQL semantics.
 ```
   atlas migrate validate
   atlas migrate validate --dir file:///path/to/migration/directory
-  atlas migrate validate --dir file:///path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev
-  atlas migrate validate --env dev
+  atlas migrate validate --dir file:///path/to/migration/directory --dev-url docker://mysql/8/dev
+  atlas migrate validate --env dev --dev-url "docker://postgres/15/dev?search_path=public"
 ```
 #### Flags
 ```
@@ -382,11 +382,9 @@ migration.
 
 ```
   atlas schema apply -u "mysql://user:pass@localhost/dbname" --to file://atlas.hcl
-  atlas schema apply -u "mysql://localhost" --to file://schema.hcl --schema prod --schema staging
-  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" --to file://schema.hcl --dry-run
-  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" --to file://schema.hcl
-  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" --to file://schema.hcl
-  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" --to file://schema.hcl
+  atlas schema apply -u mysql://localhost --to file://schema.sql --dev-url docker://mysql/8/dev
+  atlas schema apply --env local --dev-url "docker://postgres/15/dev?search_path=public" --dry-run
+  atlas schema apply -u sqlite://file.db --to file://schema.sql --dev-url "sqlite://dev?mode=memory"
 ```
 #### Flags
 ```

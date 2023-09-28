@@ -1285,8 +1285,8 @@ atlas.sum file. If there is a mismatch it will be reported. If the --dev-url fla
 files are executed on the connected database in order to validate SQL semantics.`,
 			Example: `  atlas migrate validate
   atlas migrate validate --dir file:///path/to/migration/directory
-  atlas migrate validate --dir file:///path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev
-  atlas migrate validate --env dev`,
+  atlas migrate validate --dir file:///path/to/migration/directory --dev-url docker://mysql/8/dev
+  atlas migrate validate --env dev --dev-url "docker://postgres/15/dev?search_path=public"`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
 				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
