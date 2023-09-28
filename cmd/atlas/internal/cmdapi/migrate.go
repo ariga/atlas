@@ -85,8 +85,8 @@ As a safety measure 'atlas migrate apply' will abort with an error, if:
   - the migration and database history do not match each other
 
 If run with the "--dry-run" flag, atlas will not execute any SQL.`,
-			Example: `  atlas migrate apply -u mysql://user:pass@localhost:3306/dbname
-  atlas migrate apply --dir file:///path/to/migration/directory --url mysql://user:pass@localhost:3306/dbname 1
+			Example: `  atlas migrate apply -u "mysql://user:pass@localhost:3306/dbname"
+  atlas migrate apply --dir "file:///path/to/migration/directory" --url "mysql://user:pass@localhost:3306/dbname" 1
   atlas migrate apply --env dev 1
   atlas migrate apply --dry-run --env dev 1`,
 			Args: cobra.MaximumNArgs(1),
@@ -545,9 +545,9 @@ func migrateDiffCmd() *cobra.Command {
 by executing its files. It then compares its state to the desired state and create a new migration file containing
 SQL statements for moving from the current to the desired state. The desired state can be another another database,
 an HCL, SQL, or ORM schema. See: https://atlasgo.io/versioned/diff`,
-			Example: `  atlas migrate diff --dev-url docker://mysql/8/dev --to file://schema.hcl
-  atlas migrate diff --dev-url "docker://postgres/15/dev?search_path=public" --to file://atlas.hcl add_users_table
-  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
+			Example: `  atlas migrate diff "--dev-url docker://mysql/8/dev" --to "file://schema.hcl"
+  atlas migrate diff --dev-url "docker://postgres/15/dev?search_path=public" --to "file://atlas.hcl" add_users_table
+  atlas migrate diff --dev-url "mysql://user:pass@localhost:3306/dev" --to "mysql://user:pass@localhost:3306/dbname"
   atlas migrate diff --env dev --format '{{ sql . "  " }}'`,
 			Args: cobra.MaximumNArgs(1),
 			PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -780,7 +780,7 @@ func migrateImportCmd() *cobra.Command {
 		cmd   = &cobra.Command{
 			Use:     "import [flags]",
 			Short:   "Import a migration directory from another migration management tool to the Atlas format.",
-			Example: `  atlas migrate import --from file:///path/to/source/directory?format=liquibase --to file:///path/to/migration/directory`,
+			Example: `  atlas migrate import --from "file:///path/to/source/directory?format=liquibase" --to "file:///path/to/migration/directory"`,
 			// Validate the source directory. Consider a directory with no sum file
 			// valid, since it might be an import from an existing project.
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
@@ -910,9 +910,9 @@ func migrateLintCmd() *cobra.Command {
 			Use:   "lint [flags]",
 			Short: "Run analysis on the migration directory",
 			Example: `  atlas migrate lint --env dev
-  atlas migrate lint --dir file:///path/to/migrations --dev-url docker://mysql/8/dev --latest 1
-  atlas migrate lint --dir file:///path/to/migrations --dev-url mysql://root:pass@localhost:3306 --git-base master
-  atlas migrate lint --dir file:///path/to/migrations --dev-url mysql://root:pass@localhost:3306 --format '{{ json .Files }}'`,
+  atlas migrate lint --dir "file:///path/to/migrations" --dev-url "docker://mysql/8/dev" --latest 1
+  atlas migrate lint --dir "file:///path/to/migrations" --dev-url "mysql://root:pass@localhost:3306" --git-base master
+  atlas migrate lint --dir "file:///path/to/migrations" --dev-url "mysql://root:pass@localhost:3306" --format '{{ json .Files }}'`,
 			PreRunE: func(cmd *cobra.Command, args []string) error {
 				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
@@ -1014,9 +1014,9 @@ func migrateSetCmd() *cobra.Command {
 			Short: "Set the current version of the migration history table.",
 			Long: `'atlas migrate set' edits the revision table to consider all migrations up to and including the given version
 to be applied. This command is usually used after manually making changes to the managed database.`,
-			Example: `  atlas migrate set 3 --url mysql://user:pass@localhost:3306/
+			Example: `  atlas migrate set 3 --url "mysql://user:pass@localhost:3306/"
   atlas migrate set --env local
-  atlas migrate set 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions`,
+  atlas migrate set 1.2.4 --url "mysql://user:pass@localhost:3306/my_db" --revision-schema my_revisions`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
 				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
@@ -1210,8 +1210,8 @@ func migrateStatusCmd() *cobra.Command {
 			Use:   "status [flags]",
 			Short: "Get information about the current migration status.",
 			Long:  `'atlas migrate status' reports information about the current status of a connected database compared to the migration directory.`,
-			Example: `  atlas migrate status --url mysql://user:pass@localhost:3306/
-  atlas migrate status --url mysql://user:pass@localhost:3306/ --dir file:///path/to/migration/directory`,
+			Example: `  atlas migrate status --url "mysql://user:pass@localhost:3306/"
+  atlas migrate status --url "mysql://user:pass@localhost:3306/" --dir "file:///path/to/migration/directory"`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
 				if err := migrateFlagsFromConfig(cmd); err != nil {
 					return err
@@ -1284,8 +1284,8 @@ func migrateValidateCmd() *cobra.Command {
 atlas.sum file. If there is a mismatch it will be reported. If the --dev-url flag is given, the migration
 files are executed on the connected database in order to validate SQL semantics.`,
 			Example: `  atlas migrate validate
-  atlas migrate validate --dir file:///path/to/migration/directory
-  atlas migrate validate --dir file:///path/to/migration/directory --dev-url docker://mysql/8/dev
+  atlas migrate validate --dir "file:///path/to/migration/directory"
+  atlas migrate validate --dir "file:///path/to/migration/directory" --dev-url "docker://mysql/8/dev"
   atlas migrate validate --env dev --dev-url "docker://postgres/15/dev?search_path=public"`,
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
 				if err := migrateFlagsFromConfig(cmd); err != nil {
