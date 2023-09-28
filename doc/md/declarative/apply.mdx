@@ -92,10 +92,10 @@ atlas schema apply --env "local" --var "destructive=true"
 ```hcl title="atlas.hcl"
 env "local" {
   diff {
-    // By default, indexes are not created or dropped concurrently.
+    // By default, indexes are not added or dropped concurrently.
     concurrent_index {
-      create = true
-      drop   = true
+      add  = true
+      drop = true
     }
   }
 }
