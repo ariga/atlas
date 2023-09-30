@@ -49,3 +49,7 @@ func (*state) renameView(*schema.RenameView) {
 func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
 	return false // unimplemented.
 }
+
+func verifyChanges(context.Context, []schema.Change) error {
+	return nil // unimplemented.
+}
