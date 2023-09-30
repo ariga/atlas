@@ -27,6 +27,8 @@ type (
 		Views        []*sqlspec.View   `spec:"view"`
 		Materialized []*sqlspec.View   `spec:"materialized"`
 		Enums        []*Enum           `spec:"enum"`
+		Funcs        []*sqlspec.Func   `spec:"function"`
+		Procs        []*sqlspec.Func   `spec:"procedure"`
 		Schemas      []*sqlspec.Schema `spec:"schema"`
 	}
 	// Enum holds a specification for an enum, that can be referenced as a column type.
@@ -45,6 +47,8 @@ func (d *doc) merge(d1 *doc) {
 	d.Views = append(d.Views, d1.Views...)
 	d.Materialized = append(d.Materialized, d1.Materialized...)
 	d.Enums = append(d.Enums, d1.Enums...)
+	d.Funcs = append(d.Funcs, d1.Funcs...)
+	d.Procs = append(d.Procs, d1.Procs...)
 	d.Schemas = append(d.Schemas, d1.Schemas...)
 }
 
@@ -138,6 +142,12 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Enums); err != nil {
+			return nil, err
+		}
+		if err := specutil.QualifyObjects(d.Funcs); err != nil {
+			return nil, err
+		}
+		if err := specutil.QualifyObjects(d.Procs); err != nil {
 			return nil, err
 		}
 		if err := specutil.QualifyReferences(d.Tables, s); err != nil {
@@ -573,7 +583,7 @@ func enumRef(n string) *schemahcl.Ref {
 
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
 func schemaSpec(s *schema.Schema) (*doc, error) {
-	spec, err := specutil.FromSchema(s, tableSpec, viewSpec)
+	spec, err := specutil.FromSchema(s, specFuncs)
 	if err != nil {
 		return nil, err
 	}
@@ -581,6 +591,8 @@ func schemaSpec(s *schema.Schema) (*doc, error) {
 		Tables:       spec.Tables,
 		Views:        spec.Views,
 		Materialized: spec.Materialized,
+		Funcs:        spec.Funcs,
+		Procs:        spec.Procs,
 		Schemas:      []*sqlspec.Schema{spec.Schema},
 		Enums:        make([]*Enum, 0, len(s.Objects)),
 	}
@@ -812,11 +824,13 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec("hstore"),
 		schemahcl.NewTypeSpec("sql", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
 	),
-	// PostgreSQL internal and special types.
+	// PostgreSQL internal, pseudo, and special types.
 	schemahcl.WithSpecs(func() (specs []*schemahcl.TypeSpec) {
 		for _, t := range []string{
 			typeOID, typeRegClass, typeRegCollation, typeRegConfig, typeRegDictionary, typeRegNamespace,
 			typeName, typeRegOper, typeRegOperator, typeRegProc, typeRegProcedure, typeRegRole, typeRegType,
+			typeAny, typeAnyElement, typeAnyArray, typeAnyNonArray, typeAnyEnum, typeInternal, typeRecord,
+			typeTrigger, typeVoid, typeUnknown,
 		} {
 			specs = append(specs, schemahcl.NewTypeSpec(t))
 		}

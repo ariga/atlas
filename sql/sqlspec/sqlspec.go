@@ -93,8 +93,27 @@ type (
 		schemahcl.DefaultExtension
 	}
 
-	// Type represents a database agnostic column type.
-	Type string
+	// Func holds the specification for a function.
+	Func struct {
+		Name      string         `spec:",name"`
+		Qualifier string         `spec:",qualifier"`
+		Schema    *schemahcl.Ref `spec:"schema"`
+		Args      []*FuncArg     `spec:"arg"`
+		Lang      cty.Value      `spec:"lang"`
+		// The definition and the return type are appended as additional
+		// attribute by the spec creator to marshal it after the arguments.
+		schemahcl.DefaultExtension
+	}
+
+	// FuncArg holds the specification for a function argument.
+	FuncArg struct {
+		Name    string          `spec:",name"`
+		Type    *schemahcl.Type `spec:"type"`
+		Default cty.Value       `spec:"default"`
+		// Optional attributes such as mode are added by the driver,
+		// as their definition can be either a string or an enum (ref).
+		schemahcl.DefaultExtension
+	}
 )
 
 // Label returns the defaults label used for the table resource.
@@ -112,7 +131,7 @@ func (t *Table) SchemaRef() *schemahcl.Ref { return t.Schema }
 // Label returns the defaults label used for the view resource.
 func (v *View) Label() string { return v.Name }
 
-// QualifierLabel returns the qualifier label used for the table resource, if any.
+// QualifierLabel returns the qualifier label used for the view resource, if any.
 func (v *View) QualifierLabel() string { return v.Qualifier }
 
 // SetQualifier sets the qualifier label used for the view resource.
@@ -121,9 +140,23 @@ func (v *View) SetQualifier(q string) { v.Qualifier = q }
 // SchemaRef returns the schema reference for the view.
 func (v *View) SchemaRef() *schemahcl.Ref { return v.Schema }
 
+// Label returns the defaults label used for the function resource.
+func (f *Func) Label() string { return f.Name }
+
+// QualifierLabel returns the qualifier label used for the function resource, if any.
+func (f *Func) QualifierLabel() string { return f.Qualifier }
+
+// SetQualifier sets the qualifier label used for the function resource.
+func (f *Func) SetQualifier(q string) { f.Qualifier = q }
+
+// SchemaRef returns the schema reference for the function.
+func (f *Func) SchemaRef() *schemahcl.Ref { return f.Schema }
+
 func init() {
 	schemahcl.Register("view", &View{})
 	schemahcl.Register("materialized", &View{})
 	schemahcl.Register("table", &Table{})
+	schemahcl.Register("function", &Func{})
+	schemahcl.Register("procedure", &Func{})
 	schemahcl.Register("schema", &Schema{})
 }

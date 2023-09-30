@@ -276,7 +276,10 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 
 // schemaSpec converts from a concrete MySQL schema to Atlas specification.
 func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
-	spec, err := specutil.FromSchema(s, tableSpec, viewSpec)
+	spec, err := specutil.FromSchema(s, specutil.Funcs{
+		Table: tableSpec,
+		View:  viewSpec,
+	})
 	if err != nil {
 		return nil, err
 	}

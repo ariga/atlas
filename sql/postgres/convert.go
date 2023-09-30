@@ -164,6 +164,8 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *XMLType:
 		f = strings.ToLower(t.T)
+	case *PseudoType:
+		f = strings.ToLower(t.T)
 	case *schema.UnsupportedType:
 		return "", fmt.Errorf("postgres: unsupported type: %q", t.T)
 	default:
@@ -280,6 +282,9 @@ func columnType(c *columnDesc) (schema.Type, error) {
 		typ = &OIDType{T: t}
 	case TypeUserDefined:
 		typ = &UserDefinedType{T: c.fmtype}
+	case typeAny, typeAnyElement, typeAnyArray, typeAnyNonArray, typeAnyEnum, typeInternal,
+		typeRecord, typeTrigger, typeVoid, typeUnknown:
+		typ = &PseudoType{T: t}
 	default:
 		typ = &schema.UnsupportedType{T: t}
 	}

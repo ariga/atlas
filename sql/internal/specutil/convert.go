@@ -47,11 +47,21 @@ type (
 		Views        []*sqlspec.View
 		Materialized []*sqlspec.View
 	}
+
 	// ScanFuncs represents a set of scan functions
 	// used to convert the HCL document to the Realm.
 	ScanFuncs struct {
 		Table ConvertTableFunc
 		View  ConvertViewFunc
+	}
+
+	// Funcs represents a set of spec functions
+	// used to convert the Realm to an HCL document.
+	Funcs struct {
+		Table TableSpecFunc
+		View  ViewSpecFunc
+		Func  func(*schema.Func) (*sqlspec.Func, error)
+		Proc  func(*schema.Proc) (*sqlspec.Func, error)
 	}
 )
 
@@ -441,27 +451,27 @@ func linkForeignKeys(tbl *schema.Table, fks []*sqlspec.ForeignKey) error {
 }
 
 // FromSchema converts a schema.Schema into sqlspec.Schema and []sqlspec.Table.
-func FromSchema(s *schema.Schema, specT TableSpecFunc, specV ViewSpecFunc) (*SchemaSpec, error) {
-	var (
-		spec = &sqlspec.Schema{
+func FromSchema(s *schema.Schema, funcs Funcs) (*SchemaSpec, error) {
+	spec := &SchemaSpec{
+		Schema: &sqlspec.Schema{
 			Name: s.Name,
-		}
-		views  = make([]*sqlspec.View, 0, len(s.Views))
-		mviews = make([]*sqlspec.View, 0, len(s.Views))
-		tables = make([]*sqlspec.Table, 0, len(s.Tables))
-	)
+		},
+		Tables:       make([]*sqlspec.Table, 0, len(s.Tables)),
+		Views:        make([]*sqlspec.View, 0, len(s.Views)),
+		Materialized: make([]*sqlspec.View, 0, len(s.Views)),
+	}
 	for _, t := range s.Tables {
-		table, err := specT(t)
+		table, err := funcs.Table(t)
 		if err != nil {
 			return nil, err
 		}
 		if s.Name != "" {
 			table.Schema = SchemaRef(s.Name)
 		}
-		tables = append(tables, table)
+		spec.Tables = append(spec.Tables, table)
 	}
 	for _, v := range s.Views {
-		view, err := specV(v)
+		view, err := funcs.View(v)
 		if err != nil {
 			return nil, err
 		}
@@ -469,18 +479,37 @@ func FromSchema(s *schema.Schema, specT TableSpecFunc, specV ViewSpecFunc) (*Sch
 			view.Schema = SchemaRef(s.Name)
 		}
 		if v.Materialized() {
-			mviews = append(mviews, view)
+			spec.Materialized = append(spec.Materialized, view)
 		} else {
-			views = append(views, view)
+			spec.Views = append(spec.Views, view)
 		}
 	}
-	convertCommentFromSchema(s.Attrs, &spec.Extra.Attrs)
-	return &SchemaSpec{
-		Schema:       spec,
-		Tables:       tables,
-		Views:        views,
-		Materialized: mviews,
-	}, nil
+	if funcs.Func != nil {
+		for _, f := range s.Funcs {
+			fn, err := funcs.Func(f)
+			if err != nil {
+				return nil, err
+			}
+			if s.Name != "" {
+				fn.Schema = SchemaRef(s.Name)
+			}
+			spec.Funcs = append(spec.Funcs, fn)
+		}
+	}
+	if funcs.Proc != nil {
+		for _, p := range s.Procs {
+			pr, err := funcs.Proc(p)
+			if err != nil {
+				return nil, err
+			}
+			if s.Name != "" {
+				pr.Schema = SchemaRef(s.Name)
+			}
+			spec.Procs = append(spec.Procs, pr)
+		}
+	}
+	convertCommentFromSchema(s.Attrs, &spec.Schema.Extra.Attrs)
+	return spec, nil
 }
 
 // FromTable converts a schema.Table to a sqlspec.Table.

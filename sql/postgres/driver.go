@@ -435,6 +435,18 @@ const (
 	typeRegProcedure  = "regprocedure"
 	typeRegRole       = "regrole"
 	typeRegType       = "regtype"
+
+	// PostgreSQL of supported pseudo-types.
+	typeAny         = "any"
+	typeAnyElement  = "anyelement"
+	typeAnyArray    = "anyarray"
+	typeAnyNonArray = "anynonarray"
+	typeAnyEnum     = "anyenum"
+	typeInternal    = "internal"
+	typeRecord      = "record"
+	typeTrigger     = "trigger"
+	typeVoid        = "void"
+	typeUnknown     = "unknown"
 )
 
 // List of supported index types.

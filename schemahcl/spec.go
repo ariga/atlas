@@ -460,6 +460,16 @@ func RefAttr(k string, v *Ref) *Attr {
 	}
 }
 
+// RefValue is a helper method for constructing a cty.Value that contains a Ref value.
+func RefValue(v string) cty.Value {
+	return cty.CapsuleVal(ctyRefType, &Ref{V: v})
+}
+
+// TypeValue is a helper method for constructing a cty.Value that contains a Type value.
+func TypeValue(t *Type) cty.Value {
+	return cty.CapsuleVal(ctyTypeSpec, t)
+}
+
 // StringsAttr is a helper method for constructing *schemahcl.Attr instances that contain list strings.
 func StringsAttr(k string, vs ...string) *Attr {
 	vv := make([]cty.Value, len(vs))

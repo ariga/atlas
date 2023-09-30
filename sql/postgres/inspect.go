@@ -48,6 +48,11 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 				return nil, err
 			}
 		}
+		if mode.Is(schema.InspectFuncs) {
+			if err := i.inspectFuncs(ctx, r, nil); err != nil {
+				return nil, err
+			}
+		}
 		if err := i.inspectEnums(ctx, r); err != nil {
 			return nil, err
 		}
@@ -80,6 +85,11 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	}
 	if sqlx.ModeInspectSchema(opts).Is(schema.InspectViews) {
 		if err := i.inspectViews(ctx, r, opts); err != nil {
+			return nil, err
+		}
+	}
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectFuncs) {
+		if err := i.inspectFuncs(ctx, r, opts); err != nil {
 			return nil, err
 		}
 	}
@@ -220,7 +230,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 		timePrecision: &timeprecision.Int64,
 	})
 	if defaults.Valid {
-		defaultExpr(c, defaults.String)
+		columnDefault(c, defaults.String)
 	}
 	if identity.String == "YES" {
 		c.Attrs = append(c.Attrs, &Identity{
@@ -677,7 +687,7 @@ func nArgs(start, n int) string {
 // nextval('<optional (quoted) schema>.<sequence name>'::regclass).
 var reNextval = regexp.MustCompile(`(?i) *nextval\('(?:"?[\w$]+"?\.)?"?([\w$]+_[\w$]+_seq)"?'(?:::regclass)*\) *$`)
 
-func defaultExpr(c *schema.Column, s string) {
+func columnDefault(c *schema.Column, s string) {
 	switch m := reNextval.FindStringSubmatch(s); {
 	// The definition of "<column> <serial type>" is equivalent to specifying:
 	// "<column> <int type> NOT NULL DEFAULT nextval('<table>_<column>_seq')".
@@ -691,26 +701,33 @@ func defaultExpr(c *schema.Column, s string) {
 		st.SetType(tt)
 		c.Type.Raw = st.T
 		c.Type.Type = st
-	case sqlx.IsLiteralBool(s), sqlx.IsLiteralNumber(s), sqlx.IsQuoted(s, '\''):
-		c.Default = &schema.Literal{V: s}
 	default:
-		var x schema.Expr = &schema.RawExpr{X: s}
-		// Try casting or fallback to raw expressions (e.g. column text[] has the default of '{}':text[]).
-		if v, ok := canConvert(c.Type, s); ok {
-			x = &schema.Literal{V: v}
-		}
-		c.Default = x
+		c.Default = defaultExpr(c.Type.Type, s)
 	}
 }
 
-func canConvert(t *schema.ColumnType, x string) (string, bool) {
+func defaultExpr(t schema.Type, s string) schema.Expr {
+	switch {
+	case sqlx.IsLiteralBool(s), sqlx.IsLiteralNumber(s), sqlx.IsQuoted(s, '\''):
+		return &schema.Literal{V: s}
+	default:
+		var x schema.Expr = &schema.RawExpr{X: s}
+		// Try casting or fallback to raw expressions (e.g. column text[] has the default of '{}':text[]).
+		if v, ok := canConvert(t, s); ok {
+			x = &schema.Literal{V: v}
+		}
+		return x
+	}
+}
+
+func canConvert(t schema.Type, x string) (string, bool) {
 	i := strings.LastIndex(x, "::")
 	if i == -1 || !sqlx.IsQuoted(x[:i], '\'') {
 		return "", false
 	}
 	q := x[0:i]
 	x = x[1 : i-1]
-	switch t.Type.(type) {
+	switch t.(type) {
 	case *enumType:
 		return q, true
 	case *schema.BoolType:
@@ -732,6 +749,13 @@ type (
 	UserDefinedType struct {
 		schema.Type
 		T string
+	}
+
+	// PseudoType defines a non-column pseudo-type, such as function arguments and return types.
+	// https://www.postgresql.org/docs/current/datatype-pseudo.html
+	PseudoType struct {
+		schema.Type
+		T string // e.g., void, any, cstring, etc.
 	}
 
 	// enumType represents an enum type. It serves aa intermediate representation of a Postgres enum type,
