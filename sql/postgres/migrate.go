@@ -26,7 +26,7 @@ var DefaultPlan migrate.PlanApplier = &planApply{conn: &conn{ExecQuerier: sqlx.N
 type planApply struct{ *conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
+func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	s := &state{
 		conn: p.conn,
 		Plan: migrate.Plan{
@@ -36,6 +36,9 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 	}
 	for _, o := range opts {
 		o(&s.PlanOptions)
+	}
+	if err := verifyChanges(ctx, changes); err != nil {
+		return nil, err
 	}
 	if err := s.plan(changes); err != nil {
 		return nil, err
