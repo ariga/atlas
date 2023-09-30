@@ -204,7 +204,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		} else {
 			cause = &cmdlog.StmtError{Text: err.Error()}
 		}
-		err1 := format.Execute(out, cmdlog.NewSchemaApply(cmdlog.NewEnv(client, nil), plan.Changes[:applied], plan.Changes[applied:], cause))
+		err1 := format.Execute(out, cmdlog.NewSchemaApply(ctx, cmdlog.NewEnv(client, nil), plan.Changes[:applied], plan.Changes[applied:], cause))
 		return errors.Join(err, err1)
 	default:
 		switch err := summary(cmd, client, changes, format); {
@@ -417,6 +417,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 	}
 	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaDiff{
 		Client:  c,
+		Context: ctx,
 		From:    diff.from,
 		To:      diff.to,
 		Changes: diff.changes,
@@ -521,8 +522,9 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 		return err
 	}
 	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaInspect{
-		Client: client,
-		Realm:  s,
+		Client:  client,
+		Context: ctx,
+		Realm:   s,
 	})
 }
 
@@ -693,7 +695,7 @@ func summary(cmd *cobra.Command, c *sqlclient.Client, changes []schema.Change, t
 	}
 	return t.Execute(
 		cmd.OutOrStdout(),
-		cmdlog.NewSchemaPlan(cmdlog.NewEnv(c, nil), p.Changes, nil),
+		cmdlog.NewSchemaPlan(cmd.Context(), cmdlog.NewEnv(c, nil), p.Changes, nil),
 	)
 }
 

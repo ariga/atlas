@@ -195,7 +195,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		return err
 	}
 	// Setup reporting info.
-	report := cmdlog.NewMigrateApply(client, dir)
+	report := cmdlog.NewMigrateApply(ctx, client, dir)
 	mr.Init(client, report, mrrw)
 	// If cloud reporting is enabled, and we cannot obtain the current
 	// target identifier, abort and report it to the user.
@@ -1115,7 +1115,7 @@ func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) (re
 	default:
 		return fmt.Errorf("accepts 1 arg(s), received %d", n)
 	}
-	log := &cmdlog.MigrateSet{}
+	log := &cmdlog.MigrateSet{Context: ctx}
 	for _, r := range revs {
 		// Check all existing revisions and ensure they precede the given version. If we encounter a partially
 		// applied revision, or one with errors, mark them "fixed".
