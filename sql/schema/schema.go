@@ -18,6 +18,8 @@ type (
 		Realm   *Realm
 		Tables  []*Table
 		Views   []*View
+		Funcs   []*Func
+		Procs   []*Proc
 		Attrs   []Attr   // Attrs and options.
 		Objects []Object // Driver specific objects.
 	}
@@ -105,6 +107,46 @@ type (
 		OnUpdate   ReferenceOption
 		OnDelete   ReferenceOption
 	}
+
+	// Func represents a function definition.
+	Func struct {
+		Name   string
+		Schema *Schema
+		Args   []*FuncArg
+		Ret    Type
+		Body   string // Function body only.
+		Lang   string // Language (e.g. SQL, PL/pgSQL, etc.).
+		Attrs  []Attr // Extra driver specific attributes.
+	}
+
+	// Proc represents a procedure definition.
+	Proc struct {
+		Name   string
+		Schema *Schema
+		Args   []*FuncArg
+		Body   string // Function body only.
+		Lang   string // Language (e.g. SQL, PL/pgSQL, etc.).
+		Attrs  []Attr // Extra driver specific attributes.
+	}
+
+	// A FuncArg represents a single function argument.
+	FuncArg struct {
+		Name    string      // Optional name.
+		Type    Type        // Argument type.
+		Default Expr        // Default value.
+		Mode    FuncArgMode // Argument mode.
+	}
+
+	// FuncArgMode represents a function argument mode.
+	FuncArgMode string
+)
+
+// List of supported function argument modes.
+const (
+	FuncArgModeIn       FuncArgMode = "IN"
+	FuncArgModeOut      FuncArgMode = "OUT"
+	FuncArgModeInOut    FuncArgMode = "INOUT"
+	FuncArgModeVariadic FuncArgMode = "VARIADIC"
 )
 
 // Schema returns the first schema that matched the given name.

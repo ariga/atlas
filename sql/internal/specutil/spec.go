@@ -27,12 +27,16 @@ type (
 		Schema       *sqlspec.Schema
 		Tables       []*sqlspec.Table
 		Views        []*sqlspec.View
+		Funcs        []*sqlspec.Func
+		Procs        []*sqlspec.Func
 		Materialized []*sqlspec.View
 	}
 	doc struct {
 		Tables       []*sqlspec.Table  `spec:"table"`
 		Views        []*sqlspec.View   `spec:"view"`
 		Materialized []*sqlspec.View   `spec:"materialized"`
+		Funcs        []*sqlspec.Func   `spec:"function"`
+		Procs        []*sqlspec.Func   `spec:"procedure"`
 		Schemas      []*sqlspec.Schema `spec:"schema"`
 	}
 )
