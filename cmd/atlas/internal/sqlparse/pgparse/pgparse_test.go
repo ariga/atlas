@@ -319,6 +319,14 @@ CREATE VIEW old AS SELECT * FROM new;
 		ALTER TABLE old RENAME TO new;
 		CREATE VIEW old AS (SELECT * FROM "new");
 		`,
+			pos:         1,
+			wantCreated: true,
+		},
+		{
+			file: `
+		ALTER TABLE old RENAME TO new;
+		CREATE VIEW old AS (SELECT * FROM "1");
+		`,
 			pos: 1,
 		},
 		{
@@ -343,7 +351,7 @@ CREATE VIEW old AS SELECT * FROM new;
 			)
 			created, err := p.CreateViewAfter(f, "old", "new", tt.pos)
 			require.Equal(t, err != nil, tt.wantErr, err)
-			require.Equal(t, created, tt.wantCreated)
+			require.Equal(t, tt.wantCreated, created)
 		})
 	}
 }
