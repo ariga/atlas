@@ -6,6 +6,7 @@ package specutil
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -633,6 +634,10 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc, idxFn IndexSpecFunc) (*s
 			}))
 		}
 	}
+	// Remove duplicate dependencies.
+	deps = slices.CompactFunc(deps, func(r1, r2 *schemahcl.Ref) bool {
+		return r1.V == r2.V
+	})
 	if len(deps) > 0 {
 		embed.Attrs = append(embed.Attrs, schemahcl.RefsAttr("depends_on", deps...))
 	}
