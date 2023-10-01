@@ -6,16 +6,14 @@ package pgparse
 
 import (
 	"fmt"
-	"strconv"
+	"slices"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parseutil"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 
-	"github.com/auxten/postgresql-parser/pkg/sql/parser"
-	"github.com/auxten/postgresql-parser/pkg/sql/sem/tree"
-	"golang.org/x/exp/slices"
+	pgquery "github.com/pganalyze/pg_query_go/v4"
 )
 
 // Parser implements the sqlparse.Parser
@@ -24,28 +22,36 @@ type Parser struct{}
 // ColumnFilledBefore checks if the column was filled before the given position.
 func (p *Parser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.Column, pos int) (bool, error) {
 	return parseutil.MatchStmtBefore(f, pos, func(s *migrate.Stmt) (bool, error) {
-		stmt, err := parser.ParseOne(s.Text)
+		tr, err := pgquery.Parse(s.Text)
 		if err != nil {
 			return false, err
 		}
-		u, ok := stmt.AST.(*tree.Update)
-		if !ok || !tableUpdated(u, t) {
+		idx := slices.IndexFunc(tr.Stmts, func(s *pgquery.RawStmt) bool {
+			return s.Stmt.GetUpdateStmt() != nil
+		})
+		if idx == -1 {
+			return false, nil
+		}
+		u := tr.Stmts[idx].Stmt.GetUpdateStmt()
+		if u == nil || !matchTable(u.Relation, t) {
 			return false, nil
 		}
 		// Accept UPDATE that fills all rows or those with NULL values as we cannot
 		// determine if NULL values were filled in case there is a custom filtering.
 		affectC := func() bool {
-			if u.Where == nil {
+			if u.WhereClause == nil {
 				return true
 			}
-			x, ok := u.Where.Expr.(*tree.ComparisonExpr)
-			if !ok || x.Operator != tree.IsNotDistinctFrom || x.SubOperator != tree.EQ {
+			x := u.WhereClause.GetNullTest()
+			if x == nil || x.GetNulltesttype() != pgquery.NullTestType_IS_NULL {
 				return false
 			}
-			return x.Left.String() == c.Name && x.Right == tree.DNull
+			fields := x.GetArg().GetColumnRef().GetFields()
+			return len(fields) == 1 && fields[0].GetString_().GetSval() == c.Name
 		}()
-		idx := slices.IndexFunc(u.Exprs, func(x *tree.UpdateExpr) bool {
-			return slices.Contains(x.Names, tree.Name(c.Name)) && x.Expr != tree.DNull
+		idx = slices.IndexFunc(u.TargetList, func(n *pgquery.Node) bool {
+			r := n.GetResTarget()
+			return r.GetName() == c.Name && !r.GetVal().GetAConst().GetIsnull()
 		})
 		// Ensure the column was filled.
 		return affectC && idx != -1, nil
@@ -55,86 +61,86 @@ func (p *Parser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.C
 // CreateViewAfter checks if a view was created after the position with the given name to a table.
 func (p *Parser) CreateViewAfter(f migrate.File, old, new string, pos int) (bool, error) {
 	return parseutil.MatchStmtAfter(f, pos, func(s *migrate.Stmt) (bool, error) {
-		stmt, err := parser.ParseOne(s.Text)
+		tr, err := pgquery.Parse(s.Text)
 		if err != nil {
 			return false, err
 		}
-		v, ok := stmt.AST.(*tree.CreateView)
-		if !ok || v.AsSource == nil || v.Name.String() != old {
+		idx := slices.IndexFunc(tr.Stmts, func(s *pgquery.RawStmt) bool {
+			return s.Stmt.GetViewStmt() != nil
+		})
+		if idx == -1 {
 			return false, nil
 		}
-		sc, ok := v.AsSource.Select.(*tree.SelectClause)
-		if !ok || len(sc.From.Tables) != 1 {
+		v := tr.Stmts[idx].Stmt.GetViewStmt()
+		if v.GetView().GetRelname() != old {
 			return false, nil
 		}
-		return tree.AsString(sc.From.Tables[0]) == new, nil
+		from := v.Query.GetSelectStmt().GetFromClause()
+		if f == nil || len(from) != 1 {
+			return false, nil
+		}
+		return from[0].GetRangeVar().GetRelname() == new, nil
 	})
 }
 
 // FixChange fixes the changes according to the given statement.
 func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Changes, error) {
-	stmt, err := parser.ParseOne(s)
+	tr, err := pgquery.Parse(s)
 	if err != nil {
 		return nil, err
 	}
-	switch stmt := stmt.AST.(type) {
-	case *tree.AlterTable:
-		if r, ok := renameColumn(stmt); ok {
+	for _, stmt := range tr.Stmts {
+		switch stmt := stmt.GetStmt(); {
+		case stmt.GetRenameStmt() != nil &&
+			stmt.GetRenameStmt().GetRenameType() == pgquery.ObjectType_OBJECT_COLUMN:
 			modify, err := expectModify(changes)
 			if err != nil {
 				return nil, err
 			}
-			parseutil.RenameColumn(modify, r)
-		}
-	case *tree.RenameIndex:
-		modify, err := expectModify(changes)
-		if err != nil {
-			return nil, err
-		}
-		parseutil.RenameIndex(modify, &parseutil.Rename{
-			From: stmt.Index.String(),
-			To:   stmt.NewName.String(),
-		})
-	case *tree.RenameTable:
-		changes = parseutil.RenameTable(changes, &parseutil.Rename{
-			From: stmt.Name.String(),
-			To:   stmt.NewName.String(),
-		})
-	case *tree.CreateIndex:
-		modify, err := expectModify(changes)
-		if err != nil {
-			return nil, err
-		}
-		name := stmt.Name.String()
-		if uname, err := strconv.Unquote(name); err == nil {
-			name = uname
-		}
-		i := schema.Changes(modify.Changes).IndexAddIndex(name)
-		if i == -1 {
-			return nil, fmt.Errorf("AddIndex %q command not found", stmt.Name)
-		}
-		add := modify.Changes[i].(*schema.AddIndex)
-		if slices.IndexFunc(add.Extra, func(c schema.Clause) bool {
-			_, ok := c.(*postgres.Concurrently)
-			return ok
-		}) == -1 && stmt.Concurrently {
-			add.Extra = append(add.Extra, &postgres.Concurrently{})
+			rename := stmt.GetRenameStmt()
+			parseutil.RenameColumn(modify, &parseutil.Rename{
+				From: rename.GetSubname(),
+				To:   rename.GetNewname(),
+			})
+		case stmt.GetRenameStmt() != nil &&
+			stmt.GetRenameStmt().GetRenameType() == pgquery.ObjectType_OBJECT_INDEX:
+			modify, err := expectModify(changes)
+			if err != nil {
+				return nil, err
+			}
+			rename := stmt.GetRenameStmt()
+			parseutil.RenameIndex(modify, &parseutil.Rename{
+				From: rename.GetRelation().GetRelname(),
+				To:   rename.GetNewname(),
+			})
+		case stmt.GetRenameStmt() != nil &&
+			stmt.GetRenameStmt().GetRenameType() == pgquery.ObjectType_OBJECT_TABLE:
+			rename := stmt.GetRenameStmt()
+			changes = parseutil.RenameTable(changes, &parseutil.Rename{
+				From: rename.GetRelation().GetRelname(),
+				To:   rename.GetNewname(),
+			})
+		case stmt.GetIndexStmt() != nil &&
+			stmt.GetIndexStmt().GetConcurrent():
+			modify, err := expectModify(changes)
+			if err != nil {
+				return nil, err
+			}
+			name := stmt.GetIndexStmt().GetIdxname()
+			i := schema.Changes(modify.Changes).IndexAddIndex(name)
+			if i == -1 {
+				return nil, fmt.Errorf("AddIndex %q command not found", name)
+			}
+			add := modify.Changes[i].(*schema.AddIndex)
+			if !slices.ContainsFunc(add.Extra, func(c schema.Clause) bool {
+				_, ok := c.(*postgres.Concurrently)
+				return ok
+			}) {
+				add.Extra = append(add.Extra, &postgres.Concurrently{})
+			}
 		}
 	}
 	return changes, nil
-}
-
-// renameColumn returns the renamed column exists in the statement, is any.
-func renameColumn(stmt *tree.AlterTable) (*parseutil.Rename, bool) {
-	for _, c := range stmt.Cmds {
-		if r, ok := c.(*tree.AlterTableRenameColumn); ok {
-			return &parseutil.Rename{
-				From: r.Column.String(),
-				To:   r.NewName.String(),
-			}, true
-		}
-	}
-	return nil, false
 }
 
 func expectModify(changes schema.Changes) (*schema.ModifyTable, error) {
@@ -149,11 +155,6 @@ func expectModify(changes schema.Changes) (*schema.ModifyTable, error) {
 }
 
 // tableUpdated checks if the table was updated in the statement.
-func tableUpdated(u *tree.Update, t *schema.Table) bool {
-	at, ok := u.Table.(*tree.AliasedTableExpr)
-	if !ok {
-		return false
-	}
-	n, ok := at.Expr.(*tree.TableName)
-	return ok && n.Table() == t.Name && (n.Schema() == "" || n.Schema() == t.Schema.Name)
+func matchTable(n *pgquery.RangeVar, t *schema.Table) bool {
+	return n.GetRelname() == t.Name && (n.GetSchemaname() == "" || n.GetSchemaname() == t.Schema.Name)
 }

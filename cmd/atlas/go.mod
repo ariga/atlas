@@ -84,6 +84,7 @@ require (
 	github.com/mattn/go-isatty v0.0.18 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
+	github.com/pganalyze/pg_query_go/v4 v4.2.3 // indirect
 	github.com/pingcap/errors v0.11.5-0.20210425183316-da1aaba5fb63 // indirect
 	github.com/pingcap/log v0.0.0-20210625125904-98ed8e2eb1c7 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
