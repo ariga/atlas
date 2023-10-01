@@ -77,8 +77,8 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return err
 		}
 		if err := specutil.Scan(v,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Materialized: d.Materialized},
-			&specutil.ScanFuncs{Table: convertTable, View: convertView},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Materialized: d.Materialized, Funcs: d.Funcs, Procs: d.Procs},
+			scanFuncs,
 		); err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
@@ -97,8 +97,8 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		}
 		r := &schema.Realm{}
 		if err := specutil.Scan(r,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Materialized: d.Materialized},
-			&specutil.ScanFuncs{Table: convertTable, View: convertView},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Materialized: d.Materialized, Funcs: d.Funcs, Procs: d.Procs},
+			scanFuncs,
 		); err != nil {
 			return err
 		}

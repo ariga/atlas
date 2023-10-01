@@ -85,6 +85,24 @@ func (s *Schema) AddObjects(objs ...Object) *Schema {
 	return s
 }
 
+// AddFuncs appends the given functions to the schema.
+func (s *Schema) AddFuncs(funcs ...*Func) *Schema {
+	for _, f := range funcs {
+		f.Schema = s
+	}
+	s.Funcs = append(s.Funcs, funcs...)
+	return s
+}
+
+// AddProcs appends the given procedures to the schema.
+func (s *Schema) AddProcs(procs ...*Proc) *Schema {
+	for _, f := range procs {
+		f.Schema = s
+	}
+	s.Procs = append(s.Procs, procs...)
+	return s
+}
+
 // NewRealm creates a new Realm.
 func NewRealm(schemas ...*Schema) *Realm {
 	r := &Realm{Schemas: schemas}

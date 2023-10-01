@@ -16,9 +16,13 @@ import (
 
 var (
 	specOptions []schemahcl.Option
-	specFuncs   = specutil.Funcs{
+	specFuncs   = &specutil.Funcs{
 		Table: tableSpec,
 		View:  viewSpec,
+	}
+	scanFuncs = &specutil.ScanFuncs{
+		Table: convertTable,
+		View:  convertView,
 	}
 )
 

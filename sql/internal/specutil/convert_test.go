@@ -22,7 +22,7 @@ func TestFromSpec_SchemaName(t *testing.T) {
 		},
 	}
 	sc.Tables[0].Schema = sc
-	spec, err := FromSchema(sc, Funcs{
+	spec, err := FromSchema(sc, &Funcs{
 		Table: func(*schema.Table) (*sqlspec.Table, error) {
 			return &sqlspec.Table{}, nil
 		},
