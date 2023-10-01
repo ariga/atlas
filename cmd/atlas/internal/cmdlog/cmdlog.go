@@ -126,17 +126,18 @@ Last migration attempt had errors:
 
 // MigrateStatus contains a summary of the migration status of a database.
 type MigrateStatus struct {
-	Env       `json:"Env"`
-	Available Files               `json:"Available,omitempty"` // Available migration files
-	Pending   Files               `json:"Pending,omitempty"`   // Pending migration files
-	Applied   []*migrate.Revision `json:"Applied,omitempty"`   // Applied migration files
-	Current   string              `json:"Current,omitempty"`   // Current migration version
-	Next      string              `json:"Next,omitempty"`      // Next migration version
-	Count     int                 `json:"Count,omitempty"`     // Count of applied statements of the last revision
-	Total     int                 `json:"Total,omitempty"`     // Total statements of the last migration
-	Status    string              `json:"Status,omitempty"`    // Status of migration (OK, PENDING)
-	Error     string              `json:"Error,omitempty"`     // Last Error that occurred
-	SQL       string              `json:"SQL,omitempty"`       // SQL that caused the last Error
+	context.Context `json:"-"`
+	Env             `json:"Env"`
+	Available       Files               `json:"Available,omitempty"` // Available migration files
+	Pending         Files               `json:"Pending,omitempty"`   // Pending migration files
+	Applied         []*migrate.Revision `json:"Applied,omitempty"`   // Applied migration files
+	Current         string              `json:"Current,omitempty"`   // Current migration version
+	Next            string              `json:"Next,omitempty"`      // Next migration version
+	Count           int                 `json:"Count,omitempty"`     // Count of applied statements of the last revision
+	Total           int                 `json:"Total,omitempty"`     // Total statements of the last migration
+	Status          string              `json:"Status,omitempty"`    // Status of migration (OK, PENDING)
+	Error           string              `json:"Error,omitempty"`     // Last Error that occurred
+	SQL             string              `json:"SQL,omitempty"`       // SQL that caused the last Error
 }
 
 // Left returns the amount of statements left to apply (if any).
@@ -221,6 +222,7 @@ Current version is {{ cyan .Current.Version }} ({{ .Summary }}):
 type (
 	// MigrateSet contains a summary of the migrate set command.
 	MigrateSet struct {
+		context.Context `json:"-"`
 		// Revisions that were added, removed or updated.
 		Revisions []RevisionOp `json:"Revisions,omitempty"`
 		// Current version in the revisions table.
@@ -326,12 +328,13 @@ type (
 	// MigrateApply contains a summary of a migration applying attempt on a database.
 	MigrateApply struct {
 		Env
-		Pending Files          `json:"Pending,omitempty"` // Pending migration files
-		Applied []*AppliedFile `json:"Applied,omitempty"` // Applied files
-		Current string         `json:"Current,omitempty"` // Current migration version
-		Target  string         `json:"Target,omitempty"`  // Target migration version
-		Start   time.Time
-		End     time.Time
+		context.Context `json:"-"`
+		Pending         Files          `json:"Pending,omitempty"` // Pending migration files
+		Applied         []*AppliedFile `json:"Applied,omitempty"` // Applied files
+		Current         string         `json:"Current,omitempty"` // Current migration version
+		Target          string         `json:"Target,omitempty"`  // Target migration version
+		Start           time.Time
+		End             time.Time
 		// Error is set even then, if it was not caused by a statement in a migration file,
 		// but by Atlas, e.g. when committing or rolling back a transaction.
 		Error string `json:"Error,omitempty"`
@@ -349,10 +352,11 @@ type (
 )
 
 // NewMigrateApply returns an MigrateApply.
-func NewMigrateApply(client *sqlclient.Client, dir migrate.Dir) *MigrateApply {
+func NewMigrateApply(ctx context.Context, client *sqlclient.Client, dir migrate.Dir) *MigrateApply {
 	return &MigrateApply{
-		Env:   NewEnv(client, dir),
-		Start: time.Now(),
+		Context: ctx,
+		Env:     NewEnv(client, dir),
+		Start:   time.Now(),
 	}
 }
 
@@ -471,7 +475,8 @@ type (
 	// SchemaApply contains a summary of a 'schema apply' execution on a database.
 	SchemaApply struct {
 		Env
-		Changes Changes `json:"Changes,omitempty"`
+		context.Context `json:"-"`
+		Changes         Changes `json:"Changes,omitempty"`
 		// General error that occurred during execution.
 		// e.g., when committing or rolling back a transaction.
 		Error string `json:"Error,omitempty"`
@@ -485,9 +490,10 @@ type (
 )
 
 // NewSchemaApply returns a SchemaApply.
-func NewSchemaApply(env Env, applied, pending []*migrate.Change, err *StmtError) *SchemaApply {
+func NewSchemaApply(ctx context.Context, env Env, applied, pending []*migrate.Change, err *StmtError) *SchemaApply {
 	return &SchemaApply{
-		Env: env,
+		Env:     env,
+		Context: ctx,
 		Changes: Changes{
 			Applied: applied,
 			Pending: pending,
@@ -497,8 +503,8 @@ func NewSchemaApply(env Env, applied, pending []*migrate.Change, err *StmtError)
 }
 
 // NewSchemaPlan returns a SchemaApply only with pending changes.
-func NewSchemaPlan(env Env, pending []*migrate.Change, err *StmtError) *SchemaApply {
-	return NewSchemaApply(env, nil, pending, err)
+func NewSchemaPlan(ctx context.Context, env Env, pending []*migrate.Change, err *StmtError) *SchemaApply {
+	return NewSchemaApply(ctx, env, nil, pending, err)
 }
 
 // MarshalJSON implements json.Marshaler.
@@ -520,6 +526,7 @@ func (c Changes) MarshalJSON() ([]byte, error) {
 
 // SchemaInspect contains a summary of the 'schema inspect' command.
 type SchemaInspect struct {
+	context.Context   `json:"-"`
 	*sqlclient.Client `json:"-"`
 	Realm             *schema.Realm `json:"Schema,omitempty"` // Inspected realm.
 }
@@ -693,14 +700,15 @@ func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 			changes = append(changes, &schema.AddObject{O: o})
 		}
 	}
-	return fmtPlan(report.Client, changes, indent)
+	return fmtPlan(report.Context, report.Client, changes, indent)
 }
 
 // SchemaDiff contains a summary of the 'schema diff' command.
 type SchemaDiff struct {
-	*sqlclient.Client
-	From, To *schema.Realm
-	Changes  []schema.Change
+	context.Context   `json:"-"`
+	*sqlclient.Client `json:"-"`
+	From, To          *schema.Realm
+	Changes           []schema.Change
 }
 
 var (
@@ -726,14 +734,14 @@ func (s *SchemaDiff) MarshalSQL(indent ...string) (string, error) {
 }
 
 func sqlDiff(diff *SchemaDiff, indent ...string) (string, error) {
-	return fmtPlan(diff.Client, diff.Changes, indent)
+	return fmtPlan(diff.Context, diff.Client, diff.Changes, indent)
 }
 
-func fmtPlan(client *sqlclient.Client, changes schema.Changes, indent []string) (string, error) {
+func fmtPlan(ctx context.Context, client *sqlclient.Client, changes schema.Changes, indent []string) (string, error) {
 	if len(indent) > 1 {
 		return "", fmt.Errorf("unexpected number of arguments: %d", len(indent))
 	}
-	plan, err := client.PlanChanges(context.Background(), "plan", changes, func(o *migrate.PlanOptions) {
+	plan, err := client.PlanChanges(ctx, "plan", changes, func(o *migrate.PlanOptions) {
 		o.Mode = migrate.PlanModeDump
 		// Disable tables qualifier in schema-mode.
 		if client.URL.Schema != "" {
