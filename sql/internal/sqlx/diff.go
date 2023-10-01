@@ -193,7 +193,7 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 			continue
 		}
 		change := d.indexDiffV(v1, v2, opts)
-		if ViewDefChanged(v1, v2) || d.ViewAttrChanged(v1, v2) || len(change) > 0 {
+		if d.viewDefChanged(v1, v2) || d.ViewAttrChanged(v1, v2) || len(change) > 0 {
 			changes = opts.AddOrSkip(changes, &schema.ModifyView{From: v1, To: v2, Changes: change})
 		}
 	}
@@ -372,6 +372,17 @@ func (d *Diff) indexDiffT(from, to *schema.Table, opts *schema.DiffOptions) []sc
 		}
 	}
 	return changes
+}
+
+// viewDefChanged checks if the view definition has changed.
+// It allows the DiffDriver to override the default implementation.
+func (d *Diff) viewDefChanged(v1 *schema.View, v2 *schema.View) bool {
+	if vr, ok := d.DiffDriver.(interface {
+		ViewDefChanged(v1, v2 *schema.View) bool
+	}); ok {
+		return vr.ViewDefChanged(v1, v2)
+	}
+	return ViewDefChanged(v1, v2)
 }
 
 // indexDiffV returns the schema changes (if any) for migrating view
