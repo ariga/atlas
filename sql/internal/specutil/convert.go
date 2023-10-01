@@ -46,6 +46,8 @@ type (
 		Tables       []*sqlspec.Table
 		Views        []*sqlspec.View
 		Materialized []*sqlspec.View
+		Funcs        []*sqlspec.Func
+		Procs        []*sqlspec.Func
 	}
 
 	// ScanFuncs represents a set of scan functions
@@ -53,6 +55,8 @@ type (
 	ScanFuncs struct {
 		Table ConvertTableFunc
 		View  ConvertViewFunc
+		Func  func(*sqlspec.Func) (*schema.Func, error)
+		Proc  func(*sqlspec.Func) (*schema.Proc, error)
 	}
 
 	// Funcs represents a set of spec functions
@@ -203,6 +207,40 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 			}
 		}
 	}
+	if funcs.Func != nil {
+		for _, sf := range doc.Funcs {
+			name, err := SchemaName(sf.Schema)
+			if err != nil {
+				return fmt.Errorf("specutil: cannot extract schema name for function %q: %w", sf.Name, err)
+			}
+			s, ok := byName[name]
+			if !ok {
+				return fmt.Errorf("specutil: schema %q not found for function %q", name, sf.Name)
+			}
+			f, err := funcs.Func(sf)
+			if err != nil {
+				return fmt.Errorf("specutil: cannot convert function %q: %w", sf.Name, err)
+			}
+			s.AddFuncs(f)
+		}
+	}
+	if funcs.Proc != nil {
+		for _, sf := range doc.Procs {
+			name, err := SchemaName(sf.Schema)
+			if err != nil {
+				return fmt.Errorf("specutil: cannot extract schema name for procedure %q: %w", sf.Name, err)
+			}
+			s, ok := byName[name]
+			if !ok {
+				return fmt.Errorf("specutil: schema %q not found for procedure %q", name, sf.Name)
+			}
+			f, err := funcs.Proc(sf)
+			if err != nil {
+				return fmt.Errorf("specutil: cannot convert procedure %q: %w", sf.Name, err)
+			}
+			s.AddProcs(f)
+		}
+	}
 	return nil
 }
 
@@ -295,24 +333,11 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 			Null: spec.Null,
 		},
 	}
-	if d := spec.Default; !d.IsNull() {
-		switch {
-		case d.Type() == cty.String:
-			out.Default = &schema.Literal{V: d.AsString()}
-		case d.Type() == cty.Number:
-			out.Default = &schema.Literal{V: d.AsBigFloat().String()}
-		case d.Type() == cty.Bool:
-			out.Default = &schema.Literal{V: strconv.FormatBool(d.True())}
-		case d.Type().IsCapsuleType():
-			x, ok := d.EncapsulatedValue().(*schemahcl.RawExpr)
-			if !ok {
-				return nil, fmt.Errorf("invalid default value %q", d.Type().FriendlyName())
-			}
-			out.Default = &schema.RawExpr{X: x.X}
-		default:
-			return nil, fmt.Errorf("unsupported value type for default: %T", d)
-		}
+	d, err := Default(spec.Default)
+	if err != nil {
+		return nil, err
 	}
+	out.Default = d
 	ct, err := conv(spec)
 	if err != nil {
 		return nil, err
@@ -322,6 +347,31 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 		return nil, err
 	}
 	return out, err
+}
+
+// Default converts a cty.Value (as defined in the spec) into a schema.Expr.
+func Default(d cty.Value) (schema.Expr, error) {
+	if d.IsNull() {
+		return nil, nil // no default.
+	}
+	var x schema.Expr
+	switch {
+	case d.Type() == cty.String:
+		x = &schema.Literal{V: d.AsString()}
+	case d.Type() == cty.Number:
+		x = &schema.Literal{V: d.AsBigFloat().String()}
+	case d.Type() == cty.Bool:
+		x = &schema.Literal{V: strconv.FormatBool(d.True())}
+	case d.Type().IsCapsuleType():
+		raw, ok := d.EncapsulatedValue().(*schemahcl.RawExpr)
+		if !ok {
+			return nil, fmt.Errorf("invalid default value %q", d.Type().FriendlyName())
+		}
+		x = &schema.RawExpr{X: raw.X}
+	default:
+		return nil, fmt.Errorf("unsupported value type for default: %T", d)
+	}
+	return x, nil
 }
 
 // Index converts a sqlspec.Index to a schema.Index. The optional arguments allow
@@ -451,7 +501,7 @@ func linkForeignKeys(tbl *schema.Table, fks []*sqlspec.ForeignKey) error {
 }
 
 // FromSchema converts a schema.Schema into sqlspec.Schema and []sqlspec.Table.
-func FromSchema(s *schema.Schema, funcs Funcs) (*SchemaSpec, error) {
+func FromSchema(s *schema.Schema, funcs *Funcs) (*SchemaSpec, error) {
 	spec := &SchemaSpec{
 		Schema: &sqlspec.Schema{
 			Name: s.Name,
