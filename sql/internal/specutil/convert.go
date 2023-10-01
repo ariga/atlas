@@ -6,7 +6,6 @@ package specutil
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -16,6 +15,7 @@ import (
 	"ariga.io/atlas/sql/sqlspec"
 
 	"github.com/zclconf/go-cty/cty"
+	"golang.org/x/exp/slices"
 )
 
 // List of convert function types.
