@@ -249,6 +249,13 @@ view "comedies" {
 A `materialized` view is a table-like structure that holds the results of a query. Unlike a regular view, the results of
 a materialized view are stored in the database and can be refreshed periodically to reflect changes in the underlying data.
 
+:::info BETA FEATURE
+Materialized views are currently in beta and available to logged-in users only. To use this feature, run:
+```
+atlas login
+```
+:::
+
 ```hcl
 materialized "mat_view" {
   schema = schema.public
