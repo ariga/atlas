@@ -83,8 +83,7 @@ func (s *state) plan(changes []schema.Change) error {
 	}
 	var (
 		views []schema.Change
-		dropT []*schema.DropTable
-		dropO []*schema.DropObject
+		drop  struct{ T, O, F []schema.Change }
 	)
 	for _, c := range planned {
 		switch c := c.(type) {
@@ -94,12 +93,26 @@ func (s *state) plan(changes []schema.Change) error {
 			err = s.modifyTable(c)
 		case *schema.RenameTable:
 			s.renameTable(c)
+		case *schema.AddFunc:
+			err = s.addFunc(c)
+		case *schema.AddProc:
+			err = s.addProc(c)
+		case *schema.ModifyFunc:
+			err = s.modifyFunc(c)
+		case *schema.ModifyProc:
+			err = s.modifyProc(c)
+		case *schema.RenameFunc:
+			err = s.renameFunc(c)
+		case *schema.RenameProc:
+			err = s.renameProc(c)
 		case *schema.AddView, *schema.DropView, *schema.ModifyView, *schema.RenameView:
 			views = append(views, c)
 		case *schema.DropTable:
-			dropT = append(dropT, c)
+			drop.T = append(drop.T, c)
 		case *schema.DropObject:
-			dropO = append(dropO, c)
+			drop.O = append(drop.O, c)
+		case *schema.DropFunc, *schema.DropProc:
+			drop.F = append(drop.F, c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -125,23 +138,31 @@ func (s *state) plan(changes []schema.Change) error {
 			return err
 		}
 	}
-	for _, c := range dropT {
-		if err := s.dropTable(c); err != nil {
+	for _, c := range append(drop.T, append(drop.O, drop.F...)...) {
+		var err error
+		switch c := c.(type) {
+		case *schema.DropTable:
+			err = s.dropTable(c)
+		case *schema.DropObject:
+			e, ok := c.O.(*schema.EnumType)
+			if !ok {
+				return fmt.Errorf("unsupported drop object %T", c.O)
+			}
+			create, rv := s.createDropEnum(e)
+			s.append(&migrate.Change{
+				Source:  c,
+				Cmd:     rv,
+				Reverse: create,
+				Comment: fmt.Sprintf("drop enum type %q", e.T),
+			})
+		case *schema.DropFunc:
+			err = s.dropFunc(c)
+		case *schema.DropProc:
+			err = s.dropProc(c)
+		}
+		if err != nil {
 			return err
 		}
-	}
-	for _, c := range dropO {
-		e, ok := c.O.(*schema.EnumType)
-		if !ok {
-			return fmt.Errorf("unsupported object %T", c.O)
-		}
-		create, drop := s.createDropEnum(e)
-		s.append(&migrate.Change{
-			Source:  c,
-			Cmd:     drop,
-			Reverse: create,
-			Comment: fmt.Sprintf("drop enum type %q", e.T),
-		})
 	}
 	return nil
 }
@@ -880,7 +901,7 @@ func (s *state) addIndexes(t *schema.Table, adds ...*schema.AddIndex) error {
 }
 
 func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
-	f, err := s.formatType(c)
+	f, err := s.formatType(c.Type.Type)
 	if err != nil {
 		return err
 	}
@@ -929,10 +950,17 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 
 // columnDefault writes the default value of column to the builder.
 func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
-	switch x := c.Default.(type) {
+	if c.Default != nil {
+		s.formatDefault(b, c.Type.Type, c.Default)
+	}
+}
+
+// formatDefault writes the default value of column to the builder.
+func (s *state) formatDefault(b *sqlx.Builder, t schema.Type, x schema.Expr) {
+	switch x := x.(type) {
 	case *schema.Literal:
 		v := x.V
-		switch c.Type.Type.(type) {
+		switch t.(type) {
 		case *schema.BoolType, *schema.DecimalType, *schema.IntegerType, *schema.FloatType:
 		default:
 			v = quote(v)
@@ -940,7 +968,7 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 		b.P("DEFAULT", v)
 	case *schema.RawExpr:
 		// Ignore identity functions added by the Differ.
-		if _, ok := c.Type.Type.(*SerialType); !ok {
+		if _, ok := t.(*SerialType); !ok {
 			b.P("DEFAULT", x.X)
 		}
 	}
@@ -1238,16 +1266,16 @@ func (s *state) schemaPrefix(ns *schema.Schema) string {
 }
 
 // formatType formats the type but takes into account the qualifier.
-func (s *state) formatType(c *schema.Column) (string, error) {
-	switch tt := c.Type.Type.(type) {
+func (s *state) formatType(t schema.Type) (string, error) {
+	switch t := t.(type) {
 	case *schema.EnumType:
-		return s.enumIdent(tt), nil
+		return s.enumIdent(t), nil
 	case *ArrayType:
-		if e, ok := tt.Type.(*schema.EnumType); ok {
+		if e, ok := t.Type.(*schema.EnumType); ok {
 			return s.enumIdent(e) + "[]", nil
 		}
 	}
-	return FormatType(c.Type.Type)
+	return FormatType(t)
 }
 
 func pkName(t *schema.Table, pk *schema.Index) string {

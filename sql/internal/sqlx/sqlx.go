@@ -288,6 +288,18 @@ func (b *Builder) Table(t *schema.Table) *Builder {
 	return b.mayQualify(t.Schema, t.Name)
 }
 
+// Func writes the function identifier to the builder, prefixed
+// with the schema name if exists.
+func (b *Builder) Func(f *schema.Func) *Builder {
+	return b.mayQualify(f.Schema, f.Name)
+}
+
+// Proc writes the procedure identifier to the builder, prefixed
+// with the schema name if exists.
+func (b *Builder) Proc(p *schema.Proc) *Builder {
+	return b.mayQualify(p.Schema, p.Name)
+}
+
 // TableResource writes the table's resource identifier to the builder, prefixed
 // with the schema name if exists.
 func (b *Builder) TableResource(t *schema.Table, r any) *Builder {
