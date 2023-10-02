@@ -54,6 +54,38 @@ func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
 	return false // unimplemented.
 }
 
+func (s *state) addFunc(*schema.AddFunc) error {
+	return nil // unimplemented.
+}
+
+func (s *state) dropFunc(*schema.DropFunc) error {
+	return nil // unimplemented.
+}
+
+func (s *state) modifyFunc(*schema.ModifyFunc) error {
+	return nil // unimplemented.
+}
+
+func (s *state) renameFunc(*schema.RenameFunc) error {
+	return nil // unimplemented.
+}
+
+func (s *state) addProc(*schema.AddProc) error {
+	return nil // unimplemented.
+}
+
+func (s *state) dropProc(*schema.DropProc) error {
+	return nil // unimplemented.
+}
+
+func (s *state) modifyProc(*schema.ModifyProc) error {
+	return nil // unimplemented.
+}
+
+func (s *state) renameProc(*schema.RenameProc) error {
+	return nil // unimplemented.
+}
+
 func verifyChanges(context.Context, []schema.Change) error {
 	return nil // unimplemented.
 }

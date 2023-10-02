@@ -112,6 +112,50 @@ type (
 		From, To *View
 	}
 
+	// AddFunc describes a function creation change.
+	AddFunc struct {
+		F     *Func
+		Extra []Clause // Extra clauses and options.
+	}
+
+	// DropFunc describes a function removal change.
+	DropFunc struct {
+		F     *Func
+		Extra []Clause // Extra clauses.
+	}
+
+	// ModifyFunc describes a function modification change.
+	ModifyFunc struct {
+		From, To *Func
+	}
+
+	// RenameFunc describes a function rename change.
+	RenameFunc struct {
+		From, To *Func
+	}
+
+	// AddProc describes a procedure creation change.
+	AddProc struct {
+		P     *Proc
+		Extra []Clause // Extra clauses and options.
+	}
+
+	// DropProc describes a procedure removal change.
+	DropProc struct {
+		P     *Proc
+		Extra []Clause // Extra clauses.
+	}
+
+	// ModifyProc describes a procedure modification change.
+	ModifyProc struct {
+		From, To *Proc
+	}
+
+	// RenameProc describes a procedure rename change.
+	RenameProc struct {
+		From, To *Proc
+	}
+
 	// AddObject describes a generic object creation change.
 	AddObject struct {
 		O     Object
@@ -544,6 +588,14 @@ func (*AddView) change()          {}
 func (*DropView) change()         {}
 func (*ModifyView) change()       {}
 func (*RenameView) change()       {}
+func (*AddFunc) change()          {}
+func (*DropFunc) change()         {}
+func (*ModifyFunc) change()       {}
+func (*RenameFunc) change()       {}
+func (*AddProc) change()          {}
+func (*DropProc) change()         {}
+func (*ModifyProc) change()       {}
+func (*RenameProc) change()       {}
 func (*AddObject) change()        {}
 func (*DropObject) change()       {}
 func (*ModifyObject) change()     {}
