@@ -211,6 +211,8 @@ type (
 	// A SummaryReport contains a summary of the analysis of all files.
 	// It is used as an input to templates to report the CI results.
 	SummaryReport struct {
+		URL string `json:"URL,omitempty"` // URL of the report, if exists.
+
 		// Env holds the environment information.
 		Env struct {
 			Driver string         `json:"Driver,omitempty"` // Driver name.
@@ -283,8 +285,8 @@ func NewSummaryReport(c *sqlclient.Client, dir migrate.Dir) *SummaryReport {
 }
 
 // StepResult appends step result to the summary.
-func (f *SummaryReport) StepResult(name, text string, result *FileReport) {
-	f.Steps = append(f.Steps, &StepReport{
+func (r *SummaryReport) StepResult(name, text string, result *FileReport) {
+	r.Steps = append(r.Steps, &StepReport{
 		Name:   name,
 		Text:   text,
 		Result: result,
@@ -292,8 +294,8 @@ func (f *SummaryReport) StepResult(name, text string, result *FileReport) {
 }
 
 // StepError appends step error to the summary.
-func (f *SummaryReport) StepError(name, text string, err error) error {
-	f.Steps = append(f.Steps, &StepReport{
+func (r *SummaryReport) StepError(name, text string, err error) error {
+	r.Steps = append(r.Steps, &StepReport{
 		Name:  name,
 		Text:  text,
 		Error: err.Error(),
@@ -302,13 +304,24 @@ func (f *SummaryReport) StepError(name, text string, err error) error {
 }
 
 // WriteSchema writes the current and desired schema to the summary.
-func (f *SummaryReport) WriteSchema(c *sqlclient.Client, diff *Changes) {
+func (r *SummaryReport) WriteSchema(c *sqlclient.Client, diff *Changes) {
 	if curr, err := c.MarshalSpec(diff.From); err == nil {
-		f.Schema.Current = string(curr)
+		r.Schema.Current = string(curr)
 	}
 	if desired, err := c.MarshalSpec(diff.To); err == nil {
-		f.Schema.Desired = string(desired)
+		r.Schema.Desired = string(desired)
 	}
+}
+
+// DiagnosticsCount returns the total number of diagnostics in the report.
+func (r *SummaryReport) DiagnosticsCount() int {
+	var n int
+	for _, f := range r.Files {
+		for _, r := range f.Reports {
+			n += len(r.Diagnostics)
+		}
+	}
+	return n
 }
 
 // NewFileReport returns a new FileReport.
