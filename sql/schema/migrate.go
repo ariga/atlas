@@ -127,6 +127,9 @@ type (
 	// ModifyFunc describes a function modification change.
 	ModifyFunc struct {
 		From, To *Func
+		// Changes that are extra to the function definition.
+		// For example, adding, dropping, or modifying attributes.
+		Changes []Change
 	}
 
 	// RenameFunc describes a function rename change.
@@ -149,6 +152,9 @@ type (
 	// ModifyProc describes a procedure modification change.
 	ModifyProc struct {
 		From, To *Proc
+		// Changes that are extra to the procedure definition.
+		// For example, adding, dropping, or modifying attributes.
+		Changes []Change
 	}
 
 	// RenameProc describes a procedure rename change.
