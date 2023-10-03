@@ -16,3 +16,7 @@ func newContext() context.Context {
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	return ctx
 }
+
+func vercheckEndpoint(_ context.Context) string {
+	return vercheckURL
+}

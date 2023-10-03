@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -30,8 +31,9 @@ import (
 
 func main() {
 	cmdapi.Root.SetOut(os.Stdout)
-	update := checkForUpdate()
-	err := cmdapi.Root.ExecuteContext(newContext())
+	ctx := newContext()
+	update := checkForUpdate(ctx)
+	err := cmdapi.Root.ExecuteContext(ctx)
 	if u := update(); u != "" {
 		fmt.Println(u)
 	}
@@ -50,7 +52,7 @@ const (
 func noText() string { return "" }
 
 // checkForUpdate checks for version updates and security advisories for Atlas.
-func checkForUpdate() func() string {
+func checkForUpdate(ctx context.Context) func() string {
 	done := make(chan struct{})
 	version := cmdapi.Version()
 	// Users may skip update checking behavior.
@@ -68,7 +70,8 @@ func checkForUpdate() func() string {
 	var message string
 	go func() {
 		defer close(done)
-		vc := vercheck.New(vercheckURL, path)
+		endpoint := vercheckEndpoint(ctx)
+		vc := vercheck.New(endpoint, path)
 		payload, err := vc.Check(version)
 		if err != nil {
 			return
