@@ -86,6 +86,14 @@ type (
 	ChangesAnnotator interface {
 		AnnotateChanges([]schema.Change, *schema.DiffOptions) error
 	}
+
+	// ProcFuncsDiffer is an optional interface allows DiffDriver to diff
+	// functions and procedures.
+	ProcFuncsDiffer interface {
+		// ProcFuncsDiff returns a changeset for migrating functions and procedures
+		// from one schema state to the other.
+		ProcFuncsDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]schema.Change, error)
+	}
 )
 
 // RealmDiff implements the schema.Differ for Realm objects and returns a list of changes
@@ -202,6 +210,14 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 		if _, ok := findView(from, v1); !ok {
 			changes = opts.AddOrSkip(changes, &schema.AddView{V: v1})
 		}
+	}
+	// Add, drop and modify functions and procedures.
+	if pf, ok := d.DiffDriver.(ProcFuncsDiffer); ok {
+		change, err := pf.ProcFuncsDiff(from, to, opts)
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, change...)
 	}
 	return changes, nil
 }
