@@ -462,7 +462,7 @@ schema "second" {
 `
 		t.applyRealmHcl(wa)
 		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
-			Mode: ^schema.InspectViews,
+			Mode: schema.InspectSchemas | schema.InspectTables,
 		})
 		require.NoError(t, err)
 		_, ok := realm.Schema("test")

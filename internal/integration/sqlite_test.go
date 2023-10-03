@@ -819,7 +819,7 @@ func (t *liteTest) applyHcl(spec string) {
 func (t *liteTest) loadRealm() *schema.Realm {
 	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"main"},
-		Mode:    ^schema.InspectViews,
+		Mode:    schema.InspectSchemas | schema.InspectTables,
 	})
 	require.NoError(t, err)
 	return r

@@ -809,7 +809,7 @@ func (t *crdbTest) valueByVersion(values map[string]string, defaults string) str
 func (t *crdbTest) loadRealm() *schema.Realm {
 	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"public"},
-		Mode:    ^schema.InspectViews,
+		Mode:    schema.InspectSchemas | schema.InspectTables,
 	})
 	require.NoError(t, err)
 	return r
