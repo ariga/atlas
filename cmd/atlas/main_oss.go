@@ -17,6 +17,6 @@ func newContext() context.Context {
 	return ctx
 }
 
-func vercheckEndpoint(_ context.Context) string {
+func vercheckEndpoint(context.Context) string {
 	return vercheckURL
 }
