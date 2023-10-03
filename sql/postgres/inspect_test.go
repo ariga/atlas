@@ -396,7 +396,7 @@ logs3      | c5         | integer   | integer   | NO          |                |
 		WillReturnRows(sqlmock.NewRows([]string{"table_name", "constraint_name", "expression", "column_name", "column_indexes"}))
 	mk.noEnums()
 	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
-		Mode: ^schema.InspectViews,
+		Mode: schema.InspectSchemas | schema.InspectTables,
 	})
 	require.NoError(t, err)
 
@@ -473,7 +473,7 @@ users       | idx5       | c           | false   | false  |                 | CR
 	mk.noChecks()
 	mk.noEnums()
 	s, err := drv.InspectSchema(context.Background(), "public", &schema.InspectOptions{
-		Mode: ^schema.InspectViews,
+		Mode: schema.InspectSchemas | schema.InspectTables,
 	})
 	require.NoError(t, err)
 	tbl := s.Tables[0]
@@ -517,7 +517,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
 	mk.noEnums()
 	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
-		Mode: ^schema.InspectViews,
+		Mode: schema.InspectSchemas | schema.InspectTables,
 	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Schema {
@@ -551,7 +551,7 @@ func TestDriver_Realm(t *testing.T) {
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(enumsQuery, "$1, $2"))).
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
 	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
-		Mode: ^schema.InspectViews,
+		Mode: schema.InspectSchemas | schema.InspectTables,
 	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
@@ -585,7 +585,7 @@ func TestDriver_Realm(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
 	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"test", "public"},
-		Mode:    ^schema.InspectViews,
+		Mode:    schema.InspectSchemas | schema.InspectTables,
 	})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {

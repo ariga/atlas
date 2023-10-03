@@ -163,7 +163,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 	).CombinedOutput()
 	require.NoError(t, err, string(out))
 	s, err := t.driver().InspectSchema(ctx, "atlas_schema_revisions", &schema.InspectOptions{
-		Mode: ^schema.InspectViews,
+		Mode: schema.InspectSchemas | schema.InspectTables,
 	})
 	require.NoError(t, err)
 	_, ok := s.Table("atlas_schema_revisions")
@@ -241,11 +241,11 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 	).CombinedOutput()
 	require.NoError(t, err, string(out))
 	s, err = t.driver().InspectSchema(ctx, "atlas_schema_revisions", &schema.InspectOptions{
-		Mode: ^schema.InspectViews,
+		Mode: schema.InspectSchemas | schema.InspectTables,
 	})
 	require.True(t, schema.IsNotExistError(err))
 	s, err = t.driver().InspectSchema(ctx, "bc_test_2", &schema.InspectOptions{
-		Mode: ^schema.InspectViews,
+		Mode: schema.InspectSchemas | schema.InspectTables,
 	})
 	require.NoError(t, err)
 	_, ok = s.Table("atlas_schema_revisions")
