@@ -122,6 +122,13 @@ schema "main" {
 }
 
 `, b.String())
+
+	b.Reset()
+	r.ReportWriter.(*migratelint.TemplateWriter).T = template.Must(template.New("").
+		Funcs(migratelint.TemplateFuncs).
+		Parse(`{"DiagnosticsCount": {{ .DiagnosticsCount }}, "FilesCount": {{ len .Files }}}`))
+	require.NoError(t, r.Run(ctx))
+	require.Equal(t, `{"DiagnosticsCount": 3, "FilesCount": 1}`, b.String())
 }
 
 type testAnalyzer struct {
