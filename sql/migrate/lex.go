@@ -62,12 +62,12 @@ func Stmts(input string) ([]*Stmt, error) {
 }
 
 type lex struct {
-	input    string
-	pos      int      // current phase position
-	total    int      // total bytes scanned so far
-	width    int      // size of latest rune
-	delim    string   // configured delimiter
-	comments []string // collected comments
+	src, input string   // src and current input text
+	pos        int      // current phase position
+	total      int      // total bytes scanned so far
+	width      int      // size of latest rune
+	delim      string   // configured delimiter
+	comments   []string // collected comments
 }
 
 const (
@@ -77,7 +77,7 @@ const (
 )
 
 func newLex(input string) (*lex, error) {
-	l := &lex{input: input, delim: delimiter}
+	l := &lex{src: input, input: input, delim: delimiter}
 	if d, ok := directive(input, directiveDelimiter, directivePrefixSQL); ok {
 		if err := l.setDelim(d); err != nil {
 			return nil, err
@@ -143,7 +143,9 @@ Scan:
 			if err := l.skipDollarQuote(); err != nil {
 				return nil, err
 			}
-		case r == '#':
+		// Skip non-standard MySQL comments if they are inside
+		// expressions until we make the lexer driver-aware.
+		case depth == 0 && r == '#':
 			l.comment("#", "\n")
 		case r == '-' && l.next() == '-':
 			l.comment("--", "\n")
@@ -289,14 +291,15 @@ func (l *lex) setDelim(d string) error {
 func (l *lex) error(pos int, format string, args ...any) error {
 	format = "%d:%d: " + format
 	var (
-		s    = l.input[:pos]
+		p    = len(l.src) - len(l.input) + pos
+		s    = l.src[:p]
 		col  = strings.LastIndex(s, "\n")
 		line = 1 + strings.Count(s, "\n")
 	)
 	if line == 1 {
-		col = pos
+		col = p
 	} else {
-		col = pos - col - 1
+		col = p - col - 1
 	}
 	return fmt.Errorf(format, append([]any{line, col}, args...)...)
 }

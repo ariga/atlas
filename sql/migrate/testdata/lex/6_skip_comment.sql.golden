@@ -15,3 +15,9 @@ CREATE TABLE t5(
     /* comment */
     -- comment
 ) ENGINE=InnoDB;
+-- end --
+CREATE INDEX "i" ON "s"."t" (((c #>> '{a,b,c}'::text[])));
+-- end --
+SELECT * FROM (
+  SELECT * FROM t1 # comment
+);
