@@ -189,6 +189,26 @@ func (s *Schema) Materialized(name string) (*View, bool) {
 	return nil, false
 }
 
+// Func returns the first function that matched the given name.
+func (s *Schema) Func(name string) (*Func, bool) {
+	for _, f := range s.Funcs {
+		if f.Name == name {
+			return f, true
+		}
+	}
+	return nil, false
+}
+
+// Proc returns the first procedure that matched the given name.
+func (s *Schema) Proc(name string) (*Proc, bool) {
+	for _, p := range s.Procs {
+		if p.Name == name {
+			return p, true
+		}
+	}
+	return nil, false
+}
+
 // Object returns the first object that matched the given predicate.
 func (s *Schema) Object(f func(Object) bool) (Object, bool) {
 	for _, o := range s.Objects {
