@@ -99,4 +99,16 @@ func TestFromURL(t *testing.T) {
 		Port:     "5432",
 		Out:      io.Discard,
 	}, cfg)
+
+	u, err = url.Parse("docker://postgis/14-3.4")
+	require.NoError(t, err)
+	cfg, err = FromURL(u)
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		Image:    "postgis/postgis:14-3.4",
+		Database: "postgres",
+		Env:      []string{"POSTGRES_PASSWORD=pass"},
+		Port:     "5432",
+		Out:      io.Discard,
+	}, cfg)
 }
