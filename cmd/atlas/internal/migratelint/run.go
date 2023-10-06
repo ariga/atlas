@@ -55,7 +55,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		// an error, fail silently.
 		for _, f := range r.sum.Files {
 			if f.Error != "" {
-				return SilentError{}
+				return SilentError{error: errors.New(f.Error)}
 			}
 		}
 		return nil
