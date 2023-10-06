@@ -98,6 +98,11 @@ func FromURL(u *url.URL) (*Config, error) {
 			opts = append(opts, Env("POSTGRES_DB="+parts[1]))
 		}
 		return PostgreSQL(tag, opts...)
+	case "postgis":
+		if len(parts) > 1 {
+			opts = append(opts, Env("POSTGRES_DB="+parts[1]))
+		}
+		return Postgis(tag, opts...)
 	default:
 		return nil, fmt.Errorf("unsupported docker image %q", u.Host)
 	}
@@ -132,6 +137,21 @@ func PostgreSQL(version string, opts ...ConfigOption) (*Config, error) {
 		append(
 			[]ConfigOption{
 				Image("postgres:" + version),
+				Port("5432"),
+				Database("postgres"),
+				Env("POSTGRES_PASSWORD=" + pass),
+			},
+			opts...,
+		)...,
+	)
+}
+
+// Postgis returns a new Config for a Postgis image. This is a Postgres variant
+func Postgis(version string, opts ...ConfigOption) (*Config, error) {
+	return NewConfig(
+		append(
+			[]ConfigOption{
+				Image("postgis/postgis:" + version),
 				Port("5432"),
 				Database("postgres"),
 				Env("POSTGRES_PASSWORD=" + pass),
@@ -298,7 +318,7 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 // URL returns a URL to connect to the Container.
 func (c *Container) URL() (*url.URL, error) {
 	switch img := path.Base(strings.SplitN(c.cfg.Image, ":", 2)[0]); img {
-	case "postgres":
+	case "postgres", "postgis":
 		return url.Parse(fmt.Sprintf("postgres://postgres:%s@localhost:%s/%s?sslmode=disable", c.Passphrase, c.Port, c.cfg.Database))
 	case "mysql", "mariadb":
 		return url.Parse(fmt.Sprintf("%s://root:%s@localhost:%s/%s", img, c.Passphrase, c.Port, c.cfg.Database))
