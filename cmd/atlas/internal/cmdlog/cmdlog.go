@@ -699,6 +699,12 @@ func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 		for _, o := range s.Objects {
 			changes = append(changes, &schema.AddObject{O: o})
 		}
+		for _, f := range s.Funcs {
+			changes = append(changes, &schema.AddFunc{F: f})
+		}
+		for _, p := range s.Procs {
+			changes = append(changes, &schema.AddProc{P: p})
+		}
 	}
 	return fmtPlan(report.Context, report.Client, changes, indent)
 }

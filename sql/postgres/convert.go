@@ -347,6 +347,9 @@ type columnDesc struct {
 var reDigits = regexp.MustCompile(`\d`)
 
 func parseColumn(s string) (*columnDesc, error) {
+	if s == "" {
+		return nil, errors.New("postgres: unexpected empty column type")
+	}
 	parts := strings.FieldsFunc(s, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	})
