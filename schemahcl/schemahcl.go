@@ -75,11 +75,11 @@ func New(opts ...Option) *State {
 //			type = INVALID  // Not Allowed.
 //		}
 //	}
-func WithScopedEnums(path string, enums ...string) Option {
+func WithScopedEnums[T interface{ ~string }](path string, enums ...T) Option {
 	return func(c *Config) {
 		vars := make(map[string]cty.Value, len(enums))
 		for i := range enums {
-			vars[enums[i]] = cty.StringVal(enums[i])
+			vars[string(enums[i])] = cty.StringVal(string(enums[i]))
 		}
 		c.pathVars[path] = vars
 	}
