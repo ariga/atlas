@@ -72,6 +72,12 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 		for _, o := range s.Objects {
 			changes = append(changes, &schema.AddObject{O: o})
 		}
+		for _, f := range s.Funcs {
+			changes = append(changes, &schema.AddFunc{F: f})
+		}
+		for _, p := range s.Procs {
+			changes = append(changes, &schema.AddProc{P: p})
+		}
 	}
 	if err := d.Driver.ApplyChanges(ctx, changes); err != nil {
 		return nil, err
@@ -137,6 +143,12 @@ func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sch
 			d.PatchObject(s, o)
 		}
 		changes = append(changes, &schema.AddObject{O: o})
+	}
+	for _, f := range s.Funcs {
+		changes = append(changes, &schema.AddFunc{F: f})
+	}
+	for _, p := range s.Procs {
+		changes = append(changes, &schema.AddProc{P: p})
 	}
 	if err := d.Driver.ApplyChanges(ctx, changes, func(opts *migrate.PlanOptions) {
 		noQualifier := ""
