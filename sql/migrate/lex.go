@@ -91,8 +91,13 @@ func newLex(input string) (*lex, error) {
 	return l, nil
 }
 
-// Dollar-quoted string as defined by the PostgreSQL scanner.
-var reDollarQuote = regexp.MustCompile(`^\$([A-Za-zÈ-ÿ_][\wÈ-ÿ]*)*\$`)
+var (
+	// Dollar-quoted string as defined by the PostgreSQL scanner.
+	reDollarQuote = regexp.MustCompile(`^\$([A-Za-zÈ-ÿ_][\wÈ-ÿ]*)*\$`)
+	// The 'BEGIN ATOMIC' syntax as specified in the SQL 2003 standard.
+	reBeginAtomic = regexp.MustCompile(`(?i)^\s*BEGIN\s+ATOMIC\s+`)
+	reEnd         = regexp.MustCompile(`(?i)^\s*END\s*`)
+)
 
 func (l *lex) stmt() (*Stmt, error) {
 	var (
@@ -151,6 +156,12 @@ Scan:
 			l.comment("--", "\n")
 		case r == '/' && l.next() == '*':
 			l.comment("/*", "*/")
+		case reBeginAtomic.MatchString(l.input[l.pos-1:]):
+			if err := l.skipBeginAtomic(); err != nil {
+				return nil, err
+			}
+			text = l.input[:l.pos]
+			break Scan
 		}
 	}
 	return l.emit(text), nil
@@ -211,6 +222,32 @@ func (l *lex) skipDollarQuote() error {
 			return nil
 		}
 	}
+}
+
+func (l *lex) skipBeginAtomic() error {
+	m := reBeginAtomic.FindString(l.input[l.pos-1:])
+	if m == "" {
+		return l.error(l.pos, "unexpected missing BEGIN ATOMIC block")
+	}
+	l.addPos(len(m) - 1)
+	body, err := newLex(l.input[l.pos:])
+	if err != nil {
+		return l.error(l.pos, "create scanner for sql body: %v", err)
+	}
+	for {
+		s, err := body.stmt()
+		if err == io.EOF {
+			return l.error(l.pos, "unexpected eof when scanning sql body")
+		}
+		if err != nil {
+			return l.error(l.pos, "scan sql body: %v", err)
+		}
+		if reEnd.MatchString(s.Text) {
+			break
+		}
+	}
+	l.addPos(body.total)
+	return nil
 }
 
 func (l *lex) comment(left, right string) {
