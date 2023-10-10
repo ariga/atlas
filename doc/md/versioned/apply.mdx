@@ -114,6 +114,46 @@ atlas migrate apply \
 
 </TabItem>
 </Tabs>
+
+**Deploy a specific tag** to a local database the remote migration directory named `app`:
+<Tabs>
+<TabItem value="postgres" label="PostgreSQL">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
+  --url "postgres://postgres:pass@:5432/example?search_path=public&sslmode=disable"
+```
+
+</TabItem>
+<TabItem value="mysql" label="MySQL">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
+  --url "mysql://root:pass@:3306/example"
+```
+
+</TabItem>
+<TabItem value="maria" label="Maria">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
+  --url "maria://root:pass@:3306/example"
+```
+
+</TabItem>
+<TabItem value="sqlite" label="SQLite">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
+  --url "sqlite://example.db"
+```
+
+</TabItem>
+</Tabs>
 :::
 
 ### Schema Revision Information
