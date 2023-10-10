@@ -116,6 +116,16 @@ atlas migrate apply \
 </Tabs>
 :::
 
+#### Specific Tags
+
+To apply a specific tag of your migration directory, add `?tag=<tag>` to the `--dir` URL. For example:
+
+```shell
+atlas migrate apply \
+  --dir "file://migrations?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
+  --url "mysql://root:pass@localhost:3306/example"
+```
+
 ### Schema Revision Information
 
 Atlas saves information about the applied migrations on a table called `atlas_schema_revisions` in the connected
