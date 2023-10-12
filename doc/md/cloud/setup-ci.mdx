@@ -3,6 +3,9 @@ id: setup-ci
 title: Setting up CI for your Database with Atlas Cloud
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 As your application evolves, so does your database schema. If you're not careful
 with schema changes (migrations), you can end up introducing all sorts of issues
 that are painful and expensive to fix.
@@ -11,24 +14,11 @@ To mitigate the risk of deploying dangerous changes to database schemas, many te
 apply CI/CD practices to their database. This means that every change to the database
 schema is automatically reviewed and tested before it is deployed to production.
 
-In this guide, we'll show you how to set up CI for your database using Atlas Cloud.
+In this guide, we'll show you how to set up CI for your database using Atlas Cloud
+and GitHub Actions.
 
-## GitHub Actions or App Workflows
-
-There are two ways to set up CI for your database with Atlas Cloud:
-
-* **GitHub Action** (recommended) - Install the [`ariga/atlas-action`](https://github.com/ariga/atlas-action)
-  GitHub Action on your GitHub repository and configure it to run on any pull request that modifies your database schema.
-
-  Note, this workflow does _not_ require you to grant Atlas Cloud any permissions on your repository. It also gives you
-  more control on how to set it up, and what [Dev Database](/concepts/dev-database) to use (e.g, PostGIS) for linting, change simulation, etc.
-
-* **GitHub App** - Install the Atlas Cloud GitHub App on your GitHub repository. Atlas Cloud will automatically pull
-  changes from your GitHub repository, then run tests on them.
-
-  This workflow is faster to set up, but it does require the necessary permissions to install the GitHub
-  App on your repository.
-
+A similar workflow is supported on other CI platforms as well. To learn more, see
+the [GitLab CI](/guides/ci-platforms/gitlab), for example.
 
 ## Prerequisites
 
@@ -44,6 +34,31 @@ There are two ways to set up CI for your database with Atlas Cloud:
   //highlight-next-line-info
   You are now connected to "a8m" on Atlas Cloud.
   ```
+
+3. Push your migration directory to Atlas Cloud. This is used by the CI process to detect
+   which migration files are new and if linear history is maintained.
+
+   To push your migrations to Atlas Cloud, run `atlas migrate push` in your terminal:
+
+    <Tabs>
+    <TabItem value="postgres" label="PostgreSQL">
+
+    ```bash
+    atlas migrate push app \
+      --dev-url "docker://postgres/15/dev?search_path=public"
+    ```
+
+    </TabItem>
+    <TabItem value="mysql" label="MySQL">
+
+    ```bash
+    atlas migrate push app \
+      --dev-url "docker://mysql/8/dev"
+    ```
+
+    </TabItem>
+    </Tabs>
+
 
 ## GitHub Action Workflow
 
@@ -79,7 +94,7 @@ GitHub CLI extension that will do most of the work for you:
   gh auth refresh -s write:packages,workflow
   ```
 
-2. **Go to repo root** - Make sure your current working directory is the root of your repository.
+2. **Go to your repository root** - Make sure your current working directory is the root of your repository.
 
   ```shell
   cd path/to/my/repo
@@ -88,7 +103,7 @@ GitHub CLI extension that will do most of the work for you:
 3. **Run the extension** - Run the `init-ci` command to configure the GitHub Action:
 
   ```shell
-  gh atlas init-action --token <your-bot-token>
+  gh atlas init-action --token <your-bot-token>  --dir-name="app"
   ```
   Atlas will scan your repository (locally) for directories containing Atlas migrations
   and ask you which one you would like to use for CI. Select the desired directory and press "Enter":
@@ -116,7 +131,7 @@ GitHub CLI extension that will do most of the work for you:
   <details>
   <summary>Screenshot Example</summary>
 
-  ![](https://atlasgo.io/uploads/cloud/ci-guide/gh-ext-pr-main.png)
+  ![](https://atlasgo.io/uploads/cloud/ci/gh-ext-pr-2.png)
   </details>
 
   The PR contains a GitHub Actions workflow similar to this:
@@ -125,72 +140,63 @@ GitHub CLI extension that will do most of the work for you:
 
   <summary>Code Example</summary>
 
-      name: Atlas
-      on:
-        push:
-          branches:
-            - master
-        pull_request:
-          paths:
-            - 'migrations/*'
-      # Permissions to write comments on the pull request.
-      permissions:
-        contents: read
-        pull-requests: write
-      jobs:
-        lint:
-          services:
-            # Spin up a mysql:8 container to be used as the dev-database for analysis.
-            mysql:
-              image: mysql:8
-              env:
-                MYSQL_DATABASE: dev
-                MYSQL_ROOT_PASSWORD: pass
-              ports:
-                - 3306:3306
-              options: >-
-                --health-cmd "mysqladmin ping -ppass"
-                --health-interval 10s
-                --health-start-period 10s
-                --health-timeout 5s
-                --health-retries 10
-          runs-on: ubuntu-latest
-          steps:
-            - uses: actions/checkout@v3
-              with:
-                fetch-depth: 0
-            - uses: ariga/atlas-action@v0
-              with:
-                dir: 'migrations'
-                dev-url: "mysql://root:pass@localhost:3306/dev"
-                cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
-        sync:
-          needs: lint
-          if: github.ref == 'refs/heads/master'
-          runs-on: ubuntu-latest
-          services:
-            # Spin up a mysql:8 container to be used as the dev-database for analysis.
-            mysql:
-              image: mysql:8
-              env:
-                MYSQL_DATABASE: dev
-                MYSQL_ROOT_PASSWORD: pass
-              options: >-
-                --health-cmd "mysqladmin ping -ppass"
-                --health-interval 10s
-                --health-start-period 10s
-                --health-timeout 5s
-                --health-retries 10
-          steps:
-            - uses: actions/checkout@v3
-            - uses: ariga/atlas-sync-action@v0
-              with:
-                dir: 'migrations'
-                dev-url: 'mysql://root:pass@mysql:3306/dev' # Use the service name "mysql" as the hostname
-                cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+    ```yaml
+    name: Atlas
+    on:
+      push:
+        branches:
+          - master
+        paths:
+          - .github/workflows/ci-atlas.yaml
+          - 'migrations/*'
+      pull_request:
+        paths:
+          - 'migrations/*'
+    # Permissions to write comments on the pull request.
+    permissions:
+      contents: read
+      pull-requests: write
+    jobs:
+      atlas:
+        services:
+          # Spin up a mysql:8 container to be used as the dev-database for analysis.
+          mysql:
+            image: mysql:8
+            env:
+              MYSQL_DATABASE: dev
+              MYSQL_ROOT_PASSWORD: pass
+            ports:
+              - 3306:3306
+            options: >-
+              --health-cmd "mysqladmin ping -ppass"
+              --health-interval 10s
+              --health-start-period 10s
+              --health-timeout 5s
+              --health-retries 10
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v3
+            with:
+              fetch-depth: 0
+          - uses: ariga/setup-atlas@v0
+            with:
+              cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN_L0QEJQ }}
+          - uses: ariga/atlas-action/migrate/lint@v1
+            with:
+              dir: 'file://migrations'
+              dir-name: 'gh-ext-demo'
+              dev-url: 'mysql://root:pass@localhost:3306/dev'
+            env:
+              GITHUB_TOKEN: ${{ github.token }}
+          - uses: ariga/atlas-action/migrate/push@v1
+            if: github.ref == 'refs/heads/master'
+            with:
+                dir: 'file://migrations'
+                dir-name: 'gh-ext-demo'
+                dev-url: 'mysql://root:pass@localhost:3306/dev'
+    ```
 
   </details>
-
 
   After reviewing the changes, merge the pull request to enable the GitHub Action.
 
@@ -253,134 +259,17 @@ and sync the migrations to Atlas Cloud on every push to `master`.
   <details>
   <summary>Screenshot Example</summary>
 
-  ![](https://atlasgo.io/uploads/cloud/ci-guide/pr-comment.png)
+  ![](https://atlasgo.io/uploads/cloud/ci/gh-action-comment.png)
   </details>
 
   The linting run failed because of the syntax error we introduced in the migration file.
 
-7. Click on "Full Report on Atlas Cloud" to see the full report on Atlas Cloud:
+7. Click on "Full Report" to see the full report on Atlas Cloud:
   <details>
   <summary>Screenshot Example</summary>
 
   ![](https://atlasgo.io/uploads/cloud/ci-guide/fixed-cloud-report-2.png)
   </details>
-
-
-## GitHub App Workflow
-
-### Step 1: Install the Atlas Cloud GitHub App
-
-After logging in to Atlas Cloud, create a new migration directory by clicking on
-"Projects" in the sidebar and then click on the "Add Directory"
-button.
-
-<details><summary>Screenshot Example</summary>
-
-![](https://atlasgo.io/uploads/cloud/ci-guide/create-dir-1.png)
-
-</details>
-
-Click "Connect with GitHub" to initiate the GitHub App installation flow.
-
-<details>
-<summary>Screenshot Example</summary>
-
-![](https://atlasgo.io/uploads/cloud/ci-guide/create-dir-2.png)
-</details>
-
-### Step 2: Connect Your Repository
-
-Once you've installed the GitHub App, you need to grant it access to
-the relevant repositories. Click on the "Organization" field and choose
-"Add Organization" from the dropdown:
-
-<details>
-<summary>Screenshot Example</summary>
-
-![](https://atlasgo.io/uploads/cloud/ci-guide/create-dir-3.png)
-</details>
-
-A popup requesting you to grant permission to specific repositories will appear.
-Select the repositories you want to grant access to, then click "Install and Authorize".
-
-<details>
-<summary>Screenshot Example</summary>
-
-![](https://atlasgo.io/uploads/cloud/ci-guide/create-dir-4.png)
-</details>
-
-### Step 3: Configure the Migration Directory
-
-Fill the rest of the form with the relevant configuration details:
-* **Directory Path** - The path to the directory containing your migrations relative to your repository root.
-* **Directory Name** - An identifier for the directory. This will be used to identify the directory in the Atlas Cloud and APIs.
-* **Migration Engine** - The format of the migrations in the directory. Atlas works best with migration directories in its
-  format, but also supports `golang-migrate`, Flyway, and Liquibase.
-* **Database** - the database engine for the target database.
-
-<details>
-<summary>Screenshot Example</summary>
-
-![](https://atlasgo.io/uploads/cloud/ci-guide/create-dir-5.png)
-</details>
-
-Click "Connect Directory" to finish the process.
-
-### Step 4: Test the Integration
-
-After connecting your directory, let's create a pull request with a destructive
-change to make sure that Atlas Cloud catches it.
-
-Create a new branch:
-
-```
-git checkout -b test-branch
-```
-
-Create a new migration file:
-
-```
-atlas migrate new --edit destructive
-```
-
-Add the following SQL to the migration file and save:
-
-```sql
-DROP TABLE posts;
-```
-
-Commit the changes and push them to GitHub:
-
-```
-git add .
-git commit -m "add destructive migration"
-git push origin test-branch
-```
-
-Create a pull request from the `test-branch` branch to your main branch.
-
-After a few seconds, Atlas Cloud will pick up the changes and run CI against
-them. Shortly after, you will see a comment on your pull request with the
-results of the CI run:
-
-<details>
-<summary>Screenshot Example</summary>
-
-![](https://atlasgo.io/uploads/cloud/ci-guide/app-ci.png)
-</details>
-
-
-Amazing! Atlas Cloud caught the destructive change and prevented it from being
-accidentally merged to your main branch.
-
-To see a more detailed report of the CI run, click on the "Full Report on Atlas Cloud"
-link in the comment:
-
-<details>
-<summary>Screenshot Example</summary>
-
-![](https://atlasgo.io/uploads/cloud/ci-guide/app-cloud-report.png)
-</details>
 
 ## Summary
 
