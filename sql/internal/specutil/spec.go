@@ -79,6 +79,12 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 		if err := QualifyObjects(d.Materialized); err != nil {
 			return nil, err
 		}
+		if err := QualifyObjects(d.Funcs); err != nil {
+			return nil, err
+		}
+		if err := QualifyObjects(d.Procs); err != nil {
+			return nil, err
+		}
 		if err := QualifyReferences(d.Tables, s); err != nil {
 			return nil, err
 		}
