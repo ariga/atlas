@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: ariga/setup-atlas@v0
         with:
-          cloud-token: aci_......
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
       - run: atlas version
       # - run: atlas schema apply ...
 ```
