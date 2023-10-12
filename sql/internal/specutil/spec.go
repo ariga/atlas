@@ -55,6 +55,8 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 		d.Views = spec.Views
 		d.Materialized = spec.Materialized
 		d.Schemas = []*sqlspec.Schema{spec.Schema}
+		d.Funcs = spec.Funcs
+		d.Procs = spec.Procs
 	case *schema.Realm:
 		for _, s := range s.Schemas {
 			spec, err := convertFunc(s)
@@ -65,6 +67,8 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 			d.Views = append(d.Views, spec.Views...)
 			d.Materialized = spec.Materialized
 			d.Schemas = append(d.Schemas, spec.Schema)
+			d.Funcs = append(d.Funcs, spec.Funcs...)
+			d.Procs = append(d.Procs, spec.Procs...)
 		}
 		if err := QualifyObjects(d.Tables); err != nil {
 			return nil, err
