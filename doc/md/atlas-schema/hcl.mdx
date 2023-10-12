@@ -649,6 +649,88 @@ table "users" {
 }
 ```
 
+## Function
+
+:::info BETA FEATURE
+Functions are currently in beta and available to logged-in users only. To use this feature, run:
+```
+atlas login
+```
+:::
+
+The `function` block allows defining SQL functions in HCL format.
+
+```sql
+function "positive" {
+  schema = schema.public
+  lang   = SQL
+  arg "v" {
+    type = integer
+  }
+  return = integer
+  as     = "SELECT v > 0"
+}
+
+function "sql_body1" {
+  schema = schema.public
+  lang   = SQL
+  arg "v" {
+    type = integer
+  }
+  return = integer
+  as = <<-SQL
+   BEGIN ATOMIC
+    SELECT v;
+   END
+  SQL
+}
+
+function "sql_body2" {
+  schema = schema.public
+  lang   = SQL
+  arg {
+    type = integer
+  }
+  return     = integer
+  as         = "RETURN $1"
+  volatility = IMMUTABLE // STABLE | VOLATILE
+  leakproof  = true      // (CALLED | RETURNS NULL) ON NULL INPUT
+  strict     = true
+}
+```
+
+## Procedure
+
+:::info BETA FEATURE
+Procedures are currently in beta and available to logged-in users only. To use this feature, run:
+```
+atlas login
+```
+:::
+
+The `procedure` block allows defining SQL procedure in HCL format.
+
+```sql
+procedure "proc" {
+  schema = schema.public
+  lang   = SQL
+  arg "a" {
+    type = integer
+  }
+  arg "b" {
+    type = text
+  }
+  arg "c" {
+    type    = integer
+    default = 100
+  }
+  as = <<-SQL
+   INSERT INTO t1 VALUES(a, b);
+   INSERT INTO t2 VALUES(c, b);
+  SQL
+}
+```
+
 ## Comment
 
 The `comment` attribute is an attribute of `schema`, `table`, `column`, and `index`.
