@@ -1,0 +1,138 @@
+---
+title: "Revamping the GitHub Actions Experience for Atlas"
+authors: rotemtam
+tags: [announcement, atlas, github, actions, ci]
+---
+
+Hi everyone!
+
+I'm very happy to share with you some of the recent improvements to Atlas, specifcially around GitHub Actions.
+In August of last year, [we released our first version](2022-08-22-atlas-ci-github-actions.md) of the GitHub
+Actions experience for Atlas.  It was a modest start, which included the ability to verify the safety and correctness
+of schema migrations during the CI process.
+
+Over the past year, we have slowly added more features to the GitHub Actions experience, including the ability
+to [sync migration directories to Atlas Cloud](https://github.com/ariga/atlas-sync-action),
+[deploy migrations](https://github.com/ariga/atlas-deploy-action), and even [install Atlas](https://github.com/ariga/setup-atlas).
+As often happens with quickly evolving systems, we felt that the API became complex, carrying over use cases
+and experiences that have become obsolete or superseded by better ones since the initial release.
+
+At [Ariga](https://ariga.io), the team developing Atlas, we have written a document named the "R&D Manifesto", which lists some the principles
+that we commit to as individuals and as an organization.  One of them is *"Obsess over APIs and DevEx"* - we believe that
+the key to building a successful product is to provide the best possible experience to our users, and that starts with
+clear, consistent and composable APIs that empower our users to achieve amazing feats of engineering.
+
+With that in mind, our team has been working hard in the past few weeks to revamp the GitHub Actions experience for Atlas.
+Here's a quick summary of the changes:
+
+1. We've moved all actions into a single repo - [ariga/atlas-action](https://github.com/ariga/atlas-action). (With
+   the exception of [ariga/setup-atlas](https://github.com/ariga/setup-atlas).)
+2. The API has been reviewed and updated to make sure it is consistent among the different actions and with the rest
+   of the Atlas ecosystem.
+3. We've rewritten the code in [Go](https://golang.org/), which is the language we use for all of our internal tools.
+   This allows us to share code between the CLI and the GitHub Actions, and to provide a more consistent experience
+   between the two.  In addition, looking forward we have greatly simplified the process of adding new GitHub Actions
+   as needed.
+
+### Deprecation Notice
+
+As part of this change we are deprecating the previous generation of GitHub Actions, and we encourage you to migrate
+to the new ones as soon as possible.  The old actions will continue to work for the time being, but we will not be
+receiving any updates. These actions are:
+
+* [ariga/atlas-sync-action](https://github.com/ariga/atlas-sync-action) is superseded by `ariga/atlas-action/migrate/push`.
+* [ariga/atlas-deploy-action](https://github.com/ariga/atlas-deploy-action) is superseded by `ariga/atlas-action/migrate/apply`.
+* [ariga/atlas-action](https://github.com/ariga/atlas-action) - the old, TypeScript based action, is superseded by the
+  `ariga/atlas-action/migrate/lint` action.
+
+### Introducing to the New Actions
+
+Without further ado, I'm happy to present the new generation of GitHub Actions for Atlas.  The new actions follow
+the design principle of building actions as small, composable units that can be combined to achieve different outcomes.
+All of the actions rely on Atlas being installed on the GitHub Actions runner, which is done using the `ariga/setup-atlas`
+action.  The rest of the actions essentially map to CLI commands, and can be used to build more complex workflows.
+
+The actions are:
+
+| Action                                                | Use Case                                            |
+|-------------------------------------------------------|-----------------------------------------------------|
+| [ariga/setup-atlas](https://github.com/ariga/setup-atlas) | Install Atlas from a GitHub Actions workflow    |
+| [ariga/atlas-action/migrate/lint](https://github.com/ariga/atlas-action/tree/master/migrate/lint/action.yml)        | CI for schema changes                               |
+| [ariga/atlas-action/migrate/push](https://github.com/ariga/atlas-action/tree/master/migrate/push/action.yml)   | Push your migration directory to Atlas Cloud (atlasgo.cloud) |
+| [ariga/atlas-action/migrate/apply](https://github.com/ariga/atlas-action/tree/master/migrate/apply/action.yml) | Deploy versioned migrations from GitHub Actions    |
+
+### Example Workflows
+
+Consider the following GitHub Actions workflow, which can be used to implement a CI/CD pipeline for your database
+schema changes.
+
+```yaml
+name: Atlas CI/CD
+on:
+  push:
+    branches:
+      - master # Use your main branch here.
+  pull_request:
+    paths:
+      - 'migrations/*' # Use the path to your migration directory here.
+# Permissions to write comments on the pull request.
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  atlas:
+    services:
+      # Spin up a mysql:8 container to be used as the dev-database for analysis.
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/lint@v1
+        with:
+          dir: 'file://migrations'
+          dir-name: 'my-project' # The name of the project in Atlas Cloud
+          dev-url: "mysql://root:pass@localhost:3306/dev"
+      - uses: ariga/atlas-action/migrate/push@v1
+        if: github.ref == 'refs/heads/master'
+        with:
+          dir: 'file://migrations'
+          dir-name: 'my-project'
+          dev-url: 'mysql://root:pass@localhost:3306/dev' # Use the service name "mysql" as the hostname
+```
+
+This workflow uses 3 different actions to achieve the following:
+* `ariga/setup-atlas` - Installs Atlas on the GitHub Actions runner and logs in using the provided token.
+* `ariga/atlas-action/migrate/lint` - Lints the migration directory and verifies that it is safe to apply.
+  This is run on every pull request that modifies the migration directory. If issues are found, the action
+  will fail and a comment will be posted on the pull request with the details.
+* `ariga/atlas-action/migrate/push` - Pushes the migration directory to Atlas Cloud.  This is run on every push
+  to the main branch, so it can be used to deploy the migrations to production.
+
+### Tagging `v1`
+
+With the release of the new actions, we are also tagging the `v1` release of the actions to mark the
+maturity and stability of the API.  We hope you will find the new actions useful, and we look forward to
+seeing what you build with them!
+
+#### How can we make Atlas better?
+
+We would love to hear from you [on our Discord server](https://discord.gg/zZ6sWVg6NT) :heart:.
