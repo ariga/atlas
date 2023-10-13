@@ -9,7 +9,7 @@ fork of SQLite. It was designed to minimize query latency for applications where
 queries come from anywhere in the world. 
 
 Engineers can use Atlas to manage their Turso databases using the SQLite driver by
-using the `libsql+wss://` schema in their connection URLs.
+using the `libsql+ws://` (for local environments) or `libsql+wss://` schemas in their connection URLs.
 
 This guide will walk you through the process of setting up Turso and using Atlas to manage
 your Turso databases.
