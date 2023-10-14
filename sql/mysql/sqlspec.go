@@ -24,6 +24,8 @@ type doc struct {
 	Tables  []*sqlspec.Table  `spec:"table"`
 	Views   []*sqlspec.View   `spec:"view"`
 	Schemas []*sqlspec.Schema `spec:"schema"`
+	Funcs   []*sqlspec.Func   `spec:"function"`
+	Procs   []*sqlspec.Func   `spec:"procedure"`
 }
 
 // evalSpec evaluates an Atlas DDL document into v using the input.
@@ -35,8 +37,8 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return err
 		}
 		if err := specutil.Scan(v,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views},
-			&specutil.ScanFuncs{Table: convertTable, View: convertView},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Funcs: d.Funcs, Procs: d.Procs},
+			scanFuncs,
 		); err != nil {
 			return fmt.Errorf("mysql: failed converting to *schema.Realm: %w", err)
 		}
@@ -59,8 +61,8 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		}
 		r := &schema.Realm{}
 		if err := specutil.Scan(r,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views},
-			&specutil.ScanFuncs{Table: convertTable, View: convertView},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Funcs: d.Funcs, Procs: d.Procs},
+			scanFuncs,
 		); err != nil {
 			return err
 		}
@@ -276,10 +278,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 
 // schemaSpec converts from a concrete MySQL schema to Atlas specification.
 func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
-	spec, err := specutil.FromSchema(s, &specutil.Funcs{
-		Table: tableSpec,
-		View:  viewSpec,
-	})
+	spec, err := specutil.FromSchema(s, specFuncs)
 	if err != nil {
 		return nil, err
 	}
