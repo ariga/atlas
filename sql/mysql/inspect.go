@@ -44,6 +44,11 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 				return nil, err
 			}
 		}
+		if mode.Is(schema.InspectFuncs) {
+			if err := i.inspectFuncs(ctx, r, nil); err != nil {
+				return nil, err
+			}
+		}
 	}
 	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
@@ -73,6 +78,11 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	}
 	if sqlx.ModeInspectSchema(opts).Is(schema.InspectViews) {
 		if err := i.inspectViews(ctx, r, opts); err != nil {
+			return nil, err
+		}
+	}
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectFuncs) {
+		if err := i.inspectFuncs(ctx, r, opts); err != nil {
 			return nil, err
 		}
 	}
