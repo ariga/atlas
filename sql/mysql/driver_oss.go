@@ -19,6 +19,10 @@ func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOpti
 	return nil // unimplemented.
 }
 
+func (*inspect) inspectFuncs(context.Context, *schema.Realm, *schema.InspectOptions) error {
+	return nil // unimplemented.
+}
+
 func (*state) addView(*schema.AddView) error {
 	return nil // unimplemented.
 }

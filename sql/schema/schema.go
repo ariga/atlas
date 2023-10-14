@@ -135,6 +135,7 @@ type (
 		Type    Type        // Argument type.
 		Default Expr        // Default value.
 		Mode    FuncArgMode // Argument mode.
+		Attrs   []Attr      // Extra driver specific attributes.
 	}
 
 	// FuncArgMode represents a function argument mode.

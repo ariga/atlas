@@ -30,7 +30,7 @@ func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOpti
 	return nil // unimplemented.
 }
 
-func (i *inspect) inspectFuncs(context.Context, *schema.Realm, *schema.InspectOptions) error {
+func (*inspect) inspectFuncs(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
 }
 
