@@ -171,6 +171,12 @@ type (
 
 	// FuncArgMode represents a function argument mode.
 	FuncArgMode string
+
+	// FuncNullCall represents the function behavior when a null input is provided.
+	FuncNullCall struct {
+		Attr
+		V FuncNullCallOption
+	}
 )
 
 // List of supported function argument modes.
@@ -179,6 +185,15 @@ const (
 	FuncArgModeOut      FuncArgMode = "OUT"
 	FuncArgModeInOut    FuncArgMode = "INOUT"
 	FuncArgModeVariadic FuncArgMode = "VARIADIC"
+)
+
+// FuncNullCallOption represents the function behavior when a null input is provided.
+type FuncNullCallOption string
+
+// FuncNullCall options for FuncNullCall behavior: CALLED or RETURNS NULL.
+const (
+	FuncCalled      FuncNullCallOption = "CALLED"
+	FuncReturnsNull FuncNullCallOption = "RETURNS NULL"
 )
 
 // List of supported trigger action times.
