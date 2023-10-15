@@ -1,0 +1,432 @@
+---
+id: typeorm
+title: Automatic migration planning for TypeORM
+slug: /guides/orms/typeorm
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## TL;DR
+* [TypeORM](https://typeorm.io/) is an ORM for TypeScript and JavaScript that can run in many platforms
+  (Node.js, Browser, React Native, NativeScript, and more).
+* [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, linting and
+  executing schema changes to your database.
+* Developers using TypeORM can use Atlas to automatically plan schema migrations
+  for them, based on the desired state of their schema instead of crafting them by hand.
+
+## Automatic migration planning for TypeORM
+
+TypeORM is a popular ORM widely used in the Node.js community. TypeORM allows users to
+manage their database schemas using its [schema-synchronization](https://typeorm.io/sequelize-migration#schema-synchronization)
+feature, which is usually sufficient during development and in many simple cases.
+
+However, at some point, teams need more control and decide to employ
+the [migrations](https://typeorm.io/migrations)
+methodology, which is a more robust way to manage your database schema.
+TypeORM allows users to [generate migration](https://typeorm.io/migrations#generating-migrations)
+files based on the difference between the current state of the database and the desired state.
+
+In order to apply the schema migrations to the CI/CD pipeline, developers need to
+manually craft scripts that will execute the migrations against the production database and handle failures manually.
+
+Atlas has many features that can help developers manage their database
+[CI/CD pipelines](https://atlasgo.io/guides/modern-database-ci-cd) more easily:
+
+* [Declarative migrations](https://atlasgo.io/declarative/apply) - use a Terraform-like `atlas schema apply` flow to manage your database.
+* [Diff policies](https://atlasgo.io/declarative/diff#diff-policy) - provide Atlas with policies for planning schema changes (such as "always create index concurrently" or "do not drop columns").
+* [CI for schema changes](https://atlasgo.io/cloud/setup-ci) - Atlas can be used during CI to make sure you never merge a pull request.
+* Modern CD integrations - Atlas integrates seamlessly with modern deployment tools such as [Kubernetes](https://atlasgo.io/integrations/kubernetes/operator),
+  [Terraform](https://atlasgo.io/integrations/terraform-provider), [Helm](https://atlasgo.io/guides/deploying/helm),
+  [Flux](https://atlasgo.io/guides/deploying/k8s-flux), and [ArgoCD](https://atlasgo.io/guides/deploying/k8s-argo). This allows you to deploy changes to your database schema
+  as part of your existing deployment pipelines.
+* [Visualization](https://atlasgo.io/blog/2023/08/06/atlas-v-0-13#built-in-schema-visualization) - Atlas users can create beautiful, shareable ERDs of their application data model
+
+In this guide, we will show how Atlas can be used to automatically plan schema migrations for
+TypeORM users.
+
+## Prerequisites
+
+* A local [TypeORM](https://github.com/typeorm/typeorm) project
+
+If you don't have a TypeORM project handy, you can use [typeorm/typescript-express-example](https://github.com/typeorm/typescript-express-example)
+as a starting point:
+
+```bash
+git clone git@github.com:typeorm/typescript-express-example.git
+```
+
+## Using the Atlas TypeORM Provider
+
+In this guide, we will use the [TypeORM Atlas Provider](https://github.com/ariga/atlas-provider-typeorm)
+to automatically plan schema migrations for a TypeORM project.
+
+### Installation
+
+Install Atlas from macOS or Linux by running:
+```bash
+curl -sSf https://atlasgo.sh | sh
+```
+See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more installation options.
+
+Install the provider by running:
+
+```bash
+npm install @ariga/atlas-provider-typeorm
+```
+
+Make sure all your Node dependencies are installed by running:
+```bash
+npm install
+```
+
+### Standalone vs Script mode
+
+The Atlas TypeORM Provider can be used in two modes:
+* **Standalone** - If all of your TypeORM entities exist in a single Node module,
+you can use the provider directly to load your TypeORM schema into Atlas.
+* **Script** - In other cases, you can use the provider as an npm package to write a script
+ that loads your TypeORM schema into Atlas.
+
+### Standalone mode
+
+In your project directory, create a new file named `atlas.hcl` with the following contents:
+
+```hcl
+data "external_schema" "typeorm" {
+    program = [
+        "npx",
+        "@ariga/atlas-provider-typeorm",
+        "load",
+        "--path", "./path/to/entities",
+        "--dialect", "mysql", // mariadb | postgres | sqlite | mssql
+    ]
+}
+
+env "typeorm" {
+    src = data.external_schema.typeorm.url
+    dev = "docker://mysql/8/dev"
+    migration {
+        dir = "file://migrations"
+    }
+    format {
+        migrate {
+            diff = "{{ sql . \"  \" }}"
+        }
+    }
+}
+```
+
+### Script mode
+
+<Tabs>
+<TabItem value="js" label="JavaScript" default>
+
+Create a new file named `load.js` with the following contents:
+
+```js
+#!/usr/bin/env node
+
+const loadEntities = require("@ariga/atlas-provider-typeorm/build/load").loadEntities;
+const EntitySchema = require("typeorm").EntitySchema;
+
+// require typeorm entities you want to load
+const user = new EntitySchema(require("./entities/User"));
+const blog = new EntitySchema(require("./entities/Blog"));
+
+loadEntities("mysql", [user, blog]).then((sql) => {
+  console.log(sql);
+});
+```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+
+Create a new file named `load.ts` with the following contents:
+
+```ts
+#!/usr/bin/env ts-node-script
+
+import { loadEntities } from "@ariga/atlas-provider-typeorm/build/load";
+
+// import typeorm entities you want to load
+import { User } from "./entities/User";
+import { Blog } from "./entities/Blog";
+
+loadEntities("mysql", [User, Blog]).then((sql) => {
+  console.log(sql);
+});
+```
+</TabItem>
+</Tabs>
+
+Next, in your project directory, create a new file named `atlas.hcl` with the following contents:
+
+<Tabs>
+<TabItem value="js" label="JavaScript" default>
+
+```hcl
+data "external_schema" "typeorm" {
+    program = [
+        "node",
+        "load.js",
+    ]
+}
+
+env "typeorm" {
+    src = data.external_schema.typeorm.url
+    dev = "docker://mysql/8/dev"
+    migration {
+        dir = "file://migrations"
+    }
+    format {
+        migrate {
+            diff = "{{ sql . \"  \" }}"
+        }
+    }
+}
+```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+
+```hcl
+data "external_schema" "typeorm" {
+    program = [
+        "npx",
+        "ts-node",
+        "load.ts",
+    ]
+}
+
+env "typeorm" {
+    src = data.external_schema.typeorm.url
+    dev = "docker://mysql/8/dev"
+    migration {
+        dir = "file://migrations"
+    }
+    format {
+        migrate {
+            diff = "{{ sql . \"  \" }}"
+        }
+    }
+}
+```
+</TabItem>
+</Tabs>
+
+## Usage
+
+Atlas supports a [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations)
+workflow, where each change to the database is versioned and recorded in a migration file. You can use the
+`atlas migrate diff` command to automatically generate a migration file that will migrate the database
+from its latest revision to the current TypeORM schema.
+
+Suppose we have the following TypeORM `entities` directory, with two entities `Blog` and `User`:
+
+<Tabs>
+<TabItem value="js" label="JavaScript" default>
+<Tabs>
+<TabItem value="blog" label="Blog.js" default>
+
+```js
+module.exports = {
+  name: "Blog",
+  columns: {
+    id: {
+      primary: true,
+      type: "int",
+      generated: true,
+    },
+    title: {
+      type: "varchar",
+    },
+  },
+  relations: {
+    project: {
+      type: "many-to-one",
+      target: "User",
+      joinColumn: {
+        name: "userId",
+      },
+      inverseSide: "blogs",
+    },
+  },
+};
+
+```
+</TabItem>
+<TabItem value="user" label="User.js">
+
+```js
+module.exports = {
+  name: "User",
+  columns: {
+    id: {
+      primary: true,
+      type: "int",
+      generated: true,
+    },
+    firstName: {
+      type: "varchar",
+    },
+    lastName: {
+      type: "varchar",
+    },
+  },
+  relations: {
+    orders: {
+      type: "one-to-many",
+      target: "Blog",
+      cascade: true,
+      inverseSide: "user",
+    },
+  },
+};
+
+```
+</TabItem>
+</Tabs>
+
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+<Tabs>
+<TabItem value="blog" label="Blog.ts" default>
+
+```ts
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { User } from "./User";
+
+@Entity()
+export class Blog {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  title: string;
+
+  @ManyToOne(() => User, (user) => user.blogs)
+  user: User;
+}
+
+```
+</TabItem>
+<TabItem value="user" label="User.ts">
+
+```ts
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+} from "typeorm";
+import { Blog } from "./Blog";
+
+@Entity()
+export class User {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  firstName: string;
+
+  @Column()
+  lastName: string;
+
+  @OneToMany(() => Blog, (blog) => blog.user)
+  blogs: Blog[];
+}
+
+```
+</TabItem>
+</Tabs>
+</TabItem>
+</Tabs>
+
+Using the [Standalone mode](#standalone-mode) configuration file for the Atlas TypeORM Provider,
+we can generate a migration file by running this command:
+
+```bash
+atlas migrate diff --env typeorm
+```
+
+Running this command will generate files similar to this in the `migrations` directory:
+
+```
+migrations
+|-- 20230918143104.sql
+`-- atlas.sum
+
+0 directories, 2 files
+```
+
+Examining the contents of `20230918143104.sql`:
+
+```sql
+-- Create "user" table
+CREATE TABLE `user` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `firstName` varchar(255) NOT NULL,
+  `lastName` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- Create "blog" table
+CREATE TABLE `blog` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL,
+  `userId` int NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FK_fc46ede0f7ab797b7ffacb5c08d` (`userId`),
+  CONSTRAINT `FK_fc46ede0f7ab797b7ffacb5c08d` FOREIGN KEY (`userId`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+```
+
+Amazing! Atlas automatically generated a migration file that will create the `User` and `Blog` tables in our database!
+
+Next, alter the `User` entity to add a new `age` field:
+
+
+<Tabs>
+<TabItem value="js" label="JavaScript" default>
+
+```diff
+    lastName: {
+      type: "varchar",
+    },
++   age: {
++     type: "int",
++   }
+```
+</TabItem>
+<TabItem value="ts" label="TypeScript">
+
+```diff
+  @Column()
+  lastName: string;
+
++ @Column()
++ age: number;
+```
+</TabItem>
+</Tabs>
+
+Re-run this command:
+
+```bash
+atlas migrate diff --env typeorm
+```
+
+Observe a new migration file is generated:
+
+```sql
+-- Modify "user" table
+ALTER TABLE `user` ADD COLUMN `age` int NOT NULL;
+```
+
+## Conclusion
+
+In this guide we demonstrated how projects using TypeORM can use Atlas to automatically
+plan schema migrations based only on their data model. To learn more about executing
+these migrations against your production database, read the documentation for the
+[`migrate apply`](/versioned/apply) command.
+
+Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT)

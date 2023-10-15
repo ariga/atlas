@@ -299,6 +299,11 @@ module.exports = {
                 },
                 {
                     type: 'doc',
+                    id: 'guides/orms/typeorm',
+                    label: 'TypeORM'
+                },
+                {
+                    type: 'doc',
                     id: 'guides/frameworks/sqlc-declarative',
                     label: 'sqlc (declarative)'
                 },
