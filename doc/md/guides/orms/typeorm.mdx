@@ -16,6 +16,7 @@ import TabItem from '@theme/TabItem';
   for them, based on the desired state of their schema instead of crafting them by hand.
 
 ## Automatic migration planning for TypeORM
+
 TypeORM is a popular ORM widely used in the Node.js community. TypeORM allows users to
 manage their database schemas using its [schema-synchronization](https://typeorm.io/sequelize-migration#schema-synchronization)
 feature, which is usually sufficient during development and in many simple cases.
@@ -30,14 +31,16 @@ In order to apply the schema migrations to the CI/CD pipeline, developers need t
 manually craft scripts that will execute the migrations against the production database and handle failures manually.
 
 Atlas has many features that can help developers manage their database
-[CI/CD pipelines](http://localhost:3000/guides/modern-database-ci-cd) more easily:
+[CI/CD pipelines](https://atlasgo.io/guides/modern-database-ci-cd) more easily:
 
-* CI for schema changes - Atlas can be used during CI to make sure you never merge a pull request
-  that will break your database schema.
-* Modern CD integrations - Atlas integrates seamlessly with modern deployment tools such as Kubernetes,
-  Terraform, Helm, Flux, and ArgoCD. This allows you to deploy changes to your database schema
+* [Declarative migrations](https://atlasgo.io/declarative/apply) - use a Terraform-like `atlas schema apply` flow to manage your database.
+* [Diff policies](https://atlasgo.io/declarative/diff#diff-policy) - provide Atlas with policies for planning schema changes (such as "always create index concurrently" or "do not drop columns").
+* [CI for schema changes](https://atlasgo.io/cloud/setup-ci) - Atlas can be used during CI to make sure you never merge a pull request.
+* Modern CD integrations - Atlas integrates seamlessly with modern deployment tools such as [Kubernetes](https://atlasgo.io/integrations/kubernetes/operator),
+  [Terraform](https://atlasgo.io/integrations/terraform-provider), [Helm](https://atlasgo.io/guides/deploying/helm),
+  [Flux](https://atlasgo.io/guides/deploying/k8s-flux), and [ArgoCD](https://atlasgo.io/guides/deploying/k8s-argo). This allows you to deploy changes to your database schema
   as part of your existing deployment pipelines.
-* Visualization - Atlas users can create beautiful, shareable ERDs of their application data model
+* [Visualization](https://atlasgo.io/blog/2023/08/06/atlas-v-0-13#built-in-schema-visualization) - Atlas users can create beautiful, shareable ERDs of their application data model
 
 In this guide, we will show how Atlas can be used to automatically plan schema migrations for
 TypeORM users.
@@ -84,6 +87,7 @@ The Atlas TypeORM Provider can be used in two modes:
 you can use the provider directly to load your TypeORM schema into Atlas.
 * **Script** - In other cases, you can use the provider as an npm package to write a script
  that loads your TypeORM schema into Atlas.
+
 ### Standalone mode
 
 In your project directory, create a new file named `atlas.hcl` with the following contents:
@@ -221,7 +225,7 @@ Suppose we have the following TypeORM `entities` directory, with two entities `B
 <Tabs>
 <TabItem value="js" label="JavaScript" default>
 <Tabs>
-<TabItem value="task" label="Blog.js" default>
+<TabItem value="blog" label="Blog.js" default>
 
 ```js
 module.exports = {
@@ -285,7 +289,7 @@ module.exports = {
 </TabItem>
 <TabItem value="ts" label="TypeScript">
 <Tabs>
-<TabItem value="task" label="Blog.ts" default>
+<TabItem value="blog" label="Blog.ts" default>
 
 ```ts
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
