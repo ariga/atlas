@@ -28,7 +28,7 @@ var (
 type planApply struct{ *conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
+func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	s := &state{
 		conn: p.conn,
 		Plan: migrate.Plan{
@@ -40,6 +40,9 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 	}
 	for _, o := range opts {
 		o(&s.PlanOptions)
+	}
+	if err := verifyChanges(ctx, changes); err != nil {
+		return nil, err
 	}
 	if err := s.plan(changes); err != nil {
 		return nil, err
@@ -93,6 +96,18 @@ func (s *state) plan(changes []schema.Change) error {
 			err = s.modifyTable(c)
 		case *schema.RenameTable:
 			s.renameTable(c)
+		case *schema.AddFunc:
+			err = s.addFunc(c)
+		case *schema.AddProc:
+			err = s.addProc(c)
+		case *schema.ModifyFunc:
+			err = s.modifyFunc(c)
+		case *schema.ModifyProc:
+			err = s.modifyProc(c)
+		case *schema.DropFunc:
+			err = s.dropFunc(c)
+		case *schema.DropProc:
+			err = s.dropProc(c)
 		case *schema.AddView, *schema.DropView, *schema.ModifyView, *schema.RenameView:
 			views = append(views, c)
 		default:
