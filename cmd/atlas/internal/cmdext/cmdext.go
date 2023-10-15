@@ -870,10 +870,6 @@ type URLOpener struct {
 // OpenVariableURL opens the variable at the URL's path. See the package doc
 // for more details.
 func (o *URLOpener) OpenVariableURL(_ context.Context, u *url.URL) (*runtimevar.Variable, error) {
-	q := u.Query()
-	for param := range q {
-		return nil, fmt.Errorf("open variable %v: invalid query parameter %q", u, param)
-	}
 	return New(os.Getenv(u.Host)), nil
 }
 
