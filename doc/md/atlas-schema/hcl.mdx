@@ -694,8 +694,8 @@ function "sql_body2" {
   return     = integer
   as         = "RETURN $1"
   volatility = IMMUTABLE // STABLE | VOLATILE
-  leakproof  = true      // (CALLED | RETURNS NULL) ON NULL INPUT
-  strict     = true
+  leakproof  = true      // NOT LEAKPROOF | LEAKPROOF
+  strict     = true      // (CALLED | RETURNS NULL) ON NULL INPUT
 }
 ```
 
