@@ -660,6 +660,9 @@ atlas login
 
 The `function` block allows defining SQL functions in HCL format.
 
+<Tabs>
+<TabItem label="PostgreSQL" value="postgres">
+
 ```sql
 function "positive" {
   schema = schema.public
@@ -699,6 +702,42 @@ function "sql_body2" {
 }
 ```
 
+</TabItem>
+<TabItem label="MySQL" value="mysql">
+
+```sql
+function "add2" {
+  schema = schema.public
+  arg "a" {
+    type = int
+  }
+  arg "b" {
+    type = int
+  }
+  return        = int
+  as            = "return a + b"
+  deterministic = true   // NOT DETERMINISTIC | DETERMINISTIC
+  data_access   = NO_SQL // CONTAINS_SQL | NO_SQL | READS_SQL_DATA | MODIFIES_SQL_DATA
+}
+
+function "f1" {
+  schema = schema.public
+  arg "x" {
+    type = int
+  }
+  return = int
+  as     = <<-SQL
+   BEGIN
+      INSERT INTO t1 VALUES (RAND(x));
+      RETURN x+2;
+   END
+  SQL
+}
+```
+
+</TabItem>
+</Tabs>
+
 ## Procedure
 
 :::info BETA FEATURE
@@ -709,6 +748,9 @@ atlas login
 :::
 
 The `procedure` block allows defining SQL procedure in HCL format.
+
+<Tabs>
+<TabItem label="PostgreSQL" value="postgres">
 
 ```sql
 procedure "proc" {
@@ -752,6 +794,43 @@ table "users" {
     comment = "A table comment"
 }
 ```
+
+</TabItem>
+<TabItem label="MySQL" value="mysql">
+
+```sql
+procedure "p1" {
+  schema = schema.public
+  arg "x" {
+    type = varchar(10)
+  }
+  as            = "INSERT INTO t1 VALUES(x)"
+  comment       = "A procedure comment"
+  deterministic = true
+}
+
+procedure "p2" {
+  schema = schema.public
+  arg "x" {
+    type    = char(10)
+    mode    = INOUT
+    charset = "latin1"
+  }
+  arg "y" {
+    type = char(10)
+    mode = OUT
+  }
+  as = <<-SQL
+   BEGIN
+    DECLARE перем1 CHAR(10) CHARACTER SET utf8;
+    // ...
+   END
+  SQL
+}
+```
+
+</TabItem>
+</Tabs>
 
 ## Charset and Collation
 
