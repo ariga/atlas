@@ -291,22 +291,42 @@ func (d *Diff) tableDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]sc
 	changes = append(changes, d.indexDiffT(from, to, opts)...)
 
 	// Drop or modify foreign-keys.
+	var (
+		exists = make(map[*schema.ForeignKey]bool)
+	)
 	for _, fk1 := range from.ForeignKeys {
 		fk2, ok := to.ForeignKey(fk1.Symbol)
-		if !ok {
-			changes = opts.AddOrSkip(changes, &schema.DropForeignKey{F: fk1})
+		// Found directly.
+		if ok {
+			if change := d.fkChange(fk1, fk2); change != schema.NoChange {
+				changes = opts.AddOrSkip(changes, &schema.ModifyForeignKey{
+					From:   fk1,
+					To:     fk2,
+					Change: change,
+				})
+			}
+			exists[fk2] = true
 			continue
 		}
-		if change := d.fkChange(fk1, fk2); change != schema.NoChange {
-			changes = opts.AddOrSkip(changes, &schema.ModifyForeignKey{
-				From:   fk1,
-				To:     fk2,
-				Change: change,
-			})
+		// Found indirectly.
+		if drv, ok := d.DiffDriver.(interface {
+			IsGeneratedForeignKeyName(*schema.ForeignKey) bool
+		}); ok {
+			if drv.IsGeneratedForeignKeyName(fk1) {
+				if fk2, ok := d.similarUnnamedFK(to, fk1); ok {
+					exists[fk2] = true
+					continue
+				}
+			}
 		}
+		// Not found.
+		changes = opts.AddOrSkip(changes, &schema.DropForeignKey{F: fk1})
 	}
 	// Add foreign-keys.
 	for _, fk1 := range to.ForeignKeys {
+		if exists[fk1] {
+			continue
+		}
 		if _, ok := from.ForeignKey(fk1.Symbol); !ok {
 			changes = opts.AddOrSkip(changes, &schema.AddForeignKey{F: fk1})
 		}
@@ -532,6 +552,26 @@ func (d *Diff) similarUnnamedIndex(t *schema.Table, idx1 *schema.Index) (*schema
 	return nil, false
 }
 
+// similarUnnamedFK searches for an unnamed FK with the same columns in the table.
+func (d *Diff) similarUnnamedFK(t *schema.Table, fk1 *schema.ForeignKey) (*schema.ForeignKey, bool) {
+	match := func(fk1, fk2 *schema.ForeignKey) bool {
+		return sameForeignKey(fk1, fk2) && d.fkChange(fk1, fk2) == schema.NoChange
+	}
+	if f, ok := d.DiffDriver.(interface {
+		FindGeneratedForeignKey(*schema.Table, *schema.ForeignKey) (*schema.ForeignKey, bool)
+	}); ok {
+		if fk2, ok := f.FindGeneratedForeignKey(t, fk1); ok && match(fk1, fk2) {
+			return fk2, true
+		}
+	}
+	for _, fk2 := range t.ForeignKeys {
+		if fk2.Symbol == "" && match(fk1, fk2) {
+			return fk2, true
+		}
+	}
+	return nil, false
+}
+
 func (d *Diff) findTable(s *schema.Schema, name string) (*schema.Table, error) {
 	if f, ok := d.DiffDriver.(TableFinder); ok {
 		return f.FindTable(s, name)
@@ -709,6 +749,25 @@ func similarCheck(attrs []schema.Attr, c *schema.Check) (*schema.Check, bool) {
 		return byExpr, true
 	}
 	return nil, false
+}
+
+// sameForeignKey reports if the 2 foreign-keys are the same.
+func sameForeignKey(fk1, fk2 *schema.ForeignKey) bool {
+	if fk1.Table.Name != fk2.Table.Name || fk1.RefTable.Name != fk2.RefTable.Name ||
+		len(fk1.Columns) != len(fk2.Columns) || len(fk1.RefColumns) != len(fk2.RefColumns) {
+		return false
+	}
+	for i, c1 := range fk1.Columns {
+		if c1.Name != fk2.Columns[i].Name {
+			return false
+		}
+	}
+	for i, c1 := range fk1.RefColumns {
+		if c1.Name != fk2.RefColumns[i].Name {
+			return false
+		}
+	}
+	return true
 }
 
 // Unquote single or double quotes.
