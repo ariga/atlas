@@ -7,11 +7,12 @@
 package vercheck
 
 import (
+	"context"
 	"net/http"
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 )
 
-func addHeaders(req *http.Request) {
+func addHeaders(_ context.Context, req *http.Request) {
 	req.Header.Set("User-Agent", cloudapi.UserAgent())
 }

@@ -6,6 +6,7 @@ package vercheck
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -32,7 +33,7 @@ func TestVerCheck(t *testing.T) {
 
 	vc := New(srv.URL, "")
 	ver := "v0.1.2"
-	check, err := vc.Check(ver)
+	check, err := vc.Check(context.Background(), ver)
 
 	require.EqualValues(t, "/atlas/"+ver, path)
 	cloudapi.SetVersion(ver, "")
@@ -92,7 +93,7 @@ func TestState(t *testing.T) {
 				require.NoError(t, err)
 			}
 			vc := New(srv.URL, path)
-			_, _ = vc.Check("v0.1.2")
+			_, _ = vc.Check(context.Background(), "v0.1.2")
 			require.EqualValues(t, tt.expectedRun, ran)
 
 			b, err := os.ReadFile(path)
@@ -113,7 +114,7 @@ func TestStatePersist(t *testing.T) {
 	t.Cleanup(srv.Close)
 	path := filepath.Join(t.TempDir(), ".atlas", "release.json")
 	vc := New(srv.URL, path)
-	_, err := vc.Check("v0.1.2")
+	_, err := vc.Check(context.Background(), "v0.1.2")
 	require.NoError(t, err)
 
 	b, err := os.ReadFile(path)
@@ -122,7 +123,6 @@ func TestStatePersist(t *testing.T) {
 }
 
 func TestTemplate(t *testing.T) {
-
 	for _, tt := range []struct {
 		name    string
 		payload Payload

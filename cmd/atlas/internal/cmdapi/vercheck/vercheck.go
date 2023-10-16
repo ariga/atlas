@@ -5,6 +5,7 @@
 package vercheck
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -66,7 +67,7 @@ var (
 // exist for the current version. Check tries to read the latest time it was run from the
 // statePath, if found and 24 hours have not passed the check is skipped. When done, the latest
 // time is updated in statePath.
-func (v *VerChecker) Check(ver string) (*Payload, error) {
+func (v *VerChecker) Check(ctx context.Context, ver string) (*Payload, error) {
 	if err := v.verifyTime(); err != nil {
 		return nil, err
 	}
@@ -78,7 +79,7 @@ func (v *VerChecker) Check(ver string) (*Payload, error) {
 	if err != nil {
 		return nil, err
 	}
-	addHeaders(req)
+	addHeaders(ctx, req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
