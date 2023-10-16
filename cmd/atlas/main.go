@@ -72,7 +72,7 @@ func checkForUpdate(ctx context.Context) func() string {
 		defer close(done)
 		endpoint := vercheckEndpoint(ctx)
 		vc := vercheck.New(endpoint, path)
-		payload, err := vc.Check(version)
+		payload, err := vc.Check(ctx, version)
 		if err != nil {
 			return
 		}
