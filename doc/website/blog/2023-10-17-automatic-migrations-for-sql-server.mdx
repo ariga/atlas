@@ -91,14 +91,14 @@ CREATE TABLE posts (
     title NVARCHAR(255),
     body TEXT,
     author_id INT,
-    CONSTRAINT FK_Author_User FOREIGN KEY (author_id) REFERENCES users(id)
+    CONSTRAINT author_fk FOREIGN KEY (author_id) REFERENCES users(id)
 );
 ```
 
 ### Spinning up a Dev-Database
 
 Atlas relies on a [_Dev-Database_](/concepts/dev-database), a temporary empty database to normalize schemas and make various
-calculations.  Because we are providing the desired state of our database in plain SQL, Atlas must somehow transform
+calculations. Because we are providing the desired state of our database in plain SQL, Atlas must somehow transform
 our schema to a normalized form which requires such a database. Let's spin up an additional SQL Server instance
 on port 1434:
 
@@ -115,8 +115,8 @@ atlas schema apply -u "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=maste
   --to file://schema.sql \
   --dev-url "sqlserver://sa:P@ssw0rd0995@localhost:1434?database=master"
 ```
-Atlas will connect to our target database to inspect it's current state, then it will use the dev-database to
-normalize our schema and then generate the SQL commands that will bring our database to the desired state:
+Atlas will connect to our target database to inspect it's current state. Next, it will use the dev-database to
+normalize our schema and finally, it will generate the SQL commands that will bring our database to the desired state:
 ```sql
 -- Planned Changes:
 -- Create "users" table
@@ -126,7 +126,7 @@ CREATE UNIQUE NONCLUSTERED INDEX [UQ__users__AB6E61643C9DEB30] ON [users] ([emai
 -- Create "posts" table
 CREATE TABLE [posts] ([id] int NOT NULL, [title] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NULL, [body] text COLLATE SQL_Latin1_General_CP1_CI_AS NULL, [author_id] int NULL, CONSTRAINT [PK_posts] PRIMARY KEY CLUSTERED ([id] ASC), CONSTRAINT [post_author_fk] FOREIGN KEY ([author_id]) REFERENCES [users] ([id]) ON UPDATE NO ACTION ON DELETE NO ACTION);
 ```
-Atlas prompts use to approve the changes before applying them to the database:
+Atlas prompts us to approve the changes before applying them to the database:
 ```
 Use the arrow keys to navigate: ↓ ↑ → ←
 ? Are you sure?:
@@ -181,7 +181,7 @@ One of the most useful features of Atlas is the ability to visualize your databa
 atlas schema inspect -u "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master" -w
 ```
 
-Atlas will prompt you to ask whether you would like to create your visualization publicly (in a publicly
+Atlas will ask whether you would like to create your visualization publicly (in a publicly
 accessible URL) or privately (in your Atlas Cloud account):
 
 ```
@@ -202,7 +202,7 @@ See it for yourself at: [https://gh.atlasgo.cloud/explore/5e15289a](https://gh.a
 
 In this guide we have demonstrated how to set up Atlas to manage your Microsoft SQL Server database schema.
 We have also demonstrated some of the basic capabilities of Atlas, such as declarative schema migrations, and
-schema visualization.  These two features are just the tip of the iceberg. Atlas has many more features that
+schema visualization. These two features are just the tip of the iceberg. Atlas has many more features that
 can help you better manage your database! To learn more, check out the [Atlas documentation](https://atlasgo.io/getting-started).
 
 As always, we would love to hear your feedback and suggestions on our [Discord server](https://discord.gg/zZ6sWVg6NT).
