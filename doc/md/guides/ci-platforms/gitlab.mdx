@@ -43,6 +43,14 @@ atlas login
 Once you have logged in, you can push your migrations to Atlas by running the following command:
 
 <Tabs>
+<TabItem value="sqlite" label="SQLite">
+
+```bash
+atlas migrate push app \
+  --dev-url "sqlite://db?mode=memory"
+```
+
+</TabItem>
 <TabItem value="postgres" label="PostgreSQL">
 
 ```bash
@@ -88,6 +96,9 @@ for your bot token.  To do this:
 
 Next, you will need to create a `.gitlab-ci.yml` file in the root of your repository.  This file will tell GitLab CI
 how to run your Atlas CI pipeline.
+
+<Tabs>
+<TabItem value="sqlite" label="SQLite">
 
 ```yaml
 image: ubuntu:latest
@@ -147,6 +158,148 @@ push migrations:
       )
     - atlas migrate push gitlab --dev-url "sqlite://demo?mode=memory" --context "$ATLAS_CONTEXT"
 ```
+
+</TabItem>
+<TabItem value="postgres" label="PostgreSQL">
+
+```yaml
+image: ubuntu:latest
+
+services:
+  - postgres
+
+variables:
+  POSTGRES_DB: db
+  POSTGRES_USER: user
+  POSTGRES_PASSWORD: pass
+
+stages:
+  - lint
+  - push
+
+before_script:
+  - apt-get update -q && apt-get install -y curl
+  - 'which atlas || (curl -sSf https://atlasgo.sh | sh)'
+  - atlas login --token $ATLAS_CLOUD_TOKEN
+
+lint migrations:
+  stage: lint
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: always
+    - if: '$CI_MERGE_REQUEST_ID'
+      changes:
+        - migrations/*
+      when: always
+      allow_failure: false
+  script:
+    - |
+      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
+        URL="${CI_PROJECT_URL}/-/merge_requests/${CI_MERGE_REQUEST_IID}"
+      else
+        URL="${CI_PROJECT_URL}/-/commit/${CI_COMMIT_SHA}"
+      fi
+
+      ATLAS_CONTEXT=$(cat <<EOF
+      {
+        "repo": "$CI_PROJECT_PATH",
+        "branch": "$CI_COMMIT_REF_NAME",
+        "commit": "$CI_COMMIT_SHA",
+        "url": "$URL"
+      }
+      EOF
+      )
+    - atlas migrate lint --base atlas://gitlab -w --dev-url "postgres://user:pass@postgres/db?sslmode=disable" --context "$ATLAS_CONTEXT"
+
+push migrations:
+  stage: push
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - |
+      ATLAS_CONTEXT=$(cat <<EOF
+      {
+        "repo": "$CI_PROJECT_PATH",
+        "branch": "$CI_COMMIT_REF_NAME",
+        "commit": "$CI_COMMIT_SHA",
+        "url": "${CI_PROJECT_URL}"
+      }
+      EOF
+      )
+    - atlas migrate push gitlab --dev-url "postgres://user:pass@postgres/db?sslmode=disable" --context "$ATLAS_CONTEXT"
+```
+
+</TabItem>
+<TabItem value="mysql" label="MySQL">
+
+```yaml
+image: ubuntu:latest
+
+services:
+  - mysql
+
+variables:
+  MYSQL_DATABASE: db
+  MYSQL_ROOT_PASSWORD: pass
+
+stages:
+  - lint
+  - push
+
+before_script:
+  - apt-get update -q && apt-get install -y curl
+  - 'which atlas || (curl -sSf https://atlasgo.sh | sh)'
+  - atlas login --token $ATLAS_CLOUD_TOKEN
+
+lint migrations:
+  stage: lint
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: always
+    - if: '$CI_MERGE_REQUEST_ID'
+      changes:
+        - migrations/*
+      when: always
+      allow_failure: false
+  script:
+    - |
+      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
+        URL="${CI_PROJECT_URL}/-/merge_requests/${CI_MERGE_REQUEST_IID}"
+      else
+        URL="${CI_PROJECT_URL}/-/commit/${CI_COMMIT_SHA}"
+      fi
+
+      ATLAS_CONTEXT=$(cat <<EOF
+      {
+        "repo": "$CI_PROJECT_PATH",
+        "branch": "$CI_COMMIT_REF_NAME",
+        "commit": "$CI_COMMIT_SHA",
+        "url": "$URL"
+      }
+      EOF
+      )
+    - atlas migrate lint --base atlas://gitlab -w --dev-url "mysql://root:pass@mysql/db" --context "$ATLAS_CONTEXT"
+
+push migrations:
+  stage: push
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - |
+      ATLAS_CONTEXT=$(cat <<EOF
+      {
+        "repo": "$CI_PROJECT_PATH",
+        "branch": "$CI_COMMIT_REF_NAME",
+        "commit": "$CI_COMMIT_SHA",
+        "url": "${CI_PROJECT_URL}"
+      }
+      EOF
+      )
+    - atlas migrate push gitlab --dev-url "mysql://root:pass@mysql/db" --context "$ATLAS_CONTEXT"
+```
+
+</TabItem>
+</Tabs>
 
 Let's break down what this file is doing:
 1. The `image` directive tells GitLab CI to use the `ubuntu:latest` Docker image to run your CI jobs.
