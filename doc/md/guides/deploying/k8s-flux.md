@@ -4,7 +4,7 @@ title: Deploying to Kubernetes with the Atlas Operator and Flux CD
 slug: /guides/deploying/k8s-flux
 ---
 
-[GitOps](https://www.gitops.tech/) is a software development and deployment methodology that uses Git as the central repository
+[GitOps](https://opengitops.dev/) is a software development and deployment methodology that uses Git as the central repository
 for both code and infrastructure configurations, enabling automated and auditable deployments.
 
 [FluxCD](https://fluxcd.io/) is a Continuous Delivery tool that implements GitOps principles. It uses a declarative approach
