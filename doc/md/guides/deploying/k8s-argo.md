@@ -4,7 +4,7 @@ title: Deploying to Kubernetes with the Atlas Operator and Argo CD
 slug: /guides/deploying/k8s-argo
 ---
 
-[GitOps](https://www.gitops.tech/) is a software development and deployment methodology that uses Git as the central repository
+[GitOps](https://opengitops.dev/) is a software development and deployment methodology that uses Git as the central repository
 for both code and infrastructure configurations, enabling automated and auditable deployments.
 
 [ArgoCD](https://argoproj.github.io/cd/) is a Kubernetes-native continuous delivery tool that implements GitOps principles.
