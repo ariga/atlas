@@ -443,9 +443,45 @@ table "t" {
 }
 ```
 
+### Domain
+
+The `domain` type is a user-defined data type that is based on an existing data type but with optional constraints
+and default values. Learn more about it in the [PostgreSQL website](https://www.postgresql.org/docs/current/domains.html).
+
+```hcl
+domain "us_postal_code" {
+  schema = schema.public
+  type   = text
+  null   = true
+  check "us_postal_code_check" {
+    expr = "((VALUE ~ '^\\d{5}$'::text) OR (VALUE ~ '^\\d{5}-\\d{4}$'::text))"
+  }
+}
+
+domain "username" {
+  schema = schema.public
+  type    = text
+  null    = false
+  default = "anonymous"
+  check "username_length" {
+    expr = "(length(VALUE) > 3)"
+  }
+}
+
+table "users" {
+  schema = schema.public
+  column "name" {
+    type = username
+  }
+  column "zip" {
+    type = us_postal_code
+  }
+}
+```
+
 ### Enum
 
-The `enum` type allows storing a set of enumerated values.
+The `enum` type allows storing a set of enumerated values. Learn more about it in the [PostgreSQL website](https://www.postgresql.org/docs/current/datatype-enum.html).
 
 ```hcl
 enum "status" {
