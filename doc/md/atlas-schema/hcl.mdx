@@ -124,7 +124,7 @@ table "products" {
 Table partitioning refers to splitting logical large tables into smaller physical ones.
 
 :::note
-Atlas currently only supports PostgreSQL. Support for the remaining dialects will be added in future versions.
+Partitions are currently supported only by the PostgreSQL driver. Support for the remaining drivers will be added in future versions.
 :::
 
 ```hcl
@@ -773,28 +773,6 @@ procedure "proc" {
 }
 ```
 
-## Comment
-
-The `comment` attribute is an attribute of `schema`, `table`, `column`, and `index`.
-
-```hcl
-schema "public" {
-    comment = "A schema comment"
-}
-
-table "users" {
-    schema = schema.public
-    column "name" {
-        type    = text
-        comment = "A column comment"
-    }
-    index "name_idx" {
-        columns = [column.name]
-    }
-    comment = "A table comment"
-}
-```
-
 </TabItem>
 <TabItem label="MySQL" value="mysql">
 
@@ -831,6 +809,100 @@ procedure "p2" {
 
 </TabItem>
 </Tabs>
+
+## Domain
+
+:::info BETA FEATURE
+Domains are currently in beta and available to logged-in users only. To use this feature, run:
+```
+atlas login
+```
+:::
+
+The `domain` type is a user-defined data type that is based on an existing data type but with optional constraints
+and default values. Supported by PostgreSQL.
+
+```hcl
+domain "us_postal_code" {
+  schema = schema.public
+  type   = text
+  null   = true
+  check "us_postal_code_check" {
+    expr = "((VALUE ~ '^\\d{5}$'::text) OR (VALUE ~ '^\\d{5}-\\d{4}$'::text))"
+  }
+}
+
+domain "username" {
+  schema = schema.public
+  type    = text
+  null    = false
+  default = "anonymous"
+  check "username_length" {
+    expr = "(length(VALUE) > 3)"
+  }
+}
+
+table "users" {
+  schema = schema.public
+  column "name" {
+    type = username
+  }
+  column "zip" {
+    type = us_postal_code
+  }
+}
+
+schema "public" {
+  comment = "standard public schema"
+}
+```
+
+## Enum
+
+The `enum` type allows storing a set of enumerated values. Supported by PostgreSQL.
+
+```hcl
+enum "status" {
+  schema = schema.test
+  values = ["on", "off"]
+}
+
+table "t1" {
+  schema = schema.test
+  column "c1" {
+    type = enum.status
+  }
+}
+
+table "t2" {
+  schema = schema.test
+  column "c1" {
+    type = enum.status
+  }
+}
+```
+
+## Comment
+
+The `comment` attribute is an attribute of `schema`, `table`, `column`, and `index`.
+
+```hcl
+schema "public" {
+  comment = "A schema comment"
+}
+
+table "users" {
+  schema = schema.public
+  column "name" {
+    type    = text
+    comment = "A column comment"
+  }
+  index "name_idx" {
+    columns = [column.name]
+  }
+  comment = "A table comment"
+}
+```
 
 ## Charset and Collation
 
