@@ -8,10 +8,14 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
+	"ariga.io/atlas/sql/internal/sqlx"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlspec"
 )
 
 var (
@@ -34,6 +38,10 @@ func (*inspect) inspectFuncs(context.Context, *schema.Realm, *schema.InspectOpti
 	return nil // unimplemented.
 }
 
+func (i *inspect) inspectTypes(context.Context, *schema.Realm, *schema.InspectOptions) error {
+	return nil // unimplemented.
+}
+
 func (*state) addView(*schema.AddView) error {
 	return nil // unimplemented.
 }
@@ -48,10 +56,6 @@ func (*state) modifyView(*schema.ModifyView) error {
 
 func (*state) renameView(*schema.RenameView) {
 	// unimplemented.
-}
-
-func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
-	return false // unimplemented.
 }
 
 func (s *state) addFunc(*schema.AddFunc) error {
@@ -86,6 +90,108 @@ func (s *state) renameProc(*schema.RenameProc) error {
 	return nil // unimplemented.
 }
 
+func (s *state) addObject(add *schema.AddObject) error {
+	switch o := add.O.(type) {
+	case *schema.EnumType:
+		create, drop := s.createDropEnum(o)
+		s.append(&migrate.Change{
+			Source:  add,
+			Cmd:     create,
+			Reverse: drop,
+			Comment: fmt.Sprintf("create enum type %q", o.T),
+		})
+	default:
+		// unsupported object type.
+	}
+	return nil
+}
+
+func (s *state) dropObject(drop *schema.DropObject) error {
+	switch o := drop.O.(type) {
+	case *schema.EnumType:
+		create, dropE := s.createDropEnum(o)
+		s.append(&migrate.Change{
+			Source:  drop,
+			Cmd:     dropE,
+			Reverse: create,
+			Comment: fmt.Sprintf("drop enum type %q", o.T),
+		})
+	default:
+		// unsupported object type.
+	}
+	return nil
+}
+
+func (s *state) modifyObject(modify *schema.ModifyObject) error {
+	if _, ok := modify.From.(*schema.EnumType); ok {
+		return s.alterEnum(modify)
+	}
+	return nil // unimplemented.
+}
+
+func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
+	return false // unimplemented.
+}
+
+// SchemaObjectDiff returns a changeset for migrating schema objects from
+// one state to the other.
+func (*diff) SchemaObjectDiff(from, to *schema.Schema) ([]schema.Change, error) {
+	var changes []schema.Change
+	// Drop or modify enums.
+	for _, o1 := range from.Objects {
+		e1, ok := o1.(*schema.EnumType)
+		if !ok {
+			continue // Unsupported object type.
+		}
+		o2, ok := to.Object(func(o schema.Object) bool {
+			e2, ok := o.(*schema.EnumType)
+			return ok && e1.T == e2.T
+		})
+		if !ok {
+			changes = append(changes, &schema.DropObject{O: o1})
+			continue
+		}
+		if e2 := o2.(*schema.EnumType); !sqlx.ValuesEqual(e1.Values, e2.Values) {
+			changes = append(changes, &schema.ModifyObject{From: e1, To: e2})
+		}
+	}
+	// Add new enums.
+	for _, o1 := range to.Objects {
+		e1, ok := o1.(*schema.EnumType)
+		if !ok {
+			continue // Unsupported object type.
+		}
+		if _, ok := from.Object(func(o schema.Object) bool {
+			e2, ok := o.(*schema.EnumType)
+			return ok && e1.T == e2.T
+		}); !ok {
+			changes = append(changes, &schema.AddObject{O: e1})
+		}
+	}
+	return changes, nil
+}
+
 func verifyChanges(context.Context, []schema.Change) error {
 	return nil // unimplemented.
+}
+
+func convertDomains(_ []*sqlspec.Table, domains []*Domain, _ *schema.Realm) error {
+	if len(domains) > 0 {
+		return fmt.Errorf("postgres: domains are not supported by this version. Use: https://atlasgo.io/getting-started")
+	}
+	return nil
+}
+
+// objectSpec converts from a concrete schema objects into specs.
+func objectSpec(d *doc, spec *specutil.SchemaSpec, s *schema.Schema) error {
+	for _, o := range s.Objects {
+		if e, ok := o.(*schema.EnumType); ok {
+			d.Enums = append(d.Enums, &Enum{
+				Name:   e.T,
+				Values: e.Values,
+				Schema: specutil.SchemaRef(spec.Schema.Name),
+			})
+		}
+	}
+	return nil
 }

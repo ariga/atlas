@@ -27,16 +27,30 @@ type (
 		Views        []*sqlspec.View   `spec:"view"`
 		Materialized []*sqlspec.View   `spec:"materialized"`
 		Enums        []*Enum           `spec:"enum"`
+		Domains      []*Domain         `spec:"domain"`
 		Funcs        []*sqlspec.Func   `spec:"function"`
 		Procs        []*sqlspec.Func   `spec:"procedure"`
 		Schemas      []*sqlspec.Schema `spec:"schema"`
 	}
-	// Enum holds a specification for an enum, that can be referenced as a column type.
+
+	// Enum holds a specification for an enum type.
 	Enum struct {
 		Name      string         `spec:",name"`
 		Qualifier string         `spec:",qualifier"`
 		Schema    *schemahcl.Ref `spec:"schema"`
 		Values    []string       `spec:"values"`
+		schemahcl.DefaultExtension
+	}
+
+	// Domain holds a specification for a domain type.
+	Domain struct {
+		Name      string           `spec:",name"`
+		Qualifier string           `spec:",qualifier"`
+		Schema    *schemahcl.Ref   `spec:"schema"`
+		Type      *schemahcl.Type  `spec:"type"`
+		Null      bool             `spec:"null"`
+		Default   cty.Value        `spec:"default"`
+		Checks    []*sqlspec.Check `spec:"check"`
 		schemahcl.DefaultExtension
 	}
 )
@@ -46,6 +60,7 @@ func (d *doc) merge(d1 *doc) {
 	d.Tables = append(d.Tables, d1.Tables...)
 	d.Views = append(d.Views, d1.Views...)
 	d.Materialized = append(d.Materialized, d1.Materialized...)
+	d.Domains = append(d.Domains, d1.Domains...)
 	d.Enums = append(d.Enums, d1.Enums...)
 	d.Funcs = append(d.Funcs, d1.Funcs...)
 	d.Procs = append(d.Procs, d1.Procs...)
@@ -64,8 +79,21 @@ func (e *Enum) SetQualifier(q string) { e.Qualifier = q }
 // SchemaRef returns the schema reference for the enum.
 func (e *Enum) SchemaRef() *schemahcl.Ref { return e.Schema }
 
+// Label returns the defaults label used for the enum resource.
+func (d *Domain) Label() string { return d.Name }
+
+// QualifierLabel returns the qualifier label used for the enum resource, if any.
+func (d *Domain) QualifierLabel() string { return d.Qualifier }
+
+// SetQualifier sets the qualifier label used for the enum resource.
+func (d *Domain) SetQualifier(q string) { d.Qualifier = q }
+
+// SchemaRef returns the schema reference for the enum.
+func (d *Domain) SchemaRef() *schemahcl.Ref { return d.Schema }
+
 func init() {
 	schemahcl.Register("enum", &Enum{})
+	schemahcl.Register("domain", &Domain{})
 }
 
 // evalSpec evaluates an Atlas DDL document into v using the input.
@@ -82,10 +110,11 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		); err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
-		if len(d.Enums) > 0 {
-			if err := convertEnums(d.Tables, d.Enums, v); err != nil {
-				return err
-			}
+		if err := convertEnums(d.Tables, d.Enums, v); err != nil {
+			return err
+		}
+		if err := convertDomains(d.Tables, d.Domains, v); err != nil {
+			return err
 		}
 	case *schema.Schema:
 		var d doc
@@ -105,11 +134,14 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		if err := convertEnums(d.Tables, d.Enums, r); err != nil {
 			return err
 		}
+		if err := convertDomains(d.Tables, d.Domains, r); err != nil {
+			return err
+		}
 		*v = *r.Schemas[0]
 	case schema.Schema, schema.Realm:
 		return fmt.Errorf("postgres: Eval expects a pointer: received %[1]T, expected *%[1]T", v)
 	default:
-		return hclState.Eval(p, v, input)
+		return fmt.Errorf("postgres: unexpected type %T", v)
 	}
 	return nil
 }
@@ -142,6 +174,9 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Enums); err != nil {
+			return nil, err
+		}
+		if err := specutil.QualifyObjects(d.Domains); err != nil {
 			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Funcs); err != nil {
@@ -500,6 +535,9 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 // convertEnums converts possibly referenced column types (like enums) to
 // an actual schema.Type and sets it on the correct schema.Column.
 func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error {
+	if len(enums) == 0 {
+		return nil
+	}
 	byName := make(map[string]*schema.EnumType)
 	for _, e := range enums {
 		if byName[e.Name] != nil {
@@ -514,14 +552,14 @@ func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error
 			return fmt.Errorf("schema %q defined on enum %q was not found in realm", ns, e.Name)
 		}
 		e1 := &schema.EnumType{T: e.Name, Schema: es, Values: e.Values}
-		es.Objects = append(es.Objects, e1)
+		es.AddObjects(e1)
 		byName[e.Name] = e1
 	}
 	for _, t := range tables {
 		for _, c := range t.Columns {
 			var enum *schema.EnumType
 			switch {
-			case c.Type.IsRef:
+			case c.Type.IsRefTo("enum"):
 				n, err := enumName(c.Type)
 				if err != nil {
 					return err
@@ -532,11 +570,12 @@ func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error
 				}
 				enum = e
 			default:
-				n, ok := arrayType(c.Type.T)
-				if !ok || byName[n] == nil {
-					continue
+				if n, ok := arrayType(c.Type.T); ok {
+					enum = byName[n]
 				}
-				enum = byName[n]
+			}
+			if enum == nil {
+				continue
 			}
 			schemaT, err := specutil.SchemaName(t.Schema)
 			if err != nil {
@@ -595,15 +634,10 @@ func schemaSpec(s *schema.Schema) (*doc, error) {
 		Procs:        spec.Procs,
 		Schemas:      []*sqlspec.Schema{spec.Schema},
 		Enums:        make([]*Enum, 0, len(s.Objects)),
+		Domains:      make([]*Domain, 0, len(s.Objects)),
 	}
-	for _, o := range s.Objects {
-		if e, ok := o.(*schema.EnumType); ok {
-			d.Enums = append(d.Enums, &Enum{
-				Name:   e.T,
-				Values: e.Values,
-				Schema: specutil.SchemaRef(spec.Schema.Name),
-			})
-		}
+	if err := objectSpec(d, spec, s); err != nil {
+		return nil, err
 	}
 	return d, nil
 }
@@ -738,17 +772,24 @@ func fromIdentity(i *Identity) *schemahcl.Resource {
 // columnTypeSpec converts from a concrete Postgres schema.Type into sqlspec.Column Type.
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	// Handle postgres enum types. They cannot be put into the TypeRegistry since their name is dynamic.
-	if e, ok := t.(*schema.EnumType); ok {
+	switch o := t.(type) {
+	case *schema.EnumType:
 		return &sqlspec.Column{Type: &schemahcl.Type{
-			T:     enumRef(e.T).V,
+			T:     enumRef(o.T).V,
 			IsRef: true,
 		}}, nil
+	case *DomainType:
+		return &sqlspec.Column{Type: &schemahcl.Type{
+			T:     o.Ref().V,
+			IsRef: true,
+		}}, nil
+	default:
+		st, err := TypeRegistry.Convert(t)
+		if err != nil {
+			return nil, err
+		}
+		return &sqlspec.Column{Type: st}, nil
 	}
-	st, err := TypeRegistry.Convert(t)
-	if err != nil {
-		return nil, err
-	}
-	return &sqlspec.Column{Type: st}, nil
 }
 
 // TypeRegistry contains the supported TypeSpecs for the Postgres driver.

@@ -169,7 +169,7 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 			case len(p) == 0:
 				return fmt.Errorf("specutil: empty reference for %s.%s", srcT, v.Name)
 			case p[0].T == typeView:
-				q, n, err := refName(r, typeView)
+				q, n, err := RefName(r, typeView)
 				if err != nil {
 					return fmt.Errorf("specutil: extract view name from %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
 				}
@@ -181,7 +181,7 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 				}
 				v.AddDeps(v1)
 			case p[0].T == typeMaterialized:
-				q, n, err := refName(r, typeMaterialized)
+				q, n, err := RefName(r, typeMaterialized)
 				if err != nil {
 					return fmt.Errorf("specutil: extract materialized name from %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
 				}
@@ -193,7 +193,7 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 				}
 				v.AddDeps(v1)
 			case p[0].T == typeTable:
-				q, n, err := refName(r, typeTable)
+				q, n, err := RefName(r, typeTable)
 				if err != nil {
 					return fmt.Errorf("specutil: extract table name from %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
 				}
@@ -974,10 +974,11 @@ func findT[T schema.View | schema.Table](sch *schema.Schema, qualifier, name str
 }
 
 func tableName(ref *schemahcl.Ref) (string, string, error) {
-	return refName(ref, typeTable)
+	return RefName(ref, typeTable)
 }
 
-func refName(ref *schemahcl.Ref, typeName string) (qualifier, name string, err error) {
+// RefName returns the qualifier and name from a reference.
+func RefName(ref *schemahcl.Ref, typeName string) (qualifier, name string, err error) {
 	vs, err := ref.ByType(typeName)
 	if err != nil {
 		return "", "", err

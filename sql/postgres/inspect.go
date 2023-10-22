@@ -5,6 +5,7 @@
 package postgres
 
 import (
+	"ariga.io/atlas/schemahcl"
 	"bytes"
 	"context"
 	"database/sql"
@@ -56,6 +57,11 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		if err := i.inspectEnums(ctx, r); err != nil {
 			return nil, err
 		}
+		if mode.Is(schema.InspectTypes) {
+			if err := i.inspectTypes(ctx, r, nil); err != nil {
+				return nil, err
+			}
+		}
 	}
 	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
@@ -77,24 +83,30 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		opts = &schema.InspectOptions{}
 	}
 	r := schema.NewRealm(schemas...)
-	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+	mode := sqlx.ModeInspectSchema(opts)
+	if mode.Is(schema.InspectTables) {
 		if err := i.inspectTables(ctx, r, opts); err != nil {
 			return nil, err
 		}
 		sqlx.LinkSchemaTables(schemas)
 	}
-	if sqlx.ModeInspectSchema(opts).Is(schema.InspectViews) {
+	if mode.Is(schema.InspectViews) {
 		if err := i.inspectViews(ctx, r, opts); err != nil {
 			return nil, err
 		}
 	}
-	if sqlx.ModeInspectSchema(opts).Is(schema.InspectFuncs) {
+	if mode.Is(schema.InspectFuncs) {
 		if err := i.inspectFuncs(ctx, r, opts); err != nil {
 			return nil, err
 		}
 	}
 	if err := i.inspectEnums(ctx, r); err != nil {
 		return nil, err
+	}
+	if mode.Is(schema.InspectTypes) {
+		if err := i.inspectTypes(ctx, r, opts); err != nil {
+			return nil, err
+		}
 	}
 	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
@@ -212,8 +224,14 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 	c := &schema.Column{
 		Name: name.String,
 		Type: &schema.ColumnType{
-			Raw:  typ.String,
 			Null: nullable.String == "YES",
+			Raw: func() string {
+				// For domains, use the domain type instead of the base type.
+				if typtype.String == "d" {
+					return fmtype.String
+				}
+				return typ.String
+			}(),
 		},
 	}
 	c.Type.Type, err = columnType(&columnDesc{
@@ -783,6 +801,18 @@ type (
 		Len int64
 	}
 
+	// DomainType represents a domain type.
+	// https://www.postgresql.org/docs/current/domains.html
+	DomainType struct {
+		schema.Type
+		schema.Object
+		T       string          // Type name.
+		Schema  *schema.Schema  // Optional schema.
+		Null    bool            // Nullability.
+		Default schema.Expr     // Default value.
+		Checks  []*schema.Check // Check constraints.
+	}
+
 	// IntervalType defines an interval type.
 	// https://postgresql.org/docs/current/datatype-datetime.html
 	IntervalType struct {
@@ -983,6 +1013,11 @@ type (
 	ReferenceOption schema.ReferenceOption
 )
 
+// Ref returns a reference to the domain type.
+func (d *DomainType) Ref() *schemahcl.Ref {
+	return &schemahcl.Ref{V: "$domain." + d.T}
+}
+
 // String implements fmt.Stringer interface.
 func (o ReferenceOption) String() string {
 	return string(o)
@@ -1179,28 +1214,33 @@ func newIndexStorage(opts string) (*IndexStorageParams, error) {
 	return params, nil
 }
 
-// reEnumType extracts the enum type and an option schema qualifier.
-var reEnumType = regexp.MustCompile(`^(?:(".+"|\w+)\.)?(".+"|\w+)$`)
+// reFmtType extracts the formatted type and an option schema qualifier.
+var reFmtType = regexp.MustCompile(`^(?:(".+"|\w+)\.)?(".+"|\w+)$`)
 
-func newEnumType(t string, id int64) *enumType {
-	var (
-		e     = &enumType{T: t, ID: id}
-		parts = reEnumType.FindStringSubmatch(e.T)
-		r     = func(s string) string {
-			s = strings.ReplaceAll(s, `""`, `"`)
-			if len(s) > 1 && s[0] == '"' && s[len(s)-1] == '"' {
-				s = s[1 : len(s)-1]
-			}
-			return s
+// parseFmtType parses the formatted type returned from pg_catalog.format_type
+// and extract the schema and type name.
+func parseFmtType(t string) (s, n string) {
+	n = t
+	parts := reFmtType.FindStringSubmatch(t)
+	r := func(s string) string {
+		s = strings.ReplaceAll(s, `""`, `"`)
+		if len(s) > 1 && s[0] == '"' && s[len(s)-1] == '"' {
+			s = s[1 : len(s)-1]
 		}
-	)
+		return s
+	}
 	if len(parts) > 1 {
-		e.Schema = r(parts[1])
+		s = r(parts[1])
 	}
 	if len(parts) > 2 {
-		e.T = r(parts[2])
+		n = r(parts[2])
 	}
-	return e
+	return s, n
+}
+
+func newEnumType(t string, id int64) *enumType {
+	s, n := parseFmtType(t)
+	return &enumType{T: n, Schema: s, ID: id}
 }
 
 const (

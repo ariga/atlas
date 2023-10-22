@@ -144,17 +144,7 @@ func (s *state) plan(changes []schema.Change) error {
 		case *schema.DropTable:
 			err = s.dropTable(c)
 		case *schema.DropObject:
-			e, ok := c.O.(*schema.EnumType)
-			if !ok {
-				return fmt.Errorf("unsupported drop object %T", c.O)
-			}
-			create, rv := s.createDropEnum(e)
-			s.append(&migrate.Change{
-				Source:  c,
-				Cmd:     rv,
-				Reverse: create,
-				Comment: fmt.Sprintf("drop enum type %q", e.T),
-			})
+			err = s.dropObject(c)
 		case *schema.DropFunc:
 			err = s.dropFunc(c)
 		case *schema.DropProc:
@@ -225,19 +215,11 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 				Comment: fmt.Sprintf("Drop schema named %q", c.S.Name),
 			})
 		case *schema.AddObject:
-			e, ok := c.O.(*schema.EnumType)
-			if !ok {
-				return nil, fmt.Errorf("unsupported object %T", c.O)
+			if err := s.addObject(c); err != nil {
+				return nil, err
 			}
-			create, drop := s.createDropEnum(e)
-			s.append(&migrate.Change{
-				Source:  c,
-				Cmd:     create,
-				Reverse: drop,
-				Comment: fmt.Sprintf("create enum type %q", e.T),
-			})
 		case *schema.ModifyObject:
-			if err := s.alterEnum(c); err != nil {
+			if err := s.modifyObject(c); err != nil {
 				return nil, err
 			}
 		case *schema.RenameObject:
@@ -1239,16 +1221,24 @@ func (s *state) createDropEnum(e *schema.EnumType) (string, string) {
 }
 
 func (s *state) enumIdent(e *schema.EnumType) string {
+	return s.typeIdent(e.Schema, e.T)
+}
+
+func (s *state) domainIdent(d *DomainType) string {
+	return s.typeIdent(d.Schema, d.T)
+}
+
+func (s *state) typeIdent(ns *schema.Schema, name string) string {
 	switch {
 	// In case the plan uses a specific schema qualifier.
 	case s.SchemaQualifier != nil:
 		if *s.SchemaQualifier != "" {
-			return fmt.Sprintf("%q.%q", *s.SchemaQualifier, e.T)
+			return fmt.Sprintf("%q.%q", *s.SchemaQualifier, name)
 		}
-	case e.Schema != nil && e.Schema.Name != "":
-		return fmt.Sprintf("%q.%q", e.Schema.Name, e.T)
+	case ns != nil && ns.Name != "":
+		return fmt.Sprintf("%q.%q", ns.Name, name)
 	}
-	return strconv.Quote(e.T)
+	return strconv.Quote(name)
 }
 
 // schemaPrefix returns the schema prefix based on the planner config.
@@ -1270,9 +1260,14 @@ func (s *state) formatType(t schema.Type) (string, error) {
 	switch t := t.(type) {
 	case *schema.EnumType:
 		return s.enumIdent(t), nil
+	case *DomainType:
+		return s.domainIdent(t), nil
 	case *ArrayType:
-		if e, ok := t.Type.(*schema.EnumType); ok {
-			return s.enumIdent(e) + "[]", nil
+		switch t := t.Type.(type) {
+		case *schema.EnumType:
+			return s.enumIdent(t) + "[]", nil
+		case *DomainType:
+			return s.domainIdent(t) + "[]", nil
 		}
 	}
 	return FormatType(t)

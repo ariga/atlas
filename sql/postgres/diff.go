@@ -43,44 +43,6 @@ func skipDefaultComment(s *schema.Schema) []schema.Attr {
 	return attrs
 }
 
-// SchemaObjectDiff returns a changeset for migrating schema objects from
-// one state to the other.
-func (*diff) SchemaObjectDiff(from, to *schema.Schema) ([]schema.Change, error) {
-	var changes []schema.Change
-	// Drop or modify enums.
-	for _, o1 := range from.Objects {
-		e1, ok := o1.(*schema.EnumType)
-		if !ok {
-			return nil, fmt.Errorf("unsupported object type %T", o1)
-		}
-		o2, ok := to.Object(func(o schema.Object) bool {
-			e2, ok := o.(*schema.EnumType)
-			return ok && e1.T == e2.T
-		})
-		if !ok {
-			changes = append(changes, &schema.DropObject{O: o1})
-			continue
-		}
-		if e2 := o2.(*schema.EnumType); !sqlx.ValuesEqual(e1.Values, e2.Values) {
-			changes = append(changes, &schema.ModifyObject{From: e1, To: e2})
-		}
-	}
-	// Add new enums.
-	for _, o1 := range to.Objects {
-		e1, ok := o1.(*schema.EnumType)
-		if !ok {
-			return nil, fmt.Errorf("unsupported object type %T", o1)
-		}
-		if _, ok := from.Object(func(o schema.Object) bool {
-			e2, ok := o.(*schema.EnumType)
-			return ok && e1.T == e2.T
-		}); !ok {
-			changes = append(changes, &schema.AddObject{O: e1})
-		}
-	}
-	return changes, nil
-}
-
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
 func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	var changes []schema.Change
@@ -322,6 +284,10 @@ func (*diff) AnnotateChanges(changes []schema.Change, opts *schema.DiffOptions) 
 }
 
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
+	return typeChanged(from, to, d.conn.schema)
+}
+
+func typeChanged(from, to *schema.Column, ns string) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
 	if fromT == nil || toT == nil {
 		return false, fmt.Errorf("postgres: missing type information for column %q", from.Name)
@@ -348,7 +314,11 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		changed = toT.T != fromT.T &&
 			// In case the type is defined with schema qualifier, but returned without
 			// (inspecting a schema scope), or vice versa, remove before comparing.
-			d.schema != "" && d.trimSchema(toT.T) != d.trimSchema(toT.T)
+			ns != "" && trimSchema(toT.T, ns) != trimSchema(toT.T, ns)
+	case *DomainType:
+		toT := toT.(*DomainType)
+		changed = toT.T != fromT.T ||
+			(toT.Schema != nil && fromT.Schema != nil && toT.Schema.Name != fromT.Schema.Name)
 	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
 		// Column type was changed if the underlying enum type was changed.
@@ -383,11 +353,11 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 }
 
 // trimSchema returns the given type without the schema qualifier.
-func (d *diff) trimSchema(t string) string {
+func trimSchema(t string, ns string) string {
 	if strings.HasPrefix(t, `"`) {
-		return strings.TrimPrefix(t, fmt.Sprintf("%q.", d.schema))
+		return strings.TrimPrefix(t, fmt.Sprintf("%q.", ns))
 	}
-	return strings.TrimPrefix(t, fmt.Sprintf("%s.", d.schema))
+	return strings.TrimPrefix(t, fmt.Sprintf("%s.", ns))
 }
 
 // defaultEqual reports if the DEFAULT values x and y
