@@ -145,7 +145,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c32", Type: &schema.ColumnType{Raw: "bigserial", Type: &SerialType{T: "bigserial", SequenceName: "t1_c32_seq"}}},
 					{Name: "c33", Type: &schema.ColumnType{Raw: `status".`, Type: statusE}, Default: &schema.Literal{V: "'unknown'"}},
 					{Name: "c34", Type: &schema.ColumnType{Raw: "ARRAY", Type: &ArrayType{T: "state[]", Type: stateE}}},
-					{Name: "c35", Type: &schema.ColumnType{Raw: "character", Type: &UserDefinedType{T: "domain_char"}}},
+					{Name: "c35", Type: &schema.ColumnType{Raw: "domain_char", Type: &UserDefinedType{T: "domain_char"}}},
 					{Name: "c36", Type: &schema.ColumnType{Raw: "tsvector", Type: &TextSearchType{T: "tsvector"}}},
 					{Name: "c37", Type: &schema.ColumnType{Raw: "tsquery", Type: &TextSearchType{T: "tsquery"}}},
 					{Name: "c38", Type: &schema.ColumnType{Raw: "datemultirange", Type: &RangeType{T: "datemultirange"}}},

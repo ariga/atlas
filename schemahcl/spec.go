@@ -91,6 +91,15 @@ type (
 	}
 )
 
+// IsRefTo indicates if the Type is a reference to specific schema type definition.
+func (t *Type) IsRefTo(n string) bool {
+	if !t.IsRef {
+		return false
+	}
+	path, err := (&Ref{V: t.T}).ByType(n)
+	return err == nil && len(path) > 0
+}
+
 // IsRef indicates if the attribute is a reference type.
 func (a *Attr) IsRef() bool {
 	if !a.V.Type().IsCapsuleType() {

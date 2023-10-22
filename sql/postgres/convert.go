@@ -37,6 +37,11 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *CurrencyType:
 		f = strings.ToLower(t.T)
+	case *DomainType:
+		if t.T == "" {
+			return "", errors.New("postgres: missing domain type name")
+		}
+		f = t.T
 	case *schema.EnumType:
 		if t.T == "" {
 			return "", errors.New("postgres: missing enum type name")
@@ -295,8 +300,7 @@ func columnType(c *columnDesc) (schema.Type, error) {
 		// https://postgresql.org/docs/current/catalog-pg-type.html
 		typ = newEnumType(c.fmtype, c.typid)
 	case "d":
-		// Use user-defined for domain types as we do not
-		// support their creation at this stage.
+		// Use user-defined for domain types as not all atlas versions support it.
 		typ = &UserDefinedType{T: c.fmtype}
 	}
 	return typ, nil
