@@ -131,6 +131,9 @@ func (s *state) plan(changes []schema.Change) error {
 		case *schema.RenameView:
 			s.renameView(c)
 		}
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
