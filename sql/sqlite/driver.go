@@ -71,7 +71,7 @@ func init() {
 			if strings.HasPrefix(dns, "file://") {
 				dsn = strings.Replace(dsn, "file://", "file:", 1)
 			}
-			return &sqlclient.URL{URL: u, DSN: dns, Schema: mainFile}
+			return &sqlclient.URL{URL: u, DSN: dsn, Schema: mainFile}
 		})),
 	)
 }
