@@ -401,7 +401,7 @@ env "dev" {
 		"--auto-approve",
 	)
 	require.NoError(t, err)
-	require.Equal(t, "-- Planned Changes:\n-- Create \"table_name\" table\nCREATE TABLE `table_name` (`c` text NULL);\n", s)
+	require.Equal(t, "-- Planned Changes:\n-- Create \"table_name\" table\nCREATE TABLE `table_name` (\n  `c` text NULL\n);\n", s)
 }
 
 func TestSchema_ApplyMultiEnv(t *testing.T) {
@@ -447,7 +447,7 @@ table "users" {
 		"--auto-approve",
 	)
 	require.NoError(t, err)
-	require.Equal(t, 2, strings.Count(s, "CREATE TABLE `users` (`id` int NOT NULL)"))
+	require.Equal(t, 2, strings.Count(s, "CREATE TABLE `users` (\n  `id` int NOT NULL\n)"))
 	_, err = os.Stat(db1)
 	require.NoError(t, err)
 	_, err = os.Stat(db2)
@@ -493,7 +493,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "{\"Pending\":[\"CREATE TABLE `t1` (`id` int NULL)\"]}", s)
+		require.Equal(t, "{\"Pending\":[\"CREATE TABLE `t1` (\\n  `id` int NULL\\n)\"]}", s)
 	})
 
 	t.Run("AutoApprove", func(t *testing.T) {
@@ -508,7 +508,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "{\"Applied\":[\"CREATE TABLE `t1` (`id` int NULL)\"]}", s)
+		require.Equal(t, "{\"Applied\":[\"CREATE TABLE `t1` (\\n  `id` int NULL\\n)\"]}", s)
 
 		cmd = schemaCmd()
 		cmd.AddCommand(schemaApplyCmd())
@@ -532,7 +532,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "{\"Applied\":[\"PRAGMA foreign_keys = off\",\"DROP TABLE `t1`\",\"CREATE TABLE `t2` (`id` int NULL)\",\"PRAGMA foreign_keys = on\"]}", s)
+		require.Equal(t, "{\"Applied\":[\"PRAGMA foreign_keys = off\",\"DROP TABLE `t1`\",\"CREATE TABLE `t2` (\\n  `id` int NULL\\n)\",\"PRAGMA foreign_keys = on\"]}", s)
 
 		// Simulate a failed execution.
 		conn, err := sql.Open("sqlite3", strings.TrimPrefix(db, "sqlite://"))
@@ -636,12 +636,7 @@ diff {
 		"--auto-approve",
 	)
 	require.NoError(t, err)
-	lines := strings.Split(strings.TrimSpace(s), "\n")
-	require.Equal(t, []string{
-		"-- Planned Changes:",
-		`-- Create "users" table`,
-		"CREATE TABLE `users` (`id` int NOT NULL);",
-	}, lines)
+	require.Equal(t, "-- Planned Changes:\n-- Create \"users\" table\nCREATE TABLE `users` (\n  `id` int NOT NULL\n);\n", s)
 
 	// Skip destructive changes by using project-level policy (no --env was passed).
 	cmd = schemaCmd()
@@ -655,12 +650,7 @@ diff {
 		"--auto-approve",
 	)
 	require.NoError(t, err)
-	lines = strings.Split(strings.TrimSpace(s), "\n")
-	require.Equal(t, []string{
-		"-- Planned Changes:",
-		`-- Create "users" table`,
-		"CREATE TABLE `users` (`id` int NOT NULL);",
-	}, lines)
+	require.Equal(t, "-- Planned Changes:\n-- Create \"users\" table\nCREATE TABLE `users` (\n  `id` int NOT NULL\n);\n", s)
 
 	// Apply destructive changes.
 	cmd = schemaCmd()
@@ -675,17 +665,12 @@ diff {
 		"--auto-approve",
 	)
 	require.NoError(t, err)
-	lines = strings.Split(strings.TrimSpace(s), "\n")
+	lines := strings.Split(strings.TrimSpace(s), ";\n")
 	require.Equal(t, []string{
-		"-- Planned Changes:",
-		"-- Disable the enforcement of foreign-keys constraints",
-		"PRAGMA foreign_keys = off;",
-		`-- Drop "pets" table`,
-		"DROP TABLE `pets`;",
-		`-- Create "users" table`,
-		"CREATE TABLE `users` (`id` int NOT NULL);",
-		"-- Enable back the enforcement of foreign-keys constraints",
-		"PRAGMA foreign_keys = on;",
+		"-- Planned Changes:\n-- Disable the enforcement of foreign-keys constraints\nPRAGMA foreign_keys = off",
+		"-- Drop \"pets\" table\nDROP TABLE `pets`",
+		"-- Create \"users\" table\nCREATE TABLE `users` (\n  `id` int NOT NULL\n)",
+		"-- Enable back the enforcement of foreign-keys constraints\nPRAGMA foreign_keys = on;",
 	}, lines)
 }
 
@@ -731,13 +716,10 @@ env "local" {
 		"--auto-approve",
 	)
 	require.NoError(t, err)
-	lines := strings.Split(strings.TrimSpace(s), "\n")
+	lines := strings.Split(strings.TrimSpace(s), ";\n")
 	require.Equal(t, []string{
-		"-- Planned Changes:",
-		`-- Create "one" table`,
-		"CREATE TABLE `one` (`id` int NOT NULL);",
-		`-- Create "two" table`,
-		"CREATE TABLE `two` (`id` int NOT NULL);",
+		"-- Planned Changes:\n-- Create \"one\" table\nCREATE TABLE `one` (\n  `id` int NOT NULL\n)",
+		"-- Create \"two\" table\nCREATE TABLE `two` (\n  `id` int NOT NULL\n);",
 	}, lines)
 }
 
@@ -754,7 +736,7 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"--auto-approve",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "-- Planned Changes:\n-- Create \"t1\" table\nCREATE TABLE `t1` (`id` int NOT NULL);\n", s)
+		require.Equal(t, "-- Planned Changes:\n-- Create \"t1\" table\nCREATE TABLE `t1` (\n  `id` int NOT NULL\n);\n", s)
 
 		s, err = runCmd(
 			schemaApplyCmd(),
@@ -776,7 +758,7 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"--auto-approve",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "-- Planned Changes:\n-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL);\n", s)
+		require.Equal(t, "-- Planned Changes:\n-- Create \"tbl\" table\nCREATE TABLE `tbl` (\n  `col` int NOT NULL,\n  `col_2` bigint NULL\n);\n", s)
 
 		s, err = runCmd(
 			schemaApplyCmd(),
@@ -854,9 +836,9 @@ table "bad" {
 		require.Equal(t, strings.Join([]string{
 			"-- Planned Changes:",
 			`-- Create "ok" table`,
-			"CREATE TABLE `ok` (`id` int NOT NULL);",
+			"CREATE TABLE `ok` (\n  `id` int NOT NULL\n);",
 			`-- Create "bad" table`,
-			"CREATE TABLE `bad` (`id` int NOT NULL DEFAULT invalid check);",
+			"CREATE TABLE `bad` (\n  `id` int NOT NULL DEFAULT invalid check\n);",
 			"Error: create \"bad\" table: near \")\": syntax error\n",
 		}, "\n"), s)
 

@@ -57,4 +57,4 @@ env "dev" {
 }
 
 -- expected.txt --
-{"Applied":["CREATE TABLE `script_cli_schema_apply_datasrc`.`users` (`id` int NOT NULL)"],"Tenant":"script_cli_schema_apply_datasrc"}
+{"Applied":["CREATE TABLE `users` (\n  `id` int NOT NULL\n)"],"Tenant":"script_cli_schema_apply_datasrc"}
