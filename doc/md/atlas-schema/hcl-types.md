@@ -471,10 +471,10 @@ domain "username" {
 table "users" {
   schema = schema.public
   column "name" {
-    type = username
+    type = domain.username
   }
   column "zip" {
-    type = us_postal_code
+    type = domain.us_postal_code
   }
 }
 ```
