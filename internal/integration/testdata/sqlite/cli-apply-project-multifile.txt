@@ -28,4 +28,7 @@ table "users" {
 schema "main" {
 }
 -- expected.sql --
-CREATE TABLE `users` (`id` int NOT NULL, `status` text NULL DEFAULT 'hello')
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `status` text NULL DEFAULT 'hello'
+)

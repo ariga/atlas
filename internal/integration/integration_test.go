@@ -477,9 +477,12 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 	users2, err := t.driver().SchemaDiff(schema.New(""), schema.New("").AddTables(usersT))
 	require.NoError(t, err)
 
-	addUsers, err := t.driver().PlanChanges(context.Background(), "", users)
+	opts := []migrate.PlanOption{
+		func(o *migrate.PlanOptions) { o.Indent, o.SchemaQualifier = "  ", new(string) },
+	}
+	addUsers, err := t.driver().PlanChanges(context.Background(), "", users, opts...)
 	require.NoError(t, err)
-	addUsers2, err := t.driver().PlanChanges(context.Background(), "", users2)
+	addUsers2, err := t.driver().PlanChanges(context.Background(), "", users2, opts...)
 	require.NoError(t, err)
 
 	var (

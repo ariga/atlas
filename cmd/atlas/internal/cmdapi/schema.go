@@ -194,7 +194,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 			cause   *cmdlog.StmtError
 			out     = cmd.OutOrStdout()
 		)
-		if plan, err = client.PlanChanges(ctx, "", changes); err != nil {
+		if plan, err = client.PlanChanges(ctx, "", changes, planOptions(client)...); err != nil {
 			return err
 		}
 		if err = applyChanges(ctx, client, changes, flags.txMode); err == nil {
@@ -221,20 +221,38 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 }
 
 func applyChanges(ctx context.Context, client *sqlclient.Client, changes []schema.Change, txMode string) error {
+	opts := planOptions(client)
 	if txMode == txModeNone {
-		return client.ApplyChanges(ctx, changes)
+		return client.ApplyChanges(ctx, changes, opts...)
 	}
 	tx, err := client.Tx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	if err := tx.ApplyChanges(ctx, changes); err != nil {
+	if err := tx.ApplyChanges(ctx, changes, opts...); err != nil {
 		// Rollback on error but the underlying error is still
 		// returned to make type-assertion in schemaApplyRun pass.
 		_ = tx.Rollback()
 		return err
 	}
 	return tx.Commit()
+}
+
+// planOptions returns the default options for planning declarative changes.
+func planOptions(c *sqlclient.Client) []migrate.PlanOption {
+	opts := []migrate.PlanOption{
+		func(opts *migrate.PlanOptions) {
+			opts.Indent = "  "
+		},
+	}
+	// In case the scope is a database schema, generate
+	// the plan without the schema qualifier.
+	if c.URL.Schema != "" {
+		opts = append(opts, func(opt *migrate.PlanOptions) {
+			opt.SchemaQualifier = new(string)
+		})
+	}
+	return opts
 }
 
 type schemeCleanFlags struct {
@@ -689,7 +707,7 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *cmdext
 }
 
 func summary(cmd *cobra.Command, c *sqlclient.Client, changes []schema.Change, t *template.Template) error {
-	p, err := c.PlanChanges(cmd.Context(), "", changes)
+	p, err := c.PlanChanges(cmd.Context(), "", changes, planOptions(c)...)
 	if err != nil {
 		return err
 	}
@@ -717,7 +735,7 @@ func promptUser(cmd *cobra.Command) bool {
 	prompt := cmdPrompt(cmd)
 	prompt.Items = []string{answerApply, answerAbort}
 	_, result, err := prompt.Run()
-	if err != nil && err != promptui.ErrInterrupt {
+	if err != nil && !errors.Is(err, promptui.ErrInterrupt) {
 		// Fail in case of unexpected errors.
 		cobra.CheckErr(err)
 	}
