@@ -398,6 +398,7 @@ type (
 		T         string
 		Precision *int
 		Scale     *int
+		Attrs     []Attr
 	}
 
 	// JSONType represents a JSON type.
