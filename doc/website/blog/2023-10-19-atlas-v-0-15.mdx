@@ -412,7 +412,7 @@ Use the arrow keys to navigate: ↓ ↑ → ←
 After applying, let's re-run the `schema apply` command to make sure that the schema is up-to-date:
 
 ```text
-atlas schema apply -u 'postgres://postgres:pass@localhost:5432/postgres?sslmode=disable' -f schema.hcl
+atlas schema apply -u 'postgres://postgres:pass@localhost:5432/postgres?sslmode=disable' --to file://schema.hcl
 ```
 Indeed, Atlas reports that the schema is up-to-date:
 
