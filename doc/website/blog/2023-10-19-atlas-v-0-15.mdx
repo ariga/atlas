@@ -83,7 +83,7 @@ table "hello" {
 Now, let's apply this schema to a local SQLite database named "sqlite.db":
 
 ```
-atlas schema apply -u sqlite://sqlite.db -f schema.hcl
+atlas schema apply -u sqlite://sqlite.db --dev-url sqlite://?mode=memory -f schema.hcl
 ```
 Atlas will calculate the diff between the current (empty) state of the database and
 our desired state and prompt us to confirm the migration plan:
@@ -108,14 +108,14 @@ open your browser in the new, interactive migration plan screen. Notice the scre
 safe, so all checks passed.
 * **ERD** - A visual representation of the change we are planning.
 
-![](https://atlasgo.io/uploads/blog/v0.15/interactive-plan.png)
+![](https://atlasgo.io/uploads/blog/v0.15/plan.png)
 
-![](https://atlasgo.io/uploads/blog/v0.15/interactive-erd.png)
+![](https://atlasgo.io/uploads/blog/v0.15/erd.png)
 
 Once we are content with the migration plan, let's go ahead and click the "Approve and Apply" button. Atlas will
 apply the migration plan to the database and scroll down to the execution logs section:
 
-![](https://atlasgo.io/uploads/blog/v0.15/interactive-logs.png)
+![](https://atlasgo.io/uploads/blog/v0.15/logs-new.png)
 
 Let's now edit our desired state a bit to delete the `hello` table and add a new `users` table:
 
