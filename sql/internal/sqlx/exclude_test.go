@@ -102,12 +102,37 @@ func TestExcludeRealm_Selector(t *testing.T) {
 			).
 			AddViews(
 				schema.NewView("v1", "SELECT * FROM t1"),
+			).
+			AddFuncs(
+				&schema.Func{Name: "f1"},
+				&schema.Func{Name: "f2"},
+				&schema.Func{Name: "f3"},
+			).
+			AddProcs(
+				&schema.Proc{Name: "p1"},
+				&schema.Proc{Name: "p2"},
+				&schema.Proc{Name: "p3"},
 			),
 	)
 	r, err := ExcludeRealm(r, []string{"*.*[type=table]"})
 	require.NoError(t, err)
 	require.Empty(t, r.Schemas[0].Tables)
 	require.Len(t, r.Schemas[0].Views, 1)
+
+	r, err = ExcludeRealm(r, []string{"*.f1[type=function]"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas[0].Funcs, 2)
+	require.Equal(t, []string{"f2", "f3"}, []string{r.Schemas[0].Funcs[0].Name, r.Schemas[0].Funcs[1].Name})
+
+	r, err = ExcludeRealm(r, []string{"*.p2[type=procedure]"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas[0].Procs, 2)
+	require.Equal(t, []string{"p1", "p3"}, []string{r.Schemas[0].Procs[0].Name, r.Schemas[0].Procs[1].Name})
+
+	r, err = ExcludeRealm(r, []string{"*.*[type=procedure|function]"})
+	require.NoError(t, err)
+	require.Empty(t, r.Schemas[0].Funcs)
+	require.Empty(t, r.Schemas[0].Procs)
 
 	r.Schemas[0].AddTables(
 		schema.NewTable("t1"),
@@ -161,6 +186,7 @@ func TestExcludeRealm_Checks(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, r.Schemas[0].Tables[0].Attrs, 0)
 }
+
 func TestExcludeRealm_Columns(t *testing.T) {
 	r := schema.NewRealm(
 		schema.New("s1").AddTables(

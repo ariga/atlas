@@ -131,6 +131,24 @@ func excludeS(s *schema.Schema, glob []string) error {
 		}
 		s.Views = views
 	}
+	if globF, exclude := excludeType(typeFn, glob[0]); exclude {
+		var err error
+		s.Funcs, err = filter(s.Funcs, func(f *schema.Func) (bool, error) {
+			return filepath.Match(globF, f.Name)
+		})
+		if err != nil {
+			return err
+		}
+	}
+	if globP, exclude := excludeType(typePr, glob[0]); exclude {
+		var err error
+		s.Procs, err = filter(s.Procs, func(p *schema.Proc) (bool, error) {
+			return filepath.Match(globP, p.Name)
+		})
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -198,12 +216,14 @@ func excludeV(t *schema.View, pattern string) (err error) {
 }
 
 const (
-	typeV = "view"
-	typeT = "table"
-	typeC = "column"
-	typeI = "index"
-	typeF = "fk"
-	typeK = "check"
+	typeV  = "view"
+	typeT  = "table"
+	typeC  = "column"
+	typeI  = "index"
+	typeF  = "fk"
+	typeK  = "check"
+	typeFn = "function"
+	typePr = "procedure"
 )
 
 var reTypeVT = regexp.MustCompile(`\[type=([a-z|]+)+\]$`)
