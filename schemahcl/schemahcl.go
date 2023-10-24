@@ -542,11 +542,27 @@ func (s *State) typeError(diag hcl.Diagnostics, scope []string) error {
 			if d.Summary != "Unknown variable" {
 				continue
 			}
-			if t, ok := s.findTypeSpec(e.Traversal.RootName()); ok && len(t.Attributes) > 0 {
-				d.Detail = fmt.Sprintf("Type %q requires at least 1 argument", t.Name)
-			} else if n := len(scope); n > 1 && (s.config.pathVars[path] != nil || s.config.pathFuncs[path] != nil) {
-				d.Summary = strings.Replace(d.Summary, "variable", fmt.Sprintf("%s.%s", scope[n-2], scope[n-1]), 1)
-				d.Detail = strings.Replace(d.Detail, "variable", scope[n-1], 1)
+			switch root := e.Traversal.RootName(); root {
+			case RefData:
+				var b strings.Builder
+				b.WriteString(root)
+				for _, t := range e.Traversal[1:] {
+					if v, ok := t.(hcl.TraverseAttr); ok {
+						b.WriteString(".")
+						b.WriteString(v.Name)
+					}
+				}
+				d.Summary = "Unknown data source"
+				d.Detail = fmt.Sprintf("%s does not exist", b.String())
+			case RefLocal:
+				d.Summary = "Unknown local"
+			default:
+				if t, ok := s.findTypeSpec(root); ok && len(t.Attributes) > 0 {
+					d.Detail = fmt.Sprintf("Type %q requires at least 1 argument", t.Name)
+				} else if n := len(scope); n > 1 && (s.config.pathVars[path] != nil || s.config.pathFuncs[path] != nil) {
+					d.Summary = strings.Replace(d.Summary, "variable", fmt.Sprintf("%s.%s", scope[n-2], scope[n-1]), 1)
+					d.Detail = strings.Replace(d.Detail, "variable", scope[n-1], 1)
+				}
 			}
 		}
 	}

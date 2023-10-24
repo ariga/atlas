@@ -474,6 +474,40 @@ schema "main" {
 `, string(buf))
 }
 
+func TestExternal(t *testing.T) {
+	var (
+		v struct {
+			Output string `spec:"output"`
+		}
+		state = schemahcl.New(cmdext.DataSources...)
+	)
+	err := state.EvalBytes([]byte(`
+data "external" "program" {
+  program = [
+    "echo",
+    "value",
+  ]
+}
+
+output = trimspace(data.external.program)
+`), &v, nil)
+	require.NoError(t, err)
+	require.Equal(t, "value", v.Output)
+
+	err = state.EvalBytes([]byte(`
+data "external" "program" {
+  program = [
+    "echo",
+    "{\"hello\": \"world\"}",
+  ]
+}
+
+output = jsondecode(data.external.program).hello
+`), &v, nil)
+	require.NoError(t, err)
+	require.Equal(t, "world", v.Output)
+}
+
 func TestAtlasConfig(t *testing.T) {
 	var (
 		v struct {
