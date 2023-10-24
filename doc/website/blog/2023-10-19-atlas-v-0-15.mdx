@@ -160,12 +160,8 @@ In this case, we decide to abort the migration in order to not lose the precious
 
 ### Functions and Stored Procedures
 
-Over the past few months, we have received numerous requests to support management of [Functions](https://www.postgresql.org/docs/current/functions.html)
-and [stored procedures](https://www.postgresql.org/docs/current/sql-createprocedure.html) in popular databases such as
-[PostgreSQL](https://postgresql.org) and [MySQL](https://mysql.com).  Functions and stored procedures are a way to encapsulate
-reusable logic in your database and are often used to improve performance by reducing the number of round-trips to the database.
+:::info
 
-Atlas now supports creating and managing functions and stored procedures in your database schema.
 Functions and stored procedures are currently in beta and available to logged-in users only. To
 use this feature run:
 
@@ -173,8 +169,16 @@ use this feature run:
 atlas login
 ```
 
+:::
+
+Over the past few months, we have received numerous requests to support management of [Functions](https://www.postgresql.org/docs/current/functions.html)
+and [stored procedures](https://www.postgresql.org/docs/current/sql-createprocedure.html) in popular databases such as
+[PostgreSQL](https://postgresql.org) and [MySQL](https://mysql.com).  Functions and stored procedures are a way to encapsulate
+reusable logic in your database and are often used to improve performance by reducing the number of round-trips to the database.
+
+Atlas now supports creating and managing functions and stored procedures in your database schema.
 Let's see how we can use this feature to create a simple function. In our example, we will implement the `leet_speak`
-function, which transforms a regular string into its [Leet](https://en.wikipedia.org/wiki/Leet) equivalent!
+function for PostgreSQL, which transforms a regular string into its [Leet](https://en.wikipedia.org/wiki/Leet) equivalent!
 
 We can define the desired state of our database in either HCL or SQL:
 
@@ -183,18 +187,19 @@ We can define the desired state of our database in either HCL or SQL:
 
 ```hcl title="schema.hcl"
 function "leet_speak" {
-  schema = schema.default
+  schema = schema.public
+  lang   = PLpgSQL
   arg "input_text" {
-    type = varchar(255)
+    type = character_varying
   }
-  return        = varchar(255)
-  as            = <<-SQL
+  return = character_varying
+  as     = <<-SQL
+  DECLARE
+      output_text VARCHAR := '';
+      i INT := 1;
   BEGIN
-      DECLARE output_text VARCHAR(255) DEFAULT '';
-      DECLARE i INT DEFAULT 1;
-
-      WHILE i <= LENGTH(input_text) DO
-          SET output_text = CONCAT(output_text,
+      WHILE i <= LENGTH(input_text) LOOP
+          output_text := output_text ||
               CASE SUBSTRING(input_text, i, 1)
                   WHEN 'a' THEN '4'
                   WHEN 'e' THEN '3'
@@ -203,17 +208,16 @@ function "leet_speak" {
                   WHEN 's' THEN '5'
                   WHEN 't' THEN '7'
                   ELSE SUBSTRING(input_text, i, 1)
-              END
-          );
-          SET i = i + 1;
-      END WHILE;
+              END;
+          i := i + 1;
+      END LOOP;
 
       RETURN output_text;
-  END
+  END;
   SQL
-  deterministic = true
 }
-schema "default" {
+schema "public" {
+  comment = "standard public schema"
 }
 ```
 
@@ -221,17 +225,16 @@ schema "default" {
 <TabItem value="sql" label="SQL">
 
 ```sql title="schema.sql"
-DELIMITER //
-
-CREATE FUNCTION leet_speak(input_text VARCHAR(255))
-RETURNS VARCHAR(255)
-DETERMINISTIC
+CREATE OR REPLACE FUNCTION leet_speak(input_text VARCHAR)
+RETURNS VARCHAR
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    output_text VARCHAR := '';
+    i INT := 1;
 BEGIN
-    DECLARE output_text VARCHAR(255) DEFAULT '';
-    DECLARE i INT DEFAULT 1;
-
-    WHILE i <= LENGTH(input_text) DO
-        SET output_text = CONCAT(output_text,
+    WHILE i <= LENGTH(input_text) LOOP
+        output_text := output_text ||
             CASE SUBSTRING(input_text, i, 1)
                 WHEN 'a' THEN '4'
                 WHEN 'e' THEN '3'
@@ -240,14 +243,13 @@ BEGIN
                 WHEN 's' THEN '5'
                 WHEN 't' THEN '7'
                 ELSE SUBSTRING(input_text, i, 1)
-            END
-        );
-        SET i = i + 1;
-    END WHILE;
+            END;
+        i := i + 1;
+    END LOOP;
 
     RETURN output_text;
 END;
-//
+$$;
 ```
 
 </TabItem>
@@ -256,26 +258,28 @@ END;
 For the purpose of this demo, we will run a local MySQL Docker container:
 
 ```
-docker run --rm -d --name atlas-demo -p 3306:3306 -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=default mysql:8
+docker run --name db -e POSTGRES_PASSWORD=pass -d -p 5432:5432 postgres:16
 ```
 
 Now, let's apply our schema to the database:
 
 ```
-atlas schema apply -u mysql://root:pass@localhost:3306/default -f schema.hcl
+atlas schema apply -u 'postgres://postgres:pass@localhost:5432/postgres?sslmode=disable&search_path=public' --to file://schema.hcl
 ```
+
 Atlas will calculate the diff between the current (empty) state of the database and
 our desired state and prompt us to confirm the migration plan:
 
 ```text
 -- Planned Changes:
 -- Create "leet_speak" function
-CREATE FUNCTION `default`.`leet_speak` (`input_text` varchar(255)) RETURNS varchar(255) DETERMINISTIC CONTAINS SQL BEGIN
-    DECLARE output_text VARCHAR(255) DEFAULT '';
-    DECLARE i INT DEFAULT 1;
-
-    WHILE i <= LENGTH(input_text) DO
-        SET output_text = CONCAT(output_text,
+CREATE FUNCTION "leet_speak" ("input_text" character varying) RETURNS character varying LANGUAGE PLpgSQL AS $$
+DECLARE
+    output_text VARCHAR := '';
+    i INT := 1;
+BEGIN
+    WHILE i <= LENGTH(input_text) LOOP
+        output_text := output_text ||
             CASE SUBSTRING(input_text, i, 1)
                 WHEN 'a' THEN '4'
                 WHEN 'e' THEN '3'
@@ -284,13 +288,13 @@ CREATE FUNCTION `default`.`leet_speak` (`input_text` varchar(255)) RETURNS varch
                 WHEN 's' THEN '5'
                 WHEN 't' THEN '7'
                 ELSE SUBSTRING(input_text, i, 1)
-            END
-        );
-        SET i = i + 1;
-    END WHILE;
+            END;
+        i := i + 1;
+    END LOOP;
 
     RETURN output_text;
 END;
+$$;
 Use the arrow keys to navigate: ↓ ↑ → ←
 ? Are you sure?:
   ▸ Apply
@@ -307,22 +311,32 @@ following output:
 We can now verify that the function was created successfully by running:
 
 ```
-docker exec -it atlas-demo mysql -uroot -ppass -D default -e "SELECT leet_speak('hello leet world');"
+docker exec -it db psql -U postgres -c "SELECT leet_speak('hello leet world')"
 ```
 
 And the result indeed is:
 
 ```text
-+--------------------------------+
-| leet_speak('hello leet world') |
-+--------------------------------+
-| h3ll0 l337 w0rld               |
-+--------------------------------+
+    leet_speak
+------------------
+ h3ll0 l337 w0rld
+(1 row)
 ```
 
 To learn more about functions and stored procedures in Atlas, check out the [documentation](https://atlasgo.io/atlas-schema/hcl#function).
 
 ### Postgres Domains
+
+:::info
+
+Support for domains is currently in beta and available to logged-in users only. To
+use this feature run:
+
+```
+atlas login
+```
+
+:::
 
 Another highly requested feature was support for [Postgres Domains](https://www.postgresql.org/docs/16/sql-createdomain.html).
 A domain is essentially a data type with optional constraints (restrictions on the allowed set of values). For example,
