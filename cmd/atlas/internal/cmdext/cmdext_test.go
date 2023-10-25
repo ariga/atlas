@@ -506,6 +506,29 @@ output = jsondecode(data.external.program).hello
 `), &v, nil)
 	require.NoError(t, err)
 	require.Equal(t, "world", v.Output)
+
+	err = state.EvalBytes([]byte(`
+variable "dot_env" {
+  type = string
+}
+
+data "external" "dot_env" {
+  program = [
+    "echo",
+	"${var.dot_env}",
+  ]
+}
+
+locals {
+  dot_env = jsondecode(data.external.dot_env)
+}
+
+output = local.dot_env.URL
+`), &v, map[string]cty.Value{
+		"dot_env": cty.StringVal(`{"URL": "https://example.com"}`),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://example.com", v.Output)
 }
 
 func TestAtlasConfig(t *testing.T) {
