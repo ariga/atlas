@@ -141,7 +141,7 @@ module.exports = {
     },
     announcementBar: {
       id: 'announcementBar-7', // Increment on change
-      content: `<strong>Announcing Atlas v0.14: Checkpoints, Push to Cloud, and JetBrains support. </strong><a class="cta" href="https://atlasgo.io/blog/2023/08/31/atlas-v-0-14">Read it here</a>`,
+      content: `<strong>Announcing Atlas v0.15: Interactive Declarative Migrations, Functions, Procedures and Domains. </strong><a class="cta" href="https://atlasgo.io/blog/2023/10/19/atlas-v-0-15">Read it here</a>`,
       isCloseable: true,
       backgroundColor: '#008CFA',
       textColor: '#fff',
