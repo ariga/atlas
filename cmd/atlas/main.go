@@ -32,11 +32,13 @@ import (
 func main() {
 	cmdapi.Root.SetOut(os.Stdout)
 	ctx := newContext()
+	done := initialize(ctx)
 	update := checkForUpdate(ctx)
 	err := cmdapi.Root.ExecuteContext(ctx)
 	if u := update(); u != "" {
 		fmt.Println(u)
 	}
+	done()
 	if err != nil {
 		os.Exit(1)
 	}
