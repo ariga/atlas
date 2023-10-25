@@ -57,6 +57,7 @@ import (
 // DataSources exposes the data sources provided by this package.
 var DataSources = []schemahcl.Option{
 	schemahcl.WithDataSource("sql", Query),
+	schemahcl.WithDataSource("external", External),
 	schemahcl.WithDataSource("runtimevar", RuntimeVar),
 	schemahcl.WithDataSource("template_dir", TemplateDir),
 	schemahcl.WithDataSource("remote_dir", RemoteDir),
@@ -269,6 +270,59 @@ func Query(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 		obj["values"] = cty.ListVal(values)
 	}
 	return cty.ObjectVal(obj), nil
+}
+
+// External allows loading data using external program execution.
+//
+//	data "external" "env1" {
+//	  program = [
+//	    "node",
+//	    loadenv.js",
+//	  ]
+//	}
+//
+//	data "external" "env2" {
+//	  program = [
+//	    "bash",
+//	    "-c",
+//	    "env_to_json --file=${var.envfile} | jq '...' ",
+//	  ]
+//	}
+func External(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+	var (
+		args struct {
+			Program []string `hcl:"program"`
+			Dir     string   `hcl:"working_dir,optional"`
+			Remain  hcl.Body `hcl:",remain"`
+		}
+		errorf = blockError("data.external", block)
+	)
+	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+		return cty.NilVal, errorf("decoding body: %v", diags)
+	}
+	attrs, diags := args.Remain.JustAttributes()
+	if diags.HasErrors() {
+		return cty.NilVal, errorf("getting attributes: %v", diags)
+	}
+	if len(attrs) > 0 {
+		return cty.NilVal, errorf("unexpected attributes: %v", attrs)
+	}
+	if len(args.Program) == 0 {
+		return cty.NilVal, errorf("program cannot be empty")
+	}
+	cmd := exec.Command(args.Program[0], args.Program[1:]...)
+	if args.Dir != "" {
+		cmd.Dir = args.Dir
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		msg := err.Error()
+		if err1 := (*exec.ExitError)(nil); errors.As(err, &err1) && len(err1.Stderr) > 0 {
+			msg = string(err1.Stderr)
+		}
+		return cty.NilVal, errorf("running program %v: %v", cmd.Path, msg)
+	}
+	return cty.StringVal(string(out)), nil
 }
 
 // TemplateDir implements migrate.Dir interface for template directories.
@@ -580,8 +634,8 @@ func SchemaExternal(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, er
 	out, err := cmd.Output()
 	if err != nil {
 		msg := err.Error()
-		if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
-			msg = string(ee.Stderr)
+		if err1 := (*exec.ExitError)(nil); errors.As(err, &err1) && len(err1.Stderr) > 0 {
+			msg = string(err1.Stderr)
 		}
 		return cty.NilVal, errorf("running program %v: %v", cmd.Path, msg)
 	}

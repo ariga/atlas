@@ -638,6 +638,11 @@ locals {
 }
 `)
 	require.Error(t, New(opts...).EvalBytes(b, &doc, nil), `cyclic reference to "data.text.a"`)
+
+	b = []byte(`
+out = data.unknown.a.output
+`)
+	require.EqualError(t, New(opts...).EvalBytes(b, &doc, nil), `:2,7-11: Unknown data source; data.unknown.a.output does not exist`)
 }
 
 func TestSkippedDataSrc(t *testing.T) {
