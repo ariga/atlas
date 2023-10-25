@@ -20,3 +20,8 @@ func newContext() context.Context {
 func vercheckEndpoint(context.Context) string {
 	return vercheckURL
 }
+
+// initialize is a no-op for the OSS version.
+func initialize(context.Context) func() {
+	return func() {}
+}
