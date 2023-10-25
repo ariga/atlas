@@ -233,10 +233,10 @@ func withCascade(changes schema.Changes) schema.Changes {
 			d.Extra = append(d.Extra, &schema.IfExists{})
 		}
 		if d, ok := c.(*schema.DropProc); ok {
-			d.Extra = append(d.Extra, &schema.IfExists{})
+			d.Extra = append(d.Extra, &schema.IfExists{}, &Cascade{})
 		}
 		if d, ok := c.(*schema.DropFunc); ok {
-			d.Extra = append(d.Extra, &schema.IfExists{})
+			d.Extra = append(d.Extra, &schema.IfExists{}, &Cascade{})
 		}
 	}
 	return changes
