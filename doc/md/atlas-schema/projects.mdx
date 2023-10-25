@@ -333,6 +333,7 @@ locals {
 Data sources enable users to retrieve information stored in an external service or database. The currently supported
 data sources are:
 - [`sql`](#data-source-sql)
+- [`external`](#data-source-external)
 - [`runtimevar`](#data-source-runtimevar)
 - [`hcl_schema`](#data-source-hcl_schema)
 - [`external_schema`](#data-source-external_schema)
@@ -377,6 +378,40 @@ env "prod" {
   // Reference a data source.
   for_each = toset(data.sql.tenants.values)
   url      = urlsetpath(var.url, each.value)
+}
+```
+
+#### Data source: `external`
+
+The `external` data source allows the execution of an external program and uses its output in the project.
+
+##### Arguments {#data-source-external-arguments}
+
+- `program` - The first element of the string is the program to run. The remaining elements are optional command line arguments.
+- `working_dir` - The working directory to run the program from. Defaults to the current working directory.
+
+##### Attributes {#data-source-external-attributes}
+
+- The command output is a `string` type with no attributes.
+
+#### Usage example
+
+```hcl title="atlas.hcl"
+data "external" "dot_env" {
+  program = [
+    "npm",
+    "run",
+    "load-env.js"
+  ]
+}
+
+locals {
+  dot_env = jsondecode(data.external.dot_env)
+}
+
+env "local" {
+  src = local.dot_env.URL
+  dev = "docker://mysql/8/dev"
 }
 ```
 
@@ -542,6 +577,7 @@ With this data source, users have the flexibility to represent the desired state
 ##### Arguments {#data-source-external-schema-arguments}
 
 - `program` - The first element of the string is the program to run. The remaining elements are optional command line arguments.
+- `working_dir` - The working directory to run the program from. Defaults to the current working directory.
 
 ##### Attributes {#data-source-external-schema-attributes}
 
