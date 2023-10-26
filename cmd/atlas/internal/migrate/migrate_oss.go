@@ -14,6 +14,6 @@ import (
 	"ariga.io/atlas/sql/migrate"
 )
 
-func openAtlasDir(ctx context.Context, u *url.URL) (migrate.Dir, error) {
+func openAtlasDir(context.Context, *url.URL) (migrate.Dir, error) {
 	return nil, fmt.Errorf("atlas remote directory is not supported by this release. See: https://atlasgo.io/getting-started")
 }

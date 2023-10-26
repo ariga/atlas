@@ -533,6 +533,8 @@ env "local" {
 			"-c", "file://"+path,
 			"--env", "local",
 			"--var", fmt.Sprintf("url=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "tenants.db")),
+			// Inject fake variable to enforce re-evaluation of the data source (skip cache).
+			"--var", fmt.Sprintf("cache=%s", uuid.NewString()),
 		)
 		// Rows should represent real and consistent values.
 		require.EqualError(t, err, "data.sql.tenants: unsupported row type: <nil>")
@@ -544,6 +546,8 @@ env "local" {
 			"-c", "file://"+path,
 			"--env", "local",
 			"--var", fmt.Sprintf("url=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "tenants.db")),
+			// Inject fake variable to enforce re-evaluation of the data source (skip cache).
+			"--var", fmt.Sprintf("cache=%s", uuid.NewString()),
 		)
 		// Empty list is expanded to zero blocks.
 		require.EqualError(t, err, `env "local" not defined in project file`)
@@ -908,6 +912,8 @@ env {
 			"--env", "local",
 			"--url", u,
 			"--var", "cloud_url="+srv.URL,
+			// Inject fake variable to enforce re-evaluation of the data source (skip cache).
+			"--var", fmt.Sprintf("cache=%s", uuid.NewString()),
 		)
 		require.NoError(t, err)
 		// Reporting does not affect the output.
@@ -936,6 +942,8 @@ env {
 			"--env", "local",
 			"--url", u,
 			"--var", "cloud_url="+srv.URL,
+			// Inject fake variable to enforce re-evaluation of the data source (skip cache).
+			"--var", fmt.Sprintf("cache=%s", uuid.NewString()),
 		)
 		require.NoError(t, err)
 		// Reporting error should not affect the migration execution.

@@ -156,7 +156,21 @@ func (v Vars) String() string {
 		}
 		b.WriteString(k)
 		b.WriteString(":")
-		b.WriteString(v[k].GoString())
+		switch v1 := v[k]; v1.Type() {
+		case cty.String:
+			b.WriteString(v1.AsString())
+		case cty.List(cty.String):
+			b.WriteString("[")
+			for i, v2 := range v1.AsValueSlice() {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				b.WriteString(v2.AsString())
+			}
+			b.WriteString("]")
+		default:
+			b.WriteString(v1.GoString())
+		}
 	}
 	return "[" + b.String() + "]"
 }
