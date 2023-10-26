@@ -138,6 +138,24 @@ func TestURLUserinfoFunc(t *testing.T) {
 	require.Equal(t, cty.StringVal("mysql://user:pass@localhost:3306"), got)
 }
 
+func TestStartWithFunc(t *testing.T) {
+	got, err := startsWithFunc.Call([]cty.Value{cty.StringVal("abc"), cty.StringVal("ab")})
+	require.NoError(t, err)
+	require.Equal(t, cty.True, got)
+	got, err = startsWithFunc.Call([]cty.Value{cty.StringVal("abc"), cty.StringVal("bc")})
+	require.NoError(t, err)
+	require.Equal(t, cty.False, got)
+}
+
+func TestEndsWithFunc(t *testing.T) {
+	got, err := endsWithFunc.Call([]cty.Value{cty.StringVal("abc"), cty.StringVal("ab")})
+	require.NoError(t, err)
+	require.Equal(t, cty.False, got)
+	got, err = endsWithFunc.Call([]cty.Value{cty.StringVal("abc"), cty.StringVal("bc")})
+	require.NoError(t, err)
+	require.Equal(t, cty.True, got)
+}
+
 func TestMakeFileFunc(t *testing.T) {
 	fn := MakeFileFunc("testdata")
 	_, err := fn.Call([]cty.Value{cty.StringVal("foo")})
