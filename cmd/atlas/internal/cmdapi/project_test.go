@@ -5,11 +5,14 @@
 package cmdapi
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
@@ -224,8 +227,8 @@ variable "cloud_url" {
 
 atlas {
   cloud {
-    token   = "token"
-    url     = var.cloud_url
+    token = "token"
+    url   = var.cloud_url
   }
 }
 
@@ -246,23 +249,33 @@ env {
 	GlobalFlags.ConfigURL = "file://" + path
 	var calls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
+		var v struct {
+			Query string `json:"query"`
+		}
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&v))
+		require.NoError(t, r.Body.Close())
+		// Count calls that query the remote_dir data source.
+		if strings.Contains(v.Query, "dirState") {
+			calls++
+		}
 	}))
 	t.Cleanup(srv.Close)
 	vars := map[string]cty.Value{"cloud_url": cty.StringVal(srv.URL)}
 
-	_, envs1, err := EnvByName(&cobra.Command{}, "local", vars)
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+	_, envs1, err := EnvByName(cmd, "local", vars)
 	require.NoError(t, err)
 	require.Len(t, envs1, 1)
 	require.Equal(t, 1, calls)
 
-	_, envs2, err := EnvByName(&cobra.Command{}, "local", vars)
+	_, envs2, err := EnvByName(cmd, "local", vars)
 	require.NoError(t, err)
 	require.Len(t, envs2, 1)
 	require.Equal(t, 1, calls)
 	require.Equal(t, envs1[0], envs2[0])
 
-	_, envs3, err := EnvByName(&cobra.Command{}, "dev", vars)
+	_, envs3, err := EnvByName(cmd, "dev", vars)
 	require.NoError(t, err)
 	require.Len(t, envs3, 1)
 	require.Equal(t, 2, calls)
