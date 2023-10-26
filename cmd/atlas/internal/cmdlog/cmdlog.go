@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"text/template"
@@ -534,8 +535,9 @@ type SchemaInspect struct {
 var (
 	// InspectTemplateFuncs are global functions available in inspect report templates.
 	InspectTemplateFuncs = template.FuncMap{
-		"sql":  sqlInspect,
-		"json": jsonEncode,
+		"sql":     sqlInspect,
+		"json":    jsonEncode,
+		"mermaid": mermaid,
 	}
 
 	// SchemaInspectTemplate holds the default template of the 'schema inspect' command.
@@ -785,6 +787,88 @@ func merge(maps ...template.FuncMap) template.FuncMap {
 		}
 		return m
 	}
+}
+
+func mermaid(i *SchemaInspect, _ ...string) (string, error) {
+	ft, ok := i.Driver.(interface {
+		FormatType(t schema.Type) (string, error)
+	})
+	if !ok {
+		return "", fmt.Errorf("mermaid: driver does not support FormatType")
+	}
+	var (
+		b       strings.Builder
+		qualify = len(i.Realm.Schemas) > 1
+		funcs   = template.FuncMap{
+			"formatType": ft.FormatType,
+			"tableName": func(t *schema.Table) string {
+				if qualify {
+					return fmt.Sprintf("%[1]s_%[2]s[\"%[1]s.%[2]s\"]", t.Schema.Name, t.Name)
+				}
+				return t.Name
+			},
+			"tableIdent": func(t *schema.Table) string {
+				if qualify {
+					return fmt.Sprintf("%s_%s", t.Schema.Name, t.Name)
+				}
+				return t.Name
+			},
+			"pkfk": func(t *schema.Table, c *schema.Column) string {
+				var pkfk []string
+				if t.PrimaryKey != nil && slices.ContainsFunc(t.PrimaryKey.Parts, func(p *schema.IndexPart) bool { return p.C == c }) {
+					pkfk = append(pkfk, "PK")
+				}
+				if c.ForeignKeys != nil {
+					pkfk = append(pkfk, "FK")
+				}
+				return strings.Join(pkfk, ",")
+			},
+			"card": func(fk *schema.ForeignKey) string {
+				var (
+					hasU = func(t *schema.Table, cs []*schema.Column) bool {
+						if t.PrimaryKey != nil && slices.EqualFunc(t.PrimaryKey.Parts, cs, func(p *schema.IndexPart, c *schema.Column) bool {
+							return p.C != nil && p.C.Name == c.Name
+						}) {
+							return true
+						}
+						return slices.ContainsFunc(t.Indexes, func(idx *schema.Index) bool {
+							return idx.Unique && slices.EqualFunc(idx.Parts, cs, func(p *schema.IndexPart, c *schema.Column) bool {
+								return p.C != nil && p.C.Name == c.Name
+							})
+						})
+					}
+					from, to = "}", "{"
+				)
+				if hasU(fk.Table, fk.Columns) {
+					from = "|"
+				}
+				if hasU(fk.RefTable, fk.RefColumns) {
+					to = "|"
+				}
+				return fmt.Sprintf("%so--o%s", from, to)
+			},
+		}
+		t = template.Must(template.New("mermaid").
+			Funcs(funcs).
+			Parse(`erDiagram
+{{- range $s := .Schemas }}
+  {{- range $t := $s.Tables }}
+    {{ tableName $t }} {
+    {{- range $c := $t.Columns }}
+      {{ formatType $c.Type.Type }} {{ $c.Name }}{{ with pkfk $t $c }} {{ . }}{{ end }}
+    {{- end }}
+    }
+    {{- range $fk := $t.ForeignKeys }}
+    {{ tableIdent $t }} {{ card $fk }} {{ tableIdent $fk.RefTable }} : {{ $fk.Symbol }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+`))
+	)
+	if err := t.Execute(&b, i.Realm); err != nil {
+		return "", err
+	}
+	return b.String(), nil
 }
 
 func jsonEncode(v any, args ...string) (string, error) {

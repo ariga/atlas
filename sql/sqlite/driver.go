@@ -168,6 +168,16 @@ func (d *Driver) Version() string {
 	return d.conn.version
 }
 
+// FormatType converts schema type to its column form in the database.
+func (*Driver) FormatType(t schema.Type) (string, error) {
+	return FormatType(t)
+}
+
+// ParseType returns the schema.Type value represented by the given string.
+func (*Driver) ParseType(s string) (schema.Type, error) {
+	return ParseType(s)
+}
+
 func acquireLock(path string, timeout time.Duration) (schema.UnlockFunc, error) {
 	lock, err := os.Create(path)
 	if err != nil {
