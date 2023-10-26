@@ -17,6 +17,8 @@ import (
 	"ariga.io/atlas/sql/mysql/internal/mysqlversion"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+	"cloud.google.com/go/cloudsqlconn"
+	"cloud.google.com/go/cloudsqlconn/mysql/mysql"
 )
 
 type (
@@ -51,7 +53,7 @@ func init() {
 		sqlclient.OpenerFunc(opener),
 		sqlclient.RegisterDriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("mysql+unix", "maria", "maria+unix", "mariadb", "mariadb+unix"),
+		sqlclient.RegisterFlavours("mysql+unix", "mysql+csql", "maria", "maria+unix", "mariadb", "mariadb+unix"),
 		sqlclient.RegisterURLParser(parser{}),
 	)
 }
@@ -84,7 +86,19 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 
 func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
 	ur := parser{}.ParseURL(u)
-	db, err := sql.Open(DriverName, ur.DSN)
+
+	var closer sqlclient.CloserFunc
+
+	if name := ur.Driver; name == "mysql+csql" {
+		cleanup, err := mysql.RegisterDriver(name, cloudsqlconn.WithIAMAuthN())
+		if err != nil {
+			return nil, err
+		}
+
+		closer = sqlclient.CloserFunc(cleanup)
+	}
+
+	db, err := sql.Open(ur.Driver, ur.DSN)
 	if err != nil {
 		return nil, err
 	}
@@ -96,12 +110,19 @@ func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
 		return nil, err
 	}
 	drv.(*Driver).schema = ur.Schema
-	return &sqlclient.Client{
+
+	client := &sqlclient.Client{
 		Name:   DriverName,
 		DB:     db,
 		URL:    ur,
 		Driver: drv,
-	}, nil
+	}
+
+	if closer != nil {
+		client.AddClosers(closer)
+	}
+
+	return client, nil
 }
 
 // NormalizeRealm returns the normal representation of the given database.
@@ -259,26 +280,15 @@ type parser struct{}
 
 // ParseURL implements the sqlclient.URLParser interface.
 func (parser) ParseURL(u *url.URL) *sqlclient.URL {
-	v := u.Query()
+	var (
+		b strings.Builder
+		v = u.Query()
+		d = DriverName
+	)
+
 	v.Set("parseTime", "true")
 	u.RawQuery = v.Encode()
-	return &sqlclient.URL{URL: u, DSN: dsn(u), Schema: strings.TrimPrefix(u.Path, "/")}
-}
 
-// ChangeSchema implements the sqlclient.SchemaChanger interface.
-func (parser) ChangeSchema(u *url.URL, s string) *url.URL {
-	nu := *u
-	nu.Path = "/" + s
-	return &nu
-}
-
-// dsn returns the MySQL standard DSN for opening
-// the sql.DB from the user provided URL.
-func dsn(u *url.URL) string {
-	var (
-		b      strings.Builder
-		values = u.Query()
-	)
 	b.WriteString(u.User.Username())
 	if p, ok := u.User.Password(); ok {
 		b.WriteByte(':')
@@ -294,9 +304,19 @@ func dsn(u *url.URL) string {
 		// therefore the host should be empty.
 		b.WriteString(u.Path)
 		b.WriteString(")/")
-		if name := values.Get("database"); name != "" {
+		if name := v.Get("database"); name != "" {
 			b.WriteString(name)
-			values.Del("database")
+			v.Del("database")
+		}
+	case strings.HasSuffix(u.Scheme, "+csql"):
+		d = "mysql+csql"
+
+		b.WriteString("mysql-csql(")
+		b.WriteString(u.Path)
+		b.WriteString(")/")
+		if name := v.Get("database"); name != "" {
+			b.WriteString(name)
+			v.Del("database")
 		}
 	default:
 		if u.Host != "" {
@@ -310,11 +330,19 @@ func dsn(u *url.URL) string {
 			b.WriteByte('/')
 		}
 	}
-	if p := values.Encode(); p != "" {
+	if p := v.Encode(); p != "" {
 		b.WriteByte('?')
 		b.WriteString(p)
 	}
-	return b.String()
+
+	return &sqlclient.URL{URL: u, DSN: b.String(), Driver: d, Schema: strings.TrimPrefix(u.Path, "/")}
+}
+
+// ChangeSchema implements the sqlclient.SchemaChanger interface.
+func (parser) ChangeSchema(u *url.URL, s string) *url.URL {
+	nu := *u
+	nu.Path = "/" + s
+	return &nu
 }
 
 // MySQL standard column types as defined in its codebase. Name and order

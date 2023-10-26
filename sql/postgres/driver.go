@@ -12,12 +12,15 @@ import (
 	"hash/fnv"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+	"cloud.google.com/go/cloudsqlconn"
+	"cloud.google.com/go/cloudsqlconn/postgres/pgxv4"
 )
 
 type (
@@ -42,14 +45,14 @@ type (
 )
 
 // DriverName holds the name used for registration.
-const DriverName = "postgres"
+const DriverName = "pgx"
 
 func init() {
 	sqlclient.Register(
 		DriverName,
 		sqlclient.OpenerFunc(opener),
 		sqlclient.RegisterDriverOpener(Open),
-		sqlclient.RegisterFlavours("postgresql"),
+		sqlclient.RegisterFlavours("postgres", "postgresql", "postgres+csql", "postgresql+csql"),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterURLParser(parser{}),
 	)
@@ -57,7 +60,19 @@ func init() {
 
 func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
 	ur := parser{}.ParseURL(u)
-	db, err := sql.Open(DriverName, ur.DSN)
+
+	var closer sqlclient.CloserFunc
+
+	if name := ur.Driver; name == "postgres+csql" || name == "postgresql+csql" {
+		cleanup, err := pgxv4.RegisterDriver(name, cloudsqlconn.WithIAMAuthN())
+		if err != nil {
+			return nil, err
+		}
+
+		closer = sqlclient.CloserFunc(cleanup)
+	}
+
+	db, err := sql.Open(ur.Driver, ur.DSN)
 	if err != nil {
 		return nil, err
 	}
@@ -74,12 +89,19 @@ func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
 	case noLockDriver:
 		drv.noLocker.(*Driver).schema = ur.Schema
 	}
-	return &sqlclient.Client{
+
+	client := &sqlclient.Client{
 		Name:   DriverName,
 		DB:     db,
 		URL:    ur,
 		Driver: drv,
-	}, nil
+	}
+
+	if closer != nil {
+		client.AddClosers(closer)
+	}
+
+	return client, nil
 }
 
 // Open opens a new PostgreSQL driver.
@@ -329,7 +351,16 @@ type parser struct{}
 
 // ParseURL implements the sqlclient.URLParser interface.
 func (parser) ParseURL(u *url.URL) *sqlclient.URL {
-	return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
+	d := DriverName
+
+	if strings.HasSuffix(u.Scheme, "+csql") {
+		d = "postgres+sql"
+	}
+
+	uu, _ := url.Parse(u.String())
+	uu.Scheme = "postgres"
+
+	return &sqlclient.URL{URL: u, DSN: uu.String(), Driver: d, Schema: u.Query().Get("search_path")}
 }
 
 // ChangeSchema implements the sqlclient.SchemaChanger interface.

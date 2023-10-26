@@ -66,6 +66,9 @@ type (
 
 		// The Schema this client is connected to.
 		Schema string
+
+		// The Driver this client is using to connect.
+		Driver string
 	}
 )
 
@@ -415,3 +418,11 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 		drivers.Store(f, drv)
 	}
 }
+
+var _ io.Closer = CloserFunc(nil)
+
+// CloserFunc allows using a function as an io.Closer.
+type CloserFunc func() error
+
+// Close calls the closing function
+func (f CloserFunc) Close() error { return f() }
