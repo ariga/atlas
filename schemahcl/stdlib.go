@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/tryfunc"
@@ -104,6 +105,7 @@ func stdTypes(ctx *hcl.EvalContext) *hcl.EvalContext {
 func stdFuncs() map[string]function.Function {
 	return map[string]function.Function{
 		"abs":             stdlib.AbsoluteFunc,
+		"can":             tryfunc.CanFunc,
 		"ceil":            stdlib.CeilFunc,
 		"chomp":           stdlib.ChompFunc,
 		"chunklist":       stdlib.ChunklistFunc,
@@ -114,6 +116,7 @@ func stdFuncs() map[string]function.Function {
 		"csvdecode":       stdlib.CSVDecodeFunc,
 		"distinct":        stdlib.DistinctFunc,
 		"element":         stdlib.ElementFunc,
+		"endswith":        endsWithFunc,
 		"flatten":         stdlib.FlattenFunc,
 		"floor":           stdlib.FloorFunc,
 		"format":          stdlib.FormatFunc,
@@ -125,6 +128,7 @@ func stdFuncs() map[string]function.Function {
 		"jsondecode":      stdlib.JSONDecodeFunc,
 		"jsonencode":      stdlib.JSONEncodeFunc,
 		"keys":            stdlib.KeysFunc,
+		"length":          stdlib.LengthFunc,
 		"log":             stdlib.LogFunc,
 		"lower":           stdlib.LowerFunc,
 		"max":             stdlib.MaxFunc,
@@ -146,6 +150,7 @@ func stdFuncs() map[string]function.Function {
 		"slice":           stdlib.SliceFunc,
 		"sort":            stdlib.SortFunc,
 		"split":           stdlib.SplitFunc,
+		"startswith":      startsWithFunc,
 		"strrev":          stdlib.ReverseFunc,
 		"substr":          stdlib.SubstrFunc,
 		"timeadd":         stdlib.TimeAddFunc,
@@ -277,6 +282,7 @@ var (
 			return cty.StringVal(u.String()), nil
 		},
 	})
+
 	urlUserinfoFunc = function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -308,6 +314,7 @@ var (
 			return cty.StringVal(u.String()), nil
 		},
 	})
+
 	urlSetPathFunc = function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -370,6 +377,46 @@ var (
 				}
 			}
 			return args[0], nil
+		},
+	})
+
+	startsWithFunc = function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "s",
+				Type: cty.String,
+			},
+			{
+				Name: "prefix",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.Bool),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if s1, s2 := args[0].AsString(), args[1].AsString(); strings.HasPrefix(s1, s2) {
+				return cty.True, nil
+			}
+			return cty.False, nil
+		},
+	})
+
+	endsWithFunc = function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "s",
+				Type: cty.String,
+			},
+			{
+				Name: "suffix",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.Bool),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if s1, s2 := args[0].AsString(), args[1].AsString(); strings.HasSuffix(s1, s2) {
+				return cty.True, nil
+			}
+			return cty.False, nil
 		},
 	})
 )
