@@ -135,11 +135,8 @@ atlas schema inspect \
   -w
 ```
 
-<details><summary>Result</summary>
-
 [![ERD](https://atlasgo.io/uploads/erd-example.png)](https://gh.atlasgo.cloud/explore/40d83919)
 
-</details>
 
 Inspect a specific PostgreSQL schema and get its ERD representation Mermaid syntax:
 ```shell
@@ -147,8 +144,6 @@ atlas schema inspect \
   --url "postgres://root:pass@:5432/test?search_path=public&sslmode=disable" \
   --format '{{ mermaid . }}'
 ```
-
-<details><summary>Result</summary>
 
 ```mermaid
 erDiagram
@@ -164,7 +159,6 @@ erDiagram
     }
     blog_posts }o--o| users : author_fk
 ```
-</details>
 
 ## `schema diff`
 _**Compare two schema states and get a migration plan to transform one into the other. A state can be specified using a
