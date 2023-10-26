@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sync"
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
@@ -24,20 +25,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 )
-
-type loadConfig struct {
-	inputValues map[string]cty.Value
-}
-
-// LoadOption configures the LoadEnv function.
-type LoadOption func(*loadConfig)
-
-// WithInput is a LoadOption that sets the input values for the LoadEnv function.
-func WithInput(values map[string]cty.Value) LoadOption {
-	return func(config *loadConfig) {
-		config.inputValues = values
-	}
-}
 
 type (
 	// Project represents an atlas.hcl project config file.
@@ -336,22 +323,25 @@ func (e *Env) asMap() (map[string]string, error) {
 }
 
 // EnvByName parses and returns the project configuration with selected environments.
-func EnvByName(cmd *cobra.Command, name string, opts ...LoadOption) (*Project, []*Env, error) {
+func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Project, []*Env, error) {
+	if p, e, ok := envsCache.load(GlobalFlags.ConfigURL, name, vars); ok {
+		return p, e, nil
+	}
 	u, err := url.Parse(GlobalFlags.ConfigURL)
 	if err != nil {
 		return nil, nil, err
 	}
 	if u.Scheme != "file" {
-		return nil, nil, fmt.Errorf("unsupported project file driver %q", u.Scheme)
+		return nil, nil, fmt.Errorf("unsupported config file driver %q", u.Scheme)
 	}
 	path := filepath.Join(u.Host, u.Path)
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			err = fmt.Errorf("project file %q was not found: %w", path, err)
+			err = fmt.Errorf("config file %q was not found: %w", path, err)
 		}
 		return nil, nil, err
 	}
-	project, err := parseConfig(path, name, opts...)
+	project, err := parseConfig(path, name, vars)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -388,6 +378,7 @@ func EnvByName(cmd *cobra.Command, name string, opts ...LoadOption) (*Project, [
 		}
 		envs[e.Name] = append(envs[e.Name], e)
 	}
+	envsCache.store(GlobalFlags.ConfigURL, name, vars, project, envs[name])
 	switch {
 	case name == "":
 		// If no env was selected,
@@ -400,17 +391,42 @@ func EnvByName(cmd *cobra.Command, name string, opts ...LoadOption) (*Project, [
 	}
 }
 
+type (
+	envCacheK struct {
+		path, env, vars string
+	}
+	envCacheV struct {
+		p *Project
+		e []*Env
+	}
+	envCache struct {
+		sync.RWMutex
+		m map[envCacheK]envCacheV
+	}
+)
+
+var envsCache = &envCache{m: make(map[envCacheK]envCacheV)}
+
+func (c *envCache) load(path, env string, vars Vars) (*Project, []*Env, bool) {
+	c.RLock()
+	v, ok := c.m[envCacheK{path: path, env: env, vars: vars.String()}]
+	c.RUnlock()
+	return v.p, v.e, ok
+}
+
+func (c *envCache) store(path, env string, vars Vars, p *Project, e []*Env) {
+	c.Lock()
+	c.m[envCacheK{path: path, env: env, vars: vars.String()}] = envCacheV{p: p, e: e}
+	c.Unlock()
+}
+
 const (
 	blockEnv          = "env"
 	refAtlas          = "atlas"
 	defaultConfigPath = "file://atlas.hcl"
 )
 
-func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
-	loadCfg := &loadConfig{}
-	for _, f := range opts {
-		f(loadCfg)
-	}
+func parseConfig(path, env string, vars map[string]cty.Value) (*Project, error) {
 	pr, err := partialParse(path, env)
 	if err != nil {
 		return nil, err
@@ -450,7 +466,7 @@ func parseConfig(path, env string, opts ...LoadOption) (*Project, error) {
 		)...,
 	)
 	p := &Project{Lint: &Lint{}, Diff: &Diff{}, cfg: cfg}
-	if err := state.Eval(pr, p, loadCfg.inputValues); err != nil {
+	if err := state.Eval(pr, p, vars); err != nil {
 		return nil, err
 	}
 	for _, e := range p.Envs {

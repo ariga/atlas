@@ -75,6 +75,17 @@ func TestCLI_Version(t *testing.T) {
 	}
 }
 
+func TestVars_String(t *testing.T) {
+	var vs Vars
+	require.Equal(t, "[]", vs.String())
+	require.NoError(t, vs.Set("a=b"))
+	require.Equal(t, "[a:b]", vs.String())
+	require.NoError(t, vs.Set("b=c"))
+	require.Equal(t, "[a:b, b:c]", vs.String())
+	require.NoError(t, vs.Set("a=d"))
+	require.Equal(t, "[a:[b, d], b:c]", vs.String(), "multiple values of the same key: --var url=<one> --var url=<two>")
+}
+
 func runCmd(cmd *cobra.Command, args ...string) (string, error) {
 	return runCmdContext(context.Background(), cmd, args...)
 }

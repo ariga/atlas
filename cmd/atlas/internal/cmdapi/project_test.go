@@ -5,6 +5,8 @@
 package cmdapi
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"sort"
@@ -101,7 +103,9 @@ env "multi" {
 	require.NoError(t, os.Setenv("ATLAS_TOKEN", "token_atlas"))
 	t.Cleanup(func() { require.NoError(t, os.Unsetenv("ATLAS_TOKEN")) })
 	t.Run("ok", func(t *testing.T) {
-		_, envs, err := EnvByName(&cobra.Command{}, "local")
+		_, envs, err := EnvByName(&cobra.Command{}, "local", map[string]cty.Value{
+			"unused": cty.StringVal("value"),
+		})
 		require.NoError(t, err)
 		require.Len(t, envs, 1)
 		env := envs[0]
@@ -161,7 +165,7 @@ env "multi" {
 		require.EqualValues(t, []string{"local/app.hcl"}, sources)
 	})
 	t.Run("multi", func(t *testing.T) {
-		_, envs, err := EnvByName(&cobra.Command{}, "multi")
+		_, envs, err := EnvByName(&cobra.Command{}, "multi", nil)
 		require.NoError(t, err)
 		require.Len(t, envs, 1)
 		srcs, err := envs[0].Sources()
@@ -169,9 +173,9 @@ env "multi" {
 		require.EqualValues(t, []string{"./a.hcl", "./b.hcl"}, srcs)
 	})
 	t.Run("with input", func(t *testing.T) {
-		_, envs, err := EnvByName(&cobra.Command{}, "local", WithInput(map[string]cty.Value{
+		_, envs, err := EnvByName(&cobra.Command{}, "local", map[string]cty.Value{
 			"name": cty.StringVal("goodbye"),
-		}))
+		})
 		require.NoError(t, err)
 		require.Len(t, envs, 1)
 		str, ok := envs[0].Attr("str")
@@ -181,12 +185,12 @@ env "multi" {
 		require.EqualValues(t, "goodbye", val)
 	})
 	t.Run("wrong env", func(t *testing.T) {
-		_, _, err = EnvByName(&cobra.Command{}, "home")
+		_, _, err = EnvByName(&cobra.Command{}, "home", nil)
 		require.EqualError(t, err, `env "home" not defined in project file`)
 	})
 	t.Run("wrong dir", func(t *testing.T) {
 		GlobalFlags.ConfigURL = defaultConfigPath
-		_, _, err = EnvByName(&cobra.Command{}, "home")
+		_, _, err = EnvByName(&cobra.Command{}, "home", nil)
 		require.ErrorContains(t, err, `no such file or directory`)
 	})
 }
@@ -205,11 +209,64 @@ env {
 	err := os.WriteFile(path, []byte(h), 0600)
 	require.NoError(t, err)
 	GlobalFlags.ConfigURL = "file://" + path
-	_, envs, err := EnvByName(&cobra.Command{}, "local")
+	_, envs, err := EnvByName(&cobra.Command{}, "local", nil)
 	require.NoError(t, err)
 	require.Len(t, envs, 1)
 	require.Equal(t, "local", envs[0].Name)
 	require.Equal(t, "env: local", envs[0].Format.Schema.Apply)
+}
+
+func TestEnvCache(t *testing.T) {
+	h := `
+variable "cloud_url" {
+  type = string
+}
+
+atlas {
+  cloud {
+    token   = "token"
+    url     = var.cloud_url
+  }
+}
+
+data "remote_dir" "migrations" {
+  name = "migrations/v1/mysql"
+}
+
+env {
+  name = atlas.env
+  migration {
+    dir = data.remote_dir.migrations.url
+  }
+}
+`
+	path := filepath.Join(t.TempDir(), "atlas.hcl")
+	err := os.WriteFile(path, []byte(h), 0600)
+	require.NoError(t, err)
+	GlobalFlags.ConfigURL = "file://" + path
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+	}))
+	t.Cleanup(srv.Close)
+	vars := map[string]cty.Value{"cloud_url": cty.StringVal(srv.URL)}
+
+	_, envs1, err := EnvByName(&cobra.Command{}, "local", vars)
+	require.NoError(t, err)
+	require.Len(t, envs1, 1)
+	require.Equal(t, 1, calls)
+
+	_, envs2, err := EnvByName(&cobra.Command{}, "local", vars)
+	require.NoError(t, err)
+	require.Len(t, envs2, 1)
+	require.Equal(t, 1, calls)
+	require.Equal(t, envs1[0], envs2[0])
+
+	_, envs3, err := EnvByName(&cobra.Command{}, "dev", vars)
+	require.NoError(t, err)
+	require.Len(t, envs3, 1)
+	require.Equal(t, 2, calls)
+	require.NotEqual(t, envs1[0], envs3[0])
 }
 
 func TestNoEnv(t *testing.T) {
@@ -245,7 +302,7 @@ diff {
 	err := os.WriteFile(path, []byte(h), 0600)
 	require.NoError(t, err)
 	GlobalFlags.ConfigURL = "file://" + path
-	project, envs, err := EnvByName(&cobra.Command{}, "")
+	project, envs, err := EnvByName(&cobra.Command{}, "", nil)
 	require.NoError(t, err)
 	require.Len(t, envs, 0)
 	require.Equal(t, 1, project.Lint.Latest)
@@ -281,13 +338,13 @@ env "dev" {
 	err := os.WriteFile(path, []byte(h), 0600)
 	require.NoError(t, err)
 	GlobalFlags.ConfigURL = "file://" + path
-	_, envs, err := EnvByName(&cobra.Command{}, "unnamed")
+	_, envs, err := EnvByName(&cobra.Command{}, "unnamed", nil)
 	require.NoError(t, err)
 	require.Len(t, envs, 1)
 	require.Equal(t, "unnamed", envs[0].Name)
 	require.Equal(t, "b", envs[0].Format.Schema.Diff)
 	require.Equal(t, "env: unnamed", envs[0].Format.Schema.Apply)
-	_, envs, err = EnvByName(&cobra.Command{}, "dev")
+	_, envs, err = EnvByName(&cobra.Command{}, "dev", nil)
 	require.NoError(t, err)
 	require.Len(t, envs, 2)
 	for _, e := range envs {
