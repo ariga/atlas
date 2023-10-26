@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/zclconf/go-cty/cty"
+	"golang.org/x/exp/maps"
 	"golang.org/x/mod/semver"
 )
 
@@ -149,8 +151,12 @@ type Vars map[string]cty.Value
 
 // String implements pflag.Value.String.
 func (v Vars) String() string {
-	var b strings.Builder
-	for k := range v {
+	var (
+		b  strings.Builder
+		ks = maps.Keys(v)
+	)
+	sort.Strings(ks)
+	for _, k := range ks {
 		if b.Len() > 0 {
 			b.WriteString(", ")
 		}
