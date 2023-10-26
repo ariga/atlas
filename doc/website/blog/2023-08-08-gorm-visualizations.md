@@ -164,7 +164,7 @@ already have one.  Upon completion, you should see a message in your terminal th
 You are now connected to rotemtam85 on Atlas Cloud.
 ``` 
 
-Once you are logged in, you can re-run the `atlas schema inspect --env gorm --visualize` command
+Once you are logged in, you can re-run the `atlas schema inspect --env gorm --web` command
 and Atlas will prompt you to ask if you want to share the visualization in your personal workspace:
 
 ```text

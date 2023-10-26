@@ -222,6 +222,16 @@ func (d *Driver) Version() string {
 	return string(d.conn.V)
 }
 
+// FormatType converts schema type to its column form in the database.
+func (*Driver) FormatType(t schema.Type) (string, error) {
+	return FormatType(t)
+}
+
+// ParseType returns the schema.Type value represented by the given string.
+func (*Driver) ParseType(s string) (schema.Type, error) {
+	return ParseType(s)
+}
+
 func acquire(ctx context.Context, conn schema.ExecQuerier, name string, timeout time.Duration) error {
 	rows, err := conn.QueryContext(ctx, "SELECT GET_LOCK(?, ?)", name, int(timeout.Seconds()))
 	if err != nil {

@@ -26,7 +26,7 @@ parameters:
  the target database.
 * `--exclude` (optional) - filter out resources matching the given glob pattern.
 * `--format` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
-* `--visualize` (optional) - visualize the schema as an ERD on [Atlas Cloud](https://auth.atlasgo.cloud/signup). See an
+* `--web` (`-w` accepted as well) - visualize the schema as an ERD on [Atlas Cloud](https://auth.atlasgo.cloud/signup). See an
   example [here](https://gh.atlasgo.cloud/explore/40d83919).
 
 ## Examples
@@ -264,7 +264,7 @@ Atlas can generate an Entity Relationship Diagram (ERD) for the inspected schema
 generate an ERD for inspected schemas:
 
 ```shell
-atlas schema inspect -u '<url>' --visualize
+atlas schema inspect -u '<url>' -w
 ```
 
 <p style={{textAlign: "center"}}>

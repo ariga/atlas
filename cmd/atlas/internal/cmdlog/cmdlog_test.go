@@ -152,6 +152,115 @@ func TestSchemaInspect_EncodeSQL(t *testing.T) {
 	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL, `name` text NOT NULL);\n", b.String())
 }
 
+func TestSchemaInspect_Mermaid(t *testing.T) {
+	ctx := context.Background()
+	client, err := sqlclient.Open(ctx, "sqlite://ci?mode=memory&_fk=1")
+	require.NoError(t, err)
+	defer client.Close()
+	var (
+		b     bytes.Buffer
+		users = schema.NewTable("users").
+			AddColumns(
+				schema.NewIntColumn("id", "int"),
+				schema.NewStringColumn("name", "text"),
+			)
+		tmpl = template.Must(template.New("format").Funcs(cmdlog.InspectTemplateFuncs).Parse(`{{ mermaid . }}`))
+	)
+	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{
+		Client: client,
+		Realm:  schema.NewRealm(schema.New("main").AddTables(users)),
+	}))
+	require.Equal(t, `erDiagram
+    users {
+      int id
+      text name
+    }
+`, b.String())
+
+	b.Reset()
+	users.SetPrimaryKey(
+		schema.NewPrimaryKey(users.Columns[0]),
+	)
+	posts := schema.NewTable("posts").
+		AddColumns(
+			schema.NewIntColumn("id", "int"),
+			schema.NewStringColumn("text", "text"),
+		)
+	posts.SetPrimaryKey(
+		schema.NewPrimaryKey(posts.Columns...),
+	)
+	posts.AddForeignKeys(
+		schema.NewForeignKey("owner_id").
+			AddColumns(posts.Columns[0]).
+			SetRefTable(users).
+			AddRefColumns(users.Columns[0]),
+	)
+
+	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{
+		Client: client,
+		Realm:  schema.NewRealm(schema.New("main").AddTables(users, posts)),
+	}))
+	require.Equal(t, `erDiagram
+    users {
+      int id PK
+      text name
+    }
+    posts {
+      int id PK,FK
+      text text PK
+    }
+    posts }o--o| users : owner_id
+`, b.String())
+
+	b.Reset()
+	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{
+		Client: client,
+		Realm: schema.NewRealm(
+			schema.New("main").AddTables(users),
+			schema.New("temp").AddTables(posts),
+		),
+	}))
+	require.Equal(t, `erDiagram
+    main_users["main.users"] {
+      int id PK
+      text name
+    }
+    temp_posts["temp.posts"] {
+      int id PK,FK
+      text text PK
+    }
+    temp_posts }o--o| main_users : owner_id
+`, b.String())
+
+	b.Reset()
+	users.
+		AddColumns(
+			schema.NewIntColumn("best_friend_id", "int"),
+		).
+		AddIndexes(
+			schema.NewUniqueIndex("best_friend_id").
+				AddColumns(users.Columns[2]),
+		).
+		AddForeignKeys(
+			schema.NewForeignKey("best_friend_id").
+				AddColumns(users.Columns[2]).
+				SetRefTable(users).
+				AddRefColumns(users.Columns[0]),
+		)
+	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{
+		Client: client,
+		Realm:  schema.NewRealm(schema.New("main").AddTables(users)),
+	}))
+	require.Equal(t, `erDiagram
+    users {
+      int id PK
+      text name
+      int best_friend_id FK
+    }
+    users |o--o| users : best_friend_id
+`, b.String())
+}
+
 func TestSchemaDiff_MarshalSQL(t *testing.T) {
 	client, err := sqlclient.Open(context.Background(), "sqlite://ci?mode=memory&_fk=1")
 	require.NoError(t, err)

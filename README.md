@@ -62,7 +62,7 @@ This tutorial teaches you how to inspect a database, generate a migration plan a
   providers such as AWS Secrets Manager and GCP Secret Manager.
 
 ## `schema inspect`
-_**Easily inspect your database schema by providing a database URL and convert it to HCL, JSON or SQL.**_
+_**Easily inspect your database schema by providing a database URL and convert it to HCL, JSON, SQL, ERD, or other formats.**_
 
 Inspect a specific MySQL schema and get its representation in Atlas DDL syntax:
 ```shell
@@ -125,6 +125,44 @@ atlas schema inspect \
 CREATE TABLE "users" ("id" integer NULL, ...);
 -- create "posts" table
 CREATE TABLE "posts" ("id" integer NULL, ...);
+```
+</details>
+
+Inspect a specific PostgreSQL schema and get its ERD representation in the browser:
+```shell
+atlas schema inspect \
+  --url "postgres://root:pass@:5432/test?search_path=public&sslmode=disable" \
+  -w
+```
+
+<details><summary>Result</summary>
+
+[![ERD](https://atlasgo.io/uploads/erd-example.png)](https://gh.atlasgo.cloud/explore/40d83919)
+
+</details>
+
+Inspect a specific PostgreSQL schema and get its ERD representation Mermaid syntax:
+```shell
+atlas schema inspect \
+  --url "postgres://root:pass@:5432/test?search_path=public&sslmode=disable" \
+  --format '{{ mermaid . }}'
+```
+
+<details><summary>Result</summary>
+
+```mermaid
+erDiagram
+    users {
+      int id PK
+      varchar name 
+    }
+    blog_posts {
+      int id PK
+      varchar title 
+      text body 
+      int author_id FK
+    }
+    blog_posts }o--o| users : author_fk
 ```
 </details>
 
