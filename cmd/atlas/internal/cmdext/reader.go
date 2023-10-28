@@ -67,7 +67,24 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 		if err != nil {
 			return nil, err
 		}
-		if dir, err = fileAsDir(fi.Name(), b); err != nil {
+		if dir, err = filesAsDir(migrate.NewLocalFile(fi.Name(), b)); err != nil {
+			return nil, err
+		}
+	// The sum file is optional when reading the directory state.
+	case isSchemaDir(config.URLs[0], path):
+		dirs, err := os.ReadDir(path)
+		if err != nil {
+			return nil, err
+		}
+		files := make([]migrate.File, 0, len(dirs))
+		for _, d := range dirs {
+			b, err := os.ReadFile(filepath.Join(path, d.Name()))
+			if err != nil {
+				return nil, err
+			}
+			files = append(files, migrate.NewLocalFile(d.Name(), b))
+		}
+		if dir, err = filesAsDir(files...); err != nil {
 			return nil, err
 		}
 	// A migration directory.
@@ -80,6 +97,15 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 		}
 	}
 	return stateReaderSQL(ctx, config, dir, opts...)
+}
+
+// isSchemaDir returns true if the given path is a schema directory (not a migration directory).
+func isSchemaDir(u *url.URL, path string) bool {
+	if q := u.Query(); q.Has("version") || q.Has("format") || filepath.Base(path) == cmdmigrate.DefaultDirName {
+		return false
+	}
+	_, err := os.Stat(filepath.Join(path, migrate.HashFileName))
+	return errors.Is(err, os.ErrNotExist)
 }
 
 // stateReaderSQL returns a migrate.StateReader from an SQL file or a directory of migrations.
@@ -250,11 +276,12 @@ func isProjectFile(f *hcl.File) bool {
 	}
 	return false
 }
-
-func fileAsDir(name string, b []byte) (migrate.Dir, error) {
+func filesAsDir(files ...migrate.File) (migrate.Dir, error) {
 	dir := &migrate.MemDir{}
-	if err := dir.WriteFile(name, b); err != nil {
-		return nil, err
+	for _, f := range files {
+		if err := dir.WriteFile(f.Name(), f.Bytes()); err != nil {
+			return nil, err
+		}
 	}
 	// Create a checksum file to bypass the checksum check.
 	sum, err := dir.Checksum()

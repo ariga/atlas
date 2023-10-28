@@ -322,11 +322,15 @@ func Dir(ctx context.Context, u string, create bool) (migrate.Dir, error) {
 	return DirURL(ctx, parsed, create)
 }
 
+// Directory types (URL schemes).
 const (
 	DirTypeMem   = "mem"
 	DirTypeFile  = "file"
 	DirTypeAtlas = "atlas"
 )
+
+// DefaultDirName is the default directory name.
+const DefaultDirName = "migrations"
 
 // DirURL returns a migrate.Dir to use as migration directory. For now only local directories are supported.
 func DirURL(ctx context.Context, u *url.URL, create bool) (migrate.Dir, error) {
@@ -336,7 +340,7 @@ func DirURL(ctx context.Context, u *url.URL, create bool) (migrate.Dir, error) {
 		return migrate.OpenMemDir(path.Join(u.Host, u.Path)), nil
 	case DirTypeFile:
 		if p == "" {
-			p = "migrations"
+			p = DefaultDirName
 		}
 	case DirTypeAtlas:
 		return openAtlasDir(ctx, u)
