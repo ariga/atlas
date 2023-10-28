@@ -639,7 +639,7 @@ func SchemaExternal(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, er
 		}
 		return cty.NilVal, errorf("running program %v: %v", cmd.Path, msg)
 	}
-	dir, err := fileAsDir("schema.sql", out)
+	dir, err := filesAsDir(migrate.NewLocalFile("schema.sql", out))
 	if err != nil {
 		return cty.NilVal, errorf("converting output to migration: %v", err)
 	}
