@@ -29,10 +29,11 @@ import (
 type (
 	// Project represents an atlas.hcl project config file.
 	Project struct {
-		Envs []*Env `spec:"env"`  // List of environments
-		Lint *Lint  `spec:"lint"` // Optional global lint policy
-		Diff *Diff  `spec:"diff"` // Optional global diff policy
-		cfg  *cmdext.AtlasConfig
+		Envs  []*Env `spec:"env"`   // List of environments
+		Lint  *Lint  `spec:"lint"`  // Optional global lint policy
+		Diff  *Diff  `spec:"diff"`  // Optional global diff policy
+		Apply *Apply `spec:"apply"` // Optional global apply policy
+		cfg   *cmdext.AtlasConfig
 	}
 
 	// Env represents an Atlas environment.
@@ -65,6 +66,9 @@ type (
 
 		// Format of the environment.
 		Format Format `spec:"format"`
+
+		// Apply configuration.
+		Apply *Apply `spec:"apply"`
 
 		schemahcl.DefaultExtension
 		cfg *cmdext.AtlasConfig
@@ -118,6 +122,12 @@ type (
 		AddForeignKey    bool `spec:"add_foreign_key"`
 		DropForeignKey   bool `spec:"drop_foreign_key"`
 		ModifyForeignKey bool `spec:"modify_foreign_key"`
+	}
+
+	// Apply represents configuration for 'schema apply'.
+	Apply struct {
+		// Review defines when Atlas will ask the user to review and approve the changes.
+		Review string `spec:"review"`
 	}
 
 	// Format represents the output formatting configuration of an environment.
@@ -373,6 +383,7 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 		}
 		e.Diff = e.Diff.Extend(project.Diff)
 		e.Lint = e.Lint.Extend(project.Lint)
+		e.Apply = e.Apply.Extend(project.Apply)
 		if err := e.Lint.remainedLog(); err != nil {
 			return nil, nil, err
 		}
@@ -443,6 +454,8 @@ func parseConfig(path, env string, vars map[string]cty.Value) (*Project, error) 
 			cmdext.DataSources,
 			cfg.InitBlock(),
 			schemahcl.WithScopedEnums("env.migration.format", cmdmigrate.Formats...),
+			schemahcl.WithScopedEnums("env.apply.review", ReviewModes...),
+			schemahcl.WithScopedEnums("apply.review", ReviewModes...),
 			schemahcl.WithVariables(map[string]cty.Value{
 				refAtlas: cty.ObjectVal(map[string]cty.Value{
 					blockEnv: cty.StringVal(env),
@@ -465,7 +478,7 @@ func parseConfig(path, env string, vars map[string]cty.Value) (*Project, error) 
 			}),
 		)...,
 	)
-	p := &Project{Lint: &Lint{}, Diff: &Diff{}, cfg: cfg}
+	p := &Project{Lint: &Lint{}, Diff: &Diff{}, Apply: &Apply{}, cfg: cfg}
 	if err := state.Eval(pr, p, vars); err != nil {
 		return nil, err
 	}
@@ -512,4 +525,40 @@ func partialParse(path, env string) (*hclparse.Parser, error) {
 		Attributes: fi.Body.(*hclsyntax.Body).Attributes,
 	}
 	return parser, nil
+}
+
+// Review modes for 'schema apply'.
+const (
+	ReviewAlways  = "ALWAYS"  // Always review changes. The default mode.
+	ReviewWarning = "WARNING" // Review changes only if there are any diagnostics (including warnings).
+	ReviewError   = "ERROR"   // Review changes only if there are severe diagnostics (error level).
+)
+
+var ReviewModes = []string{ReviewAlways, ReviewWarning, ReviewError}
+
+// Extend allows extending environment blocks with
+// a global one. For example:
+//
+//	apply {
+//	  review = WARNING
+//	}
+//
+//	env "local" {
+//	  ...
+//	  apply {
+//	    review = ERROR
+//	  }
+//	}
+//
+//	env "ci" {
+//	  ... // Inherits global apply.review
+//	}
+func (a *Apply) Extend(global *Apply) *Apply {
+	if a == nil {
+		return global
+	}
+	if a.Review == "" {
+		a.Review = global.Review
+	}
+	return a
 }
