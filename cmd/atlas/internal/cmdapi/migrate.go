@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -59,6 +60,7 @@ type migrateApplyFlags struct {
 	allowDirty      bool   // allow working on a database that already has resources
 	baselineVersion string // apply with this version as baseline
 	txMode          string // (none, file, all)
+	context         string // Run context. See cloudapi.DeployContextInput.
 }
 
 func (f *migrateApplyFlags) migrateOptions() (opts []migrate.ExecutorOption) {
@@ -111,6 +113,11 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 							set.Flush(cmd, cmdErr)
 						}
 					}()
+					if flags.context != "" {
+						if err := json.Unmarshal([]byte(flags.context), &set.Context); err != nil {
+							return fmt.Errorf("invalid --context: %w", err)
+						}
+					}
 					return cmdEnvsRun(envs, setMigrateEnvFlags, cmd, func(env *Env) error {
 						// Report deployments only if one of the migration directories is a cloud directory.
 						if u, err := url.Parse(flags.dirURL); err == nil && u.Scheme != cmdmigrate.DirTypeFile {
@@ -134,6 +141,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file, all]")
 	cmd.Flags().BoolVarP(&flags.allowDirty, flagAllowDirty, "", false, "allow start working on a non-clean database")
 	cmd.MarkFlagsMutuallyExclusive(flagLog, flagFormat)
+	migrateApplySetFlags(cmd, &flags)
 	return cmd
 }
 
@@ -273,6 +281,7 @@ type (
 		log    *cmdlog.MigrateApply
 		rrw    cmdmigrate.RevisionReadWriter
 		done   func(*cloudapi.ReportMigrationInput)
+		set    *MigrateReportSet
 	}
 	// MigrateReportSet is a set of reports.
 	MigrateReportSet struct {
@@ -350,6 +359,7 @@ func (s *MigrateReportSet) ReportFor(flags migrateApplyFlags, e *Env) *MigrateRe
 	s.StepLog("Migration directory: %s", s.RedactedURL(flags.dirURL))
 	return &MigrateReport{
 		env: e,
+		set: s,
 		done: func(r *cloudapi.ReportMigrationInput) {
 			s.done++
 			s.Log[len(s.Log)-1].EndTime = time.Now()
@@ -435,10 +445,14 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 		return logApply(cmd, cmd.OutOrStdout(), flags, r.log)
 	}
 	var (
-		ver  string
-		clog bytes.Buffer
-		err  = logApply(cmd, io.MultiWriter(cmd.OutOrStdout(), &clog), flags, r.log)
+		ver        string
+		clog       bytes.Buffer
+		err        = logApply(cmd, io.MultiWriter(cmd.OutOrStdout(), &clog), flags, r.log)
+		setContext *cloudapi.DeployContextInput
 	)
+	if r.set != nil {
+		setContext = r.set.Context
+	}
 	switch rev, err1 := r.rrw.CurrentRevision(cmd.Context()); {
 	case errors.Is(err1, migrate.ErrRevisionNotExist):
 	case err1 != nil:
@@ -493,7 +507,8 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 			}
 			return files
 		}(),
-		Log: clog.String(),
+		Log:     clog.String(),
+		Context: setContext,
 	})
 	return err
 }
