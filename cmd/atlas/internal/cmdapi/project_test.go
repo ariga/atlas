@@ -42,6 +42,7 @@ locals {
 }
 
 lint {
+  review = ERROR
   destructive {
     error = true
   }
@@ -59,10 +60,6 @@ diff {
   }
 }
 
-apply {
-  review = ERROR
-}
-
 env "local" {
   url = "mysql://root:pass@localhost:3306/"
   dev = "docker://mysql/8"
@@ -76,14 +73,12 @@ env "local" {
   }
   lint {
     latest = 1
+    review = WARNING
   }
   diff {
     skip {
       drop_column = true
     }
-  }
-  apply {
-    review = WARNING
   }
   bool = true
   integer = 42
@@ -127,9 +122,6 @@ env "multi" {
 			URL:     "mysql://root:pass@localhost:3306/",
 			DevURL:  "docker://mysql/8",
 			Schemas: []string{"hello", "world"},
-			Apply: &Apply{
-				Review: ReviewWarning,
-			},
 			Migration: &Migration{
 				Dir:             "file://migrations",
 				Format:          cmdmigrate.FormatAtlas,
@@ -143,6 +135,7 @@ env "multi" {
 			},
 			Lint: &Lint{
 				Latest: 1,
+				Review: ReviewWarning,
 				Format: "{{- range $f := .Files }}\n\t{{- $f.Name }}\n{{- end }}\n",
 				DefaultExtension: schemahcl.DefaultExtension{
 					Extra: schemahcl.Resource{
@@ -184,7 +177,7 @@ env "multi" {
 		srcs, err := envs[0].Sources()
 		require.NoError(t, err)
 		require.EqualValues(t, []string{"./a.hcl", "./b.hcl"}, srcs)
-		require.EqualValues(t, ReviewError, envs[0].Apply.Review)
+		require.EqualValues(t, ReviewError, envs[0].Lint.Review)
 	})
 	t.Run("with input", func(t *testing.T) {
 		_, envs, err := EnvByName(&cobra.Command{}, "local", map[string]cty.Value{
@@ -314,16 +307,13 @@ env {
 
 lint {
   latest = 1
+  review = WARNING
 }
 
 diff {
   skip {
     drop_column = true
   }
-}
-
-apply {
-  review = WARNING
 }
 `
 	path := filepath.Join(t.TempDir(), "atlas.hcl")
@@ -336,7 +326,7 @@ apply {
 	require.Equal(t, 1, project.Lint.Latest)
 	require.NotNil(t, project.Diff.SkipChanges)
 	require.True(t, project.Diff.SkipChanges.DropColumn)
-	require.Equal(t, ReviewWarning, project.Apply.Review)
+	require.Equal(t, ReviewWarning, project.Lint.Review)
 }
 
 func TestPartialParse(t *testing.T) {
