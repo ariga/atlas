@@ -640,6 +640,11 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	if err != nil {
 		return err
 	}
+	for i, s := range srcs {
+		if !isURL(s) {
+			srcs[i] = "file://" + s
+		}
+	}
 	if err := maySetFlag(cmd, flagFile, strings.Join(srcs, ",")); err != nil {
 		return err
 	}
@@ -656,6 +661,10 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 		}
 	case "diff":
 		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Diff); err != nil {
+			return err
+		}
+	case "push":
+		if err := maySetFlag(cmd, flagTo, strings.Join(srcs, ",")); err != nil {
 			return err
 		}
 	}
