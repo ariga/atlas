@@ -833,7 +833,6 @@ schema "test" {
 					schema.NewIndex("idx2").
 						AddColumns(c).
 						AddAttrs(&IndexType{T: IndexTypeFullText}, &IndexParser{P: "custom"}),
-
 				),
 		)
 	c.Indexes = nil
