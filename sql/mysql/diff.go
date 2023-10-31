@@ -139,6 +139,12 @@ func (d *diff) ColumnChange(fromT *schema.Table, from, to *schema.Column) (schem
 	if changed {
 		change |= schema.ChangeCollate
 	}
+	if changed, err = d.autoIncColumnChange(from, to); err != nil {
+		return schema.NoChange, err
+	}
+	if changed {
+		change |= schema.ChangeColumn
+	}
 	return change, nil
 }
 
@@ -409,6 +415,13 @@ func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 		}
 	}
 	return noChange
+}
+
+// autoIncColumnChange returns the column change for changing the AUTO_INCREMENT
+func (*diff) autoIncColumnChange(from, to *schema.Column) (bool, error) {
+	var fromA, toA AutoIncrement
+	fromHas, toHas := sqlx.Has(from.Attrs, &fromA), sqlx.Has(to.Attrs, &toA)
+	return fromHas != toHas, nil
 }
 
 // indexType returns the index type from its attribute.
