@@ -91,6 +91,8 @@ type (
 			// Base configures the --git-base option.
 			Base string `spec:"base"`
 		} `spec:"git"`
+		// Review defines when Atlas will ask the user to review and approve the changes.
+		Review string `spec:"review"`
 		schemahcl.DefaultExtension
 	}
 
@@ -179,6 +181,9 @@ func (e *Env) remainedLog() error {
 func (l *Lint) Extend(global *Lint) *Lint {
 	if l == nil {
 		return global
+	}
+	if l.Review == "" {
+		l.Review = global.Review
 	}
 	if l.Format == "" {
 		l.Format = global.Format
@@ -443,6 +448,8 @@ func parseConfig(path, env string, vars map[string]cty.Value) (*Project, error) 
 			cmdext.DataSources,
 			cfg.InitBlock(),
 			schemahcl.WithScopedEnums("env.migration.format", cmdmigrate.Formats...),
+			schemahcl.WithScopedEnums("env.lint.review", ReviewModes...),
+			schemahcl.WithScopedEnums("lint.review", ReviewModes...),
 			schemahcl.WithVariables(map[string]cty.Value{
 				refAtlas: cty.ObjectVal(map[string]cty.Value{
 					blockEnv: cty.StringVal(env),
@@ -513,3 +520,12 @@ func partialParse(path, env string) (*hclparse.Parser, error) {
 	}
 	return parser, nil
 }
+
+// Review modes for 'schema apply'.
+const (
+	ReviewAlways  = "ALWAYS"  // Always review changes. The default mode.
+	ReviewWarning = "WARNING" // Review changes only if there are any diagnostics (including warnings).
+	ReviewError   = "ERROR"   // Review changes only if there are severe diagnostics (error level).
+)
+
+var ReviewModes = []string{ReviewAlways, ReviewWarning, ReviewError}
