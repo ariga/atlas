@@ -233,6 +233,7 @@ const (
 	flagAutoApprove    = "auto-approve"
 	flagBaseline       = "baseline"
 	flagConfig         = "config"
+	flagContext        = "context"
 	flagDevURL         = "dev-url"
 	flagDirURL         = "dir"
 	flagDirFormat      = "dir-format"

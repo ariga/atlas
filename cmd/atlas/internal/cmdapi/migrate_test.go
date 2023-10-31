@@ -883,6 +883,7 @@ env {
 		require.NoError(t, err, "target id is not a valid uuid")
 		require.False(t, report.StartTime.IsZero())
 		require.False(t, report.EndTime.IsZero())
+		require.Nil(t, report.Context)
 		require.Equal(t, cloudapi.ReportMigrationInput{
 			ProjectName:  "example",
 			DirName:      "migrations/v1/mysql",
@@ -898,6 +899,24 @@ env {
 			},
 			Log: "No migration files to execute\n",
 		}, report)
+	})
+
+	t.Run("WithContext", func(t *testing.T) {
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--url", u,
+			"--var", "cloud_url="+srv.URL,
+			"--context", `{ "triggerType": "KUBERNETES", "triggerVersion": "v1.2.3" }`,
+		)
+		require.NoError(t, err)
+		require.Equal(t, "No migration files to execute\nhttps://gh.atlasgo.cloud/deployments/51539607559\n", s)
+		require.NotNil(t, report.Context)
+		require.Equal(t, report.Context.TriggerType, "KUBERNETES")
+		require.Equal(t, report.Context.TriggerVersion, "v1.2.3")
 	})
 
 	t.Run("WithFiles", func(t *testing.T) {
@@ -976,9 +995,13 @@ env {
 			"--env", "local",
 			"--url", "openerror://db",
 			"--var", "cloud_url="+srv.URL,
+			"--context", `{ "triggerType": "KUBERNETES", "triggerVersion": "v1.2.3" }`,
 		)
 		require.EqualError(t, err, "openerror")
 		require.Equal(t, "Error: openerror", *reports.Error)
+		require.NotNil(t, reports.Context)
+		require.Equal(t, reports.Context.TriggerType, "KUBERNETES")
+		require.Equal(t, reports.Context.TriggerVersion, "v1.2.3")
 	})
 
 	t.Run("RedactedURL", func(t *testing.T) {
@@ -1122,6 +1145,25 @@ env {
 		require.Equal(t, report.Log[2].Text, "Run migration: 2")
 		require.Contains(t, report.Log[2].Log[0].Text, "Target URL: sqlite://file")
 		require.Contains(t, report.Log[2].Log[1].Text, "Migration directory: mem://migration_set")
+	})
+
+	t.Run("WithContext", func(t *testing.T) {
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--context", `{ "triggerType": "KUBERNETES", "triggerVersion": "v1.2.3" }`,
+			"--var", fmt.Sprintf("urls=%s", openSQLite(t, "")),
+			"--var", fmt.Sprintf("urls=%s", openSQLite(t, "")),
+			"--var", "cloud_url="+srv.URL,
+		)
+		require.NoError(t, err)
+		require.Equal(t, "No migration files to execute\nNo migration files to execute\nhttps://gh.atlasgo.cloud/deployments/sets/94489280524\n", s)
+		require.NotNil(t, report.Context)
+		require.Equal(t, report.Context.TriggerType, "KUBERNETES")
+		require.Equal(t, report.Context.TriggerVersion, "v1.2.3")
 	})
 
 	t.Run("Error", func(t *testing.T) {

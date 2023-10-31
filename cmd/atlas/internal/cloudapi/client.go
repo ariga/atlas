@@ -101,6 +101,13 @@ func (c *Client) Dir(ctx context.Context, input DirInput) (migrate.Dir, error) {
 }
 
 type (
+	// DeployContextInput is an input type for describing the context in which
+	// `migrate-apply` was used. For example, a GitHub Action with version v1.2.3
+	DeployContextInput struct {
+		TriggerType    string `json:"triggerType,omitempty"`
+		TriggerVersion string `json:"triggerVersion,omitempty"`
+	}
+
 	// ReportMigrationSetInput represents the input type for reporting a set of migration deployments.
 	ReportMigrationSetInput struct {
 		ID        string                 `json:"id"`
@@ -110,6 +117,7 @@ type (
 		Error     *string                `json:"error,omitempty"`
 		Log       []ReportStep           `json:"log,omitempty"`
 		Completed []ReportMigrationInput `json:"completed,omitempty"`
+		Context   *DeployContextInput    `json:"context,omitempty"`
 	}
 
 	// ReportMigrationInput represents an input type for reporting a migration deployments.
@@ -127,6 +135,7 @@ type (
 		Error          *string             `json:"error,omitempty"`
 		Files          []DeployedFileInput `json:"files"`
 		Log            string              `json:"log"`
+		Context        *DeployContextInput `json:"context,omitempty"`
 	}
 
 	// DeployedTargetInput represents the input type for a deployed target.
