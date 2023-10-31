@@ -447,10 +447,9 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 		return logApply(cmd, cmd.OutOrStdout(), flags, r.log)
 	}
 	var (
-		ver        string
-		clog       bytes.Buffer
-		err        = logApply(cmd, io.MultiWriter(cmd.OutOrStdout(), &clog), flags, r.log)
-		setContext *cloudapi.DeployContextInput
+		ver  string
+		clog bytes.Buffer
+		err  = logApply(cmd, io.MultiWriter(cmd.OutOrStdout(), &clog), flags, r.log)
 	)
 	switch rev, err1 := r.rrw.CurrentRevision(cmd.Context()); {
 	case errors.Is(err1, migrate.ErrRevisionNotExist):
@@ -506,8 +505,7 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 			}
 			return files
 		}(),
-		Log:     clog.String(),
-		Context: setContext,
+		Log: clog.String(),
 	})
 	return err
 }

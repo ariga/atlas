@@ -879,9 +879,10 @@ env {
 		)
 		require.NoError(t, err)
 		assert.Equal(t, "No migration files to execute\nhttps://gh.atlasgo.cloud/deployments/51539607559\n", s)
-		assert.NotEmpty(t, report.Target.ID)
-		_, err = uuid.Parse(report.Target.ID)
-		assert.NoError(t, err, "target id is not a valid uuid")
+		if assert.NotEmpty(t, report.Target.ID) {
+			_, err = uuid.Parse(report.Target.ID)
+			assert.NoError(t, err, "target id is not a valid uuid")
+		}
 		assert.False(t, report.StartTime.IsZero())
 		assert.False(t, report.EndTime.IsZero())
 		assert.Nil(t, report.Context)
