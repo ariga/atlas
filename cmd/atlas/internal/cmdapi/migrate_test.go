@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -878,15 +877,14 @@ env {
 			"--var", "cloud_url="+srv.URL,
 		)
 		require.NoError(t, err)
-		assert.Equal(t, "No migration files to execute\nhttps://gh.atlasgo.cloud/deployments/51539607559\n", s)
-		if assert.NotEmpty(t, report.Target.ID) {
-			_, err = uuid.Parse(report.Target.ID)
-			assert.NoError(t, err, "target id is not a valid uuid")
-		}
-		assert.False(t, report.StartTime.IsZero())
-		assert.False(t, report.EndTime.IsZero())
-		assert.Nil(t, report.Context)
-		assert.Equal(t, cloudapi.ReportMigrationInput{
+		require.Equal(t, "No migration files to execute\nhttps://gh.atlasgo.cloud/deployments/51539607559\n", s)
+		require.NotEmpty(t, report.Target.ID)
+		_, err = uuid.Parse(report.Target.ID)
+		require.NoError(t, err, "target id is not a valid uuid")
+		require.False(t, report.StartTime.IsZero())
+		require.False(t, report.EndTime.IsZero())
+		require.Nil(t, report.Context)
+		require.Equal(t, cloudapi.ReportMigrationInput{
 			ProjectName:  "example",
 			DirName:      "migrations/v1/mysql",
 			EnvName:      "local",
@@ -915,11 +913,10 @@ env {
 			"--context", `{ "triggerType": "KUBERNETES", "triggerVersion": "v1.2.3" }`,
 		)
 		require.NoError(t, err)
-		assert.Equal(t, "No migration files to execute\nhttps://gh.atlasgo.cloud/deployments/51539607559\n", s)
-		if assert.NotNil(t, report.Context) {
-			assert.Equal(t, report.Context.TriggerType, "KUBERNETES")
-			assert.Equal(t, report.Context.TriggerVersion, "v1.2.3")
-		}
+		require.Equal(t, "No migration files to execute\nhttps://gh.atlasgo.cloud/deployments/51539607559\n", s)
+		require.NotNil(t, report.Context)
+		require.Equal(t, report.Context.TriggerType, "KUBERNETES")
+		require.Equal(t, report.Context.TriggerVersion, "v1.2.3")
 	})
 
 	t.Run("WithFiles", func(t *testing.T) {
@@ -939,17 +936,17 @@ env {
 		)
 		require.NoError(t, err)
 		// Reporting does not affect the output.
-		assert.Regexp(t, `(?m)^Migrating to version 2 \(2 migrations in total\):`, s)
-		assert.Regexp(t, `(?m)  -- 2 migrations \n  -- 2 sql statements\nhttps:\/\/gh.atlasgo.cloud\/deployments\/51539607559$`, s)
-		assert.Equal(t, "", report.FromVersion, "from empty database")
-		assert.Equal(t, "2", report.ToVersion)
-		assert.Equal(t, "2", report.CurrentVersion)
+		require.True(t, strings.HasPrefix(s, "Migrating to version 2 (2 migrations in total):"))
+		require.True(t, strings.HasSuffix(s, "  -- 2 migrations \n  -- 2 sql statements\nhttps://gh.atlasgo.cloud/deployments/51539607559\n"))
+		require.Equal(t, "", report.FromVersion, "from empty database")
+		require.Equal(t, "2", report.ToVersion)
+		require.Equal(t, "2", report.CurrentVersion)
 		require.Len(t, report.Files, 2)
 		for i, n := range []string{"1.sql", "2.sql"} {
-			assert.Equal(t, n, report.Files[i].Name)
-			assert.Equal(t, 1, report.Files[i].Applied)
-			assert.Zero(t, report.Files[i].Skipped)
-			assert.Nil(t, report.Files[i].Error)
+			require.Equal(t, n, report.Files[i].Name)
+			require.Equal(t, 1, report.Files[i].Applied)
+			require.Zero(t, report.Files[i].Skipped)
+			require.Nil(t, report.Files[i].Error)
 		}
 	})
 
@@ -1002,10 +999,9 @@ env {
 		)
 		require.EqualError(t, err, "openerror")
 		require.Equal(t, "Error: openerror", *reports.Error)
-		if assert.NotNil(t, reports.Context) {
-			assert.Equal(t, reports.Context.TriggerType, "KUBERNETES")
-			assert.Equal(t, reports.Context.TriggerVersion, "v1.2.3")
-		}
+		require.NotNil(t, reports.Context)
+		require.Equal(t, reports.Context.TriggerType, "KUBERNETES")
+		require.Equal(t, reports.Context.TriggerVersion, "v1.2.3")
 	})
 
 	t.Run("RedactedURL", func(t *testing.T) {
@@ -1165,10 +1161,9 @@ env {
 		)
 		require.NoError(t, err)
 		require.Equal(t, "No migration files to execute\nNo migration files to execute\nhttps://gh.atlasgo.cloud/deployments/sets/94489280524\n", s)
-		if assert.NotNil(t, report.Context) {
-			assert.Equal(t, report.Context.TriggerType, "KUBERNETES")
-			assert.Equal(t, report.Context.TriggerVersion, "v1.2.3")
-		}
+		require.NotNil(t, report.Context)
+		require.Equal(t, report.Context.TriggerType, "KUBERNETES")
+		require.Equal(t, report.Context.TriggerVersion, "v1.2.3")
 	})
 
 	t.Run("Error", func(t *testing.T) {
