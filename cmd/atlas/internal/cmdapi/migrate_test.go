@@ -913,8 +913,6 @@ env {
 			"--url", u,
 			"--var", "cloud_url="+srv.URL,
 			"--context", `{ "triggerType": "KUBERNETES", "triggerVersion": "v1.2.3" }`,
-			// Inject fake variable to enforce re-evaluation of the data source (skip cache).
-			"--var", fmt.Sprintf("cache=%s", uuid.NewString()),
 		)
 		require.NoError(t, err)
 		assert.Equal(t, "No migration files to execute\nhttps://gh.atlasgo.cloud/deployments/51539607559\n", s)
