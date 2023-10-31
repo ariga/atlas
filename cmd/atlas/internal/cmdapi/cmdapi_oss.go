@@ -111,9 +111,6 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 	return err
 }
 
-// migrateApplySetFlags allows setting extra flags for the 'migrate apply' command.
-func migrateApplySetFlags(*cobra.Command, *migrateApplyFlags) {}
-
 func promptApply(cmd *cobra.Command, flags schemaApplyFlags, diff *diff, client, _ *sqlclient.Client) error {
 	if !flags.dryRun && (flags.autoApprove || promptUser(cmd)) {
 		return applyChanges(cmd.Context(), client, diff.changes, flags.txMode)

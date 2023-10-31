@@ -104,20 +104,16 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 					if err != nil {
 						return err
 					}
-					var (
-						hasRemote bool
-						set       = NewReportProvider(cmd.Context(), project, envs)
-					)
+					set, err := NewReportProvider(cmd.Context(), project, envs, &flags)
+					if err != nil {
+						return err
+					}
+					var hasRemote bool
 					defer func() {
 						if hasRemote {
 							set.Flush(cmd, cmdErr)
 						}
 					}()
-					if flags.context != "" {
-						if err := json.Unmarshal([]byte(flags.context), &set.Context); err != nil {
-							return fmt.Errorf("invalid --context: %w", err)
-						}
-					}
 					return cmdEnvsRun(envs, setMigrateEnvFlags, cmd, func(env *Env) error {
 						// Report deployments only if one of the migration directories is a cloud directory.
 						if u, err := url.Parse(flags.dirURL); err == nil && u.Scheme != cmdmigrate.DirTypeFile {
@@ -139,9 +135,11 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
 	cmd.Flags().StringVarP(&flags.baselineVersion, flagBaseline, "", "", "start the first migration after the given baseline version")
 	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file, all]")
+	// The following flag is hidden as it is used only by our CI programs.
+	cmd.Flags().StringVar(&flags.context, flagContext, "", "describes what triggered this command (e.g., GitHub Action)")
+	cobra.CheckErr(cmd.Flags().MarkHidden(flagContext))
 	cmd.Flags().BoolVarP(&flags.allowDirty, flagAllowDirty, "", false, "allow start working on a non-clean database")
 	cmd.MarkFlagsMutuallyExclusive(flagLog, flagFormat)
-	migrateApplySetFlags(cmd, &flags)
 	return cmd
 }
 
@@ -281,7 +279,6 @@ type (
 		log    *cmdlog.MigrateApply
 		rrw    cmdmigrate.RevisionReadWriter
 		done   func(*cloudapi.ReportMigrationInput)
-		set    *MigrateReportSet
 	}
 	// MigrateReportSet is a set of reports.
 	MigrateReportSet struct {
@@ -292,7 +289,7 @@ type (
 )
 
 // NewReportProvider returns a new ReporterProvider.
-func NewReportProvider(ctx context.Context, p *Project, envs []*Env) *MigrateReportSet {
+func NewReportProvider(ctx context.Context, p *Project, envs []*Env, flags *migrateApplyFlags) (*MigrateReportSet, error) {
 	c := cloudapi.FromContext(ctx)
 	if p.cfg.Client != nil {
 		c = p.cfg.Client
@@ -305,11 +302,16 @@ func NewReportProvider(ctx context.Context, p *Project, envs []*Env) *MigrateRep
 			Planned:   len(envs),
 		},
 	}
+	if flags.context != "" {
+		if err := json.Unmarshal([]byte(flags.context), &s.Context); err != nil {
+			return nil, fmt.Errorf("invalid --context: %w", err)
+		}
+	}
 	s.Step("Start migration for %d targets", len(envs))
 	for _, e := range envs {
 		s.StepLog(s.RedactedURL(e.URL))
 	}
-	return s
+	return s, nil
 }
 
 // RedactedURL returns the redacted URL of the given environment at index i.
@@ -359,7 +361,6 @@ func (s *MigrateReportSet) ReportFor(flags migrateApplyFlags, e *Env) *MigrateRe
 	s.StepLog("Migration directory: %s", s.RedactedURL(flags.dirURL))
 	return &MigrateReport{
 		env: e,
-		set: s,
 		done: func(r *cloudapi.ReportMigrationInput) {
 			s.done++
 			s.Log[len(s.Log)-1].EndTime = time.Now()
@@ -396,6 +397,7 @@ func (s *MigrateReportSet) Flush(cmd *cobra.Command, cmdErr error) {
 		return
 	// Single migration that was completed.
 	case s.Planned == 1 && len(s.Completed) == 1:
+		s.Completed[0].Context = s.Context
 		link, err = s.client.ReportMigration(cmd.Context(), s.Completed[0])
 	// Single migration that failed to start.
 	case s.Planned == 1 && len(s.Completed) == 0:
@@ -450,9 +452,6 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 		err        = logApply(cmd, io.MultiWriter(cmd.OutOrStdout(), &clog), flags, r.log)
 		setContext *cloudapi.DeployContextInput
 	)
-	if r.set != nil {
-		setContext = r.set.Context
-	}
 	switch rev, err1 := r.rrw.CurrentRevision(cmd.Context()); {
 	case errors.Is(err1, migrate.ErrRevisionNotExist):
 	case err1 != nil:
