@@ -461,7 +461,7 @@ func readerUseDev(urls ...string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return s == "file" || cmdext.States.HasLoader(s), nil
+	return s == cmdext.SchemaTypeFile || s == cmdext.SchemaTypeAtlas || cmdext.States.HasLoader(s), nil
 }
 
 // stateReader returns a migrate.StateReader that reads the state from the given urls.
@@ -476,17 +476,20 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*cmdext.StateR
 	}
 	switch scheme {
 	// "file" scheme is valid for both migration directory and HCL paths.
-	case "file":
+	case cmdext.SchemaTypeFile:
 		switch ext, err := filesExt(excfg.URLs); {
 		case err != nil:
 			return nil, err
-		case ext == extHCL:
+		case ext == cmdext.FileTypeHCL:
 			return cmdext.StateReaderHCL(ctx, excfg)
-		case ext == extSQL:
+		case ext == cmdext.FileTypeSQL:
 			return cmdext.StateReaderSQL(ctx, excfg)
 		default:
 			panic("unreachable") // checked by filesExt.
 		}
+	// "atlas" scheme represents an Atlas Cloud schema.
+	case cmdext.SchemaTypeAtlas:
+		return cmdext.StateReaderAtlas(ctx, excfg)
 	default:
 		// In case there is an external state-loader registered with this scheme.
 		if l, ok := cmdext.States.Loader(scheme); ok {
@@ -519,16 +522,11 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*cmdext.StateR
 	}
 }
 
-const (
-	extHCL = ".hcl"
-	extSQL = ".sql"
-)
-
 func filesExt(urls []*url.URL) (string, error) {
 	var path, ext string
 	set := func(curr string) error {
 		switch e := filepath.Ext(curr); {
-		case e != extHCL && e != extSQL:
+		case e != cmdext.FileTypeHCL && e != cmdext.FileTypeSQL:
 			return fmt.Errorf("unknown schema file: %q", curr)
 		case ext != "" && ext != e:
 			return fmt.Errorf("ambiguous schema: both SQL and HCL files found: %q, %q", path, curr)
@@ -550,7 +548,7 @@ func filesExt(urls []*url.URL) (string, error) {
 			for _, f := range files {
 				switch filepath.Ext(f.Name()) {
 				// Ignore unknown extensions in case we read directories.
-				case extHCL, extSQL:
+				case cmdext.FileTypeHCL, cmdext.FileTypeSQL:
 					if err := set(f.Name()); err != nil {
 						return "", err
 					}

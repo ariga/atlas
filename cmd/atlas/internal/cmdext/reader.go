@@ -146,7 +146,7 @@ func StateReaderHCL(ctx context.Context, c *StateReaderConfig) (*StateReadCloser
 }
 
 // stateReaderHCL is shared between StateReaderHCL and "hcl_schema" datasource.
-func stateReaderHCL(ctx context.Context, config *StateReaderConfig, paths []string) (*StateReadCloser, error) {
+func stateReaderHCL(_ context.Context, config *StateReaderConfig, paths []string) (*StateReadCloser, error) {
 	var client *sqlclient.Client
 	switch {
 	case config.Dev != nil:
@@ -247,15 +247,22 @@ func parseHCLPaths(paths ...string) (*hclparse.Parser, error) {
 	return p, nil
 }
 
+// Schema reader types (URL schemes).
 const (
-	extHCL = ".hcl"
-	extSQL = ".sql"
+	SchemaTypeFile  = "file"
+	SchemaTypeAtlas = "atlas"
+)
+
+// File extensions supported by the file driver.
+const (
+	FileTypeHCL = ".hcl"
+	FileTypeSQL = ".sql"
 )
 
 // mayParse will parse the file in path if it is an HCL file. If the file is an Atlas
 // project file an error is returned.
 func mayParse(p *hclparse.Parser, path string) error {
-	if n := filepath.Base(path); filepath.Ext(n) != extHCL {
+	if n := filepath.Base(path); filepath.Ext(n) != FileTypeHCL {
 		return nil
 	}
 	switch f, diag := p.ParseHCLFile(path); {

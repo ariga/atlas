@@ -33,9 +33,6 @@ import (
 	"ariga.io/atlas/sql/sqltool"
 
 	"github.com/google/uuid"
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclparse"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/spf13/cobra"
 )
 
@@ -1597,7 +1594,7 @@ func selectScheme(urls []string) (string, error) {
 			ex := filepath.Ext(u)
 			switch f, err := os.Stat(u); {
 			case err != nil:
-			case f.IsDir(), ex == extSQL, ex == extHCL:
+			case f.IsDir(), ex == cmdext.FileTypeSQL, ex == cmdext.FileTypeHCL:
 				return "", fmt.Errorf("missing scheme. Did you mean file://%s?", u)
 			}
 			return "", errors.New("missing scheme. See: https://atlasgo.io/url")
@@ -1605,36 +1602,11 @@ func selectScheme(urls []string) (string, error) {
 			scheme = current
 		case scheme != current:
 			return "", fmt.Errorf("got mixed --to url schemes: %q and %q, the desired state must be provided from a single kind of source", scheme, current)
-		case current != "file":
+		case current != cmdext.SchemaTypeFile:
 			return "", fmt.Errorf("got multiple --to urls of scheme %q, only multiple 'file://' urls are supported", current)
 		}
 	}
 	return scheme, nil
-}
-
-// mayParse will parse the file in path if it is an HCL file. If the file is an Atlas
-// project file an error is returned.
-func mayParse(p *hclparse.Parser, path string) error {
-	if n := filepath.Base(path); filepath.Ext(n) != extHCL {
-		return nil
-	}
-	switch f, diag := p.ParseHCLFile(path); {
-	case diag.HasErrors():
-		return diag
-	case isProjectFile(f):
-		return fmt.Errorf("cannot parse project file %q as a schema file", path)
-	default:
-		return nil
-	}
-}
-
-func isProjectFile(f *hcl.File) bool {
-	for _, blk := range f.Body.(*hclsyntax.Body).Blocks {
-		if blk.Type == "env" {
-			return true
-		}
-	}
-	return false
 }
 
 func migrateFlagsFromConfig(cmd *cobra.Command) error {
