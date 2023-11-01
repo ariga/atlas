@@ -172,7 +172,7 @@ func (f URLParserFunc) ParseURL(u *url.URL) *URL {
 func ParseURL(s string) (*url.URL, error) {
 	u, err := url.Parse(s)
 	if err != nil {
-		if err1, ok := err.(*url.Error); ok {
+		if err1 := (*url.Error)(nil); errors.As(err, &err1) {
 			err = err1.Err
 		}
 		return nil, err
