@@ -25,11 +25,11 @@ func TestHashSum(t *testing.T) {
 	p := t.TempDir()
 	d, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)
-	plan := &migrate.Plan{Name: "plan", Changes: []*migrate.Change{{Cmd: "cmd"}}}
+	v := time.Now().UTC().Format("20060102150405")
+	plan := &migrate.Plan{Version: v, Name: "plan", Changes: []*migrate.Change{{Cmd: "cmd"}}}
 	pl := migrate.NewPlanner(nil, d)
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
-	v := time.Now().UTC().Format("20060102150405")
 	require.Equal(t, 2, countFiles(t, d))
 	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
