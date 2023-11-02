@@ -2147,6 +2147,34 @@ schema "s2" {
 		string(got))
 }
 
+func TestMarshalSkipQualifiers(t *testing.T) {
+	buf, err := MarshalHCL.MarshalSpec(
+		schema.New("s1").
+			AddTables(
+				schema.NewTable("t1").AddColumns(schema.NewIntColumn("id1", "int")),
+				schema.NewTable("t1").AddColumns(schema.NewIntColumn("id2", "int")),
+			),
+	)
+	require.NoError(t, err)
+	require.Equal(t, `table "t1" {
+  schema = schema.s1
+  column "id1" {
+    null = false
+    type = int
+  }
+}
+table "t1" {
+  schema = schema.s1
+  column "id2" {
+    null = false
+    type = int
+  }
+}
+schema "s1" {
+}
+`, string(buf), "qualifiers are skipped if objects belong to the same schema (repeatable blocks)")
+}
+
 func TestMarshalQualifiers(t *testing.T) {
 	var (
 		s1 = schema.New("s1").

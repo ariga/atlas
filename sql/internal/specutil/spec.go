@@ -107,28 +107,35 @@ type SchemaObject interface {
 // name in any objects with duplicate names in the provided specs.
 func QualifyObjects[T SchemaObject](specs []T) error {
 	var (
-		seen    = make(map[string]T, len(specs))
 		schemas = make(map[string]bool, len(specs))
+		byLabel = make(map[string]map[string][]T, len(specs))
 	)
 	// Loop first and qualify schema objects with the same label.
 	// For example, two tables named "users" reside in different
 	// schemas are converted to: ("s1", "users") and ("s2", "users").
 	for _, v := range specs {
-		if s, ok := seen[v.Label()]; ok {
-			schemaName, err := SchemaName(s.SchemaRef())
-			if err != nil {
-				return err
-			}
-			s.SetQualifier(schemaName)
-			schemas[schemaName] = true
-			schemaName, err = SchemaName(v.SchemaRef())
-			if err != nil {
-				return err
-			}
-			v.SetQualifier(schemaName)
-			schemas[schemaName] = true
+		l := v.Label()
+		q, err := SchemaName(v.SchemaRef())
+		if err != nil {
+			return err
 		}
-		seen[v.Label()] = v
+		if _, ok := byLabel[l]; !ok {
+			byLabel[l] = make(map[string][]T)
+		}
+		byLabel[l][q] = append(byLabel[l][q], v)
+	}
+	for _, v := range byLabel {
+		// Multiple objects with the same label on the same
+		// schema are not qualified (repeatable blocks).
+		if len(v) == 1 {
+			continue
+		}
+		for q, sv := range v {
+			for _, s := range sv {
+				s.SetQualifier(q)
+				schemas[q] = true
+			}
+		}
 	}
 	// After objects were qualified, they might be conflicted with different
 	// resources that labeled with the schema name. e.g., ("s1", "users") and
