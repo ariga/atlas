@@ -58,10 +58,11 @@ func TestFromURL(t *testing.T) {
 	cfg, err := FromURL(u)
 	require.NoError(t, err)
 	require.Equal(t, &Config{
-		Image: "arigaio/mysql",
-		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
-		Port:  "3306",
-		Out:   io.Discard,
+		driver: "mysql",
+		Image:  "arigaio/mysql",
+		Env:    []string{"MYSQL_ROOT_PASSWORD=pass"},
+		Port:   "3306",
+		Out:    io.Discard,
 	}, cfg)
 
 	u, err = url.Parse("docker://mysql/8")
@@ -69,10 +70,11 @@ func TestFromURL(t *testing.T) {
 	cfg, err = FromURL(u)
 	require.NoError(t, err)
 	require.Equal(t, &Config{
-		Image: "arigaio/mysql:8",
-		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
-		Port:  "3306",
-		Out:   io.Discard,
+		driver: "mysql",
+		Image:  "arigaio/mysql:8",
+		Env:    []string{"MYSQL_ROOT_PASSWORD=pass"},
+		Port:   "3306",
+		Out:    io.Discard,
 	}, cfg)
 
 	u, err = url.Parse("docker://mysql/latest/test")
@@ -80,6 +82,7 @@ func TestFromURL(t *testing.T) {
 	cfg, err = FromURL(u)
 	require.NoError(t, err)
 	require.Equal(t, &Config{
+		driver:   "mysql",
 		Image:    "arigaio/mysql:latest",
 		Database: "test",
 		Env:      []string{"MYSQL_ROOT_PASSWORD=pass", "MYSQL_DATABASE=test"},
@@ -93,6 +96,7 @@ func TestFromURL(t *testing.T) {
 	cfg, err = FromURL(u)
 	require.NoError(t, err)
 	require.Equal(t, &Config{
+		driver:   "postgres",
 		Image:    "postgres:13",
 		Database: "postgres",
 		Env:      []string{"POSTGRES_PASSWORD=pass"},
@@ -105,10 +109,117 @@ func TestFromURL(t *testing.T) {
 	cfg, err = FromURL(u)
 	require.NoError(t, err)
 	require.Equal(t, &Config{
+		driver:   "postgres",
 		Image:    "postgis/postgis:14-3.4",
 		Database: "postgres",
 		Env:      []string{"POSTGRES_PASSWORD=pass"},
 		Port:     "5432",
 		Out:      io.Discard,
 	}, cfg)
+}
+
+func TestFromURL_CustomImage(t *testing.T) {
+	for _, tt := range []struct {
+		url, image, db, dialect string
+	}{
+		// PostgreSQL (local and official images).
+		{
+			url:     "docker+postgres://local",
+			image:   "local",
+			db:      "postgres",
+			dialect: "postgres",
+		},
+		{
+			url:     "docker+postgres://_/local/dev",
+			image:   "local",
+			db:      "dev",
+			dialect: "postgres",
+		},
+		{
+			url:     "docker+postgres:///local:tag/dev",
+			image:   "local:tag",
+			db:      "dev",
+			dialect: "postgres",
+		},
+		{
+			url:     "docker+postgres://postgres",
+			image:   "postgres",
+			db:      "postgres",
+			dialect: "postgres",
+		},
+		{
+			url:     "docker+postgres://_/postgres/dev",
+			image:   "postgres",
+			db:      "dev",
+			dialect: "postgres",
+		},
+		{
+			url:     "docker+postgres:///postgres:16/dev",
+			image:   "postgres:16",
+			db:      "dev",
+			dialect: "postgres",
+		},
+		// User images.
+		{
+			url:     "docker+postgres://postgis/postgis:16",
+			image:   "postgis/postgis:16",
+			db:      "postgres",
+			dialect: "postgres",
+		},
+		{
+			url:     "docker+postgres://postgis/postgis:16/dev",
+			image:   "postgis/postgis:16",
+			db:      "dev",
+			dialect: "postgres",
+		},
+		{
+			url:     "docker+postgres://ghcr.io/namespace/image:tag",
+			image:   "ghcr.io/namespace/image:tag",
+			db:      "postgres",
+			dialect: "postgres",
+		},
+		{
+			url:     "docker+postgres://ghcr.io/namespace/image:tag/dev",
+			image:   "ghcr.io/namespace/image:tag",
+			db:      "dev",
+			dialect: "postgres",
+		},
+		// MySQL.
+		{
+			url:     "docker+mysql://local",
+			image:   "local",
+			dialect: "mysql",
+		},
+		{
+			url:     "docker+mysql:///local/dev",
+			image:   "local",
+			db:      "dev",
+			dialect: "mysql",
+		},
+		{
+			url:     "docker+mysql://user/image",
+			image:   "user/image",
+			dialect: "mysql",
+		},
+		{
+			url:     "docker+mysql://user/image:tag/dev",
+			image:   "user/image:tag",
+			db:      "dev",
+			dialect: "mysql",
+		},
+		{
+			url:     "docker+mysql://_/mariadb:latest/dev",
+			image:   "mariadb:latest",
+			db:      "dev",
+			dialect: "mysql",
+		},
+	} {
+		u, err := url.Parse(tt.url)
+		require.NoError(t, err)
+		cfg, err := FromURL(u)
+		require.NoError(t, err)
+		require.Equal(t, tt.image, cfg.Image)
+		require.Equal(t, tt.db, cfg.Database)
+		require.Equal(t, tt.dialect, cfg.driver)
+	}
 }

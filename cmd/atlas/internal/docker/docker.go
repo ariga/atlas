@@ -30,7 +30,8 @@ const pass = "pass"
 type (
 	// Config is used to configure container creation.
 	Config struct {
-		setup []string // contains statements to execute once the service is up
+		driver string   // driver to open connections with.
+		setup  []string // contains statements to execute once the service is up
 		// Image is the name of the image to pull and run.
 		Image string
 		// Env vars to pass to the docker container.
@@ -79,33 +80,56 @@ func FromURL(u *url.URL) (*Config, error) {
 	if len(parts) > 0 {
 		tag = parts[0]
 	}
-	if len(parts) > 1 {
+	switch n := len(parts); {
+	case n == 2 && !strings.Contains(parts[1], ":"):
 		opts = append(opts, Database(parts[1]))
+	case n == 3:
+		opts = append(opts, Database(parts[2]))
+		fallthrough
+	case n == 2:
+		parts[0] = fmt.Sprintf("%s/%s", parts[0], parts[1])
 	}
+	switch u.Scheme {
+	case "docker+postgres", "docker+mysql", "docker+maria":
+		img := Image(parts[0])
+		if u.Host != "" && u.Host != "_" {
+			img = Image(u.Host, parts[0])
+		}
+		opts = append(opts, img)
+		u.Host = u.Scheme[len("docker+"):]
+	}
+	var (
+		cfg *Config
+		err error
+	)
 	switch u.Host {
 	case "mysql":
 		if len(parts) > 1 {
 			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]), setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", parts[1])))
 		}
-		return MySQL(tag, opts...)
+		cfg, err = MySQL(tag, opts...)
 	case "maria", "mariadb":
 		if len(parts) > 1 {
 			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]), setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", parts[1])))
 		}
-		return MariaDB(tag, opts...)
+		cfg, err = MariaDB(tag, opts...)
+	case "postgis":
+		opts = append(opts, Image("postgis/postgis:"+tag))
+		u.Host = "postgres"
+		fallthrough
 	case "postgres":
 		if len(parts) > 1 {
 			opts = append(opts, Env("POSTGRES_DB="+parts[1]))
 		}
-		return PostgreSQL(tag, opts...)
-	case "postgis":
-		if len(parts) > 1 {
-			opts = append(opts, Env("POSTGRES_DB="+parts[1]))
-		}
-		return Postgis(tag, opts...)
+		cfg, err = PostgreSQL(tag, opts...)
 	default:
 		return nil, fmt.Errorf("unsupported docker image %q", u.Host)
 	}
+	if err != nil {
+		return nil, err
+	}
+	cfg.driver = u.Host
+	return cfg, nil
 }
 
 // Atlas DockerHub user contains the MySQL
@@ -137,21 +161,6 @@ func PostgreSQL(version string, opts ...ConfigOption) (*Config, error) {
 		append(
 			[]ConfigOption{
 				Image("postgres:" + version),
-				Port("5432"),
-				Database("postgres"),
-				Env("POSTGRES_PASSWORD=" + pass),
-			},
-			opts...,
-		)...,
-	)
-}
-
-// Postgis returns a new Config for a Postgis image. This is a Postgres variant
-func Postgis(version string, opts ...ConfigOption) (*Config, error) {
-	return NewConfig(
-		append(
-			[]ConfigOption{
-				Image("postgis/postgis:" + version),
 				Port("5432"),
 				Database("postgres"),
 				Env("POSTGRES_PASSWORD=" + pass),
@@ -239,11 +248,6 @@ func (c *Config) Run(ctx context.Context) (*Container, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting open port: %w", err)
 	}
-	// Make sure the image is up-to-date.
-	out, err := exec.CommandContext(ctx, "docker", "pull", c.Image).CombinedOutput() //nolint:gosec
-	if err != nil {
-		return nil, fmt.Errorf("pulling image: %w: %q", err, out)
-	}
 	// Run the container.
 	args := []string{"docker", "run", "--rm", "--detach"}
 	for _, e := range c.Env {
@@ -317,13 +321,13 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 
 // URL returns a URL to connect to the Container.
 func (c *Container) URL() (*url.URL, error) {
-	switch img := path.Base(strings.SplitN(c.cfg.Image, ":", 2)[0]); img {
-	case "postgres", "postgis":
+	switch c.cfg.driver {
+	case "postgres":
 		return url.Parse(fmt.Sprintf("postgres://postgres:%s@localhost:%s/%s?sslmode=disable", c.Passphrase, c.Port, c.cfg.Database))
 	case "mysql", "mariadb":
-		return url.Parse(fmt.Sprintf("%s://root:%s@localhost:%s/%s", img, c.Passphrase, c.Port, c.cfg.Database))
+		return url.Parse(fmt.Sprintf("%s://root:%s@localhost:%s/%s", c.cfg.driver, c.Passphrase, c.Port, c.cfg.Database))
 	default:
-		return nil, fmt.Errorf("unknown container image: %q", img)
+		return nil, fmt.Errorf("unknown driver: %q", c.cfg.driver)
 	}
 }
 
@@ -351,7 +355,11 @@ func freePort() (string, error) {
 }
 
 func init() {
-	sqlclient.Register("docker", sqlclient.OpenerFunc(client))
+	sqlclient.Register(
+		"docker",
+		sqlclient.OpenerFunc(client),
+		sqlclient.RegisterFlavours("docker+postgres", "docker+mysql", "docker+maria"),
+	)
 }
 
 func client(ctx context.Context, u *url.URL) (client *sqlclient.Client, err error) {
