@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
@@ -143,6 +144,29 @@ type (
 		schemahcl.DefaultExtension
 	}
 )
+
+// VarFromURL returns the string variable (env attribute) from the URL.
+func (e *Env) VarFromURL(s string) (string, error) {
+	u, err := url.Parse(s)
+	if err != nil {
+		return "", err
+	}
+	if u.Host == "" || u.Path != "" || u.RawQuery != "" {
+		return "", fmt.Errorf("invalid env:// variable %q", s)
+	}
+	attr, ok := e.Attr(u.Host)
+	if !ok {
+		return "", fmt.Errorf("env://%s (attribute) not found in env.%s", s, e.Name)
+	}
+	sv, err := attr.String()
+	if err != nil {
+		return "", fmt.Errorf("env://%s: %w", s, err)
+	}
+	if strings.HasPrefix(sv, "env://") {
+		return "", fmt.Errorf("env://%s (attribute) cannot reference another env://", s)
+	}
+	return sv, nil
+}
 
 // support backward compatibility with the 'log' attribute.
 func (e *Env) remainedLog() error {

@@ -465,7 +465,7 @@ func readerUseDev(urls ...string) (bool, error) {
 }
 
 // stateReader returns a migrate.StateReader that reads the state from the given urls.
-func stateReader(ctx context.Context, config *stateReaderConfig) (*cmdext.StateReadCloser, error) {
+func stateReader(ctx context.Context, env *Env, config *stateReaderConfig) (*cmdext.StateReadCloser, error) {
 	excfg, err := config.Exported()
 	if err != nil {
 		return nil, err
@@ -490,6 +490,23 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*cmdext.StateR
 	// "atlas" scheme represents an Atlas Cloud schema.
 	case cmdext.SchemaTypeAtlas:
 		return cmdext.StateReaderAtlas(ctx, excfg)
+	// "env" scheme represents a variable defined on the
+	// selected environment.
+	case "env":
+		switch {
+		case GlobalFlags.SelectedEnv == "":
+			return nil, errors.New("cannot use env:// variables without selecting an environment")
+		case len(config.urls) != 1:
+			return nil, errors.New("cannot use multiple env:// variables in a single flag")
+		default:
+			u, err := env.VarFromURL(config.urls[0])
+			if err != nil {
+				return nil, err
+			}
+			cfg := *config
+			cfg.urls = []string{u}
+			return stateReader(ctx, env, &cfg)
+		}
 	default:
 		// In case there is an external state-loader registered with this scheme.
 		if l, ok := cmdext.States.Loader(scheme); ok {

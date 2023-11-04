@@ -152,7 +152,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		}
 		defer dev.Close()
 	}
-	from, err := stateReader(ctx, &stateReaderConfig{
+	from, err := stateReader(ctx, env, &stateReaderConfig{
 		urls:    []string{flags.url},
 		schemas: flags.schemas,
 		exclude: flags.exclude,
@@ -165,7 +165,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 	if !ok {
 		return errors.New("--url must be a database connection")
 	}
-	to, err := stateReader(ctx, &stateReaderConfig{
+	to, err := stateReader(ctx, env, &stateReaderConfig{
 		urls:    flags.toURLs,
 		dev:     dev,
 		client:  client,
@@ -396,7 +396,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 		}
 		defer c.Close()
 	}
-	from, err := stateReader(ctx, &stateReaderConfig{
+	from, err := stateReader(ctx, env, &stateReaderConfig{
 		urls:    flags.fromURL,
 		dev:     c,
 		vars:    GlobalFlags.Vars,
@@ -407,7 +407,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 		return err
 	}
 	defer from.Close()
-	to, err := stateReader(ctx, &stateReaderConfig{
+	to, err := stateReader(ctx, env, &stateReaderConfig{
 		urls:    flags.toURL,
 		dev:     c,
 		vars:    GlobalFlags.Vars,
@@ -458,6 +458,7 @@ func schemaInspectCmd() *cobra.Command {
 
 func schemaInspectCmdWithFlags() (*cobra.Command, *schemaInspectFlags) {
 	var (
+		env   *Env
 		flags schemaInspectFlags
 		cmd   = &cobra.Command{
 			Use:   "inspect",
@@ -479,11 +480,14 @@ flag.
   atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
   atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"`,
-			PreRunE: func(cmd *cobra.Command, _ []string) error {
-				return schemaFlagsFromConfig(cmd)
+			PreRunE: func(cmd *cobra.Command, args []string) (err error) {
+				if env, err = selectEnv(cmd); err != nil {
+					return err
+				}
+				return setSchemaEnvFlags(cmd, env)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return schemaInspectRun(cmd, args, flags)
+				return schemaInspectRun(cmd, args, flags, env)
 			},
 		}
 	)
@@ -499,7 +503,7 @@ flag.
 	return cmd, &flags
 }
 
-func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) error {
+func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags, env *Env) error {
 	var (
 		ctx = cmd.Context()
 		dev *sqlclient.Client
@@ -514,7 +518,7 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 		}
 		defer dev.Close()
 	}
-	r, err := stateReader(ctx, &stateReaderConfig{
+	r, err := stateReader(ctx, env, &stateReaderConfig{
 		urls:    []string{flags.url},
 		dev:     dev,
 		vars:    GlobalFlags.Vars,
