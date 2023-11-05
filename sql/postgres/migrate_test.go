@@ -974,6 +974,7 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Append enum value at the end.
 		{
 			changes: []schema.Change{
 				&schema.ModifyObject{
@@ -996,6 +997,93 @@ func TestPlanChanges(t *testing.T) {
 					{Cmd: `ALTER TYPE "public"."state" ADD VALUE 'unknown'`},
 				},
 			},
+		},
+		// Append enum values at the beginning.
+		{
+			changes: []schema.Change{
+				&schema.ModifyObject{
+					From: &schema.EnumType{
+						T:      "state",
+						Values: []string{"on", "off"},
+						Schema: schema.New("public"),
+					},
+					To: &schema.EnumType{
+						T:      "state",
+						Values: []string{"unknown", "null", "on", "off"},
+						Schema: schema.New("public"),
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    false,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: `ALTER TYPE "public"."state" ADD VALUE 'unknown' BEFORE 'on'`},
+					{Cmd: `ALTER TYPE "public"."state" ADD VALUE 'null' AFTER 'unknown'`},
+				},
+			},
+		},
+		// Append values at beginning, middle and end.
+		{
+			changes: []schema.Change{
+				&schema.ModifyObject{
+					From: &schema.EnumType{
+						T:      "state",
+						Values: []string{"on", "off", "on-off"},
+						Schema: schema.New("public"),
+					},
+					To: &schema.EnumType{
+						T:      "state",
+						Values: []string{"start", "on", "null", "off", "unknown", "on-off"},
+						Schema: schema.New("public"),
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    false,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: `ALTER TYPE "public"."state" ADD VALUE 'start' BEFORE 'on'`},
+					{Cmd: `ALTER TYPE "public"."state" ADD VALUE 'null' AFTER 'on'`},
+					{Cmd: `ALTER TYPE "public"."state" ADD VALUE 'unknown' AFTER 'off'`},
+				},
+			},
+		},
+		// Enum reordering.
+		{
+			changes: []schema.Change{
+				&schema.ModifyObject{
+					From: &schema.EnumType{
+						T:      "state",
+						Values: []string{"on", "off"},
+						Schema: schema.New("public"),
+					},
+					To: &schema.EnumType{
+						T:      "state",
+						Values: []string{"off", "on"},
+						Schema: schema.New("public"),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		// Enum value dropping.
+		{
+			changes: []schema.Change{
+				&schema.ModifyObject{
+					From: &schema.EnumType{
+						T:      "state",
+						Values: []string{"on", "off"},
+						Schema: schema.New("public"),
+					},
+					To: &schema.EnumType{
+						T:      "state",
+						Values: []string{"off"},
+						Schema: schema.New("public"),
+					},
+				},
+			},
+			wantErr: true,
 		},
 		// Modify column type and drop comment.
 		{

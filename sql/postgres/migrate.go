@@ -824,20 +824,41 @@ func (s *state) alterEnum(modify *schema.ModifyObject) error {
 	if !ok1 || !ok2 {
 		return fmt.Errorf("altering objects (%T) to (%T) is not supported", modify.From, modify.To)
 	}
-	if len(from.Values) > len(to.Values) {
-		return fmt.Errorf("dropping enum (%q) value is not supported", from.T)
+	fromV := make(map[string]int, len(from.Values))
+	for i, v := range from.Values {
+		fromV[v] = i
 	}
-	for i := range from.Values {
-		if from.Values[i] != to.Values[i] {
-			return fmt.Errorf("replacing or reordering enum (%q) value is not supported: %q != %q", to.T, to.Values, from.Values)
+	toV := make(map[string]int, len(to.Values))
+	for i, v := range from.Values {
+		toV[v] = i
+	}
+	for v := range fromV {
+		if _, ok := toV[v]; !ok {
+			return fmt.Errorf("dropping value %q from enum %q is not supported", v, from.T)
 		}
 	}
-	name := s.enumIdent(from)
-	for _, v := range to.Values[len(from.Values):] {
-		s.append(&migrate.Change{
-			Cmd:     s.Build("ALTER TYPE").P(name, "ADD VALUE", quote(v)).String(),
-			Comment: fmt.Sprintf("add value to enum type: %q", from.T),
-		})
+	var (
+		at   int
+		name = s.enumIdent(from)
+	)
+	for i, v := range to.Values {
+		b := s.Build("ALTER TYPE").P(name, "ADD VALUE", quote(v))
+		switch j, ok := fromV[v]; {
+		case !ok:
+			if i == 0 && len(from.Values) > 0 {
+				b.P("BEFORE").P(quote(from.Values[0]))
+			} else if i > 0 && at != len(from.Values) {
+				b.P("AFTER").P(quote(to.Values[i-1]))
+			}
+			s.append(&migrate.Change{
+				Cmd:     b.String(),
+				Comment: fmt.Sprintf("add value to enum type: %q", from.T),
+			})
+		case ok && j == at:
+			at++
+		default:
+			return fmt.Errorf("reordering enum %q value %q is not supported", from.T, v)
+		}
 	}
 	return nil
 }
