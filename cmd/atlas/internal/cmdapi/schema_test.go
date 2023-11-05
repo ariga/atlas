@@ -339,6 +339,74 @@ env "local" {
 		require.NoError(t, err)
 		require.Equal(t, "-- Add column \"name\" to table: \"users\"\nALTER TABLE `users` ADD COLUMN `name` text NULL;\n", s)
 	})
+
+	t.Run("CompareDataSrc", func(t *testing.T) {
+		var (
+			p        = t.TempDir()
+			cfg      = filepath.Join(p, "atlas.hcl")
+			from, to = filepath.Join(p, "schema_from.hcl"), filepath.Join(p, "schema_to.hcl")
+		)
+		err = os.WriteFile(cfg, []byte(`
+variable "from_path" {
+  type = string
+}
+variable "to_path" {
+  type = string
+}
+data "hcl_schema" "from" {
+  path = var.from_path
+}
+data "hcl_schema" "to" {
+  path = var.to_path
+}
+env "drift" {
+  dev = "sqlite://dev?mode=memory&_fk=1"
+  # Variables defined and available with env:// prefix.
+  from_schema = data.hcl_schema.from.url
+  to_schema   = data.hcl_schema.to.url
+}
+`), 0600)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(from, []byte(`
+schema "main" {}
+table "t1" {
+  schema = schema.main
+  column "id" {
+    type = int
+  }
+}`), 0600))
+		require.NoError(t, os.WriteFile(to, []byte(`
+schema "main" {}
+table "t2" {
+  schema = schema.main
+  column "id" {
+    type = int
+  }
+}`), 0600))
+
+		cmd := schemaCmd()
+		cmd.AddCommand(schemaDiffCmd())
+		s, err := runCmd(
+			cmd, "diff",
+			"--config", "file://"+cfg,
+			"--env", "drift",
+			"--var", "from_path="+from,
+			"--var", "to_path="+to,
+			"--from", "env://from_schema",
+			"--to", "env://to_schema",
+		)
+		require.NoError(t, err)
+		require.Equal(t, []string{
+			"-- Disable the enforcement of foreign-keys constraints",
+			"PRAGMA foreign_keys = off;",
+			`-- Drop "t1" table`,
+			"DROP TABLE `t1`;",
+			`-- Create "t2" table`,
+			"CREATE TABLE `t2` (`id` int NOT NULL);",
+			"-- Enable back the enforcement of foreign-keys constraints",
+			"PRAGMA foreign_keys = on;",
+		}, strings.Split(strings.TrimSpace(s), "\n"))
+	})
 }
 
 func TestSchema_Apply(t *testing.T) {

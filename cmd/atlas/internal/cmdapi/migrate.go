@@ -645,7 +645,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 		return maskNoPlan(cmd, err)
 	}
 	// Get a state reader for the desired state.
-	desired, err := stateReader(ctx, &stateReaderConfig{
+	desired, err := stateReader(ctx, env, &stateReaderConfig{
 		urls:    flags.desiredURLs,
 		dev:     dev,
 		client:  dev,
