@@ -14,7 +14,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr4-go/antlr/v4"
 	"golang.org/x/exp/slices"
 )
 

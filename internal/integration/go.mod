@@ -27,8 +27,8 @@ require (
 	entgo.io/ent v0.12.4-0.20230726082433-91c7fcc68504 // indirect
 	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
-	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220816024939-bc8df83d7b9d // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230512164433-5d1fd1a340c9 // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/auxten/postgresql-parser v1.0.1 // indirect
 	github.com/aws/aws-sdk-go v1.44.68 // indirect
@@ -101,7 +101,7 @@ require (
 	go.uber.org/zap v1.21.0 // indirect
 	gocloud.dev v0.27.0 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
-	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
+	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect

@@ -1,13 +1,12 @@
-// Code generated from Lexer.g4 by ANTLR 4.10.1. DO NOT EDIT.
+// Code generated from Lexer.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package sqliteparse
 
 import (
 	"fmt"
+	"github.com/antlr4-go/antlr/v4"
 	"sync"
 	"unicode"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr"
 )
 
 // Suppress unused import error
@@ -22,28 +21,28 @@ type Lexer struct {
 	// TODO: EOF string
 }
 
-var lexerLexerStaticData struct {
+var LexerLexerStaticData struct {
 	once                   sync.Once
 	serializedATN          []int32
-	channelNames           []string
-	modeNames              []string
-	literalNames           []string
-	symbolicNames          []string
-	ruleNames              []string
-	predictionContextCache *antlr.PredictionContextCache
+	ChannelNames           []string
+	ModeNames              []string
+	LiteralNames           []string
+	SymbolicNames          []string
+	RuleNames              []string
+	PredictionContextCache *antlr.PredictionContextCache
 	atn                    *antlr.ATN
 	decisionToDFA          []*antlr.DFA
 }
 
 func lexerLexerInit() {
-	staticData := &lexerLexerStaticData
-	staticData.channelNames = []string{
+	staticData := &LexerLexerStaticData
+	staticData.ChannelNames = []string{
 		"DEFAULT_TOKEN_CHANNEL", "HIDDEN",
 	}
-	staticData.modeNames = []string{
+	staticData.ModeNames = []string{
 		"DEFAULT_MODE",
 	}
-	staticData.literalNames = []string{
+	staticData.LiteralNames = []string{
 		"", "';'", "'.'", "'('", "')'", "','", "'='", "'*'", "'+'", "'-'", "'~'",
 		"'||'", "'/'", "'%'", "'<<'", "'>>'", "'&'", "'|'", "'<'", "'<='", "'>'",
 		"'>='", "'=='", "'!='", "'<>'", "'ABORT'", "'ACTION'", "'ADD'", "'AFTER'",
@@ -74,7 +73,7 @@ func lexerLexerInit() {
 		"'NULLS'", "'FIRST'", "'LAST'", "'FILTER'", "'GROUPS'", "'EXCLUDE'",
 		"'TIES'", "'OTHERS'", "'DO'", "'NOTHING'",
 	}
-	staticData.symbolicNames = []string{
+	staticData.SymbolicNames = []string{
 		"", "SCOL", "DOT", "OPEN_PAR", "CLOSE_PAR", "COMMA", "ASSIGN", "STAR",
 		"PLUS", "MINUS", "TILDE", "PIPE2", "DIV", "MOD", "LT2", "GT2", "AMP",
 		"PIPE", "LT", "LT_EQ", "GT", "GT_EQ", "EQ", "NOT_EQ1", "NOT_EQ2", "ABORT_",
@@ -105,7 +104,7 @@ func lexerLexerInit() {
 		"BIND_PARAMETER", "STRING_LITERAL", "BLOB_LITERAL", "SINGLE_LINE_COMMENT",
 		"MULTILINE_COMMENT", "SPACES", "UNEXPECTED_CHAR",
 	}
-	staticData.ruleNames = []string{
+	staticData.RuleNames = []string{
 		"SCOL", "DOT", "OPEN_PAR", "CLOSE_PAR", "COMMA", "ASSIGN", "STAR", "PLUS",
 		"MINUS", "TILDE", "PIPE2", "DIV", "MOD", "LT2", "GT2", "AMP", "PIPE",
 		"LT", "LT_EQ", "GT", "GT_EQ", "EQ", "NOT_EQ1", "NOT_EQ2", "ABORT_",
@@ -136,7 +135,7 @@ func lexerLexerInit() {
 		"BIND_PARAMETER", "STRING_LITERAL", "BLOB_LITERAL", "SINGLE_LINE_COMMENT",
 		"MULTILINE_COMMENT", "SPACES", "UNEXPECTED_CHAR", "HEX_DIGIT", "DIGIT",
 	}
-	staticData.predictionContextCache = antlr.NewPredictionContextCache()
+	staticData.PredictionContextCache = antlr.NewPredictionContextCache()
 	staticData.serializedATN = []int32{
 		4, 0, 193, 1704, 6, -1, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3,
 		2, 4, 7, 4, 2, 5, 7, 5, 2, 6, 7, 6, 2, 7, 7, 7, 2, 8, 7, 8, 2, 9, 7, 9,
@@ -918,7 +917,7 @@ func lexerLexerInit() {
 // NewLexer(). You can call this function if you wish to initialize the static state ahead
 // of time.
 func LexerInit() {
-	staticData := &lexerLexerStaticData
+	staticData := &LexerLexerStaticData
 	staticData.once.Do(lexerLexerInit)
 }
 
@@ -927,13 +926,13 @@ func NewLexer(input antlr.CharStream) *Lexer {
 	LexerInit()
 	l := new(Lexer)
 	l.BaseLexer = antlr.NewBaseLexer(input)
-	staticData := &lexerLexerStaticData
-	l.Interpreter = antlr.NewLexerATNSimulator(l, staticData.atn, staticData.decisionToDFA, staticData.predictionContextCache)
-	l.channelNames = staticData.channelNames
-	l.modeNames = staticData.modeNames
-	l.RuleNames = staticData.ruleNames
-	l.LiteralNames = staticData.literalNames
-	l.SymbolicNames = staticData.symbolicNames
+	staticData := &LexerLexerStaticData
+	l.Interpreter = antlr.NewLexerATNSimulator(l, staticData.atn, staticData.decisionToDFA, staticData.PredictionContextCache)
+	l.channelNames = staticData.ChannelNames
+	l.modeNames = staticData.ModeNames
+	l.RuleNames = staticData.RuleNames
+	l.LiteralNames = staticData.LiteralNames
+	l.SymbolicNames = staticData.SymbolicNames
 	l.GrammarFileName = "Lexer.g4"
 	// TODO: l.EOF = antlr.TokenEOF
 
