@@ -1,7 +1,7 @@
-// Code generated from Parser.g4 by ANTLR 4.10.1. DO NOT EDIT.
+// Code generated from Parser.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package sqliteparse // Parser
-import "github.com/antlr/antlr4/runtime/Go/antlr"
+import "github.com/antlr4-go/antlr/v4"
 
 type BaseParserVisitor struct {
 	*antlr.BaseParseTreeVisitor

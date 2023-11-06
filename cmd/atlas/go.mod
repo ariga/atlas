@@ -6,7 +6,7 @@ require (
 	ariga.io/atlas v0.13.2-0.20230813181001-1fef462e7670
 	entgo.io/ent v0.12.4-0.20230726082433-91c7fcc68504
 	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1
-	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220816024939-bc8df83d7b9d
+	github.com/antlr4-go/antlr/v4 v4.13.0
 	github.com/auxten/postgresql-parser v1.0.1
 	github.com/aws/aws-sdk-go-v2/config v1.15.15
 	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.2.16
@@ -27,7 +27,7 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/zclconf/go-cty v1.8.0
 	gocloud.dev v0.27.0
-	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
+	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
 	golang.org/x/mod v0.10.0
 	golang.org/x/oauth2 v0.10.0
 	google.golang.org/api v0.126.0

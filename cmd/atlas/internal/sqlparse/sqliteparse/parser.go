@@ -1,4 +1,4 @@
-// Code generated from Parser.g4 by ANTLR 4.10.1. DO NOT EDIT.
+// Code generated from Parser.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package sqliteparse // Parser
 import (
@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr4-go/antlr/v4"
 )
 
 // Suppress unused import errors
@@ -18,20 +18,20 @@ type Parser struct {
 	*antlr.BaseParser
 }
 
-var parserParserStaticData struct {
+var ParserParserStaticData struct {
 	once                   sync.Once
 	serializedATN          []int32
-	literalNames           []string
-	symbolicNames          []string
-	ruleNames              []string
-	predictionContextCache *antlr.PredictionContextCache
+	LiteralNames           []string
+	SymbolicNames          []string
+	RuleNames              []string
+	PredictionContextCache *antlr.PredictionContextCache
 	atn                    *antlr.ATN
 	decisionToDFA          []*antlr.DFA
 }
 
 func parserParserInit() {
-	staticData := &parserParserStaticData
-	staticData.literalNames = []string{
+	staticData := &ParserParserStaticData
+	staticData.LiteralNames = []string{
 		"", "';'", "'.'", "'('", "')'", "','", "'='", "'*'", "'+'", "'-'", "'~'",
 		"'||'", "'/'", "'%'", "'<<'", "'>>'", "'&'", "'|'", "'<'", "'<='", "'>'",
 		"'>='", "'=='", "'!='", "'<>'", "'ABORT'", "'ACTION'", "'ADD'", "'AFTER'",
@@ -62,7 +62,7 @@ func parserParserInit() {
 		"'NULLS'", "'FIRST'", "'LAST'", "'FILTER'", "'GROUPS'", "'EXCLUDE'",
 		"'TIES'", "'OTHERS'", "'DO'", "'NOTHING'",
 	}
-	staticData.symbolicNames = []string{
+	staticData.SymbolicNames = []string{
 		"", "SCOL", "DOT", "OPEN_PAR", "CLOSE_PAR", "COMMA", "ASSIGN", "STAR",
 		"PLUS", "MINUS", "TILDE", "PIPE2", "DIV", "MOD", "LT2", "GT2", "AMP",
 		"PIPE", "LT", "LT_EQ", "GT", "GT_EQ", "EQ", "NOT_EQ1", "NOT_EQ2", "ABORT_",
@@ -93,7 +93,7 @@ func parserParserInit() {
 		"BIND_PARAMETER", "STRING_LITERAL", "BLOB_LITERAL", "SINGLE_LINE_COMMENT",
 		"MULTILINE_COMMENT", "SPACES", "UNEXPECTED_CHAR",
 	}
-	staticData.ruleNames = []string{
+	staticData.RuleNames = []string{
 		"parse", "sql_stmt_list", "sql_stmt", "alter_table_stmt", "analyze_stmt",
 		"attach_stmt", "begin_stmt", "commit_stmt", "rollback_stmt", "savepoint_stmt",
 		"release_stmt", "create_index_stmt", "indexed_column", "create_table_stmt",
@@ -121,7 +121,7 @@ func parserParserInit() {
 		"window_name", "alias", "filename", "base_window_name", "simple_func",
 		"aggregate_func", "table_function_name", "any_name",
 	}
-	staticData.predictionContextCache = antlr.NewPredictionContextCache()
+	staticData.PredictionContextCache = antlr.NewPredictionContextCache()
 	staticData.serializedATN = []int32{
 		4, 1, 193, 2083, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4,
 		7, 4, 2, 5, 7, 5, 2, 6, 7, 6, 2, 7, 7, 7, 2, 8, 7, 8, 2, 9, 7, 9, 2, 10,
@@ -1180,7 +1180,7 @@ func parserParserInit() {
 // NewParser(). You can call this function if you wish to initialize the static state ahead
 // of time.
 func ParserInit() {
-	staticData := &parserParserStaticData
+	staticData := &ParserParserStaticData
 	staticData.once.Do(parserParserInit)
 }
 
@@ -1189,11 +1189,11 @@ func NewParser(input antlr.TokenStream) *Parser {
 	ParserInit()
 	this := new(Parser)
 	this.BaseParser = antlr.NewBaseParser(input)
-	staticData := &parserParserStaticData
-	this.Interpreter = antlr.NewParserATNSimulator(this, staticData.atn, staticData.decisionToDFA, staticData.predictionContextCache)
-	this.RuleNames = staticData.ruleNames
-	this.LiteralNames = staticData.literalNames
-	this.SymbolicNames = staticData.symbolicNames
+	staticData := &ParserParserStaticData
+	this.Interpreter = antlr.NewParserATNSimulator(this, staticData.atn, staticData.decisionToDFA, staticData.PredictionContextCache)
+	this.RuleNames = staticData.RuleNames
+	this.LiteralNames = staticData.LiteralNames
+	this.SymbolicNames = staticData.SymbolicNames
 	this.GrammarFileName = "Parser.g4"
 
 	return this
@@ -1521,20 +1521,30 @@ type IParseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	EOF() antlr.TerminalNode
+	AllSql_stmt_list() []ISql_stmt_listContext
+	Sql_stmt_list(i int) ISql_stmt_listContext
+
 	// IsParseContext differentiates from other interfaces.
 	IsParseContext()
 }
 
 type ParseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyParseContext() *ParseContext {
 	var p = new(ParseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_parse
 	return p
+}
+
+func InitEmptyParseContext(p *ParseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_parse
 }
 
 func (*ParseContext) IsParseContext() {}
@@ -1542,7 +1552,7 @@ func (*ParseContext) IsParseContext() {}
 func NewParseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *ParseContext {
 	var p = new(ParseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_parse
@@ -1628,35 +1638,19 @@ func (s *ParseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Parse() (localctx IParseContext) {
-	this := p
-	_ = this
-
 	localctx = NewParseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 0, ParserRULE_parse)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(229)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for (((_la)&-(0x1f+1)) == 0 && ((1<<uint(_la))&((1<<ParserSCOL)|(1<<ParserALTER_)|(1<<ParserANALYZE_))) != 0) || (((_la-35)&-(0x1f+1)) == 0 && ((1<<uint((_la-35)))&((1<<(ParserATTACH_-35))|(1<<(ParserBEGIN_-35))|(1<<(ParserCOMMIT_-35))|(1<<(ParserCREATE_-35))|(1<<(ParserDELETE_-35))|(1<<(ParserDETACH_-35))|(1<<(ParserDROP_-35))|(1<<(ParserEND_-35)))) != 0) || _la == ParserEXPLAIN_ || _la == ParserINSERT_ || (((_la-112)&-(0x1f+1)) == 0 && ((1<<uint((_la-112)))&((1<<(ParserPRAGMA_-112))|(1<<(ParserREINDEX_-112))|(1<<(ParserRELEASE_-112))|(1<<(ParserREPLACE_-112))|(1<<(ParserROLLBACK_-112))|(1<<(ParserSAVEPOINT_-112))|(1<<(ParserSELECT_-112))|(1<<(ParserUPDATE_-112))|(1<<(ParserVACUUM_-112)))) != 0) || _la == ParserVALUES_ || _la == ParserWITH_ {
+	for ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&-6339801325483589630) != 0) || ((int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&-7971300971697405919) != 0) || ((int64((_la-130)) & ^0x3f) == 0 && ((int64(1)<<(_la-130))&550913) != 0) {
 		{
 			p.SetState(226)
 			p.Sql_stmt_list()
@@ -1664,14 +1658,31 @@ func (p *Parser) Parse() (localctx IParseContext) {
 
 		p.SetState(231)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(232)
 		p.Match(ParserEOF)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISql_stmt_listContext is an interface to support dynamic dispatch.
@@ -1681,20 +1692,31 @@ type ISql_stmt_listContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllSql_stmt() []ISql_stmtContext
+	Sql_stmt(i int) ISql_stmtContext
+	AllSCOL() []antlr.TerminalNode
+	SCOL(i int) antlr.TerminalNode
+
 	// IsSql_stmt_listContext differentiates from other interfaces.
 	IsSql_stmt_listContext()
 }
 
 type Sql_stmt_listContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySql_stmt_listContext() *Sql_stmt_listContext {
 	var p = new(Sql_stmt_listContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_sql_stmt_list
 	return p
+}
+
+func InitEmptySql_stmt_listContext(p *Sql_stmt_listContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_sql_stmt_list
 }
 
 func (*Sql_stmt_listContext) IsSql_stmt_listContext() {}
@@ -1702,7 +1724,7 @@ func (*Sql_stmt_listContext) IsSql_stmt_listContext() {}
 func NewSql_stmt_listContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Sql_stmt_listContext {
 	var p = new(Sql_stmt_listContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_sql_stmt_list
@@ -1792,44 +1814,35 @@ func (s *Sql_stmt_listContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Sql_stmt_list() (localctx ISql_stmt_listContext) {
-	this := p
-	_ = this
-
 	localctx = NewSql_stmt_listContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 2, ParserRULE_sql_stmt_list)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	var _alt int
 
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(237)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserSCOL {
 		{
 			p.SetState(234)
 			p.Match(ParserSCOL)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 		p.SetState(239)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
@@ -1838,22 +1851,37 @@ func (p *Parser) Sql_stmt_list() (localctx ISql_stmt_listContext) {
 	}
 	p.SetState(249)
 	p.GetErrorHandler().Sync(p)
-	_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 3, p.GetParserRuleContext())
-
+	if p.HasError() {
+		goto errorExit
+	}
+	_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 3, p.GetParserRuleContext())
+	if p.HasError() {
+		goto errorExit
+	}
 	for _alt != 2 && _alt != antlr.ATNInvalidAltNumber {
 		if _alt == 1 {
 			p.SetState(242)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for ok := true; ok; ok = _la == ParserSCOL {
 				{
 					p.SetState(241)
 					p.Match(ParserSCOL)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
 				p.SetState(244)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 			{
@@ -1864,26 +1892,57 @@ func (p *Parser) Sql_stmt_list() (localctx ISql_stmt_listContext) {
 		}
 		p.SetState(251)
 		p.GetErrorHandler().Sync(p)
-		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 3, p.GetParserRuleContext())
+		if p.HasError() {
+			goto errorExit
+		}
+		_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 3, p.GetParserRuleContext())
+		if p.HasError() {
+			goto errorExit
+		}
 	}
 	p.SetState(255)
 	p.GetErrorHandler().Sync(p)
-	_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 4, p.GetParserRuleContext())
-
+	if p.HasError() {
+		goto errorExit
+	}
+	_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 4, p.GetParserRuleContext())
+	if p.HasError() {
+		goto errorExit
+	}
 	for _alt != 2 && _alt != antlr.ATNInvalidAltNumber {
 		if _alt == 1 {
 			{
 				p.SetState(252)
 				p.Match(ParserSCOL)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		}
 		p.SetState(257)
 		p.GetErrorHandler().Sync(p)
-		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 4, p.GetParserRuleContext())
+		if p.HasError() {
+			goto errorExit
+		}
+		_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 4, p.GetParserRuleContext())
+		if p.HasError() {
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISql_stmtContext is an interface to support dynamic dispatch.
@@ -1893,20 +1952,54 @@ type ISql_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Alter_table_stmt() IAlter_table_stmtContext
+	Analyze_stmt() IAnalyze_stmtContext
+	Attach_stmt() IAttach_stmtContext
+	Begin_stmt() IBegin_stmtContext
+	Commit_stmt() ICommit_stmtContext
+	Create_index_stmt() ICreate_index_stmtContext
+	Create_table_stmt() ICreate_table_stmtContext
+	Create_trigger_stmt() ICreate_trigger_stmtContext
+	Create_view_stmt() ICreate_view_stmtContext
+	Create_virtual_table_stmt() ICreate_virtual_table_stmtContext
+	Delete_stmt() IDelete_stmtContext
+	Delete_stmt_limited() IDelete_stmt_limitedContext
+	Detach_stmt() IDetach_stmtContext
+	Drop_stmt() IDrop_stmtContext
+	Insert_stmt() IInsert_stmtContext
+	Pragma_stmt() IPragma_stmtContext
+	Reindex_stmt() IReindex_stmtContext
+	Release_stmt() IRelease_stmtContext
+	Rollback_stmt() IRollback_stmtContext
+	Savepoint_stmt() ISavepoint_stmtContext
+	Select_stmt() ISelect_stmtContext
+	Update_stmt() IUpdate_stmtContext
+	Update_stmt_limited() IUpdate_stmt_limitedContext
+	Vacuum_stmt() IVacuum_stmtContext
+	EXPLAIN_() antlr.TerminalNode
+	QUERY_() antlr.TerminalNode
+	PLAN_() antlr.TerminalNode
+
 	// IsSql_stmtContext differentiates from other interfaces.
 	IsSql_stmtContext()
 }
 
 type Sql_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySql_stmtContext() *Sql_stmtContext {
 	var p = new(Sql_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_sql_stmt
 	return p
+}
+
+func InitEmptySql_stmtContext(p *Sql_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_sql_stmt
 }
 
 func (*Sql_stmtContext) IsSql_stmtContext() {}
@@ -1914,7 +2007,7 @@ func (*Sql_stmtContext) IsSql_stmtContext() {}
 func NewSql_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Sql_stmtContext {
 	var p = new(Sql_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_sql_stmt
@@ -2351,51 +2444,50 @@ func (s *Sql_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Sql_stmt() (localctx ISql_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewSql_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 4, ParserRULE_sql_stmt)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(263)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserEXPLAIN_ {
 		{
 			p.SetState(258)
 			p.Match(ParserEXPLAIN_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(261)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserQUERY_ {
 			{
 				p.SetState(259)
 				p.Match(ParserQUERY_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(260)
 				p.Match(ParserPLAN_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		}
@@ -2403,7 +2495,11 @@ func (p *Parser) Sql_stmt() (localctx ISql_stmtContext) {
 	}
 	p.SetState(289)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 7, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 7, p.GetParserRuleContext()) {
 	case 1:
 		{
 			p.SetState(265)
@@ -2548,9 +2644,21 @@ func (p *Parser) Sql_stmt() (localctx ISql_stmtContext) {
 			p.Vacuum_stmt()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAlter_table_stmtContext is an interface to support dynamic dispatch.
@@ -2578,12 +2686,28 @@ type IAlter_table_stmtContext interface {
 	// SetNew_column_name sets the new_column_name rule contexts.
 	SetNew_column_name(IColumn_nameContext)
 
+	// Getter signatures
+	ALTER_() antlr.TerminalNode
+	TABLE_() antlr.TerminalNode
+	AllTable_name() []ITable_nameContext
+	Table_name(i int) ITable_nameContext
+	RENAME_() antlr.TerminalNode
+	ADD_() antlr.TerminalNode
+	Column_def() IColumn_defContext
+	DROP_() antlr.TerminalNode
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+	TO_() antlr.TerminalNode
+	COLUMN_() antlr.TerminalNode
+
 	// IsAlter_table_stmtContext differentiates from other interfaces.
 	IsAlter_table_stmtContext()
 }
 
 type Alter_table_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser          antlr.Parser
 	new_table_name  ITable_nameContext
 	old_column_name IColumn_nameContext
@@ -2592,9 +2716,14 @@ type Alter_table_stmtContext struct {
 
 func NewEmptyAlter_table_stmtContext() *Alter_table_stmtContext {
 	var p = new(Alter_table_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_alter_table_stmt
 	return p
+}
+
+func InitEmptyAlter_table_stmtContext(p *Alter_table_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_alter_table_stmt
 }
 
 func (*Alter_table_stmtContext) IsAlter_table_stmtContext() {}
@@ -2602,7 +2731,7 @@ func (*Alter_table_stmtContext) IsAlter_table_stmtContext() {}
 func NewAlter_table_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Alter_table_stmtContext {
 	var p = new(Alter_table_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_alter_table_stmt
@@ -2801,41 +2930,29 @@ func (s *Alter_table_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *Parser) Alter_table_stmt() (localctx IAlter_table_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewAlter_table_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 6, ParserRULE_alter_table_stmt)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(291)
 		p.Match(ParserALTER_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(292)
 		p.Match(ParserTABLE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(296)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 8, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 8, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(293)
 			p.Schema_name()
@@ -2843,8 +2960,14 @@ func (p *Parser) Alter_table_stmt() (localctx IAlter_table_stmtContext) {
 		{
 			p.SetState(294)
 			p.Match(ParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(298)
@@ -2852,20 +2975,35 @@ func (p *Parser) Alter_table_stmt() (localctx IAlter_table_stmtContext) {
 	}
 	p.SetState(321)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserRENAME_:
 		{
 			p.SetState(299)
 			p.Match(ParserRENAME_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(309)
 		p.GetErrorHandler().Sync(p)
-		switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 10, p.GetParserRuleContext()) {
+		if p.HasError() {
+			goto errorExit
+		}
+
+		switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 10, p.GetParserRuleContext()) {
 		case 1:
 			{
 				p.SetState(300)
 				p.Match(ParserTO_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(301)
@@ -2879,12 +3017,18 @@ func (p *Parser) Alter_table_stmt() (localctx IAlter_table_stmtContext) {
 			p.SetState(303)
 			p.GetErrorHandler().Sync(p)
 
-			if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 9, p.GetParserRuleContext()) == 1 {
+			if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 9, p.GetParserRuleContext()) == 1 {
 				{
 					p.SetState(302)
 					p.Match(ParserCOLUMN_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
+			} else if p.HasError() { // JIM
+				goto errorExit
 			}
 			{
 				p.SetState(305)
@@ -2896,6 +3040,10 @@ func (p *Parser) Alter_table_stmt() (localctx IAlter_table_stmtContext) {
 			{
 				p.SetState(306)
 				p.Match(ParserTO_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(307)
@@ -2905,22 +3053,34 @@ func (p *Parser) Alter_table_stmt() (localctx IAlter_table_stmtContext) {
 				localctx.(*Alter_table_stmtContext).new_column_name = _x
 			}
 
+		case antlr.ATNInvalidAltNumber:
+			goto errorExit
 		}
 
 	case ParserADD_:
 		{
 			p.SetState(311)
 			p.Match(ParserADD_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(313)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 11, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 11, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(312)
 				p.Match(ParserCOLUMN_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		{
 			p.SetState(315)
@@ -2931,16 +3091,26 @@ func (p *Parser) Alter_table_stmt() (localctx IAlter_table_stmtContext) {
 		{
 			p.SetState(316)
 			p.Match(ParserDROP_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(318)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 12, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 12, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(317)
 				p.Match(ParserCOLUMN_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		{
 			p.SetState(320)
@@ -2948,10 +3118,21 @@ func (p *Parser) Alter_table_stmt() (localctx IAlter_table_stmtContext) {
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAnalyze_stmtContext is an interface to support dynamic dispatch.
@@ -2961,20 +3142,31 @@ type IAnalyze_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ANALYZE_() antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	Table_or_index_name() ITable_or_index_nameContext
+	DOT() antlr.TerminalNode
+
 	// IsAnalyze_stmtContext differentiates from other interfaces.
 	IsAnalyze_stmtContext()
 }
 
 type Analyze_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyAnalyze_stmtContext() *Analyze_stmtContext {
 	var p = new(Analyze_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_analyze_stmt
 	return p
+}
+
+func InitEmptyAnalyze_stmtContext(p *Analyze_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_analyze_stmt
 }
 
 func (*Analyze_stmtContext) IsAnalyze_stmtContext() {}
@@ -2982,7 +3174,7 @@ func (*Analyze_stmtContext) IsAnalyze_stmtContext() {}
 func NewAnalyze_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Analyze_stmtContext {
 	var p = new(Analyze_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_analyze_stmt
@@ -3063,47 +3255,33 @@ func (s *Analyze_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *Parser) Analyze_stmt() (localctx IAnalyze_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewAnalyze_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 8, ParserRULE_analyze_stmt)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(323)
 		p.Match(ParserANALYZE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(331)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 15, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 15, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(324)
 			p.Schema_name()
 		}
 
-	} else if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 15, p.GetParserRuleContext()) == 2 {
+	} else if p.HasError() { // JIM
+		goto errorExit
+	} else if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 15, p.GetParserRuleContext()) == 2 {
 		p.SetState(328)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 14, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 14, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(325)
 				p.Schema_name()
@@ -3111,17 +3289,35 @@ func (p *Parser) Analyze_stmt() (localctx IAnalyze_stmtContext) {
 			{
 				p.SetState(326)
 				p.Match(ParserDOT)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		{
 			p.SetState(330)
 			p.Table_or_index_name()
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAttach_stmtContext is an interface to support dynamic dispatch.
@@ -3131,20 +3327,32 @@ type IAttach_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ATTACH_() antlr.TerminalNode
+	Expr() IExprContext
+	AS_() antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	DATABASE_() antlr.TerminalNode
+
 	// IsAttach_stmtContext differentiates from other interfaces.
 	IsAttach_stmtContext()
 }
 
 type Attach_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyAttach_stmtContext() *Attach_stmtContext {
 	var p = new(Attach_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_attach_stmt
 	return p
+}
+
+func InitEmptyAttach_stmtContext(p *Attach_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_attach_stmt
 }
 
 func (*Attach_stmtContext) IsAttach_stmtContext() {}
@@ -3152,7 +3360,7 @@ func (*Attach_stmtContext) IsAttach_stmtContext() {}
 func NewAttach_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Attach_stmtContext {
 	var p = new(Attach_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_attach_stmt
@@ -3237,42 +3445,32 @@ func (s *Attach_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Attach_stmt() (localctx IAttach_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewAttach_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 10, ParserRULE_attach_stmt)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(333)
 		p.Match(ParserATTACH_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(335)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 16, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 16, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(334)
 			p.Match(ParserDATABASE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(337)
@@ -3281,13 +3479,27 @@ func (p *Parser) Attach_stmt() (localctx IAttach_stmtContext) {
 	{
 		p.SetState(338)
 		p.Match(ParserAS_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(339)
 		p.Schema_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IBegin_stmtContext is an interface to support dynamic dispatch.
@@ -3297,20 +3509,33 @@ type IBegin_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	BEGIN_() antlr.TerminalNode
+	TRANSACTION_() antlr.TerminalNode
+	DEFERRED_() antlr.TerminalNode
+	IMMEDIATE_() antlr.TerminalNode
+	EXCLUSIVE_() antlr.TerminalNode
+	Transaction_name() ITransaction_nameContext
+
 	// IsBegin_stmtContext differentiates from other interfaces.
 	IsBegin_stmtContext()
 }
 
 type Begin_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyBegin_stmtContext() *Begin_stmtContext {
 	var p = new(Begin_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_begin_stmt
 	return p
+}
+
+func InitEmptyBegin_stmtContext(p *Begin_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_begin_stmt
 }
 
 func (*Begin_stmtContext) IsBegin_stmtContext() {}
@@ -3318,7 +3543,7 @@ func (*Begin_stmtContext) IsBegin_stmtContext() {}
 func NewBegin_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Begin_stmtContext {
 	var p = new(Begin_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_begin_stmt
@@ -3395,44 +3620,32 @@ func (s *Begin_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Begin_stmt() (localctx IBegin_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewBegin_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 12, ParserRULE_begin_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(341)
 		p.Match(ParserBEGIN_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(343)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	if ((_la-58)&-(0x1f+1)) == 0 && ((1<<uint((_la-58)))&((1<<(ParserDEFERRED_-58))|(1<<(ParserEXCLUSIVE_-58))|(1<<(ParserIMMEDIATE_-58)))) != 0 {
+	if (int64((_la-58)) & ^0x3f) == 0 && ((int64(1)<<(_la-58))&16779265) != 0 {
 		{
 			p.SetState(342)
 			_la = p.GetTokenStream().LA(1)
 
-			if !(((_la-58)&-(0x1f+1)) == 0 && ((1<<uint((_la-58)))&((1<<(ParserDEFERRED_-58))|(1<<(ParserEXCLUSIVE_-58))|(1<<(ParserIMMEDIATE_-58)))) != 0) {
+			if !((int64((_la-58)) & ^0x3f) == 0 && ((int64(1)<<(_la-58))&16779265) != 0) {
 				p.GetErrorHandler().RecoverInline(p)
 			} else {
 				p.GetErrorHandler().ReportMatch(p)
@@ -3443,27 +3656,46 @@ func (p *Parser) Begin_stmt() (localctx IBegin_stmtContext) {
 	}
 	p.SetState(349)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserTRANSACTION_ {
 		{
 			p.SetState(345)
 			p.Match(ParserTRANSACTION_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(347)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 18, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 18, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(346)
 				p.Transaction_name()
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICommit_stmtContext is an interface to support dynamic dispatch.
@@ -3473,20 +3705,30 @@ type ICommit_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	COMMIT_() antlr.TerminalNode
+	END_() antlr.TerminalNode
+	TRANSACTION_() antlr.TerminalNode
+
 	// IsCommit_stmtContext differentiates from other interfaces.
 	IsCommit_stmtContext()
 }
 
 type Commit_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCommit_stmtContext() *Commit_stmtContext {
 	var p = new(Commit_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_commit_stmt
 	return p
+}
+
+func InitEmptyCommit_stmtContext(p *Commit_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_commit_stmt
 }
 
 func (*Commit_stmtContext) IsCommit_stmtContext() {}
@@ -3494,7 +3736,7 @@ func (*Commit_stmtContext) IsCommit_stmtContext() {}
 func NewCommit_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Commit_stmtContext {
 	var p = new(Commit_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_commit_stmt
@@ -3547,28 +3789,9 @@ func (s *Commit_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Commit_stmt() (localctx ICommit_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewCommit_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 14, ParserRULE_commit_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -3584,17 +3807,34 @@ func (p *Parser) Commit_stmt() (localctx ICommit_stmtContext) {
 	}
 	p.SetState(353)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserTRANSACTION_ {
 		{
 			p.SetState(352)
 			p.Match(ParserTRANSACTION_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IRollback_stmtContext is an interface to support dynamic dispatch.
@@ -3604,20 +3844,32 @@ type IRollback_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ROLLBACK_() antlr.TerminalNode
+	TRANSACTION_() antlr.TerminalNode
+	TO_() antlr.TerminalNode
+	Savepoint_name() ISavepoint_nameContext
+	SAVEPOINT_() antlr.TerminalNode
+
 	// IsRollback_stmtContext differentiates from other interfaces.
 	IsRollback_stmtContext()
 }
 
 type Rollback_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyRollback_stmtContext() *Rollback_stmtContext {
 	var p = new(Rollback_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_rollback_stmt
 	return p
+}
+
+func InitEmptyRollback_stmtContext(p *Rollback_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_rollback_stmt
 }
 
 func (*Rollback_stmtContext) IsRollback_stmtContext() {}
@@ -3625,7 +3877,7 @@ func (*Rollback_stmtContext) IsRollback_stmtContext() {}
 func NewRollback_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Rollback_stmtContext {
 	var p = new(Rollback_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_rollback_stmt
@@ -3698,63 +3950,68 @@ func (s *Rollback_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Rollback_stmt() (localctx IRollback_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewRollback_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 16, ParserRULE_rollback_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(355)
 		p.Match(ParserROLLBACK_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(357)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserTRANSACTION_ {
 		{
 			p.SetState(356)
 			p.Match(ParserTRANSACTION_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	}
 	p.SetState(364)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserTO_ {
 		{
 			p.SetState(359)
 			p.Match(ParserTO_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(361)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 22, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 22, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(360)
 				p.Match(ParserSAVEPOINT_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		{
 			p.SetState(363)
@@ -3763,7 +4020,17 @@ func (p *Parser) Rollback_stmt() (localctx IRollback_stmtContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISavepoint_stmtContext is an interface to support dynamic dispatch.
@@ -3773,20 +4040,29 @@ type ISavepoint_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	SAVEPOINT_() antlr.TerminalNode
+	Savepoint_name() ISavepoint_nameContext
+
 	// IsSavepoint_stmtContext differentiates from other interfaces.
 	IsSavepoint_stmtContext()
 }
 
 type Savepoint_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySavepoint_stmtContext() *Savepoint_stmtContext {
 	var p = new(Savepoint_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_savepoint_stmt
 	return p
+}
+
+func InitEmptySavepoint_stmtContext(p *Savepoint_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_savepoint_stmt
 }
 
 func (*Savepoint_stmtContext) IsSavepoint_stmtContext() {}
@@ -3794,7 +4070,7 @@ func (*Savepoint_stmtContext) IsSavepoint_stmtContext() {}
 func NewSavepoint_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Savepoint_stmtContext {
 	var p = new(Savepoint_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_savepoint_stmt
@@ -3855,39 +4131,33 @@ func (s *Savepoint_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *Parser) Savepoint_stmt() (localctx ISavepoint_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewSavepoint_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 18, ParserRULE_savepoint_stmt)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(366)
 		p.Match(ParserSAVEPOINT_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(367)
 		p.Savepoint_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IRelease_stmtContext is an interface to support dynamic dispatch.
@@ -3897,20 +4167,30 @@ type IRelease_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	RELEASE_() antlr.TerminalNode
+	Savepoint_name() ISavepoint_nameContext
+	SAVEPOINT_() antlr.TerminalNode
+
 	// IsRelease_stmtContext differentiates from other interfaces.
 	IsRelease_stmtContext()
 }
 
 type Release_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyRelease_stmtContext() *Release_stmtContext {
 	var p = new(Release_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_release_stmt
 	return p
+}
+
+func InitEmptyRelease_stmtContext(p *Release_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_release_stmt
 }
 
 func (*Release_stmtContext) IsRelease_stmtContext() {}
@@ -3918,7 +4198,7 @@ func (*Release_stmtContext) IsRelease_stmtContext() {}
 func NewRelease_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Release_stmtContext {
 	var p = new(Release_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_release_stmt
@@ -3983,49 +4263,49 @@ func (s *Release_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *Parser) Release_stmt() (localctx IRelease_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewRelease_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 20, ParserRULE_release_stmt)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(369)
 		p.Match(ParserRELEASE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(371)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 24, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 24, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(370)
 			p.Match(ParserSAVEPOINT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(373)
 		p.Savepoint_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICreate_index_stmtContext is an interface to support dynamic dispatch.
@@ -4035,20 +4315,46 @@ type ICreate_index_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CREATE_() antlr.TerminalNode
+	INDEX_() antlr.TerminalNode
+	Index_name() IIndex_nameContext
+	ON_() antlr.TerminalNode
+	Table_name() ITable_nameContext
+	OPEN_PAR() antlr.TerminalNode
+	AllIndexed_column() []IIndexed_columnContext
+	Indexed_column(i int) IIndexed_columnContext
+	CLOSE_PAR() antlr.TerminalNode
+	UNIQUE_() antlr.TerminalNode
+	IF_() antlr.TerminalNode
+	NOT_() antlr.TerminalNode
+	EXISTS_() antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+	WHERE_() antlr.TerminalNode
+	Expr() IExprContext
+
 	// IsCreate_index_stmtContext differentiates from other interfaces.
 	IsCreate_index_stmtContext()
 }
 
 type Create_index_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCreate_index_stmtContext() *Create_index_stmtContext {
 	var p = new(Create_index_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_create_index_stmt
 	return p
+}
+
+func InitEmptyCreate_index_stmtContext(p *Create_index_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_create_index_stmt
 }
 
 func (*Create_index_stmtContext) IsCreate_index_stmtContext() {}
@@ -4056,7 +4362,7 @@ func (*Create_index_stmtContext) IsCreate_index_stmtContext() {}
 func NewCreate_index_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Create_index_stmtContext {
 	var p = new(Create_index_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_create_index_stmt
@@ -4254,71 +4560,81 @@ func (s *Create_index_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interf
 }
 
 func (p *Parser) Create_index_stmt() (localctx ICreate_index_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewCreate_index_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 22, ParserRULE_create_index_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(375)
 		p.Match(ParserCREATE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(377)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserUNIQUE_ {
 		{
 			p.SetState(376)
 			p.Match(ParserUNIQUE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	}
 	{
 		p.SetState(379)
 		p.Match(ParserINDEX_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(383)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 26, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 26, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(380)
 			p.Match(ParserIF_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(381)
 			p.Match(ParserNOT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(382)
 			p.Match(ParserEXISTS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	p.SetState(388)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 27, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 27, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(385)
 			p.Schema_name()
@@ -4326,8 +4642,14 @@ func (p *Parser) Create_index_stmt() (localctx ICreate_index_stmtContext) {
 		{
 			p.SetState(386)
 			p.Match(ParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(390)
@@ -4336,6 +4658,10 @@ func (p *Parser) Create_index_stmt() (localctx ICreate_index_stmtContext) {
 	{
 		p.SetState(391)
 		p.Match(ParserON_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(392)
@@ -4344,6 +4670,10 @@ func (p *Parser) Create_index_stmt() (localctx ICreate_index_stmtContext) {
 	{
 		p.SetState(393)
 		p.Match(ParserOPEN_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(394)
@@ -4351,12 +4681,19 @@ func (p *Parser) Create_index_stmt() (localctx ICreate_index_stmtContext) {
 	}
 	p.SetState(399)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserCOMMA {
 		{
 			p.SetState(395)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(396)
@@ -4365,20 +4702,34 @@ func (p *Parser) Create_index_stmt() (localctx ICreate_index_stmtContext) {
 
 		p.SetState(401)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(402)
 		p.Match(ParserCLOSE_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(405)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWHERE_ {
 		{
 			p.SetState(403)
 			p.Match(ParserWHERE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(404)
@@ -4387,7 +4738,17 @@ func (p *Parser) Create_index_stmt() (localctx ICreate_index_stmtContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IIndexed_columnContext is an interface to support dynamic dispatch.
@@ -4397,20 +4758,32 @@ type IIndexed_columnContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Column_name() IColumn_nameContext
+	Expr() IExprContext
+	COLLATE_() antlr.TerminalNode
+	Collation_name() ICollation_nameContext
+	Asc_desc() IAsc_descContext
+
 	// IsIndexed_columnContext differentiates from other interfaces.
 	IsIndexed_columnContext()
 }
 
 type Indexed_columnContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyIndexed_columnContext() *Indexed_columnContext {
 	var p = new(Indexed_columnContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_indexed_column
 	return p
+}
+
+func InitEmptyIndexed_columnContext(p *Indexed_columnContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_indexed_column
 }
 
 func (*Indexed_columnContext) IsIndexed_columnContext() {}
@@ -4418,7 +4791,7 @@ func (*Indexed_columnContext) IsIndexed_columnContext() {}
 func NewIndexed_columnContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Indexed_columnContext {
 	var p = new(Indexed_columnContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_indexed_column
@@ -4527,33 +4900,18 @@ func (s *Indexed_columnContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *Parser) Indexed_column() (localctx IIndexed_columnContext) {
-	this := p
-	_ = this
-
 	localctx = NewIndexed_columnContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 24, ParserRULE_indexed_column)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(409)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 30, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 30, p.GetParserRuleContext()) {
 	case 1:
 		{
 			p.SetState(407)
@@ -4566,15 +4924,24 @@ func (p *Parser) Indexed_column() (localctx IIndexed_columnContext) {
 			p.expr(0)
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 	p.SetState(413)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserCOLLATE_ {
 		{
 			p.SetState(411)
 			p.Match(ParserCOLLATE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(412)
@@ -4584,6 +4951,9 @@ func (p *Parser) Indexed_column() (localctx IIndexed_columnContext) {
 	}
 	p.SetState(416)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserASC_ || _la == ParserDESC_ {
@@ -4594,7 +4964,17 @@ func (p *Parser) Indexed_column() (localctx IIndexed_columnContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICreate_table_stmtContext is an interface to support dynamic dispatch.
@@ -4610,21 +4990,50 @@ type ICreate_table_stmtContext interface {
 	// SetRow_ROW_ID sets the row_ROW_ID token.
 	SetRow_ROW_ID(antlr.Token)
 
+	// Getter signatures
+	CREATE_() antlr.TerminalNode
+	TABLE_() antlr.TerminalNode
+	Table_name() ITable_nameContext
+	OPEN_PAR() antlr.TerminalNode
+	AllColumn_def() []IColumn_defContext
+	Column_def(i int) IColumn_defContext
+	CLOSE_PAR() antlr.TerminalNode
+	AS_() antlr.TerminalNode
+	Select_stmt() ISelect_stmtContext
+	IF_() antlr.TerminalNode
+	NOT_() antlr.TerminalNode
+	EXISTS_() antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+	TEMP_() antlr.TerminalNode
+	TEMPORARY_() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+	AllTable_constraint() []ITable_constraintContext
+	Table_constraint(i int) ITable_constraintContext
+	WITHOUT_() antlr.TerminalNode
+	IDENTIFIER() antlr.TerminalNode
+
 	// IsCreate_table_stmtContext differentiates from other interfaces.
 	IsCreate_table_stmtContext()
 }
 
 type Create_table_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser     antlr.Parser
 	row_ROW_ID antlr.Token
 }
 
 func NewEmptyCreate_table_stmtContext() *Create_table_stmtContext {
 	var p = new(Create_table_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_create_table_stmt
 	return p
+}
+
+func InitEmptyCreate_table_stmtContext(p *Create_table_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_create_table_stmt
 }
 
 func (*Create_table_stmtContext) IsCreate_table_stmtContext() {}
@@ -4632,7 +5041,7 @@ func (*Create_table_stmtContext) IsCreate_table_stmtContext() {}
 func NewCreate_table_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Create_table_stmtContext {
 	var p = new(Create_table_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_create_table_stmt
@@ -4867,28 +5276,9 @@ func (s *Create_table_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interf
 }
 
 func (p *Parser) Create_table_stmt() (localctx ICreate_table_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewCreate_table_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 26, ParserRULE_create_table_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	var _alt int
 
@@ -4896,9 +5286,16 @@ func (p *Parser) Create_table_stmt() (localctx ICreate_table_stmtContext) {
 	{
 		p.SetState(418)
 		p.Match(ParserCREATE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(420)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserTEMP_ || _la == ParserTEMPORARY_ {
@@ -4918,29 +5315,47 @@ func (p *Parser) Create_table_stmt() (localctx ICreate_table_stmtContext) {
 	{
 		p.SetState(422)
 		p.Match(ParserTABLE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(426)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 34, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 34, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(423)
 			p.Match(ParserIF_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(424)
 			p.Match(ParserNOT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(425)
 			p.Match(ParserEXISTS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	p.SetState(431)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 35, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 35, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(428)
 			p.Schema_name()
@@ -4948,8 +5363,14 @@ func (p *Parser) Create_table_stmt() (localctx ICreate_table_stmtContext) {
 		{
 			p.SetState(429)
 			p.Match(ParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(433)
@@ -4957,12 +5378,19 @@ func (p *Parser) Create_table_stmt() (localctx ICreate_table_stmtContext) {
 	}
 	p.SetState(457)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserOPEN_PAR:
 		{
 			p.SetState(434)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(435)
@@ -4970,13 +5398,22 @@ func (p *Parser) Create_table_stmt() (localctx ICreate_table_stmtContext) {
 		}
 		p.SetState(440)
 		p.GetErrorHandler().Sync(p)
-		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 36, p.GetParserRuleContext())
-
+		if p.HasError() {
+			goto errorExit
+		}
+		_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 36, p.GetParserRuleContext())
+		if p.HasError() {
+			goto errorExit
+		}
 		for _alt != 1 && _alt != antlr.ATNInvalidAltNumber {
 			if _alt == 1+1 {
 				{
 					p.SetState(436)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(437)
@@ -4986,16 +5423,29 @@ func (p *Parser) Create_table_stmt() (localctx ICreate_table_stmtContext) {
 			}
 			p.SetState(442)
 			p.GetErrorHandler().Sync(p)
-			_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 36, p.GetParserRuleContext())
+			if p.HasError() {
+				goto errorExit
+			}
+			_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 36, p.GetParserRuleContext())
+			if p.HasError() {
+				goto errorExit
+			}
 		}
 		p.SetState(447)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(443)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(444)
@@ -5004,20 +5454,34 @@ func (p *Parser) Create_table_stmt() (localctx ICreate_table_stmtContext) {
 
 			p.SetState(449)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(450)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(453)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserWITHOUT_ {
 			{
 				p.SetState(451)
 				p.Match(ParserWITHOUT_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(452)
@@ -5025,6 +5489,10 @@ func (p *Parser) Create_table_stmt() (localctx ICreate_table_stmtContext) {
 				var _m = p.Match(ParserIDENTIFIER)
 
 				localctx.(*Create_table_stmtContext).row_ROW_ID = _m
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		}
@@ -5033,6 +5501,10 @@ func (p *Parser) Create_table_stmt() (localctx ICreate_table_stmtContext) {
 		{
 			p.SetState(455)
 			p.Match(ParserAS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(456)
@@ -5040,10 +5512,21 @@ func (p *Parser) Create_table_stmt() (localctx ICreate_table_stmtContext) {
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IColumn_defContext is an interface to support dynamic dispatch.
@@ -5053,20 +5536,31 @@ type IColumn_defContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Column_name() IColumn_nameContext
+	Type_name() IType_nameContext
+	AllColumn_constraint() []IColumn_constraintContext
+	Column_constraint(i int) IColumn_constraintContext
+
 	// IsColumn_defContext differentiates from other interfaces.
 	IsColumn_defContext()
 }
 
 type Column_defContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyColumn_defContext() *Column_defContext {
 	var p = new(Column_defContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_column_def
 	return p
+}
+
+func InitEmptyColumn_defContext(p *Column_defContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_column_def
 }
 
 func (*Column_defContext) IsColumn_defContext() {}
@@ -5074,7 +5568,7 @@ func (*Column_defContext) IsColumn_defContext() {}
 func NewColumn_defContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Column_defContext {
 	var p = new(Column_defContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_column_def
@@ -5188,28 +5682,9 @@ func (s *Column_defContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Column_def() (localctx IColumn_defContext) {
-	this := p
-	_ = this
-
 	localctx = NewColumn_defContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 28, ParserRULE_column_def)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -5219,18 +5694,23 @@ func (p *Parser) Column_def() (localctx IColumn_defContext) {
 	p.SetState(461)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 40, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 40, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(460)
 			p.Type_name()
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	p.SetState(466)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for (((_la-33)&-(0x1f+1)) == 0 && ((1<<uint((_la-33)))&((1<<(ParserAS_-33))|(1<<(ParserCHECK_-33))|(1<<(ParserCOLLATE_-33))|(1<<(ParserCONSTRAINT_-33))|(1<<(ParserDEFAULT_-33)))) != 0) || (((_la-102)&-(0x1f+1)) == 0 && ((1<<uint((_la-102)))&((1<<(ParserNOT_-102))|(1<<(ParserPRIMARY_-102))|(1<<(ParserREFERENCES_-102)))) != 0) || _la == ParserUNIQUE_ || _la == ParserGENERATED_ {
+	for ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&72673329139417088) != 0) || ((int64((_la-102)) & ^0x3f) == 0 && ((int64(1)<<(_la-102))&274877941761) != 0) || _la == ParserGENERATED_ {
 		{
 			p.SetState(463)
 			p.Column_constraint()
@@ -5238,10 +5718,23 @@ func (p *Parser) Column_def() (localctx IColumn_defContext) {
 
 		p.SetState(468)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IType_nameContext is an interface to support dynamic dispatch.
@@ -5251,20 +5744,34 @@ type IType_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllName() []INameContext
+	Name(i int) INameContext
+	OPEN_PAR() antlr.TerminalNode
+	AllSigned_number() []ISigned_numberContext
+	Signed_number(i int) ISigned_numberContext
+	CLOSE_PAR() antlr.TerminalNode
+	COMMA() antlr.TerminalNode
+
 	// IsType_nameContext differentiates from other interfaces.
 	IsType_nameContext()
 }
 
 type Type_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyType_nameContext() *Type_nameContext {
 	var p = new(Type_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_type_name
 	return p
+}
+
+func InitEmptyType_nameContext(p *Type_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_type_name
 }
 
 func (*Type_nameContext) IsType_nameContext() {}
@@ -5272,7 +5779,7 @@ func (*Type_nameContext) IsType_nameContext() {}
 func NewType_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Type_nameContext {
 	var p = new(Type_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_type_name
@@ -5407,33 +5914,16 @@ func (s *Type_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Type_name() (localctx IType_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewType_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 30, ParserRULE_type_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	var _alt int
 
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(470)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_alt = 1 + 1
 	for ok := true; ok; ok = _alt != 1 && _alt != antlr.ATNInvalidAltNumber {
 		switch _alt {
@@ -5444,20 +5934,28 @@ func (p *Parser) Type_name() (localctx IType_nameContext) {
 			}
 
 		default:
-			panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			goto errorExit
 		}
 
 		p.SetState(472)
 		p.GetErrorHandler().Sync(p)
-		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 42, p.GetParserRuleContext())
+		_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 42, p.GetParserRuleContext())
+		if p.HasError() {
+			goto errorExit
+		}
 	}
 	p.SetState(484)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 43, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 43, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(474)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(475)
@@ -5466,12 +5964,22 @@ func (p *Parser) Type_name() (localctx IType_nameContext) {
 		{
 			p.SetState(476)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
-	} else if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 43, p.GetParserRuleContext()) == 2 {
+	} else if p.HasError() { // JIM
+		goto errorExit
+	} else if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 43, p.GetParserRuleContext()) == 2 {
 		{
 			p.SetState(478)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(479)
@@ -5480,6 +5988,10 @@ func (p *Parser) Type_name() (localctx IType_nameContext) {
 		{
 			p.SetState(480)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(481)
@@ -5488,11 +6000,27 @@ func (p *Parser) Type_name() (localctx IType_nameContext) {
 		{
 			p.SetState(482)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IColumn_constraintContext is an interface to support dynamic dispatch.
@@ -5502,20 +6030,52 @@ type IColumn_constraintContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CHECK_() antlr.TerminalNode
+	OPEN_PAR() antlr.TerminalNode
+	Expr() IExprContext
+	CLOSE_PAR() antlr.TerminalNode
+	DEFAULT_() antlr.TerminalNode
+	COLLATE_() antlr.TerminalNode
+	Collation_name() ICollation_nameContext
+	Foreign_key_clause() IForeign_key_clauseContext
+	AS_() antlr.TerminalNode
+	CONSTRAINT_() antlr.TerminalNode
+	Name() INameContext
+	PRIMARY_() antlr.TerminalNode
+	KEY_() antlr.TerminalNode
+	NOT_() antlr.TerminalNode
+	NULL_() antlr.TerminalNode
+	UNIQUE_() antlr.TerminalNode
+	Signed_number() ISigned_numberContext
+	Literal_value() ILiteral_valueContext
+	Conflict_clause() IConflict_clauseContext
+	GENERATED_() antlr.TerminalNode
+	ALWAYS_() antlr.TerminalNode
+	STORED_() antlr.TerminalNode
+	VIRTUAL_() antlr.TerminalNode
+	Asc_desc() IAsc_descContext
+	AUTOINCREMENT_() antlr.TerminalNode
+
 	// IsColumn_constraintContext differentiates from other interfaces.
 	IsColumn_constraintContext()
 }
 
 type Column_constraintContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyColumn_constraintContext() *Column_constraintContext {
 	var p = new(Column_constraintContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_column_constraint
 	return p
+}
+
+func InitEmptyColumn_constraintContext(p *Column_constraintContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_column_constraint
 }
 
 func (*Column_constraintContext) IsColumn_constraintContext() {}
@@ -5523,7 +6083,7 @@ func (*Column_constraintContext) IsColumn_constraintContext() {}
 func NewColumn_constraintContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Column_constraintContext {
 	var p = new(Column_constraintContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_column_constraint
@@ -5760,38 +6320,26 @@ func (s *Column_constraintContext) Accept(visitor antlr.ParseTreeVisitor) interf
 }
 
 func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
-	this := p
-	_ = this
-
 	localctx = NewColumn_constraintContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 32, ParserRULE_column_constraint)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(488)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserCONSTRAINT_ {
 		{
 			p.SetState(486)
 			p.Match(ParserCONSTRAINT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(487)
@@ -5801,19 +6349,33 @@ func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
 	}
 	p.SetState(537)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserPRIMARY_:
 		{
 			p.SetState(490)
 			p.Match(ParserPRIMARY_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(491)
 			p.Match(ParserKEY_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(493)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserASC_ || _la == ParserDESC_ {
@@ -5825,6 +6387,9 @@ func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
 		}
 		p.SetState(496)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserON_ {
@@ -5836,12 +6401,19 @@ func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
 		}
 		p.SetState(499)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserAUTOINCREMENT_ {
 			{
 				p.SetState(498)
 				p.Match(ParserAUTOINCREMENT_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		}
@@ -5849,29 +6421,48 @@ func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
 	case ParserNOT_, ParserUNIQUE_:
 		p.SetState(504)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 
 		switch p.GetTokenStream().LA(1) {
 		case ParserNOT_:
 			{
 				p.SetState(501)
 				p.Match(ParserNOT_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(502)
 				p.Match(ParserNULL_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		case ParserUNIQUE_:
 			{
 				p.SetState(503)
 				p.Match(ParserUNIQUE_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		default:
-			panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			goto errorExit
 		}
 		p.SetState(507)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserON_ {
@@ -5886,10 +6477,18 @@ func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
 		{
 			p.SetState(509)
 			p.Match(ParserCHECK_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(510)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(511)
@@ -5898,16 +6497,28 @@ func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
 		{
 			p.SetState(512)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserDEFAULT_:
 		{
 			p.SetState(514)
 			p.Match(ParserDEFAULT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(521)
 		p.GetErrorHandler().Sync(p)
-		switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 50, p.GetParserRuleContext()) {
+		if p.HasError() {
+			goto errorExit
+		}
+
+		switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 50, p.GetParserRuleContext()) {
 		case 1:
 			{
 				p.SetState(515)
@@ -5924,6 +6535,10 @@ func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
 			{
 				p.SetState(517)
 				p.Match(ParserOPEN_PAR)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(518)
@@ -5932,14 +6547,24 @@ func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
 			{
 				p.SetState(519)
 				p.Match(ParserCLOSE_PAR)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
+		case antlr.ATNInvalidAltNumber:
+			goto errorExit
 		}
 
 	case ParserCOLLATE_:
 		{
 			p.SetState(523)
 			p.Match(ParserCOLLATE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(524)
@@ -5955,26 +6580,45 @@ func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
 	case ParserAS_, ParserGENERATED_:
 		p.SetState(528)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserGENERATED_ {
 			{
 				p.SetState(526)
 				p.Match(ParserGENERATED_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(527)
 				p.Match(ParserALWAYS_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		}
 		{
 			p.SetState(530)
 			p.Match(ParserAS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(531)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(532)
@@ -5983,9 +6627,16 @@ func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
 		{
 			p.SetState(533)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(535)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserVIRTUAL_ || _la == ParserSTORED_ {
@@ -6004,10 +6655,21 @@ func (p *Parser) Column_constraint() (localctx IColumn_constraintContext) {
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISigned_numberContext is an interface to support dynamic dispatch.
@@ -6017,20 +6679,30 @@ type ISigned_numberContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	NUMERIC_LITERAL() antlr.TerminalNode
+	PLUS() antlr.TerminalNode
+	MINUS() antlr.TerminalNode
+
 	// IsSigned_numberContext differentiates from other interfaces.
 	IsSigned_numberContext()
 }
 
 type Signed_numberContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySigned_numberContext() *Signed_numberContext {
 	var p = new(Signed_numberContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_signed_number
 	return p
+}
+
+func InitEmptySigned_numberContext(p *Signed_numberContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_signed_number
 }
 
 func (*Signed_numberContext) IsSigned_numberContext() {}
@@ -6038,7 +6710,7 @@ func (*Signed_numberContext) IsSigned_numberContext() {}
 func NewSigned_numberContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Signed_numberContext {
 	var p = new(Signed_numberContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_signed_number
@@ -6091,32 +6763,16 @@ func (s *Signed_numberContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Signed_number() (localctx ISigned_numberContext) {
-	this := p
-	_ = this
-
 	localctx = NewSigned_numberContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 34, ParserRULE_signed_number)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(540)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserPLUS || _la == ParserMINUS {
@@ -6136,9 +6792,23 @@ func (p *Parser) Signed_number() (localctx ISigned_numberContext) {
 	{
 		p.SetState(542)
 		p.Match(ParserNUMERIC_LITERAL)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ITable_constraintContext is an interface to support dynamic dispatch.
@@ -6148,20 +6818,45 @@ type ITable_constraintContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	OPEN_PAR() antlr.TerminalNode
+	AllIndexed_column() []IIndexed_columnContext
+	Indexed_column(i int) IIndexed_columnContext
+	CLOSE_PAR() antlr.TerminalNode
+	CHECK_() antlr.TerminalNode
+	Expr() IExprContext
+	FOREIGN_() antlr.TerminalNode
+	KEY_() antlr.TerminalNode
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	Foreign_key_clause() IForeign_key_clauseContext
+	CONSTRAINT_() antlr.TerminalNode
+	Name() INameContext
+	PRIMARY_() antlr.TerminalNode
+	UNIQUE_() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+	Conflict_clause() IConflict_clauseContext
+
 	// IsTable_constraintContext differentiates from other interfaces.
 	IsTable_constraintContext()
 }
 
 type Table_constraintContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyTable_constraintContext() *Table_constraintContext {
 	var p = new(Table_constraintContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_table_constraint
 	return p
+}
+
+func InitEmptyTable_constraintContext(p *Table_constraintContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_table_constraint
 }
 
 func (*Table_constraintContext) IsTable_constraintContext() {}
@@ -6169,7 +6864,7 @@ func (*Table_constraintContext) IsTable_constraintContext() {}
 func NewTable_constraintContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Table_constraintContext {
 	var p = new(Table_constraintContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_table_constraint
@@ -6396,38 +7091,26 @@ func (s *Table_constraintContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *Parser) Table_constraint() (localctx ITable_constraintContext) {
-	this := p
-	_ = this
-
 	localctx = NewTable_constraintContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 36, ParserRULE_table_constraint)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(546)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserCONSTRAINT_ {
 		{
 			p.SetState(544)
 			p.Match(ParserCONSTRAINT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(545)
@@ -6437,35 +7120,58 @@ func (p *Parser) Table_constraint() (localctx ITable_constraintContext) {
 	}
 	p.SetState(585)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserPRIMARY_, ParserUNIQUE_:
 		p.SetState(551)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 
 		switch p.GetTokenStream().LA(1) {
 		case ParserPRIMARY_:
 			{
 				p.SetState(548)
 				p.Match(ParserPRIMARY_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(549)
 				p.Match(ParserKEY_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		case ParserUNIQUE_:
 			{
 				p.SetState(550)
 				p.Match(ParserUNIQUE_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		default:
-			panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			goto errorExit
 		}
 		{
 			p.SetState(553)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(554)
@@ -6473,12 +7179,19 @@ func (p *Parser) Table_constraint() (localctx ITable_constraintContext) {
 		}
 		p.SetState(559)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(555)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(556)
@@ -6487,14 +7200,24 @@ func (p *Parser) Table_constraint() (localctx ITable_constraintContext) {
 
 			p.SetState(561)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(562)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(564)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserON_ {
@@ -6509,10 +7232,18 @@ func (p *Parser) Table_constraint() (localctx ITable_constraintContext) {
 		{
 			p.SetState(566)
 			p.Match(ParserCHECK_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(567)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(568)
@@ -6521,20 +7252,36 @@ func (p *Parser) Table_constraint() (localctx ITable_constraintContext) {
 		{
 			p.SetState(569)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserFOREIGN_:
 		{
 			p.SetState(571)
 			p.Match(ParserFOREIGN_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(572)
 			p.Match(ParserKEY_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(573)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(574)
@@ -6542,12 +7289,19 @@ func (p *Parser) Table_constraint() (localctx ITable_constraintContext) {
 		}
 		p.SetState(579)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(575)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(576)
@@ -6556,11 +7310,18 @@ func (p *Parser) Table_constraint() (localctx ITable_constraintContext) {
 
 			p.SetState(581)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(582)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(583)
@@ -6568,10 +7329,21 @@ func (p *Parser) Table_constraint() (localctx ITable_constraintContext) {
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IForeign_key_clauseContext is an interface to support dynamic dispatch.
@@ -6581,20 +7353,64 @@ type IForeign_key_clauseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	REFERENCES_() antlr.TerminalNode
+	Foreign_table() IForeign_tableContext
+	OPEN_PAR() antlr.TerminalNode
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	CLOSE_PAR() antlr.TerminalNode
+	AllON_() []antlr.TerminalNode
+	ON_(i int) antlr.TerminalNode
+	AllMATCH_() []antlr.TerminalNode
+	MATCH_(i int) antlr.TerminalNode
+	AllName() []INameContext
+	Name(i int) INameContext
+	DEFERRABLE_() antlr.TerminalNode
+	AllDELETE_() []antlr.TerminalNode
+	DELETE_(i int) antlr.TerminalNode
+	AllUPDATE_() []antlr.TerminalNode
+	UPDATE_(i int) antlr.TerminalNode
+	AllSET_() []antlr.TerminalNode
+	SET_(i int) antlr.TerminalNode
+	AllCASCADE_() []antlr.TerminalNode
+	CASCADE_(i int) antlr.TerminalNode
+	AllRESTRICT_() []antlr.TerminalNode
+	RESTRICT_(i int) antlr.TerminalNode
+	AllNO_() []antlr.TerminalNode
+	NO_(i int) antlr.TerminalNode
+	AllACTION_() []antlr.TerminalNode
+	ACTION_(i int) antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+	AllNULL_() []antlr.TerminalNode
+	NULL_(i int) antlr.TerminalNode
+	AllDEFAULT_() []antlr.TerminalNode
+	DEFAULT_(i int) antlr.TerminalNode
+	NOT_() antlr.TerminalNode
+	INITIALLY_() antlr.TerminalNode
+	DEFERRED_() antlr.TerminalNode
+	IMMEDIATE_() antlr.TerminalNode
+
 	// IsForeign_key_clauseContext differentiates from other interfaces.
 	IsForeign_key_clauseContext()
 }
 
 type Foreign_key_clauseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyForeign_key_clauseContext() *Foreign_key_clauseContext {
 	var p = new(Foreign_key_clauseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_foreign_key_clause
 	return p
+}
+
+func InitEmptyForeign_key_clauseContext(p *Foreign_key_clauseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_foreign_key_clause
 }
 
 func (*Foreign_key_clauseContext) IsForeign_key_clauseContext() {}
@@ -6602,7 +7418,7 @@ func (*Foreign_key_clauseContext) IsForeign_key_clauseContext() {}
 func NewForeign_key_clauseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Foreign_key_clauseContext {
 	var p = new(Foreign_key_clauseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_foreign_key_clause
@@ -6869,33 +7685,18 @@ func (s *Foreign_key_clauseContext) Accept(visitor antlr.ParseTreeVisitor) inter
 }
 
 func (p *Parser) Foreign_key_clause() (localctx IForeign_key_clauseContext) {
-	this := p
-	_ = this
-
 	localctx = NewForeign_key_clauseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 38, ParserRULE_foreign_key_clause)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(587)
 		p.Match(ParserREFERENCES_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(588)
@@ -6903,12 +7704,19 @@ func (p *Parser) Foreign_key_clause() (localctx IForeign_key_clauseContext) {
 	}
 	p.SetState(600)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserOPEN_PAR {
 		{
 			p.SetState(589)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(590)
@@ -6916,12 +7724,19 @@ func (p *Parser) Foreign_key_clause() (localctx IForeign_key_clauseContext) {
 		}
 		p.SetState(595)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(591)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(592)
@@ -6930,27 +7745,44 @@ func (p *Parser) Foreign_key_clause() (localctx IForeign_key_clauseContext) {
 
 			p.SetState(597)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(598)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	}
 	p.SetState(616)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserMATCH_ || _la == ParserON_ {
 		p.SetState(614)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 
 		switch p.GetTokenStream().LA(1) {
 		case ParserON_:
 			{
 				p.SetState(602)
 				p.Match(ParserON_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(603)
@@ -6965,12 +7797,19 @@ func (p *Parser) Foreign_key_clause() (localctx IForeign_key_clauseContext) {
 			}
 			p.SetState(610)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 
 			switch p.GetTokenStream().LA(1) {
 			case ParserSET_:
 				{
 					p.SetState(604)
 					p.Match(ParserSET_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(605)
@@ -6988,32 +7827,53 @@ func (p *Parser) Foreign_key_clause() (localctx IForeign_key_clauseContext) {
 				{
 					p.SetState(606)
 					p.Match(ParserCASCADE_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
 			case ParserRESTRICT_:
 				{
 					p.SetState(607)
 					p.Match(ParserRESTRICT_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
 			case ParserNO_:
 				{
 					p.SetState(608)
 					p.Match(ParserNO_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(609)
 					p.Match(ParserACTION_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
 			default:
-				panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+				p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+				goto errorExit
 			}
 
 		case ParserMATCH_:
 			{
 				p.SetState(612)
 				p.Match(ParserMATCH_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(613)
@@ -7021,40 +7881,62 @@ func (p *Parser) Foreign_key_clause() (localctx IForeign_key_clauseContext) {
 			}
 
 		default:
-			panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			goto errorExit
 		}
 
 		p.SetState(618)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	p.SetState(627)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 68, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 68, p.GetParserRuleContext()) == 1 {
 		p.SetState(620)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserNOT_ {
 			{
 				p.SetState(619)
 				p.Match(ParserNOT_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		}
 		{
 			p.SetState(622)
 			p.Match(ParserDEFERRABLE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(625)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserINITIALLY_ {
 			{
 				p.SetState(623)
 				p.Match(ParserINITIALLY_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(624)
@@ -7070,9 +7952,21 @@ func (p *Parser) Foreign_key_clause() (localctx IForeign_key_clauseContext) {
 
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IConflict_clauseContext is an interface to support dynamic dispatch.
@@ -7082,20 +7976,34 @@ type IConflict_clauseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ON_() antlr.TerminalNode
+	CONFLICT_() antlr.TerminalNode
+	ROLLBACK_() antlr.TerminalNode
+	ABORT_() antlr.TerminalNode
+	FAIL_() antlr.TerminalNode
+	IGNORE_() antlr.TerminalNode
+	REPLACE_() antlr.TerminalNode
+
 	// IsConflict_clauseContext differentiates from other interfaces.
 	IsConflict_clauseContext()
 }
 
 type Conflict_clauseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyConflict_clauseContext() *Conflict_clauseContext {
 	var p = new(Conflict_clauseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_conflict_clause
 	return p
+}
+
+func InitEmptyConflict_clauseContext(p *Conflict_clauseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_conflict_clause
 }
 
 func (*Conflict_clauseContext) IsConflict_clauseContext() {}
@@ -7103,7 +8011,7 @@ func (*Conflict_clauseContext) IsConflict_clauseContext() {}
 func NewConflict_clauseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Conflict_clauseContext {
 	var p = new(Conflict_clauseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_conflict_clause
@@ -7172,43 +8080,32 @@ func (s *Conflict_clauseContext) Accept(visitor antlr.ParseTreeVisitor) interfac
 }
 
 func (p *Parser) Conflict_clause() (localctx IConflict_clauseContext) {
-	this := p
-	_ = this
-
 	localctx = NewConflict_clauseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 40, ParserRULE_conflict_clause)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(629)
 		p.Match(ParserON_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(630)
 		p.Match(ParserCONFLICT_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(631)
 		_la = p.GetTokenStream().LA(1)
 
-		if !(_la == ParserABORT_ || _la == ParserFAIL_ || _la == ParserIGNORE_ || _la == ParserREPLACE_ || _la == ParserROLLBACK_) {
+		if !(_la == ParserABORT_ || ((int64((_la-72)) & ^0x3f) == 0 && ((int64(1)<<(_la-72))&19140298416325121) != 0)) {
 			p.GetErrorHandler().RecoverInline(p)
 		} else {
 			p.GetErrorHandler().ReportMatch(p)
@@ -7216,7 +8113,17 @@ func (p *Parser) Conflict_clause() (localctx IConflict_clauseContext) {
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICreate_trigger_stmtContext is an interface to support dynamic dispatch.
@@ -7226,20 +8133,68 @@ type ICreate_trigger_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CREATE_() antlr.TerminalNode
+	TRIGGER_() antlr.TerminalNode
+	Trigger_name() ITrigger_nameContext
+	ON_() antlr.TerminalNode
+	Table_name() ITable_nameContext
+	BEGIN_() antlr.TerminalNode
+	END_() antlr.TerminalNode
+	DELETE_() antlr.TerminalNode
+	INSERT_() antlr.TerminalNode
+	UPDATE_() antlr.TerminalNode
+	IF_() antlr.TerminalNode
+	NOT_() antlr.TerminalNode
+	EXISTS_() antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+	BEFORE_() antlr.TerminalNode
+	AFTER_() antlr.TerminalNode
+	INSTEAD_() antlr.TerminalNode
+	AllOF_() []antlr.TerminalNode
+	OF_(i int) antlr.TerminalNode
+	FOR_() antlr.TerminalNode
+	EACH_() antlr.TerminalNode
+	ROW_() antlr.TerminalNode
+	WHEN_() antlr.TerminalNode
+	Expr() IExprContext
+	AllSCOL() []antlr.TerminalNode
+	SCOL(i int) antlr.TerminalNode
+	TEMP_() antlr.TerminalNode
+	TEMPORARY_() antlr.TerminalNode
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	AllUpdate_stmt() []IUpdate_stmtContext
+	Update_stmt(i int) IUpdate_stmtContext
+	AllInsert_stmt() []IInsert_stmtContext
+	Insert_stmt(i int) IInsert_stmtContext
+	AllDelete_stmt() []IDelete_stmtContext
+	Delete_stmt(i int) IDelete_stmtContext
+	AllSelect_stmt() []ISelect_stmtContext
+	Select_stmt(i int) ISelect_stmtContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsCreate_trigger_stmtContext differentiates from other interfaces.
 	IsCreate_trigger_stmtContext()
 }
 
 type Create_trigger_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCreate_trigger_stmtContext() *Create_trigger_stmtContext {
 	var p = new(Create_trigger_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_create_trigger_stmt
 	return p
+}
+
+func InitEmptyCreate_trigger_stmtContext(p *Create_trigger_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_create_trigger_stmt
 }
 
 func (*Create_trigger_stmtContext) IsCreate_trigger_stmtContext() {}
@@ -7247,7 +8202,7 @@ func (*Create_trigger_stmtContext) IsCreate_trigger_stmtContext() {}
 func NewCreate_trigger_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Create_trigger_stmtContext {
 	var p = new(Create_trigger_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_create_trigger_stmt
@@ -7665,36 +8620,24 @@ func (s *Create_trigger_stmtContext) Accept(visitor antlr.ParseTreeVisitor) inte
 }
 
 func (p *Parser) Create_trigger_stmt() (localctx ICreate_trigger_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewCreate_trigger_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 42, ParserRULE_create_trigger_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(633)
 		p.Match(ParserCREATE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(635)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserTEMP_ || _la == ParserTEMPORARY_ {
@@ -7714,29 +8657,47 @@ func (p *Parser) Create_trigger_stmt() (localctx ICreate_trigger_stmtContext) {
 	{
 		p.SetState(637)
 		p.Match(ParserTRIGGER_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(641)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 70, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 70, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(638)
 			p.Match(ParserIF_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(639)
 			p.Match(ParserNOT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(640)
 			p.Match(ParserEXISTS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	p.SetState(646)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 71, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 71, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(643)
 			p.Schema_name()
@@ -7744,8 +8705,14 @@ func (p *Parser) Create_trigger_stmt() (localctx ICreate_trigger_stmtContext) {
 		{
 			p.SetState(644)
 			p.Match(ParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(648)
@@ -7753,28 +8720,46 @@ func (p *Parser) Create_trigger_stmt() (localctx ICreate_trigger_stmtContext) {
 	}
 	p.SetState(653)
 	p.GetErrorHandler().Sync(p)
-
+	if p.HasError() {
+		goto errorExit
+	}
 	switch p.GetTokenStream().LA(1) {
 	case ParserBEFORE_:
 		{
 			p.SetState(649)
 			p.Match(ParserBEFORE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserAFTER_:
 		{
 			p.SetState(650)
 			p.Match(ParserAFTER_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserINSTEAD_:
 		{
 			p.SetState(651)
 			p.Match(ParserINSTEAD_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(652)
 			p.Match(ParserOF_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserDELETE_, ParserINSERT_, ParserUPDATE_:
@@ -7783,33 +8768,55 @@ func (p *Parser) Create_trigger_stmt() (localctx ICreate_trigger_stmtContext) {
 	}
 	p.SetState(669)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserDELETE_:
 		{
 			p.SetState(655)
 			p.Match(ParserDELETE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserINSERT_:
 		{
 			p.SetState(656)
 			p.Match(ParserINSERT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserUPDATE_:
 		{
 			p.SetState(657)
 			p.Match(ParserUPDATE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(667)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserOF_ {
 			{
 				p.SetState(658)
 				p.Match(ParserOF_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(659)
@@ -7817,12 +8824,19 @@ func (p *Parser) Create_trigger_stmt() (localctx ICreate_trigger_stmtContext) {
 			}
 			p.SetState(664)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == ParserCOMMA {
 				{
 					p.SetState(660)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(661)
@@ -7831,17 +8845,25 @@ func (p *Parser) Create_trigger_stmt() (localctx ICreate_trigger_stmtContext) {
 
 				p.SetState(666)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 	{
 		p.SetState(671)
 		p.Match(ParserON_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(672)
@@ -7849,31 +8871,53 @@ func (p *Parser) Create_trigger_stmt() (localctx ICreate_trigger_stmtContext) {
 	}
 	p.SetState(676)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserFOR_ {
 		{
 			p.SetState(673)
 			p.Match(ParserFOR_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(674)
 			p.Match(ParserEACH_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(675)
 			p.Match(ParserROW_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	}
 	p.SetState(680)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWHEN_ {
 		{
 			p.SetState(678)
 			p.Match(ParserWHEN_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(679)
@@ -7884,15 +8928,26 @@ func (p *Parser) Create_trigger_stmt() (localctx ICreate_trigger_stmtContext) {
 	{
 		p.SetState(682)
 		p.Match(ParserBEGIN_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(691)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for ok := true; ok; ok = _la == ParserDELETE_ || _la == ParserINSERT_ || (((_la-122)&-(0x1f+1)) == 0 && ((1<<uint((_la-122)))&((1<<(ParserREPLACE_-122))|(1<<(ParserSELECT_-122))|(1<<(ParserUPDATE_-122))|(1<<(ParserVALUES_-122))|(1<<(ParserWITH_-122)))) != 0) {
+	for ok := true; ok; ok = _la == ParserDELETE_ || ((int64((_la-88)) & ^0x3f) == 0 && ((int64(1)<<(_la-88))&2386912217732743169) != 0) {
 		p.SetState(687)
 		p.GetErrorHandler().Sync(p)
-		switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 78, p.GetParserRuleContext()) {
+		if p.HasError() {
+			goto errorExit
+		}
+
+		switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 78, p.GetParserRuleContext()) {
 		case 1:
 			{
 				p.SetState(683)
@@ -7917,22 +8972,45 @@ func (p *Parser) Create_trigger_stmt() (localctx ICreate_trigger_stmtContext) {
 				p.Select_stmt()
 			}
 
+		case antlr.ATNInvalidAltNumber:
+			goto errorExit
 		}
 		{
 			p.SetState(689)
 			p.Match(ParserSCOL)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 		p.SetState(693)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(695)
 		p.Match(ParserEND_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICreate_view_stmtContext is an interface to support dynamic dispatch.
@@ -7942,20 +9020,45 @@ type ICreate_view_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CREATE_() antlr.TerminalNode
+	VIEW_() antlr.TerminalNode
+	View_name() IView_nameContext
+	AS_() antlr.TerminalNode
+	Select_stmt() ISelect_stmtContext
+	IF_() antlr.TerminalNode
+	NOT_() antlr.TerminalNode
+	EXISTS_() antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+	OPEN_PAR() antlr.TerminalNode
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	CLOSE_PAR() antlr.TerminalNode
+	TEMP_() antlr.TerminalNode
+	TEMPORARY_() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsCreate_view_stmtContext differentiates from other interfaces.
 	IsCreate_view_stmtContext()
 }
 
 type Create_view_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCreate_view_stmtContext() *Create_view_stmtContext {
 	var p = new(Create_view_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_create_view_stmt
 	return p
+}
+
+func InitEmptyCreate_view_stmtContext(p *Create_view_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_create_view_stmt
 }
 
 func (*Create_view_stmtContext) IsCreate_view_stmtContext() {}
@@ -7963,7 +9066,7 @@ func (*Create_view_stmtContext) IsCreate_view_stmtContext() {}
 func NewCreate_view_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Create_view_stmtContext {
 	var p = new(Create_view_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_create_view_stmt
@@ -8145,36 +9248,24 @@ func (s *Create_view_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *Parser) Create_view_stmt() (localctx ICreate_view_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewCreate_view_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 44, ParserRULE_create_view_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(697)
 		p.Match(ParserCREATE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(699)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserTEMP_ || _la == ParserTEMPORARY_ {
@@ -8194,29 +9285,47 @@ func (p *Parser) Create_view_stmt() (localctx ICreate_view_stmtContext) {
 	{
 		p.SetState(701)
 		p.Match(ParserVIEW_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(705)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 81, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 81, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(702)
 			p.Match(ParserIF_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(703)
 			p.Match(ParserNOT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(704)
 			p.Match(ParserEXISTS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	p.SetState(710)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 82, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 82, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(707)
 			p.Schema_name()
@@ -8224,8 +9333,14 @@ func (p *Parser) Create_view_stmt() (localctx ICreate_view_stmtContext) {
 		{
 			p.SetState(708)
 			p.Match(ParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(712)
@@ -8233,12 +9348,19 @@ func (p *Parser) Create_view_stmt() (localctx ICreate_view_stmtContext) {
 	}
 	p.SetState(724)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserOPEN_PAR {
 		{
 			p.SetState(713)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(714)
@@ -8246,12 +9368,19 @@ func (p *Parser) Create_view_stmt() (localctx ICreate_view_stmtContext) {
 		}
 		p.SetState(719)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(715)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(716)
@@ -8260,24 +9389,45 @@ func (p *Parser) Create_view_stmt() (localctx ICreate_view_stmtContext) {
 
 			p.SetState(721)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(722)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	}
 	{
 		p.SetState(726)
 		p.Match(ParserAS_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(727)
 		p.Select_stmt()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICreate_virtual_table_stmtContext is an interface to support dynamic dispatch.
@@ -8287,20 +9437,44 @@ type ICreate_virtual_table_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CREATE_() antlr.TerminalNode
+	VIRTUAL_() antlr.TerminalNode
+	TABLE_() antlr.TerminalNode
+	Table_name() ITable_nameContext
+	USING_() antlr.TerminalNode
+	Module_name() IModule_nameContext
+	IF_() antlr.TerminalNode
+	NOT_() antlr.TerminalNode
+	EXISTS_() antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+	OPEN_PAR() antlr.TerminalNode
+	AllModule_argument() []IModule_argumentContext
+	Module_argument(i int) IModule_argumentContext
+	CLOSE_PAR() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsCreate_virtual_table_stmtContext differentiates from other interfaces.
 	IsCreate_virtual_table_stmtContext()
 }
 
 type Create_virtual_table_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCreate_virtual_table_stmtContext() *Create_virtual_table_stmtContext {
 	var p = new(Create_virtual_table_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_create_virtual_table_stmt
 	return p
+}
+
+func InitEmptyCreate_virtual_table_stmtContext(p *Create_virtual_table_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_create_virtual_table_stmt
 }
 
 func (*Create_virtual_table_stmtContext) IsCreate_virtual_table_stmtContext() {}
@@ -8308,7 +9482,7 @@ func (*Create_virtual_table_stmtContext) IsCreate_virtual_table_stmtContext() {}
 func NewCreate_virtual_table_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Create_virtual_table_stmtContext {
 	var p = new(Create_virtual_table_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_create_virtual_table_stmt
@@ -8486,64 +9660,71 @@ func (s *Create_virtual_table_stmtContext) Accept(visitor antlr.ParseTreeVisitor
 }
 
 func (p *Parser) Create_virtual_table_stmt() (localctx ICreate_virtual_table_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewCreate_virtual_table_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 46, ParserRULE_create_virtual_table_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(729)
 		p.Match(ParserCREATE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(730)
 		p.Match(ParserVIRTUAL_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(731)
 		p.Match(ParserTABLE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(735)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 85, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 85, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(732)
 			p.Match(ParserIF_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(733)
 			p.Match(ParserNOT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(734)
 			p.Match(ParserEXISTS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	p.SetState(740)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 86, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 86, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(737)
 			p.Schema_name()
@@ -8551,8 +9732,14 @@ func (p *Parser) Create_virtual_table_stmt() (localctx ICreate_virtual_table_stm
 		{
 			p.SetState(738)
 			p.Match(ParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(742)
@@ -8561,6 +9748,10 @@ func (p *Parser) Create_virtual_table_stmt() (localctx ICreate_virtual_table_stm
 	{
 		p.SetState(743)
 		p.Match(ParserUSING_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(744)
@@ -8568,12 +9759,19 @@ func (p *Parser) Create_virtual_table_stmt() (localctx ICreate_virtual_table_stm
 	}
 	p.SetState(756)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserOPEN_PAR {
 		{
 			p.SetState(745)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(746)
@@ -8581,12 +9779,19 @@ func (p *Parser) Create_virtual_table_stmt() (localctx ICreate_virtual_table_stm
 		}
 		p.SetState(751)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(747)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(748)
@@ -8595,16 +9800,33 @@ func (p *Parser) Create_virtual_table_stmt() (localctx ICreate_virtual_table_stm
 
 			p.SetState(753)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(754)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IWith_clauseContext is an interface to support dynamic dispatch.
@@ -8614,20 +9836,41 @@ type IWith_clauseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	WITH_() antlr.TerminalNode
+	AllCte_table_name() []ICte_table_nameContext
+	Cte_table_name(i int) ICte_table_nameContext
+	AllAS_() []antlr.TerminalNode
+	AS_(i int) antlr.TerminalNode
+	AllOPEN_PAR() []antlr.TerminalNode
+	OPEN_PAR(i int) antlr.TerminalNode
+	AllSelect_stmt() []ISelect_stmtContext
+	Select_stmt(i int) ISelect_stmtContext
+	AllCLOSE_PAR() []antlr.TerminalNode
+	CLOSE_PAR(i int) antlr.TerminalNode
+	RECURSIVE_() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsWith_clauseContext differentiates from other interfaces.
 	IsWith_clauseContext()
 }
 
 type With_clauseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyWith_clauseContext() *With_clauseContext {
 	var p = new(With_clauseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_with_clause
 	return p
+}
+
+func InitEmptyWith_clauseContext(p *With_clauseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_with_clause
 }
 
 func (*With_clauseContext) IsWith_clauseContext() {}
@@ -8635,7 +9878,7 @@ func (*With_clauseContext) IsWith_clauseContext() {}
 func NewWith_clauseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *With_clauseContext {
 	var p = new(With_clauseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_with_clause
@@ -8798,43 +10041,34 @@ func (s *With_clauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) With_clause() (localctx IWith_clauseContext) {
-	this := p
-	_ = this
-
 	localctx = NewWith_clauseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 48, ParserRULE_with_clause)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(758)
 		p.Match(ParserWITH_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(760)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 89, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 89, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(759)
 			p.Match(ParserRECURSIVE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(762)
@@ -8843,10 +10077,18 @@ func (p *Parser) With_clause() (localctx IWith_clauseContext) {
 	{
 		p.SetState(763)
 		p.Match(ParserAS_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(764)
 		p.Match(ParserOPEN_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(765)
@@ -8855,15 +10097,26 @@ func (p *Parser) With_clause() (localctx IWith_clauseContext) {
 	{
 		p.SetState(766)
 		p.Match(ParserCLOSE_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(776)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserCOMMA {
 		{
 			p.SetState(767)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(768)
@@ -8872,10 +10125,18 @@ func (p *Parser) With_clause() (localctx IWith_clauseContext) {
 		{
 			p.SetState(769)
 			p.Match(ParserAS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(770)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(771)
@@ -8884,14 +10145,31 @@ func (p *Parser) With_clause() (localctx IWith_clauseContext) {
 		{
 			p.SetState(772)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 		p.SetState(778)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICte_table_nameContext is an interface to support dynamic dispatch.
@@ -8901,20 +10179,34 @@ type ICte_table_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Table_name() ITable_nameContext
+	OPEN_PAR() antlr.TerminalNode
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	CLOSE_PAR() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsCte_table_nameContext differentiates from other interfaces.
 	IsCte_table_nameContext()
 }
 
 type Cte_table_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCte_table_nameContext() *Cte_table_nameContext {
 	var p = new(Cte_table_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_cte_table_name
 	return p
+}
+
+func InitEmptyCte_table_nameContext(p *Cte_table_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_cte_table_name
 }
 
 func (*Cte_table_nameContext) IsCte_table_nameContext() {}
@@ -8922,7 +10214,7 @@ func (*Cte_table_nameContext) IsCte_table_nameContext() {}
 func NewCte_table_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cte_table_nameContext {
 	var p = new(Cte_table_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_cte_table_name
@@ -9036,28 +10328,9 @@ func (s *Cte_table_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *Parser) Cte_table_name() (localctx ICte_table_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewCte_table_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 50, ParserRULE_cte_table_name)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -9066,12 +10339,19 @@ func (p *Parser) Cte_table_name() (localctx ICte_table_nameContext) {
 	}
 	p.SetState(791)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserOPEN_PAR {
 		{
 			p.SetState(780)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(781)
@@ -9079,12 +10359,19 @@ func (p *Parser) Cte_table_name() (localctx ICte_table_nameContext) {
 		}
 		p.SetState(786)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(782)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(783)
@@ -9093,16 +10380,33 @@ func (p *Parser) Cte_table_name() (localctx ICte_table_nameContext) {
 
 			p.SetState(788)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(789)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IRecursive_cteContext is an interface to support dynamic dispatch.
@@ -9112,20 +10416,35 @@ type IRecursive_cteContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Cte_table_name() ICte_table_nameContext
+	AS_() antlr.TerminalNode
+	OPEN_PAR() antlr.TerminalNode
+	Initial_select() IInitial_selectContext
+	UNION_() antlr.TerminalNode
+	Recursive_select() IRecursive_selectContext
+	CLOSE_PAR() antlr.TerminalNode
+	ALL_() antlr.TerminalNode
+
 	// IsRecursive_cteContext differentiates from other interfaces.
 	IsRecursive_cteContext()
 }
 
 type Recursive_cteContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyRecursive_cteContext() *Recursive_cteContext {
 	var p = new(Recursive_cteContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_recursive_cte
 	return p
+}
+
+func InitEmptyRecursive_cteContext(p *Recursive_cteContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_recursive_cte
 }
 
 func (*Recursive_cteContext) IsRecursive_cteContext() {}
@@ -9133,7 +10452,7 @@ func (*Recursive_cteContext) IsRecursive_cteContext() {}
 func NewRecursive_cteContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Recursive_cteContext {
 	var p = new(Recursive_cteContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_recursive_cte
@@ -9242,28 +10561,9 @@ func (s *Recursive_cteContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Recursive_cte() (localctx IRecursive_cteContext) {
-	this := p
-	_ = this
-
 	localctx = NewRecursive_cteContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 52, ParserRULE_recursive_cte)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -9273,10 +10573,18 @@ func (p *Parser) Recursive_cte() (localctx IRecursive_cteContext) {
 	{
 		p.SetState(794)
 		p.Match(ParserAS_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(795)
 		p.Match(ParserOPEN_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(796)
@@ -9285,15 +10593,26 @@ func (p *Parser) Recursive_cte() (localctx IRecursive_cteContext) {
 	{
 		p.SetState(797)
 		p.Match(ParserUNION_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(799)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserALL_ {
 		{
 			p.SetState(798)
 			p.Match(ParserALL_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	}
@@ -9304,9 +10623,23 @@ func (p *Parser) Recursive_cte() (localctx IRecursive_cteContext) {
 	{
 		p.SetState(802)
 		p.Match(ParserCLOSE_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICommon_table_expressionContext is an interface to support dynamic dispatch.
@@ -9316,20 +10649,38 @@ type ICommon_table_expressionContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Table_name() ITable_nameContext
+	AS_() antlr.TerminalNode
+	AllOPEN_PAR() []antlr.TerminalNode
+	OPEN_PAR(i int) antlr.TerminalNode
+	Select_stmt() ISelect_stmtContext
+	AllCLOSE_PAR() []antlr.TerminalNode
+	CLOSE_PAR(i int) antlr.TerminalNode
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsCommon_table_expressionContext differentiates from other interfaces.
 	IsCommon_table_expressionContext()
 }
 
 type Common_table_expressionContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCommon_table_expressionContext() *Common_table_expressionContext {
 	var p = new(Common_table_expressionContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_common_table_expression
 	return p
+}
+
+func InitEmptyCommon_table_expressionContext(p *Common_table_expressionContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_common_table_expression
 }
 
 func (*Common_table_expressionContext) IsCommon_table_expressionContext() {}
@@ -9337,7 +10688,7 @@ func (*Common_table_expressionContext) IsCommon_table_expressionContext() {}
 func NewCommon_table_expressionContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Common_table_expressionContext {
 	var p = new(Common_table_expressionContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_common_table_expression
@@ -9479,28 +10830,9 @@ func (s *Common_table_expressionContext) Accept(visitor antlr.ParseTreeVisitor) 
 }
 
 func (p *Parser) Common_table_expression() (localctx ICommon_table_expressionContext) {
-	this := p
-	_ = this
-
 	localctx = NewCommon_table_expressionContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 54, ParserRULE_common_table_expression)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -9509,12 +10841,19 @@ func (p *Parser) Common_table_expression() (localctx ICommon_table_expressionCon
 	}
 	p.SetState(816)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserOPEN_PAR {
 		{
 			p.SetState(805)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(806)
@@ -9522,12 +10861,19 @@ func (p *Parser) Common_table_expression() (localctx ICommon_table_expressionCon
 		}
 		p.SetState(811)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(807)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(808)
@@ -9536,21 +10882,36 @@ func (p *Parser) Common_table_expression() (localctx ICommon_table_expressionCon
 
 			p.SetState(813)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(814)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	}
 	{
 		p.SetState(818)
 		p.Match(ParserAS_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(819)
 		p.Match(ParserOPEN_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(820)
@@ -9559,9 +10920,23 @@ func (p *Parser) Common_table_expression() (localctx ICommon_table_expressionCon
 	{
 		p.SetState(821)
 		p.Match(ParserCLOSE_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IDelete_stmtContext is an interface to support dynamic dispatch.
@@ -9571,20 +10946,34 @@ type IDelete_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	DELETE_() antlr.TerminalNode
+	FROM_() antlr.TerminalNode
+	Qualified_table_name() IQualified_table_nameContext
+	With_clause() IWith_clauseContext
+	WHERE_() antlr.TerminalNode
+	Expr() IExprContext
+	Returning_clause() IReturning_clauseContext
+
 	// IsDelete_stmtContext differentiates from other interfaces.
 	IsDelete_stmtContext()
 }
 
 type Delete_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyDelete_stmtContext() *Delete_stmtContext {
 	var p = new(Delete_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_delete_stmt
 	return p
+}
+
+func InitEmptyDelete_stmtContext(p *Delete_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_delete_stmt
 }
 
 func (*Delete_stmtContext) IsDelete_stmtContext() {}
@@ -9592,7 +10981,7 @@ func (*Delete_stmtContext) IsDelete_stmtContext() {}
 func NewDelete_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Delete_stmtContext {
 	var p = new(Delete_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_delete_stmt
@@ -9709,32 +11098,16 @@ func (s *Delete_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Delete_stmt() (localctx IDelete_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewDelete_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 56, ParserRULE_delete_stmt)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(824)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWITH_ {
@@ -9747,10 +11120,18 @@ func (p *Parser) Delete_stmt() (localctx IDelete_stmtContext) {
 	{
 		p.SetState(826)
 		p.Match(ParserDELETE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(827)
 		p.Match(ParserFROM_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(828)
@@ -9758,12 +11139,19 @@ func (p *Parser) Delete_stmt() (localctx IDelete_stmtContext) {
 	}
 	p.SetState(831)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWHERE_ {
 		{
 			p.SetState(829)
 			p.Match(ParserWHERE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(830)
@@ -9773,6 +11161,9 @@ func (p *Parser) Delete_stmt() (localctx IDelete_stmtContext) {
 	}
 	p.SetState(834)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserRETURNING_ {
@@ -9783,7 +11174,17 @@ func (p *Parser) Delete_stmt() (localctx IDelete_stmtContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IDelete_stmt_limitedContext is an interface to support dynamic dispatch.
@@ -9793,20 +11194,36 @@ type IDelete_stmt_limitedContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	DELETE_() antlr.TerminalNode
+	FROM_() antlr.TerminalNode
+	Qualified_table_name() IQualified_table_nameContext
+	With_clause() IWith_clauseContext
+	WHERE_() antlr.TerminalNode
+	Expr() IExprContext
+	Returning_clause() IReturning_clauseContext
+	Limit_stmt() ILimit_stmtContext
+	Order_by_stmt() IOrder_by_stmtContext
+
 	// IsDelete_stmt_limitedContext differentiates from other interfaces.
 	IsDelete_stmt_limitedContext()
 }
 
 type Delete_stmt_limitedContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyDelete_stmt_limitedContext() *Delete_stmt_limitedContext {
 	var p = new(Delete_stmt_limitedContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_delete_stmt_limited
 	return p
+}
+
+func InitEmptyDelete_stmt_limitedContext(p *Delete_stmt_limitedContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_delete_stmt_limited
 }
 
 func (*Delete_stmt_limitedContext) IsDelete_stmt_limitedContext() {}
@@ -9814,7 +11231,7 @@ func (*Delete_stmt_limitedContext) IsDelete_stmt_limitedContext() {}
 func NewDelete_stmt_limitedContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Delete_stmt_limitedContext {
 	var p = new(Delete_stmt_limitedContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_delete_stmt_limited
@@ -9963,32 +11380,16 @@ func (s *Delete_stmt_limitedContext) Accept(visitor antlr.ParseTreeVisitor) inte
 }
 
 func (p *Parser) Delete_stmt_limited() (localctx IDelete_stmt_limitedContext) {
-	this := p
-	_ = this
-
 	localctx = NewDelete_stmt_limitedContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 58, ParserRULE_delete_stmt_limited)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(837)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWITH_ {
@@ -10001,10 +11402,18 @@ func (p *Parser) Delete_stmt_limited() (localctx IDelete_stmt_limitedContext) {
 	{
 		p.SetState(839)
 		p.Match(ParserDELETE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(840)
 		p.Match(ParserFROM_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(841)
@@ -10012,12 +11421,19 @@ func (p *Parser) Delete_stmt_limited() (localctx IDelete_stmt_limitedContext) {
 	}
 	p.SetState(844)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWHERE_ {
 		{
 			p.SetState(842)
 			p.Match(ParserWHERE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(843)
@@ -10027,6 +11443,9 @@ func (p *Parser) Delete_stmt_limited() (localctx IDelete_stmt_limitedContext) {
 	}
 	p.SetState(847)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserRETURNING_ {
@@ -10038,11 +11457,17 @@ func (p *Parser) Delete_stmt_limited() (localctx IDelete_stmt_limitedContext) {
 	}
 	p.SetState(853)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserLIMIT_ || _la == ParserORDER_ {
 		p.SetState(850)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserORDER_ {
@@ -10059,7 +11484,17 @@ func (p *Parser) Delete_stmt_limited() (localctx IDelete_stmt_limitedContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IDetach_stmtContext is an interface to support dynamic dispatch.
@@ -10069,20 +11504,30 @@ type IDetach_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	DETACH_() antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	DATABASE_() antlr.TerminalNode
+
 	// IsDetach_stmtContext differentiates from other interfaces.
 	IsDetach_stmtContext()
 }
 
 type Detach_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyDetach_stmtContext() *Detach_stmtContext {
 	var p = new(Detach_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_detach_stmt
 	return p
+}
+
+func InitEmptyDetach_stmtContext(p *Detach_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_detach_stmt
 }
 
 func (*Detach_stmtContext) IsDetach_stmtContext() {}
@@ -10090,7 +11535,7 @@ func (*Detach_stmtContext) IsDetach_stmtContext() {}
 func NewDetach_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Detach_stmtContext {
 	var p = new(Detach_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_detach_stmt
@@ -10155,49 +11600,49 @@ func (s *Detach_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Detach_stmt() (localctx IDetach_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewDetach_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 60, ParserRULE_detach_stmt)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(855)
 		p.Match(ParserDETACH_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(857)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 104, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 104, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(856)
 			p.Match(ParserDATABASE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(859)
 		p.Schema_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IDrop_stmtContext is an interface to support dynamic dispatch.
@@ -10213,21 +11658,38 @@ type IDrop_stmtContext interface {
 	// SetObject sets the object token.
 	SetObject(antlr.Token)
 
+	// Getter signatures
+	DROP_() antlr.TerminalNode
+	Any_name() IAny_nameContext
+	INDEX_() antlr.TerminalNode
+	TABLE_() antlr.TerminalNode
+	TRIGGER_() antlr.TerminalNode
+	VIEW_() antlr.TerminalNode
+	IF_() antlr.TerminalNode
+	EXISTS_() antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+
 	// IsDrop_stmtContext differentiates from other interfaces.
 	IsDrop_stmtContext()
 }
 
 type Drop_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 	object antlr.Token
 }
 
 func NewEmptyDrop_stmtContext() *Drop_stmtContext {
 	var p = new(Drop_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_drop_stmt
 	return p
+}
+
+func InitEmptyDrop_stmtContext(p *Drop_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_drop_stmt
 }
 
 func (*Drop_stmtContext) IsDrop_stmtContext() {}
@@ -10235,7 +11697,7 @@ func (*Drop_stmtContext) IsDrop_stmtContext() {}
 func NewDrop_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Drop_stmtContext {
 	var p = new(Drop_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_drop_stmt
@@ -10344,33 +11806,18 @@ func (s *Drop_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Drop_stmt() (localctx IDrop_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewDrop_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 62, ParserRULE_drop_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(861)
 		p.Match(ParserDROP_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(862)
@@ -10381,7 +11828,7 @@ func (p *Parser) Drop_stmt() (localctx IDrop_stmtContext) {
 
 		_la = p.GetTokenStream().LA(1)
 
-		if !(_la == ParserINDEX_ || (((_la-132)&-(0x1f+1)) == 0 && ((1<<uint((_la-132)))&((1<<(ParserTABLE_-132))|(1<<(ParserTRIGGER_-132))|(1<<(ParserVIEW_-132)))) != 0)) {
+		if !((int64((_la-84)) & ^0x3f) == 0 && ((int64(1)<<(_la-84))&2324138882699886593) != 0) {
 			var _ri = p.GetErrorHandler().RecoverInline(p)
 
 			localctx.(*Drop_stmtContext).object = _ri
@@ -10393,21 +11840,31 @@ func (p *Parser) Drop_stmt() (localctx IDrop_stmtContext) {
 	p.SetState(865)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 105, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 105, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(863)
 			p.Match(ParserIF_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(864)
 			p.Match(ParserEXISTS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	p.SetState(870)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 106, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 106, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(867)
 			p.Schema_name()
@@ -10415,15 +11872,31 @@ func (p *Parser) Drop_stmt() (localctx IDrop_stmtContext) {
 		{
 			p.SetState(868)
 			p.Match(ParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(872)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IExprContext is an interface to support dynamic dispatch.
@@ -10433,20 +11906,93 @@ type IExprContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Literal_value() ILiteral_valueContext
+	BIND_PARAMETER() antlr.TerminalNode
+	Column_name() IColumn_nameContext
+	Table_name() ITable_nameContext
+	AllDOT() []antlr.TerminalNode
+	DOT(i int) antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	Unary_operator() IUnary_operatorContext
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	Function_name() IFunction_nameContext
+	OPEN_PAR() antlr.TerminalNode
+	CLOSE_PAR() antlr.TerminalNode
+	STAR() antlr.TerminalNode
+	Filter_clause() IFilter_clauseContext
+	Over_clause() IOver_clauseContext
+	DISTINCT_() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+	CAST_() antlr.TerminalNode
+	AS_() antlr.TerminalNode
+	Type_name() IType_nameContext
+	Select_stmt() ISelect_stmtContext
+	EXISTS_() antlr.TerminalNode
+	NOT_() antlr.TerminalNode
+	CASE_() antlr.TerminalNode
+	END_() antlr.TerminalNode
+	AllWHEN_() []antlr.TerminalNode
+	WHEN_(i int) antlr.TerminalNode
+	AllTHEN_() []antlr.TerminalNode
+	THEN_(i int) antlr.TerminalNode
+	ELSE_() antlr.TerminalNode
+	Raise_function() IRaise_functionContext
+	PIPE2() antlr.TerminalNode
+	DIV() antlr.TerminalNode
+	MOD() antlr.TerminalNode
+	PLUS() antlr.TerminalNode
+	MINUS() antlr.TerminalNode
+	LT2() antlr.TerminalNode
+	GT2() antlr.TerminalNode
+	AMP() antlr.TerminalNode
+	PIPE() antlr.TerminalNode
+	LT() antlr.TerminalNode
+	LT_EQ() antlr.TerminalNode
+	GT() antlr.TerminalNode
+	GT_EQ() antlr.TerminalNode
+	ASSIGN() antlr.TerminalNode
+	EQ() antlr.TerminalNode
+	NOT_EQ1() antlr.TerminalNode
+	NOT_EQ2() antlr.TerminalNode
+	IS_() antlr.TerminalNode
+	IN_() antlr.TerminalNode
+	LIKE_() antlr.TerminalNode
+	GLOB_() antlr.TerminalNode
+	MATCH_() antlr.TerminalNode
+	REGEXP_() antlr.TerminalNode
+	AND_() antlr.TerminalNode
+	OR_() antlr.TerminalNode
+	BETWEEN_() antlr.TerminalNode
+	COLLATE_() antlr.TerminalNode
+	Collation_name() ICollation_nameContext
+	ESCAPE_() antlr.TerminalNode
+	ISNULL_() antlr.TerminalNode
+	NOTNULL_() antlr.TerminalNode
+	NULL_() antlr.TerminalNode
+	Table_function_name() ITable_function_nameContext
+
 	// IsExprContext differentiates from other interfaces.
 	IsExprContext()
 }
 
 type ExprContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyExprContext() *ExprContext {
 	var p = new(ExprContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_expr
 	return p
+}
+
+func InitEmptyExprContext(p *ExprContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_expr
 }
 
 func (*ExprContext) IsExprContext() {}
@@ -10454,7 +12000,7 @@ func (*ExprContext) IsExprContext() {}
 func NewExprContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *ExprContext {
 	var p = new(ExprContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_expr
@@ -10952,10 +12498,8 @@ func (p *Parser) Expr() (localctx IExprContext) {
 }
 
 func (p *Parser) expr(_p int) (localctx IExprContext) {
-	this := p
-	_ = this
-
 	var _parentctx antlr.ParserRuleContext = p.GetParserRuleContext()
+
 	_parentState := p.GetState()
 	localctx = NewExprContext(p, p.GetParserRuleContext(), _parentState)
 	var _prevctx IExprContext = localctx
@@ -10964,28 +12508,16 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 	p.EnterRecursionRule(localctx, 64, ParserRULE_expr, _p)
 	var _la int
 
-	defer func() {
-		p.UnrollRecursionContexts(_parentctx)
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	var _alt int
 
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(962)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 120, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 120, p.GetParserRuleContext()) {
 	case 1:
 		{
 			p.SetState(875)
@@ -10996,17 +12528,21 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 		{
 			p.SetState(876)
 			p.Match(ParserBIND_PARAMETER)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
 		p.SetState(885)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 108, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 108, p.GetParserRuleContext()) == 1 {
 			p.SetState(880)
 			p.GetErrorHandler().Sync(p)
 
-			if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 107, p.GetParserRuleContext()) == 1 {
+			if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 107, p.GetParserRuleContext()) == 1 {
 				{
 					p.SetState(877)
 					p.Schema_name()
@@ -11014,8 +12550,14 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				{
 					p.SetState(878)
 					p.Match(ParserDOT)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
+			} else if p.HasError() { // JIM
+				goto errorExit
 			}
 			{
 				p.SetState(882)
@@ -11024,8 +12566,14 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 			{
 				p.SetState(883)
 				p.Match(ParserDOT)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		{
 			p.SetState(887)
@@ -11050,21 +12598,33 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 		{
 			p.SetState(892)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(905)
 		p.GetErrorHandler().Sync(p)
-
+		if p.HasError() {
+			goto errorExit
+		}
 		switch p.GetTokenStream().LA(1) {
 		case ParserOPEN_PAR, ParserPLUS, ParserMINUS, ParserTILDE, ParserABORT_, ParserACTION_, ParserADD_, ParserAFTER_, ParserALL_, ParserALTER_, ParserANALYZE_, ParserAND_, ParserAS_, ParserASC_, ParserATTACH_, ParserAUTOINCREMENT_, ParserBEFORE_, ParserBEGIN_, ParserBETWEEN_, ParserBY_, ParserCASCADE_, ParserCASE_, ParserCAST_, ParserCHECK_, ParserCOLLATE_, ParserCOLUMN_, ParserCOMMIT_, ParserCONFLICT_, ParserCONSTRAINT_, ParserCREATE_, ParserCROSS_, ParserCURRENT_DATE_, ParserCURRENT_TIME_, ParserCURRENT_TIMESTAMP_, ParserDATABASE_, ParserDEFAULT_, ParserDEFERRABLE_, ParserDEFERRED_, ParserDELETE_, ParserDESC_, ParserDETACH_, ParserDISTINCT_, ParserDROP_, ParserEACH_, ParserELSE_, ParserEND_, ParserESCAPE_, ParserEXCEPT_, ParserEXCLUSIVE_, ParserEXISTS_, ParserEXPLAIN_, ParserFAIL_, ParserFOR_, ParserFOREIGN_, ParserFROM_, ParserFULL_, ParserGLOB_, ParserGROUP_, ParserHAVING_, ParserIF_, ParserIGNORE_, ParserIMMEDIATE_, ParserIN_, ParserINDEX_, ParserINDEXED_, ParserINITIALLY_, ParserINNER_, ParserINSERT_, ParserINSTEAD_, ParserINTERSECT_, ParserINTO_, ParserIS_, ParserISNULL_, ParserJOIN_, ParserKEY_, ParserLEFT_, ParserLIKE_, ParserLIMIT_, ParserMATCH_, ParserNATURAL_, ParserNO_, ParserNOT_, ParserNOTNULL_, ParserNULL_, ParserOF_, ParserOFFSET_, ParserON_, ParserOR_, ParserORDER_, ParserOUTER_, ParserPLAN_, ParserPRAGMA_, ParserPRIMARY_, ParserQUERY_, ParserRAISE_, ParserRECURSIVE_, ParserREFERENCES_, ParserREGEXP_, ParserREINDEX_, ParserRELEASE_, ParserRENAME_, ParserREPLACE_, ParserRESTRICT_, ParserRIGHT_, ParserROLLBACK_, ParserROW_, ParserROWS_, ParserSAVEPOINT_, ParserSELECT_, ParserSET_, ParserTABLE_, ParserTEMP_, ParserTEMPORARY_, ParserTHEN_, ParserTO_, ParserTRANSACTION_, ParserTRIGGER_, ParserUNION_, ParserUNIQUE_, ParserUPDATE_, ParserUSING_, ParserVACUUM_, ParserVALUES_, ParserVIEW_, ParserVIRTUAL_, ParserWHEN_, ParserWHERE_, ParserWITH_, ParserWITHOUT_, ParserFIRST_VALUE_, ParserOVER_, ParserPARTITION_, ParserRANGE_, ParserPRECEDING_, ParserUNBOUNDED_, ParserCURRENT_, ParserFOLLOWING_, ParserCUME_DIST_, ParserDENSE_RANK_, ParserLAG_, ParserLAST_VALUE_, ParserLEAD_, ParserNTH_VALUE_, ParserNTILE_, ParserPERCENT_RANK_, ParserRANK_, ParserROW_NUMBER_, ParserGENERATED_, ParserALWAYS_, ParserSTORED_, ParserTRUE_, ParserFALSE_, ParserWINDOW_, ParserNULLS_, ParserFIRST_, ParserLAST_, ParserFILTER_, ParserGROUPS_, ParserEXCLUDE_, ParserIDENTIFIER, ParserNUMERIC_LITERAL, ParserBIND_PARAMETER, ParserSTRING_LITERAL, ParserBLOB_LITERAL:
 			p.SetState(894)
 			p.GetErrorHandler().Sync(p)
 
-			if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 109, p.GetParserRuleContext()) == 1 {
+			if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 109, p.GetParserRuleContext()) == 1 {
 				{
 					p.SetState(893)
 					p.Match(ParserDISTINCT_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
+			} else if p.HasError() { // JIM
+				goto errorExit
 			}
 			{
 				p.SetState(896)
@@ -11072,12 +12632,19 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 			}
 			p.SetState(901)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == ParserCOMMA {
 				{
 					p.SetState(897)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(898)
@@ -11086,6 +12653,9 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 
 				p.SetState(903)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 
@@ -11093,6 +12663,10 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 			{
 				p.SetState(904)
 				p.Match(ParserSTAR)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		case ParserCLOSE_PAR:
@@ -11102,32 +12676,44 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 		{
 			p.SetState(907)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(909)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 112, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 112, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(908)
 				p.Filter_clause()
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		p.SetState(912)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 113, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 113, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(911)
 				p.Over_clause()
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 
 	case 6:
 		{
 			p.SetState(914)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(915)
@@ -11135,12 +12721,19 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 		}
 		p.SetState(920)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(916)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(917)
@@ -11149,21 +12742,36 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 
 			p.SetState(922)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(923)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 7:
 		{
 			p.SetState(925)
 			p.Match(ParserCAST_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(926)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(927)
@@ -11172,6 +12780,10 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 		{
 			p.SetState(928)
 			p.Match(ParserAS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(929)
@@ -11180,34 +12792,56 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 		{
 			p.SetState(930)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 8:
 		p.SetState(936)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserEXISTS_ || _la == ParserNOT_ {
 			p.SetState(933)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			if _la == ParserNOT_ {
 				{
 					p.SetState(932)
 					p.Match(ParserNOT_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
 			}
 			{
 				p.SetState(935)
 				p.Match(ParserEXISTS_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		}
 		{
 			p.SetState(938)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(939)
@@ -11216,31 +12850,48 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 		{
 			p.SetState(940)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 9:
 		{
 			p.SetState(942)
 			p.Match(ParserCASE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(944)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 117, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 117, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(943)
 				p.expr(0)
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		p.SetState(951)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for ok := true; ok; ok = _la == ParserWHEN_ {
 			{
 				p.SetState(946)
 				p.Match(ParserWHEN_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(947)
@@ -11249,6 +12900,10 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 			{
 				p.SetState(948)
 				p.Match(ParserTHEN_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(949)
@@ -11257,16 +12912,26 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 
 			p.SetState(953)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		p.SetState(957)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserELSE_ {
 			{
 				p.SetState(955)
 				p.Match(ParserELSE_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(956)
@@ -11277,6 +12942,10 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 		{
 			p.SetState(959)
 			p.Match(ParserEND_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 10:
@@ -11285,12 +12954,19 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 			p.Raise_function()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 	p.GetParserRuleContext().SetStop(p.GetTokenStream().LT(-1))
 	p.SetState(1083)
 	p.GetErrorHandler().Sync(p)
-	_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 136, p.GetParserRuleContext())
-
+	if p.HasError() {
+		goto errorExit
+	}
+	_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 136, p.GetParserRuleContext())
+	if p.HasError() {
+		goto errorExit
+	}
 	for _alt != 2 && _alt != antlr.ATNInvalidAltNumber {
 		if _alt == 1 {
 			if p.GetParseListeners() != nil {
@@ -11299,18 +12975,27 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 			_prevctx = localctx
 			p.SetState(1081)
 			p.GetErrorHandler().Sync(p)
-			switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 135, p.GetParserRuleContext()) {
+			if p.HasError() {
+				goto errorExit
+			}
+
+			switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 135, p.GetParserRuleContext()) {
 			case 1:
 				localctx = NewExprContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, ParserRULE_expr)
 				p.SetState(964)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 20)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 20)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 20)", ""))
+					goto errorExit
 				}
 				{
 					p.SetState(965)
 					p.Match(ParserPIPE2)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(966)
@@ -11323,13 +13008,14 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(967)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 19)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 19)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 19)", ""))
+					goto errorExit
 				}
 				{
 					p.SetState(968)
 					_la = p.GetTokenStream().LA(1)
 
-					if !(((_la)&-(0x1f+1)) == 0 && ((1<<uint(_la))&((1<<ParserSTAR)|(1<<ParserDIV)|(1<<ParserMOD))) != 0) {
+					if !((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&12416) != 0) {
 						p.GetErrorHandler().RecoverInline(p)
 					} else {
 						p.GetErrorHandler().ReportMatch(p)
@@ -11347,7 +13033,8 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(970)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 18)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 18)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 18)", ""))
+					goto errorExit
 				}
 				{
 					p.SetState(971)
@@ -11371,13 +13058,14 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(973)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 17)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 17)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 17)", ""))
+					goto errorExit
 				}
 				{
 					p.SetState(974)
 					_la = p.GetTokenStream().LA(1)
 
-					if !(((_la)&-(0x1f+1)) == 0 && ((1<<uint(_la))&((1<<ParserLT2)|(1<<ParserGT2)|(1<<ParserAMP)|(1<<ParserPIPE))) != 0) {
+					if !((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&245760) != 0) {
 						p.GetErrorHandler().RecoverInline(p)
 					} else {
 						p.GetErrorHandler().ReportMatch(p)
@@ -11395,13 +13083,14 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(976)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 16)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 16)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 16)", ""))
+					goto errorExit
 				}
 				{
 					p.SetState(977)
 					_la = p.GetTokenStream().LA(1)
 
-					if !(((_la)&-(0x1f+1)) == 0 && ((1<<uint(_la))&((1<<ParserLT)|(1<<ParserLT_EQ)|(1<<ParserGT)|(1<<ParserGT_EQ))) != 0) {
+					if !((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&3932160) != 0) {
 						p.GetErrorHandler().RecoverInline(p)
 					} else {
 						p.GetErrorHandler().ReportMatch(p)
@@ -11419,81 +13108,136 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(979)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 15)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 15)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 15)", ""))
+					goto errorExit
 				}
 				p.SetState(992)
 				p.GetErrorHandler().Sync(p)
-				switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 121, p.GetParserRuleContext()) {
+				if p.HasError() {
+					goto errorExit
+				}
+
+				switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 121, p.GetParserRuleContext()) {
 				case 1:
 					{
 						p.SetState(980)
 						p.Match(ParserASSIGN)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case 2:
 					{
 						p.SetState(981)
 						p.Match(ParserEQ)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case 3:
 					{
 						p.SetState(982)
 						p.Match(ParserNOT_EQ1)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case 4:
 					{
 						p.SetState(983)
 						p.Match(ParserNOT_EQ2)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case 5:
 					{
 						p.SetState(984)
 						p.Match(ParserIS_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case 6:
 					{
 						p.SetState(985)
 						p.Match(ParserIS_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 					{
 						p.SetState(986)
 						p.Match(ParserNOT_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case 7:
 					{
 						p.SetState(987)
 						p.Match(ParserIN_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case 8:
 					{
 						p.SetState(988)
 						p.Match(ParserLIKE_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case 9:
 					{
 						p.SetState(989)
 						p.Match(ParserGLOB_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case 10:
 					{
 						p.SetState(990)
 						p.Match(ParserMATCH_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case 11:
 					{
 						p.SetState(991)
 						p.Match(ParserREGEXP_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
+				case antlr.ATNInvalidAltNumber:
+					goto errorExit
 				}
 				{
 					p.SetState(994)
@@ -11506,11 +13250,16 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(995)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 14)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 14)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 14)", ""))
+					goto errorExit
 				}
 				{
 					p.SetState(996)
 					p.Match(ParserAND_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(997)
@@ -11523,11 +13272,16 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(998)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 13)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 13)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 13)", ""))
+					goto errorExit
 				}
 				{
 					p.SetState(999)
 					p.Match(ParserOR_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1000)
@@ -11540,21 +13294,32 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(1001)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 6)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 6)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 6)", ""))
+					goto errorExit
 				}
 				{
 					p.SetState(1002)
 					p.Match(ParserIS_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				p.SetState(1004)
 				p.GetErrorHandler().Sync(p)
 
-				if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 122, p.GetParserRuleContext()) == 1 {
+				if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 122, p.GetParserRuleContext()) == 1 {
 					{
 						p.SetState(1003)
 						p.Match(ParserNOT_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
+				} else if p.HasError() { // JIM
+					goto errorExit
 				}
 				{
 					p.SetState(1006)
@@ -11567,22 +13332,34 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(1007)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 5)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 5)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 5)", ""))
+					goto errorExit
 				}
 				p.SetState(1009)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 
 				if _la == ParserNOT_ {
 					{
 						p.SetState(1008)
 						p.Match(ParserNOT_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				}
 				{
 					p.SetState(1011)
 					p.Match(ParserBETWEEN_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1012)
@@ -11591,6 +13368,10 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				{
 					p.SetState(1013)
 					p.Match(ParserAND_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1014)
@@ -11603,11 +13384,16 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(1016)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 9)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 9)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 9)", ""))
+					goto errorExit
 				}
 				{
 					p.SetState(1017)
 					p.Match(ParserCOLLATE_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1018)
@@ -11620,16 +13406,24 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(1019)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 8)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 8)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 8)", ""))
+					goto errorExit
 				}
 				p.SetState(1021)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 
 				if _la == ParserNOT_ {
 					{
 						p.SetState(1020)
 						p.Match(ParserNOT_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				}
@@ -11637,7 +13431,7 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 					p.SetState(1023)
 					_la = p.GetTokenStream().LA(1)
 
-					if !((((_la-77)&-(0x1f+1)) == 0 && ((1<<uint((_la-77)))&((1<<(ParserGLOB_-77))|(1<<(ParserLIKE_-77))|(1<<(ParserMATCH_-77)))) != 0) || _la == ParserREGEXP_) {
+					if !((int64((_la-77)) & ^0x3f) == 0 && ((int64(1)<<(_la-77))&2199028498433) != 0) {
 						p.GetErrorHandler().RecoverInline(p)
 					} else {
 						p.GetErrorHandler().ReportMatch(p)
@@ -11651,16 +13445,22 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(1027)
 				p.GetErrorHandler().Sync(p)
 
-				if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 125, p.GetParserRuleContext()) == 1 {
+				if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 125, p.GetParserRuleContext()) == 1 {
 					{
 						p.SetState(1025)
 						p.Match(ParserESCAPE_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 					{
 						p.SetState(1026)
 						p.expr(0)
 					}
 
+				} else if p.HasError() { // JIM
+					goto errorExit
 				}
 
 			case 13:
@@ -11669,36 +13469,57 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(1029)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 7)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 7)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 7)", ""))
+					goto errorExit
 				}
 				p.SetState(1034)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 
 				switch p.GetTokenStream().LA(1) {
 				case ParserISNULL_:
 					{
 						p.SetState(1030)
 						p.Match(ParserISNULL_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case ParserNOTNULL_:
 					{
 						p.SetState(1031)
 						p.Match(ParserNOTNULL_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case ParserNOT_:
 					{
 						p.SetState(1032)
 						p.Match(ParserNOT_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 					{
 						p.SetState(1033)
 						p.Match(ParserNULL_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				default:
-					panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+					p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+					goto errorExit
 				}
 
 			case 14:
@@ -11707,53 +13528,82 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 				p.SetState(1036)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 4)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 4)", ""))
+					p.SetError(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 4)", ""))
+					goto errorExit
 				}
 				p.SetState(1038)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 
 				if _la == ParserNOT_ {
 					{
 						p.SetState(1037)
 						p.Match(ParserNOT_)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				}
 				{
 					p.SetState(1040)
 					p.Match(ParserIN_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				p.SetState(1079)
 				p.GetErrorHandler().Sync(p)
-				switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 134, p.GetParserRuleContext()) {
+				if p.HasError() {
+					goto errorExit
+				}
+
+				switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 134, p.GetParserRuleContext()) {
 				case 1:
 					{
 						p.SetState(1041)
 						p.Match(ParserOPEN_PAR)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 					p.SetState(1051)
 					p.GetErrorHandler().Sync(p)
 
-					if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 129, p.GetParserRuleContext()) == 1 {
+					if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 129, p.GetParserRuleContext()) == 1 {
 						{
 							p.SetState(1042)
 							p.Select_stmt()
 						}
 
-					} else if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 129, p.GetParserRuleContext()) == 2 {
+					} else if p.HasError() { // JIM
+						goto errorExit
+					} else if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 129, p.GetParserRuleContext()) == 2 {
 						{
 							p.SetState(1043)
 							p.expr(0)
 						}
 						p.SetState(1048)
 						p.GetErrorHandler().Sync(p)
+						if p.HasError() {
+							goto errorExit
+						}
 						_la = p.GetTokenStream().LA(1)
 
 						for _la == ParserCOMMA {
 							{
 								p.SetState(1044)
 								p.Match(ParserCOMMA)
+								if p.HasError() {
+									// Recognition error - abort rule
+									goto errorExit
+								}
 							}
 							{
 								p.SetState(1045)
@@ -11762,20 +13612,29 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 
 							p.SetState(1050)
 							p.GetErrorHandler().Sync(p)
+							if p.HasError() {
+								goto errorExit
+							}
 							_la = p.GetTokenStream().LA(1)
 						}
 
+					} else if p.HasError() { // JIM
+						goto errorExit
 					}
 					{
 						p.SetState(1053)
 						p.Match(ParserCLOSE_PAR)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
 				case 2:
 					p.SetState(1057)
 					p.GetErrorHandler().Sync(p)
 
-					if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 130, p.GetParserRuleContext()) == 1 {
+					if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 130, p.GetParserRuleContext()) == 1 {
 						{
 							p.SetState(1054)
 							p.Schema_name()
@@ -11783,8 +13642,14 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 						{
 							p.SetState(1055)
 							p.Match(ParserDOT)
+							if p.HasError() {
+								// Recognition error - abort rule
+								goto errorExit
+							}
 						}
 
+					} else if p.HasError() { // JIM
+						goto errorExit
 					}
 					{
 						p.SetState(1059)
@@ -11795,7 +13660,7 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 					p.SetState(1063)
 					p.GetErrorHandler().Sync(p)
 
-					if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 131, p.GetParserRuleContext()) == 1 {
+					if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 131, p.GetParserRuleContext()) == 1 {
 						{
 							p.SetState(1060)
 							p.Schema_name()
@@ -11803,8 +13668,14 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 						{
 							p.SetState(1061)
 							p.Match(ParserDOT)
+							if p.HasError() {
+								// Recognition error - abort rule
+								goto errorExit
+							}
 						}
 
+					} else if p.HasError() { // JIM
+						goto errorExit
 					}
 					{
 						p.SetState(1065)
@@ -11813,24 +13684,38 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 					{
 						p.SetState(1066)
 						p.Match(ParserOPEN_PAR)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 					p.SetState(1075)
 					p.GetErrorHandler().Sync(p)
+					if p.HasError() {
+						goto errorExit
+					}
 					_la = p.GetTokenStream().LA(1)
 
-					if (((_la)&-(0x1f+1)) == 0 && ((1<<uint(_la))&((1<<ParserOPEN_PAR)|(1<<ParserPLUS)|(1<<ParserMINUS)|(1<<ParserTILDE)|(1<<ParserABORT_)|(1<<ParserACTION_)|(1<<ParserADD_)|(1<<ParserAFTER_)|(1<<ParserALL_)|(1<<ParserALTER_)|(1<<ParserANALYZE_))) != 0) || (((_la-32)&-(0x1f+1)) == 0 && ((1<<uint((_la-32)))&((1<<(ParserAND_-32))|(1<<(ParserAS_-32))|(1<<(ParserASC_-32))|(1<<(ParserATTACH_-32))|(1<<(ParserAUTOINCREMENT_-32))|(1<<(ParserBEFORE_-32))|(1<<(ParserBEGIN_-32))|(1<<(ParserBETWEEN_-32))|(1<<(ParserBY_-32))|(1<<(ParserCASCADE_-32))|(1<<(ParserCASE_-32))|(1<<(ParserCAST_-32))|(1<<(ParserCHECK_-32))|(1<<(ParserCOLLATE_-32))|(1<<(ParserCOLUMN_-32))|(1<<(ParserCOMMIT_-32))|(1<<(ParserCONFLICT_-32))|(1<<(ParserCONSTRAINT_-32))|(1<<(ParserCREATE_-32))|(1<<(ParserCROSS_-32))|(1<<(ParserCURRENT_DATE_-32))|(1<<(ParserCURRENT_TIME_-32))|(1<<(ParserCURRENT_TIMESTAMP_-32))|(1<<(ParserDATABASE_-32))|(1<<(ParserDEFAULT_-32))|(1<<(ParserDEFERRABLE_-32))|(1<<(ParserDEFERRED_-32))|(1<<(ParserDELETE_-32))|(1<<(ParserDESC_-32))|(1<<(ParserDETACH_-32))|(1<<(ParserDISTINCT_-32))|(1<<(ParserDROP_-32)))) != 0) || (((_la-64)&-(0x1f+1)) == 0 && ((1<<uint((_la-64)))&((1<<(ParserEACH_-64))|(1<<(ParserELSE_-64))|(1<<(ParserEND_-64))|(1<<(ParserESCAPE_-64))|(1<<(ParserEXCEPT_-64))|(1<<(ParserEXCLUSIVE_-64))|(1<<(ParserEXISTS_-64))|(1<<(ParserEXPLAIN_-64))|(1<<(ParserFAIL_-64))|(1<<(ParserFOR_-64))|(1<<(ParserFOREIGN_-64))|(1<<(ParserFROM_-64))|(1<<(ParserFULL_-64))|(1<<(ParserGLOB_-64))|(1<<(ParserGROUP_-64))|(1<<(ParserHAVING_-64))|(1<<(ParserIF_-64))|(1<<(ParserIGNORE_-64))|(1<<(ParserIMMEDIATE_-64))|(1<<(ParserIN_-64))|(1<<(ParserINDEX_-64))|(1<<(ParserINDEXED_-64))|(1<<(ParserINITIALLY_-64))|(1<<(ParserINNER_-64))|(1<<(ParserINSERT_-64))|(1<<(ParserINSTEAD_-64))|(1<<(ParserINTERSECT_-64))|(1<<(ParserINTO_-64))|(1<<(ParserIS_-64))|(1<<(ParserISNULL_-64))|(1<<(ParserJOIN_-64))|(1<<(ParserKEY_-64)))) != 0) || (((_la-96)&-(0x1f+1)) == 0 && ((1<<uint((_la-96)))&((1<<(ParserLEFT_-96))|(1<<(ParserLIKE_-96))|(1<<(ParserLIMIT_-96))|(1<<(ParserMATCH_-96))|(1<<(ParserNATURAL_-96))|(1<<(ParserNO_-96))|(1<<(ParserNOT_-96))|(1<<(ParserNOTNULL_-96))|(1<<(ParserNULL_-96))|(1<<(ParserOF_-96))|(1<<(ParserOFFSET_-96))|(1<<(ParserON_-96))|(1<<(ParserOR_-96))|(1<<(ParserORDER_-96))|(1<<(ParserOUTER_-96))|(1<<(ParserPLAN_-96))|(1<<(ParserPRAGMA_-96))|(1<<(ParserPRIMARY_-96))|(1<<(ParserQUERY_-96))|(1<<(ParserRAISE_-96))|(1<<(ParserRECURSIVE_-96))|(1<<(ParserREFERENCES_-96))|(1<<(ParserREGEXP_-96))|(1<<(ParserREINDEX_-96))|(1<<(ParserRELEASE_-96))|(1<<(ParserRENAME_-96))|(1<<(ParserREPLACE_-96))|(1<<(ParserRESTRICT_-96))|(1<<(ParserRIGHT_-96))|(1<<(ParserROLLBACK_-96))|(1<<(ParserROW_-96)))) != 0) || (((_la-128)&-(0x1f+1)) == 0 && ((1<<uint((_la-128)))&((1<<(ParserROWS_-128))|(1<<(ParserSAVEPOINT_-128))|(1<<(ParserSELECT_-128))|(1<<(ParserSET_-128))|(1<<(ParserTABLE_-128))|(1<<(ParserTEMP_-128))|(1<<(ParserTEMPORARY_-128))|(1<<(ParserTHEN_-128))|(1<<(ParserTO_-128))|(1<<(ParserTRANSACTION_-128))|(1<<(ParserTRIGGER_-128))|(1<<(ParserUNION_-128))|(1<<(ParserUNIQUE_-128))|(1<<(ParserUPDATE_-128))|(1<<(ParserUSING_-128))|(1<<(ParserVACUUM_-128))|(1<<(ParserVALUES_-128))|(1<<(ParserVIEW_-128))|(1<<(ParserVIRTUAL_-128))|(1<<(ParserWHEN_-128))|(1<<(ParserWHERE_-128))|(1<<(ParserWITH_-128))|(1<<(ParserWITHOUT_-128))|(1<<(ParserFIRST_VALUE_-128))|(1<<(ParserOVER_-128))|(1<<(ParserPARTITION_-128))|(1<<(ParserRANGE_-128))|(1<<(ParserPRECEDING_-128))|(1<<(ParserUNBOUNDED_-128))|(1<<(ParserCURRENT_-128))|(1<<(ParserFOLLOWING_-128))|(1<<(ParserCUME_DIST_-128)))) != 0) || (((_la-160)&-(0x1f+1)) == 0 && ((1<<uint((_la-160)))&((1<<(ParserDENSE_RANK_-160))|(1<<(ParserLAG_-160))|(1<<(ParserLAST_VALUE_-160))|(1<<(ParserLEAD_-160))|(1<<(ParserNTH_VALUE_-160))|(1<<(ParserNTILE_-160))|(1<<(ParserPERCENT_RANK_-160))|(1<<(ParserRANK_-160))|(1<<(ParserROW_NUMBER_-160))|(1<<(ParserGENERATED_-160))|(1<<(ParserALWAYS_-160))|(1<<(ParserSTORED_-160))|(1<<(ParserTRUE_-160))|(1<<(ParserFALSE_-160))|(1<<(ParserWINDOW_-160))|(1<<(ParserNULLS_-160))|(1<<(ParserFIRST_-160))|(1<<(ParserLAST_-160))|(1<<(ParserFILTER_-160))|(1<<(ParserGROUPS_-160))|(1<<(ParserEXCLUDE_-160))|(1<<(ParserIDENTIFIER-160))|(1<<(ParserNUMERIC_LITERAL-160))|(1<<(ParserBIND_PARAMETER-160))|(1<<(ParserSTRING_LITERAL-160))|(1<<(ParserBLOB_LITERAL-160)))) != 0) {
+					if ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&-33552632) != 0) || ((int64((_la-64)) & ^0x3f) == 0 && ((int64(1)<<(_la-64))&-1152921504606846977) != 0) || ((int64((_la-128)) & ^0x3f) == 0 && ((int64(1)<<(_la-128))&4476578029606273023) != 0) {
 						{
 							p.SetState(1067)
 							p.expr(0)
 						}
 						p.SetState(1072)
 						p.GetErrorHandler().Sync(p)
+						if p.HasError() {
+							goto errorExit
+						}
 						_la = p.GetTokenStream().LA(1)
 
 						for _la == ParserCOMMA {
 							{
 								p.SetState(1068)
 								p.Match(ParserCOMMA)
+								if p.HasError() {
+									// Recognition error - abort rule
+									goto errorExit
+								}
 							}
 							{
 								p.SetState(1069)
@@ -11839,6 +13724,9 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 
 							p.SetState(1074)
 							p.GetErrorHandler().Sync(p)
+							if p.HasError() {
+								goto errorExit
+							}
 							_la = p.GetTokenStream().LA(1)
 						}
 
@@ -11846,19 +13734,43 @@ func (p *Parser) expr(_p int) (localctx IExprContext) {
 					{
 						p.SetState(1077)
 						p.Match(ParserCLOSE_PAR)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 
+				case antlr.ATNInvalidAltNumber:
+					goto errorExit
 				}
 
+			case antlr.ATNInvalidAltNumber:
+				goto errorExit
 			}
 
 		}
 		p.SetState(1085)
 		p.GetErrorHandler().Sync(p)
-		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 136, p.GetParserRuleContext())
+		if p.HasError() {
+			goto errorExit
+		}
+		_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 136, p.GetParserRuleContext())
+		if p.HasError() {
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.UnrollRecursionContexts(_parentctx)
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IRaise_functionContext is an interface to support dynamic dispatch.
@@ -11868,20 +13780,36 @@ type IRaise_functionContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	RAISE_() antlr.TerminalNode
+	OPEN_PAR() antlr.TerminalNode
+	CLOSE_PAR() antlr.TerminalNode
+	IGNORE_() antlr.TerminalNode
+	COMMA() antlr.TerminalNode
+	Error_message() IError_messageContext
+	ROLLBACK_() antlr.TerminalNode
+	ABORT_() antlr.TerminalNode
+	FAIL_() antlr.TerminalNode
+
 	// IsRaise_functionContext differentiates from other interfaces.
 	IsRaise_functionContext()
 }
 
 type Raise_functionContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyRaise_functionContext() *Raise_functionContext {
 	var p = new(Raise_functionContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_raise_function
 	return p
+}
+
+func InitEmptyRaise_functionContext(p *Raise_functionContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_raise_function
 }
 
 func (*Raise_functionContext) IsRaise_functionContext() {}
@@ -11889,7 +13817,7 @@ func (*Raise_functionContext) IsRaise_functionContext() {}
 func NewRaise_functionContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Raise_functionContext {
 	var p = new(Raise_functionContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_raise_function
@@ -11978,46 +13906,42 @@ func (s *Raise_functionContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *Parser) Raise_function() (localctx IRaise_functionContext) {
-	this := p
-	_ = this
-
 	localctx = NewRaise_functionContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 66, ParserRULE_raise_function)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1086)
 		p.Match(ParserRAISE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1087)
 		p.Match(ParserOPEN_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1092)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserIGNORE_:
 		{
 			p.SetState(1088)
 			p.Match(ParserIGNORE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserABORT_, ParserFAIL_, ParserROLLBACK_:
@@ -12035,6 +13959,10 @@ func (p *Parser) Raise_function() (localctx IRaise_functionContext) {
 		{
 			p.SetState(1090)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1091)
@@ -12042,14 +13970,29 @@ func (p *Parser) Raise_function() (localctx IRaise_functionContext) {
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 	{
 		p.SetState(1094)
 		p.Match(ParserCLOSE_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ILiteral_valueContext is an interface to support dynamic dispatch.
@@ -12059,20 +14002,36 @@ type ILiteral_valueContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	NUMERIC_LITERAL() antlr.TerminalNode
+	STRING_LITERAL() antlr.TerminalNode
+	BLOB_LITERAL() antlr.TerminalNode
+	NULL_() antlr.TerminalNode
+	TRUE_() antlr.TerminalNode
+	FALSE_() antlr.TerminalNode
+	CURRENT_TIME_() antlr.TerminalNode
+	CURRENT_DATE_() antlr.TerminalNode
+	CURRENT_TIMESTAMP_() antlr.TerminalNode
+
 	// IsLiteral_valueContext differentiates from other interfaces.
 	IsLiteral_valueContext()
 }
 
 type Literal_valueContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyLiteral_valueContext() *Literal_valueContext {
 	var p = new(Literal_valueContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_literal_value
 	return p
+}
+
+func InitEmptyLiteral_valueContext(p *Literal_valueContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_literal_value
 }
 
 func (*Literal_valueContext) IsLiteral_valueContext() {}
@@ -12080,7 +14039,7 @@ func (*Literal_valueContext) IsLiteral_valueContext() {}
 func NewLiteral_valueContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Literal_valueContext {
 	var p = new(Literal_valueContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_literal_value
@@ -12157,35 +14116,16 @@ func (s *Literal_valueContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Literal_value() (localctx ILiteral_valueContext) {
-	this := p
-	_ = this
-
 	localctx = NewLiteral_valueContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 68, ParserRULE_literal_value)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1096)
 		_la = p.GetTokenStream().LA(1)
 
-		if !((((_la-52)&-(0x1f+1)) == 0 && ((1<<uint((_la-52)))&((1<<(ParserCURRENT_DATE_-52))|(1<<(ParserCURRENT_TIME_-52))|(1<<(ParserCURRENT_TIMESTAMP_-52)))) != 0) || _la == ParserNULL_ || (((_la-172)&-(0x1f+1)) == 0 && ((1<<uint((_la-172)))&((1<<(ParserTRUE_-172))|(1<<(ParserFALSE_-172))|(1<<(ParserNUMERIC_LITERAL-172))|(1<<(ParserSTRING_LITERAL-172))|(1<<(ParserBLOB_LITERAL-172)))) != 0)) {
+		if !(((int64((_la-52)) & ^0x3f) == 0 && ((int64(1)<<(_la-52))&4503599627370503) != 0) || ((int64((_la-172)) & ^0x3f) == 0 && ((int64(1)<<(_la-172))&212995) != 0)) {
 			p.GetErrorHandler().RecoverInline(p)
 		} else {
 			p.GetErrorHandler().ReportMatch(p)
@@ -12193,7 +14133,17 @@ func (p *Parser) Literal_value() (localctx ILiteral_valueContext) {
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IInsert_stmtContext is an interface to support dynamic dispatch.
@@ -12203,20 +14153,56 @@ type IInsert_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	INTO_() antlr.TerminalNode
+	Table_name() ITable_nameContext
+	INSERT_() antlr.TerminalNode
+	REPLACE_() antlr.TerminalNode
+	OR_() antlr.TerminalNode
+	DEFAULT_() antlr.TerminalNode
+	VALUES_() antlr.TerminalNode
+	With_clause() IWith_clauseContext
+	ROLLBACK_() antlr.TerminalNode
+	ABORT_() antlr.TerminalNode
+	FAIL_() antlr.TerminalNode
+	IGNORE_() antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+	AS_() antlr.TerminalNode
+	Table_alias() ITable_aliasContext
+	AllOPEN_PAR() []antlr.TerminalNode
+	OPEN_PAR(i int) antlr.TerminalNode
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	AllCLOSE_PAR() []antlr.TerminalNode
+	CLOSE_PAR(i int) antlr.TerminalNode
+	Returning_clause() IReturning_clauseContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	Select_stmt() ISelect_stmtContext
+	Upsert_clause() IUpsert_clauseContext
+
 	// IsInsert_stmtContext differentiates from other interfaces.
 	IsInsert_stmtContext()
 }
 
 type Insert_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyInsert_stmtContext() *Insert_stmtContext {
 	var p = new(Insert_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_insert_stmt
 	return p
+}
+
+func InitEmptyInsert_stmtContext(p *Insert_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_insert_stmt
 }
 
 func (*Insert_stmtContext) IsInsert_stmtContext() {}
@@ -12224,7 +14210,7 @@ func (*Insert_stmtContext) IsInsert_stmtContext() {}
 func NewInsert_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Insert_stmtContext {
 	var p = new(Insert_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_insert_stmt
@@ -12531,32 +14517,16 @@ func (s *Insert_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewInsert_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 70, ParserRULE_insert_stmt)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(1099)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWITH_ {
@@ -12568,33 +14538,53 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 	}
 	p.SetState(1106)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 139, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 139, p.GetParserRuleContext()) {
 	case 1:
 		{
 			p.SetState(1101)
 			p.Match(ParserINSERT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
 		{
 			p.SetState(1102)
 			p.Match(ParserREPLACE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
 		{
 			p.SetState(1103)
 			p.Match(ParserINSERT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1104)
 			p.Match(ParserOR_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1105)
 			_la = p.GetTokenStream().LA(1)
 
-			if !(_la == ParserABORT_ || _la == ParserFAIL_ || _la == ParserIGNORE_ || _la == ParserREPLACE_ || _la == ParserROLLBACK_) {
+			if !(_la == ParserABORT_ || ((int64((_la-72)) & ^0x3f) == 0 && ((int64(1)<<(_la-72))&19140298416325121) != 0)) {
 				p.GetErrorHandler().RecoverInline(p)
 			} else {
 				p.GetErrorHandler().ReportMatch(p)
@@ -12602,15 +14592,21 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 	{
 		p.SetState(1108)
 		p.Match(ParserINTO_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1112)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 140, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 140, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(1109)
 			p.Schema_name()
@@ -12618,8 +14614,14 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 		{
 			p.SetState(1110)
 			p.Match(ParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(1114)
@@ -12627,12 +14629,19 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 	}
 	p.SetState(1117)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserAS_ {
 		{
 			p.SetState(1115)
 			p.Match(ParserAS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1116)
@@ -12642,12 +14651,19 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 	}
 	p.SetState(1130)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserOPEN_PAR {
 		{
 			p.SetState(1119)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1120)
@@ -12655,12 +14671,19 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 		}
 		p.SetState(1125)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1121)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1122)
@@ -12669,30 +14692,52 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 
 			p.SetState(1127)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(1128)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	}
 	p.SetState(1168)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserSELECT_, ParserVALUES_, ParserWITH_:
 		p.SetState(1161)
 		p.GetErrorHandler().Sync(p)
-		switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 147, p.GetParserRuleContext()) {
+		if p.HasError() {
+			goto errorExit
+		}
+
+		switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 147, p.GetParserRuleContext()) {
 		case 1:
 			{
 				p.SetState(1132)
 				p.Match(ParserVALUES_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1133)
 				p.Match(ParserOPEN_PAR)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1134)
@@ -12700,12 +14745,19 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 			}
 			p.SetState(1139)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == ParserCOMMA {
 				{
 					p.SetState(1135)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1136)
@@ -12714,24 +14766,42 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 
 				p.SetState(1141)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 			{
 				p.SetState(1142)
 				p.Match(ParserCLOSE_PAR)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			p.SetState(1157)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == ParserCOMMA {
 				{
 					p.SetState(1143)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1144)
 					p.Match(ParserOPEN_PAR)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1145)
@@ -12739,12 +14809,19 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 				}
 				p.SetState(1150)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 
 				for _la == ParserCOMMA {
 					{
 						p.SetState(1146)
 						p.Match(ParserCOMMA)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 					{
 						p.SetState(1147)
@@ -12753,15 +14830,25 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 
 					p.SetState(1152)
 					p.GetErrorHandler().Sync(p)
+					if p.HasError() {
+						goto errorExit
+					}
 					_la = p.GetTokenStream().LA(1)
 				}
 				{
 					p.SetState(1153)
 					p.Match(ParserCLOSE_PAR)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
 				p.SetState(1159)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 
@@ -12771,9 +14858,14 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 				p.Select_stmt()
 			}
 
+		case antlr.ATNInvalidAltNumber:
+			goto errorExit
 		}
 		p.SetState(1164)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserON_ {
@@ -12788,17 +14880,29 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 		{
 			p.SetState(1166)
 			p.Match(ParserDEFAULT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1167)
 			p.Match(ParserVALUES_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 	p.SetState(1171)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserRETURNING_ {
@@ -12809,7 +14913,17 @@ func (p *Parser) Insert_stmt() (localctx IInsert_stmtContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IReturning_clauseContext is an interface to support dynamic dispatch.
@@ -12819,20 +14933,32 @@ type IReturning_clauseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	RETURNING_() antlr.TerminalNode
+	AllResult_column() []IResult_columnContext
+	Result_column(i int) IResult_columnContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsReturning_clauseContext differentiates from other interfaces.
 	IsReturning_clauseContext()
 }
 
 type Returning_clauseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyReturning_clauseContext() *Returning_clauseContext {
 	var p = new(Returning_clauseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_returning_clause
 	return p
+}
+
+func InitEmptyReturning_clauseContext(p *Returning_clauseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_returning_clause
 }
 
 func (*Returning_clauseContext) IsReturning_clauseContext() {}
@@ -12840,7 +14966,7 @@ func (*Returning_clauseContext) IsReturning_clauseContext() {}
 func NewReturning_clauseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Returning_clauseContext {
 	var p = new(Returning_clauseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_returning_clause
@@ -12934,33 +15060,18 @@ func (s *Returning_clauseContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *Parser) Returning_clause() (localctx IReturning_clauseContext) {
-	this := p
-	_ = this
-
 	localctx = NewReturning_clauseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 72, ParserRULE_returning_clause)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1173)
 		p.Match(ParserRETURNING_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1174)
@@ -12968,12 +15079,19 @@ func (p *Parser) Returning_clause() (localctx IReturning_clauseContext) {
 	}
 	p.SetState(1179)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserCOMMA {
 		{
 			p.SetState(1175)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1176)
@@ -12982,10 +15100,23 @@ func (p *Parser) Returning_clause() (localctx IReturning_clauseContext) {
 
 		p.SetState(1181)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IUpsert_clauseContext is an interface to support dynamic dispatch.
@@ -12995,20 +15126,49 @@ type IUpsert_clauseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ON_() antlr.TerminalNode
+	CONFLICT_() antlr.TerminalNode
+	DO_() antlr.TerminalNode
+	NOTHING_() antlr.TerminalNode
+	UPDATE_() antlr.TerminalNode
+	SET_() antlr.TerminalNode
+	OPEN_PAR() antlr.TerminalNode
+	AllIndexed_column() []IIndexed_columnContext
+	Indexed_column(i int) IIndexed_columnContext
+	CLOSE_PAR() antlr.TerminalNode
+	AllASSIGN() []antlr.TerminalNode
+	ASSIGN(i int) antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+	AllWHERE_() []antlr.TerminalNode
+	WHERE_(i int) antlr.TerminalNode
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	AllColumn_name_list() []IColumn_name_listContext
+	Column_name_list(i int) IColumn_name_listContext
+
 	// IsUpsert_clauseContext differentiates from other interfaces.
 	IsUpsert_clauseContext()
 }
 
 type Upsert_clauseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyUpsert_clauseContext() *Upsert_clauseContext {
 	var p = new(Upsert_clauseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_upsert_clause
 	return p
+}
+
+func InitEmptyUpsert_clauseContext(p *Upsert_clauseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_upsert_clause
 }
 
 func (*Upsert_clauseContext) IsUpsert_clauseContext() {}
@@ -13016,7 +15176,7 @@ func (*Upsert_clauseContext) IsUpsert_clauseContext() {}
 func NewUpsert_clauseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Upsert_clauseContext {
 	var p = new(Upsert_clauseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_upsert_clause
@@ -13277,46 +15437,42 @@ func (s *Upsert_clauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Upsert_clause() (localctx IUpsert_clauseContext) {
-	this := p
-	_ = this
-
 	localctx = NewUpsert_clauseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 74, ParserRULE_upsert_clause)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1182)
 		p.Match(ParserON_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1183)
 		p.Match(ParserCONFLICT_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1198)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserOPEN_PAR {
 		{
 			p.SetState(1184)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1185)
@@ -13324,12 +15480,19 @@ func (p *Parser) Upsert_clause() (localctx IUpsert_clauseContext) {
 		}
 		p.SetState(1190)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1186)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1187)
@@ -13338,20 +15501,34 @@ func (p *Parser) Upsert_clause() (localctx IUpsert_clauseContext) {
 
 			p.SetState(1192)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(1193)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1196)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserWHERE_ {
 			{
 				p.SetState(1194)
 				p.Match(ParserWHERE_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1195)
@@ -13364,30 +15541,53 @@ func (p *Parser) Upsert_clause() (localctx IUpsert_clauseContext) {
 	{
 		p.SetState(1200)
 		p.Match(ParserDO_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1227)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserNOTHING_:
 		{
 			p.SetState(1201)
 			p.Match(ParserNOTHING_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserUPDATE_:
 		{
 			p.SetState(1202)
 			p.Match(ParserUPDATE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1203)
 			p.Match(ParserSET_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 		p.SetState(1206)
 		p.GetErrorHandler().Sync(p)
-		switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 155, p.GetParserRuleContext()) {
+		if p.HasError() {
+			goto errorExit
+		}
+
+		switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 155, p.GetParserRuleContext()) {
 		case 1:
 			{
 				p.SetState(1204)
@@ -13400,10 +15600,16 @@ func (p *Parser) Upsert_clause() (localctx IUpsert_clauseContext) {
 				p.Column_name_list()
 			}
 
+		case antlr.ATNInvalidAltNumber:
+			goto errorExit
 		}
 		{
 			p.SetState(1208)
 			p.Match(ParserASSIGN)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1209)
@@ -13411,16 +15617,27 @@ func (p *Parser) Upsert_clause() (localctx IUpsert_clauseContext) {
 		}
 		p.SetState(1220)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1210)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			p.SetState(1213)
 			p.GetErrorHandler().Sync(p)
-			switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 156, p.GetParserRuleContext()) {
+			if p.HasError() {
+				goto errorExit
+			}
+
+			switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 156, p.GetParserRuleContext()) {
 			case 1:
 				{
 					p.SetState(1211)
@@ -13433,10 +15650,16 @@ func (p *Parser) Upsert_clause() (localctx IUpsert_clauseContext) {
 					p.Column_name_list()
 				}
 
+			case antlr.ATNInvalidAltNumber:
+				goto errorExit
 			}
 			{
 				p.SetState(1215)
 				p.Match(ParserASSIGN)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1216)
@@ -13445,16 +15668,26 @@ func (p *Parser) Upsert_clause() (localctx IUpsert_clauseContext) {
 
 			p.SetState(1222)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		p.SetState(1225)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserWHERE_ {
 			{
 				p.SetState(1223)
 				p.Match(ParserWHERE_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1224)
@@ -13464,10 +15697,21 @@ func (p *Parser) Upsert_clause() (localctx IUpsert_clauseContext) {
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IPragma_stmtContext is an interface to support dynamic dispatch.
@@ -13477,20 +15721,35 @@ type IPragma_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PRAGMA_() antlr.TerminalNode
+	Pragma_name() IPragma_nameContext
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+	ASSIGN() antlr.TerminalNode
+	Pragma_value() IPragma_valueContext
+	OPEN_PAR() antlr.TerminalNode
+	CLOSE_PAR() antlr.TerminalNode
+
 	// IsPragma_stmtContext differentiates from other interfaces.
 	IsPragma_stmtContext()
 }
 
 type Pragma_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyPragma_stmtContext() *Pragma_stmtContext {
 	var p = new(Pragma_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_pragma_stmt
 	return p
+}
+
+func InitEmptyPragma_stmtContext(p *Pragma_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_pragma_stmt
 }
 
 func (*Pragma_stmtContext) IsPragma_stmtContext() {}
@@ -13498,7 +15757,7 @@ func (*Pragma_stmtContext) IsPragma_stmtContext() {}
 func NewPragma_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Pragma_stmtContext {
 	var p = new(Pragma_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_pragma_stmt
@@ -13607,37 +15866,21 @@ func (s *Pragma_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Pragma_stmt() (localctx IPragma_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewPragma_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 76, ParserRULE_pragma_stmt)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1229)
 		p.Match(ParserPRAGMA_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1233)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 160, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 160, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(1230)
 			p.Schema_name()
@@ -13645,8 +15888,14 @@ func (p *Parser) Pragma_stmt() (localctx IPragma_stmtContext) {
 		{
 			p.SetState(1231)
 			p.Match(ParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(1235)
@@ -13654,12 +15903,18 @@ func (p *Parser) Pragma_stmt() (localctx IPragma_stmtContext) {
 	}
 	p.SetState(1242)
 	p.GetErrorHandler().Sync(p)
-
+	if p.HasError() {
+		goto errorExit
+	}
 	switch p.GetTokenStream().LA(1) {
 	case ParserASSIGN:
 		{
 			p.SetState(1236)
 			p.Match(ParserASSIGN)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1237)
@@ -13670,6 +15925,10 @@ func (p *Parser) Pragma_stmt() (localctx IPragma_stmtContext) {
 		{
 			p.SetState(1238)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1239)
@@ -13678,6 +15937,10 @@ func (p *Parser) Pragma_stmt() (localctx IPragma_stmtContext) {
 		{
 			p.SetState(1240)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserEOF, ParserSCOL, ParserALTER_, ParserANALYZE_, ParserATTACH_, ParserBEGIN_, ParserCOMMIT_, ParserCREATE_, ParserDELETE_, ParserDETACH_, ParserDROP_, ParserEND_, ParserEXPLAIN_, ParserINSERT_, ParserPRAGMA_, ParserREINDEX_, ParserRELEASE_, ParserREPLACE_, ParserROLLBACK_, ParserSAVEPOINT_, ParserSELECT_, ParserUPDATE_, ParserVACUUM_, ParserVALUES_, ParserWITH_:
@@ -13685,7 +15948,17 @@ func (p *Parser) Pragma_stmt() (localctx IPragma_stmtContext) {
 	default:
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IPragma_valueContext is an interface to support dynamic dispatch.
@@ -13695,20 +15968,30 @@ type IPragma_valueContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Signed_number() ISigned_numberContext
+	Name() INameContext
+	STRING_LITERAL() antlr.TerminalNode
+
 	// IsPragma_valueContext differentiates from other interfaces.
 	IsPragma_valueContext()
 }
 
 type Pragma_valueContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyPragma_valueContext() *Pragma_valueContext {
 	var p = new(Pragma_valueContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_pragma_value
 	return p
+}
+
+func InitEmptyPragma_valueContext(p *Pragma_valueContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_pragma_value
 }
 
 func (*Pragma_valueContext) IsPragma_valueContext() {}
@@ -13716,7 +15999,7 @@ func (*Pragma_valueContext) IsPragma_valueContext() {}
 func NewPragma_valueContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Pragma_valueContext {
 	var p = new(Pragma_valueContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_pragma_value
@@ -13793,31 +16076,15 @@ func (s *Pragma_valueContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *Parser) Pragma_value() (localctx IPragma_valueContext) {
-	this := p
-	_ = this
-
 	localctx = NewPragma_valueContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 78, ParserRULE_pragma_value)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1247)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 162, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 162, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -13837,11 +16104,27 @@ func (p *Parser) Pragma_value() (localctx IPragma_valueContext) {
 		{
 			p.SetState(1246)
 			p.Match(ParserSTRING_LITERAL)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IReindex_stmtContext is an interface to support dynamic dispatch.
@@ -13851,20 +16134,33 @@ type IReindex_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	REINDEX_() antlr.TerminalNode
+	Collation_name() ICollation_nameContext
+	Table_name() ITable_nameContext
+	Index_name() IIndex_nameContext
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+
 	// IsReindex_stmtContext differentiates from other interfaces.
 	IsReindex_stmtContext()
 }
 
 type Reindex_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyReindex_stmtContext() *Reindex_stmtContext {
 	var p = new(Reindex_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_reindex_stmt
 	return p
+}
+
+func InitEmptyReindex_stmtContext(p *Reindex_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_reindex_stmt
 }
 
 func (*Reindex_stmtContext) IsReindex_stmtContext() {}
@@ -13872,7 +16168,7 @@ func (*Reindex_stmtContext) IsReindex_stmtContext() {}
 func NewReindex_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Reindex_stmtContext {
 	var p = new(Reindex_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_reindex_stmt
@@ -13985,47 +16281,33 @@ func (s *Reindex_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *Parser) Reindex_stmt() (localctx IReindex_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewReindex_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 80, ParserRULE_reindex_stmt)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1249)
 		p.Match(ParserREINDEX_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1260)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 165, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 165, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(1250)
 			p.Collation_name()
 		}
 
-	} else if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 165, p.GetParserRuleContext()) == 2 {
+	} else if p.HasError() { // JIM
+		goto errorExit
+	} else if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 165, p.GetParserRuleContext()) == 2 {
 		p.SetState(1254)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 163, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 163, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(1251)
 				p.Schema_name()
@@ -14033,12 +16315,22 @@ func (p *Parser) Reindex_stmt() (localctx IReindex_stmtContext) {
 			{
 				p.SetState(1252)
 				p.Match(ParserDOT)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		p.SetState(1258)
 		p.GetErrorHandler().Sync(p)
-		switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 164, p.GetParserRuleContext()) {
+		if p.HasError() {
+			goto errorExit
+		}
+
+		switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 164, p.GetParserRuleContext()) {
 		case 1:
 			{
 				p.SetState(1256)
@@ -14051,11 +16343,25 @@ func (p *Parser) Reindex_stmt() (localctx IReindex_stmtContext) {
 				p.Index_name()
 			}
 
+		case antlr.ATNInvalidAltNumber:
+			goto errorExit
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISelect_stmtContext is an interface to support dynamic dispatch.
@@ -14065,20 +16371,34 @@ type ISelect_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllSelect_core() []ISelect_coreContext
+	Select_core(i int) ISelect_coreContext
+	Common_table_stmt() ICommon_table_stmtContext
+	AllCompound_operator() []ICompound_operatorContext
+	Compound_operator(i int) ICompound_operatorContext
+	Order_by_stmt() IOrder_by_stmtContext
+	Limit_stmt() ILimit_stmtContext
+
 	// IsSelect_stmtContext differentiates from other interfaces.
 	IsSelect_stmtContext()
 }
 
 type Select_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySelect_stmtContext() *Select_stmtContext {
 	var p = new(Select_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_select_stmt
 	return p
+}
+
+func InitEmptySelect_stmtContext(p *Select_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_select_stmt
 }
 
 func (*Select_stmtContext) IsSelect_stmtContext() {}
@@ -14086,7 +16406,7 @@ func (*Select_stmtContext) IsSelect_stmtContext() {}
 func NewSelect_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Select_stmtContext {
 	var p = new(Select_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_select_stmt
@@ -14257,34 +16577,18 @@ func (s *Select_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Select_stmt() (localctx ISelect_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewSelect_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 82, ParserRULE_select_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	var _alt int
 
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(1263)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWITH_ {
@@ -14300,8 +16604,13 @@ func (p *Parser) Select_stmt() (localctx ISelect_stmtContext) {
 	}
 	p.SetState(1271)
 	p.GetErrorHandler().Sync(p)
-	_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 167, p.GetParserRuleContext())
-
+	if p.HasError() {
+		goto errorExit
+	}
+	_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 167, p.GetParserRuleContext())
+	if p.HasError() {
+		goto errorExit
+	}
 	for _alt != 2 && _alt != antlr.ATNInvalidAltNumber {
 		if _alt == 1 {
 			{
@@ -14316,10 +16625,19 @@ func (p *Parser) Select_stmt() (localctx ISelect_stmtContext) {
 		}
 		p.SetState(1273)
 		p.GetErrorHandler().Sync(p)
-		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 167, p.GetParserRuleContext())
+		if p.HasError() {
+			goto errorExit
+		}
+		_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 167, p.GetParserRuleContext())
+		if p.HasError() {
+			goto errorExit
+		}
 	}
 	p.SetState(1275)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserORDER_ {
@@ -14331,6 +16649,9 @@ func (p *Parser) Select_stmt() (localctx ISelect_stmtContext) {
 	}
 	p.SetState(1278)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserLIMIT_ {
@@ -14341,7 +16662,17 @@ func (p *Parser) Select_stmt() (localctx ISelect_stmtContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IJoin_clauseContext is an interface to support dynamic dispatch.
@@ -14351,20 +16682,33 @@ type IJoin_clauseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllTable_or_subquery() []ITable_or_subqueryContext
+	Table_or_subquery(i int) ITable_or_subqueryContext
+	AllJoin_operator() []IJoin_operatorContext
+	Join_operator(i int) IJoin_operatorContext
+	AllJoin_constraint() []IJoin_constraintContext
+	Join_constraint(i int) IJoin_constraintContext
+
 	// IsJoin_clauseContext differentiates from other interfaces.
 	IsJoin_clauseContext()
 }
 
 type Join_clauseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyJoin_clauseContext() *Join_clauseContext {
 	var p = new(Join_clauseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_join_clause
 	return p
+}
+
+func InitEmptyJoin_clauseContext(p *Join_clauseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_join_clause
 }
 
 func (*Join_clauseContext) IsJoin_clauseContext() {}
@@ -14372,7 +16716,7 @@ func (*Join_clauseContext) IsJoin_clauseContext() {}
 func NewJoin_clauseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Join_clauseContext {
 	var p = new(Join_clauseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_join_clause
@@ -14536,28 +16880,9 @@ func (s *Join_clauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Join_clause() (localctx IJoin_clauseContext) {
-	this := p
-	_ = this
-
 	localctx = NewJoin_clauseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 84, ParserRULE_join_clause)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -14566,9 +16891,12 @@ func (p *Parser) Join_clause() (localctx IJoin_clauseContext) {
 	}
 	p.SetState(1288)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for _la == ParserCOMMA || _la == ParserCROSS_ || (((_la-87)&-(0x1f+1)) == 0 && ((1<<uint((_la-87)))&((1<<(ParserINNER_-87))|(1<<(ParserJOIN_-87))|(1<<(ParserLEFT_-87))|(1<<(ParserNATURAL_-87)))) != 0) {
+	for _la == ParserCOMMA || _la == ParserCROSS_ || ((int64((_la-87)) & ^0x3f) == 0 && ((int64(1)<<(_la-87))&8833) != 0) {
 		{
 			p.SetState(1281)
 			p.Join_operator()
@@ -14580,20 +16908,35 @@ func (p *Parser) Join_clause() (localctx IJoin_clauseContext) {
 		p.SetState(1284)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 170, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 170, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(1283)
 				p.Join_constraint()
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 
 		p.SetState(1290)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISelect_coreContext is an interface to support dynamic dispatch.
@@ -14603,20 +16946,56 @@ type ISelect_coreContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	SELECT_() antlr.TerminalNode
+	AllResult_column() []IResult_columnContext
+	Result_column(i int) IResult_columnContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+	FROM_() antlr.TerminalNode
+	WHERE_() antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	GROUP_() antlr.TerminalNode
+	BY_() antlr.TerminalNode
+	WINDOW_() antlr.TerminalNode
+	AllWindow_name() []IWindow_nameContext
+	Window_name(i int) IWindow_nameContext
+	AllAS_() []antlr.TerminalNode
+	AS_(i int) antlr.TerminalNode
+	AllWindow_defn() []IWindow_defnContext
+	Window_defn(i int) IWindow_defnContext
+	DISTINCT_() antlr.TerminalNode
+	ALL_() antlr.TerminalNode
+	AllTable_or_subquery() []ITable_or_subqueryContext
+	Table_or_subquery(i int) ITable_or_subqueryContext
+	Join_clause() IJoin_clauseContext
+	HAVING_() antlr.TerminalNode
+	VALUES_() antlr.TerminalNode
+	AllOPEN_PAR() []antlr.TerminalNode
+	OPEN_PAR(i int) antlr.TerminalNode
+	AllCLOSE_PAR() []antlr.TerminalNode
+	CLOSE_PAR(i int) antlr.TerminalNode
+
 	// IsSelect_coreContext differentiates from other interfaces.
 	IsSelect_coreContext()
 }
 
 type Select_coreContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySelect_coreContext() *Select_coreContext {
 	var p = new(Select_coreContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_select_core
 	return p
+}
+
+func InitEmptySelect_coreContext(p *Select_coreContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_select_core
 }
 
 func (*Select_coreContext) IsSelect_coreContext() {}
@@ -14624,7 +17003,7 @@ func (*Select_coreContext) IsSelect_coreContext() {}
 func NewSelect_coreContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Select_coreContext {
 	var p = new(Select_coreContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_select_core
@@ -14958,31 +17337,15 @@ func (s *Select_coreContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Select_core() (localctx ISelect_coreContext) {
-	this := p
-	_ = this
-
 	localctx = NewSelect_coreContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 86, ParserRULE_select_core)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1381)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserSELECT_:
@@ -14990,11 +17353,15 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 		{
 			p.SetState(1291)
 			p.Match(ParserSELECT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1293)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 172, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 172, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(1292)
 				_la = p.GetTokenStream().LA(1)
@@ -15007,6 +17374,8 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 				}
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		{
 			p.SetState(1295)
@@ -15014,12 +17383,19 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 		}
 		p.SetState(1300)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1296)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1297)
@@ -15028,20 +17404,34 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 
 			p.SetState(1302)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		p.SetState(1315)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserFROM_ {
 			{
 				p.SetState(1303)
 				p.Match(ParserFROM_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			p.SetState(1313)
 			p.GetErrorHandler().Sync(p)
-			switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 175, p.GetParserRuleContext()) {
+			if p.HasError() {
+				goto errorExit
+			}
+
+			switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 175, p.GetParserRuleContext()) {
 			case 1:
 				{
 					p.SetState(1304)
@@ -15049,12 +17439,19 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 				}
 				p.SetState(1309)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 
 				for _la == ParserCOMMA {
 					{
 						p.SetState(1305)
 						p.Match(ParserCOMMA)
+						if p.HasError() {
+							// Recognition error - abort rule
+							goto errorExit
+						}
 					}
 					{
 						p.SetState(1306)
@@ -15063,6 +17460,9 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 
 					p.SetState(1311)
 					p.GetErrorHandler().Sync(p)
+					if p.HasError() {
+						goto errorExit
+					}
 					_la = p.GetTokenStream().LA(1)
 				}
 
@@ -15072,17 +17472,26 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 					p.Join_clause()
 				}
 
+			case antlr.ATNInvalidAltNumber:
+				goto errorExit
 			}
 
 		}
 		p.SetState(1319)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserWHERE_ {
 			{
 				p.SetState(1317)
 				p.Match(ParserWHERE_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1318)
@@ -15092,16 +17501,27 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 		}
 		p.SetState(1335)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserGROUP_ {
 			{
 				p.SetState(1321)
 				p.Match(ParserGROUP_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1322)
 				p.Match(ParserBY_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1323)
@@ -15109,12 +17529,19 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 			}
 			p.SetState(1328)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == ParserCOMMA {
 				{
 					p.SetState(1324)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1325)
@@ -15123,16 +17550,26 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 
 				p.SetState(1330)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 			p.SetState(1333)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			if _la == ParserHAVING_ {
 				{
 					p.SetState(1331)
 					p.Match(ParserHAVING_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1332)
@@ -15144,12 +17581,19 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 		}
 		p.SetState(1351)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserWINDOW_ {
 			{
 				p.SetState(1337)
 				p.Match(ParserWINDOW_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1338)
@@ -15158,6 +17602,10 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 			{
 				p.SetState(1339)
 				p.Match(ParserAS_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1340)
@@ -15165,12 +17613,19 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 			}
 			p.SetState(1348)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == ParserCOMMA {
 				{
 					p.SetState(1341)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1342)
@@ -15179,6 +17634,10 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 				{
 					p.SetState(1343)
 					p.Match(ParserAS_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1344)
@@ -15187,6 +17646,9 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 
 				p.SetState(1350)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 
@@ -15197,10 +17659,18 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 		{
 			p.SetState(1353)
 			p.Match(ParserVALUES_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1354)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1355)
@@ -15208,12 +17678,19 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 		}
 		p.SetState(1360)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1356)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1357)
@@ -15222,24 +17699,42 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 
 			p.SetState(1362)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(1363)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1378)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1364)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1365)
 				p.Match(ParserOPEN_PAR)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1366)
@@ -15247,12 +17742,19 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 			}
 			p.SetState(1371)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == ParserCOMMA {
 				{
 					p.SetState(1367)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1368)
@@ -15261,23 +17763,44 @@ func (p *Parser) Select_core() (localctx ISelect_coreContext) {
 
 				p.SetState(1373)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 			{
 				p.SetState(1374)
 				p.Match(ParserCLOSE_PAR)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 			p.SetState(1380)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFactored_select_stmtContext is an interface to support dynamic dispatch.
@@ -15287,20 +17810,28 @@ type IFactored_select_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Select_stmt() ISelect_stmtContext
+
 	// IsFactored_select_stmtContext differentiates from other interfaces.
 	IsFactored_select_stmtContext()
 }
 
 type Factored_select_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFactored_select_stmtContext() *Factored_select_stmtContext {
 	var p = new(Factored_select_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_factored_select_stmt
 	return p
+}
+
+func InitEmptyFactored_select_stmtContext(p *Factored_select_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_factored_select_stmt
 }
 
 func (*Factored_select_stmtContext) IsFactored_select_stmtContext() {}
@@ -15308,7 +17839,7 @@ func (*Factored_select_stmtContext) IsFactored_select_stmtContext() {}
 func NewFactored_select_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Factored_select_stmtContext {
 	var p = new(Factored_select_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_factored_select_stmt
@@ -15365,35 +17896,25 @@ func (s *Factored_select_stmtContext) Accept(visitor antlr.ParseTreeVisitor) int
 }
 
 func (p *Parser) Factored_select_stmt() (localctx IFactored_select_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewFactored_select_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 88, ParserRULE_factored_select_stmt)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1383)
 		p.Select_stmt()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISimple_select_stmtContext is an interface to support dynamic dispatch.
@@ -15403,20 +17924,31 @@ type ISimple_select_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Select_core() ISelect_coreContext
+	Common_table_stmt() ICommon_table_stmtContext
+	Order_by_stmt() IOrder_by_stmtContext
+	Limit_stmt() ILimit_stmtContext
+
 	// IsSimple_select_stmtContext differentiates from other interfaces.
 	IsSimple_select_stmtContext()
 }
 
 type Simple_select_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySimple_select_stmtContext() *Simple_select_stmtContext {
 	var p = new(Simple_select_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_simple_select_stmt
 	return p
+}
+
+func InitEmptySimple_select_stmtContext(p *Simple_select_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_simple_select_stmt
 }
 
 func (*Simple_select_stmtContext) IsSimple_select_stmtContext() {}
@@ -15424,7 +17956,7 @@ func (*Simple_select_stmtContext) IsSimple_select_stmtContext() {}
 func NewSimple_select_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Simple_select_stmtContext {
 	var p = new(Simple_select_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_simple_select_stmt
@@ -15529,32 +18061,16 @@ func (s *Simple_select_stmtContext) Accept(visitor antlr.ParseTreeVisitor) inter
 }
 
 func (p *Parser) Simple_select_stmt() (localctx ISimple_select_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewSimple_select_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 90, ParserRULE_simple_select_stmt)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(1386)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWITH_ {
@@ -15570,6 +18086,9 @@ func (p *Parser) Simple_select_stmt() (localctx ISimple_select_stmtContext) {
 	}
 	p.SetState(1390)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserORDER_ {
@@ -15581,6 +18100,9 @@ func (p *Parser) Simple_select_stmt() (localctx ISimple_select_stmtContext) {
 	}
 	p.SetState(1393)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserLIMIT_ {
@@ -15591,7 +18113,17 @@ func (p *Parser) Simple_select_stmt() (localctx ISimple_select_stmtContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICompound_select_stmtContext is an interface to support dynamic dispatch.
@@ -15601,20 +18133,40 @@ type ICompound_select_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllSelect_core() []ISelect_coreContext
+	Select_core(i int) ISelect_coreContext
+	Common_table_stmt() ICommon_table_stmtContext
+	Order_by_stmt() IOrder_by_stmtContext
+	Limit_stmt() ILimit_stmtContext
+	AllUNION_() []antlr.TerminalNode
+	UNION_(i int) antlr.TerminalNode
+	AllINTERSECT_() []antlr.TerminalNode
+	INTERSECT_(i int) antlr.TerminalNode
+	AllEXCEPT_() []antlr.TerminalNode
+	EXCEPT_(i int) antlr.TerminalNode
+	AllALL_() []antlr.TerminalNode
+	ALL_(i int) antlr.TerminalNode
+
 	// IsCompound_select_stmtContext differentiates from other interfaces.
 	IsCompound_select_stmtContext()
 }
 
 type Compound_select_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCompound_select_stmtContext() *Compound_select_stmtContext {
 	var p = new(Compound_select_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_compound_select_stmt
 	return p
+}
+
+func InitEmptyCompound_select_stmtContext(p *Compound_select_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_compound_select_stmt
 }
 
 func (*Compound_select_stmtContext) IsCompound_select_stmtContext() {}
@@ -15622,7 +18174,7 @@ func (*Compound_select_stmtContext) IsCompound_select_stmtContext() {}
 func NewCompound_select_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Compound_select_stmtContext {
 	var p = new(Compound_select_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_compound_select_stmt
@@ -15784,32 +18336,16 @@ func (s *Compound_select_stmtContext) Accept(visitor antlr.ParseTreeVisitor) int
 }
 
 func (p *Parser) Compound_select_stmt() (localctx ICompound_select_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewCompound_select_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 92, ParserRULE_compound_select_stmt)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(1396)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWITH_ {
@@ -15825,26 +18361,43 @@ func (p *Parser) Compound_select_stmt() (localctx ICompound_select_stmtContext) 
 	}
 	p.SetState(1408)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for ok := true; ok; ok = _la == ParserEXCEPT_ || _la == ParserINTERSECT_ || _la == ParserUNION_ {
 		p.SetState(1405)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 
 		switch p.GetTokenStream().LA(1) {
 		case ParserUNION_:
 			{
 				p.SetState(1399)
 				p.Match(ParserUNION_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			p.SetState(1401)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			if _la == ParserALL_ {
 				{
 					p.SetState(1400)
 					p.Match(ParserALL_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
 			}
@@ -15853,16 +18406,25 @@ func (p *Parser) Compound_select_stmt() (localctx ICompound_select_stmtContext) 
 			{
 				p.SetState(1403)
 				p.Match(ParserINTERSECT_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		case ParserEXCEPT_:
 			{
 				p.SetState(1404)
 				p.Match(ParserEXCEPT_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		default:
-			panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			goto errorExit
 		}
 		{
 			p.SetState(1407)
@@ -15871,10 +18433,16 @@ func (p *Parser) Compound_select_stmt() (localctx ICompound_select_stmtContext) 
 
 		p.SetState(1410)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	p.SetState(1413)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserORDER_ {
@@ -15886,6 +18454,9 @@ func (p *Parser) Compound_select_stmt() (localctx ICompound_select_stmtContext) 
 	}
 	p.SetState(1416)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserLIMIT_ {
@@ -15896,7 +18467,17 @@ func (p *Parser) Compound_select_stmt() (localctx ICompound_select_stmtContext) 
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ITable_or_subqueryContext is an interface to support dynamic dispatch.
@@ -15906,20 +18487,47 @@ type ITable_or_subqueryContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Table_name() ITable_nameContext
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+	Table_alias() ITable_aliasContext
+	INDEXED_() antlr.TerminalNode
+	BY_() antlr.TerminalNode
+	Index_name() IIndex_nameContext
+	NOT_() antlr.TerminalNode
+	AS_() antlr.TerminalNode
+	Table_function_name() ITable_function_nameContext
+	OPEN_PAR() antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	CLOSE_PAR() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+	AllTable_or_subquery() []ITable_or_subqueryContext
+	Table_or_subquery(i int) ITable_or_subqueryContext
+	Join_clause() IJoin_clauseContext
+	Select_stmt() ISelect_stmtContext
+
 	// IsTable_or_subqueryContext differentiates from other interfaces.
 	IsTable_or_subqueryContext()
 }
 
 type Table_or_subqueryContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyTable_or_subqueryContext() *Table_or_subqueryContext {
 	var p = new(Table_or_subqueryContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_table_or_subquery
 	return p
+}
+
+func InitEmptyTable_or_subqueryContext(p *Table_or_subqueryContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_table_or_subquery
 }
 
 func (*Table_or_subqueryContext) IsTable_or_subqueryContext() {}
@@ -15927,7 +18535,7 @@ func (*Table_or_subqueryContext) IsTable_or_subqueryContext() {}
 func NewTable_or_subqueryContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Table_or_subqueryContext {
 	var p = new(Table_or_subqueryContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_table_or_subquery
@@ -16198,38 +18806,23 @@ func (s *Table_or_subqueryContext) Accept(visitor antlr.ParseTreeVisitor) interf
 }
 
 func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
-	this := p
-	_ = this
-
 	localctx = NewTable_or_subqueryContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 94, ParserRULE_table_or_subquery)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1482)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 208, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 208, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		p.SetState(1421)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 196, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 196, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(1418)
 				p.Schema_name()
@@ -16237,8 +18830,14 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 			{
 				p.SetState(1419)
 				p.Match(ParserDOT)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		{
 			p.SetState(1423)
@@ -16247,35 +18846,53 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 		p.SetState(1428)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 198, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 198, p.GetParserRuleContext()) == 1 {
 			p.SetState(1425)
 			p.GetErrorHandler().Sync(p)
 
-			if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 197, p.GetParserRuleContext()) == 1 {
+			if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 197, p.GetParserRuleContext()) == 1 {
 				{
 					p.SetState(1424)
 					p.Match(ParserAS_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
+			} else if p.HasError() { // JIM
+				goto errorExit
 			}
 			{
 				p.SetState(1427)
 				p.Table_alias()
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		p.SetState(1435)
 		p.GetErrorHandler().Sync(p)
-
+		if p.HasError() {
+			goto errorExit
+		}
 		switch p.GetTokenStream().LA(1) {
 		case ParserINDEXED_:
 			{
 				p.SetState(1430)
 				p.Match(ParserINDEXED_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1431)
 				p.Match(ParserBY_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1432)
@@ -16286,10 +18903,18 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 			{
 				p.SetState(1433)
 				p.Match(ParserNOT_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1434)
 				p.Match(ParserINDEXED_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		case ParserEOF, ParserSCOL, ParserCLOSE_PAR, ParserCOMMA, ParserALTER_, ParserANALYZE_, ParserATTACH_, ParserBEGIN_, ParserCOMMIT_, ParserCREATE_, ParserCROSS_, ParserDELETE_, ParserDETACH_, ParserDROP_, ParserEND_, ParserEXCEPT_, ParserEXPLAIN_, ParserGROUP_, ParserINNER_, ParserINSERT_, ParserINTERSECT_, ParserJOIN_, ParserLEFT_, ParserLIMIT_, ParserNATURAL_, ParserON_, ParserORDER_, ParserPRAGMA_, ParserREINDEX_, ParserRELEASE_, ParserREPLACE_, ParserRETURNING_, ParserROLLBACK_, ParserSAVEPOINT_, ParserSELECT_, ParserUNION_, ParserUPDATE_, ParserUSING_, ParserVACUUM_, ParserVALUES_, ParserWHERE_, ParserWITH_, ParserWINDOW_:
@@ -16302,7 +18927,7 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 		p.SetState(1440)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 200, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 200, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(1437)
 				p.Schema_name()
@@ -16310,8 +18935,14 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 			{
 				p.SetState(1438)
 				p.Match(ParserDOT)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		{
 			p.SetState(1442)
@@ -16320,6 +18951,10 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 		{
 			p.SetState(1443)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1444)
@@ -16327,12 +18962,19 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 		}
 		p.SetState(1449)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1445)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1446)
@@ -16341,31 +18983,46 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 
 			p.SetState(1451)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(1452)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1457)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 203, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 203, p.GetParserRuleContext()) == 1 {
 			p.SetState(1454)
 			p.GetErrorHandler().Sync(p)
 
-			if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 202, p.GetParserRuleContext()) == 1 {
+			if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 202, p.GetParserRuleContext()) == 1 {
 				{
 					p.SetState(1453)
 					p.Match(ParserAS_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
+			} else if p.HasError() { // JIM
+				goto errorExit
 			}
 			{
 				p.SetState(1456)
 				p.Table_alias()
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 
 	case 3:
@@ -16373,10 +19030,18 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 		{
 			p.SetState(1459)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1469)
 		p.GetErrorHandler().Sync(p)
-		switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 205, p.GetParserRuleContext()) {
+		if p.HasError() {
+			goto errorExit
+		}
+
+		switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 205, p.GetParserRuleContext()) {
 		case 1:
 			{
 				p.SetState(1460)
@@ -16384,12 +19049,19 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 			}
 			p.SetState(1465)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == ParserCOMMA {
 				{
 					p.SetState(1461)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1462)
@@ -16398,6 +19070,9 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 
 				p.SetState(1467)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 
@@ -16407,10 +19082,16 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 				p.Join_clause()
 			}
 
+		case antlr.ATNInvalidAltNumber:
+			goto errorExit
 		}
 		{
 			p.SetState(1471)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 4:
@@ -16418,6 +19099,10 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 		{
 			p.SetState(1473)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1474)
@@ -16426,31 +19111,55 @@ func (p *Parser) Table_or_subquery() (localctx ITable_or_subqueryContext) {
 		{
 			p.SetState(1475)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1480)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 207, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 207, p.GetParserRuleContext()) == 1 {
 			p.SetState(1477)
 			p.GetErrorHandler().Sync(p)
 
-			if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 206, p.GetParserRuleContext()) == 1 {
+			if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 206, p.GetParserRuleContext()) == 1 {
 				{
 					p.SetState(1476)
 					p.Match(ParserAS_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
+			} else if p.HasError() { // JIM
+				goto errorExit
 			}
 			{
 				p.SetState(1479)
 				p.Table_alias()
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IResult_columnContext is an interface to support dynamic dispatch.
@@ -16460,20 +19169,33 @@ type IResult_columnContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	STAR() antlr.TerminalNode
+	Table_name() ITable_nameContext
+	DOT() antlr.TerminalNode
+	Expr() IExprContext
+	Column_alias() IColumn_aliasContext
+	AS_() antlr.TerminalNode
+
 	// IsResult_columnContext differentiates from other interfaces.
 	IsResult_columnContext()
 }
 
 type Result_columnContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyResult_columnContext() *Result_columnContext {
 	var p = new(Result_columnContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_result_column
 	return p
+}
+
+func InitEmptyResult_columnContext(p *Result_columnContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_result_column
 }
 
 func (*Result_columnContext) IsResult_columnContext() {}
@@ -16481,7 +19203,7 @@ func (*Result_columnContext) IsResult_columnContext() {}
 func NewResult_columnContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Result_columnContext {
 	var p = new(Result_columnContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_result_column
@@ -16582,37 +19304,26 @@ func (s *Result_columnContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Result_column() (localctx IResult_columnContext) {
-	this := p
-	_ = this
-
 	localctx = NewResult_columnContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 96, ParserRULE_result_column)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1496)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 211, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 211, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(1484)
 			p.Match(ParserSTAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -16624,10 +19335,18 @@ func (p *Parser) Result_column() (localctx IResult_columnContext) {
 		{
 			p.SetState(1486)
 			p.Match(ParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1487)
 			p.Match(ParserSTAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
@@ -16638,17 +19357,27 @@ func (p *Parser) Result_column() (localctx IResult_columnContext) {
 		}
 		p.SetState(1494)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserAS_ || _la == ParserIDENTIFIER || _la == ParserSTRING_LITERAL {
 			p.SetState(1491)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			if _la == ParserAS_ {
 				{
 					p.SetState(1490)
 					p.Match(ParserAS_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
 			}
@@ -16659,9 +19388,21 @@ func (p *Parser) Result_column() (localctx IResult_columnContext) {
 
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IJoin_operatorContext is an interface to support dynamic dispatch.
@@ -16671,20 +19412,34 @@ type IJoin_operatorContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	COMMA() antlr.TerminalNode
+	JOIN_() antlr.TerminalNode
+	NATURAL_() antlr.TerminalNode
+	LEFT_() antlr.TerminalNode
+	INNER_() antlr.TerminalNode
+	CROSS_() antlr.TerminalNode
+	OUTER_() antlr.TerminalNode
+
 	// IsJoin_operatorContext differentiates from other interfaces.
 	IsJoin_operatorContext()
 }
 
 type Join_operatorContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyJoin_operatorContext() *Join_operatorContext {
 	var p = new(Join_operatorContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_join_operator
 	return p
+}
+
+func InitEmptyJoin_operatorContext(p *Join_operatorContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_join_operator
 }
 
 func (*Join_operatorContext) IsJoin_operatorContext() {}
@@ -16692,7 +19447,7 @@ func (*Join_operatorContext) IsJoin_operatorContext() {}
 func NewJoin_operatorContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Join_operatorContext {
 	var p = new(Join_operatorContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_join_operator
@@ -16761,31 +19516,15 @@ func (s *Join_operatorContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Join_operator() (localctx IJoin_operatorContext) {
-	this := p
-	_ = this
-
 	localctx = NewJoin_operatorContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 98, ParserRULE_join_operator)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1511)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserCOMMA:
@@ -16793,38 +19532,62 @@ func (p *Parser) Join_operator() (localctx IJoin_operatorContext) {
 		{
 			p.SetState(1498)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserCROSS_, ParserINNER_, ParserJOIN_, ParserLEFT_, ParserNATURAL_:
 		p.EnterOuterAlt(localctx, 2)
 		p.SetState(1500)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserNATURAL_ {
 			{
 				p.SetState(1499)
 				p.Match(ParserNATURAL_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		}
 		p.SetState(1508)
 		p.GetErrorHandler().Sync(p)
-
+		if p.HasError() {
+			goto errorExit
+		}
 		switch p.GetTokenStream().LA(1) {
 		case ParserLEFT_:
 			{
 				p.SetState(1502)
 				p.Match(ParserLEFT_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			p.SetState(1504)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			if _la == ParserOUTER_ {
 				{
 					p.SetState(1503)
 					p.Match(ParserOUTER_)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 
 			}
@@ -16833,12 +19596,20 @@ func (p *Parser) Join_operator() (localctx IJoin_operatorContext) {
 			{
 				p.SetState(1506)
 				p.Match(ParserINNER_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		case ParserCROSS_:
 			{
 				p.SetState(1507)
 				p.Match(ParserCROSS_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		case ParserJOIN_:
@@ -16848,13 +19619,28 @@ func (p *Parser) Join_operator() (localctx IJoin_operatorContext) {
 		{
 			p.SetState(1510)
 			p.Match(ParserJOIN_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IJoin_constraintContext is an interface to support dynamic dispatch.
@@ -16864,20 +19650,36 @@ type IJoin_constraintContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ON_() antlr.TerminalNode
+	Expr() IExprContext
+	USING_() antlr.TerminalNode
+	OPEN_PAR() antlr.TerminalNode
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	CLOSE_PAR() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsJoin_constraintContext differentiates from other interfaces.
 	IsJoin_constraintContext()
 }
 
 type Join_constraintContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyJoin_constraintContext() *Join_constraintContext {
 	var p = new(Join_constraintContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_join_constraint
 	return p
+}
+
+func InitEmptyJoin_constraintContext(p *Join_constraintContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_join_constraint
 }
 
 func (*Join_constraintContext) IsJoin_constraintContext() {}
@@ -16885,7 +19687,7 @@ func (*Join_constraintContext) IsJoin_constraintContext() {}
 func NewJoin_constraintContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Join_constraintContext {
 	var p = new(Join_constraintContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_join_constraint
@@ -17007,31 +19809,15 @@ func (s *Join_constraintContext) Accept(visitor antlr.ParseTreeVisitor) interfac
 }
 
 func (p *Parser) Join_constraint() (localctx IJoin_constraintContext) {
-	this := p
-	_ = this
-
 	localctx = NewJoin_constraintContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 100, ParserRULE_join_constraint)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1527)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserON_:
@@ -17039,6 +19825,10 @@ func (p *Parser) Join_constraint() (localctx IJoin_constraintContext) {
 		{
 			p.SetState(1513)
 			p.Match(ParserON_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1514)
@@ -17050,10 +19840,18 @@ func (p *Parser) Join_constraint() (localctx IJoin_constraintContext) {
 		{
 			p.SetState(1515)
 			p.Match(ParserUSING_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1516)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1517)
@@ -17061,12 +19859,19 @@ func (p *Parser) Join_constraint() (localctx IJoin_constraintContext) {
 		}
 		p.SetState(1522)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1518)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1519)
@@ -17075,18 +19880,36 @@ func (p *Parser) Join_constraint() (localctx IJoin_constraintContext) {
 
 			p.SetState(1524)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(1525)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICompound_operatorContext is an interface to support dynamic dispatch.
@@ -17096,20 +19919,31 @@ type ICompound_operatorContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	UNION_() antlr.TerminalNode
+	ALL_() antlr.TerminalNode
+	INTERSECT_() antlr.TerminalNode
+	EXCEPT_() antlr.TerminalNode
+
 	// IsCompound_operatorContext differentiates from other interfaces.
 	IsCompound_operatorContext()
 }
 
 type Compound_operatorContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCompound_operatorContext() *Compound_operatorContext {
 	var p = new(Compound_operatorContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_compound_operator
 	return p
+}
+
+func InitEmptyCompound_operatorContext(p *Compound_operatorContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_compound_operator
 }
 
 func (*Compound_operatorContext) IsCompound_operatorContext() {}
@@ -17117,7 +19951,7 @@ func (*Compound_operatorContext) IsCompound_operatorContext() {}
 func NewCompound_operatorContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Compound_operatorContext {
 	var p = new(Compound_operatorContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_compound_operator
@@ -17174,31 +20008,15 @@ func (s *Compound_operatorContext) Accept(visitor antlr.ParseTreeVisitor) interf
 }
 
 func (p *Parser) Compound_operator() (localctx ICompound_operatorContext) {
-	this := p
-	_ = this
-
 	localctx = NewCompound_operatorContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 102, ParserRULE_compound_operator)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1535)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserUNION_:
@@ -17206,15 +20024,26 @@ func (p *Parser) Compound_operator() (localctx ICompound_operatorContext) {
 		{
 			p.SetState(1529)
 			p.Match(ParserUNION_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1531)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserALL_ {
 			{
 				p.SetState(1530)
 				p.Match(ParserALL_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
 		}
@@ -17224,6 +20053,10 @@ func (p *Parser) Compound_operator() (localctx ICompound_operatorContext) {
 		{
 			p.SetState(1533)
 			p.Match(ParserINTERSECT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserEXCEPT_:
@@ -17231,13 +20064,28 @@ func (p *Parser) Compound_operator() (localctx ICompound_operatorContext) {
 		{
 			p.SetState(1534)
 			p.Match(ParserEXCEPT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IUpdate_stmtContext is an interface to support dynamic dispatch.
@@ -17253,21 +20101,48 @@ type IUpdate_stmtContext interface {
 	// SetWhere sets the where rule contexts.
 	SetWhere(IExprContext)
 
+	// Getter signatures
+	UPDATE_() antlr.TerminalNode
+	Qualified_table_name() IQualified_table_nameContext
+	SET_() antlr.TerminalNode
+	Assignment_list() IAssignment_listContext
+	With_clause() IWith_clauseContext
+	OR_() antlr.TerminalNode
+	FROM_() antlr.TerminalNode
+	WHERE_() antlr.TerminalNode
+	Returning_clause() IReturning_clauseContext
+	ROLLBACK_() antlr.TerminalNode
+	ABORT_() antlr.TerminalNode
+	REPLACE_() antlr.TerminalNode
+	FAIL_() antlr.TerminalNode
+	IGNORE_() antlr.TerminalNode
+	Expr() IExprContext
+	AllTable_or_subquery() []ITable_or_subqueryContext
+	Table_or_subquery(i int) ITable_or_subqueryContext
+	Join_clause() IJoin_clauseContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsUpdate_stmtContext differentiates from other interfaces.
 	IsUpdate_stmtContext()
 }
 
 type Update_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 	where  IExprContext
 }
 
 func NewEmptyUpdate_stmtContext() *Update_stmtContext {
 	var p = new(Update_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_update_stmt
 	return p
+}
+
+func InitEmptyUpdate_stmtContext(p *Update_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_update_stmt
 }
 
 func (*Update_stmtContext) IsUpdate_stmtContext() {}
@@ -17275,7 +20150,7 @@ func (*Update_stmtContext) IsUpdate_stmtContext() {}
 func NewUpdate_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Update_stmtContext {
 	var p = new(Update_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_update_stmt
@@ -17505,32 +20380,16 @@ func (s *Update_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Update_stmt() (localctx IUpdate_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewUpdate_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 104, ParserRULE_update_stmt)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(1538)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWITH_ {
@@ -17543,20 +20402,28 @@ func (p *Parser) Update_stmt() (localctx IUpdate_stmtContext) {
 	{
 		p.SetState(1540)
 		p.Match(ParserUPDATE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1543)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 221, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 221, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(1541)
 			p.Match(ParserOR_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1542)
 			_la = p.GetTokenStream().LA(1)
 
-			if !(_la == ParserABORT_ || _la == ParserFAIL_ || _la == ParserIGNORE_ || _la == ParserREPLACE_ || _la == ParserROLLBACK_) {
+			if !(_la == ParserABORT_ || ((int64((_la-72)) & ^0x3f) == 0 && ((int64(1)<<(_la-72))&19140298416325121) != 0)) {
 				p.GetErrorHandler().RecoverInline(p)
 			} else {
 				p.GetErrorHandler().ReportMatch(p)
@@ -17564,6 +20431,8 @@ func (p *Parser) Update_stmt() (localctx IUpdate_stmtContext) {
 			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(1545)
@@ -17572,6 +20441,10 @@ func (p *Parser) Update_stmt() (localctx IUpdate_stmtContext) {
 	{
 		p.SetState(1546)
 		p.Match(ParserSET_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1547)
@@ -17579,16 +20452,27 @@ func (p *Parser) Update_stmt() (localctx IUpdate_stmtContext) {
 	}
 	p.SetState(1560)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserFROM_ {
 		{
 			p.SetState(1548)
 			p.Match(ParserFROM_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1558)
 		p.GetErrorHandler().Sync(p)
-		switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 223, p.GetParserRuleContext()) {
+		if p.HasError() {
+			goto errorExit
+		}
+
+		switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 223, p.GetParserRuleContext()) {
 		case 1:
 			{
 				p.SetState(1549)
@@ -17596,12 +20480,19 @@ func (p *Parser) Update_stmt() (localctx IUpdate_stmtContext) {
 			}
 			p.SetState(1554)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == ParserCOMMA {
 				{
 					p.SetState(1550)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1551)
@@ -17610,6 +20501,9 @@ func (p *Parser) Update_stmt() (localctx IUpdate_stmtContext) {
 
 				p.SetState(1556)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 
@@ -17619,17 +20513,26 @@ func (p *Parser) Update_stmt() (localctx IUpdate_stmtContext) {
 				p.Join_clause()
 			}
 
+		case antlr.ATNInvalidAltNumber:
+			goto errorExit
 		}
 
 	}
 	p.SetState(1564)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWHERE_ {
 		{
 			p.SetState(1562)
 			p.Match(ParserWHERE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1563)
@@ -17642,6 +20545,9 @@ func (p *Parser) Update_stmt() (localctx IUpdate_stmtContext) {
 	}
 	p.SetState(1567)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserRETURNING_ {
@@ -17652,7 +20558,17 @@ func (p *Parser) Update_stmt() (localctx IUpdate_stmtContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAssignment_listContext is an interface to support dynamic dispatch.
@@ -17662,20 +20578,31 @@ type IAssignment_listContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllAssignment() []IAssignmentContext
+	Assignment(i int) IAssignmentContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsAssignment_listContext differentiates from other interfaces.
 	IsAssignment_listContext()
 }
 
 type Assignment_listContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyAssignment_listContext() *Assignment_listContext {
 	var p = new(Assignment_listContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_assignment_list
 	return p
+}
+
+func InitEmptyAssignment_listContext(p *Assignment_listContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_assignment_list
 }
 
 func (*Assignment_listContext) IsAssignment_listContext() {}
@@ -17683,7 +20610,7 @@ func (*Assignment_listContext) IsAssignment_listContext() {}
 func NewAssignment_listContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Assignment_listContext {
 	var p = new(Assignment_listContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_assignment_list
@@ -17773,28 +20700,9 @@ func (s *Assignment_listContext) Accept(visitor antlr.ParseTreeVisitor) interfac
 }
 
 func (p *Parser) Assignment_list() (localctx IAssignment_listContext) {
-	this := p
-	_ = this
-
 	localctx = NewAssignment_listContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 106, ParserRULE_assignment_list)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -17803,12 +20711,19 @@ func (p *Parser) Assignment_list() (localctx IAssignment_listContext) {
 	}
 	p.SetState(1574)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserCOMMA {
 		{
 			p.SetState(1570)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1571)
@@ -17817,10 +20732,23 @@ func (p *Parser) Assignment_list() (localctx IAssignment_listContext) {
 
 		p.SetState(1576)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAssignmentContext is an interface to support dynamic dispatch.
@@ -17830,20 +20758,31 @@ type IAssignmentContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ASSIGN() antlr.TerminalNode
+	Expr() IExprContext
+	Column_name() IColumn_nameContext
+	Column_name_list() IColumn_name_listContext
+
 	// IsAssignmentContext differentiates from other interfaces.
 	IsAssignmentContext()
 }
 
 type AssignmentContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyAssignmentContext() *AssignmentContext {
 	var p = new(AssignmentContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_assignment
 	return p
+}
+
+func InitEmptyAssignmentContext(p *AssignmentContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_assignment
 }
 
 func (*AssignmentContext) IsAssignmentContext() {}
@@ -17851,7 +20790,7 @@ func (*AssignmentContext) IsAssignmentContext() {}
 func NewAssignmentContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *AssignmentContext {
 	var p = new(AssignmentContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_assignment
@@ -17944,32 +20883,16 @@ func (s *AssignmentContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Assignment() (localctx IAssignmentContext) {
-	this := p
-	_ = this
-
 	localctx = NewAssignmentContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 108, ParserRULE_assignment)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(1579)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 228, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 228, p.GetParserRuleContext()) {
 	case 1:
 		{
 			p.SetState(1577)
@@ -17982,17 +20905,33 @@ func (p *Parser) Assignment() (localctx IAssignmentContext) {
 			p.Column_name_list()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 	{
 		p.SetState(1581)
 		p.Match(ParserASSIGN)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1582)
 		p.expr(0)
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IColumn_name_listContext is an interface to support dynamic dispatch.
@@ -18002,20 +20941,33 @@ type IColumn_name_listContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	OPEN_PAR() antlr.TerminalNode
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	CLOSE_PAR() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsColumn_name_listContext differentiates from other interfaces.
 	IsColumn_name_listContext()
 }
 
 type Column_name_listContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyColumn_name_listContext() *Column_name_listContext {
 	var p = new(Column_name_listContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_column_name_list
 	return p
+}
+
+func InitEmptyColumn_name_listContext(p *Column_name_listContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_column_name_list
 }
 
 func (*Column_name_listContext) IsColumn_name_listContext() {}
@@ -18023,7 +20975,7 @@ func (*Column_name_listContext) IsColumn_name_listContext() {}
 func NewColumn_name_listContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Column_name_listContext {
 	var p = new(Column_name_listContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_column_name_list
@@ -18121,33 +21073,18 @@ func (s *Column_name_listContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *Parser) Column_name_list() (localctx IColumn_name_listContext) {
-	this := p
-	_ = this
-
 	localctx = NewColumn_name_listContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 110, ParserRULE_column_name_list)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1584)
 		p.Match(ParserOPEN_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1585)
@@ -18155,12 +21092,19 @@ func (p *Parser) Column_name_list() (localctx IColumn_name_listContext) {
 	}
 	p.SetState(1590)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserCOMMA {
 		{
 			p.SetState(1586)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1587)
@@ -18169,14 +21113,31 @@ func (p *Parser) Column_name_list() (localctx IColumn_name_listContext) {
 
 		p.SetState(1592)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(1593)
 		p.Match(ParserCLOSE_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IUpdate_stmt_limitedContext is an interface to support dynamic dispatch.
@@ -18186,20 +21147,51 @@ type IUpdate_stmt_limitedContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	UPDATE_() antlr.TerminalNode
+	Qualified_table_name() IQualified_table_nameContext
+	SET_() antlr.TerminalNode
+	AllASSIGN() []antlr.TerminalNode
+	ASSIGN(i int) antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	AllColumn_name() []IColumn_nameContext
+	Column_name(i int) IColumn_nameContext
+	AllColumn_name_list() []IColumn_name_listContext
+	Column_name_list(i int) IColumn_name_listContext
+	With_clause() IWith_clauseContext
+	OR_() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+	WHERE_() antlr.TerminalNode
+	Returning_clause() IReturning_clauseContext
+	Limit_stmt() ILimit_stmtContext
+	ROLLBACK_() antlr.TerminalNode
+	ABORT_() antlr.TerminalNode
+	REPLACE_() antlr.TerminalNode
+	FAIL_() antlr.TerminalNode
+	IGNORE_() antlr.TerminalNode
+	Order_by_stmt() IOrder_by_stmtContext
+
 	// IsUpdate_stmt_limitedContext differentiates from other interfaces.
 	IsUpdate_stmt_limitedContext()
 }
 
 type Update_stmt_limitedContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyUpdate_stmt_limitedContext() *Update_stmt_limitedContext {
 	var p = new(Update_stmt_limitedContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_update_stmt_limited
 	return p
+}
+
+func InitEmptyUpdate_stmt_limitedContext(p *Update_stmt_limitedContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_update_stmt_limited
 }
 
 func (*Update_stmt_limitedContext) IsUpdate_stmt_limitedContext() {}
@@ -18207,7 +21199,7 @@ func (*Update_stmt_limitedContext) IsUpdate_stmt_limitedContext() {}
 func NewUpdate_stmt_limitedContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Update_stmt_limitedContext {
 	var p = new(Update_stmt_limitedContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_update_stmt_limited
@@ -18503,32 +21495,16 @@ func (s *Update_stmt_limitedContext) Accept(visitor antlr.ParseTreeVisitor) inte
 }
 
 func (p *Parser) Update_stmt_limited() (localctx IUpdate_stmt_limitedContext) {
-	this := p
-	_ = this
-
 	localctx = NewUpdate_stmt_limitedContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 112, ParserRULE_update_stmt_limited)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(1596)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWITH_ {
@@ -18541,20 +21517,28 @@ func (p *Parser) Update_stmt_limited() (localctx IUpdate_stmt_limitedContext) {
 	{
 		p.SetState(1598)
 		p.Match(ParserUPDATE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1601)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 231, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 231, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(1599)
 			p.Match(ParserOR_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1600)
 			_la = p.GetTokenStream().LA(1)
 
-			if !(_la == ParserABORT_ || _la == ParserFAIL_ || _la == ParserIGNORE_ || _la == ParserREPLACE_ || _la == ParserROLLBACK_) {
+			if !(_la == ParserABORT_ || ((int64((_la-72)) & ^0x3f) == 0 && ((int64(1)<<(_la-72))&19140298416325121) != 0)) {
 				p.GetErrorHandler().RecoverInline(p)
 			} else {
 				p.GetErrorHandler().ReportMatch(p)
@@ -18562,6 +21546,8 @@ func (p *Parser) Update_stmt_limited() (localctx IUpdate_stmt_limitedContext) {
 			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(1603)
@@ -18570,10 +21556,18 @@ func (p *Parser) Update_stmt_limited() (localctx IUpdate_stmt_limitedContext) {
 	{
 		p.SetState(1604)
 		p.Match(ParserSET_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1607)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 232, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 232, p.GetParserRuleContext()) {
 	case 1:
 		{
 			p.SetState(1605)
@@ -18586,10 +21580,16 @@ func (p *Parser) Update_stmt_limited() (localctx IUpdate_stmt_limitedContext) {
 			p.Column_name_list()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 	{
 		p.SetState(1609)
 		p.Match(ParserASSIGN)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1610)
@@ -18597,16 +21597,27 @@ func (p *Parser) Update_stmt_limited() (localctx IUpdate_stmt_limitedContext) {
 	}
 	p.SetState(1621)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserCOMMA {
 		{
 			p.SetState(1611)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1614)
 		p.GetErrorHandler().Sync(p)
-		switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 233, p.GetParserRuleContext()) {
+		if p.HasError() {
+			goto errorExit
+		}
+
+		switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 233, p.GetParserRuleContext()) {
 		case 1:
 			{
 				p.SetState(1612)
@@ -18619,10 +21630,16 @@ func (p *Parser) Update_stmt_limited() (localctx IUpdate_stmt_limitedContext) {
 				p.Column_name_list()
 			}
 
+		case antlr.ATNInvalidAltNumber:
+			goto errorExit
 		}
 		{
 			p.SetState(1616)
 			p.Match(ParserASSIGN)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1617)
@@ -18631,16 +21648,26 @@ func (p *Parser) Update_stmt_limited() (localctx IUpdate_stmt_limitedContext) {
 
 		p.SetState(1623)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	p.SetState(1626)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserWHERE_ {
 		{
 			p.SetState(1624)
 			p.Match(ParserWHERE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1625)
@@ -18650,6 +21677,9 @@ func (p *Parser) Update_stmt_limited() (localctx IUpdate_stmt_limitedContext) {
 	}
 	p.SetState(1629)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserRETURNING_ {
@@ -18661,11 +21691,17 @@ func (p *Parser) Update_stmt_limited() (localctx IUpdate_stmt_limitedContext) {
 	}
 	p.SetState(1635)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserLIMIT_ || _la == ParserORDER_ {
 		p.SetState(1632)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserORDER_ {
@@ -18682,7 +21718,17 @@ func (p *Parser) Update_stmt_limited() (localctx IUpdate_stmt_limitedContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IQualified_table_nameContext is an interface to support dynamic dispatch.
@@ -18692,20 +21738,36 @@ type IQualified_table_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Table_name() ITable_nameContext
+	Schema_name() ISchema_nameContext
+	DOT() antlr.TerminalNode
+	AS_() antlr.TerminalNode
+	Alias() IAliasContext
+	INDEXED_() antlr.TerminalNode
+	BY_() antlr.TerminalNode
+	Index_name() IIndex_nameContext
+	NOT_() antlr.TerminalNode
+
 	// IsQualified_table_nameContext differentiates from other interfaces.
 	IsQualified_table_nameContext()
 }
 
 type Qualified_table_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyQualified_table_nameContext() *Qualified_table_nameContext {
 	var p = new(Qualified_table_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_qualified_table_name
 	return p
+}
+
+func InitEmptyQualified_table_nameContext(p *Qualified_table_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_qualified_table_name
 }
 
 func (*Qualified_table_nameContext) IsQualified_table_nameContext() {}
@@ -18713,7 +21775,7 @@ func (*Qualified_table_nameContext) IsQualified_table_nameContext() {}
 func NewQualified_table_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Qualified_table_nameContext {
 	var p = new(Qualified_table_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_qualified_table_name
@@ -18838,34 +21900,15 @@ func (s *Qualified_table_nameContext) Accept(visitor antlr.ParseTreeVisitor) int
 }
 
 func (p *Parser) Qualified_table_name() (localctx IQualified_table_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewQualified_table_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 114, ParserRULE_qualified_table_name)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(1640)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 239, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 239, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(1637)
 			p.Schema_name()
@@ -18873,8 +21916,14 @@ func (p *Parser) Qualified_table_name() (localctx IQualified_table_nameContext) 
 		{
 			p.SetState(1638)
 			p.Match(ParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(1642)
@@ -18882,12 +21931,19 @@ func (p *Parser) Qualified_table_name() (localctx IQualified_table_nameContext) 
 	}
 	p.SetState(1645)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserAS_ {
 		{
 			p.SetState(1643)
 			p.Match(ParserAS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1644)
@@ -18897,16 +21953,26 @@ func (p *Parser) Qualified_table_name() (localctx IQualified_table_nameContext) 
 	}
 	p.SetState(1652)
 	p.GetErrorHandler().Sync(p)
-
+	if p.HasError() {
+		goto errorExit
+	}
 	switch p.GetTokenStream().LA(1) {
 	case ParserINDEXED_:
 		{
 			p.SetState(1647)
 			p.Match(ParserINDEXED_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1648)
 			p.Match(ParserBY_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1649)
@@ -18917,10 +21983,18 @@ func (p *Parser) Qualified_table_name() (localctx IQualified_table_nameContext) 
 		{
 			p.SetState(1650)
 			p.Match(ParserNOT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1651)
 			p.Match(ParserINDEXED_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserEOF, ParserSCOL, ParserALTER_, ParserANALYZE_, ParserATTACH_, ParserBEGIN_, ParserCOMMIT_, ParserCREATE_, ParserDELETE_, ParserDETACH_, ParserDROP_, ParserEND_, ParserEXPLAIN_, ParserINSERT_, ParserLIMIT_, ParserORDER_, ParserPRAGMA_, ParserREINDEX_, ParserRELEASE_, ParserREPLACE_, ParserRETURNING_, ParserROLLBACK_, ParserSAVEPOINT_, ParserSELECT_, ParserSET_, ParserUPDATE_, ParserVACUUM_, ParserVALUES_, ParserWHERE_, ParserWITH_:
@@ -18928,7 +22002,17 @@ func (p *Parser) Qualified_table_name() (localctx IQualified_table_nameContext) 
 	default:
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IVacuum_stmtContext is an interface to support dynamic dispatch.
@@ -18938,20 +22022,31 @@ type IVacuum_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	VACUUM_() antlr.TerminalNode
+	Schema_name() ISchema_nameContext
+	INTO_() antlr.TerminalNode
+	Filename() IFilenameContext
+
 	// IsVacuum_stmtContext differentiates from other interfaces.
 	IsVacuum_stmtContext()
 }
 
 type Vacuum_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyVacuum_stmtContext() *Vacuum_stmtContext {
 	var p = new(Vacuum_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_vacuum_stmt
 	return p
+}
+
+func InitEmptyVacuum_stmtContext(p *Vacuum_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_vacuum_stmt
 }
 
 func (*Vacuum_stmtContext) IsVacuum_stmtContext() {}
@@ -18959,7 +22054,7 @@ func (*Vacuum_stmtContext) IsVacuum_stmtContext() {}
 func NewVacuum_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Vacuum_stmtContext {
 	var p = new(Vacuum_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_vacuum_stmt
@@ -19040,52 +22135,46 @@ func (s *Vacuum_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Vacuum_stmt() (localctx IVacuum_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewVacuum_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 116, ParserRULE_vacuum_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1654)
 		p.Match(ParserVACUUM_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1656)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 242, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 242, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(1655)
 			p.Schema_name()
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	p.SetState(1660)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserINTO_ {
 		{
 			p.SetState(1658)
 			p.Match(ParserINTO_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1659)
@@ -19094,7 +22183,17 @@ func (p *Parser) Vacuum_stmt() (localctx IVacuum_stmtContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFilter_clauseContext is an interface to support dynamic dispatch.
@@ -19104,20 +22203,32 @@ type IFilter_clauseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	FILTER_() antlr.TerminalNode
+	OPEN_PAR() antlr.TerminalNode
+	WHERE_() antlr.TerminalNode
+	Expr() IExprContext
+	CLOSE_PAR() antlr.TerminalNode
+
 	// IsFilter_clauseContext differentiates from other interfaces.
 	IsFilter_clauseContext()
 }
 
 type Filter_clauseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFilter_clauseContext() *Filter_clauseContext {
 	var p = new(Filter_clauseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_filter_clause
 	return p
+}
+
+func InitEmptyFilter_clauseContext(p *Filter_clauseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_filter_clause
 }
 
 func (*Filter_clauseContext) IsFilter_clauseContext() {}
@@ -19125,7 +22236,7 @@ func (*Filter_clauseContext) IsFilter_clauseContext() {}
 func NewFilter_clauseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Filter_clauseContext {
 	var p = new(Filter_clauseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_filter_clause
@@ -19198,40 +22309,32 @@ func (s *Filter_clauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Filter_clause() (localctx IFilter_clauseContext) {
-	this := p
-	_ = this
-
 	localctx = NewFilter_clauseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 118, ParserRULE_filter_clause)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1662)
 		p.Match(ParserFILTER_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1663)
 		p.Match(ParserOPEN_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1664)
 		p.Match(ParserWHERE_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1665)
@@ -19240,9 +22343,23 @@ func (p *Parser) Filter_clause() (localctx IFilter_clauseContext) {
 	{
 		p.SetState(1666)
 		p.Match(ParserCLOSE_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IWindow_defnContext is an interface to support dynamic dispatch.
@@ -19252,20 +22369,41 @@ type IWindow_defnContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	OPEN_PAR() antlr.TerminalNode
+	CLOSE_PAR() antlr.TerminalNode
+	ORDER_() antlr.TerminalNode
+	AllBY_() []antlr.TerminalNode
+	BY_(i int) antlr.TerminalNode
+	AllOrdering_term() []IOrdering_termContext
+	Ordering_term(i int) IOrdering_termContext
+	Base_window_name() IBase_window_nameContext
+	PARTITION_() antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	Frame_spec() IFrame_specContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsWindow_defnContext differentiates from other interfaces.
 	IsWindow_defnContext()
 }
 
 type Window_defnContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyWindow_defnContext() *Window_defnContext {
 	var p = new(Window_defnContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_window_defn
 	return p
+}
+
+func InitEmptyWindow_defnContext(p *Window_defnContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_window_defn
 }
 
 func (*Window_defnContext) IsWindow_defnContext() {}
@@ -19273,7 +22411,7 @@ func (*Window_defnContext) IsWindow_defnContext() {}
 func NewWindow_defnContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Window_defnContext {
 	var p = new(Window_defnContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_window_defn
@@ -19460,56 +22598,54 @@ func (s *Window_defnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Window_defn() (localctx IWindow_defnContext) {
-	this := p
-	_ = this
-
 	localctx = NewWindow_defnContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 120, ParserRULE_window_defn)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1668)
 		p.Match(ParserOPEN_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1670)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 244, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 244, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(1669)
 			p.Base_window_name()
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	p.SetState(1682)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserPARTITION_ {
 		{
 			p.SetState(1672)
 			p.Match(ParserPARTITION_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1673)
 			p.Match(ParserBY_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1674)
@@ -19517,12 +22653,19 @@ func (p *Parser) Window_defn() (localctx IWindow_defnContext) {
 		}
 		p.SetState(1679)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1675)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1676)
@@ -19531,6 +22674,9 @@ func (p *Parser) Window_defn() (localctx IWindow_defnContext) {
 
 			p.SetState(1681)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 
@@ -19539,10 +22685,18 @@ func (p *Parser) Window_defn() (localctx IWindow_defnContext) {
 	{
 		p.SetState(1684)
 		p.Match(ParserORDER_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1685)
 		p.Match(ParserBY_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1686)
@@ -19550,12 +22704,19 @@ func (p *Parser) Window_defn() (localctx IWindow_defnContext) {
 	}
 	p.SetState(1691)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserCOMMA {
 		{
 			p.SetState(1687)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1688)
@@ -19564,14 +22725,20 @@ func (p *Parser) Window_defn() (localctx IWindow_defnContext) {
 
 		p.SetState(1693)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 
 	p.SetState(1695)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	if _la == ParserROWS_ || _la == ParserRANGE_ || _la == ParserGROUPS_ {
+	if (int64((_la-128)) & ^0x3f) == 0 && ((int64(1)<<(_la-128))&2251799880794113) != 0 {
 		{
 			p.SetState(1694)
 			p.Frame_spec()
@@ -19581,9 +22748,23 @@ func (p *Parser) Window_defn() (localctx IWindow_defnContext) {
 	{
 		p.SetState(1697)
 		p.Match(ParserCLOSE_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IOver_clauseContext is an interface to support dynamic dispatch.
@@ -19593,20 +22774,43 @@ type IOver_clauseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	OVER_() antlr.TerminalNode
+	Window_name() IWindow_nameContext
+	OPEN_PAR() antlr.TerminalNode
+	CLOSE_PAR() antlr.TerminalNode
+	Base_window_name() IBase_window_nameContext
+	PARTITION_() antlr.TerminalNode
+	AllBY_() []antlr.TerminalNode
+	BY_(i int) antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	ORDER_() antlr.TerminalNode
+	AllOrdering_term() []IOrdering_termContext
+	Ordering_term(i int) IOrdering_termContext
+	Frame_spec() IFrame_specContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsOver_clauseContext differentiates from other interfaces.
 	IsOver_clauseContext()
 }
 
 type Over_clauseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyOver_clauseContext() *Over_clauseContext {
 	var p = new(Over_clauseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_over_clause
 	return p
+}
+
+func InitEmptyOver_clauseContext(p *Over_clauseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_over_clause
 }
 
 func (*Over_clauseContext) IsOver_clauseContext() {}
@@ -19614,7 +22818,7 @@ func (*Over_clauseContext) IsOver_clauseContext() {}
 func NewOver_clauseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Over_clauseContext {
 	var p = new(Over_clauseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_over_clause
@@ -19821,37 +23025,26 @@ func (s *Over_clauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Over_clause() (localctx IOver_clauseContext) {
-	this := p
-	_ = this
-
 	localctx = NewOver_clauseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 122, ParserRULE_over_clause)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1699)
 		p.Match(ParserOVER_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1733)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 255, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 255, p.GetParserRuleContext()) {
 	case 1:
 		{
 			p.SetState(1700)
@@ -19862,29 +23055,46 @@ func (p *Parser) Over_clause() (localctx IOver_clauseContext) {
 		{
 			p.SetState(1701)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1703)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 249, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 249, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(1702)
 				p.Base_window_name()
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		p.SetState(1715)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserPARTITION_ {
 			{
 				p.SetState(1705)
 				p.Match(ParserPARTITION_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1706)
 				p.Match(ParserBY_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1707)
@@ -19892,12 +23102,19 @@ func (p *Parser) Over_clause() (localctx IOver_clauseContext) {
 			}
 			p.SetState(1712)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == ParserCOMMA {
 				{
 					p.SetState(1708)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1709)
@@ -19906,22 +23123,36 @@ func (p *Parser) Over_clause() (localctx IOver_clauseContext) {
 
 				p.SetState(1714)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 
 		}
 		p.SetState(1727)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserORDER_ {
 			{
 				p.SetState(1717)
 				p.Match(ParserORDER_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1718)
 				p.Match(ParserBY_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1719)
@@ -19929,12 +23160,19 @@ func (p *Parser) Over_clause() (localctx IOver_clauseContext) {
 			}
 			p.SetState(1724)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == ParserCOMMA {
 				{
 					p.SetState(1720)
 					p.Match(ParserCOMMA)
+					if p.HasError() {
+						// Recognition error - abort rule
+						goto errorExit
+					}
 				}
 				{
 					p.SetState(1721)
@@ -19943,15 +23181,21 @@ func (p *Parser) Over_clause() (localctx IOver_clauseContext) {
 
 				p.SetState(1726)
 				p.GetErrorHandler().Sync(p)
+				if p.HasError() {
+					goto errorExit
+				}
 				_la = p.GetTokenStream().LA(1)
 			}
 
 		}
 		p.SetState(1730)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		if _la == ParserROWS_ || _la == ParserRANGE_ || _la == ParserGROUPS_ {
+		if (int64((_la-128)) & ^0x3f) == 0 && ((int64(1)<<(_la-128))&2251799880794113) != 0 {
 			{
 				p.SetState(1729)
 				p.Frame_spec()
@@ -19961,11 +23205,27 @@ func (p *Parser) Over_clause() (localctx IOver_clauseContext) {
 		{
 			p.SetState(1732)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFrame_specContext is an interface to support dynamic dispatch.
@@ -19975,20 +23235,35 @@ type IFrame_specContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Frame_clause() IFrame_clauseContext
+	EXCLUDE_() antlr.TerminalNode
+	CURRENT_() antlr.TerminalNode
+	ROW_() antlr.TerminalNode
+	GROUP_() antlr.TerminalNode
+	TIES_() antlr.TerminalNode
+	NO_() antlr.TerminalNode
+	OTHERS_() antlr.TerminalNode
+
 	// IsFrame_specContext differentiates from other interfaces.
 	IsFrame_specContext()
 }
 
 type Frame_specContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFrame_specContext() *Frame_specContext {
 	var p = new(Frame_specContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_frame_spec
 	return p
+}
+
+func InitEmptyFrame_specContext(p *Frame_specContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_frame_spec
 }
 
 func (*Frame_specContext) IsFrame_specContext() {}
@@ -19996,7 +23271,7 @@ func (*Frame_specContext) IsFrame_specContext() {}
 func NewFrame_specContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Frame_specContext {
 	var p = new(Frame_specContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_frame_spec
@@ -20081,28 +23356,8 @@ func (s *Frame_specContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Frame_spec() (localctx IFrame_specContext) {
-	this := p
-	_ = this
-
 	localctx = NewFrame_specContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 124, ParserRULE_frame_spec)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1735)
@@ -20110,43 +23365,73 @@ func (p *Parser) Frame_spec() (localctx IFrame_specContext) {
 	}
 	p.SetState(1743)
 	p.GetErrorHandler().Sync(p)
-
+	if p.HasError() {
+		goto errorExit
+	}
 	switch p.GetTokenStream().LA(1) {
 	case ParserEXCLUDE_:
 		{
 			p.SetState(1736)
 			p.Match(ParserEXCLUDE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 		{
 			p.SetState(1737)
 			p.Match(ParserNO_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1738)
 			p.Match(ParserOTHERS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserCURRENT_:
 		{
 			p.SetState(1739)
 			p.Match(ParserCURRENT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1740)
 			p.Match(ParserROW_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserGROUP_:
 		{
 			p.SetState(1741)
 			p.Match(ParserGROUP_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserTIES_:
 		{
 			p.SetState(1742)
 			p.Match(ParserTIES_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserCLOSE_PAR:
@@ -20154,7 +23439,17 @@ func (p *Parser) Frame_spec() (localctx IFrame_specContext) {
 	default:
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFrame_clauseContext is an interface to support dynamic dispatch.
@@ -20164,20 +23459,35 @@ type IFrame_clauseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	RANGE_() antlr.TerminalNode
+	ROWS_() antlr.TerminalNode
+	GROUPS_() antlr.TerminalNode
+	Frame_single() IFrame_singleContext
+	BETWEEN_() antlr.TerminalNode
+	Frame_left() IFrame_leftContext
+	AND_() antlr.TerminalNode
+	Frame_right() IFrame_rightContext
+
 	// IsFrame_clauseContext differentiates from other interfaces.
 	IsFrame_clauseContext()
 }
 
 type Frame_clauseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFrame_clauseContext() *Frame_clauseContext {
 	var p = new(Frame_clauseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_frame_clause
 	return p
+}
+
+func InitEmptyFrame_clauseContext(p *Frame_clauseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_frame_clause
 }
 
 func (*Frame_clauseContext) IsFrame_clauseContext() {}
@@ -20185,7 +23495,7 @@ func (*Frame_clauseContext) IsFrame_clauseContext() {}
 func NewFrame_clauseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Frame_clauseContext {
 	var p = new(Frame_clauseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_frame_clause
@@ -20294,35 +23604,16 @@ func (s *Frame_clauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *Parser) Frame_clause() (localctx IFrame_clauseContext) {
-	this := p
-	_ = this
-
 	localctx = NewFrame_clauseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 126, ParserRULE_frame_clause)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1745)
 		_la = p.GetTokenStream().LA(1)
 
-		if !(_la == ParserROWS_ || _la == ParserRANGE_ || _la == ParserGROUPS_) {
+		if !((int64((_la-128)) & ^0x3f) == 0 && ((int64(1)<<(_la-128))&2251799880794113) != 0) {
 			p.GetErrorHandler().RecoverInline(p)
 		} else {
 			p.GetErrorHandler().ReportMatch(p)
@@ -20331,7 +23622,11 @@ func (p *Parser) Frame_clause() (localctx IFrame_clauseContext) {
 	}
 	p.SetState(1752)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 257, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 257, p.GetParserRuleContext()) {
 	case 1:
 		{
 			p.SetState(1746)
@@ -20342,6 +23637,10 @@ func (p *Parser) Frame_clause() (localctx IFrame_clauseContext) {
 		{
 			p.SetState(1747)
 			p.Match(ParserBETWEEN_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1748)
@@ -20350,15 +23649,31 @@ func (p *Parser) Frame_clause() (localctx IFrame_clauseContext) {
 		{
 			p.SetState(1749)
 			p.Match(ParserAND_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1750)
 			p.Frame_right()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISimple_function_invocationContext is an interface to support dynamic dispatch.
@@ -20368,20 +23683,35 @@ type ISimple_function_invocationContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Simple_func() ISimple_funcContext
+	OPEN_PAR() antlr.TerminalNode
+	CLOSE_PAR() antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	STAR() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsSimple_function_invocationContext differentiates from other interfaces.
 	IsSimple_function_invocationContext()
 }
 
 type Simple_function_invocationContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySimple_function_invocationContext() *Simple_function_invocationContext {
 	var p = new(Simple_function_invocationContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_simple_function_invocation
 	return p
+}
+
+func InitEmptySimple_function_invocationContext(p *Simple_function_invocationContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_simple_function_invocation
 }
 
 func (*Simple_function_invocationContext) IsSimple_function_invocationContext() {}
@@ -20389,7 +23719,7 @@ func (*Simple_function_invocationContext) IsSimple_function_invocationContext() 
 func NewSimple_function_invocationContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Simple_function_invocationContext {
 	var p = new(Simple_function_invocationContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_simple_function_invocation
@@ -20507,28 +23837,9 @@ func (s *Simple_function_invocationContext) Accept(visitor antlr.ParseTreeVisito
 }
 
 func (p *Parser) Simple_function_invocation() (localctx ISimple_function_invocationContext) {
-	this := p
-	_ = this
-
 	localctx = NewSimple_function_invocationContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 128, ParserRULE_simple_function_invocation)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -20538,9 +23849,16 @@ func (p *Parser) Simple_function_invocation() (localctx ISimple_function_invocat
 	{
 		p.SetState(1755)
 		p.Match(ParserOPEN_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1765)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserOPEN_PAR, ParserPLUS, ParserMINUS, ParserTILDE, ParserABORT_, ParserACTION_, ParserADD_, ParserAFTER_, ParserALL_, ParserALTER_, ParserANALYZE_, ParserAND_, ParserAS_, ParserASC_, ParserATTACH_, ParserAUTOINCREMENT_, ParserBEFORE_, ParserBEGIN_, ParserBETWEEN_, ParserBY_, ParserCASCADE_, ParserCASE_, ParserCAST_, ParserCHECK_, ParserCOLLATE_, ParserCOLUMN_, ParserCOMMIT_, ParserCONFLICT_, ParserCONSTRAINT_, ParserCREATE_, ParserCROSS_, ParserCURRENT_DATE_, ParserCURRENT_TIME_, ParserCURRENT_TIMESTAMP_, ParserDATABASE_, ParserDEFAULT_, ParserDEFERRABLE_, ParserDEFERRED_, ParserDELETE_, ParserDESC_, ParserDETACH_, ParserDISTINCT_, ParserDROP_, ParserEACH_, ParserELSE_, ParserEND_, ParserESCAPE_, ParserEXCEPT_, ParserEXCLUSIVE_, ParserEXISTS_, ParserEXPLAIN_, ParserFAIL_, ParserFOR_, ParserFOREIGN_, ParserFROM_, ParserFULL_, ParserGLOB_, ParserGROUP_, ParserHAVING_, ParserIF_, ParserIGNORE_, ParserIMMEDIATE_, ParserIN_, ParserINDEX_, ParserINDEXED_, ParserINITIALLY_, ParserINNER_, ParserINSERT_, ParserINSTEAD_, ParserINTERSECT_, ParserINTO_, ParserIS_, ParserISNULL_, ParserJOIN_, ParserKEY_, ParserLEFT_, ParserLIKE_, ParserLIMIT_, ParserMATCH_, ParserNATURAL_, ParserNO_, ParserNOT_, ParserNOTNULL_, ParserNULL_, ParserOF_, ParserOFFSET_, ParserON_, ParserOR_, ParserORDER_, ParserOUTER_, ParserPLAN_, ParserPRAGMA_, ParserPRIMARY_, ParserQUERY_, ParserRAISE_, ParserRECURSIVE_, ParserREFERENCES_, ParserREGEXP_, ParserREINDEX_, ParserRELEASE_, ParserRENAME_, ParserREPLACE_, ParserRESTRICT_, ParserRIGHT_, ParserROLLBACK_, ParserROW_, ParserROWS_, ParserSAVEPOINT_, ParserSELECT_, ParserSET_, ParserTABLE_, ParserTEMP_, ParserTEMPORARY_, ParserTHEN_, ParserTO_, ParserTRANSACTION_, ParserTRIGGER_, ParserUNION_, ParserUNIQUE_, ParserUPDATE_, ParserUSING_, ParserVACUUM_, ParserVALUES_, ParserVIEW_, ParserVIRTUAL_, ParserWHEN_, ParserWHERE_, ParserWITH_, ParserWITHOUT_, ParserFIRST_VALUE_, ParserOVER_, ParserPARTITION_, ParserRANGE_, ParserPRECEDING_, ParserUNBOUNDED_, ParserCURRENT_, ParserFOLLOWING_, ParserCUME_DIST_, ParserDENSE_RANK_, ParserLAG_, ParserLAST_VALUE_, ParserLEAD_, ParserNTH_VALUE_, ParserNTILE_, ParserPERCENT_RANK_, ParserRANK_, ParserROW_NUMBER_, ParserGENERATED_, ParserALWAYS_, ParserSTORED_, ParserTRUE_, ParserFALSE_, ParserWINDOW_, ParserNULLS_, ParserFIRST_, ParserLAST_, ParserFILTER_, ParserGROUPS_, ParserEXCLUDE_, ParserIDENTIFIER, ParserNUMERIC_LITERAL, ParserBIND_PARAMETER, ParserSTRING_LITERAL, ParserBLOB_LITERAL:
@@ -20550,12 +23868,19 @@ func (p *Parser) Simple_function_invocation() (localctx ISimple_function_invocat
 		}
 		p.SetState(1761)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1757)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1758)
@@ -20564,6 +23889,9 @@ func (p *Parser) Simple_function_invocation() (localctx ISimple_function_invocat
 
 			p.SetState(1763)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 
@@ -20571,17 +23899,36 @@ func (p *Parser) Simple_function_invocation() (localctx ISimple_function_invocat
 		{
 			p.SetState(1764)
 			p.Match(ParserSTAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 	{
 		p.SetState(1767)
 		p.Match(ParserCLOSE_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAggregate_function_invocationContext is an interface to support dynamic dispatch.
@@ -20591,20 +23938,37 @@ type IAggregate_function_invocationContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Aggregate_func() IAggregate_funcContext
+	OPEN_PAR() antlr.TerminalNode
+	CLOSE_PAR() antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	STAR() antlr.TerminalNode
+	Filter_clause() IFilter_clauseContext
+	DISTINCT_() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsAggregate_function_invocationContext differentiates from other interfaces.
 	IsAggregate_function_invocationContext()
 }
 
 type Aggregate_function_invocationContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyAggregate_function_invocationContext() *Aggregate_function_invocationContext {
 	var p = new(Aggregate_function_invocationContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_aggregate_function_invocation
 	return p
+}
+
+func InitEmptyAggregate_function_invocationContext(p *Aggregate_function_invocationContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_aggregate_function_invocation
 }
 
 func (*Aggregate_function_invocationContext) IsAggregate_function_invocationContext() {}
@@ -20612,7 +23976,7 @@ func (*Aggregate_function_invocationContext) IsAggregate_function_invocationCont
 func NewAggregate_function_invocationContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Aggregate_function_invocationContext {
 	var p = new(Aggregate_function_invocationContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_aggregate_function_invocation
@@ -20750,28 +24114,9 @@ func (s *Aggregate_function_invocationContext) Accept(visitor antlr.ParseTreeVis
 }
 
 func (p *Parser) Aggregate_function_invocation() (localctx IAggregate_function_invocationContext) {
-	this := p
-	_ = this
-
 	localctx = NewAggregate_function_invocationContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 130, ParserRULE_aggregate_function_invocation)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -20781,21 +24126,33 @@ func (p *Parser) Aggregate_function_invocation() (localctx IAggregate_function_i
 	{
 		p.SetState(1770)
 		p.Match(ParserOPEN_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1783)
 	p.GetErrorHandler().Sync(p)
-
+	if p.HasError() {
+		goto errorExit
+	}
 	switch p.GetTokenStream().LA(1) {
 	case ParserOPEN_PAR, ParserPLUS, ParserMINUS, ParserTILDE, ParserABORT_, ParserACTION_, ParserADD_, ParserAFTER_, ParserALL_, ParserALTER_, ParserANALYZE_, ParserAND_, ParserAS_, ParserASC_, ParserATTACH_, ParserAUTOINCREMENT_, ParserBEFORE_, ParserBEGIN_, ParserBETWEEN_, ParserBY_, ParserCASCADE_, ParserCASE_, ParserCAST_, ParserCHECK_, ParserCOLLATE_, ParserCOLUMN_, ParserCOMMIT_, ParserCONFLICT_, ParserCONSTRAINT_, ParserCREATE_, ParserCROSS_, ParserCURRENT_DATE_, ParserCURRENT_TIME_, ParserCURRENT_TIMESTAMP_, ParserDATABASE_, ParserDEFAULT_, ParserDEFERRABLE_, ParserDEFERRED_, ParserDELETE_, ParserDESC_, ParserDETACH_, ParserDISTINCT_, ParserDROP_, ParserEACH_, ParserELSE_, ParserEND_, ParserESCAPE_, ParserEXCEPT_, ParserEXCLUSIVE_, ParserEXISTS_, ParserEXPLAIN_, ParserFAIL_, ParserFOR_, ParserFOREIGN_, ParserFROM_, ParserFULL_, ParserGLOB_, ParserGROUP_, ParserHAVING_, ParserIF_, ParserIGNORE_, ParserIMMEDIATE_, ParserIN_, ParserINDEX_, ParserINDEXED_, ParserINITIALLY_, ParserINNER_, ParserINSERT_, ParserINSTEAD_, ParserINTERSECT_, ParserINTO_, ParserIS_, ParserISNULL_, ParserJOIN_, ParserKEY_, ParserLEFT_, ParserLIKE_, ParserLIMIT_, ParserMATCH_, ParserNATURAL_, ParserNO_, ParserNOT_, ParserNOTNULL_, ParserNULL_, ParserOF_, ParserOFFSET_, ParserON_, ParserOR_, ParserORDER_, ParserOUTER_, ParserPLAN_, ParserPRAGMA_, ParserPRIMARY_, ParserQUERY_, ParserRAISE_, ParserRECURSIVE_, ParserREFERENCES_, ParserREGEXP_, ParserREINDEX_, ParserRELEASE_, ParserRENAME_, ParserREPLACE_, ParserRESTRICT_, ParserRIGHT_, ParserROLLBACK_, ParserROW_, ParserROWS_, ParserSAVEPOINT_, ParserSELECT_, ParserSET_, ParserTABLE_, ParserTEMP_, ParserTEMPORARY_, ParserTHEN_, ParserTO_, ParserTRANSACTION_, ParserTRIGGER_, ParserUNION_, ParserUNIQUE_, ParserUPDATE_, ParserUSING_, ParserVACUUM_, ParserVALUES_, ParserVIEW_, ParserVIRTUAL_, ParserWHEN_, ParserWHERE_, ParserWITH_, ParserWITHOUT_, ParserFIRST_VALUE_, ParserOVER_, ParserPARTITION_, ParserRANGE_, ParserPRECEDING_, ParserUNBOUNDED_, ParserCURRENT_, ParserFOLLOWING_, ParserCUME_DIST_, ParserDENSE_RANK_, ParserLAG_, ParserLAST_VALUE_, ParserLEAD_, ParserNTH_VALUE_, ParserNTILE_, ParserPERCENT_RANK_, ParserRANK_, ParserROW_NUMBER_, ParserGENERATED_, ParserALWAYS_, ParserSTORED_, ParserTRUE_, ParserFALSE_, ParserWINDOW_, ParserNULLS_, ParserFIRST_, ParserLAST_, ParserFILTER_, ParserGROUPS_, ParserEXCLUDE_, ParserIDENTIFIER, ParserNUMERIC_LITERAL, ParserBIND_PARAMETER, ParserSTRING_LITERAL, ParserBLOB_LITERAL:
 		p.SetState(1772)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 260, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 260, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(1771)
 				p.Match(ParserDISTINCT_)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		{
 			p.SetState(1774)
@@ -20803,12 +24160,19 @@ func (p *Parser) Aggregate_function_invocation() (localctx IAggregate_function_i
 		}
 		p.SetState(1779)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1775)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1776)
@@ -20817,6 +24181,9 @@ func (p *Parser) Aggregate_function_invocation() (localctx IAggregate_function_i
 
 			p.SetState(1781)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 
@@ -20824,6 +24191,10 @@ func (p *Parser) Aggregate_function_invocation() (localctx IAggregate_function_i
 		{
 			p.SetState(1782)
 			p.Match(ParserSTAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserCLOSE_PAR:
@@ -20833,9 +24204,16 @@ func (p *Parser) Aggregate_function_invocation() (localctx IAggregate_function_i
 	{
 		p.SetState(1785)
 		p.Match(ParserCLOSE_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1787)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserFILTER_ {
@@ -20846,7 +24224,17 @@ func (p *Parser) Aggregate_function_invocation() (localctx IAggregate_function_i
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IWindow_function_invocationContext is an interface to support dynamic dispatch.
@@ -20856,20 +24244,39 @@ type IWindow_function_invocationContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Window_function() IWindow_functionContext
+	OPEN_PAR() antlr.TerminalNode
+	CLOSE_PAR() antlr.TerminalNode
+	OVER_() antlr.TerminalNode
+	Window_defn() IWindow_defnContext
+	Window_name() IWindow_nameContext
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	STAR() antlr.TerminalNode
+	Filter_clause() IFilter_clauseContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsWindow_function_invocationContext differentiates from other interfaces.
 	IsWindow_function_invocationContext()
 }
 
 type Window_function_invocationContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyWindow_function_invocationContext() *Window_function_invocationContext {
 	var p = new(Window_function_invocationContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_window_function_invocation
 	return p
+}
+
+func InitEmptyWindow_function_invocationContext(p *Window_function_invocationContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_window_function_invocation
 }
 
 func (*Window_function_invocationContext) IsWindow_function_invocationContext() {}
@@ -20877,7 +24284,7 @@ func (*Window_function_invocationContext) IsWindow_function_invocationContext() 
 func NewWindow_function_invocationContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Window_function_invocationContext {
 	var p = new(Window_function_invocationContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_window_function_invocation
@@ -21047,28 +24454,9 @@ func (s *Window_function_invocationContext) Accept(visitor antlr.ParseTreeVisito
 }
 
 func (p *Parser) Window_function_invocation() (localctx IWindow_function_invocationContext) {
-	this := p
-	_ = this
-
 	localctx = NewWindow_function_invocationContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 132, ParserRULE_window_function_invocation)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -21078,10 +24466,16 @@ func (p *Parser) Window_function_invocation() (localctx IWindow_function_invocat
 	{
 		p.SetState(1790)
 		p.Match(ParserOPEN_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1800)
 	p.GetErrorHandler().Sync(p)
-
+	if p.HasError() {
+		goto errorExit
+	}
 	switch p.GetTokenStream().LA(1) {
 	case ParserOPEN_PAR, ParserPLUS, ParserMINUS, ParserTILDE, ParserABORT_, ParserACTION_, ParserADD_, ParserAFTER_, ParserALL_, ParserALTER_, ParserANALYZE_, ParserAND_, ParserAS_, ParserASC_, ParserATTACH_, ParserAUTOINCREMENT_, ParserBEFORE_, ParserBEGIN_, ParserBETWEEN_, ParserBY_, ParserCASCADE_, ParserCASE_, ParserCAST_, ParserCHECK_, ParserCOLLATE_, ParserCOLUMN_, ParserCOMMIT_, ParserCONFLICT_, ParserCONSTRAINT_, ParserCREATE_, ParserCROSS_, ParserCURRENT_DATE_, ParserCURRENT_TIME_, ParserCURRENT_TIMESTAMP_, ParserDATABASE_, ParserDEFAULT_, ParserDEFERRABLE_, ParserDEFERRED_, ParserDELETE_, ParserDESC_, ParserDETACH_, ParserDISTINCT_, ParserDROP_, ParserEACH_, ParserELSE_, ParserEND_, ParserESCAPE_, ParserEXCEPT_, ParserEXCLUSIVE_, ParserEXISTS_, ParserEXPLAIN_, ParserFAIL_, ParserFOR_, ParserFOREIGN_, ParserFROM_, ParserFULL_, ParserGLOB_, ParserGROUP_, ParserHAVING_, ParserIF_, ParserIGNORE_, ParserIMMEDIATE_, ParserIN_, ParserINDEX_, ParserINDEXED_, ParserINITIALLY_, ParserINNER_, ParserINSERT_, ParserINSTEAD_, ParserINTERSECT_, ParserINTO_, ParserIS_, ParserISNULL_, ParserJOIN_, ParserKEY_, ParserLEFT_, ParserLIKE_, ParserLIMIT_, ParserMATCH_, ParserNATURAL_, ParserNO_, ParserNOT_, ParserNOTNULL_, ParserNULL_, ParserOF_, ParserOFFSET_, ParserON_, ParserOR_, ParserORDER_, ParserOUTER_, ParserPLAN_, ParserPRAGMA_, ParserPRIMARY_, ParserQUERY_, ParserRAISE_, ParserRECURSIVE_, ParserREFERENCES_, ParserREGEXP_, ParserREINDEX_, ParserRELEASE_, ParserRENAME_, ParserREPLACE_, ParserRESTRICT_, ParserRIGHT_, ParserROLLBACK_, ParserROW_, ParserROWS_, ParserSAVEPOINT_, ParserSELECT_, ParserSET_, ParserTABLE_, ParserTEMP_, ParserTEMPORARY_, ParserTHEN_, ParserTO_, ParserTRANSACTION_, ParserTRIGGER_, ParserUNION_, ParserUNIQUE_, ParserUPDATE_, ParserUSING_, ParserVACUUM_, ParserVALUES_, ParserVIEW_, ParserVIRTUAL_, ParserWHEN_, ParserWHERE_, ParserWITH_, ParserWITHOUT_, ParserFIRST_VALUE_, ParserOVER_, ParserPARTITION_, ParserRANGE_, ParserPRECEDING_, ParserUNBOUNDED_, ParserCURRENT_, ParserFOLLOWING_, ParserCUME_DIST_, ParserDENSE_RANK_, ParserLAG_, ParserLAST_VALUE_, ParserLEAD_, ParserNTH_VALUE_, ParserNTILE_, ParserPERCENT_RANK_, ParserRANK_, ParserROW_NUMBER_, ParserGENERATED_, ParserALWAYS_, ParserSTORED_, ParserTRUE_, ParserFALSE_, ParserWINDOW_, ParserNULLS_, ParserFIRST_, ParserLAST_, ParserFILTER_, ParserGROUPS_, ParserEXCLUDE_, ParserIDENTIFIER, ParserNUMERIC_LITERAL, ParserBIND_PARAMETER, ParserSTRING_LITERAL, ParserBLOB_LITERAL:
 		{
@@ -21090,12 +24484,19 @@ func (p *Parser) Window_function_invocation() (localctx IWindow_function_invocat
 		}
 		p.SetState(1796)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == ParserCOMMA {
 			{
 				p.SetState(1792)
 				p.Match(ParserCOMMA)
+				if p.HasError() {
+					// Recognition error - abort rule
+					goto errorExit
+				}
 			}
 			{
 				p.SetState(1793)
@@ -21104,6 +24505,9 @@ func (p *Parser) Window_function_invocation() (localctx IWindow_function_invocat
 
 			p.SetState(1798)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 
@@ -21111,6 +24515,10 @@ func (p *Parser) Window_function_invocation() (localctx IWindow_function_invocat
 		{
 			p.SetState(1799)
 			p.Match(ParserSTAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserCLOSE_PAR:
@@ -21120,9 +24528,16 @@ func (p *Parser) Window_function_invocation() (localctx IWindow_function_invocat
 	{
 		p.SetState(1802)
 		p.Match(ParserCLOSE_PAR)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1804)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserFILTER_ {
@@ -21135,10 +24550,18 @@ func (p *Parser) Window_function_invocation() (localctx IWindow_function_invocat
 	{
 		p.SetState(1806)
 		p.Match(ParserOVER_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1809)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 267, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 267, p.GetParserRuleContext()) {
 	case 1:
 		{
 			p.SetState(1807)
@@ -21151,9 +24574,21 @@ func (p *Parser) Window_function_invocation() (localctx IWindow_function_invocat
 			p.Window_name()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICommon_table_stmtContext is an interface to support dynamic dispatch.
@@ -21163,20 +24598,33 @@ type ICommon_table_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	WITH_() antlr.TerminalNode
+	AllCommon_table_expression() []ICommon_table_expressionContext
+	Common_table_expression(i int) ICommon_table_expressionContext
+	RECURSIVE_() antlr.TerminalNode
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsCommon_table_stmtContext differentiates from other interfaces.
 	IsCommon_table_stmtContext()
 }
 
 type Common_table_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCommon_table_stmtContext() *Common_table_stmtContext {
 	var p = new(Common_table_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_common_table_stmt
 	return p
+}
+
+func InitEmptyCommon_table_stmtContext(p *Common_table_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_common_table_stmt
 }
 
 func (*Common_table_stmtContext) IsCommon_table_stmtContext() {}
@@ -21184,7 +24632,7 @@ func (*Common_table_stmtContext) IsCommon_table_stmtContext() {}
 func NewCommon_table_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Common_table_stmtContext {
 	var p = new(Common_table_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_common_table_stmt
@@ -21282,43 +24730,34 @@ func (s *Common_table_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interf
 }
 
 func (p *Parser) Common_table_stmt() (localctx ICommon_table_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewCommon_table_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 134, ParserRULE_common_table_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1811)
 		p.Match(ParserWITH_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1813)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 268, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 268, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(1812)
 			p.Match(ParserRECURSIVE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	} else if p.HasError() { // JIM
+		goto errorExit
 	}
 	{
 		p.SetState(1815)
@@ -21326,12 +24765,19 @@ func (p *Parser) Common_table_stmt() (localctx ICommon_table_stmtContext) {
 	}
 	p.SetState(1820)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserCOMMA {
 		{
 			p.SetState(1816)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1817)
@@ -21340,10 +24786,23 @@ func (p *Parser) Common_table_stmt() (localctx ICommon_table_stmtContext) {
 
 		p.SetState(1822)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IOrder_by_stmtContext is an interface to support dynamic dispatch.
@@ -21353,20 +24812,33 @@ type IOrder_by_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ORDER_() antlr.TerminalNode
+	BY_() antlr.TerminalNode
+	AllOrdering_term() []IOrdering_termContext
+	Ordering_term(i int) IOrdering_termContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsOrder_by_stmtContext differentiates from other interfaces.
 	IsOrder_by_stmtContext()
 }
 
 type Order_by_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyOrder_by_stmtContext() *Order_by_stmtContext {
 	var p = new(Order_by_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_order_by_stmt
 	return p
+}
+
+func InitEmptyOrder_by_stmtContext(p *Order_by_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_order_by_stmt
 }
 
 func (*Order_by_stmtContext) IsOrder_by_stmtContext() {}
@@ -21374,7 +24846,7 @@ func (*Order_by_stmtContext) IsOrder_by_stmtContext() {}
 func NewOrder_by_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Order_by_stmtContext {
 	var p = new(Order_by_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_order_by_stmt
@@ -21472,37 +24944,26 @@ func (s *Order_by_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Order_by_stmt() (localctx IOrder_by_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewOrder_by_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 136, ParserRULE_order_by_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1823)
 		p.Match(ParserORDER_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1824)
 		p.Match(ParserBY_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1825)
@@ -21510,12 +24971,19 @@ func (p *Parser) Order_by_stmt() (localctx IOrder_by_stmtContext) {
 	}
 	p.SetState(1830)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserCOMMA {
 		{
 			p.SetState(1826)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1827)
@@ -21524,10 +24992,23 @@ func (p *Parser) Order_by_stmt() (localctx IOrder_by_stmtContext) {
 
 		p.SetState(1832)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ILimit_stmtContext is an interface to support dynamic dispatch.
@@ -21537,20 +25018,32 @@ type ILimit_stmtContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	LIMIT_() antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	OFFSET_() antlr.TerminalNode
+	COMMA() antlr.TerminalNode
+
 	// IsLimit_stmtContext differentiates from other interfaces.
 	IsLimit_stmtContext()
 }
 
 type Limit_stmtContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyLimit_stmtContext() *Limit_stmtContext {
 	var p = new(Limit_stmtContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_limit_stmt
 	return p
+}
+
+func InitEmptyLimit_stmtContext(p *Limit_stmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_limit_stmt
 }
 
 func (*Limit_stmtContext) IsLimit_stmtContext() {}
@@ -21558,7 +25051,7 @@ func (*Limit_stmtContext) IsLimit_stmtContext() {}
 func NewLimit_stmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Limit_stmtContext {
 	var p = new(Limit_stmtContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_limit_stmt
@@ -21652,33 +25145,18 @@ func (s *Limit_stmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Limit_stmt() (localctx ILimit_stmtContext) {
-	this := p
-	_ = this
-
 	localctx = NewLimit_stmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 138, ParserRULE_limit_stmt)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1833)
 		p.Match(ParserLIMIT_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1834)
@@ -21686,6 +25164,9 @@ func (p *Parser) Limit_stmt() (localctx ILimit_stmtContext) {
 	}
 	p.SetState(1837)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserCOMMA || _la == ParserOFFSET_ {
@@ -21707,7 +25188,17 @@ func (p *Parser) Limit_stmt() (localctx ILimit_stmtContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IOrdering_termContext is an interface to support dynamic dispatch.
@@ -21717,20 +25208,34 @@ type IOrdering_termContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Expr() IExprContext
+	COLLATE_() antlr.TerminalNode
+	Collation_name() ICollation_nameContext
+	Asc_desc() IAsc_descContext
+	NULLS_() antlr.TerminalNode
+	FIRST_() antlr.TerminalNode
+	LAST_() antlr.TerminalNode
+
 	// IsOrdering_termContext differentiates from other interfaces.
 	IsOrdering_termContext()
 }
 
 type Ordering_termContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyOrdering_termContext() *Ordering_termContext {
 	var p = new(Ordering_termContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_ordering_term
 	return p
+}
+
+func InitEmptyOrdering_termContext(p *Ordering_termContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_ordering_term
 }
 
 func (*Ordering_termContext) IsOrdering_termContext() {}
@@ -21738,7 +25243,7 @@ func (*Ordering_termContext) IsOrdering_termContext() {}
 func NewOrdering_termContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Ordering_termContext {
 	var p = new(Ordering_termContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_ordering_term
@@ -21843,28 +25348,9 @@ func (s *Ordering_termContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Ordering_term() (localctx IOrdering_termContext) {
-	this := p
-	_ = this
-
 	localctx = NewOrdering_termContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 140, ParserRULE_ordering_term)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -21873,12 +25359,19 @@ func (p *Parser) Ordering_term() (localctx IOrdering_termContext) {
 	}
 	p.SetState(1842)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserCOLLATE_ {
 		{
 			p.SetState(1840)
 			p.Match(ParserCOLLATE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1841)
@@ -21888,6 +25381,9 @@ func (p *Parser) Ordering_term() (localctx IOrdering_termContext) {
 	}
 	p.SetState(1845)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserASC_ || _la == ParserDESC_ {
@@ -21899,12 +25395,19 @@ func (p *Parser) Ordering_term() (localctx IOrdering_termContext) {
 	}
 	p.SetState(1849)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserNULLS_ {
 		{
 			p.SetState(1847)
 			p.Match(ParserNULLS_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1848)
@@ -21920,7 +25423,17 @@ func (p *Parser) Ordering_term() (localctx IOrdering_termContext) {
 
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAsc_descContext is an interface to support dynamic dispatch.
@@ -21930,20 +25443,29 @@ type IAsc_descContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ASC_() antlr.TerminalNode
+	DESC_() antlr.TerminalNode
+
 	// IsAsc_descContext differentiates from other interfaces.
 	IsAsc_descContext()
 }
 
 type Asc_descContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyAsc_descContext() *Asc_descContext {
 	var p = new(Asc_descContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_asc_desc
 	return p
+}
+
+func InitEmptyAsc_descContext(p *Asc_descContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_asc_desc
 }
 
 func (*Asc_descContext) IsAsc_descContext() {}
@@ -21951,7 +25473,7 @@ func (*Asc_descContext) IsAsc_descContext() {}
 func NewAsc_descContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Asc_descContext {
 	var p = new(Asc_descContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_asc_desc
@@ -22000,28 +25522,9 @@ func (s *Asc_descContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Asc_desc() (localctx IAsc_descContext) {
-	this := p
-	_ = this
-
 	localctx = NewAsc_descContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 142, ParserRULE_asc_desc)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -22036,7 +25539,17 @@ func (p *Parser) Asc_desc() (localctx IAsc_descContext) {
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFrame_leftContext is an interface to support dynamic dispatch.
@@ -22046,20 +25559,33 @@ type IFrame_leftContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Expr() IExprContext
+	PRECEDING_() antlr.TerminalNode
+	FOLLOWING_() antlr.TerminalNode
+	CURRENT_() antlr.TerminalNode
+	ROW_() antlr.TerminalNode
+	UNBOUNDED_() antlr.TerminalNode
+
 	// IsFrame_leftContext differentiates from other interfaces.
 	IsFrame_leftContext()
 }
 
 type Frame_leftContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFrame_leftContext() *Frame_leftContext {
 	var p = new(Frame_leftContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_frame_left
 	return p
+}
+
+func InitEmptyFrame_leftContext(p *Frame_leftContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_frame_left
 }
 
 func (*Frame_leftContext) IsFrame_leftContext() {}
@@ -22067,7 +25593,7 @@ func (*Frame_leftContext) IsFrame_leftContext() {}
 func NewFrame_leftContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Frame_leftContext {
 	var p = new(Frame_leftContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_frame_left
@@ -22144,31 +25670,15 @@ func (s *Frame_leftContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Frame_left() (localctx IFrame_leftContext) {
-	this := p
-	_ = this
-
 	localctx = NewFrame_leftContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 144, ParserRULE_frame_left)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1863)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 275, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 275, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -22178,6 +25688,10 @@ func (p *Parser) Frame_left() (localctx IFrame_leftContext) {
 		{
 			p.SetState(1854)
 			p.Match(ParserPRECEDING_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -22189,6 +25703,10 @@ func (p *Parser) Frame_left() (localctx IFrame_leftContext) {
 		{
 			p.SetState(1857)
 			p.Match(ParserFOLLOWING_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
@@ -22196,10 +25714,18 @@ func (p *Parser) Frame_left() (localctx IFrame_leftContext) {
 		{
 			p.SetState(1859)
 			p.Match(ParserCURRENT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1860)
 			p.Match(ParserROW_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 4:
@@ -22207,15 +25733,35 @@ func (p *Parser) Frame_left() (localctx IFrame_leftContext) {
 		{
 			p.SetState(1861)
 			p.Match(ParserUNBOUNDED_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1862)
 			p.Match(ParserPRECEDING_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFrame_rightContext is an interface to support dynamic dispatch.
@@ -22225,20 +25771,33 @@ type IFrame_rightContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Expr() IExprContext
+	PRECEDING_() antlr.TerminalNode
+	FOLLOWING_() antlr.TerminalNode
+	CURRENT_() antlr.TerminalNode
+	ROW_() antlr.TerminalNode
+	UNBOUNDED_() antlr.TerminalNode
+
 	// IsFrame_rightContext differentiates from other interfaces.
 	IsFrame_rightContext()
 }
 
 type Frame_rightContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFrame_rightContext() *Frame_rightContext {
 	var p = new(Frame_rightContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_frame_right
 	return p
+}
+
+func InitEmptyFrame_rightContext(p *Frame_rightContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_frame_right
 }
 
 func (*Frame_rightContext) IsFrame_rightContext() {}
@@ -22246,7 +25805,7 @@ func (*Frame_rightContext) IsFrame_rightContext() {}
 func NewFrame_rightContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Frame_rightContext {
 	var p = new(Frame_rightContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_frame_right
@@ -22323,31 +25882,15 @@ func (s *Frame_rightContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Frame_right() (localctx IFrame_rightContext) {
-	this := p
-	_ = this
-
 	localctx = NewFrame_rightContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 146, ParserRULE_frame_right)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1875)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 276, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 276, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -22357,6 +25900,10 @@ func (p *Parser) Frame_right() (localctx IFrame_rightContext) {
 		{
 			p.SetState(1866)
 			p.Match(ParserPRECEDING_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -22368,6 +25915,10 @@ func (p *Parser) Frame_right() (localctx IFrame_rightContext) {
 		{
 			p.SetState(1869)
 			p.Match(ParserFOLLOWING_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
@@ -22375,10 +25926,18 @@ func (p *Parser) Frame_right() (localctx IFrame_rightContext) {
 		{
 			p.SetState(1871)
 			p.Match(ParserCURRENT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1872)
 			p.Match(ParserROW_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 4:
@@ -22386,15 +25945,35 @@ func (p *Parser) Frame_right() (localctx IFrame_rightContext) {
 		{
 			p.SetState(1873)
 			p.Match(ParserUNBOUNDED_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1874)
 			p.Match(ParserFOLLOWING_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFrame_singleContext is an interface to support dynamic dispatch.
@@ -22404,20 +25983,32 @@ type IFrame_singleContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Expr() IExprContext
+	PRECEDING_() antlr.TerminalNode
+	UNBOUNDED_() antlr.TerminalNode
+	CURRENT_() antlr.TerminalNode
+	ROW_() antlr.TerminalNode
+
 	// IsFrame_singleContext differentiates from other interfaces.
 	IsFrame_singleContext()
 }
 
 type Frame_singleContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFrame_singleContext() *Frame_singleContext {
 	var p = new(Frame_singleContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_frame_single
 	return p
+}
+
+func InitEmptyFrame_singleContext(p *Frame_singleContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_frame_single
 }
 
 func (*Frame_singleContext) IsFrame_singleContext() {}
@@ -22425,7 +26016,7 @@ func (*Frame_singleContext) IsFrame_singleContext() {}
 func NewFrame_singleContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Frame_singleContext {
 	var p = new(Frame_singleContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_frame_single
@@ -22498,31 +26089,15 @@ func (s *Frame_singleContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *Parser) Frame_single() (localctx IFrame_singleContext) {
-	this := p
-	_ = this
-
 	localctx = NewFrame_singleContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 148, ParserRULE_frame_single)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1884)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 277, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 277, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -22532,6 +26107,10 @@ func (p *Parser) Frame_single() (localctx IFrame_singleContext) {
 		{
 			p.SetState(1878)
 			p.Match(ParserPRECEDING_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -22539,10 +26118,18 @@ func (p *Parser) Frame_single() (localctx IFrame_singleContext) {
 		{
 			p.SetState(1880)
 			p.Match(ParserUNBOUNDED_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1881)
 			p.Match(ParserPRECEDING_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
@@ -22550,15 +26137,35 @@ func (p *Parser) Frame_single() (localctx IFrame_singleContext) {
 		{
 			p.SetState(1882)
 			p.Match(ParserCURRENT_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1883)
 			p.Match(ParserROW_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IWindow_functionContext is an interface to support dynamic dispatch.
@@ -22568,20 +26175,52 @@ type IWindow_functionContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllOPEN_PAR() []antlr.TerminalNode
+	OPEN_PAR(i int) antlr.TerminalNode
+	Expr() IExprContext
+	AllCLOSE_PAR() []antlr.TerminalNode
+	CLOSE_PAR(i int) antlr.TerminalNode
+	OVER_() antlr.TerminalNode
+	Order_by_expr_asc_desc() IOrder_by_expr_asc_descContext
+	FIRST_VALUE_() antlr.TerminalNode
+	LAST_VALUE_() antlr.TerminalNode
+	Partition_by() IPartition_byContext
+	Frame_clause() IFrame_clauseContext
+	CUME_DIST_() antlr.TerminalNode
+	PERCENT_RANK_() antlr.TerminalNode
+	Order_by_expr() IOrder_by_exprContext
+	DENSE_RANK_() antlr.TerminalNode
+	RANK_() antlr.TerminalNode
+	ROW_NUMBER_() antlr.TerminalNode
+	LAG_() antlr.TerminalNode
+	LEAD_() antlr.TerminalNode
+	Offset() IOffsetContext
+	Default_value() IDefault_valueContext
+	NTH_VALUE_() antlr.TerminalNode
+	COMMA() antlr.TerminalNode
+	Signed_number() ISigned_numberContext
+	NTILE_() antlr.TerminalNode
+
 	// IsWindow_functionContext differentiates from other interfaces.
 	IsWindow_functionContext()
 }
 
 type Window_functionContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyWindow_functionContext() *Window_functionContext {
 	var p = new(Window_functionContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_window_function
 	return p
+}
+
+func InitEmptyWindow_functionContext(p *Window_functionContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_window_function
 }
 
 func (*Window_functionContext) IsWindow_functionContext() {}
@@ -22589,7 +26228,7 @@ func (*Window_functionContext) IsWindow_functionContext() {}
 func NewWindow_functionContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Window_functionContext {
 	var p = new(Window_functionContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_window_function
@@ -22826,31 +26465,15 @@ func (s *Window_functionContext) Accept(visitor antlr.ParseTreeVisitor) interfac
 }
 
 func (p *Parser) Window_function() (localctx IWindow_functionContext) {
-	this := p
-	_ = this
-
 	localctx = NewWindow_functionContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 150, ParserRULE_window_function)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1971)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserFIRST_VALUE_, ParserLAST_VALUE_:
@@ -22869,6 +26492,10 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1887)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1888)
@@ -22877,17 +26504,32 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1889)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1890)
 			p.Match(ParserOVER_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1891)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1893)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserPARTITION_ {
@@ -22903,9 +26545,12 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		}
 		p.SetState(1897)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		if _la == ParserROWS_ || _la == ParserRANGE_ || _la == ParserGROUPS_ {
+		if (int64((_la-128)) & ^0x3f) == 0 && ((int64(1)<<(_la-128))&2251799880794113) != 0 {
 			{
 				p.SetState(1896)
 				p.Frame_clause()
@@ -22915,6 +26560,10 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1899)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserCUME_DIST_, ParserPERCENT_RANK_:
@@ -22933,21 +26582,40 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1902)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1903)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1904)
 			p.Match(ParserOVER_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1905)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1907)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserPARTITION_ {
@@ -22959,6 +26627,9 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		}
 		p.SetState(1910)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserORDER_ {
@@ -22971,6 +26642,10 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1912)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserDENSE_RANK_, ParserRANK_, ParserROW_NUMBER_:
@@ -22979,7 +26654,7 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 			p.SetState(1913)
 			_la = p.GetTokenStream().LA(1)
 
-			if !(((_la-160)&-(0x1f+1)) == 0 && ((1<<uint((_la-160)))&((1<<(ParserDENSE_RANK_-160))|(1<<(ParserRANK_-160))|(1<<(ParserROW_NUMBER_-160)))) != 0) {
+			if !((int64((_la-160)) & ^0x3f) == 0 && ((int64(1)<<(_la-160))&385) != 0) {
 				p.GetErrorHandler().RecoverInline(p)
 			} else {
 				p.GetErrorHandler().ReportMatch(p)
@@ -22989,21 +26664,40 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1914)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1915)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1916)
 			p.Match(ParserOVER_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1917)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1919)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserPARTITION_ {
@@ -23020,6 +26714,10 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1922)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserLAG_, ParserLEAD_:
@@ -23038,6 +26736,10 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1925)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1926)
@@ -23046,15 +26748,20 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		p.SetState(1928)
 		p.GetErrorHandler().Sync(p)
 
-		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 283, p.GetParserRuleContext()) == 1 {
+		if p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 283, p.GetParserRuleContext()) == 1 {
 			{
 				p.SetState(1927)
 				p.Offset()
 			}
 
+		} else if p.HasError() { // JIM
+			goto errorExit
 		}
 		p.SetState(1931)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserCOMMA {
@@ -23067,17 +26774,32 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1933)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1934)
 			p.Match(ParserOVER_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1935)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1937)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserPARTITION_ {
@@ -23094,6 +26816,10 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1940)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserNTH_VALUE_:
@@ -23101,10 +26827,18 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1942)
 			p.Match(ParserNTH_VALUE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1943)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1944)
@@ -23113,6 +26847,10 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1945)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1946)
@@ -23121,17 +26859,32 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1947)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1948)
 			p.Match(ParserOVER_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1949)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1951)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserPARTITION_ {
@@ -23147,9 +26900,12 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		}
 		p.SetState(1955)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		if _la == ParserROWS_ || _la == ParserRANGE_ || _la == ParserGROUPS_ {
+		if (int64((_la-128)) & ^0x3f) == 0 && ((int64(1)<<(_la-128))&2251799880794113) != 0 {
 			{
 				p.SetState(1954)
 				p.Frame_clause()
@@ -23159,6 +26915,10 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1957)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserNTILE_:
@@ -23166,10 +26926,18 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1959)
 			p.Match(ParserNTILE_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1960)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1961)
@@ -23178,17 +26946,32 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1962)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1963)
 			p.Match(ParserOVER_)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1964)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1966)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserPARTITION_ {
@@ -23205,13 +26988,28 @@ func (p *Parser) Window_function() (localctx IWindow_functionContext) {
 		{
 			p.SetState(1969)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IOffsetContext is an interface to support dynamic dispatch.
@@ -23221,20 +27019,29 @@ type IOffsetContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	COMMA() antlr.TerminalNode
+	Signed_number() ISigned_numberContext
+
 	// IsOffsetContext differentiates from other interfaces.
 	IsOffsetContext()
 }
 
 type OffsetContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyOffsetContext() *OffsetContext {
 	var p = new(OffsetContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_offset
 	return p
+}
+
+func InitEmptyOffsetContext(p *OffsetContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_offset
 }
 
 func (*OffsetContext) IsOffsetContext() {}
@@ -23242,7 +27049,7 @@ func (*OffsetContext) IsOffsetContext() {}
 func NewOffsetContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *OffsetContext {
 	var p = new(OffsetContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_offset
@@ -23303,39 +27110,33 @@ func (s *OffsetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Offset() (localctx IOffsetContext) {
-	this := p
-	_ = this
-
 	localctx = NewOffsetContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 152, ParserRULE_offset)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1973)
 		p.Match(ParserCOMMA)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1974)
 		p.Signed_number()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IDefault_valueContext is an interface to support dynamic dispatch.
@@ -23345,20 +27146,29 @@ type IDefault_valueContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	COMMA() antlr.TerminalNode
+	Signed_number() ISigned_numberContext
+
 	// IsDefault_valueContext differentiates from other interfaces.
 	IsDefault_valueContext()
 }
 
 type Default_valueContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyDefault_valueContext() *Default_valueContext {
 	var p = new(Default_valueContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_default_value
 	return p
+}
+
+func InitEmptyDefault_valueContext(p *Default_valueContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_default_value
 }
 
 func (*Default_valueContext) IsDefault_valueContext() {}
@@ -23366,7 +27176,7 @@ func (*Default_valueContext) IsDefault_valueContext() {}
 func NewDefault_valueContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Default_valueContext {
 	var p = new(Default_valueContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_default_value
@@ -23427,39 +27237,33 @@ func (s *Default_valueContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Default_value() (localctx IDefault_valueContext) {
-	this := p
-	_ = this
-
 	localctx = NewDefault_valueContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 154, ParserRULE_default_value)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1976)
 		p.Match(ParserCOMMA)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1977)
 		p.Signed_number()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IPartition_byContext is an interface to support dynamic dispatch.
@@ -23469,20 +27273,31 @@ type IPartition_byContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PARTITION_() antlr.TerminalNode
+	BY_() antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+
 	// IsPartition_byContext differentiates from other interfaces.
 	IsPartition_byContext()
 }
 
 type Partition_byContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyPartition_byContext() *Partition_byContext {
 	var p = new(Partition_byContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_partition_by
 	return p
+}
+
+func InitEmptyPartition_byContext(p *Partition_byContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_partition_by
 }
 
 func (*Partition_byContext) IsPartition_byContext() {}
@@ -23490,7 +27305,7 @@ func (*Partition_byContext) IsPartition_byContext() {}
 func NewPartition_byContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Partition_byContext {
 	var p = new(Partition_byContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_partition_by
@@ -23580,41 +27395,32 @@ func (s *Partition_byContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *Parser) Partition_by() (localctx IPartition_byContext) {
-	this := p
-	_ = this
-
 	localctx = NewPartition_byContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 156, ParserRULE_partition_by)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	var _alt int
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1979)
 		p.Match(ParserPARTITION_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1980)
 		p.Match(ParserBY_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1982)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_alt = 1
 	for ok := true; ok; ok = _alt != 2 && _alt != antlr.ATNInvalidAltNumber {
 		switch _alt {
@@ -23625,15 +27431,29 @@ func (p *Parser) Partition_by() (localctx IPartition_byContext) {
 			}
 
 		default:
-			panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+			goto errorExit
 		}
 
 		p.SetState(1984)
 		p.GetErrorHandler().Sync(p)
-		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 290, p.GetParserRuleContext())
+		_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 290, p.GetParserRuleContext())
+		if p.HasError() {
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IOrder_by_exprContext is an interface to support dynamic dispatch.
@@ -23643,20 +27463,31 @@ type IOrder_by_exprContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ORDER_() antlr.TerminalNode
+	BY_() antlr.TerminalNode
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+
 	// IsOrder_by_exprContext differentiates from other interfaces.
 	IsOrder_by_exprContext()
 }
 
 type Order_by_exprContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyOrder_by_exprContext() *Order_by_exprContext {
 	var p = new(Order_by_exprContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_order_by_expr
 	return p
+}
+
+func InitEmptyOrder_by_exprContext(p *Order_by_exprContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_order_by_expr
 }
 
 func (*Order_by_exprContext) IsOrder_by_exprContext() {}
@@ -23664,7 +27495,7 @@ func (*Order_by_exprContext) IsOrder_by_exprContext() {}
 func NewOrder_by_exprContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Order_by_exprContext {
 	var p = new(Order_by_exprContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_order_by_expr
@@ -23754,43 +27585,35 @@ func (s *Order_by_exprContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Order_by_expr() (localctx IOrder_by_exprContext) {
-	this := p
-	_ = this
-
 	localctx = NewOrder_by_exprContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 158, ParserRULE_order_by_expr)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1986)
 		p.Match(ParserORDER_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1987)
 		p.Match(ParserBY_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1989)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for ok := true; ok; ok = (((_la)&-(0x1f+1)) == 0 && ((1<<uint(_la))&((1<<ParserOPEN_PAR)|(1<<ParserPLUS)|(1<<ParserMINUS)|(1<<ParserTILDE)|(1<<ParserABORT_)|(1<<ParserACTION_)|(1<<ParserADD_)|(1<<ParserAFTER_)|(1<<ParserALL_)|(1<<ParserALTER_)|(1<<ParserANALYZE_))) != 0) || (((_la-32)&-(0x1f+1)) == 0 && ((1<<uint((_la-32)))&((1<<(ParserAND_-32))|(1<<(ParserAS_-32))|(1<<(ParserASC_-32))|(1<<(ParserATTACH_-32))|(1<<(ParserAUTOINCREMENT_-32))|(1<<(ParserBEFORE_-32))|(1<<(ParserBEGIN_-32))|(1<<(ParserBETWEEN_-32))|(1<<(ParserBY_-32))|(1<<(ParserCASCADE_-32))|(1<<(ParserCASE_-32))|(1<<(ParserCAST_-32))|(1<<(ParserCHECK_-32))|(1<<(ParserCOLLATE_-32))|(1<<(ParserCOLUMN_-32))|(1<<(ParserCOMMIT_-32))|(1<<(ParserCONFLICT_-32))|(1<<(ParserCONSTRAINT_-32))|(1<<(ParserCREATE_-32))|(1<<(ParserCROSS_-32))|(1<<(ParserCURRENT_DATE_-32))|(1<<(ParserCURRENT_TIME_-32))|(1<<(ParserCURRENT_TIMESTAMP_-32))|(1<<(ParserDATABASE_-32))|(1<<(ParserDEFAULT_-32))|(1<<(ParserDEFERRABLE_-32))|(1<<(ParserDEFERRED_-32))|(1<<(ParserDELETE_-32))|(1<<(ParserDESC_-32))|(1<<(ParserDETACH_-32))|(1<<(ParserDISTINCT_-32))|(1<<(ParserDROP_-32)))) != 0) || (((_la-64)&-(0x1f+1)) == 0 && ((1<<uint((_la-64)))&((1<<(ParserEACH_-64))|(1<<(ParserELSE_-64))|(1<<(ParserEND_-64))|(1<<(ParserESCAPE_-64))|(1<<(ParserEXCEPT_-64))|(1<<(ParserEXCLUSIVE_-64))|(1<<(ParserEXISTS_-64))|(1<<(ParserEXPLAIN_-64))|(1<<(ParserFAIL_-64))|(1<<(ParserFOR_-64))|(1<<(ParserFOREIGN_-64))|(1<<(ParserFROM_-64))|(1<<(ParserFULL_-64))|(1<<(ParserGLOB_-64))|(1<<(ParserGROUP_-64))|(1<<(ParserHAVING_-64))|(1<<(ParserIF_-64))|(1<<(ParserIGNORE_-64))|(1<<(ParserIMMEDIATE_-64))|(1<<(ParserIN_-64))|(1<<(ParserINDEX_-64))|(1<<(ParserINDEXED_-64))|(1<<(ParserINITIALLY_-64))|(1<<(ParserINNER_-64))|(1<<(ParserINSERT_-64))|(1<<(ParserINSTEAD_-64))|(1<<(ParserINTERSECT_-64))|(1<<(ParserINTO_-64))|(1<<(ParserIS_-64))|(1<<(ParserISNULL_-64))|(1<<(ParserJOIN_-64))|(1<<(ParserKEY_-64)))) != 0) || (((_la-96)&-(0x1f+1)) == 0 && ((1<<uint((_la-96)))&((1<<(ParserLEFT_-96))|(1<<(ParserLIKE_-96))|(1<<(ParserLIMIT_-96))|(1<<(ParserMATCH_-96))|(1<<(ParserNATURAL_-96))|(1<<(ParserNO_-96))|(1<<(ParserNOT_-96))|(1<<(ParserNOTNULL_-96))|(1<<(ParserNULL_-96))|(1<<(ParserOF_-96))|(1<<(ParserOFFSET_-96))|(1<<(ParserON_-96))|(1<<(ParserOR_-96))|(1<<(ParserORDER_-96))|(1<<(ParserOUTER_-96))|(1<<(ParserPLAN_-96))|(1<<(ParserPRAGMA_-96))|(1<<(ParserPRIMARY_-96))|(1<<(ParserQUERY_-96))|(1<<(ParserRAISE_-96))|(1<<(ParserRECURSIVE_-96))|(1<<(ParserREFERENCES_-96))|(1<<(ParserREGEXP_-96))|(1<<(ParserREINDEX_-96))|(1<<(ParserRELEASE_-96))|(1<<(ParserRENAME_-96))|(1<<(ParserREPLACE_-96))|(1<<(ParserRESTRICT_-96))|(1<<(ParserRIGHT_-96))|(1<<(ParserROLLBACK_-96))|(1<<(ParserROW_-96)))) != 0) || (((_la-128)&-(0x1f+1)) == 0 && ((1<<uint((_la-128)))&((1<<(ParserROWS_-128))|(1<<(ParserSAVEPOINT_-128))|(1<<(ParserSELECT_-128))|(1<<(ParserSET_-128))|(1<<(ParserTABLE_-128))|(1<<(ParserTEMP_-128))|(1<<(ParserTEMPORARY_-128))|(1<<(ParserTHEN_-128))|(1<<(ParserTO_-128))|(1<<(ParserTRANSACTION_-128))|(1<<(ParserTRIGGER_-128))|(1<<(ParserUNION_-128))|(1<<(ParserUNIQUE_-128))|(1<<(ParserUPDATE_-128))|(1<<(ParserUSING_-128))|(1<<(ParserVACUUM_-128))|(1<<(ParserVALUES_-128))|(1<<(ParserVIEW_-128))|(1<<(ParserVIRTUAL_-128))|(1<<(ParserWHEN_-128))|(1<<(ParserWHERE_-128))|(1<<(ParserWITH_-128))|(1<<(ParserWITHOUT_-128))|(1<<(ParserFIRST_VALUE_-128))|(1<<(ParserOVER_-128))|(1<<(ParserPARTITION_-128))|(1<<(ParserRANGE_-128))|(1<<(ParserPRECEDING_-128))|(1<<(ParserUNBOUNDED_-128))|(1<<(ParserCURRENT_-128))|(1<<(ParserFOLLOWING_-128))|(1<<(ParserCUME_DIST_-128)))) != 0) || (((_la-160)&-(0x1f+1)) == 0 && ((1<<uint((_la-160)))&((1<<(ParserDENSE_RANK_-160))|(1<<(ParserLAG_-160))|(1<<(ParserLAST_VALUE_-160))|(1<<(ParserLEAD_-160))|(1<<(ParserNTH_VALUE_-160))|(1<<(ParserNTILE_-160))|(1<<(ParserPERCENT_RANK_-160))|(1<<(ParserRANK_-160))|(1<<(ParserROW_NUMBER_-160))|(1<<(ParserGENERATED_-160))|(1<<(ParserALWAYS_-160))|(1<<(ParserSTORED_-160))|(1<<(ParserTRUE_-160))|(1<<(ParserFALSE_-160))|(1<<(ParserWINDOW_-160))|(1<<(ParserNULLS_-160))|(1<<(ParserFIRST_-160))|(1<<(ParserLAST_-160))|(1<<(ParserFILTER_-160))|(1<<(ParserGROUPS_-160))|(1<<(ParserEXCLUDE_-160))|(1<<(ParserIDENTIFIER-160))|(1<<(ParserNUMERIC_LITERAL-160))|(1<<(ParserBIND_PARAMETER-160))|(1<<(ParserSTRING_LITERAL-160))|(1<<(ParserBLOB_LITERAL-160)))) != 0) {
+	for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&-33552632) != 0) || ((int64((_la-64)) & ^0x3f) == 0 && ((int64(1)<<(_la-64))&-1152921504606846977) != 0) || ((int64((_la-128)) & ^0x3f) == 0 && ((int64(1)<<(_la-128))&4476578029606273023) != 0) {
 		{
 			p.SetState(1988)
 			p.expr(0)
@@ -23798,10 +27621,23 @@ func (p *Parser) Order_by_expr() (localctx IOrder_by_exprContext) {
 
 		p.SetState(1991)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IOrder_by_expr_asc_descContext is an interface to support dynamic dispatch.
@@ -23811,20 +27647,30 @@ type IOrder_by_expr_asc_descContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ORDER_() antlr.TerminalNode
+	BY_() antlr.TerminalNode
+	Expr_asc_desc() IExpr_asc_descContext
+
 	// IsOrder_by_expr_asc_descContext differentiates from other interfaces.
 	IsOrder_by_expr_asc_descContext()
 }
 
 type Order_by_expr_asc_descContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyOrder_by_expr_asc_descContext() *Order_by_expr_asc_descContext {
 	var p = new(Order_by_expr_asc_descContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_order_by_expr_asc_desc
 	return p
+}
+
+func InitEmptyOrder_by_expr_asc_descContext(p *Order_by_expr_asc_descContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_order_by_expr_asc_desc
 }
 
 func (*Order_by_expr_asc_descContext) IsOrder_by_expr_asc_descContext() {}
@@ -23832,7 +27678,7 @@ func (*Order_by_expr_asc_descContext) IsOrder_by_expr_asc_descContext() {}
 func NewOrder_by_expr_asc_descContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Order_by_expr_asc_descContext {
 	var p = new(Order_by_expr_asc_descContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_order_by_expr_asc_desc
@@ -23897,43 +27743,41 @@ func (s *Order_by_expr_asc_descContext) Accept(visitor antlr.ParseTreeVisitor) i
 }
 
 func (p *Parser) Order_by_expr_asc_desc() (localctx IOrder_by_expr_asc_descContext) {
-	this := p
-	_ = this
-
 	localctx = NewOrder_by_expr_asc_descContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 160, ParserRULE_order_by_expr_asc_desc)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1993)
 		p.Match(ParserORDER_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1994)
 		p.Match(ParserBY_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(1995)
 		p.Expr_asc_desc()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IExpr_asc_descContext is an interface to support dynamic dispatch.
@@ -23943,20 +27787,33 @@ type IExpr_asc_descContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllExpr() []IExprContext
+	Expr(i int) IExprContext
+	AllAsc_desc() []IAsc_descContext
+	Asc_desc(i int) IAsc_descContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
 	// IsExpr_asc_descContext differentiates from other interfaces.
 	IsExpr_asc_descContext()
 }
 
 type Expr_asc_descContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyExpr_asc_descContext() *Expr_asc_descContext {
 	var p = new(Expr_asc_descContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_expr_asc_desc
 	return p
+}
+
+func InitEmptyExpr_asc_descContext(p *Expr_asc_descContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_expr_asc_desc
 }
 
 func (*Expr_asc_descContext) IsExpr_asc_descContext() {}
@@ -23964,7 +27821,7 @@ func (*Expr_asc_descContext) IsExpr_asc_descContext() {}
 func NewExpr_asc_descContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Expr_asc_descContext {
 	var p = new(Expr_asc_descContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_expr_asc_desc
@@ -24095,28 +27952,9 @@ func (s *Expr_asc_descContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Expr_asc_desc() (localctx IExpr_asc_descContext) {
-	this := p
-	_ = this
-
 	localctx = NewExpr_asc_descContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 162, ParserRULE_expr_asc_desc)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -24125,6 +27963,9 @@ func (p *Parser) Expr_asc_desc() (localctx IExpr_asc_descContext) {
 	}
 	p.SetState(1999)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == ParserASC_ || _la == ParserDESC_ {
@@ -24136,12 +27977,19 @@ func (p *Parser) Expr_asc_desc() (localctx IExpr_asc_descContext) {
 	}
 	p.SetState(2008)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == ParserCOMMA {
 		{
 			p.SetState(2001)
 			p.Match(ParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(2002)
@@ -24149,6 +27997,9 @@ func (p *Parser) Expr_asc_desc() (localctx IExpr_asc_descContext) {
 		}
 		p.SetState(2004)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == ParserASC_ || _la == ParserDESC_ {
@@ -24161,10 +28012,23 @@ func (p *Parser) Expr_asc_desc() (localctx IExpr_asc_descContext) {
 
 		p.SetState(2010)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IInitial_selectContext is an interface to support dynamic dispatch.
@@ -24174,20 +28038,28 @@ type IInitial_selectContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Select_stmt() ISelect_stmtContext
+
 	// IsInitial_selectContext differentiates from other interfaces.
 	IsInitial_selectContext()
 }
 
 type Initial_selectContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyInitial_selectContext() *Initial_selectContext {
 	var p = new(Initial_selectContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_initial_select
 	return p
+}
+
+func InitEmptyInitial_selectContext(p *Initial_selectContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_initial_select
 }
 
 func (*Initial_selectContext) IsInitial_selectContext() {}
@@ -24195,7 +28067,7 @@ func (*Initial_selectContext) IsInitial_selectContext() {}
 func NewInitial_selectContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Initial_selectContext {
 	var p = new(Initial_selectContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_initial_select
@@ -24252,35 +28124,25 @@ func (s *Initial_selectContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *Parser) Initial_select() (localctx IInitial_selectContext) {
-	this := p
-	_ = this
-
 	localctx = NewInitial_selectContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 164, ParserRULE_initial_select)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2011)
 		p.Select_stmt()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IRecursive_selectContext is an interface to support dynamic dispatch.
@@ -24290,20 +28152,28 @@ type IRecursive_selectContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Select_stmt() ISelect_stmtContext
+
 	// IsRecursive_selectContext differentiates from other interfaces.
 	IsRecursive_selectContext()
 }
 
 type Recursive_selectContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyRecursive_selectContext() *Recursive_selectContext {
 	var p = new(Recursive_selectContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_recursive_select
 	return p
+}
+
+func InitEmptyRecursive_selectContext(p *Recursive_selectContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_recursive_select
 }
 
 func (*Recursive_selectContext) IsRecursive_selectContext() {}
@@ -24311,7 +28181,7 @@ func (*Recursive_selectContext) IsRecursive_selectContext() {}
 func NewRecursive_selectContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Recursive_selectContext {
 	var p = new(Recursive_selectContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_recursive_select
@@ -24368,35 +28238,25 @@ func (s *Recursive_selectContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *Parser) Recursive_select() (localctx IRecursive_selectContext) {
-	this := p
-	_ = this
-
 	localctx = NewRecursive_selectContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 166, ParserRULE_recursive_select)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2013)
 		p.Select_stmt()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IUnary_operatorContext is an interface to support dynamic dispatch.
@@ -24406,20 +28266,31 @@ type IUnary_operatorContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	MINUS() antlr.TerminalNode
+	PLUS() antlr.TerminalNode
+	TILDE() antlr.TerminalNode
+	NOT_() antlr.TerminalNode
+
 	// IsUnary_operatorContext differentiates from other interfaces.
 	IsUnary_operatorContext()
 }
 
 type Unary_operatorContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyUnary_operatorContext() *Unary_operatorContext {
 	var p = new(Unary_operatorContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_unary_operator
 	return p
+}
+
+func InitEmptyUnary_operatorContext(p *Unary_operatorContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_unary_operator
 }
 
 func (*Unary_operatorContext) IsUnary_operatorContext() {}
@@ -24427,7 +28298,7 @@ func (*Unary_operatorContext) IsUnary_operatorContext() {}
 func NewUnary_operatorContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Unary_operatorContext {
 	var p = new(Unary_operatorContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_unary_operator
@@ -24484,35 +28355,16 @@ func (s *Unary_operatorContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *Parser) Unary_operator() (localctx IUnary_operatorContext) {
-	this := p
-	_ = this
-
 	localctx = NewUnary_operatorContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 168, ParserRULE_unary_operator)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2015)
 		_la = p.GetTokenStream().LA(1)
 
-		if !((((_la)&-(0x1f+1)) == 0 && ((1<<uint(_la))&((1<<ParserPLUS)|(1<<ParserMINUS)|(1<<ParserTILDE))) != 0) || _la == ParserNOT_) {
+		if !(((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&1792) != 0) || _la == ParserNOT_) {
 			p.GetErrorHandler().RecoverInline(p)
 		} else {
 			p.GetErrorHandler().ReportMatch(p)
@@ -24520,7 +28372,17 @@ func (p *Parser) Unary_operator() (localctx IUnary_operatorContext) {
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IError_messageContext is an interface to support dynamic dispatch.
@@ -24530,20 +28392,28 @@ type IError_messageContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	STRING_LITERAL() antlr.TerminalNode
+
 	// IsError_messageContext differentiates from other interfaces.
 	IsError_messageContext()
 }
 
 type Error_messageContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyError_messageContext() *Error_messageContext {
 	var p = new(Error_messageContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_error_message
 	return p
+}
+
+func InitEmptyError_messageContext(p *Error_messageContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_error_message
 }
 
 func (*Error_messageContext) IsError_messageContext() {}
@@ -24551,7 +28421,7 @@ func (*Error_messageContext) IsError_messageContext() {}
 func NewError_messageContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Error_messageContext {
 	var p = new(Error_messageContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_error_message
@@ -24596,35 +28466,29 @@ func (s *Error_messageContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Error_message() (localctx IError_messageContext) {
-	this := p
-	_ = this
-
 	localctx = NewError_messageContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 170, ParserRULE_error_message)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2017)
 		p.Match(ParserSTRING_LITERAL)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IModule_argumentContext is an interface to support dynamic dispatch.
@@ -24634,20 +28498,29 @@ type IModule_argumentContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Expr() IExprContext
+	Column_def() IColumn_defContext
+
 	// IsModule_argumentContext differentiates from other interfaces.
 	IsModule_argumentContext()
 }
 
 type Module_argumentContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyModule_argumentContext() *Module_argumentContext {
 	var p = new(Module_argumentContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_module_argument
 	return p
+}
+
+func InitEmptyModule_argumentContext(p *Module_argumentContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_module_argument
 }
 
 func (*Module_argumentContext) IsModule_argumentContext() {}
@@ -24655,7 +28528,7 @@ func (*Module_argumentContext) IsModule_argumentContext() {}
 func NewModule_argumentContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Module_argumentContext {
 	var p = new(Module_argumentContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_module_argument
@@ -24728,31 +28601,15 @@ func (s *Module_argumentContext) Accept(visitor antlr.ParseTreeVisitor) interfac
 }
 
 func (p *Parser) Module_argument() (localctx IModule_argumentContext) {
-	this := p
-	_ = this
-
 	localctx = NewModule_argumentContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 172, ParserRULE_module_argument)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(2021)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 295, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 295, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -24767,9 +28624,21 @@ func (p *Parser) Module_argument() (localctx IModule_argumentContext) {
 			p.Column_def()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IColumn_aliasContext is an interface to support dynamic dispatch.
@@ -24779,20 +28648,29 @@ type IColumn_aliasContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	IDENTIFIER() antlr.TerminalNode
+	STRING_LITERAL() antlr.TerminalNode
+
 	// IsColumn_aliasContext differentiates from other interfaces.
 	IsColumn_aliasContext()
 }
 
 type Column_aliasContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyColumn_aliasContext() *Column_aliasContext {
 	var p = new(Column_aliasContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_column_alias
 	return p
+}
+
+func InitEmptyColumn_aliasContext(p *Column_aliasContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_column_alias
 }
 
 func (*Column_aliasContext) IsColumn_aliasContext() {}
@@ -24800,7 +28678,7 @@ func (*Column_aliasContext) IsColumn_aliasContext() {}
 func NewColumn_aliasContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Column_aliasContext {
 	var p = new(Column_aliasContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_column_alias
@@ -24849,28 +28727,9 @@ func (s *Column_aliasContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *Parser) Column_alias() (localctx IColumn_aliasContext) {
-	this := p
-	_ = this
-
 	localctx = NewColumn_aliasContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 174, ParserRULE_column_alias)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -24885,7 +28744,17 @@ func (p *Parser) Column_alias() (localctx IColumn_aliasContext) {
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IKeywordContext is an interface to support dynamic dispatch.
@@ -24895,20 +28764,182 @@ type IKeywordContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ABORT_() antlr.TerminalNode
+	ACTION_() antlr.TerminalNode
+	ADD_() antlr.TerminalNode
+	AFTER_() antlr.TerminalNode
+	ALL_() antlr.TerminalNode
+	ALTER_() antlr.TerminalNode
+	ANALYZE_() antlr.TerminalNode
+	AND_() antlr.TerminalNode
+	AS_() antlr.TerminalNode
+	ASC_() antlr.TerminalNode
+	ATTACH_() antlr.TerminalNode
+	AUTOINCREMENT_() antlr.TerminalNode
+	BEFORE_() antlr.TerminalNode
+	BEGIN_() antlr.TerminalNode
+	BETWEEN_() antlr.TerminalNode
+	BY_() antlr.TerminalNode
+	CASCADE_() antlr.TerminalNode
+	CASE_() antlr.TerminalNode
+	CAST_() antlr.TerminalNode
+	CHECK_() antlr.TerminalNode
+	COLLATE_() antlr.TerminalNode
+	COLUMN_() antlr.TerminalNode
+	COMMIT_() antlr.TerminalNode
+	CONFLICT_() antlr.TerminalNode
+	CONSTRAINT_() antlr.TerminalNode
+	CREATE_() antlr.TerminalNode
+	CROSS_() antlr.TerminalNode
+	CURRENT_DATE_() antlr.TerminalNode
+	CURRENT_TIME_() antlr.TerminalNode
+	CURRENT_TIMESTAMP_() antlr.TerminalNode
+	DATABASE_() antlr.TerminalNode
+	DEFAULT_() antlr.TerminalNode
+	DEFERRABLE_() antlr.TerminalNode
+	DEFERRED_() antlr.TerminalNode
+	DELETE_() antlr.TerminalNode
+	DESC_() antlr.TerminalNode
+	DETACH_() antlr.TerminalNode
+	DISTINCT_() antlr.TerminalNode
+	DROP_() antlr.TerminalNode
+	EACH_() antlr.TerminalNode
+	ELSE_() antlr.TerminalNode
+	END_() antlr.TerminalNode
+	ESCAPE_() antlr.TerminalNode
+	EXCEPT_() antlr.TerminalNode
+	EXCLUSIVE_() antlr.TerminalNode
+	EXISTS_() antlr.TerminalNode
+	EXPLAIN_() antlr.TerminalNode
+	FAIL_() antlr.TerminalNode
+	FOR_() antlr.TerminalNode
+	FOREIGN_() antlr.TerminalNode
+	FROM_() antlr.TerminalNode
+	FULL_() antlr.TerminalNode
+	GLOB_() antlr.TerminalNode
+	GROUP_() antlr.TerminalNode
+	HAVING_() antlr.TerminalNode
+	IF_() antlr.TerminalNode
+	IGNORE_() antlr.TerminalNode
+	IMMEDIATE_() antlr.TerminalNode
+	IN_() antlr.TerminalNode
+	INDEX_() antlr.TerminalNode
+	INDEXED_() antlr.TerminalNode
+	INITIALLY_() antlr.TerminalNode
+	INNER_() antlr.TerminalNode
+	INSERT_() antlr.TerminalNode
+	INSTEAD_() antlr.TerminalNode
+	INTERSECT_() antlr.TerminalNode
+	INTO_() antlr.TerminalNode
+	IS_() antlr.TerminalNode
+	ISNULL_() antlr.TerminalNode
+	JOIN_() antlr.TerminalNode
+	KEY_() antlr.TerminalNode
+	LEFT_() antlr.TerminalNode
+	LIKE_() antlr.TerminalNode
+	LIMIT_() antlr.TerminalNode
+	MATCH_() antlr.TerminalNode
+	NATURAL_() antlr.TerminalNode
+	NO_() antlr.TerminalNode
+	NOT_() antlr.TerminalNode
+	NOTNULL_() antlr.TerminalNode
+	NULL_() antlr.TerminalNode
+	OF_() antlr.TerminalNode
+	OFFSET_() antlr.TerminalNode
+	ON_() antlr.TerminalNode
+	OR_() antlr.TerminalNode
+	ORDER_() antlr.TerminalNode
+	OUTER_() antlr.TerminalNode
+	PLAN_() antlr.TerminalNode
+	PRAGMA_() antlr.TerminalNode
+	PRIMARY_() antlr.TerminalNode
+	QUERY_() antlr.TerminalNode
+	RAISE_() antlr.TerminalNode
+	RECURSIVE_() antlr.TerminalNode
+	REFERENCES_() antlr.TerminalNode
+	REGEXP_() antlr.TerminalNode
+	REINDEX_() antlr.TerminalNode
+	RELEASE_() antlr.TerminalNode
+	RENAME_() antlr.TerminalNode
+	REPLACE_() antlr.TerminalNode
+	RESTRICT_() antlr.TerminalNode
+	RIGHT_() antlr.TerminalNode
+	ROLLBACK_() antlr.TerminalNode
+	ROW_() antlr.TerminalNode
+	ROWS_() antlr.TerminalNode
+	SAVEPOINT_() antlr.TerminalNode
+	SELECT_() antlr.TerminalNode
+	SET_() antlr.TerminalNode
+	TABLE_() antlr.TerminalNode
+	TEMP_() antlr.TerminalNode
+	TEMPORARY_() antlr.TerminalNode
+	THEN_() antlr.TerminalNode
+	TO_() antlr.TerminalNode
+	TRANSACTION_() antlr.TerminalNode
+	TRIGGER_() antlr.TerminalNode
+	UNION_() antlr.TerminalNode
+	UNIQUE_() antlr.TerminalNode
+	UPDATE_() antlr.TerminalNode
+	USING_() antlr.TerminalNode
+	VACUUM_() antlr.TerminalNode
+	VALUES_() antlr.TerminalNode
+	VIEW_() antlr.TerminalNode
+	VIRTUAL_() antlr.TerminalNode
+	WHEN_() antlr.TerminalNode
+	WHERE_() antlr.TerminalNode
+	WITH_() antlr.TerminalNode
+	WITHOUT_() antlr.TerminalNode
+	FIRST_VALUE_() antlr.TerminalNode
+	OVER_() antlr.TerminalNode
+	PARTITION_() antlr.TerminalNode
+	RANGE_() antlr.TerminalNode
+	PRECEDING_() antlr.TerminalNode
+	UNBOUNDED_() antlr.TerminalNode
+	CURRENT_() antlr.TerminalNode
+	FOLLOWING_() antlr.TerminalNode
+	CUME_DIST_() antlr.TerminalNode
+	DENSE_RANK_() antlr.TerminalNode
+	LAG_() antlr.TerminalNode
+	LAST_VALUE_() antlr.TerminalNode
+	LEAD_() antlr.TerminalNode
+	NTH_VALUE_() antlr.TerminalNode
+	NTILE_() antlr.TerminalNode
+	PERCENT_RANK_() antlr.TerminalNode
+	RANK_() antlr.TerminalNode
+	ROW_NUMBER_() antlr.TerminalNode
+	GENERATED_() antlr.TerminalNode
+	ALWAYS_() antlr.TerminalNode
+	STORED_() antlr.TerminalNode
+	TRUE_() antlr.TerminalNode
+	FALSE_() antlr.TerminalNode
+	WINDOW_() antlr.TerminalNode
+	NULLS_() antlr.TerminalNode
+	FIRST_() antlr.TerminalNode
+	LAST_() antlr.TerminalNode
+	FILTER_() antlr.TerminalNode
+	GROUPS_() antlr.TerminalNode
+	EXCLUDE_() antlr.TerminalNode
+
 	// IsKeywordContext differentiates from other interfaces.
 	IsKeywordContext()
 }
 
 type KeywordContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyKeywordContext() *KeywordContext {
 	var p = new(KeywordContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_keyword
 	return p
+}
+
+func InitEmptyKeywordContext(p *KeywordContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_keyword
 }
 
 func (*KeywordContext) IsKeywordContext() {}
@@ -24916,7 +28947,7 @@ func (*KeywordContext) IsKeywordContext() {}
 func NewKeywordContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *KeywordContext {
 	var p = new(KeywordContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_keyword
@@ -25577,35 +29608,16 @@ func (s *KeywordContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Keyword() (localctx IKeywordContext) {
-	this := p
-	_ = this
-
 	localctx = NewKeywordContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 176, ParserRULE_keyword)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2025)
 		_la = p.GetTokenStream().LA(1)
 
-		if !((((_la-25)&-(0x1f+1)) == 0 && ((1<<uint((_la-25)))&((1<<(ParserABORT_-25))|(1<<(ParserACTION_-25))|(1<<(ParserADD_-25))|(1<<(ParserAFTER_-25))|(1<<(ParserALL_-25))|(1<<(ParserALTER_-25))|(1<<(ParserANALYZE_-25))|(1<<(ParserAND_-25))|(1<<(ParserAS_-25))|(1<<(ParserASC_-25))|(1<<(ParserATTACH_-25))|(1<<(ParserAUTOINCREMENT_-25))|(1<<(ParserBEFORE_-25))|(1<<(ParserBEGIN_-25))|(1<<(ParserBETWEEN_-25))|(1<<(ParserBY_-25))|(1<<(ParserCASCADE_-25))|(1<<(ParserCASE_-25))|(1<<(ParserCAST_-25))|(1<<(ParserCHECK_-25))|(1<<(ParserCOLLATE_-25))|(1<<(ParserCOLUMN_-25))|(1<<(ParserCOMMIT_-25))|(1<<(ParserCONFLICT_-25))|(1<<(ParserCONSTRAINT_-25))|(1<<(ParserCREATE_-25))|(1<<(ParserCROSS_-25))|(1<<(ParserCURRENT_DATE_-25))|(1<<(ParserCURRENT_TIME_-25))|(1<<(ParserCURRENT_TIMESTAMP_-25))|(1<<(ParserDATABASE_-25))|(1<<(ParserDEFAULT_-25)))) != 0) || (((_la-57)&-(0x1f+1)) == 0 && ((1<<uint((_la-57)))&((1<<(ParserDEFERRABLE_-57))|(1<<(ParserDEFERRED_-57))|(1<<(ParserDELETE_-57))|(1<<(ParserDESC_-57))|(1<<(ParserDETACH_-57))|(1<<(ParserDISTINCT_-57))|(1<<(ParserDROP_-57))|(1<<(ParserEACH_-57))|(1<<(ParserELSE_-57))|(1<<(ParserEND_-57))|(1<<(ParserESCAPE_-57))|(1<<(ParserEXCEPT_-57))|(1<<(ParserEXCLUSIVE_-57))|(1<<(ParserEXISTS_-57))|(1<<(ParserEXPLAIN_-57))|(1<<(ParserFAIL_-57))|(1<<(ParserFOR_-57))|(1<<(ParserFOREIGN_-57))|(1<<(ParserFROM_-57))|(1<<(ParserFULL_-57))|(1<<(ParserGLOB_-57))|(1<<(ParserGROUP_-57))|(1<<(ParserHAVING_-57))|(1<<(ParserIF_-57))|(1<<(ParserIGNORE_-57))|(1<<(ParserIMMEDIATE_-57))|(1<<(ParserIN_-57))|(1<<(ParserINDEX_-57))|(1<<(ParserINDEXED_-57))|(1<<(ParserINITIALLY_-57))|(1<<(ParserINNER_-57))|(1<<(ParserINSERT_-57)))) != 0) || (((_la-89)&-(0x1f+1)) == 0 && ((1<<uint((_la-89)))&((1<<(ParserINSTEAD_-89))|(1<<(ParserINTERSECT_-89))|(1<<(ParserINTO_-89))|(1<<(ParserIS_-89))|(1<<(ParserISNULL_-89))|(1<<(ParserJOIN_-89))|(1<<(ParserKEY_-89))|(1<<(ParserLEFT_-89))|(1<<(ParserLIKE_-89))|(1<<(ParserLIMIT_-89))|(1<<(ParserMATCH_-89))|(1<<(ParserNATURAL_-89))|(1<<(ParserNO_-89))|(1<<(ParserNOT_-89))|(1<<(ParserNOTNULL_-89))|(1<<(ParserNULL_-89))|(1<<(ParserOF_-89))|(1<<(ParserOFFSET_-89))|(1<<(ParserON_-89))|(1<<(ParserOR_-89))|(1<<(ParserORDER_-89))|(1<<(ParserOUTER_-89))|(1<<(ParserPLAN_-89))|(1<<(ParserPRAGMA_-89))|(1<<(ParserPRIMARY_-89))|(1<<(ParserQUERY_-89))|(1<<(ParserRAISE_-89))|(1<<(ParserRECURSIVE_-89))|(1<<(ParserREFERENCES_-89))|(1<<(ParserREGEXP_-89))|(1<<(ParserREINDEX_-89))|(1<<(ParserRELEASE_-89)))) != 0) || (((_la-121)&-(0x1f+1)) == 0 && ((1<<uint((_la-121)))&((1<<(ParserRENAME_-121))|(1<<(ParserREPLACE_-121))|(1<<(ParserRESTRICT_-121))|(1<<(ParserRIGHT_-121))|(1<<(ParserROLLBACK_-121))|(1<<(ParserROW_-121))|(1<<(ParserROWS_-121))|(1<<(ParserSAVEPOINT_-121))|(1<<(ParserSELECT_-121))|(1<<(ParserSET_-121))|(1<<(ParserTABLE_-121))|(1<<(ParserTEMP_-121))|(1<<(ParserTEMPORARY_-121))|(1<<(ParserTHEN_-121))|(1<<(ParserTO_-121))|(1<<(ParserTRANSACTION_-121))|(1<<(ParserTRIGGER_-121))|(1<<(ParserUNION_-121))|(1<<(ParserUNIQUE_-121))|(1<<(ParserUPDATE_-121))|(1<<(ParserUSING_-121))|(1<<(ParserVACUUM_-121))|(1<<(ParserVALUES_-121))|(1<<(ParserVIEW_-121))|(1<<(ParserVIRTUAL_-121))|(1<<(ParserWHEN_-121))|(1<<(ParserWHERE_-121))|(1<<(ParserWITH_-121))|(1<<(ParserWITHOUT_-121))|(1<<(ParserFIRST_VALUE_-121))|(1<<(ParserOVER_-121)))) != 0) || (((_la-153)&-(0x1f+1)) == 0 && ((1<<uint((_la-153)))&((1<<(ParserPARTITION_-153))|(1<<(ParserRANGE_-153))|(1<<(ParserPRECEDING_-153))|(1<<(ParserUNBOUNDED_-153))|(1<<(ParserCURRENT_-153))|(1<<(ParserFOLLOWING_-153))|(1<<(ParserCUME_DIST_-153))|(1<<(ParserDENSE_RANK_-153))|(1<<(ParserLAG_-153))|(1<<(ParserLAST_VALUE_-153))|(1<<(ParserLEAD_-153))|(1<<(ParserNTH_VALUE_-153))|(1<<(ParserNTILE_-153))|(1<<(ParserPERCENT_RANK_-153))|(1<<(ParserRANK_-153))|(1<<(ParserROW_NUMBER_-153))|(1<<(ParserGENERATED_-153))|(1<<(ParserALWAYS_-153))|(1<<(ParserSTORED_-153))|(1<<(ParserTRUE_-153))|(1<<(ParserFALSE_-153))|(1<<(ParserWINDOW_-153))|(1<<(ParserNULLS_-153))|(1<<(ParserFIRST_-153))|(1<<(ParserLAST_-153))|(1<<(ParserFILTER_-153))|(1<<(ParserGROUPS_-153))|(1<<(ParserEXCLUDE_-153)))) != 0)) {
+		if !(((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&-33554432) != 0) || ((int64((_la-64)) & ^0x3f) == 0 && ((int64(1)<<(_la-64))&-1152921504606846977) != 0) || ((int64((_la-128)) & ^0x3f) == 0 && ((int64(1)<<(_la-128))&9007199254740991) != 0)) {
 			p.GetErrorHandler().RecoverInline(p)
 		} else {
 			p.GetErrorHandler().ReportMatch(p)
@@ -25613,7 +29625,17 @@ func (p *Parser) Keyword() (localctx IKeywordContext) {
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // INameContext is an interface to support dynamic dispatch.
@@ -25623,20 +29645,28 @@ type INameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsNameContext differentiates from other interfaces.
 	IsNameContext()
 }
 
 type NameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyNameContext() *NameContext {
 	var p = new(NameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_name
 	return p
+}
+
+func InitEmptyNameContext(p *NameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_name
 }
 
 func (*NameContext) IsNameContext() {}
@@ -25644,7 +29674,7 @@ func (*NameContext) IsNameContext() {}
 func NewNameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *NameContext {
 	var p = new(NameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_name
@@ -25701,35 +29731,25 @@ func (s *NameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Name() (localctx INameContext) {
-	this := p
-	_ = this
-
 	localctx = NewNameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 178, ParserRULE_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2027)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFunction_nameContext is an interface to support dynamic dispatch.
@@ -25739,20 +29759,28 @@ type IFunction_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsFunction_nameContext differentiates from other interfaces.
 	IsFunction_nameContext()
 }
 
 type Function_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFunction_nameContext() *Function_nameContext {
 	var p = new(Function_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_function_name
 	return p
+}
+
+func InitEmptyFunction_nameContext(p *Function_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_function_name
 }
 
 func (*Function_nameContext) IsFunction_nameContext() {}
@@ -25760,7 +29788,7 @@ func (*Function_nameContext) IsFunction_nameContext() {}
 func NewFunction_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Function_nameContext {
 	var p = new(Function_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_function_name
@@ -25817,35 +29845,25 @@ func (s *Function_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Function_name() (localctx IFunction_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewFunction_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 180, ParserRULE_function_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2029)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISchema_nameContext is an interface to support dynamic dispatch.
@@ -25855,20 +29873,28 @@ type ISchema_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsSchema_nameContext differentiates from other interfaces.
 	IsSchema_nameContext()
 }
 
 type Schema_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySchema_nameContext() *Schema_nameContext {
 	var p = new(Schema_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_schema_name
 	return p
+}
+
+func InitEmptySchema_nameContext(p *Schema_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_schema_name
 }
 
 func (*Schema_nameContext) IsSchema_nameContext() {}
@@ -25876,7 +29902,7 @@ func (*Schema_nameContext) IsSchema_nameContext() {}
 func NewSchema_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Schema_nameContext {
 	var p = new(Schema_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_schema_name
@@ -25933,35 +29959,25 @@ func (s *Schema_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Schema_name() (localctx ISchema_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewSchema_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 182, ParserRULE_schema_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2031)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ITable_nameContext is an interface to support dynamic dispatch.
@@ -25971,20 +29987,28 @@ type ITable_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsTable_nameContext differentiates from other interfaces.
 	IsTable_nameContext()
 }
 
 type Table_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyTable_nameContext() *Table_nameContext {
 	var p = new(Table_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_table_name
 	return p
+}
+
+func InitEmptyTable_nameContext(p *Table_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_table_name
 }
 
 func (*Table_nameContext) IsTable_nameContext() {}
@@ -25992,7 +30016,7 @@ func (*Table_nameContext) IsTable_nameContext() {}
 func NewTable_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Table_nameContext {
 	var p = new(Table_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_table_name
@@ -26049,35 +30073,25 @@ func (s *Table_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Table_name() (localctx ITable_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewTable_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 184, ParserRULE_table_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2033)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ITable_or_index_nameContext is an interface to support dynamic dispatch.
@@ -26087,20 +30101,28 @@ type ITable_or_index_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsTable_or_index_nameContext differentiates from other interfaces.
 	IsTable_or_index_nameContext()
 }
 
 type Table_or_index_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyTable_or_index_nameContext() *Table_or_index_nameContext {
 	var p = new(Table_or_index_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_table_or_index_name
 	return p
+}
+
+func InitEmptyTable_or_index_nameContext(p *Table_or_index_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_table_or_index_name
 }
 
 func (*Table_or_index_nameContext) IsTable_or_index_nameContext() {}
@@ -26108,7 +30130,7 @@ func (*Table_or_index_nameContext) IsTable_or_index_nameContext() {}
 func NewTable_or_index_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Table_or_index_nameContext {
 	var p = new(Table_or_index_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_table_or_index_name
@@ -26165,35 +30187,25 @@ func (s *Table_or_index_nameContext) Accept(visitor antlr.ParseTreeVisitor) inte
 }
 
 func (p *Parser) Table_or_index_name() (localctx ITable_or_index_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewTable_or_index_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 186, ParserRULE_table_or_index_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2035)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IColumn_nameContext is an interface to support dynamic dispatch.
@@ -26203,20 +30215,28 @@ type IColumn_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsColumn_nameContext differentiates from other interfaces.
 	IsColumn_nameContext()
 }
 
 type Column_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyColumn_nameContext() *Column_nameContext {
 	var p = new(Column_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_column_name
 	return p
+}
+
+func InitEmptyColumn_nameContext(p *Column_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_column_name
 }
 
 func (*Column_nameContext) IsColumn_nameContext() {}
@@ -26224,7 +30244,7 @@ func (*Column_nameContext) IsColumn_nameContext() {}
 func NewColumn_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Column_nameContext {
 	var p = new(Column_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_column_name
@@ -26281,35 +30301,25 @@ func (s *Column_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Column_name() (localctx IColumn_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewColumn_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 188, ParserRULE_column_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2037)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICollation_nameContext is an interface to support dynamic dispatch.
@@ -26319,20 +30329,28 @@ type ICollation_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsCollation_nameContext differentiates from other interfaces.
 	IsCollation_nameContext()
 }
 
 type Collation_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCollation_nameContext() *Collation_nameContext {
 	var p = new(Collation_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_collation_name
 	return p
+}
+
+func InitEmptyCollation_nameContext(p *Collation_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_collation_name
 }
 
 func (*Collation_nameContext) IsCollation_nameContext() {}
@@ -26340,7 +30358,7 @@ func (*Collation_nameContext) IsCollation_nameContext() {}
 func NewCollation_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Collation_nameContext {
 	var p = new(Collation_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_collation_name
@@ -26397,35 +30415,25 @@ func (s *Collation_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *Parser) Collation_name() (localctx ICollation_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewCollation_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 190, ParserRULE_collation_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2039)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IForeign_tableContext is an interface to support dynamic dispatch.
@@ -26435,20 +30443,28 @@ type IForeign_tableContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsForeign_tableContext differentiates from other interfaces.
 	IsForeign_tableContext()
 }
 
 type Foreign_tableContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyForeign_tableContext() *Foreign_tableContext {
 	var p = new(Foreign_tableContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_foreign_table
 	return p
+}
+
+func InitEmptyForeign_tableContext(p *Foreign_tableContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_foreign_table
 }
 
 func (*Foreign_tableContext) IsForeign_tableContext() {}
@@ -26456,7 +30472,7 @@ func (*Foreign_tableContext) IsForeign_tableContext() {}
 func NewForeign_tableContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Foreign_tableContext {
 	var p = new(Foreign_tableContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_foreign_table
@@ -26513,35 +30529,25 @@ func (s *Foreign_tableContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *Parser) Foreign_table() (localctx IForeign_tableContext) {
-	this := p
-	_ = this
-
 	localctx = NewForeign_tableContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 192, ParserRULE_foreign_table)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2041)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IIndex_nameContext is an interface to support dynamic dispatch.
@@ -26551,20 +30557,28 @@ type IIndex_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsIndex_nameContext differentiates from other interfaces.
 	IsIndex_nameContext()
 }
 
 type Index_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyIndex_nameContext() *Index_nameContext {
 	var p = new(Index_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_index_name
 	return p
+}
+
+func InitEmptyIndex_nameContext(p *Index_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_index_name
 }
 
 func (*Index_nameContext) IsIndex_nameContext() {}
@@ -26572,7 +30586,7 @@ func (*Index_nameContext) IsIndex_nameContext() {}
 func NewIndex_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Index_nameContext {
 	var p = new(Index_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_index_name
@@ -26629,35 +30643,25 @@ func (s *Index_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Index_name() (localctx IIndex_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewIndex_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 194, ParserRULE_index_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2043)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ITrigger_nameContext is an interface to support dynamic dispatch.
@@ -26667,20 +30671,28 @@ type ITrigger_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsTrigger_nameContext differentiates from other interfaces.
 	IsTrigger_nameContext()
 }
 
 type Trigger_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyTrigger_nameContext() *Trigger_nameContext {
 	var p = new(Trigger_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_trigger_name
 	return p
+}
+
+func InitEmptyTrigger_nameContext(p *Trigger_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_trigger_name
 }
 
 func (*Trigger_nameContext) IsTrigger_nameContext() {}
@@ -26688,7 +30700,7 @@ func (*Trigger_nameContext) IsTrigger_nameContext() {}
 func NewTrigger_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Trigger_nameContext {
 	var p = new(Trigger_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_trigger_name
@@ -26745,35 +30757,25 @@ func (s *Trigger_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *Parser) Trigger_name() (localctx ITrigger_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewTrigger_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 196, ParserRULE_trigger_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2045)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IView_nameContext is an interface to support dynamic dispatch.
@@ -26783,20 +30785,28 @@ type IView_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsView_nameContext differentiates from other interfaces.
 	IsView_nameContext()
 }
 
 type View_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyView_nameContext() *View_nameContext {
 	var p = new(View_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_view_name
 	return p
+}
+
+func InitEmptyView_nameContext(p *View_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_view_name
 }
 
 func (*View_nameContext) IsView_nameContext() {}
@@ -26804,7 +30814,7 @@ func (*View_nameContext) IsView_nameContext() {}
 func NewView_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *View_nameContext {
 	var p = new(View_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_view_name
@@ -26861,35 +30871,25 @@ func (s *View_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) View_name() (localctx IView_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewView_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 198, ParserRULE_view_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2047)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IModule_nameContext is an interface to support dynamic dispatch.
@@ -26899,20 +30899,28 @@ type IModule_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsModule_nameContext differentiates from other interfaces.
 	IsModule_nameContext()
 }
 
 type Module_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyModule_nameContext() *Module_nameContext {
 	var p = new(Module_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_module_name
 	return p
+}
+
+func InitEmptyModule_nameContext(p *Module_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_module_name
 }
 
 func (*Module_nameContext) IsModule_nameContext() {}
@@ -26920,7 +30928,7 @@ func (*Module_nameContext) IsModule_nameContext() {}
 func NewModule_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Module_nameContext {
 	var p = new(Module_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_module_name
@@ -26977,35 +30985,25 @@ func (s *Module_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Module_name() (localctx IModule_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewModule_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 200, ParserRULE_module_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2049)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IPragma_nameContext is an interface to support dynamic dispatch.
@@ -27015,20 +31013,28 @@ type IPragma_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsPragma_nameContext differentiates from other interfaces.
 	IsPragma_nameContext()
 }
 
 type Pragma_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyPragma_nameContext() *Pragma_nameContext {
 	var p = new(Pragma_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_pragma_name
 	return p
+}
+
+func InitEmptyPragma_nameContext(p *Pragma_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_pragma_name
 }
 
 func (*Pragma_nameContext) IsPragma_nameContext() {}
@@ -27036,7 +31042,7 @@ func (*Pragma_nameContext) IsPragma_nameContext() {}
 func NewPragma_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Pragma_nameContext {
 	var p = new(Pragma_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_pragma_name
@@ -27093,35 +31099,25 @@ func (s *Pragma_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Pragma_name() (localctx IPragma_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewPragma_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 202, ParserRULE_pragma_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2051)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISavepoint_nameContext is an interface to support dynamic dispatch.
@@ -27131,20 +31127,28 @@ type ISavepoint_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsSavepoint_nameContext differentiates from other interfaces.
 	IsSavepoint_nameContext()
 }
 
 type Savepoint_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySavepoint_nameContext() *Savepoint_nameContext {
 	var p = new(Savepoint_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_savepoint_name
 	return p
+}
+
+func InitEmptySavepoint_nameContext(p *Savepoint_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_savepoint_name
 }
 
 func (*Savepoint_nameContext) IsSavepoint_nameContext() {}
@@ -27152,7 +31156,7 @@ func (*Savepoint_nameContext) IsSavepoint_nameContext() {}
 func NewSavepoint_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Savepoint_nameContext {
 	var p = new(Savepoint_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_savepoint_name
@@ -27209,35 +31213,25 @@ func (s *Savepoint_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *Parser) Savepoint_name() (localctx ISavepoint_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewSavepoint_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 204, ParserRULE_savepoint_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2053)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ITable_aliasContext is an interface to support dynamic dispatch.
@@ -27247,20 +31241,28 @@ type ITable_aliasContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsTable_aliasContext differentiates from other interfaces.
 	IsTable_aliasContext()
 }
 
 type Table_aliasContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyTable_aliasContext() *Table_aliasContext {
 	var p = new(Table_aliasContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_table_alias
 	return p
+}
+
+func InitEmptyTable_aliasContext(p *Table_aliasContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_table_alias
 }
 
 func (*Table_aliasContext) IsTable_aliasContext() {}
@@ -27268,7 +31270,7 @@ func (*Table_aliasContext) IsTable_aliasContext() {}
 func NewTable_aliasContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Table_aliasContext {
 	var p = new(Table_aliasContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_table_alias
@@ -27325,35 +31327,25 @@ func (s *Table_aliasContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Table_alias() (localctx ITable_aliasContext) {
-	this := p
-	_ = this
-
 	localctx = NewTable_aliasContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 206, ParserRULE_table_alias)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2055)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ITransaction_nameContext is an interface to support dynamic dispatch.
@@ -27363,20 +31355,28 @@ type ITransaction_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsTransaction_nameContext differentiates from other interfaces.
 	IsTransaction_nameContext()
 }
 
 type Transaction_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyTransaction_nameContext() *Transaction_nameContext {
 	var p = new(Transaction_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_transaction_name
 	return p
+}
+
+func InitEmptyTransaction_nameContext(p *Transaction_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_transaction_name
 }
 
 func (*Transaction_nameContext) IsTransaction_nameContext() {}
@@ -27384,7 +31384,7 @@ func (*Transaction_nameContext) IsTransaction_nameContext() {}
 func NewTransaction_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Transaction_nameContext {
 	var p = new(Transaction_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_transaction_name
@@ -27441,35 +31441,25 @@ func (s *Transaction_nameContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *Parser) Transaction_name() (localctx ITransaction_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewTransaction_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 208, ParserRULE_transaction_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2057)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IWindow_nameContext is an interface to support dynamic dispatch.
@@ -27479,20 +31469,28 @@ type IWindow_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsWindow_nameContext differentiates from other interfaces.
 	IsWindow_nameContext()
 }
 
 type Window_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyWindow_nameContext() *Window_nameContext {
 	var p = new(Window_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_window_name
 	return p
+}
+
+func InitEmptyWindow_nameContext(p *Window_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_window_name
 }
 
 func (*Window_nameContext) IsWindow_nameContext() {}
@@ -27500,7 +31498,7 @@ func (*Window_nameContext) IsWindow_nameContext() {}
 func NewWindow_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Window_nameContext {
 	var p = new(Window_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_window_name
@@ -27557,35 +31555,25 @@ func (s *Window_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Window_name() (localctx IWindow_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewWindow_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 210, ParserRULE_window_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2059)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAliasContext is an interface to support dynamic dispatch.
@@ -27595,20 +31583,28 @@ type IAliasContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsAliasContext differentiates from other interfaces.
 	IsAliasContext()
 }
 
 type AliasContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyAliasContext() *AliasContext {
 	var p = new(AliasContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_alias
 	return p
+}
+
+func InitEmptyAliasContext(p *AliasContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_alias
 }
 
 func (*AliasContext) IsAliasContext() {}
@@ -27616,7 +31612,7 @@ func (*AliasContext) IsAliasContext() {}
 func NewAliasContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *AliasContext {
 	var p = new(AliasContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_alias
@@ -27673,35 +31669,25 @@ func (s *AliasContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Alias() (localctx IAliasContext) {
-	this := p
-	_ = this
-
 	localctx = NewAliasContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 212, ParserRULE_alias)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2061)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFilenameContext is an interface to support dynamic dispatch.
@@ -27711,20 +31697,28 @@ type IFilenameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsFilenameContext differentiates from other interfaces.
 	IsFilenameContext()
 }
 
 type FilenameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFilenameContext() *FilenameContext {
 	var p = new(FilenameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_filename
 	return p
+}
+
+func InitEmptyFilenameContext(p *FilenameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_filename
 }
 
 func (*FilenameContext) IsFilenameContext() {}
@@ -27732,7 +31726,7 @@ func (*FilenameContext) IsFilenameContext() {}
 func NewFilenameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *FilenameContext {
 	var p = new(FilenameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_filename
@@ -27789,35 +31783,25 @@ func (s *FilenameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Filename() (localctx IFilenameContext) {
-	this := p
-	_ = this
-
 	localctx = NewFilenameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 214, ParserRULE_filename)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2063)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IBase_window_nameContext is an interface to support dynamic dispatch.
@@ -27827,20 +31811,28 @@ type IBase_window_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsBase_window_nameContext differentiates from other interfaces.
 	IsBase_window_nameContext()
 }
 
 type Base_window_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyBase_window_nameContext() *Base_window_nameContext {
 	var p = new(Base_window_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_base_window_name
 	return p
+}
+
+func InitEmptyBase_window_nameContext(p *Base_window_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_base_window_name
 }
 
 func (*Base_window_nameContext) IsBase_window_nameContext() {}
@@ -27848,7 +31840,7 @@ func (*Base_window_nameContext) IsBase_window_nameContext() {}
 func NewBase_window_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Base_window_nameContext {
 	var p = new(Base_window_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_base_window_name
@@ -27905,35 +31897,25 @@ func (s *Base_window_nameContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *Parser) Base_window_name() (localctx IBase_window_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewBase_window_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 216, ParserRULE_base_window_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2065)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISimple_funcContext is an interface to support dynamic dispatch.
@@ -27943,20 +31925,28 @@ type ISimple_funcContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsSimple_funcContext differentiates from other interfaces.
 	IsSimple_funcContext()
 }
 
 type Simple_funcContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySimple_funcContext() *Simple_funcContext {
 	var p = new(Simple_funcContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_simple_func
 	return p
+}
+
+func InitEmptySimple_funcContext(p *Simple_funcContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_simple_func
 }
 
 func (*Simple_funcContext) IsSimple_funcContext() {}
@@ -27964,7 +31954,7 @@ func (*Simple_funcContext) IsSimple_funcContext() {}
 func NewSimple_funcContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Simple_funcContext {
 	var p = new(Simple_funcContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_simple_func
@@ -28021,35 +32011,25 @@ func (s *Simple_funcContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *Parser) Simple_func() (localctx ISimple_funcContext) {
-	this := p
-	_ = this
-
 	localctx = NewSimple_funcContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 218, ParserRULE_simple_func)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2067)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAggregate_funcContext is an interface to support dynamic dispatch.
@@ -28059,20 +32039,28 @@ type IAggregate_funcContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsAggregate_funcContext differentiates from other interfaces.
 	IsAggregate_funcContext()
 }
 
 type Aggregate_funcContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyAggregate_funcContext() *Aggregate_funcContext {
 	var p = new(Aggregate_funcContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_aggregate_func
 	return p
+}
+
+func InitEmptyAggregate_funcContext(p *Aggregate_funcContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_aggregate_func
 }
 
 func (*Aggregate_funcContext) IsAggregate_funcContext() {}
@@ -28080,7 +32068,7 @@ func (*Aggregate_funcContext) IsAggregate_funcContext() {}
 func NewAggregate_funcContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Aggregate_funcContext {
 	var p = new(Aggregate_funcContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_aggregate_func
@@ -28137,35 +32125,25 @@ func (s *Aggregate_funcContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *Parser) Aggregate_func() (localctx IAggregate_funcContext) {
-	this := p
-	_ = this
-
 	localctx = NewAggregate_funcContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 220, ParserRULE_aggregate_func)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2069)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ITable_function_nameContext is an interface to support dynamic dispatch.
@@ -28175,20 +32153,28 @@ type ITable_function_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Any_name() IAny_nameContext
+
 	// IsTable_function_nameContext differentiates from other interfaces.
 	IsTable_function_nameContext()
 }
 
 type Table_function_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyTable_function_nameContext() *Table_function_nameContext {
 	var p = new(Table_function_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_table_function_name
 	return p
+}
+
+func InitEmptyTable_function_nameContext(p *Table_function_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_table_function_name
 }
 
 func (*Table_function_nameContext) IsTable_function_nameContext() {}
@@ -28196,7 +32182,7 @@ func (*Table_function_nameContext) IsTable_function_nameContext() {}
 func NewTable_function_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Table_function_nameContext {
 	var p = new(Table_function_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_table_function_name
@@ -28253,35 +32239,25 @@ func (s *Table_function_nameContext) Accept(visitor antlr.ParseTreeVisitor) inte
 }
 
 func (p *Parser) Table_function_name() (localctx ITable_function_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewTable_function_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 222, ParserRULE_table_function_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(2071)
 		p.Any_name()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAny_nameContext is an interface to support dynamic dispatch.
@@ -28291,20 +32267,33 @@ type IAny_nameContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	IDENTIFIER() antlr.TerminalNode
+	Keyword() IKeywordContext
+	STRING_LITERAL() antlr.TerminalNode
+	OPEN_PAR() antlr.TerminalNode
+	Any_name() IAny_nameContext
+	CLOSE_PAR() antlr.TerminalNode
+
 	// IsAny_nameContext differentiates from other interfaces.
 	IsAny_nameContext()
 }
 
 type Any_nameContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyAny_nameContext() *Any_nameContext {
 	var p = new(Any_nameContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = ParserRULE_any_name
 	return p
+}
+
+func InitEmptyAny_nameContext(p *Any_nameContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = ParserRULE_any_name
 }
 
 func (*Any_nameContext) IsAny_nameContext() {}
@@ -28312,7 +32301,7 @@ func (*Any_nameContext) IsAny_nameContext() {}
 func NewAny_nameContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Any_nameContext {
 	var p = new(Any_nameContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = ParserRULE_any_name
@@ -28401,30 +32390,13 @@ func (s *Any_nameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *Parser) Any_name() (localctx IAny_nameContext) {
-	this := p
-	_ = this
-
 	localctx = NewAny_nameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 224, ParserRULE_any_name)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(2080)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case ParserIDENTIFIER:
@@ -28432,6 +32404,10 @@ func (p *Parser) Any_name() (localctx IAny_nameContext) {
 		{
 			p.SetState(2073)
 			p.Match(ParserIDENTIFIER)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserABORT_, ParserACTION_, ParserADD_, ParserAFTER_, ParserALL_, ParserALTER_, ParserANALYZE_, ParserAND_, ParserAS_, ParserASC_, ParserATTACH_, ParserAUTOINCREMENT_, ParserBEFORE_, ParserBEGIN_, ParserBETWEEN_, ParserBY_, ParserCASCADE_, ParserCASE_, ParserCAST_, ParserCHECK_, ParserCOLLATE_, ParserCOLUMN_, ParserCOMMIT_, ParserCONFLICT_, ParserCONSTRAINT_, ParserCREATE_, ParserCROSS_, ParserCURRENT_DATE_, ParserCURRENT_TIME_, ParserCURRENT_TIMESTAMP_, ParserDATABASE_, ParserDEFAULT_, ParserDEFERRABLE_, ParserDEFERRED_, ParserDELETE_, ParserDESC_, ParserDETACH_, ParserDISTINCT_, ParserDROP_, ParserEACH_, ParserELSE_, ParserEND_, ParserESCAPE_, ParserEXCEPT_, ParserEXCLUSIVE_, ParserEXISTS_, ParserEXPLAIN_, ParserFAIL_, ParserFOR_, ParserFOREIGN_, ParserFROM_, ParserFULL_, ParserGLOB_, ParserGROUP_, ParserHAVING_, ParserIF_, ParserIGNORE_, ParserIMMEDIATE_, ParserIN_, ParserINDEX_, ParserINDEXED_, ParserINITIALLY_, ParserINNER_, ParserINSERT_, ParserINSTEAD_, ParserINTERSECT_, ParserINTO_, ParserIS_, ParserISNULL_, ParserJOIN_, ParserKEY_, ParserLEFT_, ParserLIKE_, ParserLIMIT_, ParserMATCH_, ParserNATURAL_, ParserNO_, ParserNOT_, ParserNOTNULL_, ParserNULL_, ParserOF_, ParserOFFSET_, ParserON_, ParserOR_, ParserORDER_, ParserOUTER_, ParserPLAN_, ParserPRAGMA_, ParserPRIMARY_, ParserQUERY_, ParserRAISE_, ParserRECURSIVE_, ParserREFERENCES_, ParserREGEXP_, ParserREINDEX_, ParserRELEASE_, ParserRENAME_, ParserREPLACE_, ParserRESTRICT_, ParserRIGHT_, ParserROLLBACK_, ParserROW_, ParserROWS_, ParserSAVEPOINT_, ParserSELECT_, ParserSET_, ParserTABLE_, ParserTEMP_, ParserTEMPORARY_, ParserTHEN_, ParserTO_, ParserTRANSACTION_, ParserTRIGGER_, ParserUNION_, ParserUNIQUE_, ParserUPDATE_, ParserUSING_, ParserVACUUM_, ParserVALUES_, ParserVIEW_, ParserVIRTUAL_, ParserWHEN_, ParserWHERE_, ParserWITH_, ParserWITHOUT_, ParserFIRST_VALUE_, ParserOVER_, ParserPARTITION_, ParserRANGE_, ParserPRECEDING_, ParserUNBOUNDED_, ParserCURRENT_, ParserFOLLOWING_, ParserCUME_DIST_, ParserDENSE_RANK_, ParserLAG_, ParserLAST_VALUE_, ParserLEAD_, ParserNTH_VALUE_, ParserNTILE_, ParserPERCENT_RANK_, ParserRANK_, ParserROW_NUMBER_, ParserGENERATED_, ParserALWAYS_, ParserSTORED_, ParserTRUE_, ParserFALSE_, ParserWINDOW_, ParserNULLS_, ParserFIRST_, ParserLAST_, ParserFILTER_, ParserGROUPS_, ParserEXCLUDE_:
@@ -28446,6 +32422,10 @@ func (p *Parser) Any_name() (localctx IAny_nameContext) {
 		{
 			p.SetState(2075)
 			p.Match(ParserSTRING_LITERAL)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case ParserOPEN_PAR:
@@ -28453,6 +32433,10 @@ func (p *Parser) Any_name() (localctx IAny_nameContext) {
 		{
 			p.SetState(2076)
 			p.Match(ParserOPEN_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(2077)
@@ -28461,13 +32445,28 @@ func (p *Parser) Any_name() (localctx IAny_nameContext) {
 		{
 			p.SetState(2078)
 			p.Match(ParserCLOSE_PAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 func (p *Parser) Sempred(localctx antlr.RuleContext, ruleIndex, predIndex int) bool {
@@ -28485,9 +32484,6 @@ func (p *Parser) Sempred(localctx antlr.RuleContext, ruleIndex, predIndex int) b
 }
 
 func (p *Parser) Expr_Sempred(localctx antlr.RuleContext, predIndex int) bool {
-	this := p
-	_ = this
-
 	switch predIndex {
 	case 0:
 		return p.Precpred(p.GetParserRuleContext(), 20)
