@@ -61,6 +61,7 @@ var DataSources = []schemahcl.Option{
 	schemahcl.WithDataSource("runtimevar", RuntimeVar),
 	schemahcl.WithDataSource("template_dir", TemplateDir),
 	schemahcl.WithDataSource("remote_dir", RemoteDir),
+	schemahcl.WithDataSource("remote_schema", RemoteSchema),
 	schemahcl.WithDataSource("hcl_schema", SchemaHCL),
 	schemahcl.WithDataSource("external_schema", SchemaExternal),
 	schemahcl.WithDataSource("aws_rds_token", AWSRDSToken),
