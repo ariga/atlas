@@ -318,7 +318,7 @@ Migrating to version {{ cyan .Target }}{{ with .Current }} from {{ cyan . }}{{ e
   {{ yellow "--" }} {{ dec $files }} migrations ok (1 with errors)
   {{ yellow "--" }} {{ dec $stmts }} sql statements ok (1 with errors)
 {{- else }}
-  {{ yellow "--" }} {{ len .Applied }} migrations 
+  {{ yellow "--" }} {{ len .Applied }} migrations
   {{ yellow "--" }} {{ .CountStmts  }} sql statements
 {{- end }}
 {{- end }}
@@ -800,7 +800,13 @@ func mermaid(i *SchemaInspect, _ ...string) (string, error) {
 		b       strings.Builder
 		qualify = len(i.Realm.Schemas) > 1
 		funcs   = template.FuncMap{
-			"formatType": ft.FormatType,
+			"formatType": func(t schema.Type) (string, error) {
+				f, err := ft.FormatType(t)
+				if err != nil {
+					return f, err
+				}
+				return strings.ReplaceAll(f, " ", "_"), err
+			},
 			"tableName": func(t *schema.Table) string {
 				if qualify {
 					return fmt.Sprintf("%[1]s_%[2]s[\"%[1]s.%[2]s\"]", t.Schema.Name, t.Name)
