@@ -52,7 +52,7 @@ func ParseStmt(text string) (stmt *Stmt, err error) {
 			stmt = nil
 		} else if perr := recover(); perr != nil {
 			m := fmt.Sprint(perr)
-			if v, ok := err.(antlr.RecognitionException); ok {
+			if v, ok := perr.(antlr.RecognitionException); ok {
 				m = v.GetMessage()
 			}
 			err = errors.New(m)
