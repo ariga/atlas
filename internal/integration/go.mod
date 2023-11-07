@@ -8,7 +8,7 @@ replace ariga.io/atlas/cmd/atlas => ../../cmd/atlas
 
 require (
 	ariga.io/atlas v0.13.2-0.20230813181001-1fef462e7670
-	ariga.io/atlas/cmd/atlas v0.13.2-0.20230813181001-1fef462e7670
+	ariga.io/atlas/cmd/atlas v0.13.2-0.20231107092658-0256971fa570
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/lib/pq v1.10.7
@@ -92,7 +92,7 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/spf13/cobra v1.7.0 // indirect
+	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
