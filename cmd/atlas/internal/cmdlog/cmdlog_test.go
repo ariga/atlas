@@ -263,7 +263,7 @@ func TestSchemaInspect_Mermaid(t *testing.T) {
 	b.Reset()
 	users.
 		AddColumns(
-			schema.NewFloatColumn("duration", "double precision"),
+			schema.NewFloatColumn("time duration", "double precision"),
 		)
 	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{
 		Client: client,
@@ -274,7 +274,7 @@ func TestSchemaInspect_Mermaid(t *testing.T) {
       int id PK
       text name
       int best_friend_id FK
-      double_precision duration
+      double_precision time_duration
     }
     users |o--o| users : best_friend_id
 `, b.String())

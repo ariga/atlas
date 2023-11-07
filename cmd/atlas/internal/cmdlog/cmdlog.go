@@ -800,13 +800,8 @@ func mermaid(i *SchemaInspect, _ ...string) (string, error) {
 		b       strings.Builder
 		qualify = len(i.Realm.Schemas) > 1
 		funcs   = template.FuncMap{
-			"formatType": func(t schema.Type) (string, error) {
-				f, err := ft.FormatType(t)
-				if err != nil {
-					return f, err
-				}
-				return strings.ReplaceAll(f, " ", "_"), err
-			},
+			"nospace":    strings.NewReplacer(" ", "_").Replace,
+			"formatType": ft.FormatType,
 			"tableName": func(t *schema.Table) string {
 				if qualify {
 					return fmt.Sprintf("%[1]s_%[2]s[\"%[1]s.%[2]s\"]", t.Schema.Name, t.Name)
@@ -861,7 +856,7 @@ func mermaid(i *SchemaInspect, _ ...string) (string, error) {
   {{- range $t := $s.Tables }}
     {{ tableName $t }} {
     {{- range $c := $t.Columns }}
-      {{ formatType $c.Type.Type }} {{ $c.Name }}{{ with pkfk $t $c }} {{ . }}{{ end }}
+      {{ formatType $c.Type.Type | nospace }} {{ nospace $c.Name }}{{ with pkfk $t $c }} {{ . }}{{ end }}
     {{- end }}
     }
     {{- range $fk := $t.ForeignKeys }}
