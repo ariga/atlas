@@ -259,6 +259,25 @@ func TestSchemaInspect_Mermaid(t *testing.T) {
     }
     users |o--o| users : best_friend_id
 `, b.String())
+
+	b.Reset()
+	users.
+		AddColumns(
+			schema.NewFloatColumn("time duration", "double precision"),
+		)
+	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{
+		Client: client,
+		Realm:  schema.NewRealm(schema.New("main").AddTables(users)),
+	}))
+	require.Equal(t, `erDiagram
+    users {
+      int id PK
+      text name
+      int best_friend_id FK
+      double_precision time_duration
+    }
+    users |o--o| users : best_friend_id
+`, b.String())
 }
 
 func TestSchemaDiff_MarshalSQL(t *testing.T) {
