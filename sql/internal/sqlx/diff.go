@@ -697,7 +697,7 @@ func similarCheck(attrs []schema.Attr, c *schema.Check) (*schema.Check, bool) {
 		if check.Name != "" && check.Name == c.Name {
 			byName = check
 		}
-		if check.Expr == c.Expr {
+		if check.Expr == c.Expr || MayWrap(check.Expr) == MayWrap(c.Expr) {
 			byExpr = check
 		}
 	}
