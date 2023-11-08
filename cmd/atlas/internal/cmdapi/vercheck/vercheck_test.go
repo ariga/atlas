@@ -24,6 +24,9 @@ import (
 )
 
 func TestVerCheck(t *testing.T) {
+	homedir.DisableCache = true
+	t.Cleanup(func() { homedir.DisableCache = false })
+
 	var path, ua string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		output := `{"latest":{"Version":"v0.7.2","Summary":"","Link":"https://github.com/ariga/atlas/releases/tag/v0.7.2"},"advisory":null}`
