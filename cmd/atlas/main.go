@@ -20,7 +20,6 @@ import (
 	_ "ariga.io/atlas/sql/postgres/postgrescheck"
 	_ "ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite/sqlitecheck"
-	"github.com/mitchellh/go-homedir"
 	"golang.org/x/mod/semver"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -48,7 +47,6 @@ const (
 	// envNoUpdate when enabled it cancels checking for update
 	envNoUpdate = "ATLAS_NO_UPDATE_NOTIFIER"
 	vercheckURL = "https://vercheck.ariga.io"
-	versionFile = "~/.atlas/release.json"
 )
 
 func noText() string { return "" }
@@ -65,15 +63,11 @@ func checkForUpdate(ctx context.Context) func() string {
 	if !semver.IsValid(version) {
 		return noText
 	}
-	path, err := homedir.Expand(versionFile)
-	if err != nil {
-		return noText
-	}
 	var message string
 	go func() {
 		defer close(done)
 		endpoint := vercheckEndpoint(ctx)
-		vc := vercheck.New(endpoint, path)
+		vc := vercheck.New(endpoint)
 		payload, err := vc.Check(ctx, version)
 		if err != nil {
 			return

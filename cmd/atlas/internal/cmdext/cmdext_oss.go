@@ -16,7 +16,7 @@ import (
 )
 
 // RemoteSchema is a data source that for reading remote schemas.
-func RemoteSchema(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+func RemoteSchema(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
 	return cty.Zero, fmt.Errorf("data.remote_schema is not supported by this release. See: https://atlasgo.io/getting-started")
 }
 
