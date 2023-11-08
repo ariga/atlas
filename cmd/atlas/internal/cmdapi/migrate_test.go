@@ -1273,8 +1273,7 @@ func TestMigrate_Diff(t *testing.T) {
 
 	t.Run("Edit", func(t *testing.T) {
 		p := t.TempDir()
-		require.NoError(t, os.Setenv("EDITOR", "echo '-- Comment' >>"))
-		t.Cleanup(func() { require.NoError(t, os.Unsetenv("EDITOR")) })
+		t.Setenv("EDITOR", "echo '-- Comment' >>")
 		args := []string{
 			"--edit",
 			"--dir", "file://" + p,

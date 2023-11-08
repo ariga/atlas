@@ -12,15 +12,21 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"text/template"
 	"time"
+
+	"ariga.io/atlas/cmd/atlas/internal/cmdstate"
 )
 
+// StateFileName is the name of the file where the vercheck state is stored.
+const StateFileName = "release.json"
+
 // New returns a new VerChecker for the endpoint.
-func New(endpoint, statePath string) *VerChecker {
-	return &VerChecker{endpoint: endpoint, statePath: statePath}
+func New(endpoint string) *VerChecker {
+	return &VerChecker{
+		endpoint: endpoint,
+		state:    &cmdstate.File[State]{Name: StateFileName},
+	}
 }
 
 type (
@@ -46,8 +52,8 @@ type (
 	}
 	// VerChecker retrieves version information from the vercheck service.
 	VerChecker struct {
-		endpoint  string
-		statePath string
+		endpoint string
+		state    *cmdstate.File[State]
 	}
 	// State stores information about local runs of VerChecker to limit the
 	// frequency in which clients poll the service for information.
@@ -91,37 +97,15 @@ func (v *VerChecker) Check(ctx context.Context, ver string) (*Payload, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&p); err != nil {
 		return nil, err
 	}
-	if v.statePath != "" {
-		s := State{CheckedAt: time.Now()}
-		st, err := json.Marshal(s)
-		if err != nil {
-			return nil, err
-		}
-		// Create containing directory if it doesn't exist.
-		if err := os.MkdirAll(filepath.Dir(v.statePath), os.ModePerm); err != nil {
-			return nil, err
-		}
-		if err := os.WriteFile(v.statePath, st, 0666); err != nil {
-			return nil, err
-		}
+	if err := v.state.Write(State{CheckedAt: time.Now()}); err != nil {
+		return nil, err
 	}
 	return &p, nil
 }
 
 func (v *VerChecker) verifyTime() error {
-	// Skip check if path to state file isn't configured.
-	if v.statePath == "" {
-		return nil
-	}
-	var s State
-	f, err := os.Open(v.statePath)
-	if err != nil {
-		return nil
-	}
-	if err := json.NewDecoder(f).Decode(&s); err != nil {
-		return nil
-	}
-	if time.Since(s.CheckedAt) >= (time.Hour * 24) {
+	s, err := v.state.Read()
+	if err != nil || time.Since(s.CheckedAt) >= (time.Hour*24) {
 		return nil
 	}
 	return errSkip

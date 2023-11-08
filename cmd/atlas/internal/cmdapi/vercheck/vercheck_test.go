@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
+
+	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,7 +33,9 @@ func TestVerCheck(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	vc := New(srv.URL, "")
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	vc := New(srv.URL)
 	ver := "v0.1.2"
 	check, err := vc.Check(context.Background(), ver)
 
@@ -47,9 +51,15 @@ func TestVerCheck(t *testing.T) {
 			Link:    "https://github.com/ariga/atlas/releases/tag/v0.7.2",
 		},
 	}, check)
+
+	dirs, err := os.ReadDir(filepath.Join(home, ".atlas"))
+	require.NoError(t, err)
+	require.Len(t, dirs, 1)
 }
 
 func TestState(t *testing.T) {
+	homedir.DisableCache = true
+	t.Cleanup(func() { homedir.DisableCache = false })
 	hrAgo, err := json.Marshal(State{CheckedAt: time.Now().Add(-time.Hour)})
 	require.NoError(t, err)
 	weekAgo, err := json.Marshal(State{CheckedAt: time.Now().Add(-time.Hour * 24 * 7)})
@@ -87,33 +97,40 @@ func TestState(t *testing.T) {
 				_, _ = w.Write([]byte(`{}`))
 			}))
 			t.Cleanup(srv.Close)
-			path := filepath.Join(t.TempDir(), "release.json")
+			home := t.TempDir()
+			path := filepath.Join(home, ".atlas", StateFileName)
 			if tt.state != "" {
-				err := os.WriteFile(path, []byte(tt.state), 0666)
-				require.NoError(t, err)
+				require.NoError(t, os.MkdirAll(filepath.Dir(path), os.ModePerm))
+				require.NoError(t, os.WriteFile(path, []byte(tt.state), 0666))
 			}
-			vc := New(srv.URL, path)
+			t.Setenv("HOME", home)
+			vc := New(srv.URL)
 			_, _ = vc.Check(context.Background(), "v0.1.2")
 			require.EqualValues(t, tt.expectedRun, ran)
 
-			b, err := os.ReadFile(path)
+			buf, err := os.ReadFile(path)
 			require.NoError(t, err)
 			if tt.expectedRun {
-				require.NotEqualValues(t, tt.state, b)
+				require.NotEqualValues(t, tt.state, buf)
 			} else {
-				require.EqualValues(t, tt.state, b)
+				require.EqualValues(t, tt.state, buf)
 			}
 		})
 	}
 }
 
 func TestStatePersist(t *testing.T) {
+	homedir.DisableCache = true
+	t.Cleanup(func() { homedir.DisableCache = false })
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{}`))
 	}))
 	t.Cleanup(srv.Close)
-	path := filepath.Join(t.TempDir(), ".atlas", "release.json")
-	vc := New(srv.URL, path)
+	home := t.TempDir()
+	path := filepath.Join(home, ".atlas", StateFileName)
+	t.Setenv("HOME", home)
+	vc := New(srv.URL)
 	_, err := vc.Check(context.Background(), "v0.1.2")
 	require.NoError(t, err)
 
