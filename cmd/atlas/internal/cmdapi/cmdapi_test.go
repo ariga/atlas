@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 
 	"ariga.io/atlas/sql/sqlite"
@@ -107,8 +106,12 @@ func runCmdContext(ctx context.Context, cmd *cobra.Command, args ...string) (str
 
 // openSQLite creates a sqlite db, seeds it with the seed query and returns the url to it.
 func openSQLite(t *testing.T, seed string) string {
-	path := filepath.Join(t.TempDir(), "sqlite.db")
-	dsn := fmt.Sprintf("file:%s?cache=shared&_fk=1", path)
+	f, err := os.CreateTemp("", "sqlite.db")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, os.Remove(f.Name()))
+	})
+	dsn := fmt.Sprintf("file:%s?cache=shared&_fk=1", f.Name())
 	db, err := sql.Open("sqlite3", dsn)
 	require.NoError(t, err)
 	t.Cleanup(func() {
