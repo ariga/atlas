@@ -77,7 +77,7 @@ migration.`,
   atlas schema apply -u "mysql://localhost" --to "file://schema.sql" --dev-url "docker://mysql/8/dev"
   atlas schema apply --env local --dev-url "docker://postgres/15/dev?search_path=public" --dry-run
   atlas schema apply -u "sqlite://file.db" --to "file://schema.sql" --dev-url "sqlite://dev?mode=memory"`,
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				switch {
 				case GlobalFlags.SelectedEnv == "":
 					env, err := selectEnv(cmd)
@@ -94,7 +94,7 @@ migration.`,
 						return schemaApplyRun(cmd, flags, e)
 					})
 				}
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -274,9 +274,9 @@ As a safety feature, 'atlas schema clean' will ask for confirmation before attem
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
 				return schemaFlagsFromConfig(cmd)
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				return schemaCleanRun(cmd, args, flags)
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -361,13 +361,13 @@ The database states can be read from a connected database, an HCL project or a m
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
 				return schemaFlagsFromConfig(cmd)
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				env, err := selectEnv(cmd)
 				if err != nil {
 					return err
 				}
 				return schemaDiffRun(cmd, args, flags, env)
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -486,9 +486,9 @@ flag.
 				}
 				return setSchemaEnvFlags(cmd, env)
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				return schemaInspectRun(cmd, args, flags, env)
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -562,9 +562,9 @@ Unless stated otherwise, the fmt command will use the current directory.
 After running, the command will print the names of the files it has formatted. If all
 files in the directory are formatted, no input will be printed out.
 `,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: RunE(func(cmd *cobra.Command, args []string) error {
 			return schemaFmtRun(cmd, args)
-		},
+		}),
 	}
 	return cmd
 }
