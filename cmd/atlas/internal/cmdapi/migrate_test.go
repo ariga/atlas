@@ -1974,7 +1974,6 @@ table "table" {
       table.table.column.col,
       table.table.column.age,
     ]
-    comment = "index comment"
   }
   foreign_key "accounts" {
     columns = [
