@@ -15,6 +15,7 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migratelint"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 
@@ -120,5 +121,11 @@ func promptApply(cmd *cobra.Command, flags schemaApplyFlags, diff *diff, client,
 
 // withTokenContext allows attaching token to the context.
 func withTokenContext(ctx context.Context, _ string, _ *cloudapi.Client) (context.Context, error) {
-	return ctx, nil
+	return ctx, nil // unimplemented.
+}
+
+// checkDirRebased checks that the local directory is up-to-date with the latest version of the directory.
+// For example, Atlas Cloud or Git.
+func checkDirRebased(context.Context, *cobra.Command, migrate.Dir) error {
+	return nil // unimplemented.
 }

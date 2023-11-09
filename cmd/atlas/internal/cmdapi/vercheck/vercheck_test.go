@@ -18,15 +18,12 @@ import (
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
+	"ariga.io/atlas/cmd/atlas/internal/cmdstate"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/require"
 )
 
 func TestVerCheck(t *testing.T) {
-	homedir.DisableCache = true
-	t.Cleanup(func() { homedir.DisableCache = false })
-
 	var path, ua string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		output := `{"latest":{"Version":"v0.7.2","Summary":"","Link":"https://github.com/ariga/atlas/releases/tag/v0.7.2"},"advisory":null}`
@@ -36,8 +33,7 @@ func TestVerCheck(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	home := cmdstate.TestingHome(t)
 	vc := New(srv.URL)
 	ver := "v0.1.2"
 	check, err := vc.Check(context.Background(), ver)
@@ -61,8 +57,6 @@ func TestVerCheck(t *testing.T) {
 }
 
 func TestState(t *testing.T) {
-	homedir.DisableCache = true
-	t.Cleanup(func() { homedir.DisableCache = false })
 	hrAgo, err := json.Marshal(State{CheckedAt: time.Now().Add(-time.Hour)})
 	require.NoError(t, err)
 	weekAgo, err := json.Marshal(State{CheckedAt: time.Now().Add(-time.Hour * 24 * 7)})
@@ -100,13 +94,12 @@ func TestState(t *testing.T) {
 				_, _ = w.Write([]byte(`{}`))
 			}))
 			t.Cleanup(srv.Close)
-			home := t.TempDir()
+			home := cmdstate.TestingHome(t)
 			path := filepath.Join(home, ".atlas", StateFileName)
 			if tt.state != "" {
 				require.NoError(t, os.MkdirAll(filepath.Dir(path), os.ModePerm))
 				require.NoError(t, os.WriteFile(path, []byte(tt.state), 0666))
 			}
-			t.Setenv("HOME", home)
 			vc := New(srv.URL)
 			_, _ = vc.Check(context.Background(), "v0.1.2")
 			require.EqualValues(t, tt.expectedRun, ran)
@@ -123,16 +116,12 @@ func TestState(t *testing.T) {
 }
 
 func TestStatePersist(t *testing.T) {
-	homedir.DisableCache = true
-	t.Cleanup(func() { homedir.DisableCache = false })
-
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{}`))
 	}))
 	t.Cleanup(srv.Close)
-	home := t.TempDir()
+	home := cmdstate.TestingHome(t)
 	path := filepath.Join(home, ".atlas", StateFileName)
-	t.Setenv("HOME", home)
 	vc := New(srv.URL)
 	_, err := vc.Check(context.Background(), "v0.1.2")
 	require.NoError(t, err)
