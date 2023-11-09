@@ -26,6 +26,10 @@ module.exports = {
           className: 'code-block-info-line',
           line: 'highlight-next-line-info',
         },
+        {
+          className: 'code-block-underline',
+          line: 'underline-next-line',
+        },
       ],
     },
     algolia: {
