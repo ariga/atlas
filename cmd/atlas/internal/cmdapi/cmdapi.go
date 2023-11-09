@@ -90,24 +90,51 @@ Atlas is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/bl
 	}
 )
 
-// FormattedError is an error that format the command output when returned.
-type FormattedError struct {
-	Err    error
-	Prefix string // Prefix to use on error.
-	Silent bool   // Silent errors are not printed.
-}
+type (
+	// ErrorFormatter implemented by the errors below to
+	// allow them format command output on error.
+	ErrorFormatter interface {
+		FormatError(*cobra.Command)
+	}
+	// FormattedError is an error that format the command output when returned.
+	FormattedError struct {
+		Err    error
+		Prefix string // Prefix to use on error.
+		Silent bool   // Silent errors are not printed.
+	}
+	// AbortError returns a command error that is formatted as "Abort: ..." when
+	// the execution is aborted by the user.
+	AbortError struct {
+		Err error
+	}
+)
 
 func (e *FormattedError) Error() string { return e.Err.Error() }
+
+func (e *FormattedError) FormatError(cmd *cobra.Command) {
+	cmd.SilenceErrors = e.Silent
+	if e.Prefix != "" {
+		cmd.SetErrPrefix(e.Prefix)
+	}
+}
+
+// AbortErrorf is like fmt.Errorf for creating AbortError.
+func AbortErrorf(format string, a ...any) error {
+	return &AbortError{Err: fmt.Errorf(format, a...)}
+}
+
+func (e *AbortError) Error() string { return e.Err.Error() }
+
+func (e *AbortError) FormatError(cmd *cobra.Command) {
+	cmd.SetErrPrefix("Abort:")
+}
 
 // RunE wraps the command cobra.Command.RunE function with additional postrun logic.
 func RunE(f func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		err := f(cmd, args)
-		if err1 := (*FormattedError)(nil); errors.As(err, &err1) {
-			cmd.SilenceErrors = err1.Silent
-			if err1.Prefix != "" {
-				cmd.SetErrPrefix(err1.Prefix)
-			}
+		if ef, ok := err.(ErrorFormatter); ok {
+			ef.FormatError(cmd)
 		}
 		return err
 	}

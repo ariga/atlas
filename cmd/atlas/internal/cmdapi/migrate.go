@@ -132,7 +132,6 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
 	cmd.Flags().StringVarP(&flags.baselineVersion, flagBaseline, "", "", "start the first migration after the given baseline version")
 	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file, all]")
-	// The following flag is hidden as it is used only by our CI programs.
 	cmd.Flags().StringVar(&flags.context, flagContext, "", "describes what triggered this command (e.g., GitHub Action)")
 	cobra.CheckErr(cmd.Flags().MarkHidden(flagContext))
 	cmd.Flags().BoolVarP(&flags.allowDirty, flagAllowDirty, "", false, "allow start working on a non-clean database")
@@ -615,6 +614,9 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	}
 	dir, err := cmdmigrate.DirURL(ctx, u, false)
 	if err != nil {
+		return err
+	}
+	if err := checkDirRebased(ctx, cmd, dir); err != nil {
 		return err
 	}
 	if flags.edit {

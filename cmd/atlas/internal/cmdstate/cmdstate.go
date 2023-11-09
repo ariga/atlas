@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sync"
+	"testing"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -79,4 +81,21 @@ func newT[T any](t T) T {
 		return reflect.New(rt.Elem()).Interface().(T)
 	}
 	return t
+}
+
+// muDisableCache ensures homedir.DisableCache is not changed concurrently on tests.
+var muDisableCache sync.Mutex
+
+// TestingHome is a helper function for testing that
+// sets the HOME directory to a temporary directory.
+func TestingHome(t *testing.T) string {
+	muDisableCache.Lock()
+	homedir.DisableCache = true
+	t.Cleanup(func() {
+		homedir.DisableCache = false
+		muDisableCache.Unlock()
+	})
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	return home
 }
