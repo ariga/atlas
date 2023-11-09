@@ -48,6 +48,14 @@ html[data-theme='dark'] .footer__title {
   padding: 0 var(--ifm-pre-padding);
 }
 
+.code-block-underline {
+  text-decoration: underline;
+}
+
+.code-block-underline span {
+  text-decoration: underline;
+}
+
 /* discord */
 .header-discord-link:hover {
   opacity: 0.6;

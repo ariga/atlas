@@ -7,15 +7,12 @@ title: Automatic Migration Planning
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-With the `atlas migrate diff` command users can implement a kind of workflow that we
-call _versioned migration authoring_. This workflow is a synthesis between _declarative_ workflows,
-where developers specify the desired state of their database, and _versioned migrations_
-where each change is explicitly defined as a migration script with a specific version.
+The `atlas migrate diff` command streamlines the process of writing schema migrations by automatically generating the
+SQL scripts needed to migrate a database schema from its current state to the new desired state. How does it work?
 
-Practically speaking, this means developers define the desired state and Atlas maintains the `migrations` directory,
-which contains the explicit SQL scripts to move from one version to the next. The desired state can be defined using an
-[HCL](/atlas-schema/hcl) or SQL schema definition, a database [URL](../concepts/url), external schemas like
-[ORM](/atlas-schema/external).
+Developers define the desired state and Atlas maintains the `migrations` directory, which contains the explicit SQL
+scripts to move from one version to the next. The desired state can be defined using an [HCL](/atlas-schema/hcl) or
+[SQL schema](/atlas-schema/sql) definition, a database [URL](../concepts/url), or an external schemas like [ORM](/atlas-schema/external).
 
 ### Summary
 
@@ -129,9 +126,24 @@ atlas migrate diff create_users \
 </Tabs>
 
 :::info [Ensure linear migration history](/lint/analyzers#non-linear-changes)
-By utilizing the [`atlas migrate lint`](/versioned/lint) command, teams can ensure that changes are added to the
-migration directory in a sequential order, preventing unexpected behavior. Learn more on how to integrate Atlas into your
-[**GitHub Actions**](/cloud/setup-ci) or [**GitLab**](/guides/ci-platforms/gitlab) CI pipelines.
+
+Teams that have connected their project to Atlas Cloud (see [setup](/cloud/setup-ci)) will get a prompt in the CLI if
+their migration directory is out of sync with the latest version in Atlas Cloud. This ensures that new migration files are
+added in a sequential order, preventing unexpected behavior. For example:
+
+```text
+atlas migrate diff --env dev
+
+//highlight-start
+? Your directory is outdated (2 migrations behind). Continue or Abort:
+//underline-next-line
+▸ Continue (Rebase later)
+  Abort (Pull changes and re-run the command)
+//highlight-end
+```
+
+Additionally, the [`atlas migrate lint`](/versioned/lint) command helps enforce this requirement during the CI stage.
+Learn more on how to integrate Atlas into your [**GitHub Actions**](/cloud/setup-ci) or [**GitLab**](/guides/ci-platforms/gitlab) CI pipelines.
 :::
 
 ### Generate migrations from HCL schemas
