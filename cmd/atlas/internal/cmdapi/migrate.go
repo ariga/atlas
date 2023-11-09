@@ -89,7 +89,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
   atlas migrate apply --env dev 1
   atlas migrate apply --dry-run --env dev 1`,
 			Args: cobra.MaximumNArgs(1),
-			RunE: func(cmd *cobra.Command, args []string) (cmdErr error) {
+			RunE: RunE(func(cmd *cobra.Command, args []string) (cmdErr error) {
 				switch {
 				case GlobalFlags.SelectedEnv == "":
 					if err := migrateFlagsFromConfig(cmd); err != nil {
@@ -119,7 +119,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 						return migrateApplyRun(cmd, args, flags, set.ReportFor(flags, env))
 					})
 				}
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -568,13 +568,13 @@ an HCL, SQL, or ORM schema. See: https://atlasgo.io/versioned/diff`,
 				}
 				return checkDir(cmd, flags.dirURL, true)
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				env, err := selectEnv(cmd)
 				if err != nil {
 					return err
 				}
 				return migrateDiffRun(cmd, args, flags, env)
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -760,7 +760,7 @@ This command should be used whenever a manual change in the migration directory 
 				}
 				return dirFormatBC(flags.dirFormat, &flags.dirURL)
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				dir, err := cmdmigrate.Dir(cmd.Context(), flags.dirURL, false)
 				if err != nil {
 					return err
@@ -770,7 +770,7 @@ This command should be used whenever a manual change in the migration directory 
 					return err
 				}
 				return migrate.WriteSumFile(dir, sum)
-			},
+			}),
 		}
 	)
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
@@ -809,9 +809,9 @@ func migrateImportCmd() *cobra.Command {
 				}
 				return nil
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				return migrateImportRun(cmd, args, flags)
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -928,9 +928,9 @@ func migrateLintCmd() *cobra.Command {
 				}
 				return dirFormatBC(flags.dirFormat, &flags.dirURL)
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				return migrateLintRun(cmd, args, flags)
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -973,9 +973,9 @@ func migrateNewCmd() *cobra.Command {
 				}
 				return checkDir(cmd, flags.dirURL, true)
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				return migrateNewRun(cmd, args, flags)
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -1035,9 +1035,9 @@ to be applied. This command is usually used after manually making changes to the
 				}
 				return checkDir(cmd, flags.dirURL, false)
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				return migrateSetRun(cmd, args, flags)
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -1230,9 +1230,9 @@ func migrateStatusCmd() *cobra.Command {
 				}
 				return checkDir(cmd, flags.dirURL, false)
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				return migrateStatusRun(cmd, args, flags)
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -1305,9 +1305,9 @@ files are executed on the connected database in order to validate SQL semantics.
 				}
 				return checkDir(cmd, flags.dirURL, false)
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				return migrateValidateRun(cmd, args, flags)
-			},
+			}),
 		}
 	)
 	cmd.Flags().SortFlags = false

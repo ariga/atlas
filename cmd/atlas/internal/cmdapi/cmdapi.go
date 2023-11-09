@@ -90,6 +90,29 @@ Atlas is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/bl
 	}
 )
 
+// FormattedError is an error that format the command output when returned.
+type FormattedError struct {
+	Err    error
+	Prefix string // Prefix to use on error.
+	Silent bool   // Silent errors are not printed.
+}
+
+func (e *FormattedError) Error() string { return e.Err.Error() }
+
+// RunE wraps the command cobra.Command.RunE function with additional postrun logic.
+func RunE(f func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		err := f(cmd, args)
+		if err1 := (*FormattedError)(nil); errors.As(err, &err1) {
+			cmd.SilenceErrors = err1.Silent
+			if err1.Prefix != "" {
+				cmd.SetErrPrefix(err1.Prefix)
+			}
+		}
+		return err
+	}
+}
+
 func init() {
 	Root.AddCommand(versionCmd)
 	Root.AddCommand(licenseCmd)
