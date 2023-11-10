@@ -21,10 +21,8 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	_ "ariga.io/atlas/sql/sqlite"
-	"ariga.io/atlas/sql/sqltool"
 	"gocloud.dev/runtimevar"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -177,102 +175,6 @@ vs = data.sql.user.values
 	require.Equal(t, 1, v.C)
 	require.Equal(t, "a8m", v.V)
 	require.Equal(t, []string{"a8m"}, v.Vs)
-}
-
-func TestEntLoader_LoadState(t *testing.T) {
-	ctx := context.Background()
-	drv, err := sqlclient.Open(ctx, "sqlite://test?mode=memory&_fk=1")
-	require.NoError(t, err)
-	u, err := url.Parse("ent://./testdata/schema")
-	require.NoError(t, err)
-	l, ok := cmdext.States.Loader("ent")
-	require.True(t, ok)
-	state, err := l.LoadState(ctx, &cmdext.StateReaderConfig{
-		Dev:  drv,
-		URLs: []*url.URL{u},
-	})
-	require.ErrorContains(t, err, "build constraints exclude all Go files in")
-	u, err = url.Parse("ent://./testdata/schema?build-tags=foo&build-tags=testdata")
-	require.NoError(t, err)
-	state, err = l.LoadState(ctx, &cmdext.StateReaderConfig{
-		Dev:  drv,
-		URLs: []*url.URL{u},
-	})
-	require.NoError(t, err)
-	realm, err := state.ReadState(ctx)
-	require.NoError(t, err)
-	require.Len(t, realm.Schemas, 1)
-	require.Len(t, realm.Schemas[0].Tables, 1)
-	revT := realm.Schemas[0].Tables[0]
-	require.Equal(t, "atlas_schema_revisions", revT.Name)
-}
-
-func TestEntLoader_MigrateDiff(t *testing.T) {
-	ctx := context.Background()
-	drv, err := sqlclient.Open(ctx, "sqlite://test?mode=memory&_fk=1")
-	require.NoError(t, err)
-	d, ok := cmdext.States.Differ([]string{"ent://../migrate/ent/schema?globalid=1"})
-	require.True(t, ok)
-
-	t.Run("AtlasFormat", func(t *testing.T) {
-		dir, err := migrate.NewLocalDir(t.TempDir())
-		require.NoError(t, err)
-		err = d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
-			Name:   "boring",
-			Indent: "\t",
-			Dev:    drv,
-			Dir:    dir,
-			To:     []string{"ent://../migrate/ent/schema?globalid=1"},
-		})
-		require.NoError(t, err)
-		files, err := dir.Files()
-		require.NoError(t, err)
-		require.True(t, strings.HasSuffix(files[0].Name(), "_boring.sql"))
-		// Statements were generated with indentation.
-		require.Contains(t, string(files[0].Bytes()), "CREATE TABLE `atlas_schema_revisions` (\n\t")
-	})
-
-	t.Run("OtherFormat", func(t *testing.T) {
-		dir, err := sqltool.NewGolangMigrateDir(t.TempDir())
-		require.NoError(t, err)
-		err = d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
-			Name: "boring",
-			Dev:  drv,
-			Dir:  dir,
-			To:   []string{"ent://../migrate/ent/schema?globalid=1"},
-		})
-		require.NoError(t, err)
-		files, err := dir.Files()
-		require.NoError(t, err)
-		require.True(t, strings.HasSuffix(files[0].Name(), "_boring.up.sql"))
-	})
-
-	t.Run("Invalid", func(t *testing.T) {
-		_, ok := cmdext.States.Differ([]string{"ent://../migrate/ent/schema"})
-		require.False(t, ok, "skipping schemas without globalid")
-	})
-
-	t.Run("SkipChanges", func(t *testing.T) {
-		dir, err := migrate.NewLocalDir(t.TempDir())
-		require.NoError(t, err)
-		err = d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
-			Name: "skipped",
-			Dev:  drv,
-			Dir:  dir,
-			To:   []string{"ent://../migrate/ent/schema?globalid=1"},
-			Options: []schema.DiffOption{
-				schema.DiffSkipChanges(&schema.AddTable{}),
-			},
-		})
-		require.NoError(t, err)
-		files, err := dir.Files()
-		require.NoError(t, err)
-		require.Equal(t, strings.Join([]string{
-			"-- Add pk ranges for ('atlas_schema_revisions') tables",
-			"INSERT INTO `ent_types` (`type`) VALUES ('atlas_schema_revisions');",
-		}, "\n"), strings.TrimSpace(string(files[0].Bytes())))
-		require.True(t, strings.HasSuffix(files[0].Name(), "_skipped.sql"))
-	})
 }
 
 func TestTemplateDir(t *testing.T) {

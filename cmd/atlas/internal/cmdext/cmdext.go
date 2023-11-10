@@ -19,7 +19,6 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"text/template"
 	"time"
 
@@ -34,16 +33,11 @@ import (
 	"golang.org/x/oauth2/google"
 	sqladmin "google.golang.org/api/sqladmin/v1beta4"
 
-	"github.com/zclconf/go-cty/cty/gocty"
-
-	"entgo.io/ent/dialect/sql"
-	entschema "entgo.io/ent/dialect/sql/schema"
-	"entgo.io/ent/entc"
-	"entgo.io/ent/entc/gen"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/gocty"
 	"gocloud.dev/gcerrors"
 	"gocloud.dev/runtimevar"
 	_ "gocloud.dev/runtimevar/awssecretsmanager"
@@ -773,125 +767,6 @@ func (l MemLoader) LoadState(ctx context.Context, config *StateReaderConfig) (*S
 		return nil, fmt.Errorf("data-source state %q not found in memory", u)
 	}
 	return l.states[u].LoadState(ctx, config)
-}
-
-// EntLoader is a StateLoader for loading ent.Schema's as StateReader's.
-type EntLoader struct{}
-
-// LoadState returns a migrate.StateReader that reads the schema from an ent.Schema.
-func (l EntLoader) LoadState(ctx context.Context, config *StateReaderConfig) (*StateReadCloser, error) {
-	switch {
-	case len(config.URLs) != 1:
-		return nil, errors.New(`"ent://" requires exactly one schema URL`)
-	case config.Dev == nil:
-		return nil, errors.New(`required flag "--dev-url" not set`)
-	case config.Dev.URL.Schema == "":
-		return nil, errNotSchemaURL
-	case config.URLs[0].Query().Has("globalid"):
-		return nil, errors.New("globalid is not supported by this command. Use 'migrate diff' instead")
-	}
-	tables, err := l.tables(config.URLs[0])
-	if err != nil {
-		return nil, err
-	}
-	m, err := entschema.NewMigrate(sql.OpenDB(config.Dev.Name, config.Dev.DB))
-	if err != nil {
-		return nil, fmt.Errorf("creating migrate reader: %w", err)
-	}
-	realm, err := m.StateReader(tables...).ReadState(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("reading schema state: %w", err)
-	}
-	if len(realm.Schemas) != 1 {
-		return nil, fmt.Errorf("expect exactly one schema, got %d", len(realm.Schemas))
-	}
-	if nr, ok := config.Dev.Driver.(schema.Normalizer); ok {
-		if realm.Schemas[0], err = nr.NormalizeSchema(ctx, realm.Schemas[0]); err != nil {
-			return nil, err
-		}
-	}
-	// Use the dev-database schema name if the schema name is empty.
-	if realm.Schemas[0].Name == "" && config.Dev.URL.Schema != "" {
-		realm.Schemas[0].Name = config.Dev.URL.Schema
-	}
-	for _, t := range realm.Schemas[0].Tables {
-		t.Schema = realm.Schemas[0]
-	}
-	rc := &StateReadCloser{StateReader: migrate.Realm(realm)}
-	if config.Dev != nil && config.Dev.URL.Schema != "" {
-		rc.Schema = config.Dev.URL.Schema
-	}
-	return rc, nil
-}
-
-// MigrateDiff returns the diff between ent.Schema and a directory.
-func (l EntLoader) MigrateDiff(ctx context.Context, opts *MigrateDiffOptions) error {
-	if !l.needDiff(opts.To) {
-		return errors.New("invalid diff call")
-	}
-	if opts.Dev.URL.Schema == "" {
-		return errNotSchemaURL
-	}
-	u, err := sqlclient.ParseURL(opts.To[0])
-	if err != nil {
-		return nil
-	}
-	tables, err := l.tables(u)
-	if err != nil {
-		return err
-	}
-	m, err := entschema.NewMigrate(
-		sql.OpenDB(opts.Dev.Name, opts.Dev.DB),
-		entschema.WithDir(opts.Dir),
-		entschema.WithDropColumn(true),
-		entschema.WithDropIndex(true),
-		entschema.WithErrNoPlan(true),
-		entschema.WithFormatter(dirFormatter(opts.Dir)),
-		entschema.WithGlobalUniqueID(true),
-		entschema.WithIndent(opts.Indent),
-		entschema.WithMigrationMode(entschema.ModeReplay),
-		entschema.WithDiffOptions(opts.Options...),
-	)
-	if err != nil {
-		return fmt.Errorf("creating migrate reader: %w", err)
-	}
-	return m.NamedDiff(ctx, opts.Name, tables...)
-}
-
-// needDiff indicates if we need to offload the diffing to Ent in
-// case global unique id is enabled in versioned migration mode.
-func (EntLoader) needDiff(to []string) bool {
-	if len(to) != 1 {
-		return false
-	}
-	u1, err := url.Parse(to[0])
-	if err != nil || u1.Scheme != "ent" {
-		return false
-	}
-	gid, _ := strconv.ParseBool(u1.Query().Get("globalid"))
-	return gid
-}
-
-func (EntLoader) tables(u *url.URL) ([]*entschema.Table, error) {
-	abs, err := filepath.Abs(filepath.Join(u.Host, u.Path))
-	if err != nil {
-		return nil, err
-	}
-	var opts []entc.Option
-	if tags, ok := u.Query()["build-tags"]; ok {
-		opts = append(opts, entc.BuildTags(tags...))
-	}
-	cfg := &gen.Config{}
-	for _, opt := range opts {
-		if err = opt(cfg); err != nil {
-			return nil, err
-		}
-	}
-	graph, err := entc.LoadGraph(abs, cfg)
-	if err != nil {
-		return nil, fmt.Errorf("loading schema: %w", err)
-	}
-	return graph.Tables()
 }
 
 func dirFormatter(dir migrate.Dir) migrate.Formatter {
