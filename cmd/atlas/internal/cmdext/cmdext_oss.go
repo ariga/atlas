@@ -24,3 +24,16 @@ func RemoteSchema(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
 func StateReaderAtlas(context.Context, *StateReaderConfig) (*StateReadCloser, error) {
 	return nil, fmt.Errorf("atlas remote state is not supported by this release. See: https://atlasgo.io/getting-started")
 }
+
+// EntLoader is a StateLoader for loading ent.Schema's as StateReader's.
+type EntLoader struct{}
+
+// LoadState returns a migrate.StateReader that reads the schema from an ent.Schema.
+func (l EntLoader) LoadState(context.Context, *StateReaderConfig) (*StateReadCloser, error) {
+	return nil, fmt.Errorf("ent:// scheme is no longer supported by this release. See: https://atlasgo.io/getting-started")
+}
+
+// MigrateDiff returns the diff between ent.Schema and a directory.
+func (l EntLoader) MigrateDiff(ctx context.Context, opts *MigrateDiffOptions) error {
+	return fmt.Errorf("ent:// scheme is no longer supported by this release. See: https://atlasgo.io/getting-started")
+}
