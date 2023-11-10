@@ -1,0 +1,97 @@
+only maria107
+
+atlas schema inspect --url file://schema.sql --dev-url URL > got.hcl
+cmp expected.hcl got.hcl
+
+atlas schema inspect --url file://schema.sql --dev-url URL --format '{{ sql . "  " }}' > got.sql
+cmp expected.sql got.sql
+
+-- schema.sql --
+CREATE TABLE t1(
+  buf json,
+  name varchar(20) CHECK(name in ('a', 'b', 'c')),
+  age int CHECK(age > 0),
+  -- MariaDB check constraint names are not unique.
+  CONSTRAINT `check1` CHECK (name <> 'a' or age > 10)
+);
+
+CREATE TABLE t2(
+  buf json,
+  name varchar(20) CHECK(name in ('a', 'b', 'c')),
+  age int CHECK(age > 1),
+  -- MariaDB check constraint names are not unique.
+  CONSTRAINT `check1` CHECK (name <> 'a' or age > 10)
+);
+
+-- expected.hcl --
+table "t1" {
+  schema = schema.script_check_maria
+  column "buf" {
+    null = true
+    type = json
+  }
+  column "name" {
+    null = true
+    type = varchar(20)
+  }
+  column "age" {
+    null = true
+    type = int
+  }
+  check "age" {
+    expr = "`age` > 0"
+  }
+  check "check1" {
+    expr = "`name` <> 'a' or `age` > 10"
+  }
+  check "name" {
+    expr = "`name` in ('a','b','c')"
+  }
+}
+table "t2" {
+  schema = schema.script_check_maria
+  column "buf" {
+    null = true
+    type = json
+  }
+  column "name" {
+    null = true
+    type = varchar(20)
+  }
+  column "age" {
+    null = true
+    type = int
+  }
+  check "age" {
+    expr = "`age` > 1"
+  }
+  check "check1" {
+    expr = "`name` <> 'a' or `age` > 10"
+  }
+  check "name" {
+    expr = "`name` in ('a','b','c')"
+  }
+}
+schema "script_check_maria" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}
+-- expected.sql --
+-- Create "t1" table
+CREATE TABLE `t1` (
+  `buf` json NULL,
+  `name` varchar(20) NULL,
+  `age` int NULL,
+  CONSTRAINT `age` CHECK (`age` > 0),
+  CONSTRAINT `check1` CHECK (`name` <> 'a' or `age` > 10),
+  CONSTRAINT `name` CHECK (`name` in ('a','b','c'))
+) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
+-- Create "t2" table
+CREATE TABLE `t2` (
+  `buf` json NULL,
+  `name` varchar(20) NULL,
+  `age` int NULL,
+  CONSTRAINT `age` CHECK (`age` > 1),
+  CONSTRAINT `check1` CHECK (`name` <> 'a' or `age` > 10),
+  CONSTRAINT `name` CHECK (`name` in ('a','b','c'))
+) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
