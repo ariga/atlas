@@ -1,0 +1,85 @@
+only mysql8
+
+atlas schema inspect --url file://schema.sql --dev-url URL > got.hcl
+cmp expected.hcl got.hcl
+
+atlas schema inspect --url file://schema.sql --dev-url URL --format '{{ sql . "  " }}' > got.sql
+cmp expected.sql got.sql
+
+-- schema.sql --
+CREATE TABLE t1(
+  name varchar(20) CHECK(name in ('a', 'b', 'c')),
+  age int CHECK(age > 0),
+  -- MySQL check constraint names are unique in schema level.
+  CONSTRAINT `t1_check` CHECK (name <> 'a' or age > 10)
+);
+
+CREATE TABLE t2(
+  name varchar(20) CHECK(name in ('a', 'b', 'c')),
+  age int CHECK(age > 0),
+  -- MySQL check constraint names are unique in schema level.
+  CONSTRAINT `t2_check` CHECK (name <> 'a' or age > 10)
+);
+
+-- expected.hcl --
+table "t1" {
+  schema = schema.script_check
+  column "name" {
+    null = true
+    type = varchar(20)
+  }
+  column "age" {
+    null = true
+    type = int
+  }
+  check "t1_check" {
+    expr = "((`name` <> _utf8mb4'a') or (`age` > 10))"
+  }
+  check "t1_chk_1" {
+    expr = "(`name` in (_utf8mb4'a',_utf8mb4'b',_utf8mb4'c'))"
+  }
+  check "t1_chk_2" {
+    expr = "(`age` > 0)"
+  }
+}
+table "t2" {
+  schema = schema.script_check
+  column "name" {
+    null = true
+    type = varchar(20)
+  }
+  column "age" {
+    null = true
+    type = int
+  }
+  check "t2_check" {
+    expr = "((`name` <> _utf8mb4'a') or (`age` > 10))"
+  }
+  check "t2_chk_1" {
+    expr = "(`name` in (_utf8mb4'a',_utf8mb4'b',_utf8mb4'c'))"
+  }
+  check "t2_chk_2" {
+    expr = "(`age` > 0)"
+  }
+}
+schema "script_check" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+-- expected.sql --
+-- Create "t1" table
+CREATE TABLE `t1` (
+  `name` varchar(20) NULL,
+  `age` int NULL,
+  CONSTRAINT `t1_check` CHECK ((`name` <> _utf8mb4'a') or (`age` > 10)),
+  CONSTRAINT `t1_chk_1` CHECK (`name` in (_utf8mb4'a',_utf8mb4'b',_utf8mb4'c')),
+  CONSTRAINT `t1_chk_2` CHECK (`age` > 0)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- Create "t2" table
+CREATE TABLE `t2` (
+  `name` varchar(20) NULL,
+  `age` int NULL,
+  CONSTRAINT `t2_check` CHECK ((`name` <> _utf8mb4'a') or (`age` > 10)),
+  CONSTRAINT `t2_chk_1` CHECK (`name` in (_utf8mb4'a',_utf8mb4'b',_utf8mb4'c')),
+  CONSTRAINT `t2_chk_2` CHECK (`age` > 0)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
