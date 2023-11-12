@@ -11,7 +11,7 @@ With the `atlas migrate apply` command, users can apply pending migrations to da
 schema changes to databases is as follows: **Develop** ⇨ **Check (CI)** ⇨ **Push (CD)** ⇨ **Deploy**.
 
 1. **Develop** - Generate a migration file with the desired database changes using the [`atlas migrate diff`](/versioned/diff) command.
-2. **Check (CI)** - Use [`atlas migrate lint`](versioned/lint) to validate migrations, ensuring they don't conflict with other team members' changes
+2. **Check (CI)** - Use [`atlas migrate lint`](/versioned/lint) to validate migrations, ensuring they don't conflict with other team members' changes
    and align with best practices. Add Atlas to your CI pipeline in [GitHub Actions](/cloud/setup-ci) or [GitLab](/guides/ci-platforms/gitlab)
    to review migrations files before they get merged into the main branch.
 3. **Push (Delivery)** - Use `atlas migrate push`, or set up a CI pipeline to push the latest migrations state to [Atlas Cloud](https://auth.atlasgo.cloud/signup).
