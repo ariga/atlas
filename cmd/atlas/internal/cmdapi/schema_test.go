@@ -917,6 +917,33 @@ table "bad" {
 	})
 }
 
+func TestSchema_ApplyReview(t *testing.T) {
+	t.Run("mutex-auto-approve", func(t *testing.T) {
+		cfg := filepath.Join(t.TempDir(), "atlas.hcl")
+		require.NoError(t, os.WriteFile(cfg, []byte(`env "test" {
+  lint {
+    review = WARNING
+  }
+}`), 0600))
+		db := openSQLite(t, "")
+		p := filepath.Join(t.TempDir(), "schema.sql")
+		require.NoError(t, os.WriteFile(p, []byte(`create table t1 (id int NOT NULL);`), 0600))
+		cmd := schemaCmd()
+		cmd.AddCommand(schemaApplyCmd())
+		_, err := runCmd(
+			cmd,
+			"apply",
+			"-c", "file://"+cfg,
+			"--url", db,
+			"--env", "test",
+			"--dev-url", openSQLite(t, ""),
+			"--to", "file://"+p,
+			"--auto-approve",
+		)
+		require.ErrorContains(t, err, `auto-approve is not allowed when a lint policy is set to "WARNING"`)
+	})
+}
+
 func TestSchema_InspectLog(t *testing.T) {
 	db := openSQLite(t, "create table t1 (id integer primary key);create table t2 (name text);")
 	cmd := schemaCmd()

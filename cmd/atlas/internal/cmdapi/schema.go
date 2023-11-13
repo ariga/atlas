@@ -126,6 +126,8 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		return errors.New(`--log and --format can only be used with --dry-run or --auto-approve`)
 	case flags.txMode != txModeNone && flags.txMode != txModeFile:
 		return fmt.Errorf("unknown tx-mode %q", flags.txMode)
+	case flags.autoApprove && env.Lint.Review != "":
+		return fmt.Errorf("auto-approve is not allowed when a lint policy is set to %q", env.Lint.Review)
 	}
 	// If the old -f flag is given convert them to the URL format. If both are given,
 	// cobra would throw an error since they are marked as mutually exclusive.
