@@ -90,8 +90,8 @@ contrib.go.opencensus.io/exporter/aws v0.0.0-20200617204711-c478e41e60e9/go.mod 
 contrib.go.opencensus.io/exporter/stackdriver v0.13.13/go.mod h1:5pSSGY0Bhuk7waTHuDf4aQ8D2DrhgETRo9fy6k3Xlzc=
 contrib.go.opencensus.io/integrations/ocsql v0.1.7/go.mod h1:8DsSdjz3F+APR+0z0WkU1aRorQCFfRxvqjUUPMbF3fE=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
-entgo.io/ent v0.12.4-0.20230726082433-91c7fcc68504 h1:wUSznEj31LlsQdpc6OvMYNGqugF1s+tY/KpMZsSdonw=
-entgo.io/ent v0.12.4-0.20230726082433-91c7fcc68504/go.mod h1:e0wg9uUSbkGpXA83+ykxmFgk7sgjHy1jYk0LNokJU3g=
+entgo.io/ent v0.12.5-0.20231113103531-9aba4ae091d1 h1:b+pptFMbxbDfAMmTQZ8SiFq92mld0iw+kXf3toC/qbI=
+entgo.io/ent v0.12.5-0.20231113103531-9aba4ae091d1/go.mod h1:Y3JVAjtlIk8xVZYSn3t3mf8xlZIn5SAOXZQxD6kKI+Q=
 github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1 h1:LejjvYg4tCW5HO7q/1nzPrprh47oUD9OUySQ29pDp5c=
 github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1/go.mod h1:cnC/60IoLiDM0GhdKYJ6oO7AwpZe1IQfPnSKlAURgHw=
 github.com/AdaLogics/go-fuzz-headers v0.0.0-20210715213245-6c3934b029d8/go.mod h1:CzsSbkDixRphAF5hS6wbMKq0eI6ccJRb7/A0M6JBnwg=
