@@ -1,5 +1,6 @@
 ariga.io/atlas v0.13.2-0.20230813181001-1fef462e7670 h1:8vx+vdcylzEWQUI+zf6JVEGwtQIHr/+L2wYSLusvnPo=
 ariga.io/atlas v0.13.2-0.20230813181001-1fef462e7670/go.mod h1:+TR129FJZ5Lvzms6dvCeGWh1yR6hMvmXBhug4hrNIGk=
+ariga.io/atlas v0.14.1-0.20230918065911-83ad451a4935/go.mod h1:isZrlzJ5cpoCoKFoY9knZug7Lq4pP1cm8g3XciLZ0Pw=
 bazil.org/fuse v0.0.0-20160811212531-371fbbdaa898/go.mod h1:Xbm+BRKSBEpa4q4hTSxohYNQpsxXPbPry4JJWOB3LB8=
 bazil.org/fuse v0.0.0-20200407214033-5883e5a4b512/go.mod h1:FbcW6z/2VytnFDhZfumh8Ss8zxHE6qpMP5sHTRe0EaM=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -94,6 +95,8 @@ contrib.go.opencensus.io/integrations/ocsql v0.1.7/go.mod h1:8DsSdjz3F+APR+0z0Wk
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 entgo.io/ent v0.12.4-0.20230726082433-91c7fcc68504 h1:wUSznEj31LlsQdpc6OvMYNGqugF1s+tY/KpMZsSdonw=
 entgo.io/ent v0.12.4-0.20230726082433-91c7fcc68504/go.mod h1:e0wg9uUSbkGpXA83+ykxmFgk7sgjHy1jYk0LNokJU3g=
+entgo.io/ent v0.12.5-0.20231113103531-9aba4ae091d1 h1:b+pptFMbxbDfAMmTQZ8SiFq92mld0iw+kXf3toC/qbI=
+entgo.io/ent v0.12.5-0.20231113103531-9aba4ae091d1/go.mod h1:Y3JVAjtlIk8xVZYSn3t3mf8xlZIn5SAOXZQxD6kKI+Q=
 github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1 h1:LejjvYg4tCW5HO7q/1nzPrprh47oUD9OUySQ29pDp5c=
 github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1/go.mod h1:cnC/60IoLiDM0GhdKYJ6oO7AwpZe1IQfPnSKlAURgHw=
 github.com/AdaLogics/go-fuzz-headers v0.0.0-20210715213245-6c3934b029d8/go.mod h1:CzsSbkDixRphAF5hS6wbMKq0eI6ccJRb7/A0M6JBnwg=
