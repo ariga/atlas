@@ -255,14 +255,17 @@ func (c *Config) Run(ctx context.Context) (*Container, error) {
 	}
 	args = append(args, "-p", fmt.Sprintf("%s:%s", p, c.Port), c.Image)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec
-	buf := &bytes.Buffer{}
-	cmd.Stdout = io.MultiWriter(c.Out, buf)
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	cmd.Stdout, cmd.Stderr = io.MultiWriter(c.Out, stdout), stderr
 	if err := cmd.Run(); err != nil {
+		if stderr.Len() > 0 {
+			err = errors.New(strings.TrimSpace(stderr.String()))
+		}
 		return nil, err
 	}
 	return &Container{
 		cfg:        *c,
-		ID:         strings.TrimSpace(buf.String()),
+		ID:         strings.TrimSpace(stdout.String()),
 		Passphrase: pass,
 		Port:       p,
 		out:        c.Out,
