@@ -24,10 +24,10 @@ jobs:
       - name: Checkout origin/master
         run: git checkout origin/master
       - name: Create revisions from master
-        run: go run main.go migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
+        run: go run . migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
         working-directory: cmd/atlas
       - name: Checkout previous HEAD
         run: git checkout -
       - name: Migrate revisions table to HEAD
-        run: go run main.go migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
+        run: go run . migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
         working-directory: cmd/atlas
