@@ -878,6 +878,11 @@ set or map item. See the example [below](#multi-environment-example).
   - `latest` - A number configures the `--latest` option.
   - `git.base` - A run analysis against the base Git branch.
   - `git.dir` - A path to the repository working directory.
+  - `review` - The policy to use when deciding whether the user should be prompted to review and approve the changes.
+    Currently works with declarative migrations and requires the user to log in. Supported options:
+    - `ALWAYS` - Always prompt the user to review and approve the changes.
+    - `WARNING` - Prompt if any diagnostics are found.
+    - `ERROR` - Prompt if any severe diagnostics (errors) are found.  By default this will happen on destructive changes only.
 
 - `diff` - A block defines the schema diffing policy.
 
