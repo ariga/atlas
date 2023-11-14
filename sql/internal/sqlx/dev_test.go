@@ -24,6 +24,8 @@ func TestDriver_NormalizeRealm(t *testing.T) {
 		}
 		r = schema.NewRealm(schema.New("test"))
 	)
+	require.False(t, IsNormalized(r))
+
 	normal, err := dev.NormalizeRealm(context.Background(), r)
 	require.NoError(t, err)
 	require.Equal(t, normal, drv.realm)
@@ -36,6 +38,7 @@ func TestDriver_NormalizeRealm(t *testing.T) {
 		// operation noop for schema like "public" in Postgres.
 		Extra: []schema.Clause{&schema.IfNotExists{}},
 	}, drv.changes[0])
+	require.True(t, IsNormalized(normal))
 }
 
 type mockDriver struct {

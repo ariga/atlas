@@ -82,7 +82,10 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 	if err := d.Driver.ApplyChanges(ctx, changes); err != nil {
 		return nil, err
 	}
-	nr, err = d.Driver.InspectRealm(ctx, opts)
+	if nr, err = d.Driver.InspectRealm(ctx, opts); err != nil {
+		return nil, err
+	}
+	nr.AddAttrs(&schema.Normalized{})
 	return
 }
 
@@ -161,10 +164,23 @@ func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sch
 	if err != nil {
 		return nil, err
 	}
+	ns.AddAttrs(&schema.Normalized{})
 	// Preserve the original schema name and attributes.
 	ns.Name = prevName
 	for _, a := range s.Attrs {
 		schema.ReplaceOrAppend(&ns.Attrs, a)
 	}
 	return ns, err
+}
+
+// IsNormalized reports if the given schema or realm is normalized.
+func IsNormalized[T schema.Schema | schema.Realm](v *T) bool {
+	switch v := any(v).(type) {
+	case *schema.Realm:
+		return Has(v.Attrs, &schema.Normalized{})
+	case *schema.Schema:
+		return Has(v.Attrs, &schema.Normalized{}) || v.Realm != nil && IsNormalized(v.Realm)
+	default:
+		panic("unreachable")
+	}
 }

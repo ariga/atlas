@@ -121,6 +121,12 @@ func (r *Realm) AddSchemas(schemas ...*Schema) *Realm {
 	return r
 }
 
+// AddAttrs adds attributes to the realm.
+func (r *Realm) AddAttrs(attrs ...Attr) *Realm {
+	r.Attrs = append(r.Attrs, attrs...)
+	return r
+}
+
 // SetCharset sets or appends the Charset attribute
 // to the realm with the given value.
 func (r *Realm) SetCharset(v string) *Realm {
@@ -238,7 +244,7 @@ func (t *Table) AddForeignKeys(fks ...*ForeignKey) *Table {
 	return t
 }
 
-// AddAttrs adds and additional attributes to the table.
+// AddAttrs adds attributes to the table.
 func (t *Table) AddAttrs(attrs ...Attr) *Table {
 	t.Attrs = append(t.Attrs, attrs...)
 	return t
@@ -274,7 +280,7 @@ func (v *View) SetComment(c string) *View {
 	return v
 }
 
-// AddAttrs adds and additional attributes to the view.
+// AddAttrs adds attributes to the view.
 func (v *View) AddAttrs(attrs ...Attr) *View {
 	v.Attrs = append(v.Attrs, attrs...)
 	return v
@@ -629,7 +635,7 @@ func (c *Column) SetGeneratedExpr(x *GeneratedExpr) *Column {
 	return c
 }
 
-// AddAttrs adds additional attributes to the column.
+// AddAttrs adds attributes to the column.
 func (c *Column) AddAttrs(attrs ...Attr) *Column {
 	c.Attrs = append(c.Attrs, attrs...)
 	return c
@@ -652,7 +658,7 @@ func (c *Check) SetExpr(expr string) *Check {
 	return c
 }
 
-// AddAttrs adds additional attributes to the check constraint.
+// AddAttrs adds attributes to the check constraint.
 func (c *Check) AddAttrs(attrs ...Attr) *Check {
 	c.Attrs = append(c.Attrs, attrs...)
 	return c
@@ -699,7 +705,7 @@ func (i *Index) SetComment(v string) *Index {
 	return i
 }
 
-// AddAttrs adds additional attributes to the index.
+// AddAttrs adds attributes to the index.
 func (i *Index) AddAttrs(attrs ...Attr) *Index {
 	i.Attrs = append(i.Attrs, attrs...)
 	return i
@@ -760,7 +766,7 @@ func (p *IndexPart) SetDesc(b bool) *IndexPart {
 	return p
 }
 
-// AddAttrs adds and additional attributes to the index-part.
+// AddAttrs adds attributes to the index-part.
 func (p *IndexPart) AddAttrs(attrs ...Attr) *IndexPart {
 	p.Attrs = append(p.Attrs, attrs...)
 	return p

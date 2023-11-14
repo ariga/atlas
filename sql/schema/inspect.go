@@ -117,14 +117,22 @@ type (
 	}
 )
 
-// Normalizer is the interface implemented by the different database drivers for
-// "normalizing" schema objects. i.e. converting schema objects defined in natural
-// form to their representation in the database. Thus, two schema objects are equal
-// if their normal forms are equal.
-type Normalizer interface {
-	// NormalizeSchema returns the normal representation of a schema.
-	NormalizeSchema(context.Context, *Schema) (*Schema, error)
+type (
+	// Normalizer is the interface implemented by the different database drivers for
+	// "normalizing" schema objects. i.e. converting schema objects defined in natural
+	// form to their representation in the database. Thus, two schema objects are equal
+	// if their normal forms are equal.
+	Normalizer interface {
+		// NormalizeSchema returns the normal representation of a schema.
+		NormalizeSchema(context.Context, *Schema) (*Schema, error)
 
-	// NormalizeRealm returns the normal representation of a database.
-	NormalizeRealm(context.Context, *Realm) (*Realm, error)
-}
+		// NormalizeRealm returns the normal representation of a database.
+		NormalizeRealm(context.Context, *Realm) (*Realm, error)
+	}
+
+	// Normalized is an attribute that attached to resources (mainly, Realm and Schema)
+	// by the Normalizer to indicate that the resource is normalized.
+	Normalized struct {
+		Attr
+	}
+)
