@@ -105,6 +105,14 @@ func (ru *RevisionUpdate) SetExecutionTime(t time.Duration) *RevisionUpdate {
 	return ru
 }
 
+// SetNillableExecutionTime sets the "execution_time" field if the given value is not nil.
+func (ru *RevisionUpdate) SetNillableExecutionTime(t *time.Duration) *RevisionUpdate {
+	if t != nil {
+		ru.SetExecutionTime(*t)
+	}
+	return ru
+}
+
 // AddExecutionTime adds t to the "execution_time" field.
 func (ru *RevisionUpdate) AddExecutionTime(t time.Duration) *RevisionUpdate {
 	ru.mutation.AddExecutionTime(t)
@@ -157,6 +165,14 @@ func (ru *RevisionUpdate) SetHash(s string) *RevisionUpdate {
 	return ru
 }
 
+// SetNillableHash sets the "hash" field if the given value is not nil.
+func (ru *RevisionUpdate) SetNillableHash(s *string) *RevisionUpdate {
+	if s != nil {
+		ru.SetHash(*s)
+	}
+	return ru
+}
+
 // SetPartialHashes sets the "partial_hashes" field.
 func (ru *RevisionUpdate) SetPartialHashes(s []string) *RevisionUpdate {
 	ru.mutation.SetPartialHashes(s)
@@ -178,6 +194,14 @@ func (ru *RevisionUpdate) ClearPartialHashes() *RevisionUpdate {
 // SetOperatorVersion sets the "operator_version" field.
 func (ru *RevisionUpdate) SetOperatorVersion(s string) *RevisionUpdate {
 	ru.mutation.SetOperatorVersion(s)
+	return ru
+}
+
+// SetNillableOperatorVersion sets the "operator_version" field if the given value is not nil.
+func (ru *RevisionUpdate) SetNillableOperatorVersion(s *string) *RevisionUpdate {
+	if s != nil {
+		ru.SetOperatorVersion(*s)
+	}
 	return ru
 }
 
@@ -385,6 +409,14 @@ func (ruo *RevisionUpdateOne) SetExecutionTime(t time.Duration) *RevisionUpdateO
 	return ruo
 }
 
+// SetNillableExecutionTime sets the "execution_time" field if the given value is not nil.
+func (ruo *RevisionUpdateOne) SetNillableExecutionTime(t *time.Duration) *RevisionUpdateOne {
+	if t != nil {
+		ruo.SetExecutionTime(*t)
+	}
+	return ruo
+}
+
 // AddExecutionTime adds t to the "execution_time" field.
 func (ruo *RevisionUpdateOne) AddExecutionTime(t time.Duration) *RevisionUpdateOne {
 	ruo.mutation.AddExecutionTime(t)
@@ -437,6 +469,14 @@ func (ruo *RevisionUpdateOne) SetHash(s string) *RevisionUpdateOne {
 	return ruo
 }
 
+// SetNillableHash sets the "hash" field if the given value is not nil.
+func (ruo *RevisionUpdateOne) SetNillableHash(s *string) *RevisionUpdateOne {
+	if s != nil {
+		ruo.SetHash(*s)
+	}
+	return ruo
+}
+
 // SetPartialHashes sets the "partial_hashes" field.
 func (ruo *RevisionUpdateOne) SetPartialHashes(s []string) *RevisionUpdateOne {
 	ruo.mutation.SetPartialHashes(s)
@@ -458,6 +498,14 @@ func (ruo *RevisionUpdateOne) ClearPartialHashes() *RevisionUpdateOne {
 // SetOperatorVersion sets the "operator_version" field.
 func (ruo *RevisionUpdateOne) SetOperatorVersion(s string) *RevisionUpdateOne {
 	ruo.mutation.SetOperatorVersion(s)
+	return ruo
+}
+
+// SetNillableOperatorVersion sets the "operator_version" field if the given value is not nil.
+func (ruo *RevisionUpdateOne) SetNillableOperatorVersion(s *string) *RevisionUpdateOne {
+	if s != nil {
+		ruo.SetOperatorVersion(*s)
+	}
 	return ruo
 }
 
