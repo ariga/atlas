@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -575,7 +576,7 @@ func flywayVersionCompare(v1, v2 string) int {
 		}
 		return ret
 	}
-	return compareSliceInt(parse(v1), parse(v2))
+	return slices.Compare(parse(v1), parse(v2))
 }
 
 func unexpectedPragmaErr(f migrate.File, line int, pragma string) error {
@@ -639,24 +640,3 @@ var (
 	_ dirPath = (*GooseDir)(nil)
 	_ dirPath = (*LiquibaseDir)(nil)
 )
-
-// Copied from golang.org/x/exp/slices.Compare
-func compareSliceInt(s1, s2 []int) int {
-	s2len := len(s2)
-	for i, v1 := range s1 {
-		if i >= s2len {
-			return +1
-		}
-		v2 := s2[i]
-		switch {
-		case v1 < v2:
-			return -1
-		case v1 > v2:
-			return +1
-		}
-	}
-	if len(s1) < s2len {
-		return -1
-	}
-	return 0
-}

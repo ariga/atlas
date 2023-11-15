@@ -243,7 +243,7 @@ module.exports = {
           {
             from: '/ui/intro',
             to: '/cloud/getting-started',
-          }
+          },
         ],
       },
     ],

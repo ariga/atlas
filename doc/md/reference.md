@@ -94,6 +94,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
       --lock-timeout duration     set how long to wait for the database lock (default 10s)
       --baseline string           start the first migration after the given baseline version
       --tx-mode string            set transaction mode [none, file, all] (default "file")
+      --exec-order string         set file execution order [linear, linear-skip, non-linear] (default "linear")
       --allow-dirty               allow start working on a non-clean database
 
 ```
