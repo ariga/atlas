@@ -76,6 +76,7 @@ type (
 		Dir             string `spec:"dir"`
 		Format          string `spec:"format"`
 		Baseline        string `spec:"baseline"`
+		ExecOrder       string `spec:"exec_order"`
 		LockTimeout     string `spec:"lock_timeout"`
 		RevisionsSchema string `spec:"revisions_schema"`
 	}
@@ -472,6 +473,7 @@ func parseConfig(path, env string, vars map[string]cty.Value) (*Project, error) 
 			cmdext.DataSources,
 			cfg.InitBlock(),
 			schemahcl.WithScopedEnums("env.migration.format", cmdmigrate.Formats...),
+			schemahcl.WithScopedEnums("env.migration.exec_order", "LINEAR", "LINEAR_SKIP", "NON_LINEAR"),
 			schemahcl.WithScopedEnums("env.lint.review", ReviewModes...),
 			schemahcl.WithScopedEnums("lint.review", ReviewModes...),
 			schemahcl.WithVariables(map[string]cty.Value{

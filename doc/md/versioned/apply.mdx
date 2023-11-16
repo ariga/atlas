@@ -192,6 +192,36 @@ The `--atlas:txmode` directive can be used to override the transaction mode for 
 CREATE INDEX CONCURRENTLY name_idx ON users (name);
 ```
 
+### Execution Order
+
+The `--exec-order` flag controls how Atlas computes and executes pending migration files to the database.
+Atlas supports three different order execution modes:
+
+- `linear` (default) - Atlas expects a linear history and fails if it encounters files that were added out of order.
+  This option ensures files are executed in a consistent order, guaranteeing deterministic behavior. It can be enforced
+  in CI using the `atlas migrate lint` command. Learn more about [non-linear changes](/lint/analyzers#non-linear-changes)
+  in the documentation.
+- `linear-skip` - This option is a softer version of `linear`, meaning that if Atlas encounters a new file that was not
+   added in sequential order (its version is lower than the database version), it will be skipped.
+- `non-linear` - This option directs Atlas to execute migration files that were added out of order. Note, although
+  this option can be useful in local development, it is strongly discouraged in real production environments.
+  Executing files out of order cannot guarantee deterministic behavior and may lead to failures (e.g., conflicted migrations).
+  Rolling back to a specific version of the migration directory might be challenging, as the state of the database could differ
+  from the state of the directory.
+
+#### Handling Out-of-Order Errors {#non-linear-error}
+
+If you encounter this issue during deployment, it means that Atlas was not set up in your CI, which is why the issue was
+not caught beforehand. Let's go through the steps to set up Atlas for your CI and fix this error:
+
+- Configure Atlas to run for every PR or a change in the master branch that affects the migration directory. Learn more on
+  how to integrate it into your [GitHub Actions](/cloud/setup-ci) or [GitLab](/guides/ci-platforms/gitlab) CI pipelines.
+- Run `atlas migrate rebase <versions>` to rebase the problematic files reported by Atlas. Then, create a PR.
+- At this stage, if Atlas CI is set up, it will verify that the migration directory is _replay-able_ and that the rebased
+  migration file(s) can be executed without any issues.
+- Running `atlas migrate apply` (deployment) again should pass without this error.
+
+
 ### Existing Databases
 
 #### Baseline migration

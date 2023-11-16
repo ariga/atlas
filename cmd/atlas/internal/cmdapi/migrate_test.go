@@ -713,6 +713,95 @@ func TestMigrate_ApplyTxModeDirective(t *testing.T) {
 	require.Equal(t, s, `unknown txmode "unknown" found in file directive "20220925094021_second.sql"`)
 }
 
+func TestMigrate_ApplyExecOrder(t *testing.T) {
+	p := t.TempDir()
+	db := fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db"))
+	require.NoError(t, os.Mkdir(filepath.Join(p, "migrations"), 0700))
+	dir, err := migrate.NewLocalDir(filepath.Join(p, "migrations"))
+	require.NoError(t, err)
+	write := func(n, b string) {
+		require.NoError(t, dir.WriteFile(n, []byte(b)))
+		hash, err := dir.Checksum()
+		require.NoError(t, err)
+		require.NoError(t, migrate.WriteSumFile(dir, hash))
+	}
+	write("1.sql", "create table t1(c int);")
+	write("3.sql", "create table t3(c int);")
+
+	// First run.
+	s, err := runCmd(
+		migrateApplyCmd(),
+		"--dir", "file://"+dir.Path(),
+		"--url", db,
+		"--format", "{{ len .Applied }}",
+	)
+	require.NoError(t, err)
+	require.Equal(t, "2", s)
+
+	// File was added out of order.
+	write("2.sql", "create table t2(c int);")
+	_, err = runCmd(
+		migrateApplyCmd(),
+		"--dir", "file://"+dir.Path(),
+		"--url", db,
+	)
+	require.EqualError(t, err, "migration files 2.sql added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
+
+	// The "linear" option is the default execution order.
+	_, err = runCmd(
+		migrateApplyCmd(),
+		"--dir", "file://"+dir.Path(),
+		"--url", db,
+		"--exec-order", "linear",
+	)
+	require.EqualError(t, err, "migration files 2.sql added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
+
+	// Keep linear order and skip files that were added out of order.
+	s, err = runCmd(
+		migrateApplyCmd(),
+		"--dir", "file://"+dir.Path(),
+		"--url", db,
+		"--exec-order", "linear-skip",
+	)
+	require.NoError(t, err)
+	require.Equal(t, "No migration files to execute\n", s)
+
+	// Allow non-linear order.
+	s, err = runCmd(
+		migrateApplyCmd(),
+		"--dir", "file://"+dir.Path(),
+		"--url", db,
+		"--exec-order", "non-linear",
+		"--format", "{{ range .Applied }}{{ .Version }}{{ end }}",
+	)
+	require.NoError(t, err)
+	require.Equal(t, "2", s)
+
+	write("2.5.sql", "create table t25(c int);")
+	write("4.sql", "create table t4(c int);")
+	s, err = runCmd(
+		migrateApplyCmd(),
+		"--dir", "file://"+dir.Path(),
+		"--url", db,
+		"--exec-order", "non-linear",
+		"--format", "{{ range .Applied }}{{ println .Version }}{{ end }}",
+	)
+	require.NoError(t, err)
+	require.Equal(t, "2.5\n4\n", s)
+
+	// There are no pending migrations, in all execution orders.
+	for _, o := range []string{"linear", "linear-skip", "non-linear"} {
+		s, err = runCmd(
+			migrateApplyCmd(),
+			"--dir", "file://"+dir.Path(),
+			"--url", db,
+			"--exec-order", o,
+		)
+		require.NoError(t, err)
+		require.Equal(t, "No migration files to execute\n", s)
+	}
+}
+
 func TestMigrate_ApplyBaseline(t *testing.T) {
 	t.Run("FromFlags", func(t *testing.T) {
 		p := t.TempDir()

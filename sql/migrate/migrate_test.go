@@ -365,6 +365,125 @@ func TestExecutor_Pending(t *testing.T) {
 	require.Len(t, p, 0)
 }
 
+func TestExecutor_ExecOrderLinear(t *testing.T) {
+	var (
+		drv = &mockDriver{}
+		ctx = context.Background()
+		rrw = &mockRevisionReadWriter{{Version: "1"}, {Version: "2"}, {Version: "3"}}
+		dir = func(names ...string) migrate.Dir {
+			m := &migrate.MemDir{}
+			for _, n := range names {
+				require.NoError(t, m.WriteFile(n, nil))
+			}
+			h, err := m.Checksum()
+			require.NoError(t, err)
+			require.NoError(t, migrate.WriteSumFile(m, h))
+			return m
+		}
+	)
+	t.Run("Linear", func(t *testing.T) {
+		ex, err := migrate.NewExecutor(drv, dir(), rrw)
+		require.NoError(t, err)
+		files, err := ex.Pending(ctx)
+		require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+		require.Empty(t, files)
+
+		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2.sql", "3.sql"), rrw)
+		require.NoError(t, err)
+		files, err = ex.Pending(ctx)
+		require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+		require.Empty(t, files)
+
+		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2.sql", "2.5.sql", "3.sql"), rrw)
+		require.NoError(t, err)
+		files, err = ex.Pending(ctx)
+		require.ErrorAs(t, err, new(*migrate.HistoryNonLinearError))
+		require.EqualError(t, err, "migration files 2.5.sql added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
+
+		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2.sql", "2.5.sql", "2.6.sql", "3.sql"), rrw)
+		require.NoError(t, err)
+		files, err = ex.Pending(ctx)
+		require.ErrorAs(t, err, new(*migrate.HistoryNonLinearError))
+		require.EqualError(t, err, "migration files 2.5.sql, 2.6.sql added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
+
+		// The first file executed as checkpoint, therefore, 1.sql is not pending nor skipped.
+		rrw = &mockRevisionReadWriter{{Version: "2"}, {Version: "3"}}
+		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2_checkpoint.sql", "3.sql"), rrw)
+		require.NoError(t, err)
+		files, err = ex.Pending(ctx)
+		require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+		require.Empty(t, files)
+
+		// The first file executed as checkpoint, therefore, 1.sql is not pending nor skipped.
+		rrw = &mockRevisionReadWriter{{Version: "2"}, {Version: "3"}}
+		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2_checkpoint.sql", "2.5.sql", "3.sql"), rrw)
+		require.NoError(t, err)
+		files, err = ex.Pending(ctx)
+		require.ErrorAs(t, err, new(*migrate.HistoryNonLinearError))
+		require.EqualError(t, err, "migration files 2.5.sql added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
+	})
+
+	t.Run("LinearSkipped", func(t *testing.T) {
+		ex, err := migrate.NewExecutor(drv, dir(), rrw, migrate.WithExecOrder(migrate.ExecOrderLinearSkip))
+		require.NoError(t, err)
+		files, err := ex.Pending(ctx)
+		require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+		require.Empty(t, files)
+
+		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2.sql", "3.sql"), rrw, migrate.WithExecOrder(migrate.ExecOrderLinearSkip))
+		require.NoError(t, err)
+		files, err = ex.Pending(ctx)
+		require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+		require.Empty(t, files)
+
+		// File 2.5.sql is skipped.
+		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2.sql", "2.5.sql", "3.sql"), rrw, migrate.WithExecOrder(migrate.ExecOrderLinearSkip))
+		require.NoError(t, err)
+		files, err = ex.Pending(ctx)
+		require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+		require.Empty(t, files)
+
+		// Files 2.5.sql and 2.6.sql are skipped.
+		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2.sql", "2.5.sql", "2.6.sql", "3.sql"), rrw, migrate.WithExecOrder(migrate.ExecOrderLinearSkip))
+		require.NoError(t, err)
+		files, err = ex.Pending(ctx)
+		require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+		require.Empty(t, files)
+	})
+
+	t.Run("NonLinear", func(t *testing.T) {
+		ex, err := migrate.NewExecutor(drv, dir(), rrw, migrate.WithExecOrder(migrate.ExecOrderNonLinear))
+		require.NoError(t, err)
+		files, err := ex.Pending(ctx)
+		require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+		require.Empty(t, files)
+
+		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2.sql", "3.sql"), rrw, migrate.WithExecOrder(migrate.ExecOrderNonLinear))
+		require.NoError(t, err)
+		files, err = ex.Pending(ctx)
+		require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+		require.Empty(t, files)
+
+		// File 2.5.sql is pending.
+		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2.sql", "2.5.sql", "3.sql"), rrw, migrate.WithExecOrder(migrate.ExecOrderNonLinear))
+		require.NoError(t, err)
+		files, err = ex.Pending(ctx)
+		require.NoError(t, err)
+		require.Len(t, files, 1)
+		require.Equal(t, "2.5.sql", files[0].Name())
+
+		// Files 2.5.sql, 2.6.sql and 4.sql are pending.
+		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2.sql", "2.5.sql", "2.6.sql", "3.sql", "4.sql"), rrw, migrate.WithExecOrder(migrate.ExecOrderNonLinear))
+		require.NoError(t, err)
+		files, err = ex.Pending(ctx)
+		require.NoError(t, err)
+		require.Len(t, files, 3)
+		require.Equal(t, "2.5.sql", files[0].Name())
+		require.Equal(t, "2.6.sql", files[1].Name())
+		require.Equal(t, "4.sql", files[2].Name())
+	})
+}
+
 func TestExecutor(t *testing.T) {
 	// Passing nil raises error.
 	ex, err := migrate.NewExecutor(nil, nil, nil)

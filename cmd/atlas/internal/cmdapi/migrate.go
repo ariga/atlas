@@ -57,17 +57,29 @@ type migrateApplyFlags struct {
 	allowDirty      bool   // allow working on a database that already has resources
 	baselineVersion string // apply with this version as baseline
 	txMode          string // (none, file, all)
+	execOrder       string // (linear, linear-skip, non-linear)
 	context         string // Run context. See cloudapi.DeployContextInput.
 }
 
-func (f *migrateApplyFlags) migrateOptions() (opts []migrate.ExecutorOption) {
+func (f *migrateApplyFlags) migrateOptions() ([]migrate.ExecutorOption, error) {
+	var opts []migrate.ExecutorOption
 	if f.allowDirty {
 		opts = append(opts, migrate.WithAllowDirty(true))
 	}
 	if v := f.baselineVersion; v != "" {
 		opts = append(opts, migrate.WithBaselineVersion(v))
 	}
-	return
+	if v := f.execOrder; v != "" && v != execOrderLinear {
+		switch v {
+		case execOrderLinearSkip:
+			opts = append(opts, migrate.WithExecOrder(migrate.ExecOrderLinearSkip))
+		case execOrderNonLinear:
+			opts = append(opts, migrate.WithExecOrder(migrate.ExecOrderNonLinear))
+		default:
+			return nil, fmt.Errorf("unknown execution order: %q", v)
+		}
+	}
+	return opts, nil
 }
 
 func migrateApplyCmd() *cobra.Command {
@@ -132,6 +144,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
 	cmd.Flags().StringVarP(&flags.baselineVersion, flagBaseline, "", "", "start the first migration after the given baseline version")
 	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file, all]")
+	cmd.Flags().StringVarP(&flags.execOrder, flagExecOrder, "", execOrderLinear, "set file execution order [linear, linear-skip, non-linear]")
 	cmd.Flags().StringVar(&flags.context, flagContext, "", "describes what triggered this command (e.g., GitHub Action)")
 	cobra.CheckErr(cmd.Flags().MarkHidden(flagContext))
 	cmd.Flags().BoolVarP(&flags.allowDirty, flagAllowDirty, "", false, "allow start working on a non-clean database")
@@ -205,7 +218,11 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		return err
 	}
 	// Determine pending files.
-	opts := append(flags.migrateOptions(), migrate.WithOperatorVersion(operatorVersion()), migrate.WithLogger(report))
+	opts, err := flags.migrateOptions()
+	if err != nil {
+		return err
+	}
+	opts = append(opts, migrate.WithOperatorVersion(operatorVersion()), migrate.WithLogger(report))
 	ex, err := migrate.NewExecutor(client.Driver, dir, rrw, opts...)
 	if err != nil {
 		return err
@@ -1425,6 +1442,10 @@ const (
 	txModeNone = "none"
 	txModeAll  = "all"
 	txModeFile = "file"
+
+	execOrderLinear     = "linear"
+	execOrderLinearSkip = "linear-skip"
+	execOrderNonLinear  = "non-linear"
 )
 
 // tx handles wrapping migration execution in transactions.
@@ -1647,6 +1668,9 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 			return err
 		}
 		if err := maySetFlag(cmd, flagLockTimeout, env.Migration.LockTimeout); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, flagExecOrder, strings.ReplaceAll(strings.ToLower(env.Migration.ExecOrder), "_", "-")); err != nil {
 			return err
 		}
 	case "diff", "checkpoint":

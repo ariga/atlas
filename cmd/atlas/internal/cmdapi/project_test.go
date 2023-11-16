@@ -70,6 +70,7 @@ env "local" {
     format = atlas
     lock_timeout = "1s"
     revisions_schema = "revisions"
+    exec_order = LINEAR_SKIP
   }
   lint {
     latest = 1
@@ -127,6 +128,7 @@ env "multi" {
 				Format:          cmdmigrate.FormatAtlas,
 				LockTimeout:     "1s",
 				RevisionsSchema: "revisions",
+				ExecOrder:       "LINEAR_SKIP",
 			},
 			Diff: &Diff{
 				SkipChanges: &SkipChanges{

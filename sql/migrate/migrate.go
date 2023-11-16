@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -239,6 +240,7 @@ type (
 		dir         Dir                // The Dir with migration files to use.
 		rrw         RevisionReadWriter // The RevisionReadWriter to read and write database revisions to.
 		log         Logger             // The Logger to use.
+		order       ExecOrder          // The order to execute the migration files.
 		baselineVer string             // Start the first migration after the given baseline version.
 		allowDirty  bool               // Allow start working on a non-clean database.
 		operator    string             // Revision.OperatorVersion
@@ -611,6 +613,33 @@ func WithLogger(log Logger) ExecutorOption {
 	}
 }
 
+// ExecOrder defines the execution order to use.
+type ExecOrder uint
+
+const (
+	// ExecOrderLinear is the default execution order mode.
+	// It expects a linear history and fails if it encounters files that were
+	// added out of order. For example, a new file was added with version lower
+	// than the last applied revision.
+	ExecOrderLinear ExecOrder = iota
+
+	// ExecOrderLinearSkip is a softer version of ExecOrderLinear.
+	// This means that if a new file is added with a version lower than the last
+	// applied revision, it will be skipped.
+	ExecOrderLinearSkip
+
+	// ExecOrderNonLinear executes migration files that were added out of order.
+	ExecOrderNonLinear
+)
+
+// WithExecOrder sets the execution order to use.
+func WithExecOrder(o ExecOrder) ExecutorOption {
+	return func(ex *Executor) error {
+		ex.order = o
+		return nil
+	}
+}
+
 // WithOperatorVersion sets the operator version to save on the revisions
 // when executing migration files.
 func WithOperatorVersion(v string) ExecutorOption {
@@ -697,6 +726,30 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 			idx++
 		}
 		pending = migrations[idx:]
+
+		// Capture all files (versions) between first and last revisions and ensure they
+		// were actually applied. Then, error or execute according to the execution order.
+		// Note, "first" is computed as it can be set to the first checkpoint, which may
+		// not be the first migration file.
+		if first := slices.IndexFunc(migrations[:idx], func(f File) bool {
+			return f.Version() >= revs[0].Version
+		}); first != -1 && first < idx && e.order != ExecOrderLinearSkip {
+			var skipped []File
+			for _, f := range migrations[first:idx] {
+				if _, found := slices.BinarySearchFunc(revs, f, func(r *Revision, f File) int {
+					return strings.Compare(r.Version, f.Version())
+				}); !found {
+					skipped = append(skipped, f)
+				}
+			}
+			switch {
+			case len(skipped) == 0:
+			case e.order == ExecOrderNonLinear:
+				pending = append(skipped, pending...)
+			case e.order == ExecOrderLinear:
+				return nil, &HistoryNonLinearError{Files: skipped}
+			}
+		}
 	}
 	if len(pending) == 0 {
 		return nil, ErrNoPendingFiles
@@ -805,6 +858,20 @@ type HistoryChangedError struct {
 
 func (e HistoryChangedError) Error() string {
 	return fmt.Sprintf("sql/migrate: execute: history changed: statement %d from file %q changed", e.Stmt, e.File)
+}
+
+// HistoryNonLinearError is returned if the migration history is not linear. Means, a file was added out of order.
+// The executor can be configured to ignore this error and continue execution. See WithExecOrder for details.
+type HistoryNonLinearError struct {
+	Files []File
+}
+
+func (e HistoryNonLinearError) Error() string {
+	names := make([]string, len(e.Files))
+	for i := range e.Files {
+		names[i] = e.Files[i].Name()
+	}
+	return fmt.Sprintf("migration files %s added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error", strings.Join(names, ", "))
 }
 
 // ExecuteN executes n pending migration files. If n<=0 all pending migration files are executed.

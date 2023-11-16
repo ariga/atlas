@@ -304,6 +304,7 @@ const (
 	flagSchemaShort    = "s"
 	flagTo             = "to"
 	flagTxMode         = "tx-mode"
+	flagExecOrder      = "exec-order"
 	flagURL            = "url"
 	flagURLShort       = "u"
 	flagVar            = "var"
