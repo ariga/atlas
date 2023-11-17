@@ -9,7 +9,12 @@ atlas migrate hash
 atlas migrate apply --url URL
 stdout 'Migrating to version 2 \(2 migrations in total\):'
 stdout '-- migrating version 1'
-stdout '-> CREATE TABLE `users` \(`id` integer NOT NULL, `age` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY \(`id`\)\);'
+stdout '-> CREATE TABLE `users` \('
+stdout '  `id` integer NOT NULL,'
+stdout '  `age` integer NOT NULL,'
+stdout '  `name` TEXT NOT NULL,'
+stdout '  PRIMARY KEY \(`id`\)'
+stdout '\);'
 stdout '-- migrating version 2'
 stdout '-> CREATE TABLE `pets` \(`id` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY \(`id`\)\);'
 stdout '-- 2 migrations'
@@ -117,7 +122,12 @@ atlas schema inspect --url URL --exclude atlas_schema_revisions --exclude users 
 cmp stdout broken.hcl
 
 -- migrations/1_first.sql --
-CREATE TABLE `users` (`id` integer NOT NULL, `age` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY (`id`));
+CREATE TABLE `users` (
+  `id` integer NOT NULL,
+  `age` integer NOT NULL,
+  `name` TEXT NOT NULL,
+  PRIMARY KEY (`id`)
+);
 
 -- migrations/2_second.sql --
 CREATE TABLE `pets` (`id` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY (`id`));
@@ -140,7 +150,12 @@ table "broken" {
 schema "main" {
 }
 -- users.sql --
-CREATE TABLE `users` (`id` integer NOT NULL, `age` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY (`id`))
+CREATE TABLE `users` (
+  `id` integer NOT NULL,
+  `age` integer NOT NULL,
+  `name` TEXT NOT NULL,
+  PRIMARY KEY (`id`)
+)
 
 -- pets.sql --
 CREATE TABLE `pets` (`id` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY (`id`))

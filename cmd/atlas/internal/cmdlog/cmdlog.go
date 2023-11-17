@@ -291,6 +291,7 @@ var (
 		"upper":      strings.ToUpper,
 		"json":       jsonEncode,
 		"json_merge": jsonMerge,
+		"indent_ln":  indentLn,
 	})
 
 	// MigrateApplyTemplate holds the default template of the 'migrate apply' command.
@@ -303,7 +304,7 @@ No migration files to execute
 Migrating to version {{ cyan .Target }}{{ with .Current }} from {{ cyan . }}{{ end }} ({{ len .Pending }} migrations in total):
 {{ range $i, $f := .Applied }}
   {{ yellow "--" }} migrating version {{ cyan $f.File.Version }}{{ range $f.Applied }}
-    {{ cyan "->" }} {{ . }}{{ end }}
+    {{ cyan "->" }} {{ indent_ln . 7 }}{{ end }}
   {{- with .Error }}
     {{ redBgWhiteFg .Text }}
   {{- else }}
@@ -904,4 +905,9 @@ func jsonMerge(objects ...string) (string, error) {
 
 func dec(i int) int {
 	return i - 1
+}
+
+func indentLn(input string, indent int) string {
+	pad := strings.Repeat(" ", indent)
+	return strings.ReplaceAll(input, "\n", "\n"+pad)
 }
