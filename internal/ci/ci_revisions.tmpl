@@ -11,6 +11,7 @@ on:
       - master
     paths:
       - 'cmd/atlas/internal/migrate/ent/**'
+{{ .Concurrency }}
 jobs:
   revisions:
     runs-on: {{ $.Runner }}

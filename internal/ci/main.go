@@ -166,12 +166,24 @@ var (
 	}
 )
 
-type goVersions []string
+type (
+	goVersions  []string
+	concurrency struct {
+		group  string
+		cancel bool
+	}
+)
 
-var data struct {
+var data = struct {
 	Jobs                 []Job
 	Flavor, Tags, Runner string
 	GoVersions           goVersions
+	Concurrency          concurrency
+}{
+	Concurrency: concurrency{
+		group:  "${{ github.workflow }}-${{ github.head_ref || github.run_id }}",
+		cancel: true,
+	},
 }
 
 func main() {
@@ -198,4 +210,8 @@ func (v goVersions) String() (s string) {
 		v[i] = strconv.Quote(v[i])
 	}
 	return fmt.Sprintf("[ %s ]", strings.Join(v, ", "))
+}
+
+func (c concurrency) String() (s string) {
+	return fmt.Sprintf("concurrency:\n  group: %s\n  cancel-in-progress: %t", c.group, c.cancel)
 }
