@@ -287,7 +287,7 @@ Atlas stores information about applied migrations in the managed database. Somet
 manually applied or rolled back a migration file. Atlas provides the
 [`atlas migrate set`](/cli-reference#atlas-migrate-set) command for such cases.
 
-:::warning
+:::caution
 
 Please refrain from manually making changes to the Atlas revision table. Atlas' behavior after such a change is
 undefined, and it can possibly break your database to a point you cannot recover from.

@@ -747,7 +747,7 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 			case e.order == ExecOrderNonLinear:
 				pending = append(skipped, pending...)
 			case e.order == ExecOrderLinear:
-				return nil, &HistoryNonLinearError{Files: skipped}
+				return nil, &HistoryNonLinearError{OutOfOrder: skipped, Pending: pending}
 			}
 		}
 	}
@@ -863,15 +863,22 @@ func (e HistoryChangedError) Error() string {
 // HistoryNonLinearError is returned if the migration history is not linear. Means, a file was added out of order.
 // The executor can be configured to ignore this error and continue execution. See WithExecOrder for details.
 type HistoryNonLinearError struct {
-	Files []File
+	// OutOfOrder are the files that were added out of order.
+	OutOfOrder []File
+	// Pending are valid files that are still pending for execution.
+	Pending []File
 }
 
 func (e HistoryNonLinearError) Error() string {
-	names := make([]string, len(e.Files))
-	for i := range e.Files {
-		names[i] = e.Files[i].Name()
+	names := make([]string, len(e.OutOfOrder))
+	for i := range e.OutOfOrder {
+		names[i] = e.OutOfOrder[i].Name()
 	}
-	return fmt.Sprintf("migration files %s added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error", strings.Join(names, ", "))
+	f := fmt.Sprintf("files %s were", strings.Join(names, ", "))
+	if len(e.OutOfOrder) == 1 {
+		f = fmt.Sprintf("file %s was", names[0])
+	}
+	return fmt.Sprintf("migration %s added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error", f)
 }
 
 // ExecuteN executes n pending migration files. If n<=0 all pending migration files are executed.

@@ -99,20 +99,30 @@ var (
 		"table":      table,
 		"default": func(report *MigrateStatus) (string, error) {
 			var buf bytes.Buffer
-			t, err := template.New("report").Funcs(ColorTemplateFuncs).Parse(`Migration Status:
-{{- if eq .Status "OK"      }} {{ green .Status }}{{ end }}
+			t, err := template.New("report").
+				Funcs(template.FuncMap{
+					"add": func(a, b int) int { return a + b },
+				}).
+				Funcs(ColorTemplateFuncs).
+				Parse(`Migration Status:
+{{- if eq .Status "OK" }} {{ green .Status }}{{ end }}
 {{- if eq .Status "PENDING" }} {{ yellow .Status }}{{ end }}
   {{ yellow "--" }} Current Version: {{ cyan .Current }}
 {{- if gt .Total 0 }}{{ printf " (%s statements applied)" (yellow "%d" .Count) }}{{ end }}
-  {{ yellow "--" }} Next Version:    {{ cyan .Next }}{{ if .FromCheckpoint }} (checkpoint){{ end }}
+  {{ yellow "--" }} Next Version:    {{ if .Next }}{{ cyan .Next }}{{ if .FromCheckpoint }} (checkpoint){{ end }}{{ else }}UNKNOWN{{ end }}
 {{- if gt .Total 0 }}{{ printf " (%s statements left)" (yellow "%d" .Left) }}{{ end }}
   {{ yellow "--" }} Executed Files:  {{ len .Applied }}{{ if gt .Total 0 }} (last one partially){{ end }}
-  {{ yellow "--" }} Pending Files:   {{ len .Pending }}
-{{ if gt .Total 0 }}
+  {{ yellow "--" }} Pending Files:   {{ add (len .Pending) (len .OutOfOrder) }}{{ if .OutOfOrder }} ({{ if .Pending }}{{ len .OutOfOrder }} {{ end }}out of order){{ end }}
+{{- if gt .Total 0 }}
+
 Last migration attempt had errors:
   {{ yellow "--" }} SQL:   {{ .SQL }}
   {{ yellow "--" }} {{ red "ERROR:" }} {{ .Error }}
-{{ end }}`)
+{{- else if and .OutOfOrder .Error }}
+
+  {{ red "ERROR:" }} {{ .Error }}
+{{- end }}
+`)
 			if err != nil {
 				return "", err
 			}
@@ -129,16 +139,17 @@ Last migration attempt had errors:
 type MigrateStatus struct {
 	context.Context `json:"-"`
 	Env             `json:"Env"`
-	Available       Files               `json:"Available,omitempty"` // Available migration files
-	Pending         Files               `json:"Pending,omitempty"`   // Pending migration files
-	Applied         []*migrate.Revision `json:"Applied,omitempty"`   // Applied migration files
-	Current         string              `json:"Current,omitempty"`   // Current migration version
-	Next            string              `json:"Next,omitempty"`      // Next migration version
-	Count           int                 `json:"Count,omitempty"`     // Count of applied statements of the last revision
-	Total           int                 `json:"Total,omitempty"`     // Total statements of the last migration
-	Status          string              `json:"Status,omitempty"`    // Status of migration (OK, PENDING)
-	Error           string              `json:"Error,omitempty"`     // Last Error that occurred
-	SQL             string              `json:"SQL,omitempty"`       // SQL that caused the last Error
+	Available       Files               `json:"Available,omitempty"`  // Available migration files
+	OutOfOrder      Files               `json:"OutOfOrder,omitempty"` // OutOfOrder migration files
+	Pending         Files               `json:"Pending,omitempty"`    // Pending migration files
+	Applied         []*migrate.Revision `json:"Applied,omitempty"`    // Applied migration files
+	Current         string              `json:"Current,omitempty"`    // Current migration version
+	Next            string              `json:"Next,omitempty"`       // Next migration version
+	Count           int                 `json:"Count,omitempty"`      // Count of applied statements of the last revision
+	Total           int                 `json:"Total,omitempty"`      // Total statements of the last migration
+	Status          string              `json:"Status,omitempty"`     // Status of migration (OK, PENDING)
+	Error           string              `json:"Error,omitempty"`      // Last Error that occurred
+	SQL             string              `json:"SQL,omitempty"`        // SQL that caused the last Error
 }
 
 // Left returns the amount of statements left to apply (if any).

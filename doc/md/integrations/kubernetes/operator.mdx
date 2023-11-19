@@ -300,7 +300,7 @@ spec:
   # Skipping all other fields for brevity.
 ```
 
-:::warning Overlapping schemas on a single database
+:::caution Overlapping schemas on a single database
 
 A word of caution: if you have multiple `AtlasSchema` resources that target the same database, you should
 ensure that the schemas defined in each resource do not overlap. Otherwise, the operator may produce

@@ -203,3 +203,92 @@ func TestReporter_FromCheckpoint(t *testing.T) {
   -- Pending Files:   0
 `, buf.String())
 }
+
+func TestReporter_OutOfOrder(t *testing.T) {
+	var (
+		buf strings.Builder
+		ctx = context.Background()
+	)
+	dir, err := migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+	require.NoError(t, dir.WriteFile("1.sql", []byte("create table t1(c int);")))
+	require.NoError(t, dir.WriteFile("2.sql", []byte("create table t2(c int);")))
+	sum, err := dir.Checksum()
+	require.NoError(t, err)
+	require.NoError(t, migrate.WriteSumFile(dir, sum))
+	c, err := sqlclient.Open(ctx, "sqlite://?mode=memory")
+	require.NoError(t, err)
+	defer c.Close()
+	rr := &StatusReporter{Client: c, Dir: dir}
+
+	rrw, err := NewEntRevisions(ctx, c)
+	require.NoError(t, err)
+	require.NoError(t, rrw.Migrate(ctx))
+	report, err := rr.Report(ctx)
+	require.NoError(t, err)
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
+	require.Equal(t, `Migration Status: PENDING
+  -- Current Version: No migration applied yet
+  -- Next Version:    1
+  -- Executed Files:  0
+  -- Pending Files:   2
+`, buf.String())
+
+	ex, err := migrate.NewExecutor(c.Driver, dir, rrw)
+	require.NoError(t, err)
+	require.NoError(t, ex.ExecuteN(ctx, 2))
+
+	// One file was added out of order.
+	buf.Reset()
+	require.NoError(t, dir.WriteFile("1.5.sql", []byte("create table t1_5(c int);")))
+	sum, err = dir.Checksum()
+	require.NoError(t, err)
+	require.NoError(t, migrate.WriteSumFile(dir, sum))
+	report, err = rr.Report(ctx)
+	require.NoError(t, err)
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
+	require.Equal(t, `Migration Status: PENDING
+  -- Current Version: 2
+  -- Next Version:    UNKNOWN
+  -- Executed Files:  2
+  -- Pending Files:   1 (out of order)
+
+  ERROR: migration file 1.5.sql was added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error
+`, buf.String())
+
+	// Multiple files were added our of order.
+	buf.Reset()
+	require.NoError(t, dir.WriteFile("1.6.sql", []byte("create table t1_6(c int);")))
+	sum, err = dir.Checksum()
+	require.NoError(t, err)
+	require.NoError(t, migrate.WriteSumFile(dir, sum))
+	report, err = rr.Report(ctx)
+	require.NoError(t, err)
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
+	require.Equal(t, `Migration Status: PENDING
+  -- Current Version: 2
+  -- Next Version:    UNKNOWN
+  -- Executed Files:  2
+  -- Pending Files:   2 (out of order)
+
+  ERROR: migration files 1.5.sql, 1.6.sql were added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error
+`, buf.String())
+
+	// A mix of pending and out of order files.
+	buf.Reset()
+	require.NoError(t, dir.WriteFile("3.sql", []byte("create table t3(c int);")))
+	sum, err = dir.Checksum()
+	require.NoError(t, err)
+	require.NoError(t, migrate.WriteSumFile(dir, sum))
+	report, err = rr.Report(ctx)
+	require.NoError(t, err)
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
+	require.Equal(t, `Migration Status: PENDING
+  -- Current Version: 2
+  -- Next Version:    UNKNOWN
+  -- Executed Files:  2
+  -- Pending Files:   3 (2 out of order)
+
+  ERROR: migration files 1.5.sql, 1.6.sql were added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error
+`, buf.String())
+}
