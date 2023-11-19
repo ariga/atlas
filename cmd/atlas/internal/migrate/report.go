@@ -60,6 +60,15 @@ func (r *StatusReporter) Report(ctx context.Context) (*cmdlog.MigrateStatus, err
 			return nil, err
 		}
 		if rep.Pending, err = ex.Pending(ctx); err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
+			if err1 := (*migrate.HistoryNonLinearError)(nil); errors.As(err, &err1) {
+				rep.Error = err1.Error()
+				rep.Status = statusPending
+				rep.Pending = err1.Pending
+				rep.OutOfOrder = err1.OutOfOrder
+				// Non-linear error means at least one file was applied.
+				rep.Current = rep.Applied[len(rep.Applied)-1].Version
+				return rep, nil
+			}
 			return nil, err
 		}
 		// If no files were applied, all pending files are
@@ -77,10 +86,10 @@ func (r *StatusReporter) Report(ctx context.Context) (*cmdlog.MigrateStatus, err
 		rep.Current = rep.Applied[len(rep.Applied)-1].Version
 	}
 	if len(rep.Pending) == 0 {
-		rep.Status = "OK"
+		rep.Status = statusOK
 		rep.Next = "Already at latest version"
 	} else {
-		rep.Status = "PENDING"
+		rep.Status = statusPending
 		rep.Next = rep.Pending[0].Version()
 	}
 	// If the last one is partially applied (and not manually resolved).
@@ -105,3 +114,8 @@ func (r *StatusReporter) Report(ctx context.Context) (*cmdlog.MigrateStatus, err
 	}
 	return rep, nil
 }
+
+const (
+	statusOK      = "OK"
+	statusPending = "PENDING"
+)

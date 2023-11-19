@@ -211,15 +211,34 @@ Atlas supports three different order execution modes:
 
 #### Handling Out-of-Order Errors {#non-linear-error}
 
-If you encounter this issue during deployment, it means that Atlas was not set up in your CI, which is why the issue was
-not caught beforehand. Let's go through the steps to set up Atlas for your CI and fix this error:
+:::caution Files were added out of order
 
-- Configure Atlas to run for every PR or a change in the master branch that affects the migration directory. Learn more on
+You've encountered this issue because your database is at **version Z**, but there is a file(s) in your migration
+directory pending to be applied with **version Y**, where **Y < Z**. This indicates it was added out of order, as its
+version is lower than the current database version. Below are multiple options to resolve it depending on your environment:
+
+:::
+
+- **Local environment (development)**: Developers might encounter this issue if they have a migration file that was not
+  yet pushed to the master branch (e.g., version Z), but upon pulling remote changes, new files with versions X and Y
+  were added to the migration directory. In this scenario, there are two cases:
+  - If the new (remote) changes **do not conflict** with the local changes, users can use the `--exec-order non-linear` flag
+    to execute files that were added out of order (X and Y). In case of failure or unexpected behavior, the `atlas schema clean`
+    command can be used to reset everything to a clean state.
+  - If the new (remote) changes **conflict** with the local (_not yet pushed_) changes, the local database should be cleared
+    using `atlas schema clean`, and the local changes should be adjusted to align with the pulled changes.
+
+- **Real environment:** If you encountered this issue during deployment, it means that Atlas was not set up in your CI,
+  which is why the issue was not detected beforehand. Let's go through the steps to fix the error and set up Atlas in
+  your CI to prevent this issue from happening again:
+
+  - Configure Atlas to run for every PR or a change in the master branch that affects the migration directory. Learn more on
   how to integrate it into your [GitHub Actions](/cloud/setup-ci) or [GitLab](/guides/ci-platforms/gitlab) CI pipelines.
-- Run `atlas migrate rebase <versions>` to rebase the problematic files reported by Atlas. Then, create a PR.
-- At this stage, if Atlas CI is set up, it will verify that the migration directory is _replay-able_ and that the rebased
-  migration file(s) can be executed without any issues.
-- Running `atlas migrate apply` (deployment) again should pass without this error.
+  - Pull the latest changes from the master branch and run `atlas migrate rebase <versions>` to rebase the problematic
+    files reported by Atlas (the _"out of order"_ ones). Then, create a PR.
+  - At this stage, if Atlas CI is set up, it will verify that the migration directory is _replay-able_ and that the
+    rebased migration file(s) can be executed without any issues (e.g., no conflicts with previous migrations).
+  - Running `atlas migrate apply` (deployment) again should pass without this error.
 
 
 ### Existing Databases

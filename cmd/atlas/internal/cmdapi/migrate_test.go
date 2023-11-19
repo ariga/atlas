@@ -745,7 +745,7 @@ func TestMigrate_ApplyExecOrder(t *testing.T) {
 		"--dir", "file://"+dir.Path(),
 		"--url", db,
 	)
-	require.EqualError(t, err, "migration files 2.sql added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
+	require.EqualError(t, err, "migration file 2.sql was added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
 
 	// The "linear" option is the default execution order.
 	_, err = runCmd(
@@ -754,7 +754,7 @@ func TestMigrate_ApplyExecOrder(t *testing.T) {
 		"--url", db,
 		"--exec-order", "linear",
 	)
-	require.EqualError(t, err, "migration files 2.sql added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
+	require.EqualError(t, err, "migration file 2.sql was added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
 
 	// Keep linear order and skip files that were added out of order.
 	s, err = runCmd(

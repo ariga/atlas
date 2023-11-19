@@ -398,13 +398,13 @@ func TestExecutor_ExecOrderLinear(t *testing.T) {
 		require.NoError(t, err)
 		files, err = ex.Pending(ctx)
 		require.ErrorAs(t, err, new(*migrate.HistoryNonLinearError))
-		require.EqualError(t, err, "migration files 2.5.sql added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
+		require.EqualError(t, err, "migration file 2.5.sql was added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
 
 		ex, err = migrate.NewExecutor(drv, dir("1.sql", "2.sql", "2.5.sql", "2.6.sql", "3.sql"), rrw)
 		require.NoError(t, err)
 		files, err = ex.Pending(ctx)
 		require.ErrorAs(t, err, new(*migrate.HistoryNonLinearError))
-		require.EqualError(t, err, "migration files 2.5.sql, 2.6.sql added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
+		require.EqualError(t, err, "migration files 2.5.sql, 2.6.sql were added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
 
 		// The first file executed as checkpoint, therefore, 1.sql is not pending nor skipped.
 		rrw = &mockRevisionReadWriter{{Version: "2"}, {Version: "3"}}
@@ -420,7 +420,7 @@ func TestExecutor_ExecOrderLinear(t *testing.T) {
 		require.NoError(t, err)
 		files, err = ex.Pending(ctx)
 		require.ErrorAs(t, err, new(*migrate.HistoryNonLinearError))
-		require.EqualError(t, err, "migration files 2.5.sql added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
+		require.EqualError(t, err, "migration file 2.5.sql was added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error")
 	})
 
 	t.Run("LinearSkipped", func(t *testing.T) {
