@@ -5,6 +5,7 @@
 package sqlx
 
 import (
+	"errors"
 	"strconv"
 	"testing"
 
@@ -59,6 +60,9 @@ func TestBuilder(t *testing.T) {
 			})
 		})
 	require.Equal(t, `CREATE TABLE "users" ("a" int NOT NULL, "b" int NOT NULL, "c" int NOT NULL, PRIMARY KEY ("a", "b", "c"))`, b.String())
+
+	// WrapErr.
+	require.EqualError(t, b.WrapErr(func(*Builder) error { return errors.New("oops") }), "oops")
 }
 
 func TestBuilder_Qualifier(t *testing.T) {
