@@ -441,6 +441,13 @@ func (b *Builder) Wrap(f func(b *Builder)) *Builder {
 	return b
 }
 
+// WrapErr wraps the written string with parentheses
+func (b *Builder) WrapErr(f func(b *Builder) error) error {
+	var err error
+	b.Wrap(func(b *Builder) { err = f(b) })
+	return err
+}
+
 // WrapIndent is like Wrap but with extra level of indentation.
 func (b *Builder) WrapIndent(f func(b *Builder)) *Builder {
 	return b.Wrap(func(b *Builder) {
