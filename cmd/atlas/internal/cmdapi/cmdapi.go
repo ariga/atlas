@@ -507,12 +507,24 @@ func (c *stateReaderConfig) Exported() (*cmdext.StateReaderConfig, error) {
 }
 
 // readerUseDev reports if any of the URL uses the dev-database.
-func readerUseDev(urls ...string) (bool, error) {
+func readerUseDev(env *Env, urls ...string) (bool, error) {
 	s, err := selectScheme(urls)
 	if err != nil {
 		return false, err
 	}
-	return s == cmdext.SchemaTypeFile || s == cmdext.SchemaTypeAtlas || cmdext.States.HasLoader(s), nil
+	switch {
+	case s == envAttrScheme && env != nil && len(urls) == 1:
+		u, err := env.VarFromURL(urls[0])
+		if err != nil {
+			return false, err
+		}
+		// No circular reference possible with env:// variable.
+		return readerUseDev(env, u)
+	case s == cmdext.SchemaTypeFile, s == cmdext.SchemaTypeAtlas:
+		return true, nil
+	default:
+		return cmdext.States.HasLoader(s), nil
+	}
 }
 
 // stateReader returns a migrate.StateReader that reads the state from the given urls.
@@ -541,9 +553,9 @@ func stateReader(ctx context.Context, env *Env, config *stateReaderConfig) (*cmd
 	// "atlas" scheme represents an Atlas Cloud schema.
 	case cmdext.SchemaTypeAtlas:
 		return cmdext.StateReaderAtlas(ctx, excfg)
-	// "env" scheme represents a variable defined on the
-	// selected environment.
-	case "env":
+	// "env" scheme represents an attribute defined
+	// on the selected environment.
+	case envAttrScheme:
 		switch {
 		case GlobalFlags.SelectedEnv == "":
 			return nil, errors.New("cannot use env:// variables without selecting an environment")

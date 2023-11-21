@@ -510,7 +510,7 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags, 
 		ctx = cmd.Context()
 		dev *sqlclient.Client
 	)
-	useDev, err := readerUseDev(flags.url)
+	useDev, err := readerUseDev(env, flags.url)
 	if err != nil {
 		return err
 	}

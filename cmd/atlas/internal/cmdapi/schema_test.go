@@ -407,6 +407,56 @@ table "t2" {
 			"PRAGMA foreign_keys = on;",
 		}, strings.Split(strings.TrimSpace(s), "\n"))
 	})
+	t.Run("InspectDataSrc", func(t *testing.T) {
+		var (
+			p   = t.TempDir()
+			cfg = filepath.Join(p, "atlas.hcl")
+			app = filepath.Join(p, "schema.hcl")
+		)
+		err = os.WriteFile(cfg, []byte(`
+variable "path" {
+  type = string
+}
+data "hcl_schema" "app" {
+  path = var.path
+}
+env "app" {
+  dev = "sqlite://dev?mode=memory&_fk=1"
+  # Variables defined and available with env:// prefix.
+  app = data.hcl_schema.app.url
+}
+`), 0600)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(app, []byte(`
+schema "main" {}
+table "t1" {
+  schema = schema.main
+  column "id" {
+    type = int
+  }
+}`), 0600))
+
+		cmd := schemaCmd()
+		cmd.AddCommand(schemaInspectCmd())
+		s, err := runCmd(
+			cmd, "inspect",
+			"--config", "file://"+cfg,
+			"--env", "app",
+			"--var", "path="+app,
+			"--url", "env://app",
+		)
+		require.NoError(t, err)
+		require.Equal(t, `table "t1" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = int
+  }
+}
+schema "main" {
+}
+`, s)
+	})
 }
 
 func TestSchema_Apply(t *testing.T) {
