@@ -68,7 +68,7 @@ func init() {
 		sqlclient.RegisterFlavours("libsql+ws", "libsql+wss", "libsql+file"),
 		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
 			dsn := strings.TrimPrefix(u.String(), "libsql+")
-			if strings.HasPrefix(dns, "file://") {
+			if strings.HasPrefix(dsn, "file://") {
 				dsn = strings.Replace(dsn, "file://", "file:", 1)
 			}
 			return &sqlclient.URL{URL: u, DSN: dsn, Schema: mainFile}
