@@ -65,9 +65,13 @@ func init() {
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterTxOpener(OpenTx),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("libsql+ws", "libsql+wss"),
+		sqlclient.RegisterFlavours("libsql+ws", "libsql+wss", "libsql+file"),
 		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
-			return &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), "libsql+"), Schema: mainFile}
+			dsn := strings.TrimPrefix(u.String(), "libsql+")
+			if strings.HasPrefix(dsn, "file://") {
+				dsn = strings.Replace(dsn, "file://", "file:", 1)
+			}
+			return &sqlclient.URL{URL: u, DSN: dsn, Schema: mainFile}
 		})),
 	)
 }
