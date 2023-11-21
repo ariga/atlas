@@ -6,11 +6,13 @@ on:
   pull_request:
     paths-ignore:
       - 'doc/**'
+      - 'ops/**'
   push:
     branches:
       - master
     paths-ignore:
       - 'doc/**'
+      - 'ops/**'
 {{ .Concurrency }}
 jobs:
 {{- range $.Jobs }}
