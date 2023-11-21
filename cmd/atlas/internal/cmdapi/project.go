@@ -146,6 +146,9 @@ type (
 	}
 )
 
+// envScheme defines the scheme that can be used to reference env attributes.
+const envAttrScheme = "env"
+
 // VarFromURL returns the string variable (env attribute) from the URL.
 func (e *Env) VarFromURL(s string) (string, error) {
 	u, err := url.Parse(s)
@@ -163,7 +166,7 @@ func (e *Env) VarFromURL(s string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("env://%s: %w", s, err)
 	}
-	if strings.HasPrefix(sv, "env://") {
+	if strings.HasPrefix(sv, envAttrScheme+"://") {
 		return "", fmt.Errorf("env://%s (attribute) cannot reference another env://", s)
 	}
 	return sv, nil
