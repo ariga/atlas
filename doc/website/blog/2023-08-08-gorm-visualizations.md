@@ -132,7 +132,7 @@ Let's break down this command:
 * The `schema inspect` command is used to inspect a database schema and produce a representation of it. 
 * The `-w` flag tells Atlas to open a web browser and display the visualization.
 * The `--env gorm` flag tells Atlas to use the `gorm` environment we defined in the `atlas.hcl` file.
-* The `--url 'env://src'` flag tells Atlas to use schema defined in the `src` attribute `gorm` environment.
+* The `--url 'env://src'` flag tells Atlas to use schema defined in the `src` attribute of the `gorm` env.
 
 When we run this command,
 
