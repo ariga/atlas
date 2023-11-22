@@ -110,7 +110,7 @@ data "external_schema" "gorm" {
 }
 
 env "gorm" {
-  url = data.external_schema.gorm.url
+  src = data.external_schema.gorm.url
   dev = "sqlite://file?mode=memory&_fk=1"
 }
 ```
@@ -125,8 +125,16 @@ This file defines two things:
 Now that we have everything set up, let's run Atlas and see what we get:
 
 ```shell
-atlas schema inspect --env gorm --visualize
+atlas schema inspect -w --env gorm --url 'env://src'
 ```
+
+Let's break down this command: 
+* The `schema inspect` command is used to inspect a database schema and produce a representation of it. 
+* The `-w` flag tells Atlas to open a web browser and display the visualization.
+* The `--env gorm` flag tells Atlas to use the `gorm` environment we defined in the `atlas.hcl` file.
+* The `--url 'env://src'` flag tells Atlas to use schema defined in the `src` attribute of the `gorm` env.
+
+When we run this command,
 
 Atlas will prompt us to ask if we want this visualization to be shared on the
 [Public Atlas Playground](https://gh.atlasgo.cloud/explore) or if we want to keep it private:
