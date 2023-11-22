@@ -702,6 +702,158 @@ v3 = data.dynamic.evaluated3.v
 `)
 	)
 	require.NoError(t, New(opts...).EvalBytes(b, &v, nil))
+
+	b = []byte(`
+locals {
+  a = data.dynamic.not_skipped1.v
+  b = local.c
+  c = "3"
+  d = data.dynamic.not_skipped3.v
+}
+
+data "dynamic" "not_skipped1" {
+  v = "v2"
+  skip = false
+}
+
+data "dynamic" "not_skipped2" {
+  v = "v${local.b}"
+  skip = false
+}
+
+data "dynamic" "not_skipped3" {
+  v = "v4"
+  skip = false
+}
+
+data "dynamic" "not_skipped4" {
+  v = "v5"
+  skip = false
+}
+
+data "dynamic" "skipped1" {
+  v = local.a
+  skip = true
+}
+
+data "dynamic" "skipped2" {
+  v = "v"
+  skip = true
+}
+
+data "dynamic" "skipped3" {
+  v = data.dynamic.skipped2
+  skip = true
+}
+
+top {
+  a = data.dynamic.not_skipped2.v // "v3".
+  block {
+    block {
+      a1 = local.d // "v4".
+      a2 = data.dynamic.not_skipped4.v // "v5".
+    }
+  }
+}
+
+v2 = local.a
+`)
+	var v1 struct {
+		Top struct {
+			A     string `spec:"a"`
+			Block struct {
+				Block struct {
+					A1 string `spec:"a1"`
+					A2 string `spec:"a2"`
+				} `spec:"block"`
+			} `spec:"block"`
+		} `spec:"top"`
+		V2 string `spec:"v2"`
+	}
+	require.NoError(t, New(opts...).EvalBytes(b, &v1, nil))
+	require.Equal(t, "v2", v1.V2)
+	require.Equal(t, "v3", v1.Top.A)
+	require.Equal(t, "v4", v1.Top.Block.Block.A1)
+	require.Equal(t, "v5", v1.Top.Block.Block.A2)
+}
+
+func TestTypeLabelBlock(t *testing.T) {
+	var (
+		callD, callT int
+		opts         = []Option{
+			WithTypeLabelBlock("driver", "remote", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+				attrs, diags := b.Body.JustAttributes()
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				v, diags := attrs["name"].Expr.Value(ctx)
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				callT++
+				return cty.ObjectVal(map[string]cty.Value{"url": cty.StringVal("driver://" + v.AsString())}), nil
+			}),
+			WithTypeLabelBlock("driver", "not_called", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+				t.Fatal("should not be called")
+				return cty.NilVal, nil
+			}),
+			WithDataSource("text", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+				attrs, diags := b.Body.JustAttributes()
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				v, diags := attrs["value"].Expr.Value(ctx)
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				callD++
+				return cty.ObjectVal(map[string]cty.Value{"output": v}), nil
+			}),
+		}
+		doc struct {
+			Values []string `spec:"vs"`
+		}
+		b = []byte(`
+locals {
+  a = "a8m"
+}
+
+data "text" "a" {
+  value = local.a
+}
+
+driver "remote" "myapp" {
+  name = data.text.a.output
+}
+
+vs = [
+  driver.remote.myapp.url,
+  data.text.a.output
+]
+`)
+	)
+	require.NoError(t, New(opts...).EvalBytes(b, &doc, nil))
+	require.Equal(t, []string{"driver://a8m", "a8m"}, doc.Values)
+	require.EqualValues(t, 1, callT)
+	require.EqualValues(t, 2, callD, "it is up to the data source to implement caching")
+
+	b = []byte(`
+locals {
+  a = "a8m"
+}
+
+data "text" "a" {
+  value = local.a
+}
+
+driver "remote" "myapp" {
+  name = data.text.a.output
+}
+`)
+	require.NoError(t, New(opts...).EvalBytes(b, &doc, nil))
+	require.Equal(t, []string{"driver://a8m", "a8m"}, doc.Values)
+	require.Equal(t, 1, callT)
+	require.Equal(t, 2, callD)
 }
 
 type countValidator struct{ nb, na int }

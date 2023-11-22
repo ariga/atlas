@@ -29,8 +29,9 @@ type (
 		funcs            map[string]function.Function
 		pathVars         map[string]map[string]cty.Value
 		pathFuncs        map[string]map[string]function.Function
-		datasrc, initblk map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
 		validator        func() SchemaValidator
+		datasrc, initblk map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
+		typedblk         map[string]map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
 	}
 	// Option configures a Config.
 	Option func(*Config)
@@ -134,6 +135,37 @@ func WithDataSource(name string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty
 			c.datasrc = make(map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error))
 		}
 		c.datasrc[name] = h
+	}
+}
+
+// WithTypeLabelBlock registers a type-block and its label along with the corresponding handler.
+// e.g., the example below registers a typed block named "driver" with the label "remote" that
+// returns the string defined in the token attribute.
+//
+//	WithTypeLabelBlock("driver", "remote", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, hcl.Diagnostics) {
+//		attrs, diags := b.Body.JustAttributes()
+//		if diags.HasErrors() {
+//			return cty.NilVal, diags
+//		}
+//		v, diags := attrs["token"].Expr.Value(ctx)
+//		if diags.HasErrors() {
+//			return cty.NilVal, diags
+//		}
+//		return cty.ObjectVal(map[string]cty.Value{"url": v}), nil
+//	})
+//
+//	driver "remote" "hello" {
+//	  token = "hello world"
+//	}
+func WithTypeLabelBlock(name, label string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)) Option {
+	return func(c *Config) {
+		if c.typedblk == nil {
+			c.typedblk = make(map[string]map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error))
+		}
+		if c.typedblk[name] == nil {
+			c.typedblk[name] = make(map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error))
+		}
+		c.typedblk[name][label] = h
 	}
 }
 
@@ -542,8 +574,8 @@ func (s *State) typeError(diag hcl.Diagnostics, scope []string) error {
 			if d.Summary != "Unknown variable" {
 				continue
 			}
-			switch root := e.Traversal.RootName(); root {
-			case RefData:
+			switch root := e.Traversal.RootName(); {
+			case root == RefData, s.config.typedblk[root] != nil:
 				var b strings.Builder
 				b.WriteString(root)
 				for _, t := range e.Traversal[1:] {
@@ -553,8 +585,11 @@ func (s *State) typeError(diag hcl.Diagnostics, scope []string) error {
 					}
 				}
 				d.Summary = "Unknown data source"
+				if s.config.typedblk[root] != nil {
+					d.Summary = "Unknown block type"
+				}
 				d.Detail = fmt.Sprintf("%s does not exist", b.String())
-			case RefLocal:
+			case root == RefLocal:
 				d.Summary = "Unknown local"
 			default:
 				if t, ok := s.findTypeSpec(root); ok && len(t.Attributes) > 0 {
