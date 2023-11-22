@@ -15,6 +15,7 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migratelint"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
@@ -129,3 +130,6 @@ func withTokenContext(ctx context.Context, _ string, _ *cloudapi.Client) (contex
 func checkDirRebased(context.Context, *cobra.Command, migrate.Dir) error {
 	return nil // unimplemented.
 }
+
+// specOptions are the options for the schema spec.
+var specOptions []schemahcl.Option
