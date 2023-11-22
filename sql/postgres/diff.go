@@ -244,8 +244,11 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 // DiffOptions defines PostgreSQL specific schema diffing process.
 type DiffOptions struct {
 	ConcurrentIndex struct {
-		Add  bool `spec:"add"`
 		Drop bool `spec:"drop"`
+		// Allow config "CREATE" both with "add" and "create"
+		// as the documentation used both terms (accidentally).
+		Add    bool `spec:"add"`
+		Create bool `spec:"create"`
 	} `spec:"concurrent_index"`
 }
 
@@ -270,7 +273,7 @@ func (*diff) AnnotateChanges(changes []schema.Change, opts *schema.DiffOptions) 
 		for i := range m.Changes {
 			switch c := m.Changes[i].(type) {
 			case *schema.AddIndex:
-				if extra.ConcurrentIndex.Add {
+				if extra.ConcurrentIndex.Add || extra.ConcurrentIndex.Create {
 					c.Extra = append(c.Extra, &Concurrently{})
 				}
 			case *schema.DropIndex:
