@@ -197,30 +197,28 @@ func inlineRefs(_ context.Context, p *sqlcheck.Pass) error {
 	return nil
 }
 
-func init() {
-	sqlcheck.Register(mysql.DriverName, func(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
-		ds, err := destructive.New(r)
-		if err != nil {
-			return nil, err
-		}
-		cd, err := condrop.New(r)
-		if err != nil {
-			return nil, err
-		}
-		dd, err := datadepend.New(r, datadepend.Handler{
-			AddNotNull: addNotNull,
-		})
-		if err != nil {
-			return nil, err
-		}
-		bc, err := incompatible.New(r)
-		if err != nil {
-			return nil, err
-		}
-		nm, err := naming.New(r)
-		if err != nil {
-			return nil, err
-		}
-		return []sqlcheck.Analyzer{ds, dd, cd, bc, nm, sqlcheck.AnalyzerFunc(inlineRefs)}, nil
+func analyzers(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
+	ds, err := destructive.New(r)
+	if err != nil {
+		return nil, err
+	}
+	cd, err := condrop.New(r)
+	if err != nil {
+		return nil, err
+	}
+	dd, err := datadepend.New(r, datadepend.Handler{
+		AddNotNull: addNotNull,
 	})
+	if err != nil {
+		return nil, err
+	}
+	bc, err := incompatible.New(r)
+	if err != nil {
+		return nil, err
+	}
+	nm, err := naming.New(r)
+	if err != nil {
+		return nil, err
+	}
+	return []sqlcheck.Analyzer{ds, dd, cd, bc, nm, sqlcheck.AnalyzerFunc(inlineRefs)}, nil
 }
