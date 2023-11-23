@@ -110,7 +110,7 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 		return nil, err
 	}
 	if !(r == nil || (len(r.Schemas) == 1 && r.Schemas[0].Name == mainFile && len(r.Schemas[0].Tables) == 0)) {
-		return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
+		return nil, &migrate.NotCleanError{State: r, Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
 	}
 	return func(ctx context.Context) error {
 		for _, stmt := range []string{
@@ -135,13 +135,13 @@ func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error
 	}
 	switch n := len(r.Schemas); {
 	case n > 1:
-		return &migrate.NotCleanError{Reason: fmt.Sprintf("found multiple schemas: %d", len(r.Schemas))}
+		return &migrate.NotCleanError{State: r, Reason: fmt.Sprintf("found multiple schemas: %d", len(r.Schemas))}
 	case n == 1 && r.Schemas[0].Name != mainFile:
-		return &migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", r.Schemas[0].Name)}
+		return &migrate.NotCleanError{State: r, Reason: fmt.Sprintf("found schema %q", r.Schemas[0].Name)}
 	case n == 1 && len(r.Schemas[0].Tables) > 1:
-		return &migrate.NotCleanError{Reason: fmt.Sprintf("found multiple tables: %d", len(r.Schemas[0].Tables))}
+		return &migrate.NotCleanError{State: r, Reason: fmt.Sprintf("found multiple tables: %d", len(r.Schemas[0].Tables))}
 	case n == 1 && len(r.Schemas[0].Tables) == 1 && (revT == nil || r.Schemas[0].Tables[0].Name != revT.Name):
-		return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
+		return &migrate.NotCleanError{State: r, Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
 	}
 	return nil
 }
