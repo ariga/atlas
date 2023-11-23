@@ -186,34 +186,14 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 				Reason: fmt.Sprintf("found table %q in connected schema", s.Tables[0].Name),
 			}
 		}
-		return func(ctx context.Context) error {
-			current, err := d.InspectSchema(ctx, s.Name, nil)
-			if err != nil {
-				return err
-			}
-			changes, err := d.SchemaDiff(current, s)
-			if err != nil {
-				return err
-			}
-			return d.ApplyChanges(ctx, withCascade(changes))
-		}, nil
+		return d.SchemaRestoreFunc(s), nil
 	}
 	// Not bound to a schema.
 	realm, err := d.InspectRealm(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	restore := func(ctx context.Context) error {
-		current, err := d.InspectRealm(ctx, nil)
-		if err != nil {
-			return err
-		}
-		changes, err := d.RealmDiff(current, realm)
-		if err != nil {
-			return err
-		}
-		return d.ApplyChanges(ctx, withCascade(changes))
-	}
+	restore := d.RealmRestoreFunc(realm)
 	// Postgres is considered clean, if there are no schemas or the public schema has no tables.
 	if len(realm.Schemas) == 0 {
 		return restore, nil
@@ -230,6 +210,36 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	return nil, &migrate.NotCleanError{
 		State:  realm,
 		Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name),
+	}
+}
+
+// SchemaRestoreFunc returns a function that restores the given schema to its desired state.
+func (d *Driver) SchemaRestoreFunc(desired *schema.Schema) migrate.RestoreFunc {
+	return func(ctx context.Context) error {
+		current, err := d.InspectSchema(ctx, desired.Name, nil)
+		if err != nil {
+			return err
+		}
+		changes, err := d.SchemaDiff(current, desired)
+		if err != nil {
+			return err
+		}
+		return d.ApplyChanges(ctx, withCascade(changes))
+	}
+}
+
+// RealmRestoreFunc returns a function that restores the given realm to its desired state.
+func (d *Driver) RealmRestoreFunc(desired *schema.Realm) migrate.RestoreFunc {
+	return func(ctx context.Context) error {
+		current, err := d.InspectRealm(ctx, nil)
+		if err != nil {
+			return err
+		}
+		changes, err := d.RealmDiff(current, desired)
+		if err != nil {
+			return err
+		}
+		return d.ApplyChanges(ctx, withCascade(changes))
 	}
 }
 

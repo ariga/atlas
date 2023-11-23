@@ -155,17 +155,7 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 				Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name),
 			}
 		}
-		return func(ctx context.Context) error {
-			current, err := d.InspectSchema(ctx, s.Name, nil)
-			if err != nil {
-				return err
-			}
-			changes, err := d.SchemaDiff(current, s)
-			if err != nil {
-				return err
-			}
-			return d.ApplyChanges(ctx, changes)
-		}, nil
+		return d.SchemaRestoreFunc(s), nil
 	}
 	// Otherwise, the database can not have any schema.
 	realm, err := d.InspectRealm(ctx, nil)
@@ -175,17 +165,37 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	if len(realm.Schemas) > 0 {
 		return nil, &migrate.NotCleanError{State: realm, Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
 	}
+	return d.RealmRestoreFunc(realm), nil
+}
+
+// SchemaRestoreFunc returns a function that restores the given schema to its desired state.
+func (d *Driver) SchemaRestoreFunc(desired *schema.Schema) migrate.RestoreFunc {
+	return func(ctx context.Context) error {
+		current, err := d.InspectSchema(ctx, desired.Name, nil)
+		if err != nil {
+			return err
+		}
+		changes, err := d.SchemaDiff(current, desired)
+		if err != nil {
+			return err
+		}
+		return d.ApplyChanges(ctx, changes)
+	}
+}
+
+// RealmRestoreFunc returns a function that restores the given realm to its desired state.
+func (d *Driver) RealmRestoreFunc(desired *schema.Realm) migrate.RestoreFunc {
 	return func(ctx context.Context) error {
 		current, err := d.InspectRealm(ctx, nil)
 		if err != nil {
 			return err
 		}
-		changes, err := d.RealmDiff(current, realm)
+		changes, err := d.RealmDiff(current, desired)
 		if err != nil {
 			return err
 		}
 		return d.ApplyChanges(ctx, changes)
-	}, nil
+	}
 }
 
 // CheckClean implements migrate.CleanChecker.
