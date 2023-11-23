@@ -1001,7 +1001,8 @@ type (
 	// NotCleanError is returned when the connected dev-db is not in a clean state (aka it has schemas and tables).
 	// This check is done to ensure no data is lost by overriding it when working on the dev-db.
 	NotCleanError struct {
-		Reason string // reason why the database is considered not clean
+		Reason string        // reason why the database is considered not clean
+		State  *schema.Realm // the state the dev-connection is in
 	}
 )
 

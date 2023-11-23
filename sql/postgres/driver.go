@@ -181,7 +181,10 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 			return nil, err
 		}
 		if len(s.Tables) > 0 {
-			return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in connected schema", s.Tables[0].Name)}
+			return nil, &migrate.NotCleanError{
+				State:  schema.NewRealm(s),
+				Reason: fmt.Sprintf("found table %q in connected schema", s.Tables[0].Name),
+			}
 		}
 		return func(ctx context.Context) error {
 			current, err := d.InspectSchema(ctx, s.Name, nil)
@@ -217,11 +220,17 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	}
 	if s, ok := realm.Schema("public"); len(realm.Schemas) == 1 && ok {
 		if len(s.Tables) > 0 {
-			return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+			return nil, &migrate.NotCleanError{
+				State:  realm,
+				Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name),
+			}
 		}
 		return restore, nil
 	}
-	return nil, &migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
+	return nil, &migrate.NotCleanError{
+		State:  realm,
+		Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name),
+	}
 }
 
 func withCascade(changes schema.Changes) schema.Changes {
@@ -254,7 +263,7 @@ func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error
 		case len(s.Tables) == 0, (revT.Schema == "" || s.Name == revT.Schema) && len(s.Tables) == 1 && s.Tables[0].Name == revT.Name:
 			return nil
 		default:
-			return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+			return &migrate.NotCleanError{State: schema.NewRealm(s), Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
 		}
 	}
 	r, err := d.InspectRealm(ctx, nil)
@@ -265,11 +274,11 @@ func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error
 		switch {
 		case len(s.Tables) == 0 && s.Name == "public":
 		case len(s.Tables) == 0 || s.Name != revT.Schema:
-			return &migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", s.Name)}
+			return &migrate.NotCleanError{State: r, Reason: fmt.Sprintf("found schema %q", s.Name)}
 		case len(s.Tables) > 1:
-			return &migrate.NotCleanError{Reason: fmt.Sprintf("found %d tables in schema %q", len(s.Tables), s.Name)}
+			return &migrate.NotCleanError{State: r, Reason: fmt.Sprintf("found %d tables in schema %q", len(s.Tables), s.Name)}
 		case len(s.Tables) == 1 && s.Tables[0].Name != revT.Name:
-			return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+			return &migrate.NotCleanError{State: r, Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
 		}
 	}
 	return nil
