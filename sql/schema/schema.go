@@ -420,6 +420,28 @@ type (
 	UnsupportedType struct {
 		T string
 	}
+
+	// TypeParser is an interface that is required be implemented by
+	// different drivers for parsing column types from their database
+	// forms to the schema representation.
+	TypeParser interface {
+		// ParseType converts the raw database type to its schema.Type representation.
+		ParseType(string) (Type, error)
+	}
+
+	// TypeFormatter is an interface that is required to be implemented by
+	// different drivers to format column types into their corresponding
+	// database forms.
+	TypeFormatter interface {
+		// FormatType converts a schema type to its column form in the database.
+		FormatType(Type) (string, error)
+	}
+
+	// TypeParseFormatter that groups the TypeParser and TypeFormatter interfaces.
+	TypeParseFormatter interface {
+		TypeParser
+		TypeFormatter
+	}
 )
 
 type (
