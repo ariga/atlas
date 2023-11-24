@@ -42,6 +42,12 @@ type (
 	}
 )
 
+var _ interface {
+	migrate.Snapshoter
+	migrate.CleanChecker
+	schema.TypeParseFormatter
+} = (*Driver)(nil)
+
 // DriverName holds the name used for registration.
 const DriverName = "mysql"
 
