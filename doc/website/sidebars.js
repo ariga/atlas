@@ -204,6 +204,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/deploying/cloud-sql-via-github-actions',
                     label: 'GCP CloudSQL (GH Actions)'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/secrets',
+                    label: 'Working with secrets'
                 }
             ]
         },
