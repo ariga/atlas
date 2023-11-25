@@ -167,3 +167,25 @@ disabling SSL is appropriate when inspecting and applying schema changes.
 
 MySQL does not require TLS by default. However, you can require TLS
 with the `?tls=true` search parameter.
+
+## Non-alphanumeric characters
+
+Database URLs often contain passwords and other information which may contain non-alphanumeric characters.
+These characters must be escaped using standard URL encoding, in order to be parsed correctly.
+As a convenience, users may use the `urlescape` function in an `atlas.hcl` [project file](/concepts/url) to escape
+these characters automatically.
+
+Suppose your password is `h:e!:l:l:o` and it is stored as an environment variable named `DB_PASSWORD`, you
+can read this value and escape it using the `urlescape` function:
+
+```hcl title="atlas.hcl"
+locals {
+  db_pass = urlescape(env("DB_PASSWORD"))
+}
+
+env "local" {
+    url = "postgres://user:${local.db_pass}@localhost:5432/database"
+}
+```
+
+The `urlescape` function return the escaped value: `h%3Ae%21%3Al%3Al%3Ao`.
