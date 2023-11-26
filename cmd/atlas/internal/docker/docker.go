@@ -69,6 +69,12 @@ func NewConfig(opts ...ConfigOption) (*Config, error) {
 	return c, nil
 }
 
+const (
+	DriverMySQL    = "mysql"
+	DriverMariaDB  = "mariadb"
+	DriverPostgres = "postgres"
+)
+
 // FromURL parses a URL in the format of
 // "docker://image/tag" and returns a Config.
 func FromURL(u *url.URL) (*Config, error) {
@@ -99,25 +105,28 @@ func FromURL(u *url.URL) (*Config, error) {
 		u.Host = u.Scheme[len("docker+"):]
 	}
 	var (
-		cfg *Config
 		err error
+		cfg *Config
 	)
 	switch u.Host {
-	case "mysql":
+	case DriverMySQL:
 		if len(parts) > 1 {
-			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]), setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", parts[1])))
+			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]), Setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", parts[1])))
 		}
 		cfg, err = MySQL(tag, opts...)
-	case "maria", "mariadb":
+	case "maria":
+		u.Host = DriverMariaDB
+		fallthrough
+	case DriverMariaDB:
 		if len(parts) > 1 {
-			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]), setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", parts[1])))
+			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]), Setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", parts[1])))
 		}
 		cfg, err = MariaDB(tag, opts...)
 	case "postgis":
 		opts = append(opts, Image("postgis/postgis:"+tag))
-		u.Host = "postgres"
+		u.Host = DriverPostgres
 		fallthrough
-	case "postgres":
+	case DriverPostgres:
 		if len(parts) > 1 {
 			opts = append(opts, Env("POSTGRES_DB="+parts[1]))
 		}
@@ -130,6 +139,24 @@ func FromURL(u *url.URL) (*Config, error) {
 	}
 	cfg.driver = u.Host
 	return cfg, nil
+}
+
+// ImageURL returns the base URL for the given driver and image.
+func ImageURL(driver string, image string) (*url.URL, error) {
+	switch {
+	case driver == "" && image == "":
+		return nil, errors.New("driver and image cannot be empty")
+	case driver == "":
+		return nil, errors.New("driver cannot be empty")
+	case image == "":
+		return nil, errors.New("image cannot be empty")
+	default:
+		u := &url.URL{Scheme: "docker+" + driver, Host: "_", Path: image}
+		if idx := strings.IndexByte(image, '/'); idx != -1 {
+			u.Host, u.Path = image[:idx], image[idx+1:]
+		}
+		return u, nil
+	}
 }
 
 // Atlas DockerHub user contains the MySQL
@@ -226,11 +253,11 @@ func Out(w io.Writer) ConfigOption {
 	}
 }
 
-// setup adds statements to execute once the service is ready. For example:
+// Setup adds statements to execute once the service is ready. For example:
 //
 //	setup("CREATE DATABASE IF NOT EXISTS test")
 //	setup("DROP SCHEMA IF EXISTS public CASCADE")
-func setup(s ...string) ConfigOption {
+func Setup(s ...string) ConfigOption {
 	return func(c *Config) error {
 		c.setup = append(c.setup, s...)
 		return nil
@@ -325,9 +352,9 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 // URL returns a URL to connect to the Container.
 func (c *Container) URL() (*url.URL, error) {
 	switch c.cfg.driver {
-	case "postgres":
+	case DriverPostgres:
 		return url.Parse(fmt.Sprintf("postgres://postgres:%s@localhost:%s/%s?sslmode=disable", c.Passphrase, c.Port, c.cfg.Database))
-	case "mysql", "mariadb":
+	case DriverMySQL, DriverMariaDB:
 		return url.Parse(fmt.Sprintf("%s://root:%s@localhost:%s/%s", c.cfg.driver, c.Passphrase, c.Port, c.cfg.Database))
 	default:
 		return nil, fmt.Errorf("unknown driver: %q", c.cfg.driver)

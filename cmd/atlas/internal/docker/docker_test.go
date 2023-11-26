@@ -223,3 +223,16 @@ func TestFromURL_CustomImage(t *testing.T) {
 		require.Equal(t, tt.dialect, cfg.driver)
 	}
 }
+
+func TestImageURL(t *testing.T) {
+	for img, u := range map[string]string{
+		"postgres:15":                    "docker+postgres://_/postgres:15",
+		"postgres":                       "docker+postgres://_/postgres",
+		"postgis/postgis:14-3.4":         "docker+postgres://postgis/postgis:14-3.4",
+		"ghcr.io/namespace/postgres:tag": "docker+postgres://ghcr.io/namespace/postgres:tag",
+	} {
+		got, err := ImageURL(DriverPostgres, img)
+		require.NoError(t, err)
+		require.Equal(t, u, got.String())
+	}
+}
