@@ -33,7 +33,7 @@ func TestRuntimeVarSrc(t *testing.T) {
 		v struct {
 			V string `spec:"v"`
 		}
-		state = schemahcl.New(cmdext.DataSources...)
+		state = schemahcl.New(cmdext.SpecOptions...)
 	)
 	err := state.EvalBytes([]byte(`
 data "runtimevar" "pass" {
@@ -76,7 +76,7 @@ func TestRDSToken(t *testing.T) {
 		v struct {
 			V string `spec:"v"`
 		}
-		state = schemahcl.New(cmdext.DataSources...)
+		state = schemahcl.New(cmdext.SpecOptions...)
 	)
 	err := state.EvalBytes([]byte(`
 data "aws_rds_token" "token" {
@@ -131,7 +131,7 @@ func TestGCPToken(t *testing.T) {
 		v struct {
 			V string `spec:"v"`
 		}
-		state = schemahcl.New(cmdext.DataSources...)
+		state = schemahcl.New(cmdext.SpecOptions...)
 	)
 	err := state.EvalBytes([]byte(`
 data "gcp_cloudsql_token" "helloworld" {}
@@ -157,7 +157,7 @@ func TestQuerySrc(t *testing.T) {
 			V  string   `spec:"v"`
 			Vs []string `spec:"vs"`
 		}
-		state = schemahcl.New(cmdext.DataSources...)
+		state = schemahcl.New(cmdext.SpecOptions...)
 	)
 	err = state.EvalBytes([]byte(fmt.Sprintf(`
 data "sql" "user" {
@@ -182,7 +182,7 @@ func TestTemplateDir(t *testing.T) {
 		}
 		dir   = t.TempDir()
 		ctx   = context.Background()
-		state = schemahcl.New(cmdext.DataSources...)
+		state = schemahcl.New(cmdext.SpecOptions...)
 		// language=hcl
 		cfg = `
 variable "path" {
@@ -245,7 +245,7 @@ func TestSchemaHCL(t *testing.T) {
 		}
 		dir   = t.TempDir()
 		ctx   = context.Background()
-		state = schemahcl.New(cmdext.DataSources...)
+		state = schemahcl.New(cmdext.SpecOptions...)
 	)
 	err := os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(`
 variable "schema" {
@@ -333,7 +333,7 @@ func TestExternalSchema(t *testing.T) {
 			Schema string `spec:"schema"`
 		}
 		ctx   = context.Background()
-		state = schemahcl.New(cmdext.DataSources...)
+		state = schemahcl.New(cmdext.SpecOptions...)
 	)
 	err := state.EvalBytes([]byte(`
 data "external_schema" "a8m" {
@@ -379,7 +379,7 @@ func TestExternal(t *testing.T) {
 		v struct {
 			Output string `spec:"output"`
 		}
-		state = schemahcl.New(cmdext.DataSources...)
+		state = schemahcl.New(cmdext.SpecOptions...)
 	)
 	err := state.EvalBytes([]byte(`
 data "external" "program" {
@@ -440,7 +440,7 @@ func TestAtlasConfig(t *testing.T) {
 			Atlas     cty.Value `spec:"atlas"`
 		}
 		cfg   = &cmdext.AtlasConfig{}
-		state = schemahcl.New(append(cmdext.DataSources, cfg.InitBlock(), schemahcl.WithVariables(map[string]cty.Value{
+		state = schemahcl.New(append(cmdext.SpecOptions, cfg.InitBlock(), schemahcl.WithVariables(map[string]cty.Value{
 			"atlas": cty.ObjectVal(map[string]cty.Value{
 				"env": cty.StringVal("dev"),
 			}),
@@ -489,7 +489,7 @@ func TestRemoteDir(t *testing.T) {
 		}
 		token, tag string
 		cfg        = &cmdext.AtlasConfig{}
-		state      = schemahcl.New(append(cmdext.DataSources, cfg.InitBlock())...)
+		state      = schemahcl.New(append(cmdext.SpecOptions, cfg.InitBlock())...)
 		srv        = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token = r.Header.Get("Authorization")
 			di := struct {

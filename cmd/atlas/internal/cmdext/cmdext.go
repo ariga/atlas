@@ -46,19 +46,22 @@ import (
 	_ "gocloud.dev/runtimevar/httpvar"
 )
 
-// DataSources exposes the data sources provided by this package.
-var DataSources = []schemahcl.Option{
-	schemahcl.WithDataSource("sql", Query),
-	schemahcl.WithDataSource("external", External),
-	schemahcl.WithDataSource("runtimevar", RuntimeVar),
-	schemahcl.WithDataSource("template_dir", TemplateDir),
-	schemahcl.WithDataSource("remote_dir", RemoteDir),
-	schemahcl.WithDataSource("remote_schema", RemoteSchema),
-	schemahcl.WithDataSource("hcl_schema", SchemaHCL),
-	schemahcl.WithDataSource("external_schema", SchemaExternal),
-	schemahcl.WithDataSource("aws_rds_token", AWSRDSToken),
-	schemahcl.WithDataSource("gcp_cloudsql_token", GCPCloudSQLToken),
-}
+// SpecOptions exposes the schema spec options like data-sources provided by this package.
+var SpecOptions = append(
+	[]schemahcl.Option{
+		schemahcl.WithDataSource("sql", Query),
+		schemahcl.WithDataSource("external", External),
+		schemahcl.WithDataSource("runtimevar", RuntimeVar),
+		schemahcl.WithDataSource("template_dir", TemplateDir),
+		schemahcl.WithDataSource("remote_dir", RemoteDir),
+		schemahcl.WithDataSource("remote_schema", RemoteSchema),
+		schemahcl.WithDataSource("hcl_schema", SchemaHCL),
+		schemahcl.WithDataSource("external_schema", SchemaExternal),
+		schemahcl.WithDataSource("aws_rds_token", AWSRDSToken),
+		schemahcl.WithDataSource("gcp_cloudsql_token", GCPCloudSQLToken),
+	},
+	specOptions...,
+)
 
 // RuntimeVar exposes the gocloud.dev/runtimevar as a schemahcl datasource.
 //

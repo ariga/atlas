@@ -10,10 +10,14 @@ import (
 	"context"
 	"fmt"
 
+	"ariga.io/atlas/schemahcl"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 )
+
+var specOptions []schemahcl.Option
 
 // RemoteSchema is a data source that for reading remote schemas.
 func RemoteSchema(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {

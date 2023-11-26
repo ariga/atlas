@@ -803,7 +803,7 @@ func merge(maps ...template.FuncMap) template.FuncMap {
 
 func mermaid(i *SchemaInspect, _ ...string) (string, error) {
 	ft, ok := i.Driver.(interface {
-		FormatType(t schema.Type) (string, error)
+		FormatType(schema.Type) (string, error)
 	})
 	if !ok {
 		return "", fmt.Errorf("mermaid: driver does not support FormatType")

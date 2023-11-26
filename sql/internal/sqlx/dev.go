@@ -32,9 +32,6 @@ type DevDriver struct {
 // to their "normal presentation" in the database, by creating them temporarily in
 // a "dev database", and then inspects them from there.
 func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *schema.Realm, err error) {
-	if err := d.Driver.CheckClean(ctx, nil); err != nil {
-		return nil, err
-	}
 	restore, err := d.Driver.Snapshot(ctx)
 	if err != nil {
 		return nil, err
@@ -88,9 +85,6 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 
 // NormalizeSchema returns the normal representation of the given database. See NormalizeRealm for more info.
 func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema.Schema, error) {
-	if err := d.Driver.CheckClean(ctx, nil); err != nil {
-		return nil, err
-	}
 	restore, err := d.Driver.Snapshot(ctx)
 	if err != nil {
 		return nil, err

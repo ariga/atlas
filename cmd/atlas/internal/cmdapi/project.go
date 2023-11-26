@@ -473,7 +473,7 @@ func parseConfig(path, env string, vars map[string]cty.Value) (*Project, error) 
 	}
 	state := schemahcl.New(
 		append(
-			append(cmdext.DataSources, specOptions...),
+			append(cmdext.SpecOptions, specOptions...),
 			cfg.InitBlock(),
 			schemahcl.WithScopedEnums("env.migration.format", cmdmigrate.Formats...),
 			schemahcl.WithScopedEnums("env.migration.exec_order", "LINEAR", "LINEAR_SKIP", "NON_LINEAR"),
