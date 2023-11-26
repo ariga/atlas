@@ -387,12 +387,13 @@ func freePort() (string, error) {
 func init() {
 	sqlclient.Register(
 		"docker",
-		sqlclient.OpenerFunc(client),
+		sqlclient.OpenerFunc(Open),
 		sqlclient.RegisterFlavours("docker+postgres", "docker+mysql", "docker+maria"),
 	)
 }
 
-func client(ctx context.Context, u *url.URL) (client *sqlclient.Client, err error) {
+// Open a new docker client.
+func Open(ctx context.Context, u *url.URL) (client *sqlclient.Client, err error) {
 	cfg, err := FromURL(u)
 	if err != nil {
 		return nil, err
