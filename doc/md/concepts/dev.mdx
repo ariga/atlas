@@ -9,11 +9,13 @@ import TabItem from '@theme/TabItem';
 
 ## Introduction
 
-Atlas uses the concept of "Dev Database" to provide extra safety and correctness to the migration process.
-A development database (a twin environment) to validate both SQL and HCL schemas, simulate migrations and calculate the
-state of the migration directory by replaying the historical changes. Let's go over a few examples to explain the
-benefits of using a dev database. For a one-time use Atlas can spin up an ephemeral local docker container for you with
-a special [docker driver](concepts/url.mdx).
+Some commands require a URL pointing to a _"Dev Database"_, typically a temporary and locally running database, which
+Atlas uses to process and validate users' schemas, migrations and more. This requirement is necessary as Atlas cannot
+replicate every database type 'X' in every version 'Y'.
+
+To simplify the process of creating temporary databases for one-time use, Atlas can spin up an ephemeral local Docker
+container using the special [docker driver](concepts/url.mdx), and clean it up at the end of the process. Here are a
+few examples of how to use the docker driver:
 
 
 <Tabs>
@@ -111,7 +113,67 @@ docker+postgres://org/image:tag
 </TabItem>
 </Tabs>
 
+## Baseline Schema
+
+:::info LOGIN REQUIRED
+
+The `docker` block is available for logged-in users only. To use this feature, run:
+
+```
+atlas login
+```
+:::
+
+In some cases, there is a need to configure a baseline schema for the dev database so that every computation using the
+dev-database starts from this baseline. For example, users' schemas or migrations rely on objects, extensions, or
+other schema resources that are not managed by the project.
+
+To configure such a baseline, use the `docker` block with the relevant image and pass to it the script for creating the
+base schema for the project:
+
+```hcl
+docker "postgres" "dev" {
+  image  = "postgres:15"
+  schema = "public"
+  // highlight-start
+  baseline = <<SQL
+   CREATE SCHEMA "auth";
+   CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA "auth";
+   CREATE TABLE "auth"."users" ("id" uuid NOT NULL DEFAULT auth.uuid_generate_v4(), PRIMARY KEY ("id"));
+  SQL
+  // highlight-end
+}
+
+env "local" {
+  src = "file://schema.pg.hcl"
+  dev = docker.postgres.dev.url
+}
+```
+
+When managing multiple schemas or there is a need to generate migrations with table qualifiers, the `schema` argument
+should not be set:
+
+```hcl
+docker "postgres" "dev" {
+  image  = "postgres:15"
+  // highlight-start
+  // Use the file() function to read
+  // the contents of the baseline script.
+  baseline = file("baseline.sql")
+  // highlight-end
+}
+```
+
+MySQL and MariaDB users can use the `docker "mysql"` / `docker "mariadb"` to configure such block.
+
+
+The code for the above examples is available in the [ariga/atlas-examples](https://github.com/ariga/atlas-examples) repository,
+within the [migrate-diff-hcl](https://github.com/ariga/atlas-examples/tree/master/atlashcl/migrate-diff-hcl) and
+[schema-apply-sql](https://github.com/ariga/atlas-examples/tree/master/atlashcl/schema-apply-sql) directories.
+
 ## Validation
+
+The section below explains in more detail how Atlas uses the dev-database to process and validate users' schemas.
 
 Suppose we want to the add the following `CHECK` constraint to the table below:
 
