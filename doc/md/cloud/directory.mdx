@@ -4,34 +4,85 @@ id: directories
 slug: /cloud/directories
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+import MigratePushCommand from '../components/migrate-push-command.mdx'
+
 The following guide explains how to connect a migration directory to Atlas Cloud. Once connected, Atlas provides a list
 of features enabling users to seamlessly audit their migration history, run continuous migration linting on their PRs,
-monitor executed migrations and receive Slack notifications, among other capabilities.
+monitor executed migrations and receive webhook notifications, among other capabilities.
 
-There are two ways for connecting migration directories to Atlas Cloud:
+To get started, you need to create the migration directory in Atlas Cloud.
 
-1. **Push mode**: Set up a GitHub Action, [`atlas-sync-action`](https://github.com/ariga/atlas-sync-action), to persist
-  the desired state of the migration directory in Atlas Cloud. Refer to the [Action documentation](https://github.com/ariga/atlas-sync-action#usage)
-  for installation guidance for your project.
-2. **Pull mode**: Connect your migration directory stored in GitHub with the Atlas GitHub App. To do so, follow these steps:
-   - Navigate to `/dirs` and click on **Add Directory**.
-   - Select **Continue with GitHub** and grant Atlas access to the relevant repositories.
-   - Once authorized by GitHub, select the path to the migration directory and click **Connect Directory**.
-     <details>
-     <summary>Screenshot example</summary>
+### Login to Atlas Cloud
 
-     ![](https://atlasgo.io/uploads/images/blog-v010/configure-dir.png)
+Firstly, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time, you'll be
+prompted to create both an account and a workspace (organization):
 
-     </details>
-   - After the migration files are processed, you will be redirected to the migration directory page.
-     <details>
-     <summary>Screenshot example</summary>
+<Tabs>
+<TabItem value="web" label="Via Web">
 
-     ![](https://atlasgo.io/uploads/images/blog-v010/view-dir-erd.png)
+```bash
+atlas login
+```
 
-     </details>
+</TabItem>
+<TabItem value="token" label="Via Token">
+
+```bash
+atlas login --token "ATLAS_TOKEN"
+```
+
+</TabItem>
+<TabItem value="env-var" label="Via Environment Variable">
+
+```bash
+ATLAS_TOKEN="$ATLAS_TOKEN" atlas login
+```
+
+</TabItem>
+</Tabs>
+
+### Push the migration directory
+
+After logging in, we can push the migration directory to Atlas Cloud to persist its state. This allows it to be read by
+Atlas CLI later on in our CI/CD pipelines or by other developers on our team.
+
+<MigratePushCommand/>
+
+:::note
+For the purpose of this example, we have named our migration directory `app`, but you can choose a
+different name containing only alphanumeric characters, dashes, and underscores.
+:::
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/versioned/migrate-push1.jpg" alt="atlas migrate push" width="100%"/>
+    <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
+</div>
+
+### Setup CI
+
+After setting up your migration directory, the next step is to add Atlas to your CI pipeline. This ensures that the
+migration files are checked and reviewed before being merged into the main branch. Below are the supported CI platforms
+Atlas currently supports:
+
+- [GitHub Actions](/cloud/setup-ci#github-action-workflow)
+- [GitLab CI](/guides/ci-platforms/gitlab)
+- Using other CI platforms? [Let us know!](https://github.com/ariga/atlas/issues/new)
+
+
+### Setup CD
+
+Atlas Cloud streamlines deploying migrations by providing a single place to manage migrations for all your services.
+After connecting your migration directory to Atlas Cloud, it is automatically synced to a central location on every
+commit to your main branch. Once this setup (which takes less than one minute) is complete, you can deploy migrations
+from Atlas Cloud to any environment with a single command (or using popular CD tools such as Kubernetes and Terraform).
+
+For more information, visit the _Introduction to schema migrations deployments_ in the [guides section](/guides/deploying/intro).
 
 ### Slack Integration
+
 You can use Slack Webhooks to receive updates in your Slack channel about schema changes, CI runs and deployment statuses of your migration directory.
 Make sure you have a Slack incoming webhook configured
 (you can create one [here](https://my.slack.com/services/new/incoming-webhook)).
