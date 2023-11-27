@@ -5,6 +5,7 @@ slug: /guides/ci-platforms/gitlab
 ---
 
 import InstallationInstructions from '../../components/_installation_instructions.mdx'
+import MigratePushCommand from '../../components/migrate-push-command.mdx'
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
@@ -42,32 +43,7 @@ atlas login
 
 Once you have logged in, you can push your migrations to Atlas by running the following command:
 
-<Tabs>
-<TabItem value="sqlite" label="SQLite">
-
-```bash
-atlas migrate push app \
-  --dev-url "sqlite://db?mode=memory"
-```
-
-</TabItem>
-<TabItem value="postgres" label="PostgreSQL">
-
-```bash
-atlas migrate push app \
-  --dev-url "docker://postgres/15/dev?search_path=public"
-```
-
-</TabItem>
-<TabItem value="mysql" label="MySQL">
-
-```bash
-atlas migrate push app \
-  --dev-url "docker://mysql/8/dev"
-```
-
-</TabItem>
-</Tabs>
+<MigratePushCommand/>
 
 Atlas will print a URL leading to your migrations on Atlas Cloud.  You can visit this URL to view your migrations.
 

@@ -91,7 +91,7 @@ module.exports = {
             collapsed: false,
             items: [
                 {type: 'doc', id: 'cloud/getting-started', label: 'Getting Started'},
-                {type: 'doc', id: 'cloud/directories', label: 'Connected Directories'},
+                {type: 'doc', id: 'cloud/directories', label: 'Connect Directories'},
                 {type: 'doc', id: 'cloud/setup-ci', label: 'CI Setup'},
                 {type: 'doc', id: 'cloud/bots', label: 'Creating Bots'},
                 {type: 'doc', id: 'cloud/deployment', label: 'Deployments'},
@@ -105,7 +105,6 @@ module.exports = {
                 {
                     type: 'doc',
                     label: 'Kubernetes Operator',
-                    type: 'doc',
                     id: 'integrations/kubernetes/operator'
                 },
                 {type: 'doc', id: 'integrations/github-actions', label: 'GitHub Actions'},

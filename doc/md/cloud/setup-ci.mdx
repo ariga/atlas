@@ -3,8 +3,7 @@ id: setup-ci
 title: Setting up CI for your Database with Atlas Cloud
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import MigratePushCommand from '../components/migrate-push-command.mdx'
 
 As your application evolves, so does your database schema. If you're not careful
 with schema changes (migrations), you can end up introducing all sorts of issues
@@ -36,28 +35,9 @@ the [GitLab CI](/guides/ci-platforms/gitlab), for example.
   ```
 
 3. Push your migration directory to Atlas Cloud. This is used by the CI process to detect
-   which migration files are new and if linear history is maintained.
+   which migration files are new and if linear history is maintained:
 
-   To push your migrations to Atlas Cloud, run `atlas migrate push` in your terminal:
-
-    <Tabs>
-    <TabItem value="postgres" label="PostgreSQL">
-
-    ```bash
-    atlas migrate push app \
-      --dev-url "docker://postgres/15/dev?search_path=public"
-    ```
-
-    </TabItem>
-    <TabItem value="mysql" label="MySQL">
-
-    ```bash
-    atlas migrate push app \
-      --dev-url "docker://mysql/8/dev"
-    ```
-
-    </TabItem>
-    </Tabs>
+   <MigratePushCommand/>
 
 
 ## GitHub Action Workflow

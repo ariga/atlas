@@ -1,0 +1,50 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+<TabItem value="postgres" label="PostgreSQL">
+
+```bash
+atlas migrate push app \
+  --dev-url "docker://postgres/15/dev?search_path=public"
+```
+
+</TabItem>
+<TabItem value="mysql" label="MySQL">
+
+```bash
+atlas migrate push app \
+  --dev-url "docker://mysql/8/dev"
+```
+
+</TabItem>
+<TabItem value="maria" label="MariaDB">
+
+```bash
+atlas migrate push app \
+  --dev-url "docker://mariadb/latest/dev"
+```
+
+</TabItem>
+<TabItem value="sqlite" label="SQLite">
+
+```bash
+atlas migrate push app \
+  --dev-url "sqlite://dev?mode=memory"
+```
+
+</TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+Run first the following command to start a local MSSQL server using Docker:
+
+```bash
+docker run -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=P@ssw0rd0995' -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
+```
+```bash
+atlas migrate push app \
+    --dev-url "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master"
+```
+
+</TabItem>
+</Tabs>

@@ -26,8 +26,11 @@ teams make the most out of Atlas with as little friction and effort as possible.
 
 ### How do I get started?
 
-1. **Create an account** - in the [signup page](https://auth.atlasgo.cloud/signup) and follow the instructions
-   to create an account.
+1. **Create an account** - in the [signup page](https://auth.atlasgo.cloud/signup) or from the CLI:
+
+   ```
+   atlas login
+   ```
 2. **Connect a migration directory** - To unlock CI, deployments and visibility features you need to connect a migration
    directory to your account. [Follow this guide](/cloud/directories) to learn how.
 3. **Deploy from your connected directory** - Once you've connected a migration directory, you can deploy migrations
@@ -49,22 +52,22 @@ Atlas Cloud users can get early access to beta drivers by joining the Atlas Clou
 you first need to create an account on Atlas Cloud, enable it in your account settings, and then login to the CLI
 using your Atlas identity.
 
-1\. Sign up first on [Atlas Cloud](https://auth.atlasgo.cloud/signup).
+1. Sign up first on [Atlas Cloud](https://auth.atlasgo.cloud/signup).
 
-2\. Go to the account settings by clicking your avatar. Then, select the driver you want to get access to. For example,
+2. Go to the account settings by clicking your avatar. Then, select the driver you want to get access to. For example,
 Microsoft SQL Server.
 
-<details>
-<summary>Screenshot example</summary>
+  <details>
+  <summary>Screenshot example</summary>
 
-![](https://atlasgo.io/uploads/cloud/beta-driver.png)
+  ![](https://atlasgo.io/uploads/cloud/beta-driver.png)
 
-</details>
+  </details>
 
-3\. Last, run `atlas login` to login or refetch your account permissions:
+3. Last, run `atlas login` to login or refetch your account permissions:
 
-```text
-$ atlas login a8m
-//highlight-next-line-info
-You are now connected to "a8m" on Atlas Cloud.
-```
+  ```text
+  $ atlas login a8m
+  //highlight-next-line-info
+  You are now connected to "a8m" on Atlas Cloud.
+  ```

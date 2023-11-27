@@ -6,6 +6,7 @@ title: Introduction to Atlas Migrations
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import MigratePushCommand from '../components/migrate-push-command.mdx';
 import Discord from '../../website/src/assets/icons/discord-white.svg'
 
 This guide offers a high-level overview of the Atlas versioned migration workflow. It walks you through the steps of
@@ -149,7 +150,7 @@ most methods covered in the [guides](/guides) section. In this example, we'll de
 </div>
 
 Firstly, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time, you'll be
-prompted to create both an account and a workspace.
+prompted to create both an account and a workspace (organization):
 
 <Tabs>
 <TabItem value="web" label="Via Web">
@@ -166,28 +167,18 @@ atlas login --token "ATLAS_TOKEN"
 ```
 
 </TabItem>
+<TabItem value="env-var" label="Via Environment Variable">
+
+```bash
+ATLAS_TOKEN="ATLAS_TOKEN" atlas login
+```
+
+</TabItem>
 </Tabs>
 
 After logging in, let's name our new migration project `app` and run `atlas migrate push`:
 
-<Tabs>
-<TabItem value="postgres" label="PostgreSQL">
-
-```bash
-atlas migrate push app \
-  --dev-url "docker://postgres/15/dev?search_path=public"
-```
-
-</TabItem>
-<TabItem value="mysql" label="MySQL">
-
-```bash
-atlas migrate push app \
-  --dev-url "docker://mysql/8/dev"
-```
-
-</TabItem>
-</Tabs>
+<MigratePushCommand />
 
 After our migration directory is pushed, Atlas prints a URL to the created directory, similar to the one shown in the
 image above.
