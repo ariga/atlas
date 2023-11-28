@@ -26,26 +26,25 @@ Once this happens, the responsibility for planning migration scripts and making
 sure they are in line with what Hibernate expects at runtime is moved to developers.
 
 Atlas can automatically plan database schema migrations for developers using Hibernate.
-Atlas plans migrations by calculating the diff between the _current_ state of the database,
+Atlas plans migrations by calculating the diff between the _current_ state of the database
 and its _desired_ state.
 
 In the context of versioned migrations, the current state can be thought of as the database schema that would have been created by applying
 all previous migration scripts.
 
-The desired schema of your application can be provided to Atlas via an [External Schema Datasource](/atlas-schema/projects#data-source-external_schema)
+The desired schema of your application can be provided to Atlas via an [External Schema Data Source](/atlas-schema/projects#data-source-external_schema)
 which is any program that can output a SQL schema definition to stdout.
 
 To use Atlas with Hibernate, users can utilize the [Hibernate Atlas Provider](https://github.com/ariga/atlas-provider-hibernate),
 a small program that can be used to load the schema of a Hibernate project into Atlas.
 
-In this guide, we will show how Atlas can be used to automatically plan schema migrations for
-Hibernate users.
+In this guide, we will show how Atlas can automatically plan schema migrations for Hibernate users.
 
 ## Prerequisites
 
 * A local [Hibernate](https://hibernate.org/orm/) project.
 
-If you don't have a Hibernate project handy, check out [hibernate getting started page](https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html)
+If you don't have a Hibernate project handy, check out the [Hibernate getting started page](https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html)
 
 ## Using the Atlas Hibernate Provider
 
@@ -60,7 +59,7 @@ curl -sSf https://atlasgo.sh | sh
 ```
 See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more installation options.
 
-Install the provider by adding this plugin to your gradle project:
+Install the provider by adding this plugin to your Gradle project:
 
 <Tabs>
 <TabItem value="Gradle Kotlin" label="Gradle Kotlin" default>
@@ -87,7 +86,7 @@ Coming soon!
 </TabItem>
 </Tabs>
 
-Verify that the plugin is installed, run this command
+Verify that the plugin is installed by running this command:
 
 <Tabs>
 <TabItem value="Gradle" label="Gradle" default>
@@ -107,11 +106,11 @@ Coming soon!
 ### Library vs Gradle task
 
 The Atlas Hibernate Provider can be used in two modes:
-* **Gradle Task** - In most cases, you can use the provider as an gradle task to output
+* **Gradle Task** - In most cases, you can use the provider as a Gradle task to output
 the Hibernate schema and load the schema into Atlas.
-* **Library** - For other case, if you are initializing Hibernate in a custom way,
-using an older version of Hibernate or if you are not using gradle,
-you can use the provider as a library and create a small application that prints the schema to stdout.
+* **Library** - If you are initializing Hibernate in a custom way, using an older version of
+Hibernate or if you are not using Gradle, you can use the provider as a library and create
+a small application that prints the schema to stdout.
 
 ### Gradle Task
 
@@ -128,7 +127,7 @@ data "external_schema" "hibernate" {
 }
 ```
 
-And depending on your database, add an environment configuration. For example, for MySQL and PostgreSQL:
+Depending on your database, add an environment configuration. For example, for MySQL and PostgreSQL:
 
 <Tabs>
 <TabItem value="MySQL" label="MySQL" default>
@@ -168,9 +167,9 @@ env "hibernate" {
 </Tabs>
 
 We need to let Atlas and the provider know which SQL dialect should be used. The dialect is specified in the
-properties file and in the dev database that Atlas will use.
+properties file and in the [Dev Database](/concepts/dev-database) that Atlas will use.
 
-Create a resource named `schema-export.propertie` in `src/main/resource`, it should be part of the classpath by default.
+Create a resource named `schema-export.properties` in `src/main/resource`, it should be part of the classpath by default.
 Specify the SQL dialect that will be used to initialize Hibernate:
 
 <Tabs>
@@ -189,12 +188,12 @@ jakarta.persistence.database-product-name=PostgreSQL
 </TabItem>
 </Tabs>
 
-> Note: The properties being used might vary depending on the version of Hibernate and the database connector that is configured for your project
+> Note: The properties being used might vary depending on the version of Hibernate and the database connector that is configured for your project.
 
 ### Script mode
 
 We are going to add the provider as a dependency in Gradle (or Maven) and configure Hibernate to use
-`ConsoleSchemaManagementTool`. In this example, we are going to use Spring for to initialize Hibernate.
+`ConsoleSchemaManagementTool`. In this example, we are going to use Spring to initialize Hibernate.
 
 > By default, the `HibernateSchemaManagementTool` will try to connect to the
 database during initialization and generate the schema into the database.
@@ -253,7 +252,7 @@ spring.jpa.properties.hibernate.schema_management_tool=io.atlasgo.ConsoleSchemaM
 </Tabs>
 
 
-And lastly, in your project directory, create a new file named `atlas.hcl` with the following contents
+Lastly, in your project directory, create a new file named `atlas.hcl` with the following contents
 
 ```hcl
 data "external_schema" "hibernate" {
@@ -265,7 +264,7 @@ data "external_schema" "hibernate" {
 }
 ```
 
-And depending on your database, add an environment configuration. For example, for MySQL and PostgreSQL:
+Depending on your database, add an environment configuration. For example, for MySQL and PostgreSQL:
 
 <Tabs>
 <TabItem value="MySQL" label="MySQL" default>
@@ -361,7 +360,7 @@ public class Location {
 </TabItem>
 </Tabs>
 
-Using the configuration we created earlier, we can generate a migration file by running this command:
+Using the configuration we created earlier, we can generate a migration file by running the following command:
 
 ```bash
 atlas migrate diff --env hibernate
@@ -422,7 +421,7 @@ Re-run this command:
 atlas migrate diff --env hibernate
 ```
 
-Observe a new migration file is generated:
+Observe that a new migration file is generated:
 
 ```sql
 -- Modify "Events" table
@@ -432,7 +431,7 @@ ALTER TABLE `Events` ADD COLUMN `location_id` bigint NULL, ADD INDEX `FK4hncpre5
 ## Conclusion
 
 In this guide we demonstrated how projects using Hibernate can use Atlas to automatically
-plan schema migrations based only on their data model. To learn more about executing
+plan schema migrations based solely on their data model. To learn more about executing
 these migrations against your production database, read the documentation for the
 [`migrate apply`](/versioned/apply) command.
 
