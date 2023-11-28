@@ -823,6 +823,8 @@ type (
 		Null    bool            // Nullability.
 		Default schema.Expr     // Default value.
 		Checks  []*schema.Check // Check constraints.
+		Attrs   []schema.Attr   // Extra attributes, such as OID.
+		Deps    []schema.Object // Objects this domain depends on.
 	}
 
 	// IntervalType defines an interval type.
