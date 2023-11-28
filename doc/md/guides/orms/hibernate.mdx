@@ -32,7 +32,7 @@ and its _desired_ state.
 In the context of versioned migrations, the current state can be thought of as the database schema that would have been created by applying
 all previous migration scripts.
 
-The desired schema of your application can be provided to Atlas via an [External Schema Data Source](/atlas-schema/projects#data-source-external_schema)
+The desired schema of your application can be provided to Atlas via an [External Schema Data Source](/atlas-schema/projects#data-source-external_schema),
 which is any program that can output a SQL schema definition to stdout.
 
 To use Atlas with Hibernate, users can utilize the [Hibernate Atlas Provider](https://github.com/ariga/atlas-provider-hibernate),
@@ -252,7 +252,7 @@ spring.jpa.properties.hibernate.schema_management_tool=io.atlasgo.ConsoleSchemaM
 </Tabs>
 
 
-Lastly, in your project directory, create a new file named `atlas.hcl` with the following contents
+Lastly, in your project directory, create a new file named `atlas.hcl` with the following contents:
 
 ```hcl
 data "external_schema" "hibernate" {
