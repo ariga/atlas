@@ -370,11 +370,11 @@ func TestDriver_InspectPartitionedTable(t *testing.T) {
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("public").
 		WillReturnRows(sqltest.Rows(`
- table_schema | table_name  | comment | partition_attrs | partition_strategy |                  partition_exprs                   
---------------+-------------+---------+-----------------+--------------------+----------------------------------------------------
- public       | logs1       |         |                 |                    | 
- public       | logs2       |         | 1               | r                  | 
- public       | logs3       |         | 2 0 0           | l                  | (a + b), (a + (b * 2))
+ oid   | table_schema | table_name  | comment | partition_attrs | partition_strategy |                  partition_exprs
+-------+--------------+-------------+---------+-----------------+--------------------+----------------------------------------------------
+ 112  | public       | logs1       |         |                 |                     | 
+ 113  | public       | logs2       |         | 1               | r                   | 
+ 114  | public       | logs3       |         | 2 0 0           | l                   | (a + b), (a + (b * 2))
 
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "$2, $3, $4"))).
@@ -402,12 +402,12 @@ logs3      | c5         | integer   | integer   | NO          |                |
 
 	t1, ok := s.Table("logs1")
 	require.True(t, ok)
-	require.Empty(t, t1.Attrs)
+	require.Equal(t, []schema.Attr{&OID{V: 112}}, t1.Attrs)
 
 	t2, ok := s.Table("logs2")
 	require.True(t, ok)
-	require.Len(t, t2.Attrs, 1)
-	key := t2.Attrs[0].(*Partition)
+	require.Len(t, t2.Attrs, 2)
+	key := t2.Attrs[1].(*Partition)
 	require.Equal(t, PartitionTypeRange, key.T)
 	require.Equal(t, []*PartitionPart{
 		{C: &schema.Column{Name: "c2", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}}},
@@ -415,8 +415,8 @@ logs3      | c5         | integer   | integer   | NO          |                |
 
 	t3, ok := s.Table("logs3")
 	require.True(t, ok)
-	require.Len(t, t3.Attrs, 1)
-	key = t3.Attrs[0].(*Partition)
+	require.Len(t, t3.Attrs, 2)
+	key = t3.Attrs[1].(*Partition)
 	require.Equal(t, PartitionTypeList, key.T)
 	require.Equal(t, []*PartitionPart{
 		{C: &schema.Column{Name: "c5", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}}},
@@ -694,9 +694,9 @@ func (m mock) version(version string) {
 }
 
 func (m mock) tableExists(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema", "table_name", "table_comment", "partition_attrs", "partition_strategy", "partition_exprs"})
+	rows := sqlmock.NewRows([]string{"oid", "table_schema", "table_name", "table_comment", "partition_attrs", "partition_strategy", "partition_exprs"})
 	if exists {
-		rows.AddRow(schema, table, nil, nil, nil, nil)
+		rows.AddRow(nil, schema, table, nil, nil, nil, nil)
 	}
 	m.ExpectQuery(queryTables).
 		WithArgs(schema).
