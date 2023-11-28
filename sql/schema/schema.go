@@ -39,7 +39,8 @@ type (
 		Indexes     []*Index
 		PrimaryKey  *Index
 		ForeignKeys []*ForeignKey
-		Attrs       []Attr // Attrs, constraints and options.
+		Attrs       []Attr   // Attrs, constraints and options.
+		Deps        []Object // Objects this table depends on.
 	}
 
 	// A View represents a view definition.
@@ -49,8 +50,8 @@ type (
 		Schema  *Schema
 		Columns []*Column
 		Attrs   []Attr   // Attrs and options.
-		Deps    []Object // Tables and views used in view definition.
 		Indexes []*Index // Indexes on materialized view.
+		Deps    []Object // Objects this view depends on.
 	}
 
 	// A Column represents a column definition.
@@ -114,9 +115,10 @@ type (
 		Schema *Schema
 		Args   []*FuncArg
 		Ret    Type
-		Body   string // Function body only.
-		Lang   string // Language (e.g. SQL, PL/pgSQL, etc.).
-		Attrs  []Attr // Extra driver specific attributes.
+		Body   string   // Function body only.
+		Lang   string   // Language (e.g. SQL, PL/pgSQL, etc.).
+		Attrs  []Attr   // Extra driver specific attributes.
+		Deps   []Object // Objects this function depends on.
 	}
 
 	// Proc represents a procedure definition.
@@ -124,9 +126,10 @@ type (
 		Name   string
 		Schema *Schema
 		Args   []*FuncArg
-		Body   string // Function body only.
-		Lang   string // Language (e.g. SQL, PL/pgSQL, etc.).
-		Attrs  []Attr // Extra driver specific attributes.
+		Body   string   // Function body only.
+		Lang   string   // Language (e.g. SQL, PL/pgSQL, etc.).
+		Attrs  []Attr   // Extra driver specific attributes.
+		Deps   []Object // Objects this function depends on.
 	}
 
 	// A FuncArg represents a single function argument.
@@ -531,6 +534,8 @@ const (
 // objects.
 func (*Table) obj()    {}
 func (*View) obj()     {}
+func (*Func) obj()     {}
+func (*Proc) obj()     {}
 func (*EnumType) obj() {}
 
 // expressions.

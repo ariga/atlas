@@ -159,8 +159,11 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var tSchema, name, comment, partattrs, partstart, partexprs sql.NullString
-		if err := rows.Scan(&tSchema, &name, &comment, &partattrs, &partstart, &partexprs); err != nil {
+		var (
+			oid                                                     sql.NullInt64
+			tSchema, name, comment, partattrs, partstart, partexprs sql.NullString
+		)
+		if err := rows.Scan(&oid, &tSchema, &name, &comment, &partattrs, &partstart, &partexprs); err != nil {
 			return fmt.Errorf("scan table information: %w", err)
 		}
 		if !sqlx.ValidString(tSchema) || !sqlx.ValidString(name) {
@@ -172,6 +175,9 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		}
 		t := schema.NewTable(name.String)
 		s.AddTables(t)
+		if oid.Valid {
+			t.AddAttrs(&OID{V: oid.Int64})
+		}
 		if sqlx.ValidString(comment) {
 			t.SetComment(comment.String)
 		}
@@ -776,6 +782,12 @@ type (
 		T string // e.g., void, any, cstring, etc.
 	}
 
+	// OID is the object identifier as defined in the Postgres catalog.
+	OID struct {
+		schema.Attr
+		V int64
+	}
+
 	// enumType represents an enum type. It serves aa intermediate representation of a Postgres enum type,
 	// to temporary save TypeID and TypeName of an enum column until the enum values can be extracted.
 	enumType struct {
@@ -1275,6 +1287,7 @@ ORDER BY
 	// Query to list table information.
 	tablesQuery = `
 SELECT
+	t3.oid,
 	t1.table_schema,
 	t1.table_name,
 	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
@@ -1297,6 +1310,7 @@ ORDER BY
 `
 	tablesQueryArgs = `
 SELECT
+	t3.oid,
 	t1.table_schema,
 	t1.table_name,
 	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,

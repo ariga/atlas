@@ -1134,8 +1134,11 @@ create table atlas_types_sanity
 		require.Len(t, realm.Schemas, 1)
 		ts, ok := realm.Schemas[0].Table(n)
 		require.True(t, ok)
+		require.Len(t, ts.Attrs, 1)
+		require.IsType(t, &postgres.OID{}, ts.Attrs[0])
 		expected := schema.Table{
 			Name:   n,
+			Attrs:  ts.Attrs,
 			Schema: realm.Schemas[0],
 			Columns: []*schema.Column{
 				{
