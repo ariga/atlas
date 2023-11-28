@@ -65,7 +65,7 @@ Install the provider by adding this plugin to your gradle project:
 <Tabs>
 <TabItem value="Gradle Kotlin" label="Gradle Kotlin" default>
 
-```kotlin
+```gradle
 plugins {
     id("io.atlasgo.hibernate-provider") version "0.1"
 }
@@ -73,7 +73,7 @@ plugins {
 </TabItem>
 <TabItem value="Gradle Groovy" label="Gradle Groovy" default>
 
-```
+```gradle
 plugins {
     id "io.atlasgo.hibernate-provider" version "0.1"
 }
@@ -176,14 +176,14 @@ Specify the SQL dialect that will be used to initialize Hibernate:
 <Tabs>
 <TabItem value="MySQL" label="MySQL" default>
 
-```
+```properties
 jakarta.persistence.database-product-name=MySQL
 jakarta.persistence.database-major-version=8
 ```
 </TabItem>
 <TabItem value="PostgreSQL" label="PostgreSQL">
 
-```
+```properties
 jakarta.persistence.database-product-name=PostgreSQL
 ```
 </TabItem>
@@ -204,7 +204,7 @@ Start by adding the provider as a dependency:
 <Tabs>
 <TabItem value="Gradle" label="Gradle" default>
 
-```
+```gradle
 dependencies {
     implementation("io.atlasgo:hibernate-provider:0.1")
 }
@@ -235,7 +235,7 @@ Next, create a new resource named `schema-export.properties` (make sure it is in
 <Tabs>
 <TabItem value="MySQL" label="MySQL" default>
 
-```
+```properties
 spring.jpa.properties.jakarta.persistence.database-product-name=MySQL
 spring.jpa.properties.jakarta.persistence.database-major-version=8
 spring.jpa.properties.jakarta.persistence.schema-generation.database.action=create
@@ -244,7 +244,7 @@ spring.jpa.properties.hibernate.schema_management_tool=io.atlasgo.ConsoleSchemaM
 </TabItem>
 <TabItem value="PostgreSQL" label="PostgreSQL">
 
-```
+```properties
 spring.jpa.properties.jakarta.persistence.database-product-name=PostgreSQL
 spring.jpa.properties.jakarta.persistence.schema-generation.database.action=create
 spring.jpa.properties.hibernate.schema_management_tool=io.atlasgo.ConsoleSchemaManagementTool
