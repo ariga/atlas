@@ -101,14 +101,14 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 					}()
 					// A unique index was added on an existing columns.
 					if c.I.Unique && len(names) > 0 {
-						msg := fmt.Sprintf("both columns %s", strings.Join(names, ", "))
+						s := fmt.Sprintf("columns %s contain", strings.Join(names, ", "))
 						if len(names) == 1 {
-							msg = fmt.Sprintf("column %s", names[0])
+							s = fmt.Sprintf("column %s contains", names[0])
 						}
 						diags = append(diags, sqlcheck.Diagnostic{
 							Code: codeAddUniqueI,
 							Pos:  sc.Stmt.Pos,
-							Text: fmt.Sprintf("Adding a unique index %q on table %q might fail in case %s contains duplicate entries", c.I.Name, m.T.Name, msg),
+							Text: fmt.Sprintf("Adding a unique index %q on table %q might fail in case %s duplicate entries", c.I.Name, m.T.Name, s),
 						})
 					}
 				case *schema.ModifyIndex:

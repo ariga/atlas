@@ -81,7 +81,7 @@ func TestAnalyzer_AddUniqueIndex(t *testing.T) {
 	require.Equal(t, "data dependent changes detected", report.Text)
 	require.Len(t, report.Diagnostics, 2)
 	require.Equal(t, `Adding a unique index "idx_b" on table "users" might fail in case column "b" contains duplicate entries`, report.Diagnostics[0].Text)
-	require.Equal(t, `Adding a unique index "idx_c_d" on table "users" might fail in case both columns "c", "d" contains duplicate entries`, report.Diagnostics[1].Text)
+	require.Equal(t, `Adding a unique index "idx_c_d" on table "users" might fail in case columns "c", "d" contain duplicate entries`, report.Diagnostics[1].Text)
 }
 
 func TestAnalyzer_ModifyUniqueIndex(t *testing.T) {
