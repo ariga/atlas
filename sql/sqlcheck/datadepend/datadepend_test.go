@@ -38,6 +38,8 @@ func TestAnalyzer_AddUniqueIndex(t *testing.T) {
 									AddColumns(
 										schema.NewColumn("a"),
 										schema.NewColumn("b"),
+										schema.NewColumn("c"),
+										schema.NewColumn("d"),
 									),
 								Changes: []schema.Change{
 									// Ignore new created columns.
@@ -48,10 +50,18 @@ func TestAnalyzer_AddUniqueIndex(t *testing.T) {
 										I: schema.NewUniqueIndex("idx_a").
 											AddColumns(schema.NewColumn("a")),
 									},
-									// Report on existing columns.
+									// Report on existing column.
 									&schema.AddIndex{
 										I: schema.NewUniqueIndex("idx_b").
 											AddColumns(schema.NewColumn("b")),
+									},
+									// Report on existing columns.
+									&schema.AddIndex{
+										I: schema.NewUniqueIndex("idx_c_d").
+											AddColumns(
+												schema.NewColumn("c"),
+												schema.NewColumn("d"),
+											),
 									},
 								},
 							},
@@ -69,8 +79,9 @@ func TestAnalyzer_AddUniqueIndex(t *testing.T) {
 	err = az.Analyze(context.Background(), pass)
 	require.NoError(t, err)
 	require.Equal(t, "data dependent changes detected", report.Text)
-	require.Len(t, report.Diagnostics, 1)
+	require.Len(t, report.Diagnostics, 2)
 	require.Equal(t, `Adding a unique index "idx_b" on table "users" might fail in case column "b" contains duplicate entries`, report.Diagnostics[0].Text)
+	require.Equal(t, `Adding a unique index "idx_c_d" on table "users" might fail in case columns "c", "d" contain duplicate entries`, report.Diagnostics[1].Text)
 }
 
 func TestAnalyzer_ModifyUniqueIndex(t *testing.T) {
