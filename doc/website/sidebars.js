@@ -298,6 +298,11 @@ module.exports = {
                 },
                 {
                     type: 'doc',
+                    id: 'guides/orms/hibernate',
+                    label: 'Hibernate'
+                },
+                {
+                    type: 'doc',
                     id: 'guides/orms/typeorm',
                     label: 'TypeORM'
                 },
