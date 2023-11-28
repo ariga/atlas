@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -87,22 +88,27 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 			for _, c := range m.Changes {
 				switch c := c.(type) {
 				case *schema.AddIndex:
-					column := func() *schema.Column {
+					names := func() []string {
+						var names []string
 						for i := range c.I.Parts {
 							// We consider a column a non-new column if
 							// it was not added in this migration file.
 							if column := c.I.Parts[i].C; column != nil && p.File.ColumnSpan(m.T, column)&sqlcheck.SpanAdded == 0 {
-								return column
+								names = append(names, fmt.Sprintf("%q", column.Name))
 							}
 						}
-						return nil
+						return names
 					}()
-					// A unique index was added on an existing column.
-					if c.I.Unique && column != nil {
+					// A unique index was added on an existing columns.
+					if c.I.Unique && len(names) > 0 {
+						msg := fmt.Sprintf("both columns %s", strings.Join(names, ", "))
+						if len(names) == 1 {
+							msg = fmt.Sprintf("column %s", names[0])
+						}
 						diags = append(diags, sqlcheck.Diagnostic{
 							Code: codeAddUniqueI,
 							Pos:  sc.Stmt.Pos,
-							Text: fmt.Sprintf("Adding a unique index %q on table %q might fail in case column %q contains duplicate entries", c.I.Name, m.T.Name, column.Name),
+							Text: fmt.Sprintf("Adding a unique index %q on table %q might fail in case %s contains duplicate entries", c.I.Name, m.T.Name, msg),
 						})
 					}
 				case *schema.ModifyIndex:
