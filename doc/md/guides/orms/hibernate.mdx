@@ -119,12 +119,12 @@ In your project directory, create a new file named `atlas.hcl` with the followin
 
 ```hcl
 data "external_schema" "hibernate" {
-    program = [
-        "./gradlew",
-        "-q",
-        "schema",
-        "--properties", "schema-export.properties"
-    ]
+  program = [
+    "./gradlew",
+    "-q",
+    "schema",
+    "--properties", "schema-export.properties"
+  ]
 }
 ```
 
@@ -135,16 +135,16 @@ And depending on your database, add an environment configuration. For example, f
 
 ```hcl
 env "hibernate" {
-    src = data.external_schema.hibernate.url
-    dev = "docker://mysql/8/dev"
-    migration {
-        dir = "file://migrations"
+  src = data.external_schema.hibernate.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+        diff = "{{ sql . \"  \" }}"
     }
-    format {
-        migrate {
-            diff = "{{ sql . \"  \" }}"
-        }
-    }
+  }
 }
 ```
 </TabItem>
@@ -152,16 +152,16 @@ env "hibernate" {
 
 ```hcl
 env "hibernate" {
-    src = data.external_schema.hibernate.url
-    dev = "docker://postgres/15/dev?search_path=public"
-    migration {
-        dir = "file://migrations"
+  src = data.external_schema.hibernate.url
+  dev = "docker://postgres/15/dev?search_path=public"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
     }
-    format {
-        migrate {
-            diff = "{{ sql . \"  \" }}"
-        }
-    }
+  }
 }
 ```
 </TabItem>
@@ -257,11 +257,11 @@ And lastly, in your project directory, create a new file named `atlas.hcl` with 
 
 ```hcl
 data "external_schema" "hibernate" {
-    program = [
-        "./gradlew",
-        "-q",
-        "bootRun"
-    ]
+  program = [
+    "./gradlew",
+    "-q",
+    "bootRun"
+  ]
 }
 ```
 
@@ -272,16 +272,16 @@ And depending on your database, add an environment configuration. For example, f
 
 ```hcl
 env "hibernate" {
-    src = data.external_schema.hibernate.url
-    dev = "docker://mysql/8/dev"
-    migration {
-        dir = "file://migrations"
-    }
-    format {
-        migrate {
-            diff = "{{ sql . \"  \" }}"
-        }
-    }
+  src = data.external_schema.hibernate.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+      }
+  }
 }
 ```
 </TabItem>
@@ -289,16 +289,16 @@ env "hibernate" {
 
 ```hcl
 env "hibernate" {
-    src = data.external_schema.hibernate.url
-    dev = "docker://postgres/15/dev?search_path=public"
-    migration {
-        dir = "file://migrations"
+  src = data.external_schema.hibernate.url
+  dev = "docker://postgres/15/dev?search_path=public"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
     }
-    format {
-        migrate {
-            diff = "{{ sql . \"  \" }}"
-        }
-    }
+  }
 }
 ```
 </TabItem>
