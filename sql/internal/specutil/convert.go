@@ -75,7 +75,27 @@ const (
 	typeColumn       = "column"
 	typeSchema       = "schema"
 	typeMaterialized = "materialized"
+	typeFunction     = "function"
+	typeProcedure    = "procedure"
 )
+
+// typeName returns the type name of the given object.
+func typeName(o schema.Object) string {
+	switch o := o.(type) {
+	case *schema.Table:
+		return typeTable
+	case *schema.View:
+		if o.Materialized() {
+			return typeMaterialized
+		}
+		return typeView
+	case *schema.Func:
+		return typeFunction
+	case *schema.Proc:
+		return typeProcedure
+	}
+	return "object"
+}
 
 // Scan populates the Realm from the schemas and table specs.
 func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
@@ -88,157 +108,149 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 		r.AddSchemas(s1)
 		byName[s.Name] = s1
 	}
-	tableFKs := make(map[*schema.Table][]*sqlspec.ForeignKey)
+	var (
+		fks  = make(map[*schema.Table][]*sqlspec.ForeignKey)
+		deps = make(map[schema.Object][]*schemahcl.Ref, len(doc.Views))
+	)
 	for _, st := range doc.Tables {
 		name, err := SchemaName(st.Schema)
 		if err != nil {
-			return fmt.Errorf("specutil: cannot extract schema name for table %q: %w", st.Name, err)
+			return fmt.Errorf("cannot extract schema name for table %q: %w", st.Name, err)
 		}
 		s, ok := byName[name]
 		if !ok {
-			return fmt.Errorf("specutil: schema %q not found for table %q", name, st.Name)
+			return fmt.Errorf("schema %q not found for table %q", name, st.Name)
 		}
 		t, err := funcs.Table(st, s)
 		if err != nil {
-			return fmt.Errorf("specutil: cannot convert table %q: %w", st.Name, err)
+			return fmt.Errorf("cannot convert table %q: %w", st.Name, err)
 		}
-		tableFKs[t] = st.ForeignKeys
+		fks[t] = st.ForeignKeys
 		s.AddTables(t)
+		if d, ok := st.Attr("depends_on"); ok {
+			refs, err := d.Refs()
+			if err != nil {
+				return fmt.Errorf("expect list of references for attribute table.%s.depends_on: %w", st.Name, err)
+			}
+			deps[t] = refs
+		}
 	}
 	// Link the foreign keys.
-	for t, fks := range tableFKs {
+	for t, fks := range fks {
 		if err := linkForeignKeys(t, fks); err != nil {
 			return err
 		}
 	}
-	viewDeps := make(map[*schema.View][]*schemahcl.Ref, len(doc.Views))
 	for _, sv := range doc.Views {
 		name, err := SchemaName(sv.Schema)
 		if err != nil {
-			return fmt.Errorf("specutil: cannot extract schema name for view %q: %w", sv.Name, err)
+			return fmt.Errorf("cannot extract schema name for view %q: %w", sv.Name, err)
 		}
 		s, ok := byName[name]
 		if !ok {
-			return fmt.Errorf("specutil: schema %q not found for view %q", name, sv.Name)
+			return fmt.Errorf("schema %q not found for view %q", name, sv.Name)
 		}
 		v, err := funcs.View(sv, s)
 		if err != nil {
-			return fmt.Errorf("specutil: cannot convert view %q: %w", sv.Name, err)
+			return fmt.Errorf("cannot convert view %q: %w", sv.Name, err)
 		}
 		s.AddViews(v)
-		if deps, ok := sv.Attr("depends_on"); ok {
-			refs, err := deps.Refs()
+		if d, ok := sv.Attr("depends_on"); ok {
+			refs, err := d.Refs()
 			if err != nil {
-				return fmt.Errorf("specutil: expect list of references for attribute view.%s.depends_on: %w", sv.Name, err)
+				return fmt.Errorf("expect list of references for attribute view.%s.depends_on: %w", sv.Name, err)
 			}
-			viewDeps[v] = refs
+			deps[v] = refs
 		}
 	}
 	for _, m := range doc.Materialized {
 		name, err := SchemaName(m.Schema)
 		if err != nil {
-			return fmt.Errorf("specutil: cannot extract schema name for materialized %q: %w", m.Name, err)
+			return fmt.Errorf("cannot extract schema name for materialized %q: %w", m.Name, err)
 		}
 		s, ok := byName[name]
 		if !ok {
-			return fmt.Errorf("specutil: schema %q not found for materialized %q", name, m.Name)
+			return fmt.Errorf("schema %q not found for materialized %q", name, m.Name)
 		}
 		v, err := funcs.View(m, s)
 		if err != nil {
-			return fmt.Errorf("specutil: cannot convert materialized %q: %w", m.Name, err)
+			return fmt.Errorf("cannot convert materialized %q: %w", m.Name, err)
 		}
 		s.AddViews(v.SetMaterialized(true))
-		if deps, ok := m.Attr("depends_on"); ok {
-			refs, err := deps.Refs()
+		if d, ok := m.Attr("depends_on"); ok {
+			refs, err := d.Refs()
 			if err != nil {
-				return fmt.Errorf("specutil: expect list of references for attribute materialized.%s.depends_on: %w", m.Name, err)
+				return fmt.Errorf("expect list of references for attribute materialized.%s.depends_on: %w", m.Name, err)
 			}
-			viewDeps[v] = refs
-		}
-	}
-	// Link views' dependencies.
-	for v, refs := range viewDeps {
-		srcT := typeView
-		if v.Materialized() {
-			srcT = typeMaterialized
-		}
-		for i, r := range refs {
-			switch p, err := r.Path(); {
-			case err != nil:
-				return fmt.Errorf("specutil: extract reference for %s.%s: %w", srcT, v.Name, err)
-			case len(p) == 0:
-				return fmt.Errorf("specutil: empty reference for %s.%s", srcT, v.Name)
-			case p[0].T == typeView:
-				q, n, err := RefName(r, typeView)
-				if err != nil {
-					return fmt.Errorf("specutil: extract view name from %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
-				}
-				v1, err := findT(v.Schema, q, n, func(s *schema.Schema, name string) (*schema.View, bool) {
-					return s.View(name)
-				})
-				if err != nil {
-					return fmt.Errorf("specutil: find view refrence for %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
-				}
-				v.AddDeps(v1)
-			case p[0].T == typeMaterialized:
-				q, n, err := RefName(r, typeMaterialized)
-				if err != nil {
-					return fmt.Errorf("specutil: extract materialized name from %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
-				}
-				v1, err := findT(v.Schema, q, n, func(s *schema.Schema, name string) (*schema.View, bool) {
-					return s.Materialized(name)
-				})
-				if err != nil {
-					return fmt.Errorf("specutil: find materialized refrence for %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
-				}
-				v.AddDeps(v1)
-			case p[0].T == typeTable:
-				q, n, err := RefName(r, typeTable)
-				if err != nil {
-					return fmt.Errorf("specutil: extract table name from %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
-				}
-				t1, err := findT(v.Schema, q, n, func(s *schema.Schema, name string) (*schema.Table, bool) {
-					return s.Table(name)
-				})
-				if err != nil {
-					return fmt.Errorf("specutil: find table refrence for %s.%s.depends_on[%d]: %w", srcT, v.Name, i, err)
-				}
-				v.AddDeps(t1)
-			}
+			deps[v] = refs
 		}
 	}
 	if funcs.Func != nil {
 		for _, sf := range doc.Funcs {
 			name, err := SchemaName(sf.Schema)
 			if err != nil {
-				return fmt.Errorf("specutil: cannot extract schema name for function %q: %w", sf.Name, err)
+				return fmt.Errorf("cannot extract schema name for function %q: %w", sf.Name, err)
 			}
 			s, ok := byName[name]
 			if !ok {
-				return fmt.Errorf("specutil: schema %q not found for function %q", name, sf.Name)
+				return fmt.Errorf("schema %q not found for function %q", name, sf.Name)
 			}
 			f, err := funcs.Func(sf)
 			if err != nil {
-				return fmt.Errorf("specutil: cannot convert function %q: %w", sf.Name, err)
+				return fmt.Errorf("cannot convert function %q: %w", sf.Name, err)
 			}
 			s.AddFuncs(f)
+			if d, ok := sf.Attr("depends_on"); ok {
+				refs, err := d.Refs()
+				if err != nil {
+					return fmt.Errorf("expect list of references for attribute function.%s.depends_on: %w", f.Name, err)
+				}
+				deps[f] = refs
+			}
 		}
 	}
 	if funcs.Proc != nil {
 		for _, sf := range doc.Procs {
 			name, err := SchemaName(sf.Schema)
 			if err != nil {
-				return fmt.Errorf("specutil: cannot extract schema name for procedure %q: %w", sf.Name, err)
+				return fmt.Errorf("cannot extract schema name for procedure %q: %w", sf.Name, err)
 			}
 			s, ok := byName[name]
 			if !ok {
-				return fmt.Errorf("specutil: schema %q not found for procedure %q", name, sf.Name)
+				return fmt.Errorf("schema %q not found for procedure %q", name, sf.Name)
 			}
 			f, err := funcs.Proc(sf)
 			if err != nil {
-				return fmt.Errorf("specutil: cannot convert procedure %q: %w", sf.Name, err)
+				return fmt.Errorf("cannot convert procedure %q: %w", sf.Name, err)
 			}
 			s.AddProcs(f)
+			if d, ok := sf.Attr("depends_on"); ok {
+				refs, err := d.Refs()
+				if err != nil {
+					return fmt.Errorf("expect list of references for attribute procedure.%s.depends_on: %w", f.Name, err)
+				}
+				deps[f] = refs
+			}
+		}
+	}
+	for o, refs := range deps {
+		var err error
+		switch o := o.(type) {
+		case *schema.Table:
+			err = fromDependsOn(fmt.Sprintf("table.%s", o.Name), o, o.Schema, refs)
+		case *schema.View:
+			t := "view"
+			if o.Materialized() {
+				t = "materialized"
+			}
+			err = fromDependsOn(fmt.Sprintf("%s.%s", t, o.Name), o, o.Schema, refs)
+		case *schema.Func:
+			err = fromDependsOn(fmt.Sprintf("function.%s", o.Name), o, o.Schema, refs)
+		case *schema.Proc:
+			err = fromDependsOn(fmt.Sprintf("procedure.%s", o.Name), o, o.Schema, refs)
+		}
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -291,11 +303,11 @@ func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertTabl
 func View(spec *sqlspec.View, parent *schema.Schema, convertC ConvertViewColumnFunc, convertI ConvertViewIndexFunc) (*schema.View, error) {
 	as, ok := spec.Extra.Attr("as")
 	if !ok {
-		return nil, fmt.Errorf("specutil: missing 'as' definition for view %q", spec.Name)
+		return nil, fmt.Errorf("missing 'as' definition for view %q", spec.Name)
 	}
 	def, err := as.String()
 	if err != nil {
-		return nil, fmt.Errorf("specutil: expect string definition for attribute view.%s.as: %w", spec.Name, err)
+		return nil, fmt.Errorf("expect string definition for attribute view.%s.as: %w", spec.Name, err)
 	}
 	v := schema.NewView(spec.Name, def).SetSchema(parent)
 	for _, c := range spec.Columns {
@@ -318,7 +330,7 @@ func View(spec *sqlspec.View, parent *schema.Schema, convertC ConvertViewColumnF
 	if c, ok := spec.Extra.Attr("check_option"); ok {
 		o, err := c.String()
 		if err != nil {
-			return nil, fmt.Errorf("specutil: expect string definition for attribute view.%s.check_option: %w", spec.Name, err)
+			return nil, fmt.Errorf("expect string definition for attribute view.%s.check_option: %w", spec.Name, err)
 		}
 		v.SetCheckOption(o)
 	}
@@ -601,6 +613,10 @@ func FromTable(t *schema.Table, colFn TableColumnSpecFunc, pkFn PrimaryKeySpecFu
 			spec.Checks = append(spec.Checks, ckFn(c))
 		}
 	}
+	if deps, ok := dependsOn(t.Schema.Realm, t.Deps); ok {
+		// Embedding a resource push its attributes to the end.
+		spec.Extra.Children = append(spec.Extra.Children, &schemahcl.Resource{Attrs: []*schemahcl.Attr{deps}})
+	}
 	convertCommentFromSchema(t.Attrs, &spec.Extra.Attrs)
 	return spec, nil
 }
@@ -644,51 +660,106 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc, idxFn IndexSpecFunc) (*s
 			embed.Attrs = append(embed.Attrs, schemahcl.StringAttr("check_option", c.V))
 		}
 	}
-	var (
-		deps         = make([]*schemahcl.Ref, 0, len(v.Deps))
-		nameT, nameV = make(map[string]int), make(map[string]int)
-	)
-	// Qualify table/view names if there are
-	// multiple tables/views with the same name.
-	if v.Schema.Realm != nil {
-		for _, s := range v.Schema.Realm.Schemas {
-			for _, t := range s.Tables {
-				nameT[t.Name]++
-			}
-			for _, v := range s.Views {
-				nameV[v.Name]++
-			}
-		}
-	}
-	for _, d := range v.Deps {
-		path := make([]string, 0, 2)
-		switch d := d.(type) {
-		case *schema.Table:
-			if nameT[d.Name] > 1 {
-				path = append(path, d.Schema.Name)
-			}
-			deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
-				{T: typeTable, V: append(path, d.Name)},
-			}))
-		case *schema.View:
-			vt := typeView
-			if d.Materialized() {
-				vt = typeMaterialized
-			}
-			if nameV[d.Name] > 1 {
-				path = append(path, d.Schema.Name)
-			}
-			deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
-				{T: vt, V: append(path, d.Name)},
-			}))
-		}
-	}
-	if len(deps) > 0 {
-		embed.Attrs = append(embed.Attrs, schemahcl.RefsAttr("depends_on", deps...))
+	if deps, ok := dependsOn(v.Schema.Realm, v.Deps); ok {
+		embed.Attrs = append(embed.Attrs, deps)
 	}
 	convertCommentFromSchema(v.Attrs, &embed.Attrs)
 	spec.Extra.Children = append(spec.Extra.Children, embed)
 	return spec, nil
+}
+
+// dependsOn returns the depends_on attribute for the given objects.
+func dependsOn(realm *schema.Realm, objects []schema.Object) (*schemahcl.Attr, bool) {
+	var (
+		deps  = make([]*schemahcl.Ref, 0, len(objects))
+		names = make(map[string]int)
+		name  = func(t schema.Object, n string) string { return typeName(t) + "/" + n }
+	)
+	// Qualify references if there are objects with the same name.
+	if realm != nil {
+		for _, s := range realm.Schemas {
+			for _, t := range s.Tables {
+				names[name(t, t.Name)]++
+			}
+			for _, v := range s.Views {
+				names[name(v, v.Name)]++
+			}
+			for _, f := range s.Funcs {
+				names[name(f, f.Name)]++
+			}
+			for _, p := range s.Procs {
+				names[name(p, p.Name)]++
+			}
+		}
+	}
+	for _, o := range objects {
+		path := make([]string, 0, 2)
+		var n, s string
+		switch d := o.(type) {
+		case *schema.Table:
+			n, s = d.Name, d.Schema.Name
+		case *schema.View:
+			n, s = d.Name, d.Schema.Name
+		case *schema.Func:
+			n, s = d.Name, d.Schema.Name
+		case *schema.Proc:
+			n, s = d.Name, d.Schema.Name
+		}
+		if names[name(o, n)] > 1 {
+			path = append(path, s)
+		}
+		deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
+			{T: typeName(o), V: append(path, n)},
+		}))
+	}
+	if len(deps) > 0 {
+		return schemahcl.RefsAttr("depends_on", deps...), true
+	}
+	return nil, false
+}
+
+func fromDependsOn[T interface{ AddDeps(...schema.Object) T }](loc string, t T, ns *schema.Schema, refs []*schemahcl.Ref) error {
+	for i, r := range refs {
+		p, err := r.Path()
+		if err != nil {
+			return fmt.Errorf("extract %s.depends_on references: %w", loc, err)
+		}
+		if len(p) == 0 {
+			return fmt.Errorf("empty reference exists in %s.depends_on[%d]", loc, i)
+		}
+		q, n, err := RefName(r, p[0].T)
+		if err != nil {
+			return fmt.Errorf("extract %s name from %s.depends_on[%d]: %w", p[0].T, loc, i, err)
+		}
+		var o schema.Object
+		switch p[0].T {
+		case typeTable:
+			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (*schema.Table, bool) {
+				return s.Table(name)
+			})
+		case typeView:
+			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (*schema.View, bool) {
+				return s.View(name)
+			})
+		case typeMaterialized:
+			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (*schema.View, bool) {
+				return s.Materialized(name)
+			})
+		case typeFunction:
+			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (*schema.Func, bool) {
+				return s.Func(name)
+			})
+		case typeProcedure:
+			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (*schema.Proc, bool) {
+				return s.Proc(name)
+			})
+		}
+		if err != nil {
+			return fmt.Errorf("find %s refrence for %s.depends_on[%d]: %w", loc, p[0].T, i, err)
+		}
+		t.AddDeps(o)
+	}
+	return nil
 }
 
 // FromPrimaryKey converts schema.Index to a sqlspec.PrimaryKey.
@@ -899,7 +970,7 @@ func SchemaName(ref *schemahcl.Ref) (string, error) {
 		return "", err
 	}
 	if len(vs) != 1 {
-		return "", fmt.Errorf("specutil: expected 1 schema ref, got %d", len(vs))
+		return "", fmt.Errorf("expected 1 schema ref, got %d", len(vs))
 	}
 	return vs[0], nil
 }
@@ -911,11 +982,11 @@ func ColumnByRef(t *schema.Table, ref *schemahcl.Ref) (*schema.Column, error) {
 		return nil, err
 	}
 	if len(vs) != 1 {
-		return nil, fmt.Errorf("specutil: expected 1 column ref, got %d", len(vs))
+		return nil, fmt.Errorf("expected 1 column ref, got %d", len(vs))
 	}
 	c, ok := t.Column(vs[0])
 	if !ok {
-		return nil, fmt.Errorf("specutil: unknown column %q in table %q", vs[0], t.Name)
+		return nil, fmt.Errorf("unknown column %q in table %q", vs[0], t.Name)
 	}
 	return c, nil
 }
@@ -941,9 +1012,9 @@ func externalRef(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, *schema
 // findT finds the table/view referenced by ref in the provided schema. If the table/view
 // is not in the provided schema.Schema other schemas in the connected schema.Realm are
 // searched as well.
-func findT[T schema.View | schema.Table](sch *schema.Schema, qualifier, name string, findT func(*schema.Schema, string) (*T, bool)) (*T, error) {
+func findT[T schema.Object](sch *schema.Schema, qualifier, name string, findT func(*schema.Schema, string) (T, bool)) (t T, err error) {
 	var (
-		matches []*T             // Found references.
+		matches []T              // Found references.
 		schemas []*schema.Schema // Schemas to search.
 	)
 	switch {
@@ -967,10 +1038,11 @@ func findT[T schema.View | schema.Table](sch *schema.Schema, qualifier, name str
 	case 1:
 		return matches[0], nil
 	case 0:
-		return nil, fmt.Errorf("specutil: refrenced table/view %q not found", name)
+		err = fmt.Errorf("refrenced %s %q not found", typeName(t), name)
 	default:
-		return nil, fmt.Errorf("specutil: multiple refrences tables/views found for %q", name)
+		err = fmt.Errorf("multiple refrences %ss found for %q", typeName(t), name)
 	}
+	return
 }
 
 func tableName(ref *schemahcl.Ref) (string, string, error) {

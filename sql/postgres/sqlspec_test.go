@@ -739,7 +739,7 @@ table "logs" {
 				}
 			}
 		`), &schema.Schema{}, nil)
-		require.EqualError(t, err, `specutil: cannot convert table "logs": missing columns or expressions for logs.partition`)
+		require.EqualError(t, err, `cannot convert table "logs": missing columns or expressions for logs.partition`)
 
 		err = EvalHCLBytes([]byte(`
 			schema "test" {}
@@ -753,7 +753,7 @@ table "logs" {
 				}
 			}
 		`), &schema.Schema{}, nil)
-		require.EqualError(t, err, `specutil: cannot convert table "logs": multiple definitions for logs.partition, use "columns" or "by"`)
+		require.EqualError(t, err, `cannot convert table "logs": multiple definitions for logs.partition, use "columns" or "by"`)
 	})
 }
 

@@ -244,6 +244,12 @@ func (t *Table) AddAttrs(attrs ...Attr) *Table {
 	return t
 }
 
+// AddDeps adds the given objects as dependencies to the view.
+func (t *Table) AddDeps(objs ...Object) *Table {
+	t.Deps = append(t.Deps, objs...)
+	return t
+}
+
 // NewView creates a new View.
 func NewView(name, def string) *View {
 	return &View{Name: name, Def: def}
@@ -832,6 +838,18 @@ func (f *ForeignKey) SetOnUpdate(o ReferenceOption) *ForeignKey {
 func (f *ForeignKey) SetOnDelete(o ReferenceOption) *ForeignKey {
 	f.OnDelete = o
 	return f
+}
+
+// AddDeps adds the given objects as dependencies to the function.
+func (f *Func) AddDeps(objs ...Object) *Func {
+	f.Deps = append(f.Deps, objs...)
+	return f
+}
+
+// AddDeps adds the given objects as dependencies to the procedure.
+func (p *Proc) AddDeps(objs ...Object) *Proc {
+	p.Deps = append(p.Deps, objs...)
+	return p
 }
 
 // ReplaceOrAppend searches an attribute of the same type as v in

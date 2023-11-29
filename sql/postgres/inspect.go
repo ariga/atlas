@@ -62,6 +62,9 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 				return nil, err
 			}
 		}
+		if err := i.inspectDeps(ctx, r, nil); err != nil {
+			return nil, err
+		}
 	}
 	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
