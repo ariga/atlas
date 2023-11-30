@@ -251,17 +251,17 @@ func (d *Driver) RealmRestoreFunc(desired *schema.Realm) migrate.RestoreFunc {
 
 func withCascade(changes schema.Changes) schema.Changes {
 	for _, c := range changes {
-		if d, ok := c.(*schema.DropTable); ok {
-			d.Extra = append(d.Extra, &Cascade{})
-		}
-		if d, ok := c.(*schema.DropView); ok {
-			d.Extra = append(d.Extra, &schema.IfExists{})
-		}
-		if d, ok := c.(*schema.DropProc); ok {
-			d.Extra = append(d.Extra, &schema.IfExists{}, &Cascade{})
-		}
-		if d, ok := c.(*schema.DropFunc); ok {
-			d.Extra = append(d.Extra, &schema.IfExists{}, &Cascade{})
+		switch c := c.(type) {
+		case *schema.DropTable:
+			c.Extra = append(c.Extra, &schema.IfExists{}, &Cascade{})
+		case *schema.DropView:
+			c.Extra = append(c.Extra, &schema.IfExists{}, &Cascade{})
+		case *schema.DropProc:
+			c.Extra = append(c.Extra, &schema.IfExists{}, &Cascade{})
+		case *schema.DropFunc:
+			c.Extra = append(c.Extra, &schema.IfExists{}, &Cascade{})
+		case *schema.DropObject:
+			c.Extra = append(c.Extra, &schema.IfExists{}, &Cascade{})
 		}
 	}
 	return changes

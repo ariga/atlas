@@ -368,12 +368,12 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
-				&schema.DropObject{O: &schema.EnumType{T: "status", Values: []string{"on", "off"}, Schema: schema.New("public")}},
 				&schema.DropTable{T: schema.NewTable("logs").
 					AddColumns(
 						schema.NewColumn("status").SetType(&schema.EnumType{T: "status", Values: []string{"on", "off"}, Schema: schema.New("public")}),
 					),
 				},
+				&schema.DropObject{O: &schema.EnumType{T: "status", Values: []string{"on", "off"}, Schema: schema.New("public")}},
 				&schema.DropObject{O: &schema.EnumType{T: "state", Values: []string{"on", "off"}, Schema: schema.New("public")}},
 			},
 			wantPlan: &migrate.Plan{
@@ -872,13 +872,6 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
-				&schema.DropObject{
-					O: &schema.EnumType{
-						T:      "state",
-						Values: []string{"on", "off"},
-						Schema: schema.New("public"),
-					},
-				},
 				&schema.DropTable{
 					T: schema.NewTable("users").
 						SetSchema(schema.New("public")).
@@ -886,6 +879,13 @@ func TestPlanChanges(t *testing.T) {
 							schema.NewEnumColumn("state", schema.EnumName("state"), schema.EnumValues("on", "off"), schema.EnumSchema(schema.New("public"))),
 							schema.NewEnumColumn("status", schema.EnumName("status"), schema.EnumValues("on", "off"), schema.EnumSchema(schema.New("public"))),
 						),
+				},
+				&schema.DropObject{
+					O: &schema.EnumType{
+						T:      "state",
+						Values: []string{"on", "off"},
+						Schema: schema.New("public"),
+					},
 				},
 				&schema.DropObject{
 					O: &schema.EnumType{
@@ -940,18 +940,18 @@ func TestPlanChanges(t *testing.T) {
 							),
 					)
 				return []schema.Change{
+					&schema.DropTable{
+						T: s.Tables[0],
+					},
+					&schema.DropTable{
+						T: s.Tables[1],
+					},
 					&schema.DropObject{
 						O: &schema.EnumType{
 							T:      "state",
 							Values: []string{"on", "off"},
 							Schema: schema.New("public"),
 						},
-					},
-					&schema.DropTable{
-						T: s.Tables[0],
-					},
-					&schema.DropTable{
-						T: s.Tables[1],
 					},
 				}
 			}(),

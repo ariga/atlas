@@ -111,6 +111,9 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 			return nil, err
 		}
 	}
+	if err := i.inspectDeps(ctx, r, opts); err != nil {
+		return nil, err
+	}
 	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 
@@ -1033,6 +1036,16 @@ type (
 // Ref returns a reference to the domain type.
 func (d *DomainType) Ref() *schemahcl.Ref {
 	return &schemahcl.Ref{V: "$domain." + d.T}
+}
+
+// Underlying returns the underlying type of the domain.
+func (d *DomainType) Underlying() schema.Type {
+	return d.Type
+}
+
+// Underlying returns the underlying type of the array.
+func (a *ArrayType) Underlying() schema.Type {
+	return a.Type
 }
 
 // String implements fmt.Stringer interface.

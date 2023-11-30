@@ -571,3 +571,11 @@ func UnderlyingExpr(x Expr) Expr {
 	}
 	return x
 }
+
+// UnderlyingType returns the underlying type of t.
+func UnderlyingType(t Type) Type {
+	if w, ok := t.(interface{ Underlying() Type }); ok {
+		return UnderlyingType(w.Underlying())
+	}
+	return t
+}
