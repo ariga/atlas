@@ -9,6 +9,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdapi"
@@ -30,7 +32,22 @@ import (
 
 func main() {
 	cmdapi.Root.SetOut(os.Stdout)
-	ctx := newContext()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		// On first signal seen, cancel the context. On the second signal, force stop immediately.
+		stop := make(chan os.Signal, 2)
+		defer close(stop)
+		signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+		defer signal.Stop(stop)
+		<-stop   // wait for first interrupt
+		cancel() // cancel context to gracefully stop
+		fmt.Fprintln(cmdapi.Root.OutOrStdout(), "\ninterrupt received, wait for exit or ^C to terminate")
+		// Wait for the context to be canceled. Issuing a second interrupt will cause the process to force stop.
+		<-stop // will not block if no signal received due to main routine exiting
+		os.Exit(1)
+	}()
+	ctx = extendContext(context.Background())
 	done := initialize(ctx)
 	update := checkForUpdate(ctx)
 	err := cmdapi.Root.ExecuteContext(ctx)

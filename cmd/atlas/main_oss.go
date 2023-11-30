@@ -8,14 +8,9 @@ package main
 
 import (
 	"context"
-	"os"
-	"os/signal"
 )
 
-func newContext() context.Context {
-	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
-	return ctx
-}
+func extendContext(ctx context.Context) context.Context { return ctx }
 
 func vercheckEndpoint(context.Context) string {
 	return vercheckURL
