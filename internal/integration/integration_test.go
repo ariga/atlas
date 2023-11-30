@@ -5,11 +5,14 @@
 package integration
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"database/sql"
 	"flag"
+	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -38,6 +41,78 @@ func TestMain(m *testing.M) {
 		db.Close()
 	}
 	os.Exit(code)
+}
+
+func TestCLI_Interrupt(t *testing.T) {
+	var (
+		stdout, stderr bytes.Buffer
+		connected      = make(chan struct{})
+		signal         = make(chan struct{})
+		handler        = func(c net.Conn) {
+			connected <- struct{}{}
+			<-signal // wait for signal sent
+			c.Close()
+		}
+	)
+	t.Cleanup(func() {
+		close(connected)
+		close(signal)
+	})
+
+	// First interrupt will not cancel the process, only print a warning.
+	var (
+		port = newListener(t, handler)
+		cmd  = exec.Command(
+			execPath(t),
+			"schema", "inspect",
+			"--url", fmt.Sprintf("postgres://user:pass@localhost:%d/db?sslmode=disable", port), // mock not responding db
+		)
+	)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	require.NoError(t, cmd.Start())
+	<-connected // wait for connection
+	require.NoError(t, cmd.Process.Signal(os.Interrupt))
+	signal <- struct{}{}
+	require.Error(t, cmd.Wait())
+	require.Equal(t, "\ninterrupt received, wait for exit or ^C to terminate\n", stdout.String())
+	require.Contains(t, stderr.String(), "read: connection reset by peer") // server closed
+
+	// Two interrupts force stop
+	r, w := io.Pipe()
+	port = newListener(t, handler)
+	cmd = exec.Command(
+		execPath(t),
+		"schema", "inspect",
+		"--url", fmt.Sprintf("postgres://user:pass@localhost:%d/db?sslmode=disable", port), // mock not responding db
+	)
+	cmd.Stdout = w
+	require.NoError(t, cmd.Start())
+	<-connected // wait for connection
+	require.NoError(t, cmd.Process.Signal(os.Interrupt))
+	// Wait for the cmd to print the warning (it works, we checked before) and then issue the second signal.
+	br := bufio.NewReader(r)
+	_, err := br.ReadString('\n')
+	require.NoError(t, err)
+	out, err := br.ReadString('\n')
+	require.NoError(t, err)
+	require.Equal(t, "interrupt received, wait for exit or ^C to terminate\n", out)
+	require.NoError(t, cmd.Process.Signal(os.Interrupt))
+	require.Error(t, cmd.Wait())
+}
+
+func newListener(t *testing.T, handler func(c net.Conn)) int {
+	a, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	require.NoError(t, err)
+	l, err := net.ListenTCP("tcp", a)
+	require.NoError(t, err)
+	t.Cleanup(func() { l.Close() })
+	go func() {
+		c, err := l.Accept()
+		require.NoError(t, err)
+		handler(c)
+	}()
+	return l.Addr().(*net.TCPAddr).Port
 }
 
 // T holds the elements common between dialect tests.
