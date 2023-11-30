@@ -81,11 +81,7 @@ func (s *state) plan(changes []schema.Change) error {
 	if planned, err = sqlx.DetachCycles(planned); err != nil {
 		return err
 	}
-	var (
-		views []schema.Change
-		drop  struct{ T, O, F []schema.Change }
-	)
-	for _, c := range planned {
+	for _, c := range sqlx.SortChanges(planned) {
 		switch c := c.(type) {
 		case *schema.AddTable:
 			err = s.addTable(c)
@@ -105,26 +101,6 @@ func (s *state) plan(changes []schema.Change) error {
 			err = s.renameFunc(c)
 		case *schema.RenameProc:
 			err = s.renameProc(c)
-		case *schema.AddView, *schema.DropView, *schema.ModifyView, *schema.RenameView:
-			views = append(views, c)
-		case *schema.DropTable:
-			drop.T = append(drop.T, c)
-		case *schema.DropObject:
-			drop.O = append(drop.O, c)
-		case *schema.DropFunc, *schema.DropProc:
-			drop.F = append(drop.F, c)
-		default:
-			err = fmt.Errorf("unsupported change %T", c)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if views, err = sqlx.PlanViewChanges(views); err != nil {
-		return err
-	}
-	for _, c := range views {
-		switch c := c.(type) {
 		case *schema.AddView:
 			err = s.addView(c)
 		case *schema.DropView:
@@ -133,14 +109,6 @@ func (s *state) plan(changes []schema.Change) error {
 			err = s.modifyView(c)
 		case *schema.RenameView:
 			s.renameView(c)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	for _, c := range append(drop.T, append(drop.O, drop.F...)...) {
-		var err error
-		switch c := c.(type) {
 		case *schema.DropTable:
 			err = s.dropTable(c)
 		case *schema.DropObject:
@@ -149,6 +117,8 @@ func (s *state) plan(changes []schema.Change) error {
 			err = s.dropFunc(c)
 		case *schema.DropProc:
 			err = s.dropProc(c)
+		default:
+			err = fmt.Errorf("unsupported change %T", c)
 		}
 		if err != nil {
 			return err

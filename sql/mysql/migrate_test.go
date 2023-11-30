@@ -27,9 +27,11 @@ func TestMigrate_ApplyChanges(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mk.ExpectExec(sqltest.Escape("DROP TABLE `users`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
+	mk.ExpectExec(sqltest.Escape("CREATE TABLE `users` (`id` bigint NOT NULL)")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(sqltest.Escape("DROP TABLE IF EXISTS `public`.`pets`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(sqltest.Escape("CREATE TABLE IF NOT EXISTS `pets` (`a` int NOT NULL DEFAULT (int(rand())), `b` bigint NOT NULL DEFAULT 1, `c` bigint NULL, PRIMARY KEY (`a`, `b`), UNIQUE INDEX `b_c_unique` (`b`, `c`) COMMENT \"comment\")")).
+	mk.ExpectExec(sqltest.Escape("CREATE TABLE IF NOT EXISTS `public`.`pets` (`a` int NOT NULL DEFAULT (int(rand())), `b` bigint NOT NULL DEFAULT 1, `c` bigint NULL, PRIMARY KEY (`a`, `b`), UNIQUE INDEX `b_c_unique` (`b`, `c`) COMMENT \"comment\")")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(sqltest.Escape("ALTER TABLE `users` DROP INDEX `id_spouse_id`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
@@ -39,6 +41,7 @@ func TestMigrate_ApplyChanges(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(sqltest.Escape("CREATE TABLE `comments` (`id` bigint NOT NULL, `post_id` bigint NULL, CONSTRAINT `comment` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`))")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
+	ns := &schema.Schema{Name: "public"}
 	err = migrate.ApplyChanges(context.Background(), []schema.Change{
 		&schema.AddSchema{S: &schema.Schema{Name: "test", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 		&schema.DropSchema{S: &schema.Schema{Name: "atlas", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
@@ -50,10 +53,18 @@ func TestMigrate_ApplyChanges(t *testing.T) {
 				},
 			},
 		},
+		&schema.AddTable{
+			T: &schema.Table{
+				Name: "users",
+				Columns: []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+				},
+			},
+		},
 		&schema.DropTable{
 			T: &schema.Table{
 				Name:   "pets",
-				Schema: &schema.Schema{Name: "public"},
+				Schema: ns,
 				Columns: []*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
 				},
@@ -63,7 +74,8 @@ func TestMigrate_ApplyChanges(t *testing.T) {
 		&schema.AddTable{
 			T: func() *schema.Table {
 				t := &schema.Table{
-					Name: "pets",
+					Name:   "pets",
+					Schema: ns,
 					Columns: []*schema.Column{
 						{Name: "a", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Default: &schema.RawExpr{X: "(int(rand()))"}},
 						{Name: "b", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}, Default: &schema.Literal{V: "1"}},

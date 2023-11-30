@@ -10,8 +10,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-// PlanViewChanges (should) plan view changes in the current order they should be applied.
-// It is unimplemented for community version as views are not supported there.
-func PlanViewChanges(changes []schema.Change) ([]schema.Change, error) {
+// sortViewChanges is an optional function to sort to views by their dependencies.
+func sortViewChanges(changes []schema.Change) ([]schema.Change, error) {
 	return changes, nil // unimplemented.
 }

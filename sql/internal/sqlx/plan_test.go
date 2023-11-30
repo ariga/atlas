@@ -153,3 +153,16 @@ func TestCheckChangesScope(t *testing.T) {
 	})
 	require.EqualError(t, err, "found 2 schemas when migration plan is scoped to one: [\"s1\" \"s2\"]")
 }
+
+func TestBadTypeComparison(t *testing.T) {
+	var o1 struct {
+		schema.Type
+		schema.Object
+		_ []func()
+	}
+	require.Panics(t, func() { _ = schema.Type(o1) == schema.Type(o1) })
+	SortChanges([]schema.Change{
+		&schema.DropObject{O: o1},
+		&schema.DropTable{T: schema.NewTable("t1").AddColumns(schema.NewColumn("c1").SetType(o1))},
+	})
+}
