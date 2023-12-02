@@ -224,7 +224,7 @@ func ValuesEqual(v1, v2 []string) bool {
 // ModeInspectSchema returns the InspectMode or its default.
 func ModeInspectSchema(o *schema.InspectOptions) schema.InspectMode {
 	if o == nil || o.Mode == 0 {
-		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews | schema.InspectFuncs | schema.InspectTypes
+		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews | schema.InspectFuncs | schema.InspectTypes | schema.InspectObjects
 	}
 	return o.Mode
 }
@@ -232,7 +232,7 @@ func ModeInspectSchema(o *schema.InspectOptions) schema.InspectMode {
 // ModeInspectRealm returns the InspectMode or its default.
 func ModeInspectRealm(o *schema.InspectRealmOption) schema.InspectMode {
 	if o == nil || o.Mode == 0 {
-		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews | schema.InspectFuncs | schema.InspectTypes
+		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews | schema.InspectFuncs | schema.InspectTypes | schema.InspectObjects
 	}
 	return o.Mode
 }
@@ -265,6 +265,11 @@ func (b *Builder) P(phrases ...string) *Builder {
 	return b
 }
 
+// Int64 writes the given value to the builder in base 10.
+func (b *Builder) Int64(v int64) *Builder {
+	return b.P(strconv.FormatInt(v, 10))
+}
+
 // Ident writes the given string quoted as an SQL identifier.
 func (b *Builder) Ident(s string) *Builder {
 	if s != "" {
@@ -288,6 +293,12 @@ func (b *Builder) Table(t *schema.Table) *Builder {
 	return b.mayQualify(t.Schema, t.Name)
 }
 
+// TableColumn writes the table's resource identifier to the builder, prefixed
+// with the schema name if exists.
+func (b *Builder) TableColumn(t *schema.Table, c *schema.Column) *Builder {
+	return b.mayQualify(t.Schema, t.Name, c.Name)
+}
+
 // Func writes the function identifier to the builder, prefixed
 // with the schema name if exists.
 func (b *Builder) Func(f *schema.Func) *Builder {
@@ -305,7 +316,7 @@ func (b *Builder) Proc(p *schema.Proc) *Builder {
 func (b *Builder) TableResource(t *schema.Table, r any) *Builder {
 	switch c := r.(type) {
 	case *schema.Column:
-		return b.mayQualify(t.Schema, t.Name, c.Name)
+		return b.TableColumn(t, c)
 	case *schema.Index:
 		return b.mayQualify(t.Schema, t.Name, c.Name)
 	default:

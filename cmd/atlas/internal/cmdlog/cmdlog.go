@@ -704,14 +704,14 @@ func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 		if report.Client.URL.Schema == "" {
 			changes = append(changes, &schema.AddSchema{S: s})
 		}
+		for _, o := range s.Objects {
+			changes = append(changes, &schema.AddObject{O: o})
+		}
 		for _, t := range s.Tables {
 			changes = append(changes, &schema.AddTable{T: t})
 		}
 		for _, v := range s.Views {
 			changes = append(changes, &schema.AddView{V: v})
-		}
-		for _, o := range s.Objects {
-			changes = append(changes, &schema.AddObject{O: o})
 		}
 		for _, f := range s.Funcs {
 			changes = append(changes, &schema.AddFunc{F: f})

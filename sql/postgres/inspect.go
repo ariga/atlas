@@ -62,6 +62,11 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 				return nil, err
 			}
 		}
+		if mode.Is(schema.InspectObjects) {
+			if err := i.inspectSequences(ctx, r, nil); err != nil {
+				return nil, err
+			}
+		}
 		if err := i.inspectDeps(ctx, r, nil); err != nil {
 			return nil, err
 		}
@@ -108,6 +113,11 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	}
 	if mode.Is(schema.InspectTypes) {
 		if err := i.inspectTypes(ctx, r, opts); err != nil {
+			return nil, err
+		}
+	}
+	if mode.Is(schema.InspectObjects) {
+		if err := i.inspectSequences(ctx, r, opts); err != nil {
 			return nil, err
 		}
 	}
@@ -909,10 +919,25 @@ type (
 	// Sequence defines (the supported) sequence options.
 	// https://postgresql.org/docs/current/sql-createsequence.html
 	Sequence struct {
-		Start, Increment int64
+		schema.Object
+		// Fields used by the Identity schema attribute.
+		Start     int64
+		Increment int64
 		// Last sequence value written to disk.
 		// https://postgresql.org/docs/current/view-pg-sequences.html.
 		Last int64
+
+		// Field used when defining and managing independent
+		// sequences (not part of IDENTITY or serial columns).
+		Name     string         // Sequence name.
+		Schema   *schema.Schema // Optional schema.
+		Type     schema.Type    // Sequence type.
+		Min, Max *int64         // Min and max values.
+		Attrs    []schema.Attr  // Additional attributes (e.g., comments),
+		Owner    struct {       // Optional owner of the sequence.
+			T *schema.Table
+			C *schema.Column
+		}
 	}
 
 	// Identity defines an identity column.

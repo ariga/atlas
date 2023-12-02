@@ -480,8 +480,8 @@ func (s *State) mayScopeContext(ctx *hcl.EvalContext, scope []string) *hcl.EvalC
 		return ctx
 	}
 	nctx := &hcl.EvalContext{
-		Variables: make(map[string]cty.Value),
-		Functions: make(map[string]function.Function),
+		Variables: make(map[string]cty.Value, len(vars)),
+		Functions: make(map[string]function.Function, len(funcs)),
 	}
 	for p := ctx; p != nil; p = p.Parent() {
 		for k, v := range p.Variables {
@@ -504,7 +504,7 @@ func (s *State) mayScopeContext(ctx *hcl.EvalContext, scope []string) *hcl.EvalC
 }
 
 func (s *State) toAttrs(ctx *hcl.EvalContext, vr SchemaValidator, hclAttrs hclsyntax.Attributes, scope []string) ([]*Attr, error) {
-	var attrs []*Attr
+	attrs := make([]*Attr, 0, len(hclAttrs))
 	for _, hclAttr := range hclAttrs {
 		var (
 			scope = append(scope, hclAttr.Name)
@@ -520,6 +520,9 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, vr SchemaValidator, hclAttrs hclsy
 		at := &Attr{K: hclAttr.Name}
 		switch t := value.Type(); {
 		case isRef(value):
+			if !value.Type().HasAttribute("__ref") {
+				return nil, fmt.Errorf("%s: invaid reference used in %s", hclAttr.SrcRange, hclAttr.Name)
+			}
 			at.V = cty.CapsuleVal(ctyRefType, &Ref{V: value.GetAttr("__ref").AsString()})
 		case (t.IsTupleType() || t.IsListType() || t.IsSetType()) && value.LengthInt() > 0:
 			var (

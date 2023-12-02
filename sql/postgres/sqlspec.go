@@ -26,15 +26,16 @@ type (
 		Tables       []*sqlspec.Table  `spec:"table"`
 		Views        []*sqlspec.View   `spec:"view"`
 		Materialized []*sqlspec.View   `spec:"materialized"`
-		Enums        []*Enum           `spec:"enum"`
-		Domains      []*Domain         `spec:"domain"`
+		Enums        []*enum           `spec:"enum"`
+		Domains      []*domain         `spec:"domain"`
+		Sequences    []*sequence       `spec:"sequence"`
 		Funcs        []*sqlspec.Func   `spec:"function"`
 		Procs        []*sqlspec.Func   `spec:"procedure"`
 		Schemas      []*sqlspec.Schema `spec:"schema"`
 	}
 
 	// Enum holds a specification for an enum type.
-	Enum struct {
+	enum struct {
 		Name      string         `spec:",name"`
 		Qualifier string         `spec:",qualifier"`
 		Schema    *schemahcl.Ref `spec:"schema"`
@@ -43,7 +44,7 @@ type (
 	}
 
 	// Domain holds a specification for a domain type.
-	Domain struct {
+	domain struct {
 		Name      string           `spec:",name"`
 		Qualifier string           `spec:",qualifier"`
 		Schema    *schemahcl.Ref   `spec:"schema"`
@@ -53,47 +54,71 @@ type (
 		Checks    []*sqlspec.Check `spec:"check"`
 		schemahcl.DefaultExtension
 	}
+
+	// Sequence holds a specification for a sequence.
+	sequence struct {
+		Name      string         `spec:",name"`
+		Qualifier string         `spec:",qualifier"`
+		Schema    *schemahcl.Ref `spec:"schema"`
+		// Type, Start, Increment, Min, Max, Cache, Cycle
+		// are optionally added to the sequence definition.
+		schemahcl.DefaultExtension
+	}
 )
 
 // merge merges the doc d1 into d.
 func (d *doc) merge(d1 *doc) {
-	d.Tables = append(d.Tables, d1.Tables...)
-	d.Views = append(d.Views, d1.Views...)
-	d.Materialized = append(d.Materialized, d1.Materialized...)
-	d.Domains = append(d.Domains, d1.Domains...)
 	d.Enums = append(d.Enums, d1.Enums...)
 	d.Funcs = append(d.Funcs, d1.Funcs...)
 	d.Procs = append(d.Procs, d1.Procs...)
+	d.Views = append(d.Views, d1.Views...)
+	d.Tables = append(d.Tables, d1.Tables...)
+	d.Domains = append(d.Domains, d1.Domains...)
 	d.Schemas = append(d.Schemas, d1.Schemas...)
+	d.Sequences = append(d.Sequences, d1.Sequences...)
+	d.Materialized = append(d.Materialized, d1.Materialized...)
 }
 
 // Label returns the defaults label used for the enum resource.
-func (e *Enum) Label() string { return e.Name }
+func (e *enum) Label() string { return e.Name }
 
 // QualifierLabel returns the qualifier label used for the enum resource, if any.
-func (e *Enum) QualifierLabel() string { return e.Qualifier }
+func (e *enum) QualifierLabel() string { return e.Qualifier }
 
 // SetQualifier sets the qualifier label used for the enum resource.
-func (e *Enum) SetQualifier(q string) { e.Qualifier = q }
+func (e *enum) SetQualifier(q string) { e.Qualifier = q }
 
 // SchemaRef returns the schema reference for the enum.
-func (e *Enum) SchemaRef() *schemahcl.Ref { return e.Schema }
+func (e *enum) SchemaRef() *schemahcl.Ref { return e.Schema }
 
-// Label returns the defaults label used for the enum resource.
-func (d *Domain) Label() string { return d.Name }
+// Label returns the defaults label used for the domain resource.
+func (d *domain) Label() string { return d.Name }
 
-// QualifierLabel returns the qualifier label used for the enum resource, if any.
-func (d *Domain) QualifierLabel() string { return d.Qualifier }
+// QualifierLabel returns the qualifier label used for the domain resource, if any.
+func (d *domain) QualifierLabel() string { return d.Qualifier }
 
-// SetQualifier sets the qualifier label used for the enum resource.
-func (d *Domain) SetQualifier(q string) { d.Qualifier = q }
+// SetQualifier sets the qualifier label used for the domain resource.
+func (d *domain) SetQualifier(q string) { d.Qualifier = q }
 
-// SchemaRef returns the schema reference for the enum.
-func (d *Domain) SchemaRef() *schemahcl.Ref { return d.Schema }
+// SchemaRef returns the schema reference for the domain.
+func (d *domain) SchemaRef() *schemahcl.Ref { return d.Schema }
+
+// Label returns the defaults label used for the sequence resource.
+func (s *sequence) Label() string { return s.Name }
+
+// QualifierLabel returns the qualifier label used for the sequence resource, if any.
+func (s *sequence) QualifierLabel() string { return s.Qualifier }
+
+// SetQualifier sets the qualifier label used for the sequence resource.
+func (s *sequence) SetQualifier(q string) { s.Qualifier = q }
+
+// SchemaRef returns the schema reference for the sequence.
+func (s *sequence) SchemaRef() *schemahcl.Ref { return s.Schema }
 
 func init() {
-	schemahcl.Register("enum", &Enum{})
-	schemahcl.Register("domain", &Domain{})
+	schemahcl.Register("enum", &enum{})
+	schemahcl.Register("domain", &domain{})
+	schemahcl.Register("sequence", &sequence{})
 }
 
 // evalSpec evaluates an Atlas DDL document into v using the input.
@@ -116,6 +141,9 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		if err := convertDomains(d.Tables, d.Domains, v); err != nil {
 			return err
 		}
+		if err := convertSequences(d.Tables, d.Sequences, v); err != nil {
+			return err
+		}
 	case *schema.Schema:
 		var d doc
 		if err := hclState.Eval(p, &d, input); err != nil {
@@ -135,6 +163,9 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return err
 		}
 		if err := convertDomains(d.Tables, d.Domains, r); err != nil {
+			return err
+		}
+		if err := convertSequences(d.Tables, d.Sequences, r); err != nil {
 			return err
 		}
 		*v = *r.Schemas[0]
@@ -179,6 +210,9 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 		if err := specutil.QualifyObjects(d.Domains); err != nil {
 			return nil, err
 		}
+		if err := specutil.QualifyObjects(d.Sequences); err != nil {
+			return nil, err
+		}
 		if err := specutil.QualifyObjects(d.Funcs); err != nil {
 			return nil, err
 		}
@@ -186,6 +220,9 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 			return nil, err
 		}
 		if err := specutil.QualifyReferences(d.Tables, s); err != nil {
+			return nil, err
+		}
+		if err := qualifySeqRefs(d.Sequences, d.Tables, s); err != nil {
 			return nil, err
 		}
 	default:
@@ -534,7 +571,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 
 // convertEnums converts possibly referenced column types (like enums) to
 // an actual schema.Type and sets it on the correct schema.Column.
-func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error {
+func convertEnums(tables []*sqlspec.Table, enums []*enum, r *schema.Realm) error {
 	if len(enums) == 0 {
 		return nil
 	}
@@ -633,8 +670,8 @@ func schemaSpec(s *schema.Schema) (*doc, error) {
 		Funcs:        spec.Funcs,
 		Procs:        spec.Procs,
 		Schemas:      []*sqlspec.Schema{spec.Schema},
-		Enums:        make([]*Enum, 0, len(s.Objects)),
-		Domains:      make([]*Domain, 0, len(s.Objects)),
+		Enums:        make([]*enum, 0, len(s.Objects)),
+		Domains:      make([]*domain, 0, len(s.Objects)),
 	}
 	if err := objectSpec(d, spec, s); err != nil {
 		return nil, err

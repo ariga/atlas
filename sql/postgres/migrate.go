@@ -111,12 +111,16 @@ func (s *state) plan(changes []schema.Change) error {
 			s.renameView(c)
 		case *schema.DropTable:
 			err = s.dropTable(c)
-		case *schema.DropObject:
-			err = s.dropObject(c)
 		case *schema.DropFunc:
 			err = s.dropFunc(c)
 		case *schema.DropProc:
 			err = s.dropProc(c)
+		case *schema.AddObject:
+			err = s.addObject(c)
+		case *schema.ModifyObject:
+			err = s.modifyObject(c)
+		case *schema.DropObject:
+			err = s.dropObject(c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -184,14 +188,6 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 				Source:  c,
 				Comment: fmt.Sprintf("Drop schema named %q", c.S.Name),
 			})
-		case *schema.AddObject:
-			if err := s.addObject(c); err != nil {
-				return nil, err
-			}
-		case *schema.ModifyObject:
-			if err := s.modifyObject(c); err != nil {
-				return nil, err
-			}
 		case *schema.RenameObject:
 			e1, ok1 := c.From.(*schema.EnumType)
 			e2, ok2 := c.To.(*schema.EnumType)
