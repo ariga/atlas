@@ -6,7 +6,6 @@ package schemahcl
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -500,7 +499,7 @@ func (s *State) mayScopeContext(ctx *hcl.EvalContext, scope []string) *hcl.EvalC
 	}
 	// A patch from the past. Should be moved
 	// to specific scopes in the future.
-	nctx.Functions["sql"] = rawExprImpl()
+	nctx.Functions["sql"] = rawExprFunc
 	for p := ctx; p != nil; p = p.Parent() {
 		for k, v := range p.Variables {
 			if isRef(v) {
@@ -984,23 +983,6 @@ func copyBlock(ctx *hcl.EvalContext, b *hclsyntax.Block) (*hclsyntax.Block, erro
 // Eval implements the Evaluator interface.
 func (f EvalFunc) Eval(p *hclparse.Parser, i any, input map[string]cty.Value) error {
 	return f(p, i, input)
-}
-
-func rawExprImpl() function.Function {
-	return function.New(&function.Spec{
-		Params: []function.Parameter{
-			{Name: "def", Type: cty.String, AllowNull: false},
-		},
-		Type: function.StaticReturnType(ctyRawExpr),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			x := args[0].AsString()
-			if len(x) == 0 {
-				return cty.NilVal, errors.New("empty expression")
-			}
-			t := &RawExpr{X: x}
-			return cty.CapsuleVal(ctyRawExpr, t), nil
-		},
-	})
 }
 
 // typeFuncSpec returns the HCL function for defining the type in the spec.

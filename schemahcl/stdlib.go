@@ -5,6 +5,7 @@
 package schemahcl
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -174,7 +175,7 @@ func stdFuncs() map[string]function.Function {
 		"zipmap":          stdlib.ZipmapFunc,
 		// A patch from the past. Should be moved
 		// to specific scopes in the future.
-		"sql": rawExprImpl(),
+		"sql": rawExprFunc,
 	}
 }
 
@@ -255,6 +256,22 @@ func makeToFunc(wantTy cty.Type) function.Function {
 }
 
 var (
+	// rawExprFunc is a stub function for raw expressions.
+	rawExprFunc = function.New(&function.Spec{
+		Params: []function.Parameter{
+			{Name: "def", Type: cty.String, AllowNull: false},
+		},
+		Type: function.StaticReturnType(ctyRawExpr),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			x := args[0].AsString()
+			if len(x) == 0 {
+				return cty.NilVal, errors.New("empty expression")
+			}
+			t := &RawExpr{X: x}
+			return cty.CapsuleVal(ctyRawExpr, t), nil
+		},
+	})
+
 	urlQuerySetFunc = function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
