@@ -393,13 +393,13 @@ func patchRefs(spec *Resource) error {
 }
 
 func (r addrRef) patch(resource *Resource) error {
-	cp := r.copy().load(resource, "")
+	r.load(resource, "")
 	for _, attr := range resource.Attrs {
 		if !attr.IsRef() {
 			continue
 		}
 		ref := attr.V.EncapsulatedValue().(*Ref)
-		referenced, ok := cp[ref.V]
+		referenced, ok := r[ref.V]
 		if !ok {
 			return fmt.Errorf("broken reference to %q", ref.V)
 		}
@@ -408,19 +408,11 @@ func (r addrRef) patch(resource *Resource) error {
 		}
 	}
 	for _, ch := range resource.Children {
-		if err := cp.patch(ch); err != nil {
+		if err := r.patch(ch); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func (r addrRef) copy() addrRef {
-	n := make(addrRef)
-	for k, v := range r {
-		n[k] = v
-	}
-	return n
 }
 
 // load the references from the children of the resource.
