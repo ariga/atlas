@@ -640,6 +640,10 @@ func (s *State) toResource(ctx *hcl.EvalContext, vr SchemaValidator, block *hcls
 	}
 	spec.Attrs = attrs
 	for _, blk := range block.Body.Blocks {
+		ctx, err := setBlockVars(ctx.NewChild(), blk.Body)
+		if err != nil {
+			return nil, err
+		}
 		r, err := s.toResource(ctx, vr, blk, append(scope, blk.Type))
 		if err != nil {
 			return nil, err
