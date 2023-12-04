@@ -893,3 +893,59 @@ attr2 = "b"
 	require.Equal(t, 3, cv.nb)
 	require.Equal(t, 2, cv.na)
 }
+
+func Test_ExtraReferences(t *testing.T) {
+	type (
+		Foo struct {
+			Name      string `spec:",name"`
+			Qualifier string `spec:",qualifier"`
+			DefaultExtension
+		}
+		Block1 struct {
+			Name string `spec:",name"`
+			Type string `spec:"type"`
+		}
+		Block2 struct {
+			Name string `spec:",name"`
+			Refs []*Ref `spec:"refs"`
+		}
+		ExtraBar struct {
+			Blk1 *Block1 `spec:"blk1"`
+			Blk2 *Block2 `spec:"blk2"`
+		}
+	)
+	var (
+		doc struct {
+			Foo []*Foo `spec:"foo"`
+		}
+		b = []byte(`
+foo "f1" {
+	extra_bar {
+		blk1 "c1" {
+			type = "c1"
+		}
+		blk2 "p1" {
+			refs = [blk1.c1]
+		}
+	}
+}
+`)
+	)
+	require.NoError(t, New().EvalBytes(b, &doc, nil))
+	require.Len(t, doc.Foo, 1)
+
+	extra, ok := doc.Foo[0].Extra.Resource("extra_bar")
+	require.True(t, ok)
+	var e ExtraBar
+	require.NoError(t, extra.As(&e))
+	require.Equal(t, &ExtraBar{
+		Blk1: &Block1{
+			Name: "c1",
+			Type: "c1",
+		},
+		Blk2: &Block2{
+			Name: "p1",
+			Refs: []*Ref{{V: "$blk1.c1"}},
+		},
+	}, &e)
+}
