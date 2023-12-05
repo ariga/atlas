@@ -660,11 +660,11 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
 	}
-	migrations, err := e.dir.Files()
+	all, err := e.dir.Files()
 	if err != nil {
 		return nil, fmt.Errorf("sql/migrate: execute: select migration files: %w", err)
 	}
-	migrations = SkipCheckpointFiles(migrations)
+	migrations := SkipCheckpointFiles(all)
 	var pending []File
 	switch {
 	// If it is the first time we run.
@@ -690,14 +690,27 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 				return nil, err
 			}
 			pending = migrations[baseline+1:]
-
 			// In case the "allow-dirty" option was set, or the database is clean,
 			// the starting-point is the first migration file or the last checkpoint.
 		} else if pending, err = FilesFromLastCheckpoint(e.dir); err != nil {
 			return nil, err
 		}
-	// In case we applied/marked revisions in
-	// the past, and there is work to do.
+	// In case we applied a checkpoint, but it was only partially applied.
+	case revs[len(revs)-1].Applied != revs[len(revs)-1].Total && len(all) > 0:
+		if idx, found := slices.BinarySearchFunc(all, revs[len(revs)-1], func(f File, r *Revision) int {
+			return strings.Compare(f.Version(), r.Version)
+		}); found {
+			if f, ok := all[idx].(CheckpointFile); ok && f.IsCheckpoint() {
+				// There can only be one checkpoint file and it must be the first one applied.
+				// Thus, we can consider all migrations following the checkpoint to be pending.
+				return append([]File{f}, migrations[idx:]...), nil
+			}
+		}
+		if len(migrations) == 0 {
+			break // don't fall through the next case if there are no migrations
+		}
+		fallthrough // proceed normally
+	// In case we applied/marked revisions in the past, and there is work to do.
 	case len(migrations) > 0:
 		var (
 			last      = revs[len(revs)-1]
@@ -726,7 +739,6 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 			idx++
 		}
 		pending = migrations[idx:]
-
 		// Capture all files (versions) between first and last revisions and ensure they
 		// were actually applied. Then, error or execute according to the execution order.
 		// Note, "first" is computed as it can be set to the first checkpoint, which may
