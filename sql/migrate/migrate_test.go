@@ -263,6 +263,7 @@ func TestExecutor_Replay(t *testing.T) {
 
 func TestExecutor_Pending(t *testing.T) {
 	var (
+		ctx  = context.Background()
 		drv  = &mockDriver{}
 		rrw  = &mockRevisionReadWriter{}
 		log  = &mockLogger{}
@@ -289,80 +290,94 @@ func TestExecutor_Pending(t *testing.T) {
 			Hash:        "+O40cAXHgvMClnynHd5wggPAeZAk7zSEaNgzXCZOfmY=",
 		}
 	)
-	dir, err := migrate.NewLocalDir(filepath.Join("testdata/migrate", "sub"))
+	dir, err := migrate.NewLocalDir(filepath.Join("testdata", "migrate", "sub"))
 	require.NoError(t, err)
 	ex, err := migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log))
 	require.NoError(t, err)
 
 	// All are pending
-	p, err := ex.Pending(context.Background())
+	p, err := ex.Pending(ctx)
 	require.NoError(t, err)
 	require.Len(t, p, 3)
 
 	// 2 are pending.
 	*rrw = []*migrate.Revision{rev1}
-	p, err = ex.Pending(context.Background())
+	p, err = ex.Pending(ctx)
 	require.NoError(t, err)
 	require.Len(t, p, 2)
 
 	// Only the last one is pending (in full).
 	*rrw = []*migrate.Revision{rev1, rev2}
-	p, err = ex.Pending(context.Background())
+	p, err = ex.Pending(ctx)
 	require.NoError(t, err)
 	require.Len(t, p, 1)
 
 	// First statement of last one is marked as applied, second isn't. Third file is still pending.
 	*rrw = []*migrate.Revision{rev1, rev2, rev3}
-	p, err = ex.Pending(context.Background())
+	p, err = ex.Pending(ctx)
 	require.NoError(t, err)
 	require.Len(t, p, 1)
 
 	// Nothing to do if all migrations are applied.
 	rev3.Applied = rev3.Total
 	*rrw = []*migrate.Revision{rev1, rev2, rev3}
-	p, err = ex.Pending(context.Background())
+	p, err = ex.Pending(ctx)
 	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
 	require.Len(t, p, 0)
 
 	// If there is a revision in the past with no existing migration, we don't care.
 	rev3.Applied = rev3.Total
 	*rrw = []*migrate.Revision{{Version: "2.11"}, rev3}
-	p, err = ex.Pending(context.Background())
+	p, err = ex.Pending(ctx)
 	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
 	require.Len(t, p, 0)
 
 	// If only the last migration file is applied, we expect there are no pending files.
 	*rrw = []*migrate.Revision{rev3}
-	p, err = ex.Pending(context.Background())
+	p, err = ex.Pending(ctx)
 	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
 	require.Len(t, p, 0)
 
 	// If the last applied revision has no matching migration file, and the last
 	// migration version precedes that revision, there is nothing to do.
 	*rrw = []*migrate.Revision{{Version: "5"}}
-	p, err = ex.Pending(context.Background())
+	p, err = ex.Pending(ctx)
 	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
 	require.Len(t, p, 0)
 
 	// The applied revision precedes every migration file. Expect all files pending.
 	*rrw = []*migrate.Revision{{Version: "1.1"}}
-	p, err = ex.Pending(context.Background())
+	p, err = ex.Pending(ctx)
 	require.NoError(t, err)
 	require.Len(t, p, 3)
 
 	// All except one file are applied. The latest revision does not exist and its version is smaller than the last
 	// migration file. Expect the last file pending.
 	*rrw = []*migrate.Revision{rev1, rev2, {Version: "2.11"}}
-	p, err = ex.Pending(context.Background())
+	p, err = ex.Pending(ctx)
 	require.NoError(t, err)
 	require.Len(t, p, 1)
 	require.Equal(t, rev3.Version, p[0].Version())
 
 	// If the last revision is partially applied and the matching migration file does not exist, we have a problem.
 	*rrw = []*migrate.Revision{{Version: "deleted", Description: "desc", Total: 1}}
-	p, err = ex.Pending(context.Background())
+	p, err = ex.Pending(ctx)
 	require.EqualError(t, err, migrate.MissingMigrationError{Version: "deleted", Description: "desc"}.Error())
 	require.Len(t, p, 0)
+
+	// If the last revision is a partially applied checkpoint, expect it to be part of
+	// the pending files. Checkpoint files following the failed one are not included.
+	dir, err = migrate.NewLocalDir(filepath.Join("testdata", "partial-checkpoint"))
+	require.NoError(t, err)
+	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log))
+	require.NoError(t, err)
+	*rrw = []*migrate.Revision{{Version: "3", Description: "checkpoint", Total: 2, Applied: 1}}
+	p, err = ex.Pending(ctx)
+	require.NoError(t, err)
+	require.Len(t, p, 3)
+	require.Equal(t, "3", p[0].Version())
+	require.Equal(t, "4", p[1].Version())
+	require.Equal(t, "6", p[2].Version())
 }
 
 func TestExecutor_ExecOrderLinear(t *testing.T) {
