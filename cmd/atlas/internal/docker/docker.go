@@ -352,12 +352,12 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 	if err != nil {
 		return err
 	}
+	pingURL := c.PingURL(*u)
 	for {
 		select {
 		case <-time.After(100 * time.Millisecond):
 			// Ping against the root connection.
-			u.Path = "/"
-			client, err := sqlclient.Open(ctx, u.String())
+			client, err := sqlclient.Open(ctx, pingURL)
 			if err != nil {
 				continue
 			}
@@ -393,6 +393,20 @@ func (c *Container) URL() (*url.URL, error) {
 		return url.Parse(fmt.Sprintf("%s://root:%s@localhost:%s/%s", c.cfg.driver, c.Passphrase, c.Port, c.cfg.Database))
 	default:
 		return nil, fmt.Errorf("unknown driver: %q", c.cfg.driver)
+	}
+}
+
+// PingURL returns a URL to ping the Container.
+func (c *Container) PingURL(u url.URL) string {
+	switch c.cfg.driver {
+	case DriverSQLServer:
+		q := u.Query()
+		q.Del("database")
+		u.RawQuery = q.Encode()
+		return u.String()
+	default:
+		u.Path = "/"
+		return u.String()
 	}
 }
 
