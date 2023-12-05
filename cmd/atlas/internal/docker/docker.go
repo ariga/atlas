@@ -16,7 +16,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -74,10 +73,10 @@ func NewConfig(opts ...ConfigOption) (*Config, error) {
 }
 
 const (
-	DriverMySQL    = "mysql"
-	DriverMariaDB  = "mariadb"
-	DriverPostgres = "postgres"
-	DriverMSSQL    = "sqlserver"
+	DriverMySQL     = "mysql"
+	DriverMariaDB   = "mariadb"
+	DriverPostgres  = "postgres"
+	DriverSQLServer = "sqlserver"
 )
 
 // FromURL parses a URL in the format of
@@ -100,13 +99,14 @@ func FromURL(u *url.URL) (*Config, error) {
 	case n == 2:
 		parts[0] = fmt.Sprintf("%s/%s", parts[0], parts[1])
 	}
-	if slices.Contains(flavours, u.Scheme) {
+	// Support docker+driver://image/tag
+	if drv, ok := strings.CutPrefix(u.Scheme, "docker+"); ok {
 		img := Image(parts[0])
 		if u.Host != "" && u.Host != "_" {
 			img = Image(u.Host, parts[0])
 		}
 		opts = append(opts, img)
-		u.Host = u.Scheme[len("docker+"):]
+		u.Host = drv
 	}
 	var (
 		err error
@@ -135,14 +135,11 @@ func FromURL(u *url.URL) (*Config, error) {
 			opts = append(opts, Env("POSTGRES_DB="+parts[1]))
 		}
 		cfg, err = PostgreSQL(tag, opts...)
-	case DriverMSSQL:
+	case DriverSQLServer:
 		if len(parts) > 1 {
 			if db := parts[1]; db != "master" {
 				opts = append(opts, Setup(fmt.Sprintf("CREATE DATABASE [%s]", db)))
 			}
-		}
-		if tag == "" {
-			tag = "2022-latest"
 		}
 		cfg, err = SQLServer(tag, opts...)
 		if err != nil {
@@ -388,7 +385,7 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 // URL returns a URL to connect to the Container.
 func (c *Container) URL() (*url.URL, error) {
 	switch c.cfg.driver {
-	case DriverMSSQL:
+	case DriverSQLServer:
 		return url.Parse(fmt.Sprintf("sqlserver://sa:%s@localhost:%s?database=%s", passSQLServer, c.Port, c.cfg.Database))
 	case DriverPostgres:
 		return url.Parse(fmt.Sprintf("postgres://postgres:%s@localhost:%s/%s?sslmode=disable", c.Passphrase, c.Port, c.cfg.Database))
@@ -422,18 +419,11 @@ func freePort() (string, error) {
 	return strconv.Itoa(l.Addr().(*net.TCPAddr).Port), nil
 }
 
-var flavours = []string{
-	"docker+postgres",
-	"docker+mysql",
-	"docker+maria",
-	"docker+sqlserver",
-}
-
 func init() {
 	sqlclient.Register(
 		"docker",
 		sqlclient.OpenerFunc(Open),
-		sqlclient.RegisterFlavours(flavours...),
+		sqlclient.RegisterFlavours("docker+postgres", "docker+mysql", "docker+maria", "docker+sqlserver"),
 	)
 }
 

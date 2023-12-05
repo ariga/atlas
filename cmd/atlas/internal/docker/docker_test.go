@@ -139,7 +139,7 @@ func TestFromURL(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, &Config{
 		driver:   "sqlserver",
-		Image:    "mcr.microsoft.com/mssql/server:2022-latest",
+		Image:    "mcr.microsoft.com/mssql/server",
 		Database: "master",
 		Port:     "1433",
 		Out:      io.Discard,
@@ -325,7 +325,7 @@ func TestImageURL(t *testing.T) {
 	for img, u := range map[string]string{
 		"mcr.microsoft.com/azure-sql-edge:1.0.7": "docker+sqlserver://mcr.microsoft.com/azure-sql-edge:1.0.7",
 	} {
-		got, err := ImageURL(DriverMSSQL, img)
+		got, err := ImageURL(DriverSQLServer, img)
 		require.NoError(t, err)
 		require.Equal(t, u, got.String())
 	}
