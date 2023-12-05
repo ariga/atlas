@@ -50,6 +50,21 @@ func TestDockerConfig(t *testing.T) {
 		Port:     "5432",
 		Out:      io.Discard,
 	}, cfg)
+
+	// SQL Server
+	cfg, err = SQLServer("2022-latest", Out(io.Discard))
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		Image:    "mcr.microsoft.com/mssql/server:2022-latest",
+		Port:     "1433",
+		Database: "master",
+		Out:      io.Discard,
+		Env: []string{
+			"ACCEPT_EULA=Y",
+			"MSSQL_PID=Developer",
+			"MSSQL_SA_PASSWORD=" + passSQLServer,
+		},
+	}, cfg)
 }
 
 func TestFromURL(t *testing.T) {
@@ -115,6 +130,78 @@ func TestFromURL(t *testing.T) {
 		Env:      []string{"POSTGRES_PASSWORD=pass"},
 		Port:     "5432",
 		Out:      io.Discard,
+	}, cfg)
+
+	// SQL Server
+	u, err = url.Parse("docker://sqlserver")
+	require.NoError(t, err)
+	cfg, err = FromURL(u)
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		driver:   "sqlserver",
+		Image:    "mcr.microsoft.com/mssql/server",
+		Database: "master",
+		Port:     "1433",
+		Out:      io.Discard,
+		Env: []string{
+			"ACCEPT_EULA=Y",
+			"MSSQL_PID=Developer",
+			"MSSQL_SA_PASSWORD=" + passSQLServer,
+		},
+	}, cfg)
+
+	u, err = url.Parse("docker://sqlserver/2022-latest")
+	require.NoError(t, err)
+	cfg, err = FromURL(u)
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		driver:   "sqlserver",
+		Image:    "mcr.microsoft.com/mssql/server:2022-latest",
+		Database: "master",
+		Port:     "1433",
+		Out:      io.Discard,
+		Env: []string{
+			"ACCEPT_EULA=Y",
+			"MSSQL_PID=Developer",
+			"MSSQL_SA_PASSWORD=" + passSQLServer,
+		},
+	}, cfg)
+
+	u, err = url.Parse("docker://sqlserver/2019-latest/foo")
+	require.NoError(t, err)
+	cfg, err = FromURL(u)
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		driver:   "sqlserver",
+		setup:    []string{"CREATE DATABASE [foo]"},
+		Image:    "mcr.microsoft.com/mssql/server:2019-latest",
+		Database: "foo",
+		Port:     "1433",
+		Out:      io.Discard,
+		Env: []string{
+			"ACCEPT_EULA=Y",
+			"MSSQL_PID=Developer",
+			"MSSQL_SA_PASSWORD=" + passSQLServer,
+		},
+	}, cfg)
+
+	// Azure SQL Edge
+	u, err = url.Parse("docker+sqlserver://mcr.microsoft.com/azure-sql-edge:1.0.7/foo")
+	require.NoError(t, err)
+	cfg, err = FromURL(u)
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		driver:   "sqlserver",
+		setup:    []string{"CREATE DATABASE [foo]"},
+		Image:    "mcr.microsoft.com/azure-sql-edge:1.0.7",
+		Database: "foo",
+		Port:     "1433",
+		Out:      io.Discard,
+		Env: []string{
+			"ACCEPT_EULA=Y",
+			"MSSQL_PID=Developer",
+			"MSSQL_SA_PASSWORD=" + passSQLServer,
+		},
 	}, cfg)
 }
 
@@ -232,6 +319,13 @@ func TestImageURL(t *testing.T) {
 		"ghcr.io/namespace/postgres:tag": "docker+postgres://ghcr.io/namespace/postgres:tag",
 	} {
 		got, err := ImageURL(DriverPostgres, img)
+		require.NoError(t, err)
+		require.Equal(t, u, got.String())
+	}
+	for img, u := range map[string]string{
+		"mcr.microsoft.com/azure-sql-edge:1.0.7": "docker+sqlserver://mcr.microsoft.com/azure-sql-edge:1.0.7",
+	} {
+		got, err := ImageURL(DriverSQLServer, img)
 		require.NoError(t, err)
 		require.Equal(t, u, got.String())
 	}
