@@ -36,14 +36,9 @@ atlas migrate push app \
 </TabItem>
 <TabItem value="sqlserver" label="SQL Server">
 
-Run first the following command to start a local MSSQL server using Docker:
-
-```bash
-docker run -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=P@ssw0rd0995' -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
-```
 ```bash
 atlas migrate push app \
-    --dev-url "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master"
+  --dev-url "docker://sqlserver/2022-latest"
 ```
 
 </TabItem>
