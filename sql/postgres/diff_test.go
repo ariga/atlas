@@ -484,6 +484,27 @@ func TestDiff_TableDiff(t *testing.T) {
 	}
 }
 
+func TestDiff_RealmDiff(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mock{m}.version("130000")
+	drv, err := Open(db)
+	to := schema.New("public").
+		AddTables(
+			schema.NewTable("users").AddColumns(schema.NewIntColumn("t2_id", "int")),
+		).
+		AddObjects(
+			&schema.EnumType{T: "e", Values: []string{"b"}},
+		)
+	changes, err := drv.RealmDiff(schema.NewRealm(), schema.NewRealm(to))
+	require.NoError(t, err)
+	require.EqualValues(t, []schema.Change{
+		&schema.AddSchema{S: to},
+		&schema.AddObject{O: to.Objects[0]},
+		&schema.AddTable{T: to.Tables[0]},
+	}, changes)
+}
+
 func TestDiff_SchemaDiff(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
