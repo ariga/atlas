@@ -111,6 +111,28 @@ docker+postgres://org/image:tag
 ```
 
 </TabItem>
+<TabItem value="sqlserver" label="SQLServer">
+
+```shell
+# When working on a single database schema.
+--dev-url "docker://sqlserver/2022-latest/dev?mode=schema"
+
+# When working on multiple database schemas.
+--dev-url "docker://sqlserver/2022-latest/dev?mode=database"
+```
+
+To work with an Azure SQL Edge docker image or SQLServer version, use one of the following formats:
+
+```shell
+# Run SQLServer 2017-latest in schema mode.
+docker://sqlserver/2017-latest?mode=schema
+docker://sqlserver/2019-latest?mode=schema
+docker://sqlserver/2022-latest?mode=schema
+
+# Run Azure SQL Edge 1.0.7 in schema mode.
+docker+sqlserver://mcr.microsoft.com/azure-sql-edge:1.0.7?mode=schema
+```
+</TabItem>
 </Tabs>
 
 ## Baseline Schema

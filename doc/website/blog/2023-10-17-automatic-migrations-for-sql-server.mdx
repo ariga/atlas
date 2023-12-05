@@ -95,17 +95,6 @@ CREATE TABLE posts (
 );
 ```
 
-### Spinning up a Dev-Database
-
-Atlas relies on a [_Dev-Database_](/concepts/dev-database), a temporary empty database to normalize schemas and make various
-calculations. Because we are providing the desired state of our database in plain SQL, Atlas must somehow transform
-our schema to a normalized form which requires such a database. Let's spin up an additional SQL Server instance
-on port 1434:
-
-```
-docker run --rm -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=P@ssw0rd0995' -p 1434:1433 -d mcr.microsoft.com/mssql/server:latest
-```
-
 ### Applying our schema
 
 Next, let's apply this schema to our database. To do so, we will use the `atlas schema apply` command.
@@ -113,7 +102,7 @@ Next, let's apply this schema to our database. To do so, we will use the `atlas 
 ```shell
 atlas schema apply -u "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master" \
   --to file://schema.sql \
-  --dev-url "sqlserver://sa:P@ssw0rd0995@localhost:1434?database=master"
+  --dev-url "docker://sqlserver"
 ```
 Atlas will connect to our target database to inspect it's current state. Next, it will use the dev-database to
 normalize our schema and finally, it will generate the SQL commands that will bring our database to the desired state:
