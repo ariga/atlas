@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -25,7 +26,10 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-const pass = "pass"
+const (
+	pass          = "pass"
+	passSQLServer = "P@ssw0rd0995"
+)
 
 type (
 	// Config is used to configure container creation.
@@ -73,6 +77,7 @@ const (
 	DriverMySQL    = "mysql"
 	DriverMariaDB  = "mariadb"
 	DriverPostgres = "postgres"
+	DriverMSSQL    = "sqlserver"
 )
 
 // FromURL parses a URL in the format of
@@ -95,8 +100,7 @@ func FromURL(u *url.URL) (*Config, error) {
 	case n == 2:
 		parts[0] = fmt.Sprintf("%s/%s", parts[0], parts[1])
 	}
-	switch u.Scheme {
-	case "docker+postgres", "docker+mysql", "docker+maria":
+	if slices.Contains(flavours, u.Scheme) {
 		img := Image(parts[0])
 		if u.Host != "" && u.Host != "_" {
 			img = Image(u.Host, parts[0])
@@ -131,6 +135,19 @@ func FromURL(u *url.URL) (*Config, error) {
 			opts = append(opts, Env("POSTGRES_DB="+parts[1]))
 		}
 		cfg, err = PostgreSQL(tag, opts...)
+	case DriverMSSQL:
+		if len(parts) > 1 {
+			if db := parts[1]; db != "master" {
+				opts = append(opts, Setup(fmt.Sprintf("CREATE DATABASE [%s]", db)))
+			}
+		}
+		if tag == "" {
+			tag = "2022-latest"
+		}
+		cfg, err = SQLServer(tag, opts...)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("unsupported docker image %q", u.Host)
 	}
@@ -191,6 +208,25 @@ func PostgreSQL(version string, opts ...ConfigOption) (*Config, error) {
 				Port("5432"),
 				Database("postgres"),
 				Env("POSTGRES_PASSWORD=" + pass),
+			},
+			opts...,
+		)...,
+	)
+}
+
+// SQLServer returns a new Config for a SQLServer image.
+func SQLServer(version string, opts ...ConfigOption) (*Config, error) {
+	return NewConfig(
+		append(
+			[]ConfigOption{
+				Image("mcr.microsoft.com/mssql/server:" + version),
+				Port("1433"),
+				Database("master"),
+				Env(
+					"ACCEPT_EULA=Y",
+					"MSSQL_PID=Developer",
+					"MSSQL_SA_PASSWORD="+passSQLServer,
+				),
 			},
 			opts...,
 		)...,
@@ -352,6 +388,8 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 // URL returns a URL to connect to the Container.
 func (c *Container) URL() (*url.URL, error) {
 	switch c.cfg.driver {
+	case DriverMSSQL:
+		return url.Parse(fmt.Sprintf("sqlserver://sa:%s@localhost:%s?database=%s", passSQLServer, c.Port, c.cfg.Database))
 	case DriverPostgres:
 		return url.Parse(fmt.Sprintf("postgres://postgres:%s@localhost:%s/%s?sslmode=disable", c.Passphrase, c.Port, c.cfg.Database))
 	case DriverMySQL, DriverMariaDB:
@@ -384,11 +422,18 @@ func freePort() (string, error) {
 	return strconv.Itoa(l.Addr().(*net.TCPAddr).Port), nil
 }
 
+var flavours = []string{
+	"docker+postgres",
+	"docker+mysql",
+	"docker+maria",
+	"docker+sqlserver",
+}
+
 func init() {
 	sqlclient.Register(
 		"docker",
 		sqlclient.OpenerFunc(Open),
-		sqlclient.RegisterFlavours("docker+postgres", "docker+mysql", "docker+maria"),
+		sqlclient.RegisterFlavours(flavours...),
 	)
 }
 
