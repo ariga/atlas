@@ -122,6 +122,15 @@ func (d *Diff) RealmDiff(from, to *schema.Realm, options ...schema.DiffOption) (
 			continue
 		}
 		changes = opts.AddOrSkip(changes, &schema.AddSchema{S: s1})
+		for _, o := range s1.Objects {
+			changes = opts.AddOrSkip(changes, &schema.AddObject{O: o})
+		}
+		for _, f := range s1.Funcs {
+			changes = opts.AddOrSkip(changes, &schema.AddFunc{F: f})
+		}
+		for _, p := range s1.Procs {
+			changes = opts.AddOrSkip(changes, &schema.AddProc{P: p})
+		}
 		for _, t := range s1.Tables {
 			changes = opts.AddOrSkip(changes, &schema.AddTable{T: t})
 		}
