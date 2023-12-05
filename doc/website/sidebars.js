@@ -293,13 +293,13 @@ module.exports = {
                 },
                 {
                     type: 'doc',
-                    id: 'guides/orms/sequelize',
-                    label: 'Sequelize'
+                    id: 'guides/orms/hibernate',
+                    label: 'Hibernate'
                 },
                 {
                     type: 'doc',
-                    id: 'guides/orms/hibernate',
-                    label: 'Hibernate'
+                    id: 'guides/orms/sequelize',
+                    label: 'Sequelize'
                 },
                 {
                     type: 'doc',

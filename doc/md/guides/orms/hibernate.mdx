@@ -46,6 +46,14 @@ In this guide, we will show how Atlas can automatically plan schema migrations f
 
 If you don't have a Hibernate project handy, check out the [Hibernate getting started page](https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html)
 
+:::note
+We currently do not support using generated fields using strategies that require data initialization such as GenerationType.SEQUENCE or GenerationType.TABLE and Generation.AUTO.
+Atlas currently does not support data migrations, but it's in our roadmap.
+
+If needed, you can still export the schema using the flag --enable-table-generators (or -Denable-table-generators using Maven), when applying the schema to your database, you will need
+to make sure to apply the ignored statements.
+:::
+
 ## Using the Atlas Hibernate Provider
 
 In this guide, we will use the [Hibernate Atlas Provider](https://github.com/ariga/atlas-provider-hibernate)
