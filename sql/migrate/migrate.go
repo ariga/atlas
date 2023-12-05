@@ -703,7 +703,7 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 			if f, ok := all[idx].(CheckpointFile); ok && f.IsCheckpoint() {
 				// There can only be one checkpoint file and it must be the first one applied.
 				// Thus, we can consider all migrations following the checkpoint to be pending.
-				return append([]File{f}, migrations[idx:]...), nil
+				return append([]File{f}, SkipCheckpointFiles(all[idx:])...), nil
 			}
 		}
 		if len(migrations) == 0 {
