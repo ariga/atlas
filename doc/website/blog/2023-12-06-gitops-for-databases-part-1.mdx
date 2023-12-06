@@ -31,7 +31,7 @@ For the sake of brevity, we are going to split this guide into two parts:
 
 Atlas was built to support a modern CI/CD workflow for database migrations based on the
 following principles:
-1. **Changes to the database are planned automatically**. Given the desired state of the database,
+1. **Changes to the database are planned automatically.** Given the desired state of the database,
    the system should automatically generate a plan for how to get from the current state to the desired
    state.
 2. **Changes to the database schema are stored in a versioned migration directory.** All planned changes
@@ -44,14 +44,14 @@ following principles:
 
 To learn more about these principles, check out our [guide to modern CI/CD for database migrations](/guides/modern-database-ci-cd).
 
-In this tutorial, we show to apply the fourth principle to your database migrations using the Atlas Operator and ArgoCD.
+In this tutorial, we will show to apply the fourth principle to your database migrations using the Atlas Operator and ArgoCD.
 
 ## Local Setup
 
 With the principles of modern CI/CD for database migrations in mind, let's see how we can apply them to a simple
 application that uses a PostgreSQL database.
 
-### Pre-requisites (for part one)
+### Prerequisites (for part one)
 
 1. A GitHub Account - we are going to be setting up some GitHub Actions workflows, so you will need a GitHub account.
 
@@ -59,6 +59,7 @@ application that uses a PostgreSQL database.
    ```bash
    curl -sSf https://atlasgo.sh | sh
    ```
+  For more installation options, [see the docs](/getting-started#installation)
 3. Docker. To install Docker, follow the instructions [here](https://docs.docker.com/get-docker/).
 
 4. The GitHub CLI, `gh`. To install `gh`:
@@ -152,7 +153,7 @@ https://rotemtam85.atlasgo.cloud/dirs/4294967359
 
 ## Setup GitHub Actions
 
-In this section, we will set up a GitHub Actions workflow that will run the Atlas to your CI/CD
+In this section, we will set up a GitHub Actions workflow that will add Atlas to your CI/CD
 pipeline.
 
 ### Create a Bot Token
