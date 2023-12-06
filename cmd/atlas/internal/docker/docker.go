@@ -80,78 +80,87 @@ const (
 )
 
 // FromURL parses a URL in the format of
-// "docker://image/tag" and returns a Config.
+// "docker://image/tag[/dbname]" and returns a Config.
 func FromURL(u *url.URL) (*Config, error) {
 	var (
-		tag   string
-		opts  []ConfigOption
-		parts = strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
+		parts  = strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
+		idxTag = len(parts) - 1
+		dbName string
 	)
-	if len(parts) > 0 {
-		tag = parts[0]
+	// Check if the last part is a tag or a database name.
+	if idxTag > 0 && !strings.ContainsRune(parts[idxTag], ':') {
+		// The last part is not a tag, so it must be a database name.
+		dbName, idxTag = parts[idxTag], idxTag-1
 	}
-	switch n := len(parts); {
-	case n == 2 && !strings.Contains(parts[1], ":"):
-		opts = append(opts, Database(parts[1]))
-	case n == 3:
-		opts = append(opts, Database(parts[2]))
-		fallthrough
-	case n == 2:
-		parts[0] = fmt.Sprintf("%s/%s", parts[0], parts[1])
-	}
-	// Support docker+driver://image/tag
-	if drv, ok := strings.CutPrefix(u.Scheme, "docker+"); ok {
-		img := Image(parts[0])
+	var (
+		opts []ConfigOption
+		tag  string
+	)
+	// Support docker+driver://<image>[:<tag>]
+	driver, customImage := strings.CutPrefix(u.Scheme, "docker+")
+	if customImage {
+		// The image is fully specified in the URL.
+		img := path.Join(parts[:idxTag+1]...)
 		if u.Host != "" && u.Host != "_" {
-			img = Image(u.Host, parts[0])
+			img = path.Join(u.Host, img)
 		}
-		opts = append(opts, img)
-		u.Host = drv
+		opts = append(opts, Image(img))
+	} else {
+		driver = u.Host
+		if idxTag >= 0 {
+			tag = parts[idxTag]
+		}
 	}
 	var (
 		err error
 		cfg *Config
 	)
-	switch u.Host {
+	switch driver {
 	case DriverMySQL:
-		if len(parts) > 1 {
-			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]), Setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", parts[1])))
+		if dbName != "" {
+			opts = append(opts,
+				Database(dbName),
+				Env("MYSQL_DATABASE="+dbName),
+				Setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName)),
+			)
 		}
 		cfg, err = MySQL(tag, opts...)
 	case "maria":
-		u.Host = DriverMariaDB
+		driver = DriverMariaDB
 		fallthrough
 	case DriverMariaDB:
-		if len(parts) > 1 {
-			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]), Setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", parts[1])))
+		if dbName != "" {
+			opts = append(opts,
+				Database(dbName),
+				Env("MYSQL_DATABASE="+dbName),
+				Setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName)),
+			)
 		}
 		cfg, err = MariaDB(tag, opts...)
 	case "postgis":
 		opts = append(opts, Image("postgis/postgis:"+tag))
-		u.Host = DriverPostgres
+		driver = DriverPostgres
 		fallthrough
 	case DriverPostgres:
-		if len(parts) > 1 {
-			opts = append(opts, Env("POSTGRES_DB="+parts[1]))
+		if dbName != "" {
+			opts = append(opts, Database(dbName), Env("POSTGRES_DB="+dbName))
 		}
 		cfg, err = PostgreSQL(tag, opts...)
 	case DriverSQLServer:
-		if len(parts) > 1 {
-			if db := parts[1]; db != "master" {
-				opts = append(opts, Setup(fmt.Sprintf("CREATE DATABASE [%s]", db)))
-			}
+		if dbName != "" && dbName != "master" {
+			opts = append(opts,
+				Database(dbName),
+				Setup(fmt.Sprintf("CREATE DATABASE [%s]", dbName)),
+			)
 		}
 		cfg, err = SQLServer(tag, opts...)
-		if err != nil {
-			return nil, err
-		}
 	default:
-		return nil, fmt.Errorf("unsupported docker image %q", u.Host)
+		return nil, fmt.Errorf("unsupported docker image %q", driver)
 	}
 	if err != nil {
 		return nil, err
 	}
-	cfg.driver = u.Host
+	cfg.driver = driver
 	return cfg, nil
 }
 
