@@ -296,10 +296,10 @@ github.com/leodido/go-urn v1.2.0/go.mod h1:+8+nEpDfqqsY+g338gtMEUOtuK+4dEMhiQEgx
 github.com/lib/pq v1.9.0/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
 github.com/lib/pq v1.10.9/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
-github.com/libsql/libsql-client-go v0.0.0-20230602133133-5905f0c4f8a5 h1:thfvsTYVytQK4hlUt2/bCUqZk892fQaPUE2InFm+ZWE=
-github.com/libsql/libsql-client-go v0.0.0-20230602133133-5905f0c4f8a5/go.mod h1:XaIcfeMOJ1w1L/TELMmzOXkAGZKRYF/QSWTqgwOT4R8=
-github.com/libsql/sqlite-antlr4-parser v0.0.0-20230512205400-b2348f0d1196 h1:XBs+xh9/OM9kMvK7W9a3SEReC5x26z22cbYn0K6cUW4=
-github.com/libsql/sqlite-antlr4-parser v0.0.0-20230512205400-b2348f0d1196/go.mod h1:20nXSmcf0nAscrzqsXeC2/tA3KkV2eCiJqYuyAgl+ss=
+github.com/libsql/libsql-client-go v0.0.0-20231128153229-cb5832f4404f h1:g2qtFL7hNP3PMFcc+bvAfPlbpxxxfw0iG7+py5dMsBE=
+github.com/libsql/libsql-client-go v0.0.0-20231128153229-cb5832f4404f/go.mod h1:T+1lRvREkstNW7bmF1PTiDhV6hji0mrlfZkZuk/UPhw=
+github.com/libsql/sqlite-antlr4-parser v0.0.0-20230802215326-5cb5bb604475 h1:6PfEMwfInASh9hkN83aR0j4W/eKaAZt/AURtXAXlas0=
+github.com/libsql/sqlite-antlr4-parser v0.0.0-20230802215326-5cb5bb604475/go.mod h1:20nXSmcf0nAscrzqsXeC2/tA3KkV2eCiJqYuyAgl+ss=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mattn/go-colorable v0.1.2/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
 github.com/mattn/go-colorable v0.1.9/go.mod h1:u6P/XSegPjTcexA+o6vUJrdnUu04hMope9wVRipJSqc=
