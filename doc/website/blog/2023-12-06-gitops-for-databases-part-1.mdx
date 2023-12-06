@@ -4,14 +4,14 @@ authors: rotemtam
 tags: [kubernetes, gitops, migrations, argocd, github-actions, postgres]
 ---
 [GitOps](https://opengitops.dev/) is a software development and deployment methodology that uses Git as the central repository
-for both code and infrastructure configurations, enabling automated and auditable deployments.
+for both code and infrastructure configuration, enabling automated and auditable deployments.
 
 [ArgoCD](https://argoproj.github.io/cd/) is a Kubernetes-native continuous delivery tool that implements GitOps principles.
 It uses a declarative approach to deploy applications to Kubernetes, ensuring that the desired state of the
 application is always maintained.
 
 [Kubernetes Operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) are software extensions to
-Kubernetes that enable the automation and management of complex, application-specific operational tasks and
+Kubernetes that enable the automation and management of complex, application-specific, operational tasks with
 domain-specific knowledge within a Kubernetes cluster.
 
 In this tutorial, we will use the [Atlas Operator](https://github.com/ariga/atlas-operator) in tandem with
@@ -37,7 +37,7 @@ following principles:
 2. **Changes to the database schema are stored in a versioned migration directory.** All planned changes
    to the database are checked in to a versioned migration directory. This directory contains SQL scripts,
    which are executed in lexicographic order to apply the changes to the database.
-3. **Changes to the database are validated during CI.**  All changes to the database are tested and evaluated
+3. **Changes to the database are validated during CI.** All changes to the database are tested and evaluated
    against a set of governing policies.
 4. **Changes to the database are deployed via automation.**  No manual steps are required to deploy changes to the
    database. All changes are deployed via a CI/CD pipeline.
@@ -65,7 +65,7 @@ application that uses a PostgreSQL database.
    ```
    brew install gh
    ```
-  For instructions in other platforms, follow the instructions [here](https://github.com/cli/cli#installation).
+  Follow instructions for other platforms [here](https://github.com/cli/cli#installation).
 
 ### Step 1: Define our desired state
 
@@ -125,7 +125,7 @@ Observe two new files that were created in the `migrations` directory:
 
 ### Step 3: Push our migration directory to Atlas Cloud
 
-Atlas Cloud is a hosted service that can serve as a central repository for your database migrations.  Similarly
+Atlas Cloud is a hosted service that can serve as a central repository for your database migrations. Similarly
 to how DockerHub is used to store and distribute Docker images, Atlas Cloud can be used to store and distribute
 database migration directories. Atlas Cloud has a free tier that is suitable for small teams and personal projects
 which you can use to follow along with this tutorial.
@@ -158,8 +158,8 @@ pipeline.
 ### Create a Bot Token
 
 To write data to your Atlas Cloud account, you will need to supply your CI/CD pipelines with
-an API key that has write access to your Atlas Cloud account.  To learn how to create a
-bot token, check out our [guide on the topic](/cloud/bots).  Use the instructions in this guide
+an API key that has write access to your Atlas Cloud account. To learn how to create a
+bot token, check out our [guide on the topic](/cloud/bots). Use the instructions in this guide
 to create a token, and make a note of it. We will use it in the next steps.
 
 ### Install the Atlas Extension
@@ -181,7 +181,7 @@ gh auth refresh -s write:packages,workflow
 
 ### Create a GitHub Actions Workflow
 
-Once installed, let's use this extension to generate our GitHub Actions workflow.  Run the following command:
+Once installed, let's use this extension to generate our GitHub Actions workflow. Run the following command:
 
 ```shell
 gh atlas init-action --token <your-bot-token>  --dir-name="atlasdemo" --driver=postgres
@@ -196,7 +196,7 @@ Use the arrow keys to navigate: ↓ ↑ → ←
 ```
 
 Atlas will then ask you which database driver this directory contains migrations for. Select the
-desired driver and press "Enter":
+desired driver and press "Enter".
 
 Next, the GitHub extension will save your bot token to a GitHub secret and create a
 pull request with the necessary configuration for the GitHub Action.
@@ -275,7 +275,7 @@ After reviewing the changes, merge the pull request to enable the GitHub Action.
 
 ## Testing our Pipeline
 
-Now that we have set everythign up, let's test our pipeline, end-to-end. To do so, we will
+Now that we have set everything up, let's test our pipeline end-to-end. To do so, we will
 first plan a new change to our database schema.
 
 ### Edit the Desired Database Schema
@@ -331,8 +331,8 @@ gh pr create --title "migrations: add email column" --body "adding email column 
 
 ### Atlas Reviews the Pull Request
 
-Based on the configuration in the GitHub Action workflow we created, Atlas will automatically
-review your migration directory whenever a new pull request that affects it is opened.  When Atlas
+Based on the configuration in the GitHub Actions workflow we created, Atlas will automatically
+review your migration directory whenever a new pull request that affects it is opened. When Atlas
 is done running, it will comment on your PR with the results of the review:
 
 ![](https://atlasgo.io/uploads/blog/gitops/lint-comment.png)
@@ -343,7 +343,7 @@ see what they are:
 ![](https://atlasgo.io/uploads/blog/gitops/lint-report.png)
 
 Atlas warns us about two issues. The first is that adding a non-nullable varchar column "email" will fail in
-case the "users" table is not empty. The second is that creating an non-concurrently causes write locks on the "users" table.
+case the "users" table is not empty. The second is that creating an index non-concurrently causes write locks on the "users" table.
 Since we are in the early stages of development, we can safely ignore these issues for now. Let's merge the pull request
 and see what happens.
 
@@ -354,7 +354,7 @@ gh pr merge --squash
 ### Atlas Pushes the Migrations to Atlas Cloud
 
 Once GitHub Actions detects that a new push to the `master` branch has been merged, per our configuration,
-it will run the `atlas migrate push` command to push the migrations to Atlas Cloud.  Once the push is complete,
+it will run the `atlas migrate push` command to push the migrations to Atlas Cloud. Once the push is complete,
 our schema will be updated in the Atlas Cloud schema viewer screen:
 
 ![](https://atlasgo.io/uploads/blog/gitops/updated-erd.png)
