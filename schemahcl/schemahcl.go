@@ -483,6 +483,14 @@ func (s *State) mayScopeContext(ctx *hcl.EvalContext, scope []string) *hcl.EvalC
 		Variables: make(map[string]cty.Value),
 		Functions: make(map[string]function.Function),
 	}
+	for p := ctx; p != nil; p = p.Parent() {
+		for k, v := range p.Variables {
+			if isRef(v) {
+				nctx.Variables[k] = v
+			}
+		}
+	}
+	// Override the parent context with the scoped variables and functions.
 	for n, v := range vars {
 		nctx.Variables[n] = v
 	}
@@ -492,13 +500,6 @@ func (s *State) mayScopeContext(ctx *hcl.EvalContext, scope []string) *hcl.EvalC
 	// A patch from the past. Should be moved
 	// to specific scopes in the future.
 	nctx.Functions["sql"] = rawExprFunc
-	for p := ctx; p != nil; p = p.Parent() {
-		for k, v := range p.Variables {
-			if isRef(v) {
-				nctx.Variables[k] = v
-			}
-		}
-	}
 	return nctx
 }
 

@@ -949,3 +949,39 @@ foo "f1" {
 		},
 	}, &e)
 }
+
+func Test_ScopeContextOverride(t *testing.T) {
+	type (
+		Foo struct {
+			Name string `spec:",name"`
+		}
+		Bar struct {
+			Name string `spec:",name"`
+			Attr string `spec:"attr"`
+			Ref  *Ref   `spec:"ref"`
+		}
+	)
+	var (
+		doc struct {
+			Foo []*Foo `spec:"foo"`
+			Bar []*Bar `spec:"bar"`
+		}
+		b = []byte(`
+foo "f1" {}
+bar "b1" {
+	attr = foo
+	ref  = foo.f1
+}
+`)
+	)
+	require.NoError(t, New(
+		WithScopedEnums("bar.attr", "foo"), // foo is a valid value for bar.attr.
+	).EvalBytes(b, &doc, nil))
+	require.Len(t, doc.Foo, 1)
+	require.Len(t, doc.Bar, 1)
+	require.Equal(t, &Bar{
+		Name: "b1",
+		Attr: "foo",
+		Ref:  &Ref{V: "$foo.f1"},
+	}, doc.Bar[0])
+}
