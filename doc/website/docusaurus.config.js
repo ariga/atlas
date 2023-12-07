@@ -264,6 +264,7 @@ module.exports = {
       },
     ],
     "./plugins/utm-plugin",
+    "./plugins/intercom",
   ],
   presets: [
     [
