@@ -857,6 +857,77 @@ schema "public" {
 }
 ```
 
+## Sequence
+
+:::info BETA FEATURE
+Sequences are currently in beta and available to logged-in users only. To use this feature, run:
+```
+atlas login
+```
+:::
+
+The `sequence` block allows defining sequence number generator. Supported by PostgreSQL.
+
+Note, a `sequence` block is printed by Atlas on inspection, or it may be manually defined in the schema only if it
+represents a PostgreSQL sequence that is not implicitly created by the database for identity or `serial` columns.
+
+```hcl
+#highlight-next-line
+# Simple sequence with default values.
+sequence "s1" {
+  schema = schema.public
+}
+
+#highlight-next-line
+# Sequence with custom configuration.
+sequence "s2" {
+  schema    = schema.public
+  type      = smallint
+  start     = 100
+  increment = 2
+  min_value = 100
+  max_value = 1000
+}
+
+#highlight-next-line
+# Sequence that is owned by a column.
+sequence "s3" {
+  schema  = schema.public
+  owner   = table.t2.column.id
+  comment = "Sequence with column owner"
+}
+
+#highlight-next-line
+# The sequences created by this table are not printed on inspection.
+table "users" {
+  schema = schema.public
+  column "id" {
+    type = int
+    identity {
+        generated = ALWAYS
+        start = 10000
+    }
+  }
+  column "serial" {
+    type = serial
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+}
+
+table "t2" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
+}
+
+schema "public" {
+  comment = "standard public schema"
+}
+```
+
 ## Enum
 
 The `enum` type allows storing a set of enumerated values. Supported by PostgreSQL.
