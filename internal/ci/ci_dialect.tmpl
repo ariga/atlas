@@ -3,16 +3,7 @@
 # # # # # # # # # # # # # # # #
 name: CI - Dialect Tests{{ with $.Flavor }} - {{ . }} Edition{{ end }}
 on:
-  pull_request:
-    paths-ignore:
-      - 'doc/**'
-      - 'ops/**'
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - 'doc/**'
-      - 'ops/**'
+  workflow_call:
 {{ .Concurrency }}
 jobs:
 {{- range $.Jobs }}

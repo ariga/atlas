@@ -3,18 +3,9 @@
 # # # # # # # # # # # # # # # #
 name: CI - Dialect Tests - Community Edition
 on:
-  pull_request:
-    paths-ignore:
-      - 'doc/**'
-      - 'ops/**'
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - 'doc/**'
-      - 'ops/**'
+  workflow_call:
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-dialect
   cancel-in-progress: true
 jobs:
   integration-mysql56:

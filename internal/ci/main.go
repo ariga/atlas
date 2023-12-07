@@ -175,10 +175,10 @@ type (
 )
 
 var data = struct {
-	Jobs                 []Job
-	Flavor, Tags, Runner string
-	GoVersions           goVersions
-	Concurrency          concurrency
+	Jobs                         []Job
+	Flavor, Tags, Runner, Suffix string
+	GoVersions                   goVersions
+	Concurrency                  concurrency
 }{
 	Concurrency: concurrency{
 		group:  "${{ github.workflow }}-${{ github.head_ref || github.run_id }}",
@@ -187,18 +187,25 @@ var data = struct {
 }
 
 func main() {
-	var suffix string
 	flag.StringVar(&data.Flavor, "flavor", "", "")
 	flag.StringVar(&data.Tags, "tags", "", "")
 	flag.StringVar(&data.Runner, "runner", "ubuntu-latest", "")
-	flag.StringVar(&suffix, "suffix", "", "")
+	flag.StringVar(&data.Suffix, "suffix", "", "")
 	flag.Parse()
 	for _, n := range []string{"dialect", "go", "revisions"} {
-		var buf bytes.Buffer
+		var (
+			buf bytes.Buffer
+			g   = data.Concurrency.group
+		)
+		if n == "dialect" {
+			// Dialect jobs are running after go jobs, putting them in the same concurrency group crates deadlock.
+			data.Concurrency.group = fmt.Sprintf("%s-dialect", g)
+		}
 		if err := tpl.ExecuteTemplate(&buf, fmt.Sprintf("ci_%s.tmpl", n), data); err != nil {
 			log.Fatalln(err)
 		}
-		err := os.WriteFile(filepath.Clean(fmt.Sprintf("../../.github/workflows/ci-%s_%s.yaml", n, suffix)), buf.Bytes(), 0600)
+		data.Concurrency.group = g
+		err := os.WriteFile(filepath.Clean(fmt.Sprintf("../../.github/workflows/ci-%s_%s.yaml", n, data.Suffix)), buf.Bytes(), 0600)
 		if err != nil {
 			log.Fatalln(err)
 		}
