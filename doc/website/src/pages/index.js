@@ -13,7 +13,7 @@ export default function () {
             ],
             isHidden: true,
         }}
-        projectsAmount={2000}
+        projectsAmount={3000}
       />
     </LayoutProvider>
   );
