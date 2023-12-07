@@ -300,6 +300,25 @@ func TestFromURL_CustomImage(t *testing.T) {
 			db:      "dev",
 			dialect: "mysql",
 		},
+		// SQL Server.
+		{
+			url:     "docker+sqlserver://mcr.microsoft.com/mssql/server:2022-latest",
+			image:   "mcr.microsoft.com/mssql/server:2022-latest",
+			db:      "master",
+			dialect: "sqlserver",
+		},
+		{
+			url:     "docker+sqlserver://mcr.microsoft.com/mssql/server:2022-latest/dev",
+			image:   "mcr.microsoft.com/mssql/server:2022-latest",
+			db:      "dev",
+			dialect: "sqlserver",
+		},
+		{
+			url:     "docker+sqlserver://mcr.microsoft.com/mssql/server:latest",
+			image:   "mcr.microsoft.com/mssql/server:latest",
+			db:      "master",
+			dialect: "sqlserver",
+		},
 	} {
 		u, err := url.Parse(tt.url)
 		require.NoError(t, err)
@@ -323,7 +342,8 @@ func TestImageURL(t *testing.T) {
 		require.Equal(t, u, got.String())
 	}
 	for img, u := range map[string]string{
-		"mcr.microsoft.com/azure-sql-edge:1.0.7": "docker+sqlserver://mcr.microsoft.com/azure-sql-edge:1.0.7",
+		"mcr.microsoft.com/azure-sql-edge:1.0.7":     "docker+sqlserver://mcr.microsoft.com/azure-sql-edge:1.0.7",
+		"mcr.microsoft.com/mssql/server:2022-latest": "docker+sqlserver://mcr.microsoft.com/mssql/server:2022-latest",
 	} {
 		got, err := ImageURL(DriverSQLServer, img)
 		require.NoError(t, err)
