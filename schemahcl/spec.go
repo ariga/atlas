@@ -384,7 +384,15 @@ func (r *Resource) Resource(t string) (*Resource, bool) {
 
 // Attr returns the Attr by the provided name and reports whether it was found.
 func (r *Resource) Attr(name string) (*Attr, bool) {
-	return attrVal(r.Attrs, name)
+	if at, ok := attrVal(r.Attrs, name); ok {
+		return at, true
+	}
+	for _, r := range r.Children {
+		if at, ok := attrVal(r.Attrs, name); ok && r.Type == "" {
+			return at, true // Match on embedded resource.
+		}
+	}
+	return nil, false
 }
 
 // SetAttr sets the Attr on the Resource. If r is nil, a zero value Resource

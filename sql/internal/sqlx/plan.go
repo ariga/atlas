@@ -434,8 +434,20 @@ func SortChanges(changes []schema.Change) []schema.Change {
 	return planned
 }
 
+// Depender can be implemented by an object to determine if a change to it
+// depends on other change, or if an other change depends on it. For example:
+// A table creation depends on type creation, and a type deletion depends on
+// table deletion.
+type Depender interface {
+	DependsOn(change, other schema.Change) bool
+	DependencyOf(change, other schema.Change) bool
+}
+
 // dependsOn reports if the given change depends on the other change.
 func dependsOn(c1, c2 schema.Change) bool {
+	if dependOnOf(c1, c2) {
+		return true
+	}
 	switch c1 := c1.(type) {
 	case *schema.AddTable:
 		switch c2 := c2.(type) {
@@ -447,6 +459,13 @@ func dependsOn(c1, c2 schema.Change) bool {
 			}
 		case *schema.ModifyTable:
 			if refTo(c1.T.ForeignKeys, c2.T) {
+				return true
+			}
+		case *schema.AddObject:
+			t, ok := c2.O.(schema.Type)
+			if ok && slices.ContainsFunc(c1.T.Columns, func(c *schema.Column) bool {
+				return dependsOnT(c.Type.Type, t)
+			}) {
 				return true
 			}
 		}
@@ -490,6 +509,20 @@ func dependsOn(c1, c2 schema.Change) bool {
 					fk, ok := c.(*schema.AddForeignKey)
 					return ok && fk.F.RefTable == c2.T && slices.ContainsFunc(fk.F.RefColumns, func(c *schema.Column) bool { return addC[c] })
 				})
+			}
+		case *schema.AddObject:
+			t, ok := c2.O.(schema.Type)
+			if ok && slices.ContainsFunc(c1.Changes, func(c schema.Change) bool {
+				switch c := c.(type) {
+				case *schema.AddColumn:
+					return dependsOnT(c.C.Type.Type, t)
+				case *schema.ModifyColumn:
+					return dependsOnT(c.To.Type.Type, t)
+				default:
+					return false
+				}
+			}) {
+				return true
 			}
 		}
 		return depOfAdd(c1.T.Deps, c2)
@@ -556,6 +589,40 @@ func dependsOn(c1, c2 schema.Change) bool {
 			return slices.ContainsFunc(c2.P.Args, func(f *schema.FuncArg) bool {
 				return dependsOnT(f.Type, t)
 			})
+		}
+	}
+	return false
+}
+
+// dependOnOf checks if the given change depends on the other change or
+// vice versa based on their underlying object implementation.
+func dependOnOf(change, other schema.Change) bool {
+	switch change := change.(type) {
+	case *schema.AddObject:
+		if d, ok := change.O.(Depender); ok && d.DependsOn(change, other) {
+			return true
+		}
+	case *schema.ModifyObject:
+		if d, ok := change.To.(Depender); ok && d.DependsOn(change, other) {
+			return true
+		}
+	case *schema.DropObject:
+		if d, ok := change.O.(Depender); ok && d.DependsOn(change, other) {
+			return true
+		}
+	}
+	switch other := other.(type) {
+	case *schema.AddObject:
+		if d, ok := other.O.(Depender); ok && d.DependencyOf(other, change) {
+			return true
+		}
+	case *schema.ModifyObject:
+		if d, ok := other.To.(Depender); ok && d.DependencyOf(other, change) {
+			return true
+		}
+	case *schema.DropObject:
+		if d, ok := other.O.(Depender); ok && d.DependencyOf(other, change) {
+			return true
 		}
 	}
 	return false

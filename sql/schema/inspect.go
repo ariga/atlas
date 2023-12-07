@@ -52,6 +52,10 @@ const (
 
 	// InspectTypes enables schema types inspection.
 	InspectTypes
+
+	// InspectObjects enables inspection of database specific
+	// objects like sequences and extensions.
+	InspectObjects
 )
 
 // Is reports whether the given mode is enabled.

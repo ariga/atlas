@@ -38,11 +38,15 @@ func (*inspect) inspectFuncs(context.Context, *schema.Realm, *schema.InspectOpti
 	return nil // unimplemented.
 }
 
-func (i *inspect) inspectTypes(context.Context, *schema.Realm, *schema.InspectOptions) error {
+func (*inspect) inspectTypes(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
 }
 
-func (i *inspect) inspectDeps(context.Context, *schema.Realm, *schema.InspectOptions) error {
+func (*inspect) inspectSequences(context.Context, *schema.Realm, *schema.InspectOptions) error {
+	return nil // unimplemented.
+}
+
+func (*inspect) inspectDeps(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
 }
 
@@ -179,18 +183,29 @@ func verifyChanges(context.Context, []schema.Change) error {
 	return nil // unimplemented.
 }
 
-func convertDomains(_ []*sqlspec.Table, domains []*Domain, _ *schema.Realm) error {
+func convertDomains(_ []*sqlspec.Table, domains []*domain, _ *schema.Realm) error {
 	if len(domains) > 0 {
 		return fmt.Errorf("postgres: domains are not supported by this version. Use: https://atlasgo.io/getting-started")
 	}
 	return nil
 }
 
+func convertSequences(_ []*sqlspec.Table, seqs []*sequence, _ *schema.Realm) error {
+	if len(seqs) > 0 {
+		return fmt.Errorf("postgres: sequences are not supported by this version. Use: https://atlasgo.io/getting-started")
+	}
+	return nil
+}
+
+func qualifySeqRefs([]*sequence, []*sqlspec.Table, *schema.Realm) error {
+	return nil // unimplemented.
+}
+
 // objectSpec converts from a concrete schema objects into specs.
 func objectSpec(d *doc, spec *specutil.SchemaSpec, s *schema.Schema) error {
 	for _, o := range s.Objects {
 		if e, ok := o.(*schema.EnumType); ok {
-			d.Enums = append(d.Enums, &Enum{
+			d.Enums = append(d.Enums, &enum{
 				Name:   e.T,
 				Values: e.Values,
 				Schema: specutil.SchemaRef(spec.Schema.Name),

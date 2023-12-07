@@ -937,7 +937,7 @@ func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 	for _, v := range s.RefColumns {
 		ref := ColumnRef(v.Name)
 		if s.Table != s.RefTable {
-			ref = externalColRef(v.Name, s.RefTable.Name)
+			ref = ExternalColumnRef(v.Name, s.RefTable.Name)
 		}
 		r = append(r, ref)
 	}
@@ -992,7 +992,7 @@ func ColumnByRef(t *schema.Table, ref *schemahcl.Ref) (*schema.Column, error) {
 }
 
 func externalRef(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, *schema.Column, error) {
-	qualifier, name, err := tableName(ref)
+	qualifier, name, err := TableName(ref)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1045,7 +1045,8 @@ func findT[T schema.Object](sch *schema.Schema, qualifier, name string, findT fu
 	return
 }
 
-func tableName(ref *schemahcl.Ref) (string, string, error) {
+// TableName returns the qualifier and name from a reference to a table.
+func TableName(ref *schemahcl.Ref) (string, string, error) {
 	return RefName(ref, typeTable)
 }
 
@@ -1077,14 +1078,16 @@ func ColumnRef(cName string) *schemahcl.Ref {
 	})
 }
 
-func externalColRef(cName string, tName string) *schemahcl.Ref {
+// ExternalColumnRef returns the reference of a column by its name and table name.
+func ExternalColumnRef(cName string, tName string) *schemahcl.Ref {
 	return schemahcl.BuildRef([]schemahcl.PathIndex{
 		{T: typeTable, V: []string{tName}},
 		{T: typeColumn, V: []string{cName}},
 	})
 }
 
-func qualifiedExternalColRef(cName, tName, sName string) *schemahcl.Ref {
+// QualifiedExternalColRef returns the reference of a column by its name and qualified table name.
+func QualifiedExternalColRef(cName, tName, sName string) *schemahcl.Ref {
 	return schemahcl.BuildRef([]schemahcl.PathIndex{
 		{T: typeTable, V: []string{sName, tName}},
 		{T: typeColumn, V: []string{cName}},
