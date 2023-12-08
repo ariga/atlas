@@ -5,17 +5,18 @@
 package postgres
 
 import (
-	"ariga.io/atlas/schemahcl"
 	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/postgres/internal/postgresop"
 	"ariga.io/atlas/sql/schema"
@@ -83,6 +84,10 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	}
 	switch n := len(schemas); {
 	case n == 0:
+		// Empty string indicates current connected schema.
+		if name == "" {
+			return nil, &schema.NotExistError{Err: errors.New("postgres: current_schema() defined in search_path was not found")}
+		}
 		return nil, &schema.NotExistError{Err: fmt.Errorf("postgres: schema %q was not found", name)}
 	case n > 1:
 		return nil, fmt.Errorf("postgres: %d schemas were found for %q", n, name)
