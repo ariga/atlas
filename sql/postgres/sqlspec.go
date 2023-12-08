@@ -900,7 +900,6 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec(TypeDateRange),
 		schemahcl.NewTypeSpec(TypeDateMultiRange),
 		schemahcl.NewTypeSpec("hstore"),
-		schemahcl.NewTypeSpec("sql", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
 	),
 	// PostgreSQL internal, pseudo, and special types.
 	schemahcl.WithSpecs(func() (specs []*schemahcl.TypeSpec) {

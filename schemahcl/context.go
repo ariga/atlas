@@ -282,11 +282,18 @@ func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, er
 	if err != nil {
 		return nil, err
 	}
-	if ctx.Variables == nil {
-		ctx.Variables = make(map[string]cty.Value)
-	}
-	for k, v := range vars {
-		ctx.Variables[k] = v
+	switch {
+	case ctx.Variables == nil:
+		ctx.Variables = vars
+	case len(ctx.Variables) >= len(vars):
+		for k, v := range vars {
+			ctx.Variables[k] = v
+		}
+	default:
+		for k, v := range ctx.Variables {
+			vars[k] = v
+		}
+		ctx.Variables = vars
 	}
 	return ctx, nil
 }
@@ -402,13 +409,11 @@ func blocksOfType(blocks hclsyntax.Blocks, typeName string) []*hclsyntax.Block {
 }
 
 func attrMap(attrs hclsyntax.Attributes) map[string]cty.Value {
-	out := make(map[string]cty.Value)
+	out := make(map[string]cty.Value, len(attrs))
 	for _, v := range attrs {
-		value, diag := v.Expr.Value(nil)
-		if diag.HasErrors() {
-			continue
+		if value, diag := v.Expr.Value(nil); !diag.HasErrors() {
+			out[v.Name] = value
 		}
-		out[v.Name] = value
 	}
 	return out
 }

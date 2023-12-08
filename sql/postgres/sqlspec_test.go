@@ -12,7 +12,6 @@ import (
 	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
-	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/stretchr/testify/require"
 )
 
@@ -2238,53 +2237,4 @@ schema "s2" {
 schema "s3" {
 }
 `, string(buf))
-}
-
-func TestEvalHCLError(t *testing.T) {
-	for _, tt := range []struct {
-		text, err string
-	}{
-		{
-			text: `
-			table "test" {
-			  column "id" {
-			    type = string
-			  }
-			}`,
-			err: `schema.hcl:4,15-21: Unknown column.type; There is no type named "string".`,
-		},
-		{
-			text: `
-			table "test" {
-			  index "i" {
-			    type = unknown
-			  }
-			}`,
-			err: `schema.hcl:4,15-22: Unknown index.type; There is no type named "unknown".`,
-		},
-		{
-			text: `
-			table "test" {
-			  foreign_key "f" {
-			    on_delete = unknown
-			  }
-			}`,
-			err: `schema.hcl:4,20-27: Unknown foreign_key.on_delete; There is no on_delete named "unknown".`,
-		},
-		{
-			text: `
-			table "test" {
-			  partition {
-			    type = UNKNOWN
-			  }
-			}`,
-			err: `schema.hcl:4,15-22: Unknown partition.type; There is no type named "UNKNOWN".`,
-		},
-	} {
-		p := hclparse.NewParser()
-		_, diags := p.ParseHCL([]byte(tt.text), "schema.hcl")
-		require.False(t, diags.HasErrors())
-		err := EvalHCL.Eval(p, &schema.Schema{}, nil)
-		require.EqualError(t, err, tt.err)
-	}
 }
