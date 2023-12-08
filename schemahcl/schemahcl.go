@@ -447,7 +447,8 @@ func (s *State) resource(ctx *hcl.EvalContext, vr SchemaValidator, file *hcl.Fil
 		return nil, err
 	}
 	res := &Resource{
-		Attrs: attrs,
+		Attrs:    attrs,
+		Children: make([]*Resource, 0, len(body.Blocks)),
 	}
 	for _, blk := range body.Blocks {
 		// variable blocks may be included in the document but are skipped in unmarshaling.
@@ -479,28 +480,11 @@ func (s *State) mayScopeContext(ctx *hcl.EvalContext, scope []string) *hcl.EvalC
 	if !ok1 && !ok2 {
 		return ctx
 	}
-	nctx := &hcl.EvalContext{
-		Variables: make(map[string]cty.Value, len(vars)),
-		Functions: make(map[string]function.Function, len(funcs)),
-	}
-	for p := ctx; p != nil; p = p.Parent() {
-		for k, v := range p.Variables {
-			if isRef(v) {
-				nctx.Variables[k] = v
-			}
-		}
-	}
-	// Override the parent context with the scoped variables and functions.
-	for n, v := range vars {
-		nctx.Variables[n] = v
-	}
-	for n, f := range funcs {
-		nctx.Functions[n] = f
-	}
-	// A patch from the past. Should be moved
-	// to specific scopes in the future.
-	nctx.Functions["sql"] = rawExprFunc
-	return nctx
+	nctx := ctx.NewChild()
+	// Use the same variables/functions maps to avoid copying per scope, but return a
+	// another child context to prevent writes from different blocks to the same maps.
+	nctx.Variables, nctx.Functions = vars, funcs
+	return nctx.NewChild()
 }
 
 func (s *State) toAttrs(ctx *hcl.EvalContext, vr SchemaValidator, hclAttrs hclsyntax.Attributes, scope []string) ([]*Attr, error) {
@@ -521,7 +505,7 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, vr SchemaValidator, hclAttrs hclsy
 		switch t := value.Type(); {
 		case isRef(value):
 			if !value.Type().HasAttribute("__ref") {
-				return nil, fmt.Errorf("%s: invaid reference used in %s", hclAttr.SrcRange, hclAttr.Name)
+				return nil, fmt.Errorf("%s: invalid reference used in %s", hclAttr.SrcRange, hclAttr.Name)
 			}
 			at.V = cty.CapsuleVal(ctyRefType, &Ref{V: value.GetAttr("__ref").AsString()})
 		case (t.IsTupleType() || t.IsListType() || t.IsSetType()) && value.LengthInt() > 0:
