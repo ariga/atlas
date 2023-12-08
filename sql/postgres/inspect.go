@@ -937,7 +937,9 @@ type (
 		Name     string         // Sequence name.
 		Schema   *schema.Schema // Optional schema.
 		Type     schema.Type    // Sequence type.
+		Cache    int64          // Cache size.
 		Min, Max *int64         // Min and max values.
+		Cycle    bool           // Whether the sequence cycles.
 		Attrs    []schema.Attr  // Additional attributes (e.g., comments),
 		Owner    struct {       // Optional owner of the sequence.
 			T *schema.Table
