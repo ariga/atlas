@@ -186,7 +186,7 @@ atlas schema inspect -u "mysql://localhost" --exclude "*.prefix_*"
 
 atlas schema inspect -u "mysql://localhost" --exclude "schema.table"
 
-atlas schema inspect -u "mysql://localhost" --exclude "schema.t*[type=table]"
+atlas schema inspect -u "mysql://localhost" --exclude "schema.t*[type=table]" --exclude "schema.e*[type=enum]"
 ```
 
 </TabItem>
@@ -199,7 +199,7 @@ atlas schema inspect -u "mysql://localhost" --exclude "prefix_*"
 
 atlas schema inspect -u "mysql://localhost" --exclude "table"
 
-atlas schema inspect -u "mysql://localhost" --exclude "t*[type=table]"
+atlas schema inspect -u "mysql://localhost" --exclude "t*[type=table]" --exclude "e*[type=enum]"
 ```
 
 </TabItem>

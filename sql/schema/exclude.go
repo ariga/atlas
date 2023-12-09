@@ -34,7 +34,7 @@ Filter:
 			}
 			if match {
 				// In case there is a match, and it is
-				// a single glob we exclude this 
+				// a single glob we exclude this
 				if len(g) == 1 {
 					continue Filter
 				}
@@ -88,6 +88,25 @@ func split(patterns []string) ([][]string, error) {
 }
 
 func excludeS(s *Schema, glob []string) error {
+	if globE, exclude := excludeType(typeE, glob[0]); exclude {
+		var objects []Object
+		for _, t := range s.Objects {
+			e, ok := t.(*EnumType)
+			if !ok {
+				objects = append(objects, t)
+				continue
+			}
+			match, err := filepath.Match(globE, e.T)
+			if err != nil {
+				return err
+			}
+			// No match or glob has more than one pattern.
+			if !match || len(glob) != 1 {
+				objects = append(objects, t)
+			}
+		}
+		s.Objects = objects
+	}
 	if globT, exclude := excludeType(typeT, glob[0]); exclude {
 		var tables []*Table
 		for _, t := range s.Tables {
@@ -214,6 +233,7 @@ func excludeV(t *View, pattern string) (err error) {
 }
 
 const (
+	typeE  = "enum"
 	typeV  = "view"
 	typeT  = "table"
 	typeC  = "column"
