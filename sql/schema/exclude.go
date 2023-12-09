@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package sqlx
+package schema
 
 import (
 	"encoding/csv"
@@ -10,16 +10,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	"ariga.io/atlas/sql/schema"
 )
 
 // ExcludeRealm filters resources in the realm based on the given patterns.
-func ExcludeRealm(r *schema.Realm, patterns []string) (*schema.Realm, error) {
+func ExcludeRealm(r *Realm, patterns []string) (*Realm, error) {
 	if len(patterns) == 0 {
 		return r, nil
 	}
-	var schemas []*schema.Schema
+	var schemas []*Schema
 	globs, err := split(patterns)
 	if err != nil {
 		return nil, err
@@ -36,7 +34,7 @@ Filter:
 			}
 			if match {
 				// In case there is a match, and it is
-				// a single glob we exclude this schema.
+				// a single glob we exclude this 
 				if len(g) == 1 {
 					continue Filter
 				}
@@ -52,7 +50,7 @@ Filter:
 }
 
 // ExcludeSchema filters resources in the schema based on the given patterns.
-func ExcludeSchema(s *schema.Schema, patterns []string) (*schema.Schema, error) {
+func ExcludeSchema(s *Schema, patterns []string) (*Schema, error) {
 	if len(patterns) == 0 {
 		return s, nil
 	}
@@ -89,9 +87,9 @@ func split(patterns []string) ([][]string, error) {
 	return globs, nil
 }
 
-func excludeS(s *schema.Schema, glob []string) error {
+func excludeS(s *Schema, glob []string) error {
 	if globT, exclude := excludeType(typeT, glob[0]); exclude {
-		var tables []*schema.Table
+		var tables []*Table
 		for _, t := range s.Tables {
 			match, err := filepath.Match(globT, t.Name)
 			if err != nil {
@@ -113,7 +111,7 @@ func excludeS(s *schema.Schema, glob []string) error {
 		s.Tables = tables
 	}
 	if globV, exclude := excludeType(typeV, glob[0]); exclude {
-		var views []*schema.View
+		var views []*View
 		for _, v := range s.Views {
 			match, err := filepath.Match(globV, v.Name)
 			if err != nil {
@@ -133,7 +131,7 @@ func excludeS(s *schema.Schema, glob []string) error {
 	}
 	if globF, exclude := excludeType(typeFn, glob[0]); exclude {
 		var err error
-		s.Funcs, err = filter(s.Funcs, func(f *schema.Func) (bool, error) {
+		s.Funcs, err = filter(s.Funcs, func(f *Func) (bool, error) {
 			return filepath.Match(globF, f.Name)
 		})
 		if err != nil {
@@ -142,7 +140,7 @@ func excludeS(s *schema.Schema, glob []string) error {
 	}
 	if globP, exclude := excludeType(typePr, glob[0]); exclude {
 		var err error
-		s.Procs, err = filter(s.Procs, func(p *schema.Proc) (bool, error) {
+		s.Procs, err = filter(s.Procs, func(p *Proc) (bool, error) {
 			return filepath.Match(globP, p.Name)
 		})
 		if err != nil {
@@ -152,11 +150,11 @@ func excludeS(s *schema.Schema, glob []string) error {
 	return nil
 }
 
-func excludeT(t *schema.Table, pattern string) (err error) {
-	ex := make(map[*schema.Index]struct{})
-	ef := make(map[*schema.ForeignKey]struct{})
+func excludeT(t *Table, pattern string) (err error) {
+	ex := make(map[*Index]struct{})
+	ef := make(map[*ForeignKey]struct{})
 	if p, exclude := excludeType(typeC, pattern); exclude {
-		t.Columns, err = filter(t.Columns, func(c *schema.Column) (bool, error) {
+		t.Columns, err = filter(t.Columns, func(c *Column) (bool, error) {
 			match, err := filepath.Match(p, c.Name)
 			if !match || err != nil {
 				return false, err
@@ -171,7 +169,7 @@ func excludeT(t *schema.Table, pattern string) (err error) {
 		})
 	}
 	if p, exclude := excludeType(typeI, pattern); exclude {
-		t.Indexes, err = filter(t.Indexes, func(idx *schema.Index) (bool, error) {
+		t.Indexes, err = filter(t.Indexes, func(idx *Index) (bool, error) {
 			if _, ok := ex[idx]; ok {
 				return true, nil
 			}
@@ -179,7 +177,7 @@ func excludeT(t *schema.Table, pattern string) (err error) {
 		})
 	}
 	if p, exclude := excludeType(typeF, pattern); exclude {
-		t.ForeignKeys, err = filter(t.ForeignKeys, func(fk *schema.ForeignKey) (bool, error) {
+		t.ForeignKeys, err = filter(t.ForeignKeys, func(fk *ForeignKey) (bool, error) {
 			if _, ok := ef[fk]; ok {
 				return true, nil
 			}
@@ -187,8 +185,8 @@ func excludeT(t *schema.Table, pattern string) (err error) {
 		})
 	}
 	if p, exclude := excludeType(typeK, pattern); exclude {
-		t.Attrs, err = filter(t.Attrs, func(a schema.Attr) (bool, error) {
-			c, ok := a.(*schema.Check)
+		t.Attrs, err = filter(t.Attrs, func(a Attr) (bool, error) {
+			c, ok := a.(*Check)
 			if !ok {
 				return false, nil
 			}
@@ -202,9 +200,9 @@ func excludeT(t *schema.Table, pattern string) (err error) {
 	return
 }
 
-func excludeV(t *schema.View, pattern string) (err error) {
+func excludeV(t *View, pattern string) (err error) {
 	if p, exclude := excludeType(typeC, pattern); exclude {
-		t.Columns, err = filter(t.Columns, func(c *schema.Column) (bool, error) {
+		t.Columns, err = filter(t.Columns, func(c *Column) (bool, error) {
 			match, err := filepath.Match(p, c.Name)
 			if !match || err != nil {
 				return false, err
