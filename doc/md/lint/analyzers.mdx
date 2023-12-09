@@ -253,6 +253,10 @@ The following schema change checks are provided by Atlas:
 | **MY**                                    | MySQL and MariaDB specific checks                                               |
 | [MY101](#MY101)                           | Adding a non-nullable column without a `DEFAULT` value to an existing table     |
 | [MY102](#MY102)                           | Adding a column with an inline `REFERENCES` clause has no actual effect         |
+| [MY110](#MY110)                           | Removing enum values from a column requires a table copy                        |
+| [MY111](#MY111)                           | Reordering enum values of a colum requires a table copy                         |
+| [MY112](#MY112)                           | Inserting new enum values not at the end requires a table copy                  |
+| [MY113](#MY113)                           | Exceeding 256 enum values changes storage size and requires a table copy        |
 | **NM**                                    | **[Naming Conventions](#naming-conventions-policy)**                            |
 | [NM101](#NM101)                           | Schema name violates the naming convention                                      |
 | [NM102](#NM102)                           | Table name violates the naming convention                                       |
@@ -428,6 +432,38 @@ specification instead. For example:
 -CREATE TABLE pets (owner_id int REFERENCES users(id));
 +CREATE TABLE pets (owner_id int, FOREIGN KEY (owner_id) REFERENCES users(id));
 ```
+
+#### MY110 {#MY110}
+
+Removing enum values from a column changes the column type and requires a table copy. During this process, the table
+is locked for write operations. In addition, operation may fail if the column contains values that are not in the new
+enum definition.
+
+#### MY111 {#MY111}
+
+Reordering enum values of a colum requires a table copy. During this process, the table is locked for write operations.
+
+Note that since the order of the enum values defines how the table is sorted when using `ORDER BY` on the column,
+controlling the ordering behavior can be achieved using the `DESC` clause or expressions as follows:
+
+```sql {1,4}
+-- Instead of reversing the enum values.
+SELECT * FROM t ORDER BY enum_column DESC;
+
+-- Instead of reordering the enum values.
+SELECT * FROM t ORDER BY CASE enum_column WHEN 'a' THEN 1 WHEN 'b' THEN 2 ELSE 3 END;
+```
+
+#### MY112 {#MY112}
+
+Inserting new enum values not at the end requires table copy. During this process, the table is locked for write operations.
+
+If possible, it is recommended to add new enum values at the end of the enum definition.
+
+#### MY113 {#MY113}
+
+Exceeding 256 enum values changes storage size and requires a table copy. During this process, the table is locked for
+write operations.
 
 #### LT101 {#LT101}
 
