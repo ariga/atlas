@@ -92,6 +92,69 @@ func TestExcludeRealm_Tables(t *testing.T) {
 	require.Empty(t, r.Schemas[2].Tables)
 }
 
+func TestExcludeRealm_Enums(t *testing.T) {
+	e1, e2, e3 := &EnumType{T: "e1"}, &EnumType{T: "e2"}, &EnumType{T: "e3"}
+	s1, s2, s3 := New("s1").AddObjects(e1), New("s2").AddObjects(e1, e2), New("s3").AddObjects(e1, e2, e3)
+
+	r, err := ExcludeRealm(NewRealm(s1, s2, s3), []string{"s1.e1"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 3)
+	require.Empty(t, r.Schemas[0].Objects)
+	require.Len(t, r.Schemas[1].Objects, 2)
+	require.Len(t, r.Schemas[2].Objects, 3)
+
+	// Wrong selector.
+	r, err = ExcludeRealm(NewRealm(s1, s2, s3), []string{"*.e1[type=table]"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 3)
+	require.Empty(t, r.Schemas[0].Objects)
+	require.Len(t, r.Schemas[1].Objects, 2)
+	require.Len(t, r.Schemas[2].Objects, 3)
+
+	// Enum selector.
+	r, err = ExcludeRealm(NewRealm(s1, s2, s3), []string{"*.e1[type=enum]"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 3)
+	require.Empty(t, r.Schemas[0].Objects)
+	require.Len(t, r.Schemas[1].Objects, 1)
+	require.Equal(t, []Object{e2}, r.Schemas[1].Objects)
+	require.Len(t, r.Schemas[2].Objects, 2)
+	require.Equal(t, []Object{e2, e3}, r.Schemas[2].Objects)
+
+	// Exclude all.
+	r, err = ExcludeRealm(NewRealm(s1, s2, s3), []string{"*.*"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 3)
+	require.Empty(t, r.Schemas[0].Objects)
+	require.Empty(t, r.Schemas[1].Objects)
+	require.Empty(t, r.Schemas[2].Objects)
+}
+
+func TestExcludeSchema_Enums(t *testing.T) {
+	e1, e2, e3 := &EnumType{T: "e1"}, &EnumType{T: "e2"}, &EnumType{T: "e3"}
+	r := NewRealm(New("s1").AddObjects(e1, e2, e3))
+
+	s, err := ExcludeSchema(r.Schemas[0], []string{"e1"})
+	require.NoError(t, err)
+	require.Len(t, s.Objects, 2)
+	require.Equal(t, []Object{e2, e3}, s.Objects)
+
+	s, err = ExcludeSchema(r.Schemas[0], []string{"e1", "e2"})
+	require.NoError(t, err)
+	require.Len(t, s.Objects, 1)
+	require.Equal(t, []Object{e3}, s.Objects)
+
+	// Wrong selector.
+	s, err = ExcludeSchema(r.Schemas[0], []string{"e*[type=view]"})
+	require.NoError(t, err)
+	require.Len(t, s.Objects, 1)
+
+	// Enum selector.
+	s, err = ExcludeSchema(r.Schemas[0], []string{"*[type=enum]"})
+	require.NoError(t, err)
+	require.Empty(t, s.Objects)
+}
+
 func TestExcludeRealm_Selector(t *testing.T) {
 	r := NewRealm(
 		New("s1").
