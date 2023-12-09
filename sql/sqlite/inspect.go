@@ -54,7 +54,7 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 			return nil, err
 		}
 	}
-	return sqlx.ExcludeRealm(r, opts.Exclude)
+	return schema.ExcludeRealm(r, opts.Exclude)
 }
 
 // InspectSchema returns schema descriptions of the tables in the given schema.
@@ -96,7 +96,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 			return nil, err
 		}
 	}
-	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
+	return schema.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 
 func (i *inspect) inspectTable(ctx context.Context, t *schema.Table) error {

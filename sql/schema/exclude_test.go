@@ -2,18 +2,16 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package sqlx
+package schema
 
 import (
 	"testing"
-
-	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestExcludeRealm_Schemas(t *testing.T) {
-	r := schema.NewRealm(schema.New("s1"), schema.New("s2"), schema.New("s3"))
+	r := NewRealm(New("s1"), New("s2"), New("s3"))
 	r, err := ExcludeRealm(r, []string{"s4"})
 	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
@@ -28,7 +26,7 @@ func TestExcludeRealm_Schemas(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, r.Schemas)
 
-	r = schema.NewRealm(schema.New("s1"), schema.New("s2"), schema.New("s3"))
+	r = NewRealm(New("s1"), New("s2"), New("s3"))
 	r, err = ExcludeRealm(r, []string{"s*.*", "s*.*.*"})
 	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
@@ -38,19 +36,19 @@ func TestExcludeRealm_Schemas(t *testing.T) {
 }
 
 func TestExcludeRealm_Tables(t *testing.T) {
-	r := schema.NewRealm(
-		schema.New("s0"),
-		schema.New("s1").AddTables(
-			schema.NewTable("t1"),
+	r := NewRealm(
+		New("s0"),
+		New("s1").AddTables(
+			NewTable("t1"),
 		),
-		schema.New("s2").AddTables(
-			schema.NewTable("t1"),
-			schema.NewTable("t2"),
+		New("s2").AddTables(
+			NewTable("t1"),
+			NewTable("t2"),
 		),
-		schema.New("s3").AddTables(
-			schema.NewTable("t1"),
-			schema.NewTable("t2"),
-			schema.NewTable("t3"),
+		New("s3").AddTables(
+			NewTable("t1"),
+			NewTable("t2"),
+			NewTable("t3"),
 		),
 	)
 	r, err := ExcludeRealm(r, []string{"s4"})
@@ -95,23 +93,23 @@ func TestExcludeRealm_Tables(t *testing.T) {
 }
 
 func TestExcludeRealm_Selector(t *testing.T) {
-	r := schema.NewRealm(
-		schema.New("s1").
+	r := NewRealm(
+		New("s1").
 			AddTables(
-				schema.NewTable("t1"),
+				NewTable("t1"),
 			).
 			AddViews(
-				schema.NewView("v1", "SELECT * FROM t1"),
+				NewView("v1", "SELECT * FROM t1"),
 			).
 			AddFuncs(
-				&schema.Func{Name: "f1"},
-				&schema.Func{Name: "f2"},
-				&schema.Func{Name: "f3"},
+				&Func{Name: "f1"},
+				&Func{Name: "f2"},
+				&Func{Name: "f3"},
 			).
 			AddProcs(
-				&schema.Proc{Name: "p1"},
-				&schema.Proc{Name: "p2"},
-				&schema.Proc{Name: "p3"},
+				&Proc{Name: "p1"},
+				&Proc{Name: "p2"},
+				&Proc{Name: "p3"},
 			),
 	)
 	r, err := ExcludeRealm(r, []string{"*.*[type=table]"})
@@ -135,9 +133,9 @@ func TestExcludeRealm_Selector(t *testing.T) {
 	require.Empty(t, r.Schemas[0].Procs)
 
 	r.Schemas[0].AddTables(
-		schema.NewTable("t1"),
-		schema.NewTable("t2"),
-		schema.NewTable("t3"),
+		NewTable("t1"),
+		NewTable("t2"),
+		NewTable("t3"),
 	)
 	r, err = ExcludeRealm(r, []string{"*.*[type=view]"})
 	require.NoError(t, err)
@@ -149,7 +147,7 @@ func TestExcludeRealm_Selector(t *testing.T) {
 	require.Len(t, r.Schemas[0].Tables, 1)
 
 	r.Schemas[0].AddViews(
-		schema.NewView("v1", "SELECT * FROM t1"),
+		NewView("v1", "SELECT * FROM t1"),
 	)
 	r, err = ExcludeRealm(r, []string{"*.*[type=view|table]"})
 	require.NoError(t, err)
@@ -158,10 +156,10 @@ func TestExcludeRealm_Selector(t *testing.T) {
 
 	r.Schemas[0].
 		AddTables(
-			schema.NewTable("t1").AddColumns(schema.NewColumn("c1")).AddIndexes(schema.NewIndex("i1")).AddChecks(schema.NewCheck().SetName("k1")),
+			NewTable("t1").AddColumns(NewColumn("c1")).AddIndexes(NewIndex("i1")).AddChecks(NewCheck().SetName("k1")),
 		).
 		AddViews(
-			schema.NewView("v1", "SELECT * FROM t1").AddColumns(schema.NewColumn("c1")),
+			NewView("v1", "SELECT * FROM t1").AddColumns(NewColumn("c1")),
 		)
 	r, err = ExcludeRealm(r, []string{"*.*[type=table].*1[type=column|check]"})
 	require.NoError(t, err)
@@ -177,9 +175,9 @@ func TestExcludeRealm_Selector(t *testing.T) {
 }
 
 func TestExcludeRealm_Checks(t *testing.T) {
-	r := schema.NewRealm(
-		schema.New("s1").AddTables(
-			schema.NewTable("t1").AddChecks(schema.NewCheck().SetName("c1")),
+	r := NewRealm(
+		New("s1").AddTables(
+			NewTable("t1").AddChecks(NewCheck().SetName("c1")),
 		),
 	)
 	r, err := ExcludeRealm(r, []string{"s1.t1.c1"})
@@ -188,40 +186,40 @@ func TestExcludeRealm_Checks(t *testing.T) {
 }
 
 func TestExcludeRealm_Columns(t *testing.T) {
-	r := schema.NewRealm(
-		schema.New("s1").AddTables(
-			func() *schema.Table {
-				t := schema.NewTable("t1").AddColumns(schema.NewColumn("c1"))
-				t.AddIndexes(schema.NewIndex("i1").AddColumns(t.Columns[0]))
+	r := NewRealm(
+		New("s1").AddTables(
+			func() *Table {
+				t := NewTable("t1").AddColumns(NewColumn("c1"))
+				t.AddIndexes(NewIndex("i1").AddColumns(t.Columns[0]))
 				return t
 			}(),
 		),
-		schema.New("s2").AddTables(
-			func() *schema.Table {
-				t := schema.NewTable("t1").AddColumns(schema.NewColumn("c1"))
-				t.AddIndexes(schema.NewIndex("i1").AddColumns(t.Columns[0]))
+		New("s2").AddTables(
+			func() *Table {
+				t := NewTable("t1").AddColumns(NewColumn("c1"))
+				t.AddIndexes(NewIndex("i1").AddColumns(t.Columns[0]))
 				return t
 			}(),
-			func() *schema.Table {
-				t := schema.NewTable("t2").AddColumns(schema.NewColumn("c1"), schema.NewColumn("c2"))
-				t.AddIndexes(schema.NewIndex("i1").AddColumns(t.Columns[0]), schema.NewIndex("i2").AddColumns(t.Columns[1]))
+			func() *Table {
+				t := NewTable("t2").AddColumns(NewColumn("c1"), NewColumn("c2"))
+				t.AddIndexes(NewIndex("i1").AddColumns(t.Columns[0]), NewIndex("i2").AddColumns(t.Columns[1]))
 				return t
 			}(),
 		),
-		schema.New("s3").AddTables(
-			func() *schema.Table {
-				t := schema.NewTable("t1").AddColumns(schema.NewColumn("c1"))
-				t.AddIndexes(schema.NewIndex("i1").AddColumns(t.Columns[0]))
+		New("s3").AddTables(
+			func() *Table {
+				t := NewTable("t1").AddColumns(NewColumn("c1"))
+				t.AddIndexes(NewIndex("i1").AddColumns(t.Columns[0]))
 				return t
 			}(),
-			func() *schema.Table {
-				t := schema.NewTable("t2").AddColumns(schema.NewColumn("c1"), schema.NewColumn("c2"))
-				t.AddIndexes(schema.NewIndex("i1").AddColumns(t.Columns[0]), schema.NewIndex("i2").AddColumns(t.Columns[1]))
+			func() *Table {
+				t := NewTable("t2").AddColumns(NewColumn("c1"), NewColumn("c2"))
+				t.AddIndexes(NewIndex("i1").AddColumns(t.Columns[0]), NewIndex("i2").AddColumns(t.Columns[1]))
 				return t
 			}(),
-			func() *schema.Table {
-				t := schema.NewTable("t3").AddColumns(schema.NewColumn("c1"), schema.NewColumn("c2"), schema.NewColumn("c3"))
-				t.AddIndexes(schema.NewIndex("i1").AddColumns(t.Columns[0]), schema.NewIndex("i2").AddColumns(t.Columns[1]))
+			func() *Table {
+				t := NewTable("t3").AddColumns(NewColumn("c1"), NewColumn("c2"), NewColumn("c3"))
+				t.AddIndexes(NewIndex("i1").AddColumns(t.Columns[0]), NewIndex("i2").AddColumns(t.Columns[1]))
 				return t
 			}(),
 		),
@@ -277,10 +275,10 @@ func TestExcludeRealm_Columns(t *testing.T) {
 }
 
 func TestExcludeSchema(t *testing.T) {
-	r := schema.NewRealm(
-		schema.New("s1").AddTables(
-			schema.NewTable("t1"),
-			schema.NewTable("t2"),
+	r := NewRealm(
+		New("s1").AddTables(
+			NewTable("t1"),
+			NewTable("t2"),
 		),
 	)
 	_, err := ExcludeSchema(r.Schemas[0], []string{"t2"})
