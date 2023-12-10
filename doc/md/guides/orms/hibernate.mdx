@@ -51,6 +51,8 @@ If you don't have a Hibernate project handy, check out the [Hibernate getting st
 In this guide, we will use the [Hibernate Atlas Provider](https://github.com/ariga/atlas-provider-hibernate)
 to automatically plan schema migrations for a Hibernate project.
 
+Using the provider does not require connecting to the database.
+
 ### Installation
 
 Install Atlas from macOS or Linux by running:
@@ -66,7 +68,7 @@ Install the provider by adding this plugin to your Gradle project:
 
 ```gradle
 plugins {
-    id("io.atlasgo.hibernate-provider") version "0.1"
+    id("io.atlasgo.hibernate-provider-gradle-plugin") version "0.1"
 }
 ```
 </TabItem>
@@ -74,14 +76,24 @@ plugins {
 
 ```gradle
 plugins {
-    id "io.atlasgo.hibernate-provider" version "0.1"
+    id "io.atlasgo.hibernate-provider-gradle-plugin" version "0.1"
 }
 ```
 </TabItem>
 <TabItem value="Maven" label="Maven">
 
 ```
-Coming soon!
+<build>
+    <pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>io.atlasgo</groupId>
+                <artifactId>hibernate-provider-maven-plugin</artifactId>
+                <version>0.1</version>
+            </plugin>
+        </plugins>
+    </pluginManagement>
+</build>
 ```
 </TabItem>
 </Tabs>
@@ -98,34 +110,54 @@ Verify that the plugin is installed by running this command:
 <TabItem value="Maven" label="Maven" default>
 
 ```
-Coming soon!
+mvn help:describe -Dplugin=hibernate-provider -Dgoal=schema
 ```
 </TabItem>
 </Tabs>
 
-### Library vs Gradle task
+### Library vs Standalone
 
 The Atlas Hibernate Provider can be used in two modes:
-* **Gradle Task** - In most cases, you can use the provider as a Gradle task to output
+* **Standalone** - In most cases, you can use the provider as a Gradle task (or a Maven Mojo) to output
 the Hibernate schema and load the schema into Atlas.
 * **Library** - If you are initializing Hibernate in a custom way, using an older version of
 Hibernate or if you are not using Gradle, you can use the provider as a library and create
 a small application that prints the schema to stdout.
 
-### Gradle Task
+### Standalone
 
 In your project directory, create a new file named `atlas.hcl` with the following contents:
 
+<Tabs>
+<TabItem value="Gradle" label="Gradle" default>
+
 ```hcl
 data "external_schema" "hibernate" {
-  program = [
-    "./gradlew",
-    "-q",
-    "schema",
-    "--properties", "schema-export.properties"
-  ]
+    program = [
+        "./gradlew",
+        "-q",
+        "schema",
+        "--properties", "schema-export.properties"
+    ]
 }
 ```
+
+</TabItem>
+<TabItem value="Maven" label="Maven">
+
+```hcl
+data "external_schema" "hibernate" {
+    program = [
+        "./mvn",
+        "-q",
+        "hibernate-provider:schema",
+        "-Dproperties", "schema-export.properties"
+    ]
+}
+```
+
+</TabItem>
+</Tabs>
 
 Depending on your database, add an environment configuration. For example, for MySQL and PostgreSQL:
 
@@ -190,13 +222,13 @@ jakarta.persistence.database-product-name=PostgreSQL
 
 > Note: The properties being used might vary depending on the version of Hibernate and the database connector that is configured for your project.
 
-### Script mode
+### Library mode
 
 We are going to add the provider as a dependency in Gradle (or Maven) and configure Hibernate to use
 `ConsoleSchemaManagementTool`. In this example, we are going to use Spring to initialize Hibernate.
 
 > By default, the `HibernateSchemaManagementTool` will try to connect to the
-database during initialization and generate the schema into the database.
+database during initialization and generate the schema into the database. The `ConsoleSchemaManagementTool` overrides this behaviour.
 
 Start by adding the provider as a dependency:
 
@@ -212,7 +244,11 @@ dependencies {
 <TabItem value="Maven" label="Maven">
 
 ```
-Coming soon!
+<dependency>
+    <groupId>io.atlasgo</groupId>
+    <artifactId>hibernate-provider</artifactId>
+    <version>0.1</version>
+</dependency>
 ```
 </TabItem>
 </Tabs>
@@ -364,7 +400,25 @@ public class Location {
 Currently, Atlas does not support using generated fields that require data initialization such as GenerationType.SEQUENCE, GenerationType.TABLE, and Generation.AUTO.
 
 If needed, you can still export the schema using the flag --enable-table-generators (or -Denable-table-generators using Maven), when applying the schema to your database, you will need
-to make sure to apply the ignored statements.
+to make sure to apply the ignored statements (using `atlas migrate --env hibernate diff --edit`, see more information on manual migrations [here](/versioned/new))
+
+For example, if you are adding GenerationType.SEQUENCE to the Event entity, you will to add an insert statements to your generated migration file:
+
+```diff
+diff --git a/examples/with_local_plugin_repository/migrations/20231210140844.sql b/examples/with_local_plugin_repository/migrations/20231210140844.sql
+index ad80a64..5955834 100644
+--- a/examples/with_local_plugin_repository/migrations/20231210140844.sql
++++ b/examples/with_local_plugin_repository/migrations/20231210140844.sql
+@@ -4,3 +4,6 @@ CREATE TABLE `Event` (`id` bigint NOT NULL AUTO_INCREMENT, `title` varchar(255)
+ -- Create "Event_SEQ" table
+ CREATE TABLE `Event_SEQ` (`next_val` bigint NULL) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
++ -- Initialize "Event_SEQ" table
++ insert into Event_SEQ values ( 1 );
+```
+
+Testing these changes can be done by running the application with a local database and creating the entity. To apply the migration directory
+to the local database, use `atlas migrate apply`.
+
 :::
 
 Using the configuration we created earlier, we can generate a migration file by running the following command:
