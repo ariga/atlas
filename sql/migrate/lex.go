@@ -44,13 +44,47 @@ func (s *Stmt) Directive(name string) (ds []string) {
 
 // Stmts provides a generic implementation for extracting SQL statements from the given file contents.
 func Stmts(input string) ([]*Stmt, error) {
+	return (&StmtScanner{
+		ScannerOptions: ScannerOptions{
+			// Default options for backward compatibility.
+			MatchBegin:       false,
+			MatchBeginAtomic: true,
+			MatchDollarQuote: true,
+		},
+	}).Scan(input)
+}
+
+type (
+	// StmtScanner scanning SQL statements from migration and schema files.
+	StmtScanner struct {
+		ScannerOptions
+		// scanner state.
+		src, input string   // src and current input text
+		pos        int      // current phase position
+		total      int      // total bytes scanned so far
+		width      int      // size of latest rune
+		delim      string   // configured delimiter
+		comments   []string // collected comments
+	}
+	// ScannerOptions controls the behavior of the scanner.
+	ScannerOptions struct {
+		// MatchBegin enables matching for BEGIN ... END statements block.
+		MatchBegin bool
+		// MatchBeginAtomic enables matching for BEGIN ATOMIC ... END statements block.
+		MatchBeginAtomic bool
+		// MatchDollarQuote enables the PostgreSQL dollar-quoted string syntax.
+		MatchDollarQuote bool
+	}
+)
+
+// Scan scans the statement in the given input.
+func (s *StmtScanner) Scan(input string) ([]*Stmt, error) {
 	var stmts []*Stmt
-	l, err := newLex(input)
-	if err != nil {
+	if err := s.init(input); err != nil {
 		return nil, err
 	}
 	for {
-		s, err := l.stmt()
+		s, err := s.stmt()
 		if err == io.EOF {
 			return stmts, nil
 		}
@@ -61,13 +95,22 @@ func Stmts(input string) ([]*Stmt, error) {
 	}
 }
 
-type lex struct {
-	src, input string   // src and current input text
-	pos        int      // current phase position
-	total      int      // total bytes scanned so far
-	width      int      // size of latest rune
-	delim      string   // configured delimiter
-	comments   []string // collected comments
+// init initializes the scanner state.
+func (s *StmtScanner) init(input string) error {
+	s.comments = nil
+	s.pos, s.total, s.width = 0, 0, 0
+	s.src, s.input, s.delim = input, input, delimiter
+	if d, ok := directive(input, directiveDelimiter, directivePrefixSQL); ok {
+		if err := s.setDelim(d); err != nil {
+			return err
+		}
+		parts := strings.SplitN(input, "\n", 2)
+		if len(parts) == 1 {
+			return s.error(s.pos, "no input found after delimiter %q", d)
+		}
+		s.input = parts[1]
+	}
+	return nil
 }
 
 const (
@@ -76,262 +119,280 @@ const (
 	delimiterCmd = "delimiter"
 )
 
-func newLex(input string) (*lex, error) {
-	l := &lex{src: input, input: input, delim: delimiter}
-	if d, ok := directive(input, directiveDelimiter, directivePrefixSQL); ok {
-		if err := l.setDelim(d); err != nil {
-			return nil, err
-		}
-		parts := strings.SplitN(input, "\n", 2)
-		if len(parts) == 1 {
-			return nil, l.error(l.pos, "no input found after delimiter %q", d)
-		}
-		l.input = parts[1]
-	}
-	return l, nil
-}
-
 var (
 	// Dollar-quoted string as defined by the PostgreSQL scanner.
 	reDollarQuote = regexp.MustCompile(`^\$([A-Za-zÈ-ÿ_][\wÈ-ÿ]*)*\$`)
 	// The 'BEGIN ATOMIC' syntax as specified in the SQL 2003 standard.
 	reBeginAtomic = regexp.MustCompile(`(?i)^\s*BEGIN\s+ATOMIC\s+`)
+	reBegin       = regexp.MustCompile(`(?i)^\s*BEGIN\s+`)
 	reEnd         = regexp.MustCompile(`(?i)^\s*END\s*`)
 )
 
-func (l *lex) stmt() (*Stmt, error) {
+func (s *StmtScanner) stmt() (*Stmt, error) {
 	var (
 		depth, openingPos int
 		text              string
 	)
-	l.skipSpaces()
+	s.skipSpaces()
 Scan:
 	for {
-		switch r := l.next(); {
+		switch r := s.next(); {
 		case r == eos:
 			switch {
 			case depth > 0:
-				return nil, l.error(openingPos, "unclosed '('")
-			case l.pos > 0:
-				text = l.input
+				return nil, s.error(openingPos, "unclosed '('")
+			case s.pos > 0:
+				text = s.input
 				break Scan
 			default:
 				return nil, io.EOF
 			}
 		case r == '(':
 			if depth == 0 {
-				openingPos = l.pos
+				openingPos = s.pos
 			}
 			depth++
 		case r == ')':
 			if depth == 0 {
-				return nil, l.error(l.pos, "unexpected ')'")
+				return nil, s.error(s.pos, "unexpected ')'")
 			}
 			depth--
 		case r == '\'', r == '"', r == '`':
-			if err := l.skipQuote(r); err != nil {
+			if err := s.skipQuote(r); err != nil {
 				return nil, err
 			}
 		// Check if the start of the statement is the MySQL DELIMITER command.
 		// See https://dev.mysql.com/doc/refman/8.0/en/mysql-commands.html.
-		case l.pos == 1 && len(l.input) > len(delimiterCmd) && strings.EqualFold(l.input[:len(delimiterCmd)], delimiterCmd):
-			l.addPos(len(delimiterCmd) - 1)
-			if err := l.delimCmd(); err != nil {
+		case s.pos == 1 && len(s.input) > len(delimiterCmd) && strings.EqualFold(s.input[:len(delimiterCmd)], delimiterCmd):
+			s.addPos(len(delimiterCmd) - 1)
+			if err := s.delimCmd(); err != nil {
 				return nil, err
 			}
 		// Delimiters take precedence over comments.
-		case depth == 0 && strings.HasPrefix(l.input[l.pos-l.width:], l.delim):
-			l.addPos(len(l.delim) - l.width)
-			text = l.input[:l.pos]
+		case depth == 0 && strings.HasPrefix(s.input[s.pos-s.width:], s.delim):
+			s.addPos(len(s.delim) - s.width)
+			text = s.input[:s.pos]
 			break Scan
-		case r == '$' && reDollarQuote.MatchString(l.input[l.pos-1:]):
-			if err := l.skipDollarQuote(); err != nil {
+		case s.MatchDollarQuote && r == '$' && reDollarQuote.MatchString(s.input[s.pos-1:]):
+			if err := s.skipDollarQuote(); err != nil {
 				return nil, err
 			}
 		// Skip non-standard MySQL comments if they are inside
 		// expressions until we make the lexer driver-aware.
 		case depth == 0 && r == '#':
-			l.comment("#", "\n")
-		case r == '-' && l.next() == '-':
-			l.comment("--", "\n")
-		case r == '/' && l.next() == '*':
-			l.comment("/*", "*/")
-		case reBeginAtomic.MatchString(l.input[l.pos-1:]):
-			if err := l.skipBeginAtomic(); err != nil {
+			s.comment("#", "\n")
+		case r == '-' && s.next() == '-':
+			s.comment("--", "\n")
+		case r == '/' && s.next() == '*':
+			s.comment("/*", "*/")
+		case s.MatchBeginAtomic && reBeginAtomic.MatchString(s.input[s.pos-1:]):
+			if err := s.skipBeginAtomic(); err != nil {
 				return nil, err
 			}
-			text = l.input[:l.pos]
+			text = s.input[:s.pos]
+			break Scan
+		case s.MatchBegin && reBegin.MatchString(s.input[s.pos-1:]):
+			if err := s.skipBegin(); err != nil {
+				return nil, err
+			}
+			text = s.input[:s.pos]
 			break Scan
 		}
 	}
-	return l.emit(text), nil
+	return s.emit(text), nil
 }
 
-func (l *lex) next() rune {
-	if l.pos >= len(l.input) {
+func (s *StmtScanner) next() rune {
+	if s.pos >= len(s.input) {
 		return eos
 	}
-	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
-	l.width = w
-	l.addPos(w)
+	r, w := utf8.DecodeRuneInString(s.input[s.pos:])
+	s.width = w
+	s.addPos(w)
 	return r
 }
 
-func (l *lex) pick() rune {
-	p, w := l.pos, l.width
-	r := l.next()
-	l.pos, l.width = p, w
+func (s *StmtScanner) pick() rune {
+	p, w := s.pos, s.width
+	r := s.next()
+	s.pos, s.width = p, w
 	return r
 }
 
-func (l *lex) addPos(p int) {
-	l.pos += p
-	l.total += p
+func (s *StmtScanner) addPos(p int) {
+	s.pos += p
+	s.total += p
 }
 
-func (l *lex) skipQuote(quote rune) error {
-	pos := l.pos
+func (s *StmtScanner) skipQuote(quote rune) error {
+	pos := s.pos
 	for {
-		switch r := l.next(); {
+		switch r := s.next(); {
 		case r == eos:
-			return l.error(pos, "unclosed quote %q", quote)
+			return s.error(pos, "unclosed quote %q", quote)
 		case r == '\\':
-			l.next()
+			s.next()
 		case r == quote:
 			return nil
 		}
 	}
 }
 
-func (l *lex) skipDollarQuote() error {
-	m := reDollarQuote.FindString(l.input[l.pos-1:])
+func (s *StmtScanner) skipDollarQuote() error {
+	m := reDollarQuote.FindString(s.input[s.pos-1:])
 	if m == "" {
-		return l.error(l.pos, "unexpected dollar quote")
+		return s.error(s.pos, "unexpected dollar quote")
 	}
-	l.addPos(len(m) - 1)
+	s.addPos(len(m) - 1)
 	for {
-		switch r := l.next(); {
+		switch r := s.next(); {
 		case r == eos:
 			// Fail only if a delimiter was not set.
-			if l.delim == "" {
-				return l.error(l.pos, "unclosed dollar-quoted string")
+			if s.delim == "" {
+				return s.error(s.pos, "unclosed dollar-quoted string")
 			}
 			return nil
-		case r == '$' && strings.HasPrefix(l.input[l.pos-1:], m):
-			l.addPos(len(m) - 1)
+		case r == '$' && strings.HasPrefix(s.input[s.pos-1:], m):
+			s.addPos(len(m) - 1)
 			return nil
 		}
 	}
 }
 
-func (l *lex) skipBeginAtomic() error {
-	m := reBeginAtomic.FindString(l.input[l.pos-1:])
+func (s *StmtScanner) skipBeginAtomic() error {
+	m := reBeginAtomic.FindString(s.input[s.pos-1:])
 	if m == "" {
-		return l.error(l.pos, "unexpected missing BEGIN ATOMIC block")
+		return s.error(s.pos, "unexpected missing BEGIN ATOMIC block")
 	}
-	l.addPos(len(m) - 1)
-	body, err := newLex(l.input[l.pos:])
-	if err != nil {
-		return l.error(l.pos, "create scanner for sql body: %v", err)
+	s.addPos(len(m) - 1)
+	body := &StmtScanner{ScannerOptions: s.ScannerOptions}
+	if err := body.init(s.input[s.pos:]); err != nil {
+		return err
 	}
 	for {
-		s, err := body.stmt()
+		stmt, err := body.stmt()
 		if err == io.EOF {
-			return l.error(l.pos, "unexpected eof when scanning sql body")
+			return s.error(s.pos, "unexpected eof when scanning sql body")
 		}
 		if err != nil {
-			return l.error(l.pos, "scan sql body: %v", err)
+			return s.error(s.pos, "scan sql body: %v", err)
 		}
-		if reEnd.MatchString(s.Text) {
+		if reEnd.MatchString(stmt.Text) {
 			break
 		}
 	}
-	l.addPos(body.total)
+	s.addPos(body.total)
 	return nil
 }
 
-func (l *lex) comment(left, right string) {
-	i := strings.Index(l.input[l.pos:], right)
+func (s *StmtScanner) skipBegin() error {
+	m := reBegin.FindString(s.input[s.pos-1:])
+	if m == "" {
+		return s.error(s.pos, "unexpected missing BEGIN block")
+	}
+	s.addPos(len(m) - 1)
+	group := &StmtScanner{ScannerOptions: s.ScannerOptions}
+	if err := group.init(s.input[s.pos:]); err != nil {
+		return err
+	}
+	for depth := 1; depth > 0; {
+		switch stmt, err := group.stmt(); {
+		case err == io.EOF:
+			return s.error(s.pos, "unexpected eof when scanning compound statements")
+		case err != nil:
+			return s.error(s.pos, "scan compound statements: %v", err)
+		case reEnd.MatchString(stmt.Text):
+			if m := reEnd.FindString(stmt.Text); len(m) == len(stmt.Text) || strings.TrimPrefix(stmt.Text, m) == s.delim {
+				depth--
+			}
+		}
+	}
+	s.addPos(group.total)
+	return nil
+}
+
+func (s *StmtScanner) comment(left, right string) {
+	i := strings.Index(s.input[s.pos:], right)
 	// Not a comment.
 	if i == -1 {
 		return
 	}
 	// If the comment reside inside a statement, collect it.
-	if l.pos != len(left) {
-		l.addPos(i + len(right))
+	if s.pos != len(left) {
+		s.addPos(i + len(right))
 		return
 	}
-	l.addPos(i + len(right))
+	s.addPos(i + len(right))
 	// If we did not scan any statement characters, it
 	// can be skipped and stored in the comments group.
-	l.comments = append(l.comments, l.input[:l.pos])
-	l.input = l.input[l.pos:]
-	l.pos = 0
+	s.comments = append(s.comments, s.input[:s.pos])
+	s.input = s.input[s.pos:]
+	s.pos = 0
 	// Double \n separate the comments group from the statement.
-	if strings.HasPrefix(l.input, "\n\n") || right == "\n" && strings.HasPrefix(l.input, "\n") {
-		l.comments = nil
+	if strings.HasPrefix(s.input, "\n\n") || right == "\n" && strings.HasPrefix(s.input, "\n") {
+		s.comments = nil
 	}
-	l.skipSpaces()
+	s.skipSpaces()
 }
 
-func (l *lex) skipSpaces() {
-	n := len(l.input)
-	l.input = strings.TrimLeftFunc(l.input, unicode.IsSpace)
-	l.total += n - len(l.input)
+func (s *StmtScanner) skipSpaces() {
+	n := len(s.input)
+	s.input = strings.TrimLeftFunc(s.input, unicode.IsSpace)
+	s.total += n - len(s.input)
 }
 
-func (l *lex) emit(text string) *Stmt {
-	s := &Stmt{Pos: l.total - len(text), Text: text, Comments: l.comments}
-	l.input = l.input[l.pos:]
-	l.pos = 0
-	l.comments = nil
+func (s *StmtScanner) emit(text string) *Stmt {
+	stmt := &Stmt{Pos: s.total - len(text), Text: text, Comments: s.comments}
+	s.input = s.input[s.pos:]
+	s.pos = 0
+	s.comments = nil
 	// Trim custom delimiter.
-	if l.delim != delimiter {
-		s.Text = strings.TrimSuffix(s.Text, l.delim)
+	if s.delim != delimiter {
+		stmt.Text = strings.TrimSuffix(stmt.Text, s.delim)
 	}
-	s.Text = strings.TrimSpace(s.Text)
-	return s
+	stmt.Text = strings.TrimSpace(stmt.Text)
+	return stmt
 }
 
 // delimCmd checks if the scanned "DELIMITER"
 // text represents an actual delimiter command.
-func (l *lex) delimCmd() error {
+func (s *StmtScanner) delimCmd() error {
 	// A space must come after the delimiter.
-	if l.pick() != ' ' {
+	if s.pick() != ' ' {
 		return nil
 	}
 	// Scan delimiter.
-	for r := l.pick(); r != eos && r != '\n'; r = l.next() {
+	for r := s.pick(); r != eos && r != '\n'; r = s.next() {
 	}
-	delim := strings.TrimSpace(l.input[len(delimiterCmd):l.pos])
+	delim := strings.TrimSpace(s.input[len(delimiterCmd):s.pos])
 	// MySQL client allows quoting delimiters.
 	if strings.HasPrefix(delim, "'") && strings.HasSuffix(delim, "'") {
 		delim = strings.ReplaceAll(delim[1:len(delim)-1], "''", "'")
 	}
-	if err := l.setDelim(delim); err != nil {
+	if err := s.setDelim(delim); err != nil {
 		return err
 	}
 	// Skip all we saw until now.
-	l.emit(l.input[:l.pos])
+	s.emit(s.input[:s.pos])
 	return nil
 }
 
-func (l *lex) setDelim(d string) error {
+func (s *StmtScanner) setDelim(d string) error {
 	if d == "" {
 		return errors.New("empty delimiter")
 	}
 	// Unescape delimiters. e.g. "\\n" => "\n".
-	l.delim = strings.NewReplacer(`\n`, "\n", `\r`, "\r", `\t`, "\t").Replace(d)
+	s.delim = strings.NewReplacer(`\n`, "\n", `\r`, "\r", `\t`, "\t").Replace(d)
 	return nil
 }
 
-func (l *lex) error(pos int, format string, args ...any) error {
+func (s *StmtScanner) error(pos int, format string, args ...any) error {
 	format = "%d:%d: " + format
 	var (
-		p    = len(l.src) - len(l.input) + pos
-		s    = l.src[:p]
-		col  = strings.LastIndex(s, "\n")
-		line = 1 + strings.Count(s, "\n")
+		p    = len(s.src) - len(s.input) + pos
+		src  = s.src[:p]
+		col  = strings.LastIndex(src, "\n")
+		line = 1 + strings.Count(src, "\n")
 	)
 	if line == 1 {
 		col = p
