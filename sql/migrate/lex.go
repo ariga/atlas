@@ -217,13 +217,13 @@ Scan:
 			s.comment("--", "\n")
 		case r == '/' && s.next() == '*':
 			s.comment("/*", "*/")
-		case s.MatchBeginAtomic && reBeginAtomic.MatchString(s.input[s.pos-1:]):
+		case s.delim == delimiter && s.MatchBeginAtomic && reBeginAtomic.MatchString(s.input[s.pos-1:]):
 			if err := s.skipBeginAtomic(); err != nil {
 				return nil, err
 			}
 			text = s.input[:s.pos]
 			break Scan
-		case s.MatchBegin && reBegin.MatchString(s.input[s.pos-1:]):
+		case s.delim == delimiter && s.MatchBegin && reBegin.MatchString(s.input[s.pos-1:]):
 			if err := s.skipBegin(); err != nil {
 				return nil, err
 			}
