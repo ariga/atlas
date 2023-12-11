@@ -65,6 +65,12 @@ type (
 		ReferenceChanged(from, to schema.ReferenceOption) bool
 	}
 
+	// DropSchemaChanger is an optional interface allows DiffDriver to drop
+	// schema objects before dropping the schema itself.
+	DropSchemaChanger interface {
+		DropSchemaChange(*schema.Schema) []schema.Change
+	}
+
 	// A Normalizer wraps the Normalize method for normalizing the from and to tables before
 	// running diffing. The "from" usually represents the inspected database state (current),
 	// and the second represents the desired state.
@@ -107,7 +113,12 @@ func (d *Diff) RealmDiff(from, to *schema.Realm, options ...schema.DiffOption) (
 	for _, s1 := range from.Schemas {
 		s2, ok := to.Schema(s1.Name)
 		if !ok {
-			changes = opts.AddOrSkip(changes, &schema.DropSchema{S: s1})
+			if ds, ok := d.DiffDriver.(DropSchemaChanger); ok {
+				// The driver can drop other objects before dropping the schema.
+				changes = opts.AddOrSkip(changes, ds.DropSchemaChange(s1)...)
+			} else {
+				changes = opts.AddOrSkip(changes, &schema.DropSchema{S: s1})
+			}
 			continue
 		}
 		change, err := d.schemaDiff(s1, s2, opts)
