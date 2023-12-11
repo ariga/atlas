@@ -246,11 +246,10 @@ ALTER TABLE t MODIFY COLUMN c INT NOT NULL;
 		},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			var (
-				p myparse.Parser
-				f = migrate.NewLocalFile("file", []byte(tt.file))
-			)
-			filled, err := p.ColumnFilledBefore(f, schema.NewTable("t"), schema.NewColumn("c"), tt.pos)
+			var p myparse.Parser
+			stmts, err := migrate.Stmts(tt.file)
+			require.NoError(t, err)
+			filled, err := p.ColumnFilledBefore(stmts, schema.NewTable("t"), schema.NewColumn("c"), tt.pos)
 			require.Equal(t, err != nil, tt.wantErr, err)
 			require.Equal(t, filled, tt.wantFilled)
 		})
@@ -321,11 +320,10 @@ UPDATE t SET c = CONCAT('tenant_', d) WHERE c = 0;
 		},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			var (
-				p myparse.Parser
-				f = migrate.NewLocalFile("file", []byte(tt.file))
-			)
-			filled, err := p.ColumnFilledAfter(f, schema.NewTable("t"), schema.NewColumn("c"), tt.pos, tt.matchValue)
+			var p myparse.Parser
+			stmts, err := migrate.Stmts(tt.file)
+			require.NoError(t, err)
+			filled, err := p.ColumnFilledAfter(stmts, schema.NewTable("t"), schema.NewColumn("c"), tt.pos, tt.matchValue)
 			require.Equal(t, err != nil, tt.wantErr, err)
 			require.Equal(t, filled, tt.wantFilled)
 		})
@@ -377,11 +375,10 @@ CREATE VIEW old AS SELECT a, b, c FROM new;
 		},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			var (
-				p myparse.Parser
-				f = migrate.NewLocalFile("file", []byte(tt.file))
-			)
-			created, err := p.CreateViewAfter(f, "old", "new", tt.pos)
+			var p myparse.Parser
+			stmts, err := migrate.Stmts(tt.file)
+			require.NoError(t, err)
+			created, err := p.CreateViewAfter(stmts, "old", "new", tt.pos)
 			require.Equal(t, err != nil, tt.wantErr, err)
 			require.Equal(t, created, tt.wantCreated)
 		})

@@ -41,7 +41,7 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 }
 
 func modifyNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err error) {
-	if p.Column.Default != nil || datadepend.ColumnFilled(p.File, p.Table, p.Column, p.Change.Stmt.Pos) {
+	if p.Column.Default != nil || datadepend.ColumnFilled(p.Pass, p.Table, p.Column, p.Change.Stmt.Pos) {
 		return nil, nil
 	}
 	return []sqlcheck.Diagnostic{

@@ -28,7 +28,15 @@ type Parser interface {
 	//	UPDATE <table> SET <column> = <value>
 	//	UPDATE <table> SET <column> = <value> WHERE <column> IS NULL
 	//
-	ColumnFilledBefore(migrate.File, *schema.Table, *schema.Column, int) (bool, error)
+	ColumnFilledBefore([]*migrate.Stmt, *schema.Table, *schema.Column, int) (bool, error)
+
+	// CreateViewAfter checks if a view was created after the position with the given name
+	// to a table. For example:
+	//
+	//	ALTER TABLE `users` RENAME TO `Users`
+	//	CREATE VIEW `users` AS SELECT * FROM `Users`
+	//
+	CreateViewAfter(stmts []*migrate.Stmt, old, new string, pos int) (bool, error)
 }
 
 // drivers specific fixers.

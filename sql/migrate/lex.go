@@ -44,7 +44,7 @@ func (s *Stmt) Directive(name string) (ds []string) {
 
 // Stmts provides a generic implementation for extracting SQL statements from the given file contents.
 func Stmts(input string) ([]*Stmt, error) {
-	return (&StmtScanner{
+	return (&Scanner{
 		ScannerOptions: ScannerOptions{
 			// Default options for backward compatibility.
 			MatchBegin:       false,
@@ -54,9 +54,40 @@ func Stmts(input string) ([]*Stmt, error) {
 	}).Scan(input)
 }
 
+// FileStmtDecls scans atlas-format file statements using
+// the Driver implementation, if implemented.
+func FileStmtDecls(drv Driver, f File) ([]*Stmt, error) {
+	s, ok1 := drv.(StmtScanner)
+	_, ok2 := f.(*LocalFile)
+	if !ok1 || !ok2 {
+		return f.StmtDecls()
+	}
+	return s.ScanStmts(string(f.Bytes()))
+}
+
+// FileStmts is like FileStmtDecls but returns only the
+// statement text without the extra info.
+func FileStmts(drv Driver, f File) ([]string, error) {
+	s, err := FileStmtDecls(drv, f)
+	if err != nil {
+		return nil, err
+	}
+	stmts := make([]string, len(s))
+	for i := range s {
+		stmts[i] = s[i].Text
+	}
+	return stmts, nil
+}
+
 type (
-	// StmtScanner scanning SQL statements from migration and schema files.
-	StmtScanner struct {
+	// StmtScanner interface for scanning SQL statements from migration
+	// and schema files and can be optionally implemented by drivers.
+	StmtScanner interface {
+		ScanStmts(input string) ([]*Stmt, error)
+	}
+
+	// Scanner scanning SQL statements from migration and schema files.
+	Scanner struct {
 		ScannerOptions
 		// scanner state.
 		src, input string   // src and current input text
@@ -66,6 +97,7 @@ type (
 		delim      string   // configured delimiter
 		comments   []string // collected comments
 	}
+
 	// ScannerOptions controls the behavior of the scanner.
 	ScannerOptions struct {
 		// MatchBegin enables matching for BEGIN ... END statements block.
@@ -78,7 +110,7 @@ type (
 )
 
 // Scan scans the statement in the given input.
-func (s *StmtScanner) Scan(input string) ([]*Stmt, error) {
+func (s *Scanner) Scan(input string) ([]*Stmt, error) {
 	var stmts []*Stmt
 	if err := s.init(input); err != nil {
 		return nil, err
@@ -96,7 +128,7 @@ func (s *StmtScanner) Scan(input string) ([]*Stmt, error) {
 }
 
 // init initializes the scanner state.
-func (s *StmtScanner) init(input string) error {
+func (s *Scanner) init(input string) error {
 	s.comments = nil
 	s.pos, s.total, s.width = 0, 0, 0
 	s.src, s.input, s.delim = input, input, delimiter
@@ -128,7 +160,7 @@ var (
 	reEnd         = regexp.MustCompile(`(?i)^\s*END\s*`)
 )
 
-func (s *StmtScanner) stmt() (*Stmt, error) {
+func (s *Scanner) stmt() (*Stmt, error) {
 	var (
 		depth, openingPos int
 		text              string
@@ -202,7 +234,7 @@ Scan:
 	return s.emit(text), nil
 }
 
-func (s *StmtScanner) next() rune {
+func (s *Scanner) next() rune {
 	if s.pos >= len(s.input) {
 		return eos
 	}
@@ -212,19 +244,19 @@ func (s *StmtScanner) next() rune {
 	return r
 }
 
-func (s *StmtScanner) pick() rune {
+func (s *Scanner) pick() rune {
 	p, w := s.pos, s.width
 	r := s.next()
 	s.pos, s.width = p, w
 	return r
 }
 
-func (s *StmtScanner) addPos(p int) {
+func (s *Scanner) addPos(p int) {
 	s.pos += p
 	s.total += p
 }
 
-func (s *StmtScanner) skipQuote(quote rune) error {
+func (s *Scanner) skipQuote(quote rune) error {
 	pos := s.pos
 	for {
 		switch r := s.next(); {
@@ -238,7 +270,7 @@ func (s *StmtScanner) skipQuote(quote rune) error {
 	}
 }
 
-func (s *StmtScanner) skipDollarQuote() error {
+func (s *Scanner) skipDollarQuote() error {
 	m := reDollarQuote.FindString(s.input[s.pos-1:])
 	if m == "" {
 		return s.error(s.pos, "unexpected dollar quote")
@@ -259,13 +291,13 @@ func (s *StmtScanner) skipDollarQuote() error {
 	}
 }
 
-func (s *StmtScanner) skipBeginAtomic() error {
+func (s *Scanner) skipBeginAtomic() error {
 	m := reBeginAtomic.FindString(s.input[s.pos-1:])
 	if m == "" {
 		return s.error(s.pos, "unexpected missing BEGIN ATOMIC block")
 	}
 	s.addPos(len(m) - 1)
-	body := &StmtScanner{ScannerOptions: s.ScannerOptions}
+	body := &Scanner{ScannerOptions: s.ScannerOptions}
 	if err := body.init(s.input[s.pos:]); err != nil {
 		return err
 	}
@@ -285,13 +317,13 @@ func (s *StmtScanner) skipBeginAtomic() error {
 	return nil
 }
 
-func (s *StmtScanner) skipBegin() error {
+func (s *Scanner) skipBegin() error {
 	m := reBegin.FindString(s.input[s.pos-1:])
 	if m == "" {
 		return s.error(s.pos, "unexpected missing BEGIN block")
 	}
 	s.addPos(len(m) - 1)
-	group := &StmtScanner{ScannerOptions: s.ScannerOptions}
+	group := &Scanner{ScannerOptions: s.ScannerOptions}
 	if err := group.init(s.input[s.pos:]); err != nil {
 		return err
 	}
@@ -311,7 +343,7 @@ func (s *StmtScanner) skipBegin() error {
 	return nil
 }
 
-func (s *StmtScanner) comment(left, right string) {
+func (s *Scanner) comment(left, right string) {
 	i := strings.Index(s.input[s.pos:], right)
 	// Not a comment.
 	if i == -1 {
@@ -335,13 +367,13 @@ func (s *StmtScanner) comment(left, right string) {
 	s.skipSpaces()
 }
 
-func (s *StmtScanner) skipSpaces() {
+func (s *Scanner) skipSpaces() {
 	n := len(s.input)
 	s.input = strings.TrimLeftFunc(s.input, unicode.IsSpace)
 	s.total += n - len(s.input)
 }
 
-func (s *StmtScanner) emit(text string) *Stmt {
+func (s *Scanner) emit(text string) *Stmt {
 	stmt := &Stmt{Pos: s.total - len(text), Text: text, Comments: s.comments}
 	s.input = s.input[s.pos:]
 	s.pos = 0
@@ -356,7 +388,7 @@ func (s *StmtScanner) emit(text string) *Stmt {
 
 // delimCmd checks if the scanned "DELIMITER"
 // text represents an actual delimiter command.
-func (s *StmtScanner) delimCmd() error {
+func (s *Scanner) delimCmd() error {
 	// A space must come after the delimiter.
 	if s.pick() != ' ' {
 		return nil
@@ -377,7 +409,7 @@ func (s *StmtScanner) delimCmd() error {
 	return nil
 }
 
-func (s *StmtScanner) setDelim(d string) error {
+func (s *Scanner) setDelim(d string) error {
 	if d == "" {
 		return errors.New("empty delimiter")
 	}
@@ -386,7 +418,7 @@ func (s *StmtScanner) setDelim(d string) error {
 	return nil
 }
 
-func (s *StmtScanner) error(pos int, format string, args ...any) error {
+func (s *Scanner) error(pos int, format string, args ...any) error {
 	format = "%d:%d: " + format
 	var (
 		p    = len(s.src) - len(s.input) + pos

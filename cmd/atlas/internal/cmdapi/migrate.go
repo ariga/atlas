@@ -880,7 +880,7 @@ func migrateImportRun(cmd *cobra.Command, _ []string, flags migrateImportFlags) 
 	// Extract the statements for each of the migration files,
 	// add them to a plan to format with the DefaultFormatter.
 	for _, f := range ff {
-		stmts, err := f.StmtDecls()
+		stmts, err := f.StmtDecls() // Not driver aware.
 		if err != nil {
 			return err
 		}

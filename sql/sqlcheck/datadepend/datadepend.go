@@ -152,7 +152,7 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 						diags = append(diags, d...)
 					// In case the altered column was not added in this file, and the column
 					// was changed nullable to non-nullable without back filling it with values.
-					case !ColumnFilled(p.File, m.T, c.From, sc.Stmt.Pos):
+					case !ColumnFilled(p, m.T, c.From, sc.Stmt.Pos):
 						diags = append(diags, sqlcheck.Diagnostic{
 							Code: codeModNotNullC,
 							Pos:  sc.Stmt.Pos,
@@ -181,15 +181,19 @@ func (a *Analyzer) Report(p *sqlcheck.Pass, diags []sqlcheck.Diagnostic) error {
 }
 
 // ColumnFilled checks if the column was filled with values before the given position.
-func ColumnFilled(f *sqlcheck.File, t *schema.Table, c *schema.Column, pos int) bool {
+func ColumnFilled(p *sqlcheck.Pass, t *schema.Table, c *schema.Column, pos int) bool {
 	// The parser used for parsing this file can check if the
 	// given nullable column was filled before the given position.
-	p, ok := f.Parser.(interface {
-		ColumnFilledBefore(migrate.File, *schema.Table, *schema.Column, int) (bool, error)
+	pr, ok := p.File.Parser.(interface {
+		ColumnFilledBefore([]*migrate.Stmt, *schema.Table, *schema.Column, int) (bool, error)
 	})
 	if !ok {
 		return false
 	}
-	filled, _ := p.ColumnFilledBefore(f, t, c, pos)
+	stmts, err := migrate.FileStmtDecls(p.Dev, p.File)
+	if err != nil {
+		return false
+	}
+	filled, _ := pr.ColumnFilledBefore(stmts, t, c, pos)
 	return filled
 }

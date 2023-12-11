@@ -29,7 +29,7 @@ func TestLocalFile_Stmts(t *testing.T) {
 }
 
 func TestScanner_StmtsGroup(t *testing.T) {
-	scan := &StmtScanner{}
+	scan := &Scanner{}
 	scan.MatchBegin = true
 	path := filepath.Join("testdata", "lexgroup")
 	dir, err := NewLocalDir(path)

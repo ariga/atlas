@@ -270,7 +270,7 @@ func (d *DevLoader) base(ctx context.Context, base []migrate.File) (*schema.Real
 		base = base[i:]
 	}
 	for _, f := range base {
-		stmt, err := f.StmtDecls()
+		stmt, err := migrate.FileStmtDecls(d.Dev, f)
 		if err != nil {
 			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 		}
@@ -286,7 +286,7 @@ func (d *DevLoader) base(ctx context.Context, base []migrate.File) (*schema.Real
 // next returns the next state of the database after executing the statements in
 // the file. The changes detected by the statements are attached to the file.
 func (d *DevLoader) next(ctx context.Context, f *sqlcheck.File, start *schema.Realm) (current *schema.Realm, err error) {
-	stmts, err := f.StmtDecls()
+	stmts, err := migrate.FileStmtDecls(d.Dev, f)
 	if err != nil {
 		return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 	}
