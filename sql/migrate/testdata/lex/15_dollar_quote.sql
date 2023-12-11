@@ -125,3 +125,13 @@ BEGIN
    -- function body here
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION f1(target regclass)
+  RETURNS VOID AS $BEGIN$
+DECLARE
+table_name TEXT := quote_ident(target :: text);
+BEGIN
+EXECUTE 'alter table ' || table_name || ' add column id serial';
+END;
+$BEGIN$
+LANGUAGE plpgsql;
