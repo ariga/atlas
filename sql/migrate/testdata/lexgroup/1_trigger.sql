@@ -1,0 +1,72 @@
+-- SQLite test cases.
+
+CREATE TRIGGER before_tbl_insert BEFORE INSERT ON tbl BEGIN SELECT CASE
+    WHEN (new.a = 4) THEN RAISE(IGNORE) END;
+END;
+
+CREATE TRIGGER after_tbl_insert AFTER INSERT ON tbl BEGIN SELECT CASE
+    WHEN (new.a = 1) THEN RAISE(ABORT,    'Trigger abort')
+    WHEN (new.a = 2) THEN RAISE(FAIL,     'Trigger fail')
+    WHEN (new.a = 3) THEN RAISE(ROLLBACK, 'Trigger rollback') END;
+END;
+
+CREATE TRIGGER after_tbl2_insert AFTER INSERT ON tbl2 BEGIN
+    UPDATE tbl SET c = 10;
+    INSERT INTO tbl2 VALUES (new.a, new.b, new.c);
+END;
+
+CREATE TABLE t2(x,y,z);
+CREATE TRIGGER t2r1 AFTER INSERT ON t2 BEGIN SELECT 1; END;
+CREATE TRIGGER t2r2 BEFORE INSERT ON t2 BEGIN SELECT 1; END;
+CREATE TRIGGER t2r3 AFTER UPDATE ON t2 BEGIN SELECT 1; END;
+CREATE TRIGGER t2r4 BEFORE UPDATE ON t2 BEGIN SELECT 1; END;
+CREATE TRIGGER t2r5 AFTER DELETE ON t2 BEGIN SELECT 1; END;
+CREATE TRIGGER t2r6 BEFORE DELETE ON t2 BEGIN SELECT 1; END;
+CREATE TRIGGER t2r7 AFTER INSERT ON t2 BEGIN SELECT 1; END;
+CREATE TRIGGER t2r8 BEFORE INSERT ON t2 BEGIN SELECT 1; END;
+CREATE TRIGGER t2r9 AFTER UPDATE ON t2 BEGIN SELECT 1; END;
+CREATE TRIGGER t2r10 BEFORE UPDATE ON t2 BEGIN SELECT 1; END;
+CREATE TRIGGER t2r11 AFTER DELETE ON t2 BEGIN SELECT 1; END;
+CREATE TRIGGER t2r12 BEFORE DELETE ON t2 BEGIN SELECT 1; END;
+
+create trigger I_test instead of insert on test
+  begin
+    insert into test1 (id,a) values (NEW.id,NEW.a);
+    insert into test2 (id,b) values (NEW.id,NEW.b);
+  end;
+
+CREATE TRIGGER tr AFTER INSERT ON t3 BEGIN
+  INSERT INTO t3 SELECT new.c+1 WHERE new.c<5;
+  INSERT INTO t2 SELECT new.c*10000+xx.a*100+yy.a
+                   FROM t1 AS xx, t1 AS yy
+                  WHERE xx.a IN (1,2,3,4)
+                    AND yy.a IN (2,3,4,5);
+END;
+
+CREATE TABLE Item(
+   a integer PRIMARY KEY NOT NULL ,
+   b double NULL ,
+   c int NOT NULL DEFAULT 0
+);
+CREATE TABLE Undo(UndoAction TEXT);
+INSERT INTO Item VALUES (1,38205.60865,340);
+CREATE TRIGGER trigItem_UNDO_AD AFTER DELETE ON Item FOR EACH ROW
+BEGIN
+  INSERT INTO Undo SELECT 'INSERT INTO Item (a,b,c) VALUES ('
+   || coalesce(old.a,'NULL') || ',' || quote(old.b) || ',' || old.c || ');';
+END;
+DELETE FROM Item WHERE a = 1;
+SELECT * FROM Undo;
+
+CREATE TRIGGER transactionTrigger AFTER INSERT ON tbl10 BEGIN
+    SAVEPOINT sp1;
+    INSERT INTO tbl11 VALUES (new.f);
+    ROLLBACK TO sp1;
+END;
+
+CREATE TRIGGER errorHandlingTrigger AFTER INSERT ON tbl12 BEGIN
+    BEGIN
+        INSERT INTO tbl13 VALUES (new.g);
+        INSERT INTO tbl13 VALUES (new.g);
+    END;
+END;

@@ -21,10 +21,31 @@ func TestLocalFile_Stmts(t *testing.T) {
 	require.NoError(t, err)
 	for _, f := range files {
 		stmts, err := f.Stmts()
-		require.NoError(t, err)
+		require.NoErrorf(t, err, "file: %s", f.Name())
 		buf, err := os.ReadFile(filepath.Join(path, f.Name()+".golden"))
 		require.NoError(t, err)
 		require.Equalf(t, string(buf), strings.Join(stmts, "\n-- end --\n"), "mismatched statements in file %q", f.Name())
+	}
+}
+
+func TestScanner_StmtsGroup(t *testing.T) {
+	scan := &StmtScanner{}
+	scan.MatchBegin = true
+	path := filepath.Join("testdata", "lexgroup")
+	dir, err := NewLocalDir(path)
+	require.NoError(t, err)
+	files, err := dir.Files()
+	require.NoError(t, err)
+	for _, f := range files {
+		stmts, err := scan.Scan(string(f.Bytes()))
+		require.NoErrorf(t, err, "file: %s", f.Name())
+		buf, err := os.ReadFile(filepath.Join(path, f.Name()+".golden"))
+		require.NoError(t, err)
+		got := make([]string, len(stmts))
+		for i, s := range stmts {
+			got[i] = s.Text
+		}
+		require.Equalf(t, string(buf), strings.Join(got, "\n-- end --\n"), "mismatched statements in file %q", f.Name())
 	}
 }
 
@@ -157,9 +178,7 @@ func TestLex_Errors(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			l, err := newLex(tt.stmt)
-			require.NoError(t, err)
-			_, err = l.stmt()
+			_, err := Stmts(tt.stmt)
 			require.EqualError(t, err, tt.err)
 		})
 	}
