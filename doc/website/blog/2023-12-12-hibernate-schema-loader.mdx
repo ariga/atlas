@@ -45,13 +45,8 @@ Please reach out to us on [Discord](https://discord.gg/zZ6sWVg6NT) or by opening
 
 ## Integrating Atlas into your Hibernate project
 
-Managing database schemas using Hibernate is currently not an easy task. Developers feel that [they can't trust](https://stackoverflow.com/a/221422/1708860) Hibernate to manage their schemas.
-In fact, Hibernate themselves recommend using an external tool:
+Managing database schemas using Hibernate is currently not an easy task. Executing automatic, non-reviewable changes to production databases is something recommended to avoid. The Hibernate team [recommends](https://docs.jboss.org/hibernate/orm/6.4/userguide/html_single/Hibernate_User_Guide.html) using an external tool for this task.
 
-> Although Hibernate provides the update option for the hibernate.hbm2ddl.auto configuration property,
-this feature is not suitable for a production environment. [...] You should always use an automatic schema migration tool and have all the migration scripts stored in the Version Control System.
->
-> — [Hibernate User Guide](https://docs.jboss.org/hibernate/orm/6.4/userguide/html_single/Hibernate_User_Guide.html)
 
 This is where Atlas comes in. Atlas can read Hibernate schema and plan database schema migrations.
 
@@ -166,7 +161,7 @@ data "external_schema" "hibernate" {
 </TabItem>
 </Tabs>
 
-And the Atlas environment configuration:
+And the Atlas configuration:
 
 <Tabs>
 <TabItem value="MySQL" label="MySQL" default>
@@ -386,7 +381,7 @@ public class Main {
 Currently, Atlas does not support using generated fields that require data initialization such as `GenerationType.SEQUENCE`, `GenerationType.TABLE`, and `Generation.AUTO`.
 
 If needed, you can still export the schema using the flag --enable-table-generators (or -Denable-table-generators using Maven). When applying the schema to your database, you will need
-to make sure to apply the ignored statements (using `atlas migrate --env hibernate diff --edit`). See more information on manual migrations [here](/versioned/new)
+to make sure to apply the ignored statements (using `atlas migrate --env hibernate diff --edit`). See more information on manual migrations [here](/versioned/diff)
 
 For example, if you are adding GenerationType.SEQUENCE to the Event entity, you will need to add insert statements to your generated migration file:
 
