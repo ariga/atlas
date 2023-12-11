@@ -391,10 +391,10 @@ to make sure to apply the ignored statements (using `atlas migrate --env hiberna
 For example, if you are adding GenerationType.SEQUENCE to the Event entity, you will to add an insert statements to your generated migration file:
 
 ```diff
-diff --git a/examples/with_local_plugin_repository/migrations/20231210140844.sql b/examples/with_local_plugin_repository/migrations/20231210140844.sql
+diff --git a/migrations/20231210140844.sql b/examples/with_local_plugin_repository/migrations/20231210140844.sql
 index ad80a64..5955834 100644
---- a/examples/with_local_plugin_repository/migrations/20231210140844.sql
-+++ b/examples/with_local_plugin_repository/migrations/20231210140844.sql
+--- a/migrations/20231210140844.sql
++++ b/migrations/20231210140844.sql
 @@ -4,3 +4,6 @@ CREATE TABLE `Event` (`id` bigint NOT NULL AUTO_INCREMENT, `title` varchar(255)
  -- Create "Event_SEQ" table
  CREATE TABLE `Event_SEQ` (`next_val` bigint NULL) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
@@ -543,8 +543,8 @@ Lastly let's explore another powerful application of Atlas, linting the migratio
 Suppose we make the following change:
 
 ```diff
---- a/examples/e2e_java_example/src/main/java/org/example/Movie.java
-+++ b/examples/e2e_java_example/src/main/java/org/example/Movie.java
+--- a/src/main/java/org/example/Movie.java
++++ b/src/main/java/org/example/Movie.java
 @@ -10,13 +10,10 @@ public class Movie {
 
      Movie(String title, Integer numberInSeries) {
