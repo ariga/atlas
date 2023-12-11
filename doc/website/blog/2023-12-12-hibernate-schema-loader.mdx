@@ -18,8 +18,8 @@ and use it to automatically plan migrations for you.
 
 ## Introduction
 
-Hibernate, is one of the most popular ORMs for Java, so much so that parts of it have evolved into
-the JPA standard and the jakarta APIs.
+[Hibernate-ORM](https://hibernate.org/orm/documentation/), is one of the most popular ORMs for Java, so much so that parts of it have evolved into
+[the JPA standard](https://docs.jboss.org/hibernate/orm/6.4/introduction/html_single/Hibernate_Introduction.html#hibernate-and-jpa) and the jakarta APIs.
 
 Today, we are proud to announce that Atlas now supports loading and managing Hibernate schemas.
 
@@ -586,11 +586,12 @@ database in a breeze and prevent such changes before they get to production
 
 Atlas should warn you about a destructive change to the database:
 
-
 ## Conclusion
 
 In this post, we have presented how Hibernate projects can use Atlas to automatically
 plan, lint and apply schema migrations based only on their data model.
+
+If you want to explore more configuration options or dive deeper into how this works, please take a look at this [repository](https://github.com/ariga/atlas-provider-hibernate)
 
 #### How can we make Atlas better?
 
