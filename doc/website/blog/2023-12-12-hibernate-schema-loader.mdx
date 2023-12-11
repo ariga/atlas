@@ -1,0 +1,597 @@
+---
+title: "Announcing Automatic Migrations for Hibernate Users"
+authors: dorav
+tags: [hibernate, schema, migration]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+:::info TL;DR
+
+You can now import the desired database schema from your Hibernate project into Atlas,
+and use it to automatically plan migrations for you.
+
+[See an example](#demo-time)
+
+:::
+
+## Introduction
+
+Hibernate, is one of the most popular ORMs for Java, so much so that parts of it have evolved into
+the JPA standard and the jakarta APIs.
+
+Today, we are proud to announce that Atlas now supports loading and managing Hibernate schemas.
+
+[Atlas](https://atlasgo.io) is a modern tool for managing your database schema. It allows you to inspect, plan, lint and execute schema changes
+to your database. It is designed to be used by developers, DBAs and DevOps engineers alike.
+
+Atlas helps with creating standardized pipelines for managing database schemas. While it is a common practice to manage database access
+via an ORM, managing the schema changes is still a hard problem. Users often expect to be able to use the same tool to solve
+both problems, but alas, that's not always supported.
+
+By utilizing Atlas in a Hibernate project, developers can easily plan, create and analyze schema migrations changes. Finally,
+when it is time to deploy the changes, Atlas will apply the changes in the correct order, keep track of where the
+changes were applied (for example production or development databases) and allow you to visualize the current state of the database.
+
+![](https://atlasgo.io/uploads/ci-cd-guide/database-ci-cd-workflow.png)
+
+Read more about [Atlas features](/)
+
+:::note
+This feature is in Beta and we would love to hear your feedback :heart:.
+Please reach out to us on [Discord](https://discord.gg/zZ6sWVg6NT) or by opening an [issue](https://github.com/ariga/atlas-provider-hibernate/issues/new).
+:::
+
+## Integrating Atlas into your Hibernate project
+
+Managing database schemas using Hibernate is currently not an easy task. Developers feel that [they can't trust](https://stackoverflow.com/a/221422/1708860) Hibernate to manage their schemas.
+In fact, Hibernate themselves recommend using an external tool:
+
+> Although Hibernate provides the update option for the hibernate.hbm2ddl.auto configuration property,
+this feature is not suitable for a production environment. [...] You should always use an automatic schema migration tool and have all the migration scripts stored in the Version Control System.
+>
+> — [Hibernate User Guide](https://docs.jboss.org/hibernate/orm/6.4/userguide/html_single/Hibernate_User_Guide.html)
+
+Atlas can read Hibernate schema and plan database schema migrations.
+
+### How does it work?
+
+Atlas compares two database schemas and can create a migration plan accordingly. For example the database schema can be read directly
+from Hibernate, from a migration directory or even from the database.
+
+To read the Hibernate schema, Atlas utilizes the concept of an `external_schema` [datasource](/atlas-schema/projects#data-sources).
+
+
+## Demo Time
+
+### Installation
+
+The installation is fairly easy. Adding the `hibernate-provider` using either Gradle or Maven should do the trick for most projects:
+
+<Tabs>
+<TabItem value="Gradle Kotlin" label="Gradle Kotlin" default>
+
+```gradle
+plugins {
+    id("io.atlasgo.hibernate-provider-gradle-plugin") version "0.1"
+}
+```
+
+> To check the installation, run: `./gradlew help --task schema`
+
+</TabItem>
+<TabItem value="Gradle Groovy" label="Gradle Groovy" default>
+
+```gradle
+plugins {
+    id "io.atlasgo.hibernate-provider-gradle-plugin" version "0.1"
+}
+```
+
+> To check the installation, run: `./gradlew help --task schema`
+
+</TabItem>
+<TabItem value="Maven" label="Maven">
+
+```xml
+<build>
+    <pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>io.atlasgo</groupId>
+                <artifactId>hibernate-provider-maven-plugin</artifactId>
+                <version>0.1</version>
+            </plugin>
+        </plugins>
+    </pluginManagement>
+</build>
+```
+
+> To check the installation, run `mvn help:describe -Dplugin=hibernate-provider -Dgoal=schema`
+
+</TabItem>
+</Tabs>
+
+The plugin adds a configurable Gradle task (or a Maven Mojo) that prints the Hibernate schema without requiring a database connection.
+However, the task needs to be configured with the database dialect, we can do that by creating a `schema-export.properties` file in the
+resource directory. For example, for MySQL / PostgreSQL:
+
+<Tabs>
+<TabItem value="MySQL" label="MySQL" default>
+
+```properties
+jakarta.persistence.database-product-name=MySQL
+jakarta.persistence.database-major-version=8
+```
+</TabItem>
+<TabItem value="PostgreSQL" label="PostgreSQL">
+
+```properties
+jakarta.persistence.database-product-name=PostgreSQL
+jakarta.persistence.database-major-version=15
+```
+</TabItem>
+</Tabs>
+
+Lastly, we need to configure Atlas to use this schema and configuration by creating an `atlas.hcl`
+and adding the definition of the Hibernate schema:
+
+<Tabs>
+<TabItem value="Gradle" label="Gradle" default>
+
+```hcl
+data "external_schema" "hibernate" {
+  program = [
+    "./gradlew",
+    "-q",
+    "schema",
+    "--properties", "schema-export.properties"
+  ]
+}
+```
+</TabItem>
+<TabItem value="Maven" label="Maven">
+
+```hcl
+data "external_schema" "hibernate" {
+  program = [
+    "./mvn",
+    "-q",
+    "hibernate-provider:schema",
+    "-Dproperties", "schema-export.properties"
+  ]
+}
+```
+
+</TabItem>
+</Tabs>
+
+And the atlas environment configuration:
+
+<Tabs>
+<TabItem value="MySQL" label="MySQL" default>
+
+```hcl
+env "hibernate" {
+  src = data.external_schema.hibernate.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="PostgreSQL" label="PostgreSQL">
+
+```hcl
+env "hibernate" {
+  src = data.external_schema.hibernate.url
+  dev = "docker://postgres/15/dev?search_path=public"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### Project Setup
+
+For this demo, we are going to use Gradle and PostgreSQL. You can take a look at the complete example [here](https://github.com/ariga/atlas-provider-hibernate/tree/master/examples/e2e_java_example)
+
+If you haven't already, install Atlas from macOS or Linux by running:
+```bash
+curl -sSf https://atlasgo.sh | sh
+```
+
+Create a project and add the plugin and the following dependencies:
+
+```gradle
+plugins {
+    id("io.atlasgo.hibernate-provider-gradle-plugin") version "0.1"
+}
+
+dependencies {
+    implementation("org.hibernate.orm:hibernate-core:6.4.0.Final")
+    implementation("org.postgresql:postgresql:42.7.0")
+}
+```
+
+Copy the following java files to the directory `src/main/java/org.example`:
+
+<Tabs>
+<TabItem value="Actor.java">
+
+```java
+package org.example;
+
+import jakarta.persistence.*;
+
+import java.util.List;
+import java.util.Set;
+
+@Entity
+@Table(name = "Actors")
+public class Actor {
+    Actor() {
+
+    }
+
+    Actor(String name) {
+        this.name = name;
+    }
+
+    @Id
+    public String name;
+
+    @OneToMany(mappedBy = "actor", cascade = CascadeType.PERSIST)
+    public Set<MovieParticipation> actedIn;
+}
+```
+
+</TabItem>
+<TabItem value="Movie.java">
+
+```java
+package org.example;
+
+import jakarta.persistence.*;
+
+import java.util.List;
+
+@Entity
+@Table(name = "Movies")
+public class Movie {
+    Movie(String title, Integer numberInSeries) {
+        this.title = title;
+        this.numberInSeries = numberInSeries;
+    }
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    public Long id;
+
+    public String title;
+
+    public Integer numberInSeries;
+}
+
+```
+
+</TabItem>
+<TabItem value="MovieParticipation.java">
+
+```java
+package org.example;
+
+import jakarta.persistence.*;
+
+@Entity
+public class MovieParticipation {
+    MovieParticipation(Movie movie, Actor actor) {
+        this.key = new MovieParticipationKey(movie.id, actor.name);
+        this.actor = actor;
+        this.movie = movie;
+    }
+
+    @EmbeddedId
+    public MovieParticipationKey key;
+
+    @ManyToOne(cascade=CascadeType.PERSIST)
+    @MapsId("movieId")
+    @JoinColumn(name = "movieId")
+    Movie movie;
+
+    @ManyToOne(cascade=CascadeType.PERSIST)
+    @MapsId("actorName")
+    @JoinColumn(name = "actorName")
+    Actor actor;
+}
+```
+
+</TabItem>
+<TabItem value="MovieParticipationKey.java">
+
+```java
+package org.example;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import java.io.Serializable;
+
+@Embeddable
+public class MovieParticipationKey implements Serializable {
+    public MovieParticipationKey(Long movieId, String actorName) {
+        this.movieId = movieId;
+        this.actorName = actorName;
+    }
+    public Long movieId;
+
+    public String actorName;
+}
+```
+
+</TabItem>
+<TabItem value="Main.java">
+
+```java
+package org.example;
+
+import org.hibernate.SessionFactory;
+import org.hibernate.boot.MetadataSources;
+
+import java.util.Set;
+
+public class Main {
+    public static void main(String[] args) {
+        SessionFactory sessionFactory = new MetadataSources()
+                .addAnnotatedClass(Movie.class)
+                .addAnnotatedClass(Actor.class)
+                .addAnnotatedClass(MovieParticipation.class)
+                .buildMetadata()
+                .buildSessionFactory();
+
+        sessionFactory.inTransaction(session -> {
+                List<Actor> actors = session.createQuery("from Actor").list();
+                if (!actors.isEmpty()) {
+                actors.forEach(x -> System.out.println("Found Actor " + x.name));
+            } else {
+                Movie matrix = new Movie("The Matrix", 1);
+                Actor keanuReeves = new Actor("Keanu Reeves");
+                keanuReeves.actedIn = Set.of(new MovieParticipation(matrix, keanuReeves));
+                session.persist(keanuReeves);
+            }
+        });
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+:::note
+Currently, Atlas does not support using generated fields that require data initialization such as GenerationType.SEQUENCE, GenerationType.TABLE, and Generation.AUTO.
+
+If needed, you can still export the schema using the flag --enable-table-generators (or -Denable-table-generators using Maven), when applying the schema to your database, you will need
+to make sure to apply the ignored statements (using `atlas migrate --env hibernate diff --edit`, see more information on manual migrations [here](/versioned/new))
+
+For example, if you are adding GenerationType.SEQUENCE to the Event entity, you will to add an insert statements to your generated migration file:
+
+```diff
+diff --git a/examples/with_local_plugin_repository/migrations/20231210140844.sql b/examples/with_local_plugin_repository/migrations/20231210140844.sql
+index ad80a64..5955834 100644
+--- a/examples/with_local_plugin_repository/migrations/20231210140844.sql
++++ b/examples/with_local_plugin_repository/migrations/20231210140844.sql
+@@ -4,3 +4,6 @@ CREATE TABLE `Event` (`id` bigint NOT NULL AUTO_INCREMENT, `title` varchar(255)
+ -- Create "Event_SEQ" table
+ CREATE TABLE `Event_SEQ` (`next_val` bigint NULL) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
++ -- Initialize "Event_SEQ" table
++ insert into Event_SEQ values ( 1 );
+```
+
+Testing these changes can be done by running the application with a local database and creating the entity. To apply the migration directory
+to the local database, use `atlas migrate apply`.
+
+We would love to hear your feedback :heart:. You can reach out to us on [Discord](https://discord.gg/zZ6sWVg6NT) or by opening an [issue](https://github.com/ariga/atlas-provider-hibernate/issues/new).
+
+:::
+
+### Running Atlas
+
+We should now be able to view our schema using Atlas:
+
+```bash
+atlas schema inspect -w --env hibernate --url env://src
+```
+
+Atlas has a lot more cool tricks, lets create a migration directory from our schema:
+
+```bash
+atlas migrate diff --env hibernate
+```
+
+By running `atlas migrate diff`, atlas compares the state of our Hibernate schema and the state of the schema in the `migration` directory.
+Atlas sees that the migration directory does not exist and initializes it with the current Hibernate schema.
+Observe the migration directory, it should contain similar files:
+
+<Tabs>
+<TabItem value="migrations/20231211114848.sql" default>
+
+```sql
+-- Create "movies" table
+-- Create "movies" table
+CREATE TABLE "movies" (
+  "id" bigserial NOT NULL,
+  "numberinseries" integer NULL,
+  "title" character varying(255) NULL,
+  PRIMARY KEY ("id")
+);
+-- Create "actors" table
+CREATE TABLE "actors" (
+  "name" character varying(255) NOT NULL,
+  PRIMARY KEY ("name")
+);
+-- Create "movieparticipation" table
+CREATE TABLE "movieparticipation" (
+  "actorname" character varying(255) NOT NULL,
+  "movieid" bigint NOT NULL,
+  PRIMARY KEY ("actorname", "movieid"),
+  CONSTRAINT "fkaq2kkwvh9870847sm35vtjtiy" FOREIGN KEY ("movieid") REFERENCES "movies" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT "fktm8fbwa577lnbvwdjegwxvget" FOREIGN KEY ("actorname") REFERENCES "actors" ("name") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+```
+
+</TabItem>
+<TabItem value="migrations/atlas.sum">
+
+```
+h1:Ezh6r7A0pU4XS7PztE87h+aq5PoGGVTd6kaprtpXxas=
+20231211114848.sql h1:9ECs2QsjHE8S4PxXxFcoPYaOVUWRjpxHuF8MGFRd3dE=
+```
+
+</TabItem>
+</Tabs>
+
+Atlas uses the `atlas.sum` file to protect against conflicting schema changes, you can read about it [here](/versioned/new#recalculating-the-directory-hash).
+
+### Testing the migrations
+
+Having a migration directory is nice and dandy, but we can also apply it to a database without breaking a sweat.
+Let's start a local PostgreSQL instance:
+
+```bash
+docker run -it --rm --name mypostgres -p 5432:5432 -e 'POSTGRES_PASSWORD=password' postgres
+```
+
+And let the magic happen by applying our schema to the database:
+
+```bash
+atlas migrate apply --env hibernate --url 'postgres://postgres:password@0.0.0.0:5432/?search_path=public&sslmode=disable'
+```
+
+To see our java application running, add the following `hibernate.properties` file and run the main function:
+
+```properties
+hibernate.connection.url=jdbc:postgresql://localhost:5432/postgres
+hibernate.connection.username=postgres
+hibernate.connection.password=password
+
+hibernate.show_sql=true
+hibernate.format_sql=true
+hibernate.highlight_sql=true
+```
+
+Observe the log output, you should see the SQL commands executed by Hibernate, similar to these:
+
+```
+[Hibernate]
+    select
+        a1_0.name
+    from
+        Actors a1_0
+[Hibernate]
+    insert
+    into
+        Actors
+        (name)
+    values
+        (?)
+[Hibernate]
+    insert
+    into
+        Movies
+        (numberInSeries, title)
+    values
+        (?, ?)
+[Hibernate]
+    insert
+    into
+        MovieParticipation
+        (actorName, movieId)
+    values
+        (?, ?)
+```
+
+Running the program again, you should see the output:
+
+```
+[Hibernate]
+    select
+        a1_0.name
+    from
+        Actors a1_0
+Found Actor Keanu Reeves
+```
+
+### Making changes with confidence
+
+Lastly let's explore another powerful application of Atlas, linting the migration directory.
+
+Suppose we make the following change:
+
+```diff
+--- a/examples/e2e_java_example/src/main/java/org/example/Movie.java
++++ b/examples/e2e_java_example/src/main/java/org/example/Movie.java
+@@ -10,13 +10,10 @@ public class Movie {
+
+     Movie(String title, Integer numberInSeries) {
+         this.title = title;
+-        this.numberInSeries = numberInSeries;
+     }
+     @Id
+     @GeneratedValue(strategy = GenerationType.IDENTITY)
+     public Long id;
+
+     public String title;
+-
+-    public Integer numberInSeries;
+ }
+```
+
+Oh no! we removed a column, let's see what happens. Run `atlas migrate diff --env hibernate`.
+And observe that a new migration file was created:
+
+```sql
+cat migrations/20231211124321.sql
+-- Modify "movies" table
+ALTER TABLE "movies" DROP COLUMN "numberinseries";
+```
+
+That's probably going make the oncall quite upset we deploy this change, but Atlas can help us build
+much more robust software by linting the migration directory and not allowing such a change to get merged.
+
+Running the following command, we can see that atlas will warn us about a destructive change to the database:
+
+```bash
+atlas migrate lint --env hibernate --latest 1
+20231211124321.sql: destructive changes detected:
+        L2: Dropping non-virtual column "numberinseries"
+```
+
+Atlas supports a [github action](https://atlasgo.io/integrations/github-actions) that helps you setup CI for your
+database in a breeze and prevent such changes before they get to production
+
+Atlas should warn you about a destructive change to the database:
+
+
+## Conclusion
+
+In this post, we have presented how Hibernate projects can use Atlas to automatically
+plan, lint and apply schema migrations based only on their data model.
+
+#### How can we make Atlas better?
+
+We would love to hear from you [on our Discord server](https://discord.gg/zZ6sWVg6NT) :heart:.
