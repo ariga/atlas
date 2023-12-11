@@ -12,7 +12,6 @@ modern GitOps workflow for managing your database migrations natively in Kuberne
 
 :::
 
-
 In [part one](2023-12-06-gitops-for-databases-part-1.mdx), we demonstrated how to initialize an Atlas project,
 and create a CI/CD pipeline that automatically plans, verifies and stores your database migrations in Atlas Cloud
 using GitHub Actions.
@@ -27,31 +26,30 @@ a complete GitOps workflow for database migrations.
 >
 > *-Viktor Farcic, DevOps ToolKit*
 
-As applications evolve, so do their database schemas.  The practice of automating the deployment of database schema
+As applications evolve, so do their database schemas. The practice of automating the deployment of database schema
 changes has evolved hand in hand with modern devops principles into what is known as
 [database migrations](https://en.wikipedia.org/wiki/Schema_migration). As part of this evolution, hundreds of
-"migration tools" have been created to help developers manage their database migrations.  These tools range from
+"migration tools" have been created to help developers manage their database migrations. These tools range from
 ORM and language specific tools like [Alembic](https://alembic.sqlalchemy.org/en/latest/) for Python to language
 agnostic tools like [Flyway](https://flywaydb.org/) and [Liquibase](https://www.liquibase.org/).
 
-When Kubernetes came along, and teams started to containerize their applications, the knee-jerk reaction was to
-wrap these legacy tools in a container and run them as part of the application deployment process.  We
+When Kubernetes came along and teams started to containerize their applications, the knee-jerk reaction was to
+wrap these legacy tools in a container and run them as part of the application deployment process. We
 discussed some of the shortcomings of this approach in a recent [KubeCon talk](https://www.youtube.com/watch?v=U-o4HUNGHsE)
 and earlier [Webinar](https://www.youtube.com/watch?v=K_Js7hzEyrA).
 
-Atlas was created from the ground up to be a modern, database migration tool that embodies modern DevOps principles
-and is designed to run natively in Kubernetes.  The [Atlas Operator](https://github.com/ariga/atlas) enables teams
-to extend the native Kubernetes API with new resource types that represent database schemas and migrations.  Using
+Atlas was created from the ground up to be a modern database migration tool that embodies modern DevOps principles
+and is designed to run natively in Kubernetes. The [Atlas Operator](https://github.com/ariga/atlas) enables teams
+to extend the native Kubernetes API with new resource types that represent database schemas and migrations. By using
 these capabilities it is possible to natively integrate database migrations into your GitOps workflow.
 
 ## Prerequisites
 
-* A running Kubernetes cluster  - For learning purposes, you can use
+* A running Kubernetes cluster - For learning purposes, you can use
 [Minikube](https://minikube.sigs.k8s.io/docs/start/), which is a tool that runs a single-node
-Kubernetes cluster inside a VM on your laptop.
+Kubernetes cluster on your laptop.
 * [kubectl](https://kubernetes.io/docs/tasks/tools/) - a command-line tool for interacting with Kubernetes clusters.
 * [Helm](https://helm.sh/docs/intro/install/) - a package manager for Kubernetes.
-
 
 ## Setting up the Atlas Operator and ArgoCD
 
@@ -82,7 +80,7 @@ pod/argocd-repo-server-68444f6479-mn5gl condition met
 pod/argocd-server-579f659dd5-5djb5 condition met
 ```
 
-For more information or if you run into some error refer to the
+For more information or if you run into some errors refer to the
 [Argo CD Documentation](https://argo-cd.readthedocs.io/en/stable/getting_started/).
 
 ### 2. Install the Atlas Operator
@@ -139,7 +137,7 @@ kubectl wait --for=condition=ready pod -l app=postgres -n default
 
 In order for the Atlas Operator to know which migrations to apply, we need to create an `AtlasMigration` resource
 that points to the Atlas Cloud project we created in [part one](2023-12-06-gitops-for-databases-part-1.mdx).
-Create a new directory called `manifests` in your GitHub repository with the following contents. In it,
+Create a new directory called `manifests` in your GitHub repository. In it,
 create a file called `atlas-migration.yaml` with the following contents:
 
 ```yaml title="manifests/atlas-migration.yaml"
@@ -166,9 +164,8 @@ spec:
 
 This resource tells the Atlas Operator to apply the migrations in the `atlasdemo` project in Atlas Cloud to the
 database specified in the `postgres-credentials` secret.  Notice that the `tokenFrom` field references a secret
-called `atlas-credentials`.  This secret will contain the Atlas Cloud API token that we created in
+called `atlas-credentials`. This secret will contain the Atlas Cloud API token that we created in
 [part one](2023-12-06-gitops-for-databases-part-1.mdx).
-
 
 To create it run:
 
