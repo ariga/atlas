@@ -780,7 +780,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: scanning checksum from %q: %w", m.Name(), err)
 	}
-	stmts, err := m.Stmts()
+	stmts, err := FileStmts(e.drv, m)
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: scanning statements from %q: %w", m.Name(), err)
 	}

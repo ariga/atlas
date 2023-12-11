@@ -145,8 +145,8 @@ func (s *Stmt) CreateView(name string) (*Create_view_stmtContext, bool) {
 type FileParser struct{}
 
 // ColumnFilledBefore checks if the column was filled before the given position.
-func (p *FileParser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.Column, pos int) (bool, error) {
-	return parseutil.MatchStmtBefore(f, pos, func(s *migrate.Stmt) (bool, error) {
+func (p *FileParser) ColumnFilledBefore(stmts []*migrate.Stmt, t *schema.Table, c *schema.Column, pos int) (bool, error) {
+	return parseutil.MatchStmtBefore(stmts, pos, func(s *migrate.Stmt) (bool, error) {
 		stmt, err := ParseStmt(s.Text)
 		if err != nil {
 			return false, err
@@ -189,8 +189,8 @@ func (p *FileParser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *sche
 }
 
 // CreateViewAfter checks if a view was created after the position with the given name to a table.
-func (p *FileParser) CreateViewAfter(f migrate.File, old, new string, pos int) (bool, error) {
-	return parseutil.MatchStmtAfter(f, pos, func(s *migrate.Stmt) (bool, error) {
+func (p *FileParser) CreateViewAfter(stmts []*migrate.Stmt, old, new string, pos int) (bool, error) {
+	return parseutil.MatchStmtAfter(stmts, pos, func(s *migrate.Stmt) (bool, error) {
 		stmt, err := ParseStmt(s.Text)
 		if err != nil {
 			return false, err

@@ -51,7 +51,7 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 			switch c := c.(type) {
 			case *schema.RenameTable:
 				if p.File.SchemaSpan(c.From.Schema)&sqlcheck.SpanAdded == 0 && p.File.TableSpan(c.From)&sqlcheck.SpanAdded == 0 &&
-					!ViewForRenamedT(p.File, c.From.Name, c.To.Name, sc.Stmt.Pos) {
+					!ViewForRenamedT(p, c.From.Name, c.To.Name, sc.Stmt.Pos) {
 					diags = append(diags, sqlcheck.Diagnostic{
 						Code: codeRenameT,
 						Pos:  sc.Stmt.Pos,
@@ -83,16 +83,20 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 }
 
 // ViewForRenamedT checks if a view was created was a table that was renamed after the given position.
-func ViewForRenamedT(f *sqlcheck.File, old, new string, pos int) bool {
+func ViewForRenamedT(p *sqlcheck.Pass, old, new string, pos int) bool {
 	// The parser used for parsing this file can check if the
 	// given nullable column was filled before the given position.
-	p, ok := f.Parser.(interface {
-		CreateViewAfter(f migrate.File, old, new string, pos int) (bool, error)
+	pr, ok := p.File.Parser.(interface {
+		CreateViewAfter(stmts []*migrate.Stmt, old, new string, pos int) (bool, error)
 	})
 	if !ok {
 		return false
 	}
-	created, _ := p.CreateViewAfter(f, old, new, pos)
+	stmts, err := migrate.FileStmtDecls(p.Dev, p.File)
+	if err != nil {
+		return false
+	}
+	created, _ := pr.CreateViewAfter(stmts, old, new, pos)
 	return created
 }
 

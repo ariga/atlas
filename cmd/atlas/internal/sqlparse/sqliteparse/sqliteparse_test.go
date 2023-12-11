@@ -133,11 +133,10 @@ UPDATE t1 SET c = 2 WHERE c IS NULL;
 		},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			var (
-				p sqliteparse.FileParser
-				f = migrate.NewLocalFile("file", []byte(tt.file))
-			)
-			filled, err := p.ColumnFilledBefore(f, schema.NewTable("t"), schema.NewColumn("c"), tt.pos)
+			var p sqliteparse.FileParser
+			stmts, err := migrate.Stmts(tt.file)
+			require.NoError(t, err)
+			filled, err := p.ColumnFilledBefore(stmts, schema.NewTable("t"), schema.NewColumn("c"), tt.pos)
 			require.Equal(t, err != nil, tt.wantErr, err)
 			require.Equal(t, filled, tt.wantFilled)
 		})
@@ -189,11 +188,10 @@ CREATE VIEW old AS SELECT a, b, c FROM new;
 		},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			var (
-				p sqliteparse.FileParser
-				f = migrate.NewLocalFile("file", []byte(tt.file))
-			)
-			created, err := p.CreateViewAfter(f, "old", "new", tt.pos)
+			var p sqliteparse.FileParser
+			stmts, err := migrate.Stmts(tt.file)
+			require.NoError(t, err)
+			created, err := p.CreateViewAfter(stmts, "old", "new", tt.pos)
 			require.Equal(t, err != nil, tt.wantErr, err)
 			require.Equal(t, created, tt.wantCreated)
 		})

@@ -142,12 +142,16 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 // columnFilledAfter checks if the column with the given value was filled after the current change.
 func columnFilledAfter(pass *datadepend.ColumnPass, matchValue string) bool {
 	p, ok := pass.File.Parser.(interface {
-		ColumnFilledAfter(migrate.File, *schema.Table, *schema.Column, int, any) (bool, error)
+		ColumnFilledAfter([]*migrate.Stmt, *schema.Table, *schema.Column, int, any) (bool, error)
 	})
 	if !ok {
 		return false
 	}
-	filled, _ := p.ColumnFilledAfter(pass.File, pass.Table, pass.Column, pass.Change.Stmt.Pos, matchValue)
+	stmts, err := migrate.FileStmtDecls(pass.Dev, pass.File)
+	if err != nil {
+		return false
+	}
+	filled, _ := p.ColumnFilledAfter(stmts, pass.Table, pass.Column, pass.Change.Stmt.Pos, matchValue)
 	return filled
 }
 

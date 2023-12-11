@@ -22,8 +22,8 @@ import (
 type Parser struct{}
 
 // ColumnFilledBefore checks if the column was filled before the given position.
-func (p *Parser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.Column, pos int) (bool, error) {
-	return parseutil.MatchStmtBefore(f, pos, func(s *migrate.Stmt) (bool, error) {
+func (p *Parser) ColumnFilledBefore(stmts []*migrate.Stmt, t *schema.Table, c *schema.Column, pos int) (bool, error) {
+	return parseutil.MatchStmtBefore(stmts, pos, func(s *migrate.Stmt) (bool, error) {
 		tr, err := pgquery.Parse(s.Text)
 		if err != nil {
 			return false, err
@@ -61,8 +61,8 @@ func (p *Parser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.C
 }
 
 // CreateViewAfter checks if a view was created after the position with the given name to a table.
-func (p *Parser) CreateViewAfter(f migrate.File, old, new string, pos int) (bool, error) {
-	return parseutil.MatchStmtAfter(f, pos, func(s *migrate.Stmt) (bool, error) {
+func (p *Parser) CreateViewAfter(stmts []*migrate.Stmt, old, new string, pos int) (bool, error) {
+	return parseutil.MatchStmtAfter(stmts, pos, func(s *migrate.Stmt) (bool, error) {
 		tr, err := pgquery.Parse(s.Text)
 		if err != nil {
 			return false, err
@@ -78,7 +78,7 @@ func (p *Parser) CreateViewAfter(f migrate.File, old, new string, pos int) (bool
 			return false, nil
 		}
 		from := v.Query.GetSelectStmt().GetFromClause()
-		if f == nil || len(from) != 1 {
+		if len(from) != 1 {
 			return false, nil
 		}
 		return from[0].GetRangeVar().GetRelname() == new, nil

@@ -77,11 +77,7 @@ func RenameTable(changes schema.Changes, r *Rename) schema.Changes {
 }
 
 // MatchStmtBefore reports if the file contains any statement that matches the predicate before the given position.
-func MatchStmtBefore(f migrate.File, pos int, p func(*migrate.Stmt) (bool, error)) (bool, error) {
-	stmts, err := f.StmtDecls()
-	if err != nil {
-		return false, err
-	}
+func MatchStmtBefore(stmts []*migrate.Stmt, pos int, p func(*migrate.Stmt) (bool, error)) (bool, error) {
 	i := slices.IndexFunc(stmts, func(s *migrate.Stmt) bool {
 		return s.Pos >= pos
 	})
@@ -101,11 +97,7 @@ func MatchStmtBefore(f migrate.File, pos int, p func(*migrate.Stmt) (bool, error
 }
 
 // MatchStmtAfter reports if the file contains any statement that matches the predicate after the given position.
-func MatchStmtAfter(f migrate.File, pos int, p func(*migrate.Stmt) (bool, error)) (bool, error) {
-	stmts, err := f.StmtDecls()
-	if err != nil {
-		return false, err
-	}
+func MatchStmtAfter(stmts []*migrate.Stmt, pos int, p func(*migrate.Stmt) (bool, error)) (bool, error) {
 	i := slices.IndexFunc(stmts, func(s *migrate.Stmt) bool {
 		return s.Pos > pos
 	})
@@ -123,18 +115,4 @@ func MatchStmtAfter(f migrate.File, pos int, p func(*migrate.Stmt) (bool, error)
 		}
 	}
 	return false, nil
-}
-
-func max(i, j int) int {
-	if i > j {
-		return i
-	}
-	return j
-}
-
-func min(i, j int) int {
-	if i < j {
-		return i
-	}
-	return j
 }

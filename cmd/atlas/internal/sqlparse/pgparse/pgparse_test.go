@@ -281,11 +281,10 @@ func TestColumnFilledBefore(t *testing.T) {
 		},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			var (
-				p pgparse.Parser
-				f = migrate.NewLocalFile("file", []byte(tt.file))
-			)
-			filled, err := p.ColumnFilledBefore(f, schema.NewTable("t"), schema.NewColumn("c"), tt.pos)
+			var p pgparse.Parser
+			stmts, err := migrate.Stmts(tt.file)
+			require.NoError(t, err)
+			filled, err := p.ColumnFilledBefore(stmts, schema.NewTable("t"), schema.NewColumn("c"), tt.pos)
 			require.Equal(t, err != nil, tt.wantErr, err)
 			require.Equal(t, filled, tt.wantFilled)
 		})
@@ -345,11 +344,10 @@ CREATE VIEW old AS SELECT * FROM new;
 		},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			var (
-				p pgparse.Parser
-				f = migrate.NewLocalFile("file", []byte(tt.file))
-			)
-			created, err := p.CreateViewAfter(f, "old", "new", tt.pos)
+			var p pgparse.Parser
+			stmts, err := migrate.Stmts(tt.file)
+			require.NoError(t, err)
+			created, err := p.CreateViewAfter(stmts, "old", "new", tt.pos)
 			require.Equal(t, err != nil, tt.wantErr, err)
 			require.Equal(t, tt.wantCreated, created)
 		})

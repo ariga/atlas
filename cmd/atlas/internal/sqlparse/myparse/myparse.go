@@ -24,9 +24,9 @@ import (
 type Parser struct{}
 
 // ColumnFilledBefore checks if the column was filled before the given position.
-func (p *Parser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.Column, pos int) (bool, error) {
+func (p *Parser) ColumnFilledBefore(stmts []*migrate.Stmt, t *schema.Table, c *schema.Column, pos int) (bool, error) {
 	pr := parser.New()
-	return parseutil.MatchStmtBefore(f, pos, func(s *migrate.Stmt) (bool, error) {
+	return parseutil.MatchStmtBefore(stmts, pos, func(s *migrate.Stmt) (bool, error) {
 		stmt, err := pr.ParseOneStmt(s.Text, "", "")
 		if err != nil {
 			return false, err
@@ -58,11 +58,7 @@ func (p *Parser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.C
 }
 
 // ColumnFilledAfter checks if the column that matches the given value was filled after the position.
-func (p *Parser) ColumnFilledAfter(f migrate.File, t *schema.Table, c *schema.Column, pos int, match any) (bool, error) {
-	stmts, err := f.StmtDecls()
-	if err != nil {
-		return false, err
-	}
+func (p *Parser) ColumnFilledAfter(stmts []*migrate.Stmt, t *schema.Table, c *schema.Column, pos int, match any) (bool, error) {
 	switch i := slices.IndexFunc(stmts, func(s *migrate.Stmt) bool {
 		return s.Pos >= pos
 	}); i {
@@ -156,9 +152,9 @@ func (p *Parser) ColumnHasReferences(stmt *migrate.Stmt, c1 *schema.Column) (boo
 }
 
 // CreateViewAfter checks if a view was created after the position with the given name to a table.
-func (p *Parser) CreateViewAfter(f migrate.File, old, new string, pos int) (bool, error) {
+func (p *Parser) CreateViewAfter(stmts []*migrate.Stmt, old, new string, pos int) (bool, error) {
 	pr := parser.New()
-	return parseutil.MatchStmtAfter(f, pos, func(s *migrate.Stmt) (bool, error) {
+	return parseutil.MatchStmtAfter(stmts, pos, func(s *migrate.Stmt) (bool, error) {
 		stmt, err := pr.ParseOneStmt(s.Text, "", "")
 		if err != nil {
 			return false, err

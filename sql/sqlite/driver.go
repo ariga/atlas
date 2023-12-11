@@ -43,6 +43,7 @@ type (
 
 var _ interface {
 	migrate.Snapshoter
+	migrate.StmtScanner
 	migrate.CleanChecker
 	schema.TypeParseFormatter
 } = (*Driver)(nil)
@@ -186,6 +187,18 @@ func (*Driver) FormatType(t schema.Type) (string, error) {
 // ParseType returns the schema.Type value represented by the given string.
 func (*Driver) ParseType(s string) (schema.Type, error) {
 	return ParseType(s)
+}
+
+// ScanStmts implements migrate.StmtScanner.
+func (*Driver) ScanStmts(input string) ([]*migrate.Stmt, error) {
+	return (&migrate.Scanner{
+		ScannerOptions: migrate.ScannerOptions{
+			MatchBegin: true,
+			// The following are not support by SQLite.
+			MatchBeginAtomic: false,
+			MatchDollarQuote: false,
+		},
+	}).Scan(input)
 }
 
 func acquireLock(path string, timeout time.Duration) (schema.UnlockFunc, error) {

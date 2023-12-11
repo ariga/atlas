@@ -275,6 +275,6 @@ func (t testFile) StmtDecls() ([]*migrate.Stmt, error) {
 
 type testParser struct{ matchOn string }
 
-func (t testParser) CreateViewAfter(_ migrate.File, old, _ string, _ int) (bool, error) {
+func (t testParser) CreateViewAfter(_ []*migrate.Stmt, old, _ string, _ int) (bool, error) {
 	return t.matchOn == old, nil
 }
