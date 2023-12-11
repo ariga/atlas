@@ -389,7 +389,7 @@ func SortChanges(changes []schema.Change) []schema.Change {
 		switch c.(type) {
 		case *schema.AddView, *schema.DropView, *schema.ModifyView:
 			views = append(views, c)
-		case *schema.DropTable, *schema.DropFunc, *schema.DropProc, *schema.DropObject:
+		case *schema.DropSchema, *schema.DropTable, *schema.DropFunc, *schema.DropProc, *schema.DropObject:
 			drop = append(drop, c)
 		default:
 			other = append(other, c)
@@ -449,8 +449,21 @@ func dependsOn(c1, c2 schema.Change) bool {
 		return true
 	}
 	switch c1 := c1.(type) {
+	case *schema.DropSchema:
+		switch c2 := c2.(type) {
+		case *schema.DropFunc:
+			return c1.S.Name == c2.F.Schema.Name
+		case *schema.DropProc:
+			return c1.S.Name == c2.P.Schema.Name
+		case *schema.DropTable:
+			return c1.S.Name == c2.T.Schema.Name
+		case *schema.DropView:
+			return c1.S.Name == c2.V.Schema.Name
+		}
 	case *schema.AddTable:
 		switch c2 := c2.(type) {
+		case *schema.AddSchema:
+			return c1.T.Schema.Name == c2.S.Name
 		case *schema.DropTable:
 			return c1.T.Name == c2.T.Name && c1.T.Schema == c2.T.Schema // Table recreation.
 		case *schema.AddTable:
@@ -527,10 +540,14 @@ func dependsOn(c1, c2 schema.Change) bool {
 		}
 		return depOfAdd(c1.T.Deps, c2)
 	case *schema.AddView:
-		if c2, ok := c2.(*schema.DropView); ok && c1.V.Name == c2.V.Name && c1.V.Schema == c2.V.Schema {
-			return true // View recreation.
+		switch c2 := c2.(type) {
+		case *schema.AddSchema:
+			return c1.V.Schema.Name == c2.S.Name
+		case *schema.DropView:
+			return c1.V.Name == c2.V.Name && c1.V.Schema == c2.V.Schema // View recreation.
+		default:
+			return depOfAdd(c1.V.Deps, c2)
 		}
-		return depOfAdd(c1.V.Deps, c2)
 	case *schema.DropView:
 		return depOfDrop(c1.V, c2)
 	case *schema.ModifyView:
@@ -540,10 +557,14 @@ func dependsOn(c1, c2 schema.Change) bool {
 		}
 		return depOfAdd(c1.To.Deps, c2)
 	case *schema.AddFunc:
-		if c2, ok := c2.(*schema.DropFunc); ok && c1.F.Name == c2.F.Name && c1.F.Schema == c2.F.Schema {
-			return true // Func recreation.
+		switch c2 := c2.(type) {
+		case *schema.AddSchema:
+			return c1.F.Schema.Name == c2.S.Name
+		case *schema.DropFunc:
+			return c1.F.Name == c2.F.Name && c1.F.Schema == c2.F.Schema // Func recreation.
+		default:
+			return depOfAdd(c1.F.Deps, c2)
 		}
-		return depOfAdd(c1.F.Deps, c2)
 	case *schema.DropFunc:
 		return depOfDrop(c1.F, c2)
 	case *schema.ModifyFunc:
@@ -553,10 +574,14 @@ func dependsOn(c1, c2 schema.Change) bool {
 		}
 		return depOfAdd(c1.To.Deps, c2)
 	case *schema.AddProc:
-		if c2, ok := c2.(*schema.DropProc); ok && c1.P.Name == c2.P.Name && c1.P.Schema == c2.P.Schema {
-			return true // Proc recreation.
+		switch c2 := c2.(type) {
+		case *schema.AddSchema:
+			return c1.P.Schema.Name == c2.S.Name
+		case *schema.DropProc:
+			return c1.P.Name == c2.P.Name && c1.P.Schema == c2.P.Schema // Proc recreation.
+		default:
+			return depOfAdd(c1.P.Deps, c2)
 		}
-		return depOfAdd(c1.P.Deps, c2)
 	case *schema.DropProc:
 		return depOfDrop(c1.P, c2)
 	case *schema.ModifyProc:
