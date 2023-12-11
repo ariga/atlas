@@ -45,8 +45,7 @@ Please reach out to us on [Discord](https://discord.gg/zZ6sWVg6NT) or by opening
 
 ## Integrating Atlas into your Hibernate project
 
-Managing database schemas using Hibernate is currently not an easy task. Developers feel that [they can't trust](https://stackoverflow.com/a/221422/1708860) Hibernate to manage their schemas.
-In fact, Hibernate themselves recommend using an external tool:
+Managing database schemas using Hibernate is currently not an easy task. Executing automatic, non-reviewable changes to production databases is something recommended to avoid. The Hibernate team [recommends](https://docs.jboss.org/hibernate/orm/6.4/userguide/html_single/Hibernate_User_Guide.html) using an external tool for this task.
 
 > Although Hibernate provides the update option for the hibernate.hbm2ddl.auto configuration property,
 this feature is not suitable for a production environment. [...] You should always use an automatic schema migration tool and have all the migration scripts stored in the Version Control System.
