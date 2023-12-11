@@ -382,7 +382,7 @@ public class Main {
 Currently, Atlas does not support using generated fields that require data initialization such as GenerationType.SEQUENCE, GenerationType.TABLE, and Generation.AUTO.
 
 If needed, you can still export the schema using the flag --enable-table-generators (or -Denable-table-generators using Maven). When applying the schema to your database, you will need
-to make sure to apply the ignored statements (using `atlas migrate --env hibernate diff --edit`). See more information on manual migrations [here](/versioned/new)
+to make sure to apply the ignored statements (using `atlas migrate --env hibernate diff --edit`). See more information on manual migrations [here](/versioned/diff)
 
 For example, if you are adding GenerationType.SEQUENCE to the Event entity, you will need to add insert statements to your generated migration file:
 
