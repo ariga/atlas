@@ -82,7 +82,7 @@ methodology. Once this happens, the responsibility for planning migration script
 sure they are in line with what GORM expects at runtime is moved to developers.
 
 Atlas can automatically plan database schema migrations for developers using GORM.
-Atlas plans migrations by calculating the diff between the _current_ state of the database,
+Atlas plans migrations by calculating the diff between the _current_3 state of the database,
 and its _desired_ state.
 
 In the context of versioned migrations, the current state can be thought of as the database schema that would have
