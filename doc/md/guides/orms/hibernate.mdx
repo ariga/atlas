@@ -82,7 +82,7 @@ plugins {
 </TabItem>
 <TabItem value="Maven" label="Maven">
 
-```
+```xml
 <build>
     <pluginManagement>
         <plugins>
@@ -109,7 +109,7 @@ Verify that the plugin is installed by running this command:
 </TabItem>
 <TabItem value="Maven" label="Maven" default>
 
-```
+```bash
 mvn help:describe -Dplugin=hibernate-provider -Dgoal=schema
 ```
 </TabItem>
@@ -147,12 +147,12 @@ data "external_schema" "hibernate" {
 
 ```hcl
 data "external_schema" "hibernate" {
-    program = [
-        "./mvn",
-        "-q",
-        "hibernate-provider:schema",
-        "-Dproperties", "schema-export.properties"
-    ]
+  program = [
+    "./mvn",
+    "-q",
+    "hibernate-provider:schema",
+    "-Dproperties", "schema-export.properties"
+  ]
 }
 ```
 
@@ -243,7 +243,7 @@ dependencies {
 </TabItem>
 <TabItem value="Maven" label="Maven">
 
-```
+```xml
 <dependency>
     <groupId>io.atlasgo</groupId>
     <artifactId>hibernate-provider</artifactId>
