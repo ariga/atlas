@@ -30,7 +30,7 @@ As applications evolve, so do their database schemas. The practice of automating
 changes has evolved hand in hand with modern devops principles into what is known as
 [database migrations](https://en.wikipedia.org/wiki/Schema_migration). As part of this evolution, hundreds of
 "migration tools" have been created to help developers manage their database migrations. These tools range from
-ORM and language specific tools like [Alembic](https://alembic.sqlalchemy.org/en/latest/) for Python to language
+ORM and language specific tools like [Alembic](https://alembic.sqlalchemy.org/en/latest/) for Python, to language
 agnostic tools like [Flyway](https://flywaydb.org/) and [Liquibase](https://www.liquibase.org/).
 
 When Kubernetes came along and teams started to containerize their applications, the knee-jerk reaction was to
@@ -45,7 +45,7 @@ these capabilities it is possible to natively integrate database migrations into
 
 ## Prerequisites
 
-* A running Kubernetes cluster - For learning purposes, you can use
+* A running Kubernetes cluster - for learning purposes, you can use
 [Minikube](https://minikube.sigs.k8s.io/docs/start/), which is a tool that runs a single-node
 Kubernetes cluster on your laptop.
 * [kubectl](https://kubernetes.io/docs/tasks/tools/) - a command-line tool for interacting with Kubernetes clusters.
@@ -114,7 +114,7 @@ kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=atlas-operator 
 pod/atlas-operator-866dfbc56d-qkkkn condition met
 ```
 
-For more information on the installation process refer to the [Atlas Operator Documentation](/integrations/kubernetes/operator#getting-started)
+For more information on the installation process, refer to the [Atlas Operator Documentation](/integrations/kubernetes/operator#getting-started)
 
 ### Step 2: Set up the Target Database
 
@@ -163,7 +163,7 @@ spec:
 ```
 
 This resource tells the Atlas Operator to apply the migrations in the `atlasdemo` project in Atlas Cloud to the
-database specified in the `postgres-credentials` secret.  Notice that the `tokenFrom` field references a secret
+database specified in the `postgres-credentials` secret. Notice that the `tokenFrom` field references a secret
 called `atlas-credentials`. This secret will contain the Atlas Cloud API token that we created in
 [part one](2023-12-06-gitops-for-databases-part-1.mdx).
 
@@ -175,13 +175,13 @@ kubectl create secret generic atlas-credentials --from-literal=token=aci_<replac
 
 :::info Obtaining the `tag` field
 
-Notice the `tag` field in the `dir` section.  This field tells the Atlas Operator which version of the migrations
-to apply.  In this case, we are telling it to apply the migrations tagged with the commit hash
+Notice the `tag` field in the `dir` section. This field tells the Atlas Operator which version of the migrations
+to apply. In this case, we are telling it to apply the migrations tagged with the commit hash
 `1d579be616db48803bb21713fd836a9165030f18` which is the commit hash of the merge commit that merged the pull
 request we created in [part one](2023-12-06-gitops-for-databases-part-1.mdx).
 
 To review which tags are available for your migrations, head over to you Atlas Cloud project and click on the
-`Tags` tab.  You should see something like this:
+`Tags` tab. You should see something like this:
 
 ![](https://atlasgo.io/uploads/blog/gitops/dir-tags.png)
 
@@ -287,12 +287,12 @@ You can also observe the status of the migration using the Atlas Cloud UI:
 
 ## Wrapping Up
 
-Let's now review the flow that we have created, from end to end:
+Let's review the flow that we have created, from end to end:
 * Developers modify the desired state of their schema and use `atlas migrate diff` locally to generate a migration
 plan.
 * Developers commit the migration plan to their GitHub repository and create a pull request.
 * GitHub Actions runs the Atlas Continuous Integration workflow, which verifies the migration plan is correct and safe.
-* Once the pull request is merged, a GitHub Actions workflow pushes the new migration to Atlas Cloud.  It is tagged
+* Once the pull request is merged, a GitHub Actions workflow pushes the new migration to Atlas Cloud. It is tagged
 with the commit hash of the merge commit.
 * When we are ready to deploy our changes to production, we change the value of the `tag` field in the
 `AtlasMigration` resource to the most recent tag. We push this change to our GitHub repository.
