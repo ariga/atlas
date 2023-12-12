@@ -131,7 +131,7 @@ In your project directory, create a new file named `atlas.hcl` with the followin
 <Tabs>
 <TabItem value="Gradle" label="Gradle" default>
 
-```hcl
+```hcl title='atlas.hcl'
 data "external_schema" "hibernate" {
     program = [
         "./gradlew",
@@ -145,7 +145,7 @@ data "external_schema" "hibernate" {
 </TabItem>
 <TabItem value="Maven" label="Maven">
 
-```hcl
+```hcl title='atlas.hcl'
 data "external_schema" "hibernate" {
   program = [
     "./mvn",
@@ -164,7 +164,7 @@ Depending on your database, add an environment configuration. For example, for M
 <Tabs>
 <TabItem value="MySQL" label="MySQL" default>
 
-```hcl
+```hcl title='atlas.hcl'
 env "hibernate" {
   src = data.external_schema.hibernate.url
   dev = "docker://mysql/8/dev"
@@ -181,7 +181,7 @@ env "hibernate" {
 </TabItem>
 <TabItem value="PostgreSQL" label="PostgreSQL">
 
-```hcl
+```hcl title='atlas.hcl'
 env "hibernate" {
   src = data.external_schema.hibernate.url
   dev = "docker://postgres/15/dev?search_path=public"
@@ -290,7 +290,7 @@ spring.jpa.properties.hibernate.schema_management_tool=io.atlasgo.ConsoleSchemaM
 
 Lastly, in your project directory, create a new file named `atlas.hcl` with the following contents:
 
-```hcl
+```hcl title='atlas.hcl'
 data "external_schema" "hibernate" {
   program = [
     "./gradlew",
@@ -305,7 +305,7 @@ Depending on your database, add an environment configuration. For example, for M
 <Tabs>
 <TabItem value="MySQL" label="MySQL" default>
 
-```hcl
+```hcl title='atlas.hcl'
 env "hibernate" {
   src = data.external_schema.hibernate.url
   dev = "docker://mysql/8/dev"
@@ -322,7 +322,7 @@ env "hibernate" {
 </TabItem>
 <TabItem value="PostgreSQL" label="PostgreSQL" default>
 
-```hcl
+```hcl title='atlas.hcl'
 env "hibernate" {
   src = data.external_schema.hibernate.url
   dev = "docker://postgres/15/dev?search_path=public"
@@ -396,19 +396,21 @@ public class Location {
 </TabItem>
 </Tabs>
 
+Atlas uses the `atlas.sum` file to protect against conflicting schema changes, you can read about it [here](/versioned/new#recalculating-the-directory-hash).
+
 :::note
-Currently, Atlas does not support using generated fields that require data initialization such as GenerationType.SEQUENCE, GenerationType.TABLE, and Generation.AUTO.
+Currently, Atlas does not support using generated fields that require data initialization such as `GenerationType.SEQUENCE`, `GenerationType.TABLE`, and `Generation.AUTO`.
 
 If needed, you can still export the schema using the flag --enable-table-generators (or -Denable-table-generators using Maven). When applying the schema to your database, you will need
-to make sure to apply the ignored statements (using `atlas migrate --env hibernate diff --edit`). See more information on manual migrations [here](/versioned/new).
+to make sure to apply the ignored statements (using `atlas migrate --env hibernate diff --edit`). See more information on manual migrations [here](/versioned/diff)
 
-For example, if you are adding GenerationType.SEQUENCE to the Event entity, you will need to add an insert statements to your generated migration file:
+For example, if you are adding GenerationType.SEQUENCE to the Event entity, you will need to add insert statements to your generated migration file:
 
 ```diff
-diff --git a/examples/with_local_plugin_repository/migrations/20231210140844.sql b/examples/with_local_plugin_repository/migrations/20231210140844.sql
+diff --git a/migrations/20231210140844.sql b/examples/with_local_plugin_repository/migrations/20231210140844.sql
 index ad80a64..5955834 100644
---- a/examples/with_local_plugin_repository/migrations/20231210140844.sql
-+++ b/examples/with_local_plugin_repository/migrations/20231210140844.sql
+--- a/migrations/20231210140844.sql
++++ b/migrations/20231210140844.sql
 @@ -4,3 +4,6 @@ CREATE TABLE `Event` (`id` bigint NOT NULL AUTO_INCREMENT, `title` varchar(255)
  -- Create "Event_SEQ" table
  CREATE TABLE `Event_SEQ` (`next_val` bigint NULL) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
