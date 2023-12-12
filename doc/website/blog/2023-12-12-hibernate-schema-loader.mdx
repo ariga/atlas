@@ -376,30 +376,6 @@ public class Main {
 </TabItem>
 </Tabs>
 
-:::note
-Currently, Atlas does not support using generated fields that require data initialization such as `GenerationType.SEQUENCE`, `GenerationType.TABLE`, and `Generation.AUTO`.
-
-If needed, you can still export the schema using the flag --enable-table-generators (or -Denable-table-generators using Maven). When applying the schema to your database, you will need
-to make sure to apply the ignored statements (using `atlas migrate --env hibernate diff --edit`). See more information on manual migrations [here](/versioned/diff)
-
-For example, if you are adding GenerationType.SEQUENCE to the Event entity, you will need to add insert statements to your generated migration file:
-
-```diff
-diff --git a/migrations/20231210140844.sql b/examples/with_local_plugin_repository/migrations/20231210140844.sql
-index ad80a64..5955834 100644
---- a/migrations/20231210140844.sql
-+++ b/migrations/20231210140844.sql
-@@ -4,3 +4,6 @@ CREATE TABLE `Event` (`id` bigint NOT NULL AUTO_INCREMENT, `title` varchar(255)
- -- Create "Event_SEQ" table
- CREATE TABLE `Event_SEQ` (`next_val` bigint NULL) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-+ -- Initialize "Event_SEQ" table
-+ insert into Event_SEQ values ( 1 );
-```
-
-Testing these changes can be done by running the application with a local database and creating the entity. To apply the migration directory
-to the local database, use `atlas migrate apply`.
-:::
-
 ### Running Atlas
 
 We should now be able to view our schema using Atlas:
@@ -407,6 +383,10 @@ We should now be able to view our schema using Atlas:
 ```bash
 atlas schema inspect -w --env hibernate --url env://src
 ```
+
+The `-w` flag allows us to inspect the schema in [atlas cloud](https://atlasgo.cloud/):
+
+![](https://atlasgo.io/uploads/images/hibernate-schema-inspect.png)
 
 Atlas has a lot more cool tricks, let's create a migration directory from our schema:
 
@@ -457,6 +437,30 @@ h1:Ezh6r7A0pU4XS7PztE87h+aq5PoGGVTd6kaprtpXxas=
 </Tabs>
 
 Atlas uses the `atlas.sum` file to protect against conflicting schema changes, you can read about it [here](/versioned/new#recalculating-the-directory-hash).
+
+:::note
+Currently, Atlas does not support using generated fields that require data initialization such as `GenerationType.SEQUENCE`, `GenerationType.TABLE`, and `Generation.AUTO`.
+
+If needed, you can still export the schema using the flag --enable-table-generators (or -Denable-table-generators using Maven). When applying the schema to your database, you will need
+to make sure to apply the ignored statements (using `atlas migrate --env hibernate diff --edit`). See more information on manual migrations [here](/versioned/diff)
+
+For example, if you are adding GenerationType.SEQUENCE to the Event entity, you will need to add insert statements to your generated migration file:
+
+```diff
+diff --git a/migrations/20231210140844.sql b/examples/with_local_plugin_repository/migrations/20231210140844.sql
+index ad80a64..5955834 100644
+--- a/migrations/20231210140844.sql
++++ b/migrations/20231210140844.sql
+@@ -4,3 +4,6 @@ CREATE TABLE `Event` (`id` bigint NOT NULL AUTO_INCREMENT, `title` varchar(255)
+ -- Create "Event_SEQ" table
+ CREATE TABLE `Event_SEQ` (`next_val` bigint NULL) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
++ -- Initialize "Event_SEQ" table
++ insert into Event_SEQ values ( 1 );
+```
+
+Testing these changes can be done by running the application with a local database and creating the entity. To apply the migration directory
+to the local database, use `atlas migrate apply`.
+:::
 
 ### Testing the migrations
 
