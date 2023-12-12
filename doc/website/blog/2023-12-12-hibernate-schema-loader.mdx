@@ -6,6 +6,7 @@ tags: [hibernate, schema, migration]
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import InstallationInstructions from '../../md/components/_installation_instructions.mdx'
 
 :::info TL;DR
 
@@ -134,7 +135,7 @@ and adding the definition of the Hibernate schema:
 <Tabs>
 <TabItem value="Gradle" label="Gradle" default>
 
-```hcl
+```hcl title="atlas.hcl"
 data "external_schema" "hibernate" {
   program = [
     "./gradlew",
@@ -147,7 +148,7 @@ data "external_schema" "hibernate" {
 </TabItem>
 <TabItem value="Maven" label="Maven">
 
-```hcl
+```hcl title="atlas.hcl"
 data "external_schema" "hibernate" {
   program = [
     "./mvn",
@@ -166,7 +167,7 @@ And the Atlas configuration:
 <Tabs>
 <TabItem value="MySQL" label="MySQL" default>
 
-```hcl
+```hcl title="atlas.hcl"
 env "hibernate" {
   src = data.external_schema.hibernate.url
   dev = "docker://mysql/8/dev"
@@ -184,7 +185,7 @@ env "hibernate" {
 </TabItem>
 <TabItem value="PostgreSQL" label="PostgreSQL">
 
-```hcl
+```hcl title="atlas.hcl"
 env "hibernate" {
   src = data.external_schema.hibernate.url
   dev = "docker://postgres/15/dev?search_path=public"
@@ -206,11 +207,9 @@ env "hibernate" {
 
 For this demo, we are going to use Gradle and PostgreSQL. You can take a look at the complete example [here](https://github.com/ariga/atlas-provider-hibernate/tree/master/examples/e2e_java_example).
 
-If you haven't already, install Atlas from macOS or Linux by the following (or taking a look at our [installation guide](/getting-started#installation)):
+If you haven't already, install the latest version of Atlas:
 
-```bash
-curl -sSf https://atlasgo.sh | sh
-```
+<InstallationInstructions />
 
 Create a project and add the plugin and the following dependencies:
 
@@ -225,12 +224,12 @@ dependencies {
 }
 ```
 
-Copy the following Java files to the directory `src/main/java/org.example`:
+Copy the following Java files to the directory `src/main/java/org/example`:
 
 <Tabs>
-<TabItem value="Actor.java">
+<TabItem value="Actor">
 
-```java
+```java title=src/main/java/org/example/Actor.java
 package org.example;
 
 import jakarta.persistence.*;
@@ -258,9 +257,9 @@ public class Actor {
 ```
 
 </TabItem>
-<TabItem value="Movie.java">
+<TabItem value="Movie">
 
-```java
+```java title=src/main/java/org/example/Movie.java
 package org.example;
 
 import jakarta.persistence.*;
@@ -286,9 +285,9 @@ public class Movie {
 ```
 
 </TabItem>
-<TabItem value="MovieParticipation.java">
+<TabItem value="MovieParticipation">
 
-```java
+```java title=src/main/java/org/example/MovieParticipation.java
 package org.example;
 
 import jakarta.persistence.*;
@@ -317,9 +316,9 @@ public class MovieParticipation {
 ```
 
 </TabItem>
-<TabItem value="MovieParticipationKey.java">
+<TabItem value="MovieParticipationKey">
 
-```java
+```java title=src/main/java/org/example/MovieParticipationKey.java
 package org.example;
 
 import jakarta.persistence.Column;
@@ -340,9 +339,9 @@ public class MovieParticipationKey implements Serializable {
 ```
 
 </TabItem>
-<TabItem value="Main.java">
+<TabItem value="Main">
 
-```java
+```java title=src/main/java/org/example/Main.java
 package org.example;
 
 import org.hibernate.SessionFactory;
