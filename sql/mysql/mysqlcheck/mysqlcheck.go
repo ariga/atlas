@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
@@ -59,11 +60,13 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 	}
 	switch ct := p.Column.Type.Type.(type) {
 	case *mysql.BitType, *schema.BoolType, *schema.IntegerType, *schema.DecimalType, *schema.FloatType, *schema.BinaryType:
-		tt, err := mysql.FormatType(p.Column.Type.Type)
-		if err != nil {
-			return nil, err
+		if !sqlx.Has(p.Column.Attrs, &mysql.AutoIncrement{}) {
+			tt, err := mysql.FormatType(p.Column.Type.Type)
+			if err != nil {
+				return nil, err
+			}
+			implicitUpdate(tt, "0")
 		}
-		implicitUpdate(tt, "0")
 	case *schema.StringType:
 		switch ct.T {
 		case mysql.TypeVarchar, mysql.TypeChar:
