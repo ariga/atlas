@@ -99,6 +99,7 @@ func TestDataDepend_MySQL8_ImplicitUpdate(t *testing.T) {
 									),
 								Changes: []schema.Change{
 									&schema.AddColumn{C: schema.NewTimeColumn("b", mysql.TypeTimestamp)},
+									&schema.AddColumn{C: schema.NewIntColumn("id", mysql.TypeBigInt).AddAttrs(&mysql.AutoIncrement{})},
 								},
 							},
 						},

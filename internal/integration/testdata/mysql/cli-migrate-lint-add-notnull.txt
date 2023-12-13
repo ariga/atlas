@@ -12,6 +12,9 @@ cmp got.txt empty.txt
 atlas migrate lint --dir file://migrations4 --dev-url URL --latest=1 > got.txt
 cmp got.txt expected4.txt
 
+atlas migrate lint --dir file://migrations5 --dev-url URL --latest=1 > got.txt
+cmp got.txt empty.txt
+
 -- empty.txt --
 -- migrations1/1.sql --
 CREATE TABLE users (id int);
@@ -51,3 +54,9 @@ UPDATE `users` SET `name` = CONCAT("name", id) WHERE `name` IS NULL;
 
 	L1: Adding a non-nullable "varchar" column "name" on table "users" without a default value implicitly sets existing rows with ""
 
+-- migrations5/1.sql --
+CREATE TABLE users (name varchar(36));
+
+-- migrations5/2.sql --
+-- Auto-increment fills existing rows.
+ALTER TABLE users ADD COLUMN `id` bigint PRIMARY KEY AUTO_INCREMENT;
