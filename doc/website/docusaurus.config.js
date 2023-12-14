@@ -11,7 +11,7 @@ module.exports = {
   themeConfig: {
     image: "https://og.atlasgo.io/image?title=Schema%20Migration%20Tool%20for%20any%20Language",
     prism: {
-      additionalLanguages: ['hcl'],
+      additionalLanguages: ['hcl', 'java', 'properties', 'gradle'],
       magicComments: [
         {
           className: 'theme-code-block-highlighted-line',

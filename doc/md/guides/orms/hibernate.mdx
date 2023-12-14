@@ -1,0 +1,501 @@
+---
+id: hibernate
+title: Automatic migration planning for Hibernate
+slug: /guides/orms/hibernate
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## TL;DR
+* [Hibernate](https://hibernate.org/orm/) is an ORM library that's widely used in the Java community.
+* [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, linting and
+  executing schema changes to your database.
+* Developers using Hibernate can use Atlas to automatically plan schema migrations
+  for them, based on the desired state of their schema instead of crafting them by hand.
+
+## Automatic migration planning for Hibernate
+Hibernate is a popular ORM widely used in the Java community. Hibernate allows users to
+manage their database schemas using its [automatic schema generation](https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html#schema-generation) feature,
+which is usually sufficient during development and in many simple cases.
+
+However, at some point, teams need more control and decide to employ
+the [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations)
+methodology, which is a more robust way to manage your database schema.
+Once this happens, the responsibility for planning migration scripts and making
+sure they are in line with what Hibernate expects at runtime is moved to developers.
+
+Atlas can automatically plan database schema migrations for developers using Hibernate.
+Atlas plans migrations by calculating the diff between the _current_ state of the database
+and its _desired_ state.
+
+In the context of versioned migrations, the current state can be thought of as the database schema that would have been created by applying
+all previous migration scripts.
+
+The desired schema of your application can be provided to Atlas via an [External Schema Data Source](/atlas-schema/projects#data-source-external_schema),
+which is any program that can output a SQL schema definition to stdout.
+
+To use Atlas with Hibernate, users can utilize the [Hibernate Atlas Provider](https://github.com/ariga/atlas-provider-hibernate),
+a small program that can be used to load the schema of a Hibernate project into Atlas.
+
+In this guide, we will show how Atlas can automatically plan schema migrations for Hibernate users.
+
+## Prerequisites
+
+* A local [Hibernate](https://hibernate.org/orm/) project.
+
+If you don't have a Hibernate project handy, check out the [Hibernate getting started page](https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html)
+
+## Using the Atlas Hibernate Provider
+
+In this guide, we will use the [Hibernate Atlas Provider](https://github.com/ariga/atlas-provider-hibernate)
+to automatically plan schema migrations for a Hibernate project.
+
+Using the provider does not require a connection to a live database.
+
+### Installation
+
+Install Atlas from macOS or Linux by running:
+```bash
+curl -sSf https://atlasgo.sh | sh
+```
+See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more installation options.
+
+Install the provider by adding this plugin to your Gradle project:
+
+<Tabs>
+<TabItem value="Gradle Kotlin" label="Gradle Kotlin" default>
+
+```gradle
+plugins {
+    id("io.atlasgo.hibernate-provider-gradle-plugin") version "0.1"
+}
+```
+</TabItem>
+<TabItem value="Gradle Groovy" label="Gradle Groovy" default>
+
+```gradle
+plugins {
+    id "io.atlasgo.hibernate-provider-gradle-plugin" version "0.1"
+}
+```
+</TabItem>
+<TabItem value="Maven" label="Maven">
+
+```xml
+<build>
+    <pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>io.atlasgo</groupId>
+                <artifactId>hibernate-provider-maven-plugin</artifactId>
+                <version>0.1</version>
+            </plugin>
+        </plugins>
+    </pluginManagement>
+</build>
+```
+</TabItem>
+</Tabs>
+
+Verify that the plugin is installed by running this command:
+
+<Tabs>
+<TabItem value="Gradle" label="Gradle" default>
+
+```bash
+./gradlew help --task schema
+```
+</TabItem>
+<TabItem value="Maven" label="Maven" default>
+
+```bash
+mvn help:describe -Dplugin=hibernate-provider -Dgoal=schema
+```
+</TabItem>
+</Tabs>
+
+### Library vs Standalone
+
+The Atlas Hibernate Provider can be used in two modes:
+* **Standalone** - In most cases, you can use the provider as a Gradle task (or a Maven Mojo) to output
+the Hibernate schema and load the schema into Atlas.
+* **Library** - If you are initializing Hibernate in a custom way, using an older version of
+Hibernate or if you are not using Gradle or Maven, you can use the provider as a library and create
+a small application that prints the schema to stdout.
+
+### Standalone
+
+In your project directory, create a new file named `atlas.hcl` with the following contents:
+
+<Tabs>
+<TabItem value="Gradle" label="Gradle" default>
+
+```hcl title='atlas.hcl'
+data "external_schema" "hibernate" {
+    program = [
+        "./gradlew",
+        "-q",
+        "schema",
+        "--properties", "schema-export.properties"
+    ]
+}
+```
+
+</TabItem>
+<TabItem value="Maven" label="Maven">
+
+```hcl title='atlas.hcl'
+data "external_schema" "hibernate" {
+  program = [
+    "./mvn",
+    "-q",
+    "hibernate-provider:schema",
+    "-Dproperties", "schema-export.properties"
+  ]
+}
+```
+
+</TabItem>
+</Tabs>
+
+Depending on your database, add an environment configuration. For example, for MySQL and PostgreSQL:
+
+<Tabs>
+<TabItem value="MySQL" label="MySQL" default>
+
+```hcl title='atlas.hcl'
+env "hibernate" {
+  src = data.external_schema.hibernate.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+```
+</TabItem>
+<TabItem value="PostgreSQL" label="PostgreSQL">
+
+```hcl title='atlas.hcl'
+env "hibernate" {
+  src = data.external_schema.hibernate.url
+  dev = "docker://postgres/15/dev?search_path=public"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+We need to let Atlas and the provider know which SQL dialect should be used. The dialect is specified in the
+properties file and in the [Dev Database](/concepts/dev-database) that Atlas will use.
+
+Create a resource named `schema-export.properties` in `src/main/resource`, it should be part of the classpath by default.
+Specify the SQL dialect that will be used to initialize Hibernate:
+
+<Tabs>
+<TabItem value="MySQL" label="MySQL" default>
+
+```properties
+jakarta.persistence.database-product-name=MySQL
+jakarta.persistence.database-major-version=8
+```
+</TabItem>
+<TabItem value="PostgreSQL" label="PostgreSQL">
+
+```properties
+jakarta.persistence.database-product-name=PostgreSQL
+```
+</TabItem>
+</Tabs>
+
+> Note: The properties being used might vary depending on the version of Hibernate and the database connector that is configured for your project.
+
+### Library mode
+
+We are going to add the provider as a dependency in Gradle (or Maven) and configure Hibernate to use
+`ConsoleSchemaManagementTool`. In this example, we are going to use Spring to initialize Hibernate.
+
+> By default, the `HibernateSchemaManagementTool` will try to connect to the
+database during initialization and generate the schema into the database. The `ConsoleSchemaManagementTool` overrides this behaviour.
+
+Start by adding the provider as a dependency:
+
+<Tabs>
+<TabItem value="Gradle" label="Gradle" default>
+
+```gradle
+dependencies {
+    implementation("io.atlasgo:hibernate-provider:0.1")
+}
+```
+</TabItem>
+<TabItem value="Maven" label="Maven">
+
+```xml
+<dependency>
+    <groupId>io.atlasgo</groupId>
+    <artifactId>hibernate-provider</artifactId>
+    <version>0.1</version>
+</dependency>
+```
+</TabItem>
+</Tabs>
+
+Create a new file named `HibernateSchemaExporter.java` with the following contents:
+
+```java
+@SpringBootApplication
+@PropertySource(value = {"classpath:schema-export.properties"})
+public class HibernateSchemaExporter {
+    public static void main(String[] args) {
+        new AnnotationConfigApplicationContext(HibernateSchemaExporter.class);
+    }
+}
+```
+
+Next, create a new resource named `schema-export.properties` (make sure it is in the classpath) with this content:
+
+<Tabs>
+<TabItem value="MySQL" label="MySQL" default>
+
+```properties
+spring.jpa.properties.jakarta.persistence.database-product-name=MySQL
+spring.jpa.properties.jakarta.persistence.database-major-version=8
+spring.jpa.properties.jakarta.persistence.schema-generation.database.action=create
+spring.jpa.properties.hibernate.schema_management_tool=io.atlasgo.ConsoleSchemaManagementTool
+```
+</TabItem>
+<TabItem value="PostgreSQL" label="PostgreSQL">
+
+```properties
+spring.jpa.properties.jakarta.persistence.database-product-name=PostgreSQL
+spring.jpa.properties.jakarta.persistence.schema-generation.database.action=create
+spring.jpa.properties.hibernate.schema_management_tool=io.atlasgo.ConsoleSchemaManagementTool
+```
+</TabItem>
+</Tabs>
+
+
+Lastly, in your project directory, create a new file named `atlas.hcl` with the following contents:
+
+```hcl title='atlas.hcl'
+data "external_schema" "hibernate" {
+  program = [
+    "./gradlew",
+    "-q",
+    "bootRun"
+  ]
+}
+```
+
+Depending on your database, add an environment configuration. For example, for MySQL and PostgreSQL:
+
+<Tabs>
+<TabItem value="MySQL" label="MySQL" default>
+
+```hcl title='atlas.hcl'
+env "hibernate" {
+  src = data.external_schema.hibernate.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+```
+</TabItem>
+<TabItem value="PostgreSQL" label="PostgreSQL" default>
+
+```hcl title='atlas.hcl'
+env "hibernate" {
+  src = data.external_schema.hibernate.url
+  dev = "docker://postgres/15/dev?search_path=public"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+## Usage
+
+Atlas supports a [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations)
+workflow, where each change to the database is versioned and recorded in a migration file. You can use the
+`atlas migrate diff` command to automatically generate a migration file that will migrate the database
+from its latest revision to the current Hibernate schema.
+
+Suppose we have the following Hibernate `com.example.model` package, with two models `Event` and `Location`:
+
+<Tabs>
+<TabItem value="Event" label="Event.java" default>
+
+```java
+package com.example.model;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import static jakarta.persistence.GenerationType.IDENTITY;
+
+@Entity
+@Table(name = "Events")
+public class Event {
+    private String title;
+
+    @Id
+    @GeneratedValue(strategy = IDENTITY)
+    private Long id;
+}
+
+```
+</TabItem>
+<TabItem value="Location" label="Location.java">
+
+```java
+package com.example.model;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import static jakarta.persistence.GenerationType.IDENTITY;
+
+@Entity
+@Table(name = "Events")
+public class Location {
+    @Id
+    @GeneratedValue(strategy = IDENTITY)
+    private Long id;
+}
+```
+</TabItem>
+</Tabs>
+
+Atlas uses the `atlas.sum` file to protect against conflicting schema changes, you can read about it [here](/concepts/migration-directory-integrity).
+
+:::note
+Currently, Atlas does not support using generated fields that require data initialization such as `GenerationType.SEQUENCE`, `GenerationType.TABLE`, and `Generation.AUTO`.
+
+If needed, you can still export the schema using the flag --enable-table-generators (or -Denable-table-generators using Maven). When applying the schema to your database, you will need
+to make sure to apply the ignored statements (using `atlas migrate --env hibernate diff --edit`). See more information on manual migrations [here](/versioned/diff)
+
+For example, if you are adding GenerationType.SEQUENCE to the Event entity, you will need to add insert statements to your generated migration file:
+
+```diff
+diff --git a/migrations/20231210140844.sql b/examples/with_local_plugin_repository/migrations/20231210140844.sql
+index ad80a64..5955834 100644
+--- a/migrations/20231210140844.sql
++++ b/migrations/20231210140844.sql
+@@ -4,3 +4,6 @@ CREATE TABLE `Event` (`id` bigint NOT NULL AUTO_INCREMENT, `title` varchar(255)
+ -- Create "Event_SEQ" table
+ CREATE TABLE `Event_SEQ` (`next_val` bigint NULL) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
++ -- Initialize "Event_SEQ" table
++ insert into Event_SEQ values ( 1 );
+```
+
+Testing these changes can be done by running the application with a local database and creating the entity. To apply the migration directory
+to the local database, use `atlas migrate apply`.
+
+:::
+
+Using the configuration we created earlier, we can generate a migration file by running the following command:
+
+```bash
+atlas migrate diff --env hibernate
+```
+
+Running this command will generate files similar to this in the `migrations` directory:
+
+```
+migrations
+|-- 20231128110831.sql
+`-- atlas.sum
+
+0 directories, 2 files
+```
+
+Examining the contents of `20231128110831.sql`:
+
+```sql
+-- Create "Events" table
+CREATE TABLE `Events` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NULL,
+  PRIMARY KEY (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- Create "Locations" table
+CREATE TABLE `Locations` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+```
+
+Amazing! Atlas automatically generated a migration file that will create the `Events` and `Locations` tables in our database!
+
+Next, alter the `Event` model to add a new `Location` field:
+
+
+```diff
+ import jakarta.persistence.Id;
++import jakarta.persistence.ManyToOne;
+ import jakarta.persistence.Table;
+
+ @Entity
+@@ -11,6 +12,9 @@ import jakarta.persistence.Table;
+ public class Event {
+     private String title;
+
++    @ManyToOne
++    private Location location;
++
+     @Id
+     @GeneratedValue(strategy = GenerationType.IDENTITY)
+     private Long id;
+```
+
+Re-run this command:
+
+```bash
+atlas migrate diff --env hibernate
+```
+
+Observe that a new migration file is generated:
+
+```sql
+-- Modify "Events" table
+ALTER TABLE `Events` ADD COLUMN `location_id` bigint NULL, ADD INDEX `FK4hncpre5frbs4krenagj1xyk4` (`location_id`), ADD CONSTRAINT `FK4hncpre5frbs4krenagj1xyk4` FOREIGN KEY (`location_id`) REFERENCES `Locations` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION;
+```
+
+## Conclusion
+
+In this guide we demonstrated how projects using Hibernate can use Atlas to automatically
+plan schema migrations based solely on their data model. To learn more about executing
+these migrations against your production database, read the documentation for the
+[`migrate apply`](/versioned/apply) command.
+
+Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT)
