@@ -39,19 +39,21 @@ type (
 		Indexes     []*Index
 		PrimaryKey  *Index
 		ForeignKeys []*ForeignKey
-		Attrs       []Attr   // Attrs, constraints and options.
-		Deps        []Object // Objects this table depends on.
+		Attrs       []Attr     // Attrs, constraints and options.
+		Triggers    []*Trigger // Triggers on the table.
+		Deps        []Object   // Objects this table depends on.
 	}
 
 	// A View represents a view definition.
 	View struct {
-		Name    string
-		Def     string
-		Schema  *Schema
-		Columns []*Column
-		Attrs   []Attr   // Attrs and options.
-		Indexes []*Index // Indexes on materialized view.
-		Deps    []Object // Objects this view depends on.
+		Name     string
+		Def      string
+		Schema   *Schema
+		Columns  []*Column
+		Attrs    []Attr     // Attrs and options.
+		Indexes  []*Index   // Indexes on materialized view.
+		Triggers []*Trigger // Triggers on the view.
+		Deps     []Object   // Objects this view depends on.
 	}
 
 	// A Column represents a column definition.
@@ -109,6 +111,31 @@ type (
 		OnDelete   ReferenceOption
 	}
 
+	// A Trigger represents a trigger definition.
+	Trigger struct {
+		Name string
+		// Table or View that this trigger belongs to.
+		Table      *Table
+		View       *View
+		ActionTime TriggerTime    // BEFORE, AFTER, or INSTEAD OF.
+		Events     []TriggerEvent // INSERT, UPDATE, DELETE, etc.
+		For        TriggerFor     // FOR EACH ROW or FOR EACH STATEMENT.
+		Body       string         // Trigger body only.
+		Attrs      []Attr         // WHEN, REFERENCING, etc.
+	}
+
+	// TriggerTime represents the trigger action time.
+	TriggerTime string
+
+	// TriggerFor represents the trigger FOR EACH spec.
+	TriggerFor string
+
+	// TriggerEvent represents the trigger event.
+	TriggerEvent struct {
+		Name    string    // Name of the event (e.g. INSERT, UPDATE, DELETE).
+		Columns []*Column // Columns that might be associated with the event.
+	}
+
 	// Func represents a function definition.
 	Func struct {
 		Name   string
@@ -152,6 +179,32 @@ const (
 	FuncArgModeInOut    FuncArgMode = "INOUT"
 	FuncArgModeVariadic FuncArgMode = "VARIADIC"
 )
+
+// List of supported trigger action times.
+const (
+	TriggerTimeBefore  TriggerTime = "BEFORE"
+	TriggerTimeAfter   TriggerTime = "AFTER"
+	TriggerTimeInstead TriggerTime = "INSTEAD OF"
+)
+
+// List of supported trigger FOR EACH spec.
+const (
+	TriggerForRow  TriggerFor = "ROW"
+	TriggerForStmt TriggerFor = "STATEMENT"
+)
+
+// List of supported trigger events.
+var (
+	TriggerEventInsert   = TriggerEvent{Name: "INSERT"}
+	TriggerEventUpdate   = TriggerEvent{Name: "UPDATE"}
+	TriggerEventDelete   = TriggerEvent{Name: "DELETE"}
+	TriggerEventTruncate = TriggerEvent{Name: "TRUNCATE"}
+)
+
+// TriggerEventUpdateOf returns an UPDATE OF trigger event.
+func TriggerEventUpdateOf(columns ...*Column) TriggerEvent {
+	return TriggerEvent{Name: "UPDATE OF", Columns: columns}
+}
 
 // Schema returns the first schema that matched the given name.
 func (r *Realm) Schema(name string) (*Schema, bool) {

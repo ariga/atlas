@@ -186,6 +186,31 @@ type (
 		From, To Object
 	}
 
+	// AddTrigger describes a trigger creation change.
+	AddTrigger struct {
+		T     *Trigger
+		Extra []Clause // Extra clauses and options.
+	}
+
+	// DropTrigger describes a trigger removal change.
+	DropTrigger struct {
+		T     *Trigger
+		Extra []Clause // Extra clauses.
+	}
+
+	// ModifyTrigger describes a trigger modification change.
+	ModifyTrigger struct {
+		From, To *Trigger
+		// Changes that are extra to the trigger definition.
+		// For example, adding, dropping, or modifying attributes.
+		Changes []Change
+	}
+
+	// RenameTrigger describes a trigger rename change.
+	RenameTrigger struct {
+		From, To *Trigger
+	}
+
 	// AddColumn describes a column creation change.
 	AddColumn struct {
 		C *Column
@@ -606,6 +631,10 @@ func (*AddObject) change()        {}
 func (*DropObject) change()       {}
 func (*ModifyObject) change()     {}
 func (*RenameObject) change()     {}
+func (*AddTrigger) change()       {}
+func (*DropTrigger) change()      {}
+func (*ModifyTrigger) change()    {}
+func (*RenameTrigger) change()    {}
 func (*AddIndex) change()         {}
 func (*DropIndex) change()        {}
 func (*ModifyIndex) change()      {}
