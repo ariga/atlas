@@ -137,6 +137,14 @@ func (s *state) modifyObject(modify *schema.ModifyObject) error {
 	return nil // unimplemented.
 }
 
+func (*state) addTrigger(*schema.AddTrigger) error {
+	return nil // unimplemented.
+}
+
+func (*state) dropTrigger(*schema.DropTrigger) error {
+	return nil // unimplemented.
+}
+
 func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
 	return false // unimplemented.
 }
