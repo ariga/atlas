@@ -305,10 +305,30 @@ func (b *Builder) Func(f *schema.Func) *Builder {
 	return b.mayQualify(f.Schema, f.Name)
 }
 
+// FuncCall writes the function identifier to the builder as a function call,
+func (b *Builder) FuncCall(f *schema.Func, args ...string) *Builder {
+	b.Func(f).rewriteLastByte('(')
+	b.MapComma(args, func(i int, b *Builder) {
+		b.P(args[i])
+	})
+	b.WriteByte(')')
+	return b
+}
+
 // Proc writes the procedure identifier to the builder, prefixed
 // with the schema name if exists.
 func (b *Builder) Proc(p *schema.Proc) *Builder {
 	return b.mayQualify(p.Schema, p.Name)
+}
+
+// ProcCall writes the procedure identifier to the builder as a procedure call,
+func (b *Builder) ProcCall(p *schema.Proc, args ...string) *Builder {
+	b.Proc(p).rewriteLastByte('(')
+	b.MapComma(args, func(i int, b *Builder) {
+		b.P(args[i])
+	})
+	b.WriteByte(')')
+	return b
 }
 
 // TableResource writes the table's resource identifier to the builder, prefixed
