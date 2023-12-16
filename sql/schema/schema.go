@@ -122,6 +122,7 @@ type (
 		For        TriggerFor     // FOR EACH ROW or FOR EACH STATEMENT.
 		Body       string         // Trigger body only.
 		Attrs      []Attr         // WHEN, REFERENCING, etc.
+		Deps       []Object       // Objects this trigger depends on.
 	}
 
 	// TriggerTime represents the trigger action time.
@@ -589,6 +590,7 @@ func (*Table) obj()    {}
 func (*View) obj()     {}
 func (*Func) obj()     {}
 func (*Proc) obj()     {}
+func (*Trigger) obj()  {}
 func (*EnumType) obj() {}
 
 // expressions.
