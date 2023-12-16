@@ -120,6 +120,28 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 		}) == -1 && stmt.Concurrently {
 			add.Extra = append(add.Extra, &postgres.Concurrently{})
 		}
+	case *tree.DropIndex:
+		modify, err := expectModify(changes)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range stmt.IndexList {
+			name := n.String()
+			if uname, err := strconv.Unquote(name); err == nil {
+				name = uname
+			}
+			i := schema.Changes(modify.Changes).IndexDropIndex(name)
+			if i == -1 {
+				return nil, fmt.Errorf("DropIndex %q command not found", name)
+			}
+			drop := modify.Changes[i].(*schema.DropIndex)
+			if slices.IndexFunc(drop.Extra, func(c schema.Clause) bool {
+				_, ok := c.(*postgres.Concurrently)
+				return ok
+			}) == -1 && stmt.Concurrently {
+				drop.Extra = append(drop.Extra, &postgres.Concurrently{})
+			}
+		}
 	}
 	return changes, nil
 }

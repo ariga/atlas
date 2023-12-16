@@ -140,6 +140,29 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 			}) {
 				add.Extra = append(add.Extra, &postgres.Concurrently{})
 			}
+		case stmt.GetDropStmt() != nil && stmt.GetDropStmt().GetConcurrent():
+			modify, err := expectModify(changes)
+			if err != nil {
+				return nil, err
+			}
+			for _, p := range stmt.GetDropStmt().GetObjects() {
+				items := p.GetList().GetItems()
+				if len(items) != 1 || items[0].GetString_().GetSval() == "" {
+					continue
+				}
+				name := items[0].GetString_().GetSval()
+				i := schema.Changes(modify.Changes).IndexDropIndex(name)
+				if i == -1 {
+					return nil, fmt.Errorf("DropIndex %q command not found", name)
+				}
+				drop := modify.Changes[i].(*schema.DropIndex)
+				if !slices.ContainsFunc(drop.Extra, func(c schema.Clause) bool {
+					_, ok := c.(*postgres.Concurrently)
+					return ok
+				}) {
+					drop.Extra = append(drop.Extra, &postgres.Concurrently{})
+				}
+			}
 		}
 	}
 	return changes, nil
