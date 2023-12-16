@@ -145,6 +145,14 @@ func (*state) dropTrigger(*schema.DropTrigger) error {
 	return nil // unimplemented.
 }
 
+func (*state) renameTrigger(*schema.RenameTrigger) error {
+	return nil // unimplemented.
+}
+
+func (*state) modifyTrigger(*schema.ModifyTrigger) error {
+	return nil // unimplemented.
+}
+
 func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
 	return false // unimplemented.
 }
