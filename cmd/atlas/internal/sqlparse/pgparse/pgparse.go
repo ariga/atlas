@@ -140,6 +140,26 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 			}) {
 				add.Extra = append(add.Extra, &postgres.Concurrently{})
 			}
+		case stmt.GetDropStmt() != nil &&
+			stmt.GetDropStmt().GetConcurrent() &&
+			stmt.GetDropStmt().GetRemoveType() == pgquery.ObjectType_OBJECT_INDEX:
+			modify, err := expectModify(changes)
+			if err != nil {
+				return nil, err
+			}
+
+			name := stmt.GetDropStmt().GetObjects()[0].GetList().GetItems()[0].GetString_().Sval
+			i := schema.Changes(modify.Changes).IndexDropIndex(name)
+			if i == -1 {
+				return nil, fmt.Errorf("DropIndex %q command not found", name)
+			}
+			drop := modify.Changes[i].(*schema.DropIndex)
+			if !slices.ContainsFunc(drop.Extra, func(c schema.Clause) bool {
+				_, ok := c.(*postgres.Concurrently)
+				return ok
+			}) {
+				drop.Extra = append(drop.Extra, &postgres.Concurrently{})
+			}
 		}
 	}
 	return changes, nil

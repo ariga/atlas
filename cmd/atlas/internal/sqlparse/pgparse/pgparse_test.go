@@ -204,6 +204,153 @@ func TestFixChange_CreateIndexCon(t *testing.T) {
 	require.Equal(t, &postgres.Concurrently{}, m.Changes[0].(*schema.AddIndex).Extra[0])
 }
 
+func TestFixChange_DropIndexCon(t *testing.T) {
+	var p pgparse.Parser
+	changes, err := p.FixChange(
+		nil,
+		"DROP INDEX i1",
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.DropIndex{I: schema.NewIndex("i1")},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	// No change
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.DropIndex{I: schema.NewIndex("i1")},
+				},
+			},
+		},
+		changes,
+	)
+
+	changes, err = p.FixChange(
+		nil,
+		"DROP INDEX CONCURRENTLY i1",
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.DropIndex{I: schema.NewIndex("i1")},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	// Should add the "Concurrently" clause to the DropIndex command.
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.DropIndex{
+						I: schema.NewIndex("i1"),
+						Extra: []schema.Clause{
+							&postgres.Concurrently{},
+						},
+					},
+				},
+			},
+		},
+		changes,
+	)
+
+	changes, err = p.FixChange(
+		nil,
+		"DROP INDEX CONCURRENTLY i1",
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.DropIndex{
+						I: schema.NewIndex("i1"),
+						Extra: []schema.Clause{
+							&postgres.Concurrently{},
+						},
+					},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	// The "Concurrently" clause should not be added if it already exists.
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.DropIndex{
+						I: schema.NewIndex("i1"),
+						Extra: []schema.Clause{
+							&postgres.Concurrently{},
+						},
+					},
+				},
+			},
+		},
+		changes,
+	)
+
+	// Support quoted identifiers.
+	changes, err = p.FixChange(
+		nil,
+		`DROP INDEX CONCURRENTLY "i1"`,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.DropIndex{I: schema.NewIndex("i1")},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	m, ok := changes[0].(*schema.ModifyTable)
+	require.True(t, ok)
+	require.Equal(t, &postgres.Concurrently{}, m.Changes[0].(*schema.DropIndex).Extra[0])
+
+	// Deleting multiple indexes
+	changes, err = p.FixChange(
+		nil,
+		`DROP INDEX i1, "i2"`,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.DropIndex{I: schema.NewIndex("i1")},
+					&schema.DropIndex{I: schema.NewIndex("i2")},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	// No change
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1"),
+				Changes: schema.Changes{
+					&schema.DropIndex{I: schema.NewIndex("i1")},
+					&schema.DropIndex{I: schema.NewIndex("i2")},
+				},
+			},
+		},
+		changes,
+	)
+}
+
 func TestFixChange_RenameTable(t *testing.T) {
 	var p pgparse.Parser
 	changes, err := p.FixChange(
