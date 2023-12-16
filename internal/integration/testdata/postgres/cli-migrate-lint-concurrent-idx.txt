@@ -13,6 +13,15 @@ cmp got.txt expected3.txt
 atlas migrate lint --dir file://migrations4 --dev-url URL --latest=1 > got.txt
 cmp got.txt expected4.txt
 
+atlas migrate lint --dir file://migrations5 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected5.txt
+
+atlas migrate lint --dir file://migrations6 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected6.txt
+
+atlas migrate lint --dir file://migrations7 --dev-url URL --latest=1 > got.txt
+cmp got.txt empty.txt
+
 -- empty.txt --
 -- migrations1/1.sql --
 CREATE TABLE t(c int);
@@ -50,3 +59,30 @@ CREATE INDEX i1 ON t(c);
 	L1: Indexes cannot be created or deleted concurrently within a transaction. Add the `atlas:txmode none` directive to the header to prevent this file from running in a transaction
 	L2: Creating index "i1" non-concurrently causes write locks on the "t" table
 
+-- migrations5/1.sql --
+CREATE TABLE t(c int);
+CREATE INDEX i1 ON t(c);
+-- migrations5/2.sql --
+DROP INDEX i1;
+-- expected5.txt --
+2.sql: concurrent index violations detected:
+
+	L1: Dropping index "i1" non-concurrently causes write locks on the "t" table
+
+-- migrations6/1.sql --
+CREATE TABLE t(c int);
+CREATE INDEX i1 ON t(c);
+-- migrations6/2.sql --
+DROP INDEX CONCURRENTLY i1;
+-- expected6.txt --
+2.sql: concurrent index violations detected:
+
+	L1: Indexes cannot be created or deleted concurrently within a transaction. Add the `atlas:txmode none` directive to the header to prevent this file from running in a transaction
+
+-- migrations7/1.sql --
+CREATE TABLE t(c int);
+CREATE INDEX i1 ON t(c);
+-- migrations7/2.sql --
+-- atlas:txmode none
+
+DROP INDEX CONCURRENTLY i1;
