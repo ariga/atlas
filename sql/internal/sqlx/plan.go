@@ -496,6 +496,10 @@ func dependsOn(c1, c2 schema.Change) bool {
 				fk, ok := c.(*schema.DropForeignKey)
 				return ok && fk.F.RefTable == c2.T
 			})
+		case *schema.DropTrigger:
+			if c2.T.Table == c1.T {
+				return true
+			}
 		}
 		return depOfDrop(c1.T, c2)
 	case *schema.ModifyTable:
@@ -549,6 +553,9 @@ func dependsOn(c1, c2 schema.Change) bool {
 			return depOfAdd(c1.V.Deps, c2)
 		}
 	case *schema.DropView:
+		if c2, ok := c2.(*schema.DropTrigger); ok && c2.T.View == c1.V {
+			return true
+		}
 		return depOfDrop(c1.V, c2)
 	case *schema.ModifyView:
 		if c2, ok := c2.(*schema.AddView); ok {
@@ -615,6 +622,15 @@ func dependsOn(c1, c2 schema.Change) bool {
 				return dependsOnT(f.Type, t)
 			})
 		}
+	case *schema.AddTrigger:
+		switch c2 := c2.(type) {
+		case *schema.AddTable:
+			return c1.T.Table == c2.T
+		case *schema.AddView:
+			return c1.T.View == c2.V
+		default:
+			return depOfAdd(c1.T.Deps, c2)
+		}
 	}
 	return false
 }
@@ -665,6 +681,8 @@ func depOfDrop(o schema.Object, c schema.Change) bool {
 		deps = c.F.Deps
 	case *schema.DropProc:
 		deps = c.P.Deps
+	case *schema.DropTrigger:
+		deps = c.T.Deps
 	}
 	return slices.Contains(deps, o)
 }

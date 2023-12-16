@@ -166,3 +166,24 @@ func TestBadTypeComparison(t *testing.T) {
 		&schema.DropTable{T: schema.NewTable("t1").AddColumns(schema.NewColumn("c1").SetType(o1))},
 	})
 }
+
+func TestSortChanges(t *testing.T) {
+	t1 := &schema.Table{Name: "t1"}
+	f1 := &schema.Func{Name: "f1", Deps: []schema.Object{t1}}
+	tr1 := &schema.Trigger{Name: "tr", Table: t1, Deps: []schema.Object{f1}}
+	changes := []schema.Change{
+		&schema.AddTrigger{T: tr1},
+		&schema.AddTable{T: t1},
+		&schema.AddFunc{F: f1},
+	}
+	planned := SortChanges(changes)
+	require.Equal(t, []schema.Change{changes[1], changes[2], changes[0]}, planned)
+
+	changes = []schema.Change{
+		&schema.DropTable{T: t1},
+		&schema.DropFunc{F: f1},
+		&schema.DropTrigger{T: tr1},
+	}
+	planned = SortChanges(changes)
+	require.Equal(t, []schema.Change{changes[2], changes[1], changes[0]}, planned)
+}
