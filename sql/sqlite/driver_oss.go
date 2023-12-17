@@ -34,3 +34,11 @@ func (*state) modifyView(*schema.ModifyView) error {
 func (*state) renameView(*schema.RenameView) error {
 	return nil // unimplemented.
 }
+
+func (*state) addTrigger(*schema.AddTrigger) error {
+	return nil // unimplemented.
+}
+
+func (*state) dropTrigger(*schema.DropTrigger) error {
+	return nil // unimplemented.
+}
