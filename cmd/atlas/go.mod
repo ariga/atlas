@@ -15,7 +15,6 @@ require (
 	github.com/google/uuid v1.4.0
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/lib/pq v1.10.9
-	github.com/libsql/libsql-client-go v0.0.0-20230602133133-5905f0c4f8a5
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/olekukonko/tablewriter v0.0.5
@@ -24,6 +23,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
+	github.com/tursodatabase/libsql-client-go v0.0.0-20231216154754-8383a53d618f
 	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/zclconf/go-cty v1.8.0
 	gocloud.dev v0.34.1-0.20231122211418-53ccd8db26a1
@@ -65,7 +65,7 @@ require (
 	github.com/cockroachdb/sentry-go v0.6.1-cockroachdb.2 // indirect
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/getsentry/raven-go v0.2.0 // indirect
 	github.com/go-openapi/inflect v0.19.0 // indirect
@@ -83,7 +83,7 @@ require (
 	github.com/klauspost/compress v1.15.15 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/libsql/sqlite-antlr4-parser v0.0.0-20230512205400-b2348f0d1196 // indirect
+	github.com/libsql/sqlite-antlr4-parser v0.0.0-20230802215326-5cb5bb604475 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.18 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
@@ -92,7 +92,7 @@ require (
 	github.com/pingcap/log v0.0.0-20210625125904-98ed8e2eb1c7 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.6.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	go.opencensus.io v0.24.0 // indirect

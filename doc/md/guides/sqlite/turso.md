@@ -4,7 +4,7 @@ title: Working with Turso
 slug: /guides/sqlite/turso
 ---
 [Turso](https://turso.tech) is an edge-hosted, distributed database based on
-[libSQL](https://github.com/libsql/libsql), an open-source and open-contribution
+[libSQL](https://github.com/tursodatabase/libsql), an open-source and open-contribution
 fork of SQLite. It was designed to minimize query latency for applications where 
 queries come from anywhere in the world. 
 

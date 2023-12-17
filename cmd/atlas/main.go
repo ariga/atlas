@@ -26,8 +26,8 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
-	_ "github.com/libsql/libsql-client-go/libsql"
 	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
 func main() {
