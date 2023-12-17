@@ -100,6 +100,13 @@ type (
 		// from one schema state to the other.
 		ProcFuncsDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]schema.Change, error)
 	}
+
+	// TriggerDiffer is an optional interface allows DiffDriver to diff triggers.
+	TriggerDiffer interface {
+		// TriggerDiff returns a changeset for migrating triggers from
+		// one state to the other. For example, changing action time.
+		TriggerDiff(from, to *schema.Trigger) ([]schema.Change, error)
+	}
 )
 
 // RealmDiff implements the schema.Differ for Realm objects and returns a list of changes
@@ -144,9 +151,15 @@ func (d *Diff) RealmDiff(from, to *schema.Realm, options ...schema.DiffOption) (
 		}
 		for _, t := range s1.Tables {
 			changes = opts.AddOrSkip(changes, &schema.AddTable{T: t})
+			for _, r := range t.Triggers {
+				changes = opts.AddOrSkip(changes, &schema.AddTrigger{T: r})
+			}
 		}
 		for _, v := range s1.Views {
 			changes = opts.AddOrSkip(changes, &schema.AddView{V: v})
+			for _, r := range v.Triggers {
+				changes = opts.AddOrSkip(changes, &schema.AddTrigger{T: r})
+			}
 		}
 	}
 	return d.mayAnnotate(changes, opts)
@@ -186,19 +199,23 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 	for _, t1 := range from.Tables {
 		switch t2, err := d.findTable(to, t1.Name); {
 		case schema.IsNotExistError(err):
+			// Triggers should be dropped either by the driver or the database.
 			changes = opts.AddOrSkip(changes, &schema.DropTable{T: t1})
 		case err != nil:
 			return nil, err
 		default:
-			change, err := d.tableDiff(t1, t2, opts)
-			if err != nil {
+			if change, err := d.tableDiff(t1, t2, opts); err != nil {
 				return nil, err
-			}
-			if len(change) > 0 {
+			} else if len(change) > 0 {
 				changes = opts.AddOrSkip(changes, &schema.ModifyTable{
 					T:       t2,
 					Changes: change,
 				})
+			}
+			if change, err := d.triggerDiff(t1, t2, t1.Triggers, t2.Triggers, opts); err != nil {
+				return nil, err
+			} else {
+				changes = append(changes, change...)
 			}
 		}
 	}
@@ -220,9 +237,13 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 			changes = opts.AddOrSkip(changes, &schema.DropView{V: v1})
 			continue
 		}
-		change := d.indexDiffV(v1, v2, opts)
-		if d.viewDefChanged(v1, v2) || d.ViewAttrChanged(v1, v2) || len(change) > 0 {
+		if change := d.indexDiffV(v1, v2, opts); d.viewDefChanged(v1, v2) || d.ViewAttrChanged(v1, v2) || len(change) > 0 {
 			changes = opts.AddOrSkip(changes, &schema.ModifyView{From: v1, To: v2, Changes: change})
+		}
+		if change, err := d.triggerDiff(v1, v2, v1.Triggers, v2.Triggers, opts); err != nil {
+			return nil, err
+		} else {
+			changes = append(changes, change...)
 		}
 	}
 	// Add views.
@@ -252,6 +273,11 @@ func (d *Diff) TableDiff(from, to *schema.Table, options ...schema.DiffOption) (
 	changes, err := d.tableDiff(from, to, opts)
 	if err != nil {
 		return nil, err
+	}
+	if change, err := d.triggerDiff(from, to, from.Triggers, to.Triggers, opts); err != nil {
+		return nil, err
+	} else {
+		changes = append(changes, change...)
 	}
 	return d.mayAnnotate(changes, opts)
 }

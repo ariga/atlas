@@ -307,6 +307,16 @@ func (t *Table) ForeignKey(symbol string) (*ForeignKey, bool) {
 	return nil, false
 }
 
+// Trigger returns the first trigger that matches the given name.
+func (t *Table) Trigger(name string) (*Trigger, bool) {
+	for _, r := range t.Triggers {
+		if r.Name == name {
+			return r, true
+		}
+	}
+	return nil, false
+}
+
 // Materialized reports if the view is materialized.
 func (v *View) Materialized() bool {
 	for _, a := range v.Attrs {
@@ -342,6 +352,16 @@ func (v *View) Index(name string) (*Index, bool) {
 	for _, i := range v.Indexes {
 		if i.Name == name {
 			return i, true
+		}
+	}
+	return nil, false
+}
+
+// Trigger returns the first trigger that matches the given name.
+func (v *View) Trigger(name string) (*Trigger, bool) {
+	for _, r := range v.Triggers {
+		if r.Name == name {
+			return r, true
 		}
 	}
 	return nil, false

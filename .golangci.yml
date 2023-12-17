@@ -16,6 +16,9 @@ issues:
     - path: sql/migrate/lex.go
       linters:
         - revive
+    - path: sql/internal/sqlx/diff.go
+      linters:
+        - revive
 
 linters-settings:
   goheader:
