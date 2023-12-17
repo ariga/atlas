@@ -331,7 +331,7 @@ func (b *Builder) ProcCall(p *schema.Proc, args ...string) *Builder {
 	return b
 }
 
-// TableResource writes the table's resource identifier to the builder, prefixed
+// TableResource writes the table resource identifier to the builder, prefixed
 // with the schema name if exists.
 func (b *Builder) TableResource(t *schema.Table, r any) *Builder {
 	switch c := r.(type) {
@@ -342,6 +342,12 @@ func (b *Builder) TableResource(t *schema.Table, r any) *Builder {
 	default:
 		panic(fmt.Sprintf("unexpected table resource: %T", r))
 	}
+}
+
+// SchemaResource writes the schema resource identifier to the builder, prefixed
+// with the schema name if exists.
+func (b *Builder) SchemaResource(s *schema.Schema, name string) *Builder {
+	return b.mayQualify(s, name)
 }
 
 func (b *Builder) mayQualify(s *schema.Schema, top string, children ...string) *Builder {

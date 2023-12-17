@@ -86,6 +86,14 @@ func (s *state) renameProc(*schema.RenameProc) error {
 	return nil // unimplemented.
 }
 
+func (*state) addTrigger(*schema.AddTrigger) error {
+	return nil // unimplemented.
+}
+
+func (*state) dropTrigger(*schema.DropTrigger) error {
+	return nil // unimplemented.
+}
+
 func verifyChanges(context.Context, []schema.Change) error {
 	return nil // unimplemented.
 }
