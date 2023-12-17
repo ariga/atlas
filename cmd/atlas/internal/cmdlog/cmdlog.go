@@ -709,9 +709,15 @@ func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 		}
 		for _, t := range s.Tables {
 			changes = append(changes, &schema.AddTable{T: t})
+			for _, r := range t.Triggers {
+				changes = append(changes, &schema.AddTrigger{T: r})
+			}
 		}
 		for _, v := range s.Views {
 			changes = append(changes, &schema.AddView{V: v})
+			for _, r := range v.Triggers {
+				changes = append(changes, &schema.AddTrigger{T: r})
+			}
 		}
 		for _, f := range s.Funcs {
 			changes = append(changes, &schema.AddFunc{F: f})

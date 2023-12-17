@@ -14,3 +14,9 @@ import (
 func sortViewChanges(changes []schema.Change) ([]schema.Change, error) {
 	return changes, nil // unimplemented.
 }
+
+func (*Diff) triggerDiff(_, _ interface {
+	Trigger(string) (*schema.Trigger, bool)
+}, _, _ []*schema.Trigger, _ *schema.DiffOptions) ([]schema.Change, error) {
+	return nil, nil // unimplemented.
+}
