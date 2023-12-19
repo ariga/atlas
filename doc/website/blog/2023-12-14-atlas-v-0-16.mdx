@@ -25,18 +25,18 @@ very exciting improvements for Atlas:
   schema which will be loaded before automatically planning and applying your migrations.
 * **Proactive conflict detection** - Teams that have connected their project to Atlas Cloud will get a prompt
   in the CLI if their migration directory is out of sync with the latest version in Atlas Cloud. This ensures that
-  new migration files are added in a sequential order, preventing unexpected behavior
+  new migration files are added in a sequential order, preventing unexpected behavior.
 * **Mermaid Support** - Atlas now supports generating a [Mermaid](https://mermaid.js.org/) diagram
   of your database schema. This is a great way to visualize your database schema and share it with your team.
 * **Review Policies** - Users working with declarative migrations can now define "review policies" which
-  can define thresholds for which kinds of changes require a human review and which can be auto-applied.
+  can define thresholds for which kinds of changes require human review and which can be auto-applied.
 * **Postgres Sequences** - Another long awaited feature, Atlas now supports managing sequences in PostgreSQL.
 
 I know that's quite a list, so let's dive right in!
 
 ### ClickHouse Beta Program
 
-ClickHouse is a high-performance, columnar database optimized for analytics and real-time query processing.
+[ClickHouse](https://clickhouse.com/) is a high-performance, columnar database optimized for analytics and real-time query processing.
 Support for ClickHouse in Atlas has been one of the top requested features by our community in the past year.
 Our team has been working hard to bring this feature to you and today we are happy to announce the launch of
 our ClickHouse Beta Program.
@@ -255,7 +255,7 @@ erDiagram
     blog_posts }o--o| users : blog_author
 ```
 
-Next, Copy this output and paste it into the [Mermaid Live Editor](https://mermaid-js.github.io/mermaid-live-editor).
+Next, copy this output and paste it into the [Mermaid Live Editor](https://mermaid-js.github.io/mermaid-live-editor).
 
 The result should look like this:
 
@@ -264,7 +264,7 @@ The result should look like this:
 ### Review Policies
 
 Users working with declarative migrations can now define "review policies" which can define thresholds for which kinds
-of changes require a human review and which can be auto-applied.
+of changes require human review and which can be auto-applied.
 
 By default, when running `atlas schema apply` on a target database, if any changes to the target database are required,
 Atlas will prompt the user to confirm the changes. This is a safety measure to prevent accidental changes to the target
@@ -275,7 +275,7 @@ For example, Atlas can detect irreversible destructive changes that will result 
 that may fail due to data integrity constraints.
 
 With review policies, you can tell Atlas to first analyze the proposed changes and only prompt the user if the changes
-are above a certain risk threshold. For example, you can configure Atlas to only ask for review if any warning are found
+are above a certain risk threshold. For example, you can configure Atlas to only ask for review if any warnings are found
 and to automatically apply all changes that do not trigger any diagnostics:
 
 ```hcl title=atlas.hcl
@@ -296,7 +296,7 @@ atlas login
 ```
 :::
 
-The `sequence` block allows defining sequence number generator. Supported by PostgreSQL.
+The `sequence` block allows defining a sequence number generator. Supported by PostgreSQL.
 
 Note, a `sequence` block is printed by Atlas on inspection, or it may be manually defined in the schema only if it
 represents a PostgreSQL sequence that is not implicitly created by the database for identity or `serial` columns.
@@ -360,7 +360,7 @@ schema "public" {
 
 ### Wait, there's more!
 
-A few other notable features shipping in this release are:
+A few other notable features shipped in this release are:
 
 * **Analyzers for detecting blocking enum changes on MySQL.** Certain kinds of changes to `enum` columns
   on MySQL tables change the column type and require a table copy. During this process, the table is locked
@@ -369,8 +369,7 @@ A few other notable features shipping in this release are:
   Atlas now ships with analyzers that can detect such changes and warn the user before applying them.
   For more information see the documentation for analyzers [MY111](/lint/analyzers#MY111), [MY112](/lint/analyzers#MY112)
   and [MY113](/lint/analyzers#MY113).
-* **The `external` data source** - The external data source allows the execution of an external program and uses its output in the project.
-  The `external` data source allows the execution of an external program and uses its output in the project.
+* **The `external` data source** - The `external` data source allows the execution of an external program and uses its output in the project.
 
   For example:
 
