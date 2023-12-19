@@ -73,6 +73,15 @@ atlas migrate lint \
 ```
 
 </TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```shell
+atlas migrate lint \
+  --dev-url "clickhouse://localhost:9000" \
+  -w
+```
+
+</TabItem>
 </Tabs>
 
 :::info Preventing non-additive changes
@@ -127,6 +136,15 @@ atlas migrate lint \
 ```
 
 </TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```shell
+atlas migrate lint \
+  --dev-url "clickhouse://localhost:9000" \
+  --latest 1
+```
+
+</TabItem>
 </Tabs>
 
 Similarly to the previous method, the `-w`/`--web` can be used to open the report in the browser, see the changes in ERD
@@ -174,6 +192,16 @@ atlas migrate lint \
 ```shell
 atlas migrate lint \
   --dev-url "sqlite://file?mode=memory" \
+  --git-base "master" \
+  -w
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```shell
+atlas migrate lint \
+  --dev-url "clickhouse://localhost:9000" \
   --git-base "master" \
   -w
 ```
@@ -348,6 +376,20 @@ atlas login
 ```shell
 atlas migrate lint \
   --dev-url "sqlite://file?mode=memory" \
+  --latest 1 \
+  -w
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```shell
+atlas login
+```
+
+```shell
+atlas migrate lint \
+  --dev-url "clickhouse://localhost:9000" \
   --latest 1 \
   -w
 ```

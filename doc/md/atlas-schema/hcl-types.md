@@ -899,3 +899,367 @@ table "t" {
   }
 }
 ```
+
+## ClickHouse
+
+### Array
+Atlas supports defining ClickHouse array types using the `sql` function.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    type = sql("Array(Int32)")
+  }
+  column "c2" {
+    type = sql("Array(String)")
+  }
+  column "c3" {
+    type = sql("Array(Array(Int32))")
+  }
+}
+```
+### Boolean
+The `Bool` type allows creating standard SQL boolean columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    type = Bool
+  }
+  column "c2" {
+    type    = Bool
+    default = true
+  }
+}
+```
+
+### Date and Time
+Atlas supports the standard ClickHouse types for creating date and time columns: `Date`, `DateTime`, `DateTime32` `DateTime64`.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null     = false
+    type     = Date
+  }
+  column "c2" {
+    null    = false
+    type    = Date32
+  }
+  column "c3" {
+    null    = false
+    type    = DateTime
+  }
+  column "c4" {
+    null    = false
+    type    = DateTime("America/New_York")
+  }
+  column "c5" {
+    null    = false
+    type    = DateTime
+  }
+  column "c6" {
+    null    = false
+    type    = DateTime32("America/New_York")
+  }
+  column "c7" {
+    null    = false
+    type    = DateTime64(3)
+  }
+  column "c8" {
+    null    = false
+    type    = DateTime64(3, "America/New_York")
+  }
+}
+```
+
+### Fixed Point (Decimal)
+The `Decimal` type allows creating columns for storing exact numeric values.
+The precision and scale are specified as below.
+- `Decimal` Precision: 9, Scale: 0
+- `Decimal32(Scale)` Precision: 9, Scale: Scale
+- `Decimal64(Scale)` Precision: 18, Scale: Scale
+- `Decimal128(Scale)` Precision: 38, Scale: Scale
+- `Decimal256(Scale)` Precision: 76, Scale: Scale
+- `Decimal(Precision, Scale)` Precision: Precision, Scale: Scale 
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = Decimal
+  }
+  column "c2" {
+    null = false
+    type = Decimal32(2)
+  }
+  column "c3" {
+    null = false
+    type = Decimal64(2)
+  }
+  column "c4" {
+    null = false
+    type = Decimal128(2)
+  }
+  column "c5" {
+    null = false
+    type = Decimal256(2)
+  }
+  column "c6" {
+    null = false
+    type = Decimal(11, 2)
+  }
+}
+```
+
+### Enum
+The `Enum` type allows storing a set of enumerated values and supports defining ClickHouse enum types using the `sql` function.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = Enum("a", "b")
+  }
+  column "c2" {
+    null = false
+    type = Enum8("a", "b")
+  }
+  column "c3" {
+    null = false
+    type = Enum16("a", "b")
+  }
+}
+```
+
+### Fixed String
+The `FixedString` type allows creating columns for storing fixed-length string values.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = FixedString(10)
+  }
+}
+```
+
+### Floating Point (Float)
+The `Float32` and `Float64` types are supported for storing approximate numeric values.
+The aliases for these types are `Float` and `Double`.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = Float
+  }
+  column "c2" {
+    null = false
+    type = Double
+  }
+}
+```
+
+### Integer
+The `Int8`, `Int16`, `Int32`, `Int64`, `Int128`, `Int256` types allow creating integer types.
+The aliases for these types are `Tinyint`, `Smallint`, `Int`, `Bigint`.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = Tinyint
+  }
+  column "c2" {
+    null = false
+    type = Smallint
+  }
+  column "c3" {
+    null = false
+    type = Int
+  }
+  column "c4" {
+    null = false
+    type = Bigint
+  }
+  column "c5" {
+    null = false
+    type = Int128
+  }
+  column "c6" {
+    null = false
+    type = Int256
+  }
+}
+```
+
+#### Integer Attributes
+
+The `Unsigned` attribute is also supported by integer types.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null     = false
+    type     = Int
+    unsigned = true
+  }
+}
+```
+
+### IPv4 and IPv6
+The `IPv4` and `IPv6` types allow creating columns for storing IPv4 and IPv6 addresses.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = IPv4
+  }
+  column "c2" {
+    null = false
+    type = IPv6
+  }
+}
+```
+
+### Spatial
+Atlas supports the standard ClickHouse types for creating spatial columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = Point
+  }
+  column "c2" {
+    null = false
+    type = Polygon
+  }
+  column "c3" {
+    null = false
+    type = MultiPolygon
+  }
+}
+```
+
+### Ring
+The `Ring` type allows creating columns for storing ring values.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = Ring
+  }
+}
+```
+
+### String
+The `String` type allows creating columns for storing string values.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = String
+  }
+}
+```
+
+### UUID
+The `UUID` type allows creating columns for storing Universally Unique Identifiers (UUID).
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = UUID
+  }
+}
+```
+
+### Tuple
+Atlas supports defining ClickHouse tuple types using the `sql` function.
+
+```hcl 
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = sql("Tuple(Int32, String)")
+  }
+}
+```
+
+### LowCardinality
+Atlas supports defining ClickHouse low cardinality types using the `sql` function.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = sql("LowCardinality(String)")
+  }
+}
+```
+
+### Nullable
+Atlas supports defining ClickHouse nullable types using the `sql` function.
+`Null` attribute is needed to be set to `true` for nullable types.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = true
+    type = sql("Nullable(String)")
+  }
+}
+```
+
+### JSON
+The `JSON` type allows creating columns for storing JSON objects.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    type = JSON
+  }
+}
+```

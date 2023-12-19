@@ -42,6 +42,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -79,6 +80,15 @@ atlas schema inspect -u "sqlite://file?cache=shared&mode=memory"
 ```
 
 </TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema inspect -u "clickhouse//localhost:9000"
+
+atlas schema inspect -u "clickhouse://user:pass@0.0.0.0:9000?secure=true"
+```
+
+</TabItem>
 </Tabs>
 
 ### Inspect a schema
@@ -91,6 +101,7 @@ values={[
 {label: 'MySQL', value: 'mysql'},
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -119,6 +130,15 @@ atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?search_p
 ```
 
 </TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema inspect -u "clickhouse://localhost:9000/database"
+
+atlas schema inspect -u "clickhouse://user:pass@0.0.0.0:9000/database?secure=true"
+```
+
+</TabItem>
 </Tabs>
 
 ### Inspect multiple schemas
@@ -131,6 +151,7 @@ values={[
 {label: 'MySQL', value: 'mysql'},
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -156,6 +177,15 @@ atlas schema inspect -u "maria://user:pass@localhost:3306" -s schema1,schema2
 atlas schema inspect -u "postgres://localhost:5432/database" --schema schema1 --schema schema2
 
 atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable" -s schema1,schema2
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema inspect -u "clickhouse://localhost:9000/database" --schema schema1 --schema schema2
+
+atlas schema inspect -u "clickhouse://user:pass@0.0.0.0:9000/database?secure=true" -s schema1,schema2
 ```
 
 </TabItem>

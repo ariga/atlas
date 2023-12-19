@@ -24,6 +24,7 @@ values={[
 {label: 'MySQL', value: 'mysql'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -62,6 +63,24 @@ database (i.e. `main`).
 
 ```hcl
 schema "main" {}
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+In Clickhouse, the `schema` resource can contain the `engine` attribute. If not specified, the default engine depends on ClickHouse settings.
+Use `sql()` to specify the engine in advanced cases.
+
+Read more about database engines in [ClickHouse documentation](https://clickhouse.com/docs/en/engines/database-engines).
+
+```hcl
+schema "default" {
+  engine = sql("Replicated('/clickhouse/databases/default', '{shard}', '{replica}')")
+}
+
+schema "atomic" {
+  engine = Atomic
+}
 ```
 
 </TabItem>

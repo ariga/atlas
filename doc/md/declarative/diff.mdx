@@ -91,6 +91,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -128,6 +129,15 @@ atlas schema diff \
 ```
 
 </TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema diff \
+  --from "clickhouse://localhost:9000/default" \
+  --to "clickhouse://localhost:9000/dev"
+```
+
+</TabItem>
 </Tabs>
 
 ### Compare database schemas
@@ -138,6 +148,7 @@ values={[
 {label: 'MySQL', value: 'mysql'},
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -175,6 +186,17 @@ atlas schema diff \
 ```
 
 </TabItem>
+<TabItem value="clickhouse">
+
+Compare two ClickHouse schemas/named-databases:
+
+```shell
+atlas schema diff \
+  --from "clickhouse://user:pass@localhost:3306/example" \
+  --to "clickhouse://user:pass@remote:3306/example"
+```
+
+</TabItem>
 </Tabs>
 
 ### Compare HCL schemas
@@ -186,6 +208,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -227,6 +250,16 @@ atlas schema diff \
 ```
 
 </TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.hcl" \
+  --to "file://schema2.hcl" \
+  --dev-url "clickhouse://localhost:9000"
+```
+
+</TabItem>
 </Tabs>
 
 ### Compare SQL schemas
@@ -238,6 +271,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -296,6 +330,16 @@ atlas schema diff \
   --from "file://schema1.sql" \
   --to "file://schema2.sql" \
   --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.sql" \
+  --to "file://schema2.sql" \
+  --dev-url "clickhouse://localhost:9000"
 ```
 
 </TabItem>
@@ -311,6 +355,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -372,6 +417,16 @@ atlas schema diff \
 ```
 
 </TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema diff \
+  --from "file://migrations1" \
+  --to "file://migrations2" \
+  --dev-url "clickhouse://localhost:9000"
+```
+
+</TabItem>
 </Tabs>
 
 ### Compare SQL to HCL
@@ -383,6 +438,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -424,6 +480,16 @@ atlas schema diff \
 ```
 
 </TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema diff \
+  --from "file://schema.hcl" \
+  --to "file://schema.sql" \
+  --dev-url "clickhouse://localhost:9000"
+```
+
+</TabItem>
 </Tabs>
 
 
@@ -436,6 +502,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -477,6 +544,16 @@ atlas schema diff \
 ```
 
 </TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema diff \
+  --from "file://migrations" \
+  --to "clickhouse://user:pass@remote:9000/test" \
+  --dev-url "clickhouse://localhost:9000"
+```
+
+</TabItem>
 </Tabs>
 
 ### Compare external schemas
@@ -490,6 +567,7 @@ values={[
 {label: 'MySQL', value: 'mysql'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 

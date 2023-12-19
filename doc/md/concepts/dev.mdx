@@ -132,6 +132,20 @@ docker://sqlserver/2022-latest?mode=schema
 # Run Azure SQL Edge 1.0.7 in schema mode.
 docker+sqlserver://mcr.microsoft.com/azure-sql-edge:1.0.7?mode=schema
 ```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+Atlas does not support yet initializing a ClickHouse dev-database through `docker://`, but you can create a local container by running the following command:
+
+```shell
+docker run -d --rm --name clickhouse-dev -p 9000:9000 -d clickhouse/clickhouse-server:latest
+```
+
+```shell
+--dev-url "clickhouse://localhost:9000"
+```
+
 </TabItem>
 </Tabs>
 

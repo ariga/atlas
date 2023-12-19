@@ -118,6 +118,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -156,6 +157,16 @@ atlas schema apply \
   --url "sqlite://file.db" \
   --to "file://schema.hcl" \
   --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema apply \
+  --url "clickhouse://localhost:9000/default" \
+  --to "file://schema.hcl" \
+  --dev-url "clickhouse://localhost:9000/dev"
 ```
 
 </TabItem>
@@ -173,6 +184,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -211,6 +223,16 @@ atlas schema apply \
   --url "sqlite://file.db" \
   --to "file://schema.sql" \
   --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema apply \
+  --url "sqlite://file.db" \
+  --to "file://schema.sql" \
+  --dev-url "clickhouse://localhost:9000"
 ```
 
 </TabItem>
@@ -236,6 +258,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -274,6 +297,16 @@ atlas schema apply \
   --url "sqlite://file.db" \
   --to "file://migrations" \
   --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema apply \
+  --url "clickhouse://localhost:9000/default" \
+  --to "file://migrations" \
+  --dev-url "clickhouse://localhost:9000/dev"
 ```
 
 </TabItem>

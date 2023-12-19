@@ -65,6 +65,17 @@ few examples of how to use the docker driver:
 ```
 
 </TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```shell
+# When working on a single database schema.
+--dev-url "clickhouse://localhost:9000/schema"
+
+# When working on multiple database schemas.
+--dev-url "clickhouse://localhost:9000"
+```
+
+</TabItem>
 </Tabs>
 
 ## Schema Definition
