@@ -150,6 +150,16 @@ Learn more on how to integrate Atlas into your [**GitHub Actions**](/cloud/setup
 
 Suppose we have an Atlas schema with one table and an empty migration directory:
 
+<Tabs
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
+]}>
+<TabItem value="mysql">
+
 ```hcl title="schema.hcl"
 schema "test" {}
 
@@ -160,6 +170,67 @@ table "users" {
   }
 }
 ```
+
+</TabItem>
+<TabItem value="maria">
+
+```hcl title="schema.hcl"
+schema "test" {}
+
+table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+}
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```hcl title="schema.hcl"
+schema "test" {}
+
+table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+}
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```hcl title="schema.hcl"
+schema "default" {}
+
+table "users" {
+  schema = schema.default
+  engine = Memory
+  column "id" {
+    type = Int
+  }
+}
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```hcl title="schema.hcl"
+schema "default" {}
+
+table "users" {
+  schema = schema.default
+  engine = Memory
+  column "id" {
+    type = Int
+  }
+}
+```
+
+</TabItem>
+</Tabs>
 
 Let's run `atlas migrate diff` with the necessary parameters to generate a migration script for
 creating our `users` table:
@@ -175,6 +246,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -213,6 +285,16 @@ atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
   --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "clickhouse://localhost:9000"
 ```
 
 </TabItem>
@@ -259,6 +341,15 @@ h1:t1fEP1rSsGf1gYrYCjsGyEyuM0cnhATlq93B7h8uXxY=
 
 Let's repeat the process above by changing our HCL schema file and running Atlas migration authoring again.
 We add a new column `name` to our HCL schema:
+<Tabs
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
+]}>
+<TabItem value="mysql">
 
 ```hcl title="schema.hcl" {8-10}
 schema "test" {}
@@ -274,6 +365,78 @@ table "users" {
 }
 ```
 
+</TabItem>
+<TabItem value="maria">
+
+```hcl title="schema.hcl" {8-10}
+schema "test" {}
+
+table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+  column "name" {
+    type = varchar(255)
+  }
+}
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```hcl title="schema.hcl" {8-10}
+schema "test" {}
+
+table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+  column "name" {
+    type = varchar(255)
+  }
+}
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```hcl title="schema.hcl" {8-10}
+schema "test" {}
+
+table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+  column "name" {
+    type = varchar(255)
+  }
+}
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```hcl title="schema.hcl" {8-10}
+schema "default" {}
+
+table "users" {
+  schema = schema.test
+  engine = Memory
+  column "id" {
+    type = Int
+  }
+  column "name" {
+    type = String
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
 Then, run `atlas migrate diff`:
 
 <Tabs
@@ -282,6 +445,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -320,6 +484,16 @@ atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
   --dev-url "sqlite://dev?mode=memory"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "clickhouse://localhost:9000"
 ```
 
 </TabItem>
@@ -381,11 +555,60 @@ Atlas allows you to define your desired state using SQL schemas. An SQL schema c
 and `ALTER` statements, or a directory with multiple SQL files. As an example, suppose we have an SQL schema with one
 table and an empty migration directory:
 
+<Tabs
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
+]}>
+<TabItem value="mysql">
+
 ```sql title="schema.sql"
 CREATE TABLE `users` (
   `id` int NOT NULL
 )
 ```
+
+</TabItem>
+<TabItem value="maria">
+
+```sql title="schema.sql"
+CREATE TABLE `users` (
+  `id` int NOT NULL
+)
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```sql title="schema.sql"
+CREATE TABLE `users` (
+  `id` int NOT NULL
+)
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```sql title="schema.sql"
+CREATE TABLE `users` (
+  `id` int NOT NULL
+)
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```sql title="schema.sql"
+CREATE TABLE `users` (
+  `id` int NOT NULL
+) ENGINE = Memory
+```
+
+</TabItem>
+</Tabs>
 
 Let's run `atlas migrate diff` with the necessary parameters to generate a migration script for
 creating our `users` table:
@@ -400,6 +623,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -438,6 +662,16 @@ atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.sql" \
   --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.sql" \
+  --dev-url "clickhouse://localhost:9000/default"
 ```
 
 </TabItem>
@@ -485,12 +719,65 @@ h1:t1fEP1rSsGf1gYrYCjsGyEyuM0cnhATlq93B7h8uXxY=
 Let's repeat the process above by changing our SQL schema file and running Atlas migration authoring again.
 We add a new column `name` to our SQL schema:
 
+<Tabs
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
+]}>
+<TabItem value="mysql">
+
 ```sql title="schema.sql" {3}
 CREATE TABLE `users` (
   `id` int NOT NULL,
   `name` varchar(255) NOT NULL
 )
 ```
+
+</TabItem>
+<TabItem value="maria">
+
+```sql title="schema.sql" {3}
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` varchar(255) NOT NULL
+)
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```sql title="schema.sql" {3}
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` varchar(255) NOT NULL
+)
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```sql title="schema.sql" {3}
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` varchar(255) NOT NULL
+)
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```sql title="schema.sql" {3}
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` varchar(255) NOT NULL
+) ENGINE = Memory
+```
+
+</TabItem>
+</Tabs>
 
 Then, run `atlas migrate diff`:
 
@@ -501,6 +788,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -539,6 +827,16 @@ atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.sql" \
   --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.sql" \
+  --dev-url "clickhouse://localhost:9000/default"
 ```
 
 </TabItem>

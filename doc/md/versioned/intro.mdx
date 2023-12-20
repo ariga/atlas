@@ -61,6 +61,24 @@ CREATE TABLE `repos` (
 ```
 
 </TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```sql title="schema.sql"
+CREATE TABLE `users` (
+  `id` UInt64,
+  `name` String NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE = MergeTree() ORDER BY id;
+
+CREATE TABLE `repos` (
+  `id` UInt64,
+  `name` String NOT NULL,
+  `owner_id` Bigint NOT NULL,
+  PRIMARY KEY (`id`),
+) ENGINE = MergeTree() ORDER BY id;
+```
+
+</TabItem>
 </Tabs>
 
 After creating our desired schema (`schema.sql`), let's run Atlas to generate the migration script needed to apply it to
@@ -83,6 +101,16 @@ atlas migrate diff initial \
 atlas migrate diff initial \
   --to file://schema.sql \
   --dev-url "docker://mysql/8/dev" \
+  --format '{{ sql . "  " }}'
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```bash
+atlas migrate diff initial \
+  --to file://schema.sql \
+  --dev-url "clickhouse://localhost:9000" \
   --format '{{ sql . "  " }}'
 ```
 
@@ -204,6 +232,13 @@ docker run --rm -d --name atlas-demo -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABA
 ```
 
 </TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```bash
+docker run --rm -d --name atlas-demo -e CLICKHOUSE_DB=example -p 9001:9000 clickhouse/clickhouse-server:latest
+```
+
+</TabItem>
 </Tabs>
 
 Then, we'll create a simple Atlas configuration file (`atlas.hcl`) to store the settings for our environment:
@@ -228,6 +263,19 @@ env "local" {
 # The "dev" environment represents our local testings.
 env "local" {
   url = "mysql://root:pass@:3306/example"
+  migration {
+    dir = "atlas://app"
+  }
+}
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```hcl title="atlas.hcl" {1}
+# The "dev" environment represents our local testings.
+env "local" {
+  url = "clickhouse://localhost:9001/example"
   migration {
     dir = "atlas://app"
   }
@@ -342,6 +390,34 @@ CREATE TABLE `commits` (
 ```
 
 </TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```sql title="schema.sql"
+CREATE TABLE `users` (
+  `id` UInt64,
+  `name` String NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE = MergeTree() ORDER BY id;
+
+CREATE TABLE `repos` (
+  `id` UInt64,
+  `name` String NOT NULL,
+  `owner_id` Bigint NOT NULL,
+  PRIMARY KEY (`id`),
+) ENGINE = MergeTree() ORDER BY id;
+
+// highlight-start
+CREATE TABLE `commits` (
+  `id` UInt64,
+  `message` String NOT NULL,
+  `repo_id` Bigint NOT NULL,
+  `author_id` Bigint NOT NULL,
+  PRIMARY KEY (`id`),
+) ENGINE = MergeTree() ORDER BY id;
+// highlight-end
+```
+
+</TabItem>
 </Tabs>
 
 Next, we're ready to run `atlas migrate diff` again to generate the new migration:
@@ -367,6 +443,16 @@ atlas migrate diff add_commits \
 ```
 
 </TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```bash
+atlas migrate diff add_commits \
+  --to file://schema.sql \
+  --dev-url "clickhouse://localhost:9000" \
+  --format '{{ sql . "  " }}'
+```
+
+</TabItem>
 </Tabs>
 
 Run `ls migrations`, and you'll notice that a new migration has been generated. Let's run `atlas migrate push` again
@@ -387,6 +473,14 @@ atlas migrate push app \
 ```bash
 atlas migrate push app \
   --dev-url "docker://mysql/8/dev" \
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```bash
+atlas migrate push app \
+  --dev-url "clickhouse://localhost:9000" \
 ```
 
 </TabItem>

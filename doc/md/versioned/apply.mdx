@@ -72,6 +72,14 @@ atlas migrate push app \
 ```
 
 </TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```bash
+atlas migrate push app \
+  --dev-url "clickhouse://localhost:9000"
+```
+
+</TabItem>
 </Tabs>
 
 
@@ -113,6 +121,15 @@ atlas migrate apply \
 ```
 
 </TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app" \
+  --url "clickhouse://root:pass@:9000/default"
+```
+
+</TabItem>
 </Tabs>
 
 **Deploy a specific tag** to a local database the remote migration directory named `app`:
@@ -150,6 +167,15 @@ atlas migrate apply \
 atlas migrate apply \
   --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
   --url "sqlite://example.db"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
+  --url "clickhouse://user:pass@:9000/default"
 ```
 
 </TabItem>
@@ -256,6 +282,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -294,6 +321,16 @@ atlas migrate diff my_baseline \
   --dir "file://migrations" \
   --dev-url "sqlite://file?mode=memory" \
   --to "sqlite://file.db"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas migrate diff my_baseline \
+  --dir "file://migrations" \
+  --dev-url "clickhouse://localhost:9000/default" \
+  --to "clickhouse://user:pass@remote:9000/default"
 ```
 
 </TabItem>
@@ -361,6 +398,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -406,6 +444,17 @@ atlas schema apply \
 ```
 
 </TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema apply \
+  --url "clickhouse://user:pass@remote:9000/default" \
+  --to "file://migrations" \
+  --dev-url "clickhouse://localhost:9000/default" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
 </Tabs>
 
 2\. Remove the files/versions that were rolled back from the revision table:
@@ -417,6 +466,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -450,6 +500,15 @@ atlas migrate set \
 ```shell
 atlas migrate set \
   --url "sqlite://file.db" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas migrate set \
+  --url "clickhouse://user:pass@remote:9000/default" \
   --dir "file://migrations"
 ```
 
@@ -480,6 +539,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -513,6 +573,15 @@ atlas migrate status \
 ```shell
 atlas migrate status \
   --url "sqlite://file.db" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas migrate status \
+  --url "clickhouse://user:pass@remote:9000/default" \
   --dir "file://migrations"
 ```
 
@@ -547,6 +616,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -592,6 +662,17 @@ atlas schema apply \
 ```
 
 </TabItem>
+<TabItem value="clickhouse">
+
+```shell {3}
+atlas schema apply \
+  --url "clickhouse://user:pass@remote:9000/default" \
+  --to "file://migrations?version=20220925094437" \
+  --dev-url "clickhouse://localhost:9000/default" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
 </Tabs>
 
 ```shell title="tree ." {6}
@@ -613,6 +694,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -646,6 +728,15 @@ atlas migrate set 20220925094437 \
 ```shell
 atlas migrate set 20220925094437 \
   --url "sqlite://file.db" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas migrate set 20220925094437 \
+  --url "clickhouse://user:pass@remote:9000/default" \
   --dir "file://migrations"
 ```
 
@@ -675,6 +766,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -708,6 +800,15 @@ atlas migrate status \
 ```shell
 atlas migrate status \
   --url "sqlite://file.db" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas migrate status \
+  --url "clickhouse://user:pass@remote:9000/default" \
   --dir "file://migrations"
 ```
 
@@ -741,6 +842,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -772,6 +874,14 @@ atlas migrate apply -u "postgres://postgres:pass@localhost:5432/database?search_
 atlas migrate status \
   --url "sqlite://file.db" \
   --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```shell
+atlas schema clean -u "clickhouse://user:pass@remote:9000/database"
+atlas migrate apply -u "clickhouse://user:pass@remote:9000/database"
 ```
 
 </TabItem>

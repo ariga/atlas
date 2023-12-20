@@ -110,6 +110,30 @@ env "dev" {
 ```
 
 </TabItem>
+<TabItem value="clickhouse" label="ClickHouse" default>
+
+```hcl
+// Define an environment named "local"
+env "local" {
+  // Declare where the schema definition resides.
+  // Also supported: ["file://multi.hcl", "file://schema.hcl"].
+  src = "file://project/schema.hcl"
+
+  // Define the URL of the database which is managed
+  // in this environment.
+  url = "clickhouse://user:pass@remote:9000/default"
+
+  // Define the URL of the Dev Database for this environment
+  // See: https://atlasgo.io/concepts/dev-database
+  dev = "clickhouse://localhost:9000/default"
+}
+
+env "dev" {
+  // ... a different env
+}
+```
+
+</TabItem>
 </Tabs>
 
 ### Flags
