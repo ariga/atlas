@@ -2,8 +2,10 @@ module ariga.io/atlas/cmd/atlas
 
 go 1.21
 
+replace ariga.io/atlas => ../..
+
 require (
-	ariga.io/atlas v0.14.1-0.20230918065911-83ad451a4935
+	ariga.io/atlas v0.15.1-0.20231123151533-138307774dcb
 	entgo.io/ent v0.12.5-0.20231113103531-9aba4ae091d1
 	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1
 	github.com/antlr4-go/antlr/v4 v4.13.0
@@ -105,6 +107,7 @@ require (
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.4.0 // indirect
+	golang.org/x/tools v0.8.1-0.20230428195545-5283a0178901 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20231120223509-83a465c0220f // indirect
