@@ -65,6 +65,18 @@ func TestDockerConfig(t *testing.T) {
 			"MSSQL_SA_PASSWORD=" + passSQLServer,
 		},
 	}, cfg)
+
+	// ClickHouse
+	cfg, err = ClickHouse("23.11", Out(io.Discard))
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		Image: "clickhouse/clickhouse-server:23.11",
+		Port:  "9000",
+		Out:   io.Discard,
+		Env: []string{
+			"CLICKHOUSE_PASSWORD=pass",
+		},
+	}, cfg)
 }
 
 func TestFromURL(t *testing.T) {
@@ -203,6 +215,32 @@ func TestFromURL(t *testing.T) {
 			"MSSQL_SA_PASSWORD=" + passSQLServer,
 		},
 	}, cfg)
+
+	// ClickHouse
+	u, err = url.Parse("docker://clickhouse")
+	require.NoError(t, err)
+	cfg, err = FromURL(u)
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		driver: "clickhouse",
+		Image:  "clickhouse/clickhouse-server",
+		Env:    []string{"CLICKHOUSE_PASSWORD=pass"},
+		Port:   "9000",
+		Out:    io.Discard,
+	}, cfg)
+
+	// ClickHouse with tag
+	u, err = url.Parse("docker://clickhouse/23.11")
+	require.NoError(t, err)
+	cfg, err = FromURL(u)
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		driver: "clickhouse",
+		Image:  "clickhouse/clickhouse-server:23.11",
+		Env:    []string{"CLICKHOUSE_PASSWORD=pass"},
+		Port:   "9000",
+		Out:    io.Discard,
+	}, cfg)
 }
 
 func TestFromURL_CustomImage(t *testing.T) {
@@ -318,6 +356,18 @@ func TestFromURL_CustomImage(t *testing.T) {
 			image:   "mcr.microsoft.com/mssql/server:latest",
 			db:      "master",
 			dialect: "sqlserver",
+		},
+		// ClickHouse.
+		{
+			url:     "docker+clickhouse://clickhouse/clickhouse-server:23.11",
+			image:   "clickhouse/clickhouse-server:23.11",
+			dialect: "clickhouse",
+		},
+		{
+			url:     "docker+clickhouse://clickhouse/clickhouse-server:23.11/dev",
+			image:   "clickhouse/clickhouse-server:23.11",
+			db:      "dev",
+			dialect: "clickhouse",
 		},
 	} {
 		u, err := url.Parse(tt.url)
