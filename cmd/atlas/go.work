@@ -1,5 +1,0 @@
-go 1.21
-
-use ./
-
-replace ariga.io/atlas => ../../

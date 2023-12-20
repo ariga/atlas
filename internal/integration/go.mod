@@ -7,8 +7,8 @@ replace ariga.io/atlas => ../../
 replace ariga.io/atlas/cmd/atlas => ../../cmd/atlas
 
 require (
-	ariga.io/atlas v0.14.1-0.20230918065911-83ad451a4935
-	ariga.io/atlas/cmd/atlas v0.13.2-0.20231107092658-0256971fa570
+	ariga.io/atlas v0.15.1-0.20231123151533-138307774dcb
+	ariga.io/atlas/cmd/atlas v0.13.2-0.20231220130200-d8bd6f612d7a
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/lib/pq v1.10.9
