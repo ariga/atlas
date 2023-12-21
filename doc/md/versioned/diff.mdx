@@ -294,7 +294,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "clickhouse://localhost:9000"
+  --dev-url "docker://clickhouse/23.11/test"
 ```
 
 </TabItem>
@@ -493,7 +493,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
-  --dev-url "clickhouse://localhost:9000"
+  --dev-url "docker://clickhouse/23.11/dev"
 ```
 
 </TabItem>
@@ -671,7 +671,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.sql" \
-  --dev-url "clickhouse://localhost:9000/default"
+  --dev-url "docker://clickhouse/23.11/dev"
 ```
 
 </TabItem>
@@ -836,7 +836,7 @@ atlas migrate diff create_users \
 atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.sql" \
-  --dev-url "clickhouse://localhost:9000/default"
+  --dev-url "docker://clickhouse/23.11/dev"
 ```
 
 </TabItem>

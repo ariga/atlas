@@ -136,14 +136,29 @@ docker+sqlserver://mcr.microsoft.com/azure-sql-edge:1.0.7?mode=schema
 </TabItem>
 <TabItem value="clickhouse" label="ClickHouse">
 
-Atlas does not support yet initializing a ClickHouse dev-database through `docker://`, but you can create a local container by running the following command:
-
 ```shell
-docker run -d --rm --name clickhouse-dev -p 9000:9000 -d clickhouse/clickhouse-server:latest
+# When working on a single database schema
+--dev-url "docker://clickhouse/23.11/dev"
+
+# When working on multiple database schemas.
+--dev-url "docker://clickhouse/23.11"
 ```
 
+To work with a custom Docker image, use one of the following formats:
+
 ```shell
---dev-url "clickhouse://localhost:9000"
+# When working on a single database schema.
+docker+clickhouse://org/image/dev
+docker+clickhouse://user/image:tag/dev
+# For local/official images, leave host empty or use "_".
+docker+clickhouse:///local/dev
+docker+clickhouse://_/clickhouse:latest/dev
+
+# When working on multiple database schemas.
+docker+clickhouse://local
+docker+clickhouse://org/image
+docker+clickhouse://user/image:tag
+docker+clickhouse://_/clickhousedb:latest
 ```
 
 </TabItem>

@@ -110,7 +110,7 @@ atlas migrate diff initial \
 ```bash
 atlas migrate diff initial \
   --to file://schema.sql \
-  --dev-url "clickhouse://localhost:9000" \
+  --dev-url "docker://clickhouse/23.11/dev" \
   --format '{{ sql . "  " }}'
 ```
 
@@ -235,7 +235,7 @@ docker run --rm -d --name atlas-demo -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABA
 <TabItem value="clickhouse" label="ClickHouse">
 
 ```bash
-docker run --rm -d --name atlas-demo -e CLICKHOUSE_DB=example -p 9001:9000 clickhouse/clickhouse-server:latest
+docker run --rm -d --name atlas-demo -e CLICKHOUSE_DB=example -p 9000:9000 clickhouse/clickhouse-server:latest
 ```
 
 </TabItem>
@@ -275,7 +275,7 @@ env "local" {
 ```hcl title="atlas.hcl" {1}
 # The "dev" environment represents our local testings.
 env "local" {
-  url = "clickhouse://localhost:9001/example"
+  url = "clickhouse://localhost:9000/example"
   migration {
     dir = "atlas://app"
   }
@@ -448,7 +448,7 @@ atlas migrate diff add_commits \
 ```bash
 atlas migrate diff add_commits \
   --to file://schema.sql \
-  --dev-url "clickhouse://localhost:9000" \
+  --dev-url "docker://clickhouse/23.11/dev" \
   --format '{{ sql . "  " }}'
 ```
 
@@ -480,7 +480,7 @@ atlas migrate push app \
 
 ```bash
 atlas migrate push app \
-  --dev-url "clickhouse://localhost:9000" \
+  --dev-url "docker://clickhouse/23.11/dev" \
 ```
 
 </TabItem>

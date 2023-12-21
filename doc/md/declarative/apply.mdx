@@ -166,7 +166,7 @@ atlas schema apply \
 atlas schema apply \
   --url "clickhouse://localhost:9000/default" \
   --to "file://schema.hcl" \
-  --dev-url "clickhouse://localhost:9000/dev"
+  --dev-url "docker://clickhouse/23.11/dev"
 ```
 
 </TabItem>
@@ -230,9 +230,9 @@ atlas schema apply \
 
 ```shell
 atlas schema apply \
-  --url "sqlite://file.db" \
+  --url "clickhouse://localhost:9000/default" \
   --to "file://schema.sql" \
-  --dev-url "clickhouse://localhost:9000"
+  --dev-url "docker://clickhouse/23.11/dev"
 ```
 
 </TabItem>
@@ -306,7 +306,7 @@ atlas schema apply \
 atlas schema apply \
   --url "clickhouse://localhost:9000/default" \
   --to "file://migrations" \
-  --dev-url "clickhouse://localhost:9000/dev"
+  --dev-url "docker://clickhouse/23.11/dev"
 ```
 
 </TabItem>

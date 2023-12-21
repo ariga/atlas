@@ -77,7 +77,7 @@ atlas migrate lint \
 
 ```shell
 atlas migrate lint \
-  --dev-url "clickhouse://localhost:9000" \
+  --dev-url "docker://clickhouse/23.11" \
   -w
 ```
 
@@ -140,7 +140,7 @@ atlas migrate lint \
 
 ```shell
 atlas migrate lint \
-  --dev-url "clickhouse://localhost:9000" \
+  --dev-url "docker://clickhouse/23.11/dev" \
   --latest 1
 ```
 
@@ -201,7 +201,7 @@ atlas migrate lint \
 
 ```shell
 atlas migrate lint \
-  --dev-url "clickhouse://localhost:9000" \
+  --dev-url "docker://clickhouse/23.11/dev" \
   --git-base "master" \
   -w
 ```
@@ -389,7 +389,7 @@ atlas login
 
 ```shell
 atlas migrate lint \
-  --dev-url "clickhouse://localhost:9000" \
+  --dev-url "docker://clickhouse/23.11/dev" \
   --latest 1 \
   -w
 ```
