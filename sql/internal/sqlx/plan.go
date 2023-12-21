@@ -471,7 +471,7 @@ func dependsOn(c1, c2 schema.Change) bool {
 				return true
 			}
 		case *schema.ModifyTable:
-			if refTo(c1.T.ForeignKeys, c2.T) {
+			if (c1.T.Name != c2.T.Name || c1.T.Schema != c2.T.Schema) && refTo(c1.T.ForeignKeys, c2.T) {
 				return true
 			}
 		case *schema.AddObject:
