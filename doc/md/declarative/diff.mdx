@@ -133,8 +133,8 @@ atlas schema diff \
 
 ```shell
 atlas schema diff \
-  --from "clickhouse://localhost:9000/default" \
-  --to "clickhouse://localhost:9000/dev"
+  --from "docker://clickhouse/23.11" \
+  --to "clickhouse://user:pass@remote:9000"
 ```
 
 </TabItem>
@@ -192,8 +192,8 @@ Compare two ClickHouse schemas/named-databases:
 
 ```shell
 atlas schema diff \
-  --from "clickhouse://user:pass@localhost:3306/example" \
-  --to "clickhouse://user:pass@remote:3306/example"
+  --from "clickhouse://user:pass@localhost:9000/example" \
+  --to "clickhouse://user:pass@remote:9000/example"
 ```
 
 </TabItem>
@@ -256,7 +256,7 @@ atlas schema diff \
 atlas schema diff \
   --from "file://schema1.hcl" \
   --to "file://schema2.hcl" \
-  --dev-url "clickhouse://localhost:9000"
+  --dev-url "docker://clickhouse/23.11"
 ```
 
 </TabItem>
@@ -339,7 +339,7 @@ atlas schema diff \
 atlas schema diff \
   --from "file://schema1.sql" \
   --to "file://schema2.sql" \
-  --dev-url "clickhouse://localhost:9000"
+  --dev-url "docker://clickhouse/23.11"
 ```
 
 </TabItem>
@@ -423,7 +423,7 @@ atlas schema diff \
 atlas schema diff \
   --from "file://migrations1" \
   --to "file://migrations2" \
-  --dev-url "clickhouse://localhost:9000"
+  --dev-url "docker://clickhouse/23.11"
 ```
 
 </TabItem>
@@ -486,7 +486,7 @@ atlas schema diff \
 atlas schema diff \
   --from "file://schema.hcl" \
   --to "file://schema.sql" \
-  --dev-url "clickhouse://localhost:9000"
+  --dev-url "docker://clickhouse/23.11"
 ```
 
 </TabItem>
@@ -549,8 +549,8 @@ atlas schema diff \
 ```shell
 atlas schema diff \
   --from "file://migrations" \
-  --to "clickhouse://user:pass@remote:9000/test" \
-  --dev-url "clickhouse://localhost:9000"
+  --to "clickhouse://user:pass@remote:9000/example" \
+  --dev-url "docker://clickhouse/23.11"
 ```
 
 </TabItem>
@@ -567,7 +567,6 @@ values={[
 {label: 'MySQL', value: 'mysql'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 

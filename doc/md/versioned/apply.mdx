@@ -76,7 +76,7 @@ atlas migrate push app \
 
 ```bash
 atlas migrate push app \
-  --dev-url "clickhouse://localhost:9000"
+  --dev-url "docker://clickhouse/23.11"
 ```
 
 </TabItem>
@@ -329,7 +329,7 @@ atlas migrate diff my_baseline \
 ```shell
 atlas migrate diff my_baseline \
   --dir "file://migrations" \
-  --dev-url "clickhouse://localhost:9000/default" \
+  --dev-url "docker://clickhouse/23.11/default" \
   --to "clickhouse://user:pass@remote:9000/default"
 ```
 
@@ -668,7 +668,7 @@ atlas schema apply \
 atlas schema apply \
   --url "clickhouse://user:pass@remote:9000/default" \
   --to "file://migrations?version=20220925094437" \
-  --dev-url "clickhouse://localhost:9000/default" \
+  --dev-url "docker://clickhouse/23.11/default" \
   --exclude "atlas_schema_revisions"
 ```
 

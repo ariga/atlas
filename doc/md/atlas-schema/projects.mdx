@@ -125,7 +125,7 @@ env "local" {
 
   // Define the URL of the Dev Database for this environment
   // See: https://atlasgo.io/concepts/dev-database
-  dev = "clickhouse://localhost:9000/default"
+  dev = "docker://clickhouse/23.11/default"
 }
 
 env "dev" {
