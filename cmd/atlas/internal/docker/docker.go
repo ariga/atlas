@@ -73,14 +73,15 @@ func NewConfig(opts ...ConfigOption) (*Config, error) {
 }
 
 const (
-	DriverMySQL     = "mysql"
-	DriverMariaDB   = "mariadb"
-	DriverPostgres  = "postgres"
-	DriverSQLServer = "sqlserver"
+	DriverMySQL      = "mysql"
+	DriverMariaDB    = "mariadb"
+	DriverPostgres   = "postgres"
+	DriverSQLServer  = "sqlserver"
+	DriverClickHouse = "clickhouse"
 )
 
 // FromURL parses a URL in the format of
-// "docker://image/tag[/dbname]" and returns a Config.
+// "docker://driver/tag[/dbname]" and returns a Config.
 func FromURL(u *url.URL) (*Config, error) {
 	var (
 		parts  = strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
@@ -154,6 +155,15 @@ func FromURL(u *url.URL) (*Config, error) {
 			)
 		}
 		cfg, err = SQLServer(tag, opts...)
+	case DriverClickHouse:
+		if dbName != "" {
+			opts = append(opts,
+				Database(dbName),
+				Env("CLICKHOUSE_DB="+dbName),
+				Setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName)),
+			)
+		}
+		cfg, err = ClickHouse(tag, opts...)
 	default:
 		return nil, fmt.Errorf("unsupported docker image %q", driver)
 	}
@@ -233,6 +243,20 @@ func SQLServer(version string, opts ...ConfigOption) (*Config, error) {
 					"MSSQL_PID=Developer",
 					"MSSQL_SA_PASSWORD="+passSQLServer,
 				),
+			},
+			opts...,
+		)...,
+	)
+}
+
+// ClickHouse returns a new Config for a ClickHouse image.
+func ClickHouse(version string, opts ...ConfigOption) (*Config, error) {
+	return NewConfig(
+		append(
+			[]ConfigOption{
+				Image("clickhouse/clickhouse-server:" + version),
+				Port("9000"),
+				Env("CLICKHOUSE_PASSWORD=" + pass),
 			},
 			opts...,
 		)...,
@@ -394,6 +418,8 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 // URL returns a URL to connect to the Container.
 func (c *Container) URL() (*url.URL, error) {
 	switch c.cfg.driver {
+	case DriverClickHouse:
+		return url.Parse(fmt.Sprintf("clickhouse://:%s@%s:%s/%s", c.Passphrase, "localhost", c.Port, c.cfg.Database))
 	case DriverSQLServer:
 		return url.Parse(fmt.Sprintf("sqlserver://sa:%s@localhost:%s?database=%s", passSQLServer, c.Port, c.cfg.Database))
 	case DriverPostgres:
@@ -446,7 +472,10 @@ func init() {
 	sqlclient.Register(
 		"docker",
 		sqlclient.OpenerFunc(Open),
-		sqlclient.RegisterFlavours("docker+postgres", "docker+mysql", "docker+maria", "docker+sqlserver"),
+		sqlclient.RegisterFlavours(
+			"docker+postgres", "docker+mysql", "docker+maria",
+			"docker+sqlserver", "docker+clickhouse",
+		),
 	)
 }
 
