@@ -23,15 +23,16 @@ import (
 
 type (
 	doc struct {
-		Tables       []*sqlspec.Table  `spec:"table"`
-		Views        []*sqlspec.View   `spec:"view"`
-		Materialized []*sqlspec.View   `spec:"materialized"`
-		Enums        []*enum           `spec:"enum"`
-		Domains      []*domain         `spec:"domain"`
-		Sequences    []*sequence       `spec:"sequence"`
-		Funcs        []*sqlspec.Func   `spec:"function"`
-		Procs        []*sqlspec.Func   `spec:"procedure"`
-		Schemas      []*sqlspec.Schema `spec:"schema"`
+		Tables       []*sqlspec.Table   `spec:"table"`
+		Views        []*sqlspec.View    `spec:"view"`
+		Materialized []*sqlspec.View    `spec:"materialized"`
+		Enums        []*enum            `spec:"enum"`
+		Domains      []*domain          `spec:"domain"`
+		Sequences    []*sequence        `spec:"sequence"`
+		Funcs        []*sqlspec.Func    `spec:"function"`
+		Procs        []*sqlspec.Func    `spec:"procedure"`
+		Triggers     []*sqlspec.Trigger `spec:"trigger"`
+		Schemas      []*sqlspec.Schema  `spec:"schema"`
 	}
 
 	// Enum holds a specification for an enum type.
@@ -76,7 +77,20 @@ func (d *doc) merge(d1 *doc) {
 	d.Domains = append(d.Domains, d1.Domains...)
 	d.Schemas = append(d.Schemas, d1.Schemas...)
 	d.Sequences = append(d.Sequences, d1.Sequences...)
+	d.Triggers = append(d.Triggers, d1.Triggers...)
 	d.Materialized = append(d.Materialized, d1.Materialized...)
+}
+
+func (d *doc) ScanDoc() *specutil.ScanDoc {
+	return &specutil.ScanDoc{
+		Schemas:      d.Schemas,
+		Tables:       d.Tables,
+		Views:        d.Views,
+		Funcs:        d.Funcs,
+		Procs:        d.Procs,
+		Triggers:     d.Triggers,
+		Materialized: d.Materialized,
+	}
 }
 
 // Label returns the defaults label used for the enum resource.
@@ -129,10 +143,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		if err := hclState.Eval(p, &d, input); err != nil {
 			return err
 		}
-		if err := specutil.Scan(v,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Materialized: d.Materialized, Funcs: d.Funcs, Procs: d.Procs},
-			scanFuncs,
-		); err != nil {
+		if err := specutil.Scan(v, d.ScanDoc(), scanFuncs); err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
 		if err := convertEnums(d.Tables, d.Enums, v); err != nil {
@@ -153,10 +164,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
 		r := &schema.Realm{}
-		if err := specutil.Scan(r,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Materialized: d.Materialized, Funcs: d.Funcs, Procs: d.Procs},
-			scanFuncs,
-		); err != nil {
+		if err := specutil.Scan(r, d.ScanDoc(), scanFuncs); err != nil {
 			return err
 		}
 		if err := convertEnums(d.Tables, d.Enums, r); err != nil {
@@ -179,21 +187,26 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
 func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
-	var d doc
+	var (
+		d  doc
+		ts []*schema.Trigger
+	)
 	switch s := v.(type) {
 	case *schema.Schema:
-		d1, err := schemaSpec(s)
+		d1, trs, err := schemaSpec(s)
 		if err != nil {
 			return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 		}
+		ts = trs
 		d.merge(d1)
 	case *schema.Realm:
 		for _, s := range s.Schemas {
-			d1, err := schemaSpec(s)
+			d1, trs, err := schemaSpec(s)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 			}
 			d.merge(d1)
+			ts = append(ts, trs...)
 		}
 		if err := specutil.QualifyObjects(d.Tables); err != nil {
 			return nil, err
@@ -227,6 +240,9 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 		}
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
+	}
+	if err := triggersSpec(ts, &d); err != nil {
+		return nil, err
 	}
 	return marshaler.MarshalSpec(&d)
 }
@@ -658,10 +674,10 @@ func enumRef(n string) *schemahcl.Ref {
 }
 
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
-func schemaSpec(s *schema.Schema) (*doc, error) {
+func schemaSpec(s *schema.Schema) (*doc, []*schema.Trigger, error) {
 	spec, err := specutil.FromSchema(s, specFuncs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	d := &doc{
 		Tables:       spec.Tables,
@@ -674,9 +690,9 @@ func schemaSpec(s *schema.Schema) (*doc, error) {
 		Domains:      make([]*domain, 0, len(s.Objects)),
 	}
 	if err := objectSpec(d, spec, s); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return d, nil
+	return d, spec.Triggers, nil
 }
 
 // tableSpec converts from a concrete Postgres sqlspec.Table to a schema.Table.

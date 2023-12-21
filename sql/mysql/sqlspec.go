@@ -80,7 +80,9 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
 func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
-	return specutil.Marshal(v, marshaler, schemaSpec)
+	return specutil.Marshal(v, marshaler, specutil.RealmFuncs{
+		Schema: schemaSpec,
+	})
 }
 
 var (

@@ -114,6 +114,14 @@ type (
 		// as their definition can be either a string or an enum (ref).
 		schemahcl.DefaultExtension
 	}
+
+	// Trigger holds the specification for a trigger.
+	Trigger struct {
+		Name string         `spec:",name"`
+		On   *schemahcl.Ref `spec:"on"` // A table or a view.
+		// Attributes and blocks are different for each driver.
+		schemahcl.DefaultExtension
+	}
 )
 
 // Label returns the defaults label used for the table resource.
@@ -158,5 +166,6 @@ func init() {
 	schemahcl.Register("table", &Table{})
 	schemahcl.Register("function", &Func{})
 	schemahcl.Register("procedure", &Func{})
+	schemahcl.Register("trigger", &Trigger{})
 	schemahcl.Register("schema", &Schema{})
 }

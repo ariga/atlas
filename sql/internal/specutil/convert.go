@@ -48,6 +48,7 @@ type (
 		Materialized []*sqlspec.View
 		Funcs        []*sqlspec.Func
 		Procs        []*sqlspec.Func
+		Triggers     []*sqlspec.Trigger
 	}
 
 	// ScanFuncs represents a set of scan functions
@@ -57,11 +58,13 @@ type (
 		View  ConvertViewFunc
 		Func  func(*sqlspec.Func) (*schema.Func, error)
 		Proc  func(*sqlspec.Func) (*schema.Proc, error)
+		// The trigger add itself to the relevant table/view.
+		Trigger func(*schema.Realm, *sqlspec.Trigger) error
 	}
 
-	// Funcs represents a set of spec functions
-	// used to convert the Realm to an HCL document.
-	Funcs struct {
+	// SchemaFuncs represents a set of spec functions
+	// used to convert the Schema object to an HCL document.
+	SchemaFuncs struct {
 		Table TableSpecFunc
 		View  ViewSpecFunc
 		Func  func(*schema.Func) (*sqlspec.Func, error)
@@ -233,6 +236,13 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 			}
 		}
 	}
+	if funcs.Trigger != nil {
+		for _, st := range doc.Triggers {
+			if err := funcs.Trigger(r, st); err != nil {
+				return fmt.Errorf("cannot convert trigger %q: %w", st.Name, err)
+			}
+		}
+	}
 	for o, refs := range deps {
 		var err error
 		switch o := o.(type) {
@@ -381,7 +391,7 @@ func Default(d cty.Value) (schema.Expr, error) {
 		}
 		x = &schema.RawExpr{X: raw.X}
 	default:
-		return nil, fmt.Errorf("unsupported value type for default: %T", d)
+		return nil, fmt.Errorf("unsupported type for default value: %T", d)
 	}
 	return x, nil
 }
@@ -513,7 +523,7 @@ func linkForeignKeys(tbl *schema.Table, fks []*sqlspec.ForeignKey) error {
 }
 
 // FromSchema converts a schema.Schema into sqlspec.Schema and []sqlspec.Table.
-func FromSchema(s *schema.Schema, funcs *Funcs) (*SchemaSpec, error) {
+func FromSchema(s *schema.Schema, funcs *SchemaFuncs) (*SchemaSpec, error) {
 	spec := &SchemaSpec{
 		Schema: &sqlspec.Schema{
 			Name: s.Name,
@@ -531,6 +541,7 @@ func FromSchema(s *schema.Schema, funcs *Funcs) (*SchemaSpec, error) {
 			table.Schema = SchemaRef(s.Name)
 		}
 		spec.Tables = append(spec.Tables, table)
+		spec.Triggers = append(spec.Triggers, t.Triggers...)
 	}
 	for _, v := range s.Views {
 		view, err := funcs.View(v)
@@ -545,6 +556,7 @@ func FromSchema(s *schema.Schema, funcs *Funcs) (*SchemaSpec, error) {
 		} else {
 			spec.Views = append(spec.Views, view)
 		}
+		spec.Triggers = append(spec.Triggers, v.Triggers...)
 	}
 	if funcs.Func != nil {
 		for _, f := range s.Funcs {
@@ -976,7 +988,7 @@ func SchemaName(ref *schemahcl.Ref) (string, error) {
 }
 
 // ColumnByRef returns a column from the table by its reference.
-func ColumnByRef(t *schema.Table, ref *schemahcl.Ref) (*schema.Column, error) {
+func ColumnByRef[T *schema.View | *schema.Table](tv T, ref *schemahcl.Ref) (*schema.Column, error) {
 	vs, err := ref.ByType(typeColumn)
 	if err != nil {
 		return nil, err
@@ -984,11 +996,22 @@ func ColumnByRef(t *schema.Table, ref *schemahcl.Ref) (*schema.Column, error) {
 	if len(vs) != 1 {
 		return nil, fmt.Errorf("expected 1 column ref, got %d", len(vs))
 	}
-	c, ok := t.Column(vs[0])
-	if !ok {
-		return nil, fmt.Errorf("unknown column %q in table %q", vs[0], t.Name)
+	switch tv := any(tv).(type) {
+	case *schema.Table:
+		c, ok := tv.Column(vs[0])
+		if !ok {
+			return nil, fmt.Errorf("column %q was not found in table %s", vs[0], tv.Name)
+		}
+		return c, nil
+	case *schema.View:
+		c, ok := tv.Column(vs[0])
+		if !ok {
+			return nil, fmt.Errorf("column %q was not found in view %s", vs[0], tv.Name)
+		}
+		return c, nil
+	default:
+		return nil, fmt.Errorf("unreachable %T", tv)
 	}
-	return c, nil
 }
 
 func externalRef(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, *schema.Column, error) {
