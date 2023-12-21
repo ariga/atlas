@@ -113,6 +113,7 @@ type (
 		AddTable         bool `spec:"add_table"`
 		DropTable        bool `spec:"drop_table"`
 		ModifyTable      bool `spec:"modify_table"`
+		RenameTable      bool `spec:"rename_table"`
 		AddColumn        bool `spec:"add_column"`
 		DropColumn       bool `spec:"drop_column"`
 		ModifyColumn     bool `spec:"modify_column"`
@@ -122,6 +123,22 @@ type (
 		AddForeignKey    bool `spec:"add_foreign_key"`
 		DropForeignKey   bool `spec:"drop_foreign_key"`
 		ModifyForeignKey bool `spec:"modify_foreign_key"`
+		AddView          bool `spec:"add_view"`
+		DropView         bool `spec:"drop_view"`
+		ModifyView       bool `spec:"modify_view"`
+		RenameView       bool `spec:"rename_view"`
+		AddFunc          bool `spec:"add_func"`
+		DropFunc         bool `spec:"drop_func"`
+		ModifyFunc       bool `spec:"modify_func"`
+		RenameFunc       bool `spec:"rename_func"`
+		AddProc          bool `spec:"add_proc"`
+		DropProc         bool `spec:"drop_proc"`
+		ModifyProc       bool `spec:"modify_proc"`
+		RenameProc       bool `spec:"rename_proc"`
+		AddTrigger       bool `spec:"add_trigger"`
+		DropTrigger      bool `spec:"drop_trigger"`
+		ModifyTrigger    bool `spec:"modify_trigger"`
+		RenameTrigger    bool `spec:"rename_trigger"`
 	}
 
 	// Format represents the output formatting configuration of an environment.
@@ -295,10 +312,14 @@ func (d *Diff) Options() (opts []schema.DiffOption) {
 	)
 	for _, c := range []schema.Change{
 		&schema.AddSchema{}, &schema.DropSchema{}, &schema.ModifySchema{},
-		&schema.AddTable{}, &schema.DropTable{}, &schema.ModifyTable{},
-		&schema.AddColumn{}, &schema.DropColumn{}, &schema.ModifyColumn{},
-		&schema.AddIndex{}, &schema.DropIndex{}, &schema.ModifyIndex{},
-		&schema.AddForeignKey{}, &schema.DropForeignKey{}, &schema.ModifyForeignKey{},
+		&schema.AddView{}, &schema.DropView{}, &schema.ModifyView{}, &schema.RenameView{},
+		&schema.AddFunc{}, &schema.DropFunc{}, &schema.ModifyFunc{}, &schema.RenameFunc{},
+		&schema.AddProc{}, &schema.DropProc{}, &schema.ModifyProc{}, &schema.RenameProc{},
+		&schema.AddTrigger{}, &schema.DropTrigger{}, &schema.ModifyTrigger{}, &schema.RenameTrigger{},
+		&schema.AddTable{}, &schema.DropTable{}, &schema.ModifyTable{}, &schema.RenameTable{},
+		&schema.AddColumn{}, &schema.DropColumn{}, &schema.ModifyColumn{}, &schema.AddIndex{},
+		&schema.DropIndex{}, &schema.ModifyIndex{}, &schema.AddForeignKey{}, &schema.DropForeignKey{},
+		&schema.ModifyForeignKey{},
 	} {
 		if rt := reflect.TypeOf(c).Elem(); rv.FieldByName(rt.Name()).Bool() {
 			changes = append(changes, c)
