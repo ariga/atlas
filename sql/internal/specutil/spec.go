@@ -30,24 +30,37 @@ type (
 		Funcs        []*sqlspec.Func
 		Procs        []*sqlspec.Func
 		Materialized []*sqlspec.View
+		// Collected triggers to convert into spec.
+		Triggers []*schema.Trigger
 	}
-	doc struct {
-		Tables       []*sqlspec.Table  `spec:"table"`
-		Views        []*sqlspec.View   `spec:"view"`
-		Materialized []*sqlspec.View   `spec:"materialized"`
-		Funcs        []*sqlspec.Func   `spec:"function"`
-		Procs        []*sqlspec.Func   `spec:"procedure"`
-		Schemas      []*sqlspec.Schema `spec:"schema"`
+	// RealmFuncs represents the functions that used
+	// to convert the schema.Realm into HCL spec document.
+	RealmFuncs struct {
+		Schema   func(*schema.Schema) (*SchemaSpec, error)
+		Triggers func([]*schema.Trigger, *Doc) ([]*sqlspec.Trigger, error)
+	}
+	// Doc represents the common HCL spec document.
+	Doc struct {
+		Tables       []*sqlspec.Table   `spec:"table"`
+		Views        []*sqlspec.View    `spec:"view"`
+		Materialized []*sqlspec.View    `spec:"materialized"`
+		Funcs        []*sqlspec.Func    `spec:"function"`
+		Procs        []*sqlspec.Func    `spec:"procedure"`
+		Triggers     []*sqlspec.Trigger `spec:"trigger"`
+		Schemas      []*sqlspec.Schema  `spec:"schema"`
 	}
 )
 
 // Marshal marshals v into an Atlas DDL document using a schemahcl.Marshaler. Marshal uses the given
 // schemaSpec function to convert a *schema.Schema into *sqlspec.Schema, []*sqlspec.Table and []*sqlspec.View.
-func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Schema) (*SchemaSpec, error)) ([]byte, error) {
-	d := &doc{}
+func Marshal(v any, marshaler schemahcl.Marshaler, funcs RealmFuncs) ([]byte, error) {
+	var (
+		d  = &Doc{}
+		ts []*schema.Trigger
+	)
 	switch s := v.(type) {
 	case *schema.Schema:
-		spec, err := convertFunc(s)
+		spec, err := funcs.Schema(s)
 		if err != nil {
 			return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 		}
@@ -57,9 +70,10 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 		d.Schemas = []*sqlspec.Schema{spec.Schema}
 		d.Funcs = spec.Funcs
 		d.Procs = spec.Procs
+		ts = spec.Triggers
 	case *schema.Realm:
 		for _, s := range s.Schemas {
-			spec, err := convertFunc(s)
+			spec, err := funcs.Schema(s)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 			}
@@ -69,6 +83,7 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 			d.Schemas = append(d.Schemas, spec.Schema)
 			d.Funcs = append(d.Funcs, spec.Funcs...)
 			d.Procs = append(d.Procs, spec.Procs...)
+			ts = append(ts, spec.Triggers...)
 		}
 		if err := QualifyObjects(d.Tables); err != nil {
 			return nil, err
@@ -90,6 +105,13 @@ func Marshal(v any, marshaler schemahcl.Marshaler, convertFunc func(*schema.Sche
 		}
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
+	}
+	if funcs.Triggers != nil {
+		specs, err := funcs.Triggers(ts, d)
+		if err != nil {
+			return nil, err
+		}
+		d.Triggers = specs
 	}
 	return marshaler.MarshalSpec(d)
 }

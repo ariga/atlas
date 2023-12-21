@@ -20,7 +20,7 @@ import (
 
 var (
 	specOptions []schemahcl.Option
-	specFuncs   = &specutil.Funcs{
+	specFuncs   = &specutil.SchemaFuncs{
 		Table: tableSpec,
 		View:  viewSpec,
 	}
@@ -29,6 +29,10 @@ var (
 		View:  convertView,
 	}
 )
+
+func triggersSpec([]*schema.Trigger, *doc) error {
+	return nil // unimplemented.
+}
 
 func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.

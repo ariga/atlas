@@ -65,7 +65,9 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
 func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
-	return specutil.Marshal(v, marshaler, schemaSpec)
+	return specutil.Marshal(v, marshaler, specutil.RealmFuncs{
+		Schema: schemaSpec,
+	})
 }
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
@@ -158,7 +160,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 
 // schemaSpec converts from a concrete SQLite schema to Atlas specification.
 func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
-	return specutil.FromSchema(s, &specutil.Funcs{
+	return specutil.FromSchema(s, &specutil.SchemaFuncs{
 		Table: tableSpec,
 		View:  viewSpec,
 	})
