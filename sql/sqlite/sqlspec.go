@@ -20,9 +20,10 @@ import (
 )
 
 type doc struct {
-	Tables  []*sqlspec.Table  `spec:"table"`
-	Views   []*sqlspec.View   `spec:"view"`
-	Schemas []*sqlspec.Schema `spec:"schema"`
+	Tables   []*sqlspec.Table   `spec:"table"`
+	Views    []*sqlspec.View    `spec:"view"`
+	Triggers []*sqlspec.Trigger `spec:"trigger"`
+	Schemas  []*sqlspec.Schema  `spec:"schema"`
 }
 
 // evalSpec evaluates an Atlas DDL document using an unmarshaler into v by using the input.
@@ -34,8 +35,8 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return err
 		}
 		if err := specutil.Scan(v,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views},
-			&specutil.ScanFuncs{Table: convertTable, View: convertView},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Triggers: d.Triggers},
+			scanFuncs,
 		); err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
@@ -49,8 +50,8 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		}
 		r := &schema.Realm{}
 		if err := specutil.Scan(r,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views},
-			&specutil.ScanFuncs{Table: convertTable, View: convertView},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Triggers: d.Triggers},
+			scanFuncs,
 		); err != nil {
 			return err
 		}
@@ -66,7 +67,8 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
 func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 	return specutil.Marshal(v, marshaler, specutil.RealmFuncs{
-		Schema: schemaSpec,
+		Schema:   schemaSpec,
+		Triggers: triggersSpec,
 	})
 }
 
