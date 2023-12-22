@@ -218,17 +218,17 @@ Scan:
 		case r == '/' && s.next() == '*':
 			s.comment("/*", "*/")
 		case s.delim == delimiter && s.MatchBeginAtomic && reBeginAtomic.MatchString(s.input[s.pos-1:]):
-			if err := s.skipBeginAtomic(); err != nil {
-				return nil, err
+			if err := s.skipBeginAtomic(); err == nil {
+				text = s.input[:s.pos]
+				break Scan
 			}
-			text = s.input[:s.pos]
-			break Scan
+			// Not a "BEGIN ATOMIC" block.
 		case s.delim == delimiter && s.MatchBegin && reBegin.MatchString(s.input[s.pos-1:]):
-			if err := s.skipBegin(); err != nil {
-				return nil, err
+			if err := s.skipBegin(); err == nil {
+				text = s.input[:s.pos]
+				break Scan
 			}
-			text = s.input[:s.pos]
-			break Scan
+			// Not a "BEGIN" block.
 		}
 	}
 	return s.emit(text), nil
