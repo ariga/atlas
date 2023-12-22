@@ -20,24 +20,16 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-type doc struct {
-	Tables  []*sqlspec.Table  `spec:"table"`
-	Views   []*sqlspec.View   `spec:"view"`
-	Schemas []*sqlspec.Schema `spec:"schema"`
-	Funcs   []*sqlspec.Func   `spec:"function"`
-	Procs   []*sqlspec.Func   `spec:"procedure"`
-}
-
 // evalSpec evaluates an Atlas DDL document into v using the input.
 func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 	switch v := v.(type) {
 	case *schema.Realm:
-		var d doc
+		var d specutil.Doc
 		if err := hclState.Eval(p, &d, input); err != nil {
 			return err
 		}
 		if err := specutil.Scan(v,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Funcs: d.Funcs, Procs: d.Procs},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Funcs: d.Funcs, Procs: d.Procs, Triggers: d.Triggers},
 			scanFuncs,
 		); err != nil {
 			return fmt.Errorf("mysql: failed converting to *schema.Realm: %w", err)
@@ -52,7 +44,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			}
 		}
 	case *schema.Schema:
-		var d doc
+		var d specutil.Doc
 		if err := hclState.Eval(p, &d, input); err != nil {
 			return err
 		}
@@ -61,7 +53,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		}
 		r := &schema.Realm{}
 		if err := specutil.Scan(r,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Funcs: d.Funcs, Procs: d.Procs},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Funcs: d.Funcs, Procs: d.Procs, Triggers: d.Triggers},
 			scanFuncs,
 		); err != nil {
 			return err
@@ -81,7 +73,8 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
 func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 	return specutil.Marshal(v, marshaler, specutil.RealmFuncs{
-		Schema: schemaSpec,
+		Schema:   schemaSpec,
+		Triggers: triggersSpec,
 	})
 }
 
