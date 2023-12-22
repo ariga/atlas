@@ -10,10 +10,22 @@ import (
 	"context"
 
 	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlspec"
 )
 
-var specOptions []schemahcl.Option
+var (
+	specOptions []schemahcl.Option
+	scanFuncs   = &specutil.ScanFuncs{
+		Table: convertTable,
+		View:  convertView,
+	}
+)
+
+func triggersSpec([]*schema.Trigger, *specutil.Doc) ([]*sqlspec.Trigger, error) {
+	return nil, nil // unimplemented.
+}
 
 func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
