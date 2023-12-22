@@ -120,3 +120,45 @@ BEGIN
     END LOOP;
     CLOSE cur;
 END;
+-- end --
+select * from t1 where `begin` < 10;
+-- end --
+create table t2(begin int);
+-- end --
+select * from t2 where begin < 10;
+-- end --
+create table t3(begin int, end int);
+-- end --
+select * from t3 where begin <> end;
+-- end --
+create table t4(begin int, end int);
+-- end --
+select * from t4 where begin > end or begin < end or begin = end or begin in (1,2,3) and end not in (1,2,3);
+-- end --
+create table t5(begin int, end int);
+-- end --
+create trigger t5_insert before insert on t5 for each row set new.begin = new.end;
+-- end --
+create trigger t5_insert before insert on t5 for each row
+begin
+    set new.begin = new.end;
+end;
+-- end --
+CREATE OR REPLACE VIEW claims.current_member_view AS
+    SELECT l.member_load_id, n.name_last_or_organization, g.name_given, n.name_middle, n.name_prefix, n.name_suffix, ps.external_plan_sponsor_id, i.member_identification_code, i.date_of_birth, cgop.group_or_policy_number, a.plan_sponsor_name, stat.is_subscriber, stat.relationship_to_subscriber, ed.employment_begin, cd.benefit_begin, cd.benefit_end
+    FROM claims.member_coverage_load mcl
+    LEFT OUTER JOIN claims.member_load l ON mcl.member_load_id = l.member_load_id
+    LEFT OUTER JOIN claims.plan_sponsor_match m ON mcl.coverage_group_or_plan_id = m.coverage_group_or_plan_id
+    LEFT OUTER JOIN claims.plan_sponsor ps ON ps.plan_sponsor_id = m.plan_sponsor_id
+    LEFT OUTER JOIN claims.member_seen ms ON ms.member_seen_id = l.member_seen_id
+    LEFT OUTER JOIN claims.member_identification i ON ms.member_identification_id = i.member_identification_id
+    LEFT OUTER JOIN claims.name n ON n.name_id = ms.name_id
+    LEFT OUTER JOIN claims.name_given g ON n.name_first_id = g.name_given_id
+    LEFT OUTER JOIN claims.eligibility_date ed ON ed.eligibility_date_id = l.eligibility_date_id
+    LEFT OUTER JOIN claims.eligibility_reference r ON r.eligibility_reference_id = l.eligibility_reference_id
+    LEFT OUTER JOIN claims.eligibility_status stat ON stat.eligibility_status_id = l.eligibility_status_id
+    LEFT OUTER JOIN claims.eligibility_admin a ON a.eligibility_admin_id = l.eligibility_admin_id
+    LEFT OUTER JOIN claims.eligibility_submission s ON s.eligibility_submission_id = l.eligibility_submission_id
+    LEFT OUTER JOIN claims.coverage_group_or_plan cgop ON cgop.coverage_group_or_plan_id = mcl.coverage_group_or_plan_id
+    LEFT OUTER JOIN claims.coverage_date cd ON cd.coverage_date_id = mcl.coverage_date_id
+    WHERE benefit_begin < NOW() AND benefit_end > NOW();
