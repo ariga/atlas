@@ -58,8 +58,8 @@ type (
 		View  ConvertViewFunc
 		Func  func(*sqlspec.Func) (*schema.Func, error)
 		Proc  func(*sqlspec.Func) (*schema.Proc, error)
-		// The trigger add itself to the relevant table/view.
-		Trigger func(*schema.Realm, *sqlspec.Trigger) error
+		// Triggers add themselves to the relevant tables/views.
+		Triggers func(*schema.Realm, []*sqlspec.Trigger) error
 	}
 
 	// SchemaFuncs represents a set of spec functions
@@ -80,6 +80,7 @@ const (
 	typeMaterialized = "materialized"
 	typeFunction     = "function"
 	typeProcedure    = "procedure"
+	typeTrigger      = "trigger"
 )
 
 // typeName returns the type name of the given object.
@@ -236,11 +237,9 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 			}
 		}
 	}
-	if funcs.Trigger != nil {
-		for _, st := range doc.Triggers {
-			if err := funcs.Trigger(r, st); err != nil {
-				return fmt.Errorf("cannot convert trigger %q: %w", st.Name, err)
-			}
+	if funcs.Triggers != nil {
+		if err := funcs.Triggers(r, doc.Triggers); err != nil {
+			return err
 		}
 	}
 	for o, refs := range deps {

@@ -398,10 +398,15 @@ func (r *Resource) Attr(name string) (*Attr, bool) {
 // SetAttr sets the Attr on the Resource. If r is nil, a zero value Resource
 // is initialized. If an Attr with the same key exists, it is replaced by attr.
 func (r *Resource) SetAttr(attr *Attr) {
-	if r == nil {
-		*r = Resource{}
-	}
 	r.Attrs = replaceOrAppendAttr(r.Attrs, attr)
+}
+
+// EmbedAttr is like SetAttr but appends the attribute to an embedded
+// resource, cause it to be marshaled after current blocks and attributes.
+func (r *Resource) EmbedAttr(attr *Attr) {
+	r.Children = append(r.Children, &Resource{
+		Attrs: []*Attr{attr},
+	})
 }
 
 // MarshalSpec implements Marshaler.
