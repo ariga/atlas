@@ -200,6 +200,7 @@ Scan:
 			if err := s.delimCmd(); err != nil {
 				return nil, err
 			}
+			s.skipSpaces()
 		// Delimiters take precedence over comments.
 		case depth == 0 && strings.HasPrefix(s.input[s.pos-s.width:], s.delim):
 			s.addPos(len(s.delim) - s.width)
@@ -223,7 +224,9 @@ Scan:
 				break Scan
 			}
 			// Not a "BEGIN ATOMIC" block.
-		case s.delim == delimiter && s.MatchBegin && reBegin.MatchString(s.input[s.pos-1:]):
+		case s.delim == delimiter && s.MatchBegin &&
+			// Either the current scanned statement starts with BEGIN, or we inside a statement and expects at least one ~space before).
+			(s.pos == 1 && reBegin.MatchString(s.input[s.pos-1:]) || s.pos > 1 && reBegin.MatchString(s.input[s.pos-2:])):
 			if err := s.skipBegin(); err == nil {
 				text = s.input[:s.pos]
 				break Scan
