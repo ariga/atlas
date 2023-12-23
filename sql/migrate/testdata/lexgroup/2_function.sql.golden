@@ -144,6 +144,30 @@ begin
     set new.begin = new.end;
 end;
 -- end --
+CREATE TRIGGER begin1 BEFORE INSERT ON t5
+FOR EACH ROW
+BEGIN
+    SELECT 1;
+    SELECT 1;
+    SET NEW.begin = NEW.end;
+END;
+-- end --
+CREATE TRIGGER begin2 BEFORE INSERT ON t5
+    FOR EACH ROW
+BEGIN
+    SELECT 1;
+    SELECT 1;
+    SET `begin` = `end`;
+END;
+-- end --
+CREATE TRIGGER begin3 BEFORE INSERT ON t5
+    FOR EACH ROW
+BEGIN
+    SELECT 1;
+    SELECT 1;
+    SET begin = end;
+END
+-- end --
 CREATE OR REPLACE VIEW claims.current_member_view AS
     SELECT l.member_load_id, n.name_last_or_organization, g.name_given, n.name_middle, n.name_prefix, n.name_suffix, ps.external_plan_sponsor_id, i.member_identification_code, i.date_of_birth, cgop.group_or_policy_number, a.plan_sponsor_name, stat.is_subscriber, stat.relationship_to_subscriber, ed.employment_begin, cd.benefit_begin, cd.benefit_end
     FROM claims.member_coverage_load mcl

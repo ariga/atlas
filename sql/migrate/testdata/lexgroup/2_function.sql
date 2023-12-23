@@ -142,6 +142,46 @@ begin
     set new.begin = new.end;
 end;
 
+/*
+ The "NEW.begin" one is not scanned as a "BEGIN" because it is
+ not a beginning of s statement and there is no \s before it.
+*/
+CREATE TRIGGER begin1 BEFORE INSERT ON t5
+FOR EACH ROW
+BEGIN
+    SELECT 1;
+    SELECT 1;
+    SET NEW.begin = NEW.end;
+END;
+
+/*
+ The `begin` column is quoted as an identifier as therefore is skipped.
+*/
+CREATE TRIGGER begin2 BEFORE INSERT ON t5
+    FOR EACH ROW
+BEGIN
+    SELECT 1;
+    SELECT 1;
+    SET `begin` = `end`;
+END;
+
+/*
+ An unquoted begin confuses the lexer, and requires using the DELIMITER command.
+*/
+-- Set a special statement delimiter.
+DELIMITER //;
+
+CREATE TRIGGER begin3 BEFORE INSERT ON t5
+    FOR EACH ROW
+BEGIN
+    SELECT 1;
+    SELECT 1;
+    SET begin = end;
+END //;
+
+-- Unset the special statement delimiter.
+DELIMITER ;
+
 -- issue 2397.
 CREATE OR REPLACE VIEW claims.current_member_view AS
     SELECT l.member_load_id, n.name_last_or_organization, g.name_given, n.name_middle, n.name_prefix, n.name_suffix, ps.external_plan_sponsor_id, i.member_identification_code, i.date_of_birth, cgop.group_or_policy_number, a.plan_sponsor_name, stat.is_subscriber, stat.relationship_to_subscriber, ed.employment_begin, cd.benefit_begin, cd.benefit_end
