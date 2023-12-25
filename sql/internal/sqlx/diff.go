@@ -150,16 +150,10 @@ func (d *Diff) RealmDiff(from, to *schema.Realm, options ...schema.DiffOption) (
 			changes = opts.AddOrSkip(changes, &schema.AddProc{P: p})
 		}
 		for _, t := range s1.Tables {
-			changes = opts.AddOrSkip(changes, &schema.AddTable{T: t})
-			for _, r := range t.Triggers {
-				changes = opts.AddOrSkip(changes, &schema.AddTrigger{T: r})
-			}
+			changes = opts.AddOrSkip(changes, addTableChange(t)...)
 		}
 		for _, v := range s1.Views {
-			changes = opts.AddOrSkip(changes, &schema.AddView{V: v})
-			for _, r := range v.Triggers {
-				changes = opts.AddOrSkip(changes, &schema.AddTrigger{T: r})
-			}
+			changes = opts.AddOrSkip(changes, addViewChange(v)...)
 		}
 	}
 	return d.mayAnnotate(changes, opts)
@@ -223,7 +217,7 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 	for _, t1 := range to.Tables {
 		switch _, err := d.findTable(from, t1.Name); {
 		case schema.IsNotExistError(err):
-			changes = opts.AddOrSkip(changes, &schema.AddTable{T: t1})
+			changes = opts.AddOrSkip(changes, addTableChange(t1)...)
 		case err != nil:
 			return nil, err
 		}
@@ -249,7 +243,7 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 	// Add views.
 	for _, v1 := range to.Views {
 		if _, ok := findView(from, v1); !ok {
-			changes = opts.AddOrSkip(changes, &schema.AddView{V: v1})
+			changes = opts.AddOrSkip(changes, addViewChange(v1)...)
 		}
 	}
 	// Add, drop and modify functions and procedures.
@@ -368,6 +362,26 @@ func (d *Diff) mayAnnotate(changes []schema.Change, opts *schema.DiffOptions) ([
 		}
 	}
 	return changes, nil
+}
+
+// addTableChange returns the changeset for creating the table.
+func addTableChange(t *schema.Table) []schema.Change {
+	changes := make([]schema.Change, 0, 1+len(t.Triggers))
+	changes = append(changes, &schema.AddTable{T: t})
+	for _, r := range t.Triggers {
+		changes = append(changes, &schema.AddTrigger{T: r})
+	}
+	return changes
+}
+
+// addViewChange returns the changeset for creating the view.
+func addViewChange(v *schema.View) []schema.Change {
+	changes := make([]schema.Change, 0, 1+len(v.Triggers))
+	changes = append(changes, &schema.AddView{V: v})
+	for _, r := range v.Triggers {
+		changes = append(changes, &schema.AddTrigger{T: r})
+	}
+	return changes
 }
 
 // pkDiff returns the schema changes (if any) for migrating table

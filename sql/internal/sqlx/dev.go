@@ -59,12 +59,16 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 			},
 		})
 		for _, t := range s.Tables {
-			changes = append(changes, &schema.AddTable{
-				T: t,
-			})
+			changes = append(changes, &schema.AddTable{T: t})
+			for _, r := range t.Triggers {
+				changes = append(changes, &schema.AddTrigger{T: r})
+			}
 		}
 		for _, v := range s.Views {
 			changes = append(changes, &schema.AddView{V: v})
+			for _, r := range v.Triggers {
+				changes = append(changes, &schema.AddTrigger{T: r})
+			}
 		}
 		for _, o := range s.Objects {
 			changes = append(changes, &schema.AddObject{O: o})
@@ -123,14 +127,14 @@ func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sch
 				e.Schema = s
 			}
 		}
-		changes = append(changes, &schema.AddTable{T: t})
+		changes = append(changes, addTableChange(t)...)
 	}
 	for _, v := range s.Views {
 		// If objects are not strongly connected.
 		if v.Schema != s {
 			v.Schema = s
 		}
-		changes = append(changes, &schema.AddView{V: v})
+		changes = append(changes, addViewChange(v)...)
 	}
 	for _, o := range s.Objects {
 		if d.PatchObject != nil {

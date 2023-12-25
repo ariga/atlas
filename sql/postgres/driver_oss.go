@@ -50,6 +50,10 @@ func (*inspect) inspectSequences(context.Context, *schema.Realm, *schema.Inspect
 	return nil // unimplemented.
 }
 
+func (*inspect) inspectTriggers(context.Context, *schema.Realm, *schema.InspectOptions) error {
+	return nil // unimplemented.
+}
+
 func (*inspect) inspectDeps(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
 }

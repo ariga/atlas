@@ -68,6 +68,11 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 				return nil, err
 			}
 		}
+		if mode.Is(schema.InspectTriggers) {
+			if err := i.inspectTriggers(ctx, r, nil); err != nil {
+				return nil, err
+			}
+		}
 		if err := i.inspectDeps(ctx, r, nil); err != nil {
 			return nil, err
 		}
@@ -123,6 +128,11 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	}
 	if mode.Is(schema.InspectObjects) {
 		if err := i.inspectSequences(ctx, r, opts); err != nil {
+			return nil, err
+		}
+	}
+	if mode.Is(schema.InspectTriggers) {
+		if err := i.inspectTriggers(ctx, r, nil); err != nil {
 			return nil, err
 		}
 	}
