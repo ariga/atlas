@@ -224,17 +224,23 @@ func TestExcludeRealm_Selector(t *testing.T) {
 		AddViews(
 			NewView("v1", "SELECT * FROM t1").AddColumns(NewColumn("c1")),
 		)
+	r.Schemas[0].Views[0].Triggers = []*Trigger{{Name: "g1"}}
+	r.Schemas[0].Tables[0].Triggers = []*Trigger{{Name: "g1"}}
 	r, err = ExcludeRealm(r, []string{"*.*[type=table].*1[type=column|check]"})
 	require.NoError(t, err)
 	require.Empty(t, r.Schemas[0].Tables[0].Attrs)
 	require.Empty(t, r.Schemas[0].Tables[0].Columns)
 	require.Len(t, r.Schemas[0].Tables[0].Indexes, 1)
+	require.Len(t, r.Schemas[0].Tables[0].Triggers, 1)
 	require.Len(t, r.Schemas[0].Views[0].Columns, 1)
+	require.Len(t, r.Schemas[0].Views[0].Triggers, 1)
 
-	r, err = ExcludeRealm(r, []string{"*.*[type=table|view].*1[type=column|check|index]"})
+	r, err = ExcludeRealm(r, []string{"*.*[type=table|view].*1[type=column|check|index|trigger]"})
 	require.NoError(t, err)
 	require.Empty(t, r.Schemas[0].Tables[0].Indexes)
 	require.Empty(t, r.Schemas[0].Views[0].Columns)
+	require.Empty(t, r.Schemas[0].Tables[0].Triggers)
+	require.Empty(t, r.Schemas[0].Views[0].Triggers)
 }
 
 func TestExcludeRealm_Checks(t *testing.T) {

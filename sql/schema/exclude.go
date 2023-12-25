@@ -203,6 +203,11 @@ func excludeT(t *Table, pattern string) (err error) {
 			return filepath.Match(p, fk.Symbol)
 		})
 	}
+	if p, exclude := excludeType(typeG, pattern); exclude {
+		t.Triggers, err = filter(t.Triggers, func(t *Trigger) (bool, error) {
+			return filepath.Match(p, t.Name)
+		})
+	}
 	if p, exclude := excludeType(typeK, pattern); exclude {
 		t.Attrs, err = filter(t.Attrs, func(a Attr) (bool, error) {
 			c, ok := a.(*Check)
@@ -219,14 +224,19 @@ func excludeT(t *Table, pattern string) (err error) {
 	return
 }
 
-func excludeV(t *View, pattern string) (err error) {
+func excludeV(v *View, pattern string) (err error) {
 	if p, exclude := excludeType(typeC, pattern); exclude {
-		t.Columns, err = filter(t.Columns, func(c *Column) (bool, error) {
+		v.Columns, err = filter(v.Columns, func(c *Column) (bool, error) {
 			match, err := filepath.Match(p, c.Name)
 			if !match || err != nil {
 				return false, err
 			}
 			return true, nil
+		})
+	}
+	if p, exclude := excludeType(typeG, pattern); exclude {
+		v.Triggers, err = filter(v.Triggers, func(t *Trigger) (bool, error) {
+			return filepath.Match(p, t.Name)
 		})
 	}
 	return
@@ -239,6 +249,7 @@ const (
 	typeC  = "column"
 	typeI  = "index"
 	typeF  = "fk"
+	typeG  = "trigger"
 	typeK  = "check"
 	typeFn = "function"
 	typePr = "procedure"

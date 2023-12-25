@@ -224,7 +224,8 @@ func ValuesEqual(v1, v2 []string) bool {
 // ModeInspectSchema returns the InspectMode or its default.
 func ModeInspectSchema(o *schema.InspectOptions) schema.InspectMode {
 	if o == nil || o.Mode == 0 {
-		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews | schema.InspectFuncs | schema.InspectTypes | schema.InspectObjects
+		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews | schema.InspectFuncs |
+			schema.InspectTypes | schema.InspectObjects | schema.InspectTriggers
 	}
 	return o.Mode
 }
@@ -232,7 +233,8 @@ func ModeInspectSchema(o *schema.InspectOptions) schema.InspectMode {
 // ModeInspectRealm returns the InspectMode or its default.
 func ModeInspectRealm(o *schema.InspectRealmOption) schema.InspectMode {
 	if o == nil || o.Mode == 0 {
-		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews | schema.InspectFuncs | schema.InspectTypes | schema.InspectObjects
+		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews | schema.InspectFuncs |
+			schema.InspectTypes | schema.InspectObjects | schema.InspectTriggers
 	}
 	return o.Mode
 }
@@ -309,7 +311,7 @@ func (b *Builder) Func(f *schema.Func) *Builder {
 func (b *Builder) FuncCall(f *schema.Func, args ...string) *Builder {
 	b.Func(f).rewriteLastByte('(')
 	b.MapComma(args, func(i int, b *Builder) {
-		b.P(args[i])
+		b.WriteString(args[i])
 	})
 	b.WriteByte(')')
 	return b
@@ -325,7 +327,7 @@ func (b *Builder) Proc(p *schema.Proc) *Builder {
 func (b *Builder) ProcCall(p *schema.Proc, args ...string) *Builder {
 	b.Proc(p).rewriteLastByte('(')
 	b.MapComma(args, func(i int, b *Builder) {
-		b.P(args[i])
+		b.WriteString(args[i])
 	})
 	b.WriteByte(')')
 	return b
