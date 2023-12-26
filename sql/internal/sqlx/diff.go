@@ -458,7 +458,7 @@ func (d *Diff) viewDefChanged(v1 *schema.View, v2 *schema.View) bool {
 	}); ok {
 		return vr.ViewDefChanged(v1, v2)
 	}
-	return ViewDefChanged(v1, v2)
+	return BodyDefChanged(v1.Def, v2.Def)
 }
 
 // indexDiffV returns the schema changes (if any) for migrating view
@@ -806,11 +806,11 @@ func TrimViewExtra(s string) string {
 	return strings.Trim(s, " \n\t;")
 }
 
-// ViewDefChanged returns true if the view definition has changed.
-// There is small work here that normalizes the indentation that
-// might be extra added on inspection or by the user.
-func ViewDefChanged(from, to *schema.View) bool {
-	if from.Def == to.Def || TrimViewExtra(from.Def) == TrimViewExtra(to.Def) {
+// BodyDefChanged reports if the body definition of a function, procedure, view, or
+// trigger has changed. There is a small task here that normalizes the indentation,
+// which might be added during inspection or by the user.
+func BodyDefChanged(from, to string) bool {
+	if from == to || TrimViewExtra(from) == TrimViewExtra(to) {
 		return false
 	}
 	noident := func(v string) string {
@@ -823,7 +823,7 @@ func ViewDefChanged(from, to *schema.View) bool {
 		}
 		return b.String()
 	}
-	return noident(from.Def) != noident(to.Def)
+	return noident(from) != noident(to)
 }
 
 // findView finds the view by its name and its type.
