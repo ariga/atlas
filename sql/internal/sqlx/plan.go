@@ -631,6 +631,10 @@ func dependsOn(c1, c2 schema.Change) bool {
 		default:
 			return depOfAdd(c1.T.Deps, c2)
 		}
+	case *schema.DropTrigger:
+		return depOfDrop(c1.T, c2)
+	case *schema.ModifyTrigger:
+		return depOfAdd(c1.To.Deps, c2) || depOfDrop(c1.From, c2)
 	}
 	return false
 }

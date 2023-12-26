@@ -103,6 +103,10 @@ func (*state) dropTrigger(*schema.DropTrigger) error {
 	return nil // unimplemented.
 }
 
+func (*state) modifyTrigger(*schema.ModifyTrigger) error {
+	return nil // unimplemented.
+}
+
 func verifyChanges(context.Context, []schema.Change) error {
 	return nil // unimplemented.
 }
