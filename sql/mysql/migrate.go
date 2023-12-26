@@ -117,6 +117,8 @@ func (s *state) plan(changes []schema.Change) error {
 			s.renameView(c)
 		case *schema.AddTrigger:
 			err = s.addTrigger(c)
+		case *schema.ModifyTrigger:
+			err = s.modifyTrigger(c)
 		case *schema.DropTrigger:
 			err = s.dropTrigger(c)
 		default:
