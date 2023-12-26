@@ -30,9 +30,11 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	if opts == nil {
 		opts = &schema.InspectRealmOption{}
 	}
-	r := schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
+	var (
+		mode = sqlx.ModeInspectRealm(opts)
+		r    = schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
+	)
 	if len(schemas) > 0 {
-		mode := sqlx.ModeInspectRealm(opts)
 		if mode.Is(schema.InspectTables) {
 			if err := i.inspectTables(ctx, r, nil); err != nil {
 				return nil, err
@@ -46,6 +48,11 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		}
 		if mode.Is(schema.InspectFuncs) {
 			if err := i.inspectFuncs(ctx, r, nil); err != nil {
+				return nil, err
+			}
+		}
+		if mode.Is(schema.InspectTriggers) {
+			if err := i.inspectTriggers(ctx, r, nil); err != nil {
 				return nil, err
 			}
 		}
@@ -69,20 +76,28 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	if opts == nil {
 		opts = &schema.InspectOptions{}
 	}
-	r := schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
-	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+	var (
+		mode = sqlx.ModeInspectSchema(opts)
+		r    = schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
+	)
+	if mode.Is(schema.InspectTables) {
 		if err := i.inspectTables(ctx, r, opts); err != nil {
 			return nil, err
 		}
 		sqlx.LinkSchemaTables(schemas)
 	}
-	if sqlx.ModeInspectSchema(opts).Is(schema.InspectViews) {
+	if mode.Is(schema.InspectViews) {
 		if err := i.inspectViews(ctx, r, opts); err != nil {
 			return nil, err
 		}
 	}
-	if sqlx.ModeInspectSchema(opts).Is(schema.InspectFuncs) {
+	if mode.Is(schema.InspectFuncs) {
 		if err := i.inspectFuncs(ctx, r, opts); err != nil {
+			return nil, err
+		}
+	}
+	if mode.Is(schema.InspectTriggers) {
+		if err := i.inspectTriggers(ctx, r, nil); err != nil {
 			return nil, err
 		}
 	}
