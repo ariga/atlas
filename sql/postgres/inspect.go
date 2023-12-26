@@ -36,9 +36,11 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	if opts == nil {
 		opts = &schema.InspectRealmOption{}
 	}
-	r := schema.NewRealm(schemas...)
+	var (
+		r    = schema.NewRealm(schemas...)
+		mode = sqlx.ModeInspectRealm(opts)
+	)
 	if len(schemas) > 0 {
-		mode := sqlx.ModeInspectRealm(opts)
 		if mode.Is(schema.InspectTables) {
 			if err := i.inspectTables(ctx, r, nil); err != nil {
 				return nil, err
@@ -100,8 +102,10 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	if opts == nil {
 		opts = &schema.InspectOptions{}
 	}
-	r := schema.NewRealm(schemas...)
-	mode := sqlx.ModeInspectSchema(opts)
+	var (
+		r    = schema.NewRealm(schemas...)
+		mode = sqlx.ModeInspectSchema(opts)
+	)
 	if mode.Is(schema.InspectTables) {
 		if err := i.inspectTables(ctx, r, opts); err != nil {
 			return nil, err
