@@ -33,8 +33,11 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	if opts == nil {
 		opts = &schema.InspectRealmOption{}
 	}
-	r := schema.NewRealm(schemas...)
-	if sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
+	var (
+		r    = schema.NewRealm(schemas...)
+		mode = sqlx.ModeInspectRealm(opts)
+	)
+	if mode.Is(schema.InspectTables) {
 		for _, s := range schemas {
 			tables, err := i.tables(ctx, nil)
 			if err != nil {
@@ -49,8 +52,13 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		}
 		sqlx.LinkSchemaTables(r.Schemas)
 	}
-	if sqlx.ModeInspectRealm(opts).Is(schema.InspectViews) {
+	if mode.Is(schema.InspectViews) {
 		if err := i.inspectViews(ctx, r, nil); err != nil {
+			return nil, err
+		}
+	}
+	if mode.Is(schema.InspectTriggers) {
+		if err := i.inspectTriggers(ctx, r, nil); err != nil {
 			return nil, err
 		}
 	}
@@ -77,8 +85,11 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	if opts == nil {
 		opts = &schema.InspectOptions{}
 	}
-	r := schema.NewRealm(schemas...)
-	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+	var (
+		r    = schema.NewRealm(schemas...)
+		mode = sqlx.ModeInspectSchema(opts)
+	)
+	if mode.Is(schema.InspectTables) {
 		tables, err := i.tables(ctx, opts)
 		if err != nil {
 			return nil, err
@@ -91,8 +102,13 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		}
 		sqlx.LinkSchemaTables(schemas)
 	}
-	if sqlx.ModeInspectSchema(opts).Is(schema.InspectViews) {
+	if mode.Is(schema.InspectViews) {
 		if err := i.inspectViews(ctx, r, opts); err != nil {
+			return nil, err
+		}
+	}
+	if mode.Is(schema.InspectTriggers) {
+		if err := i.inspectTriggers(ctx, r, nil); err != nil {
 			return nil, err
 		}
 	}
