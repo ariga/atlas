@@ -194,4 +194,19 @@ func TestSortChanges(t *testing.T) {
 	}
 	planned = SortChanges(changes)
 	require.Equal(t, []schema.Change{changes[2], changes[1], changes[0]}, planned)
+
+	// No changes.
+	planned = SortChanges([]schema.Change{
+		&schema.DropFunc{F: f1},
+		&schema.DropTable{T: t1},
+	})
+	require.Equal(t, []schema.Change{&schema.DropFunc{F: f1}, &schema.DropTable{T: t1}}, planned)
+
+	// The table must be dropped before the function if one of its triggers depends on the function.
+	t1.Triggers = []*schema.Trigger{tr1}
+	planned = SortChanges([]schema.Change{
+		&schema.DropFunc{F: f1},
+		&schema.DropTable{T: t1},
+	})
+	require.Equal(t, []schema.Change{&schema.DropTable{T: t1}, &schema.DropFunc{F: f1}}, planned)
 }
