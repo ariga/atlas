@@ -679,8 +679,14 @@ func depOfDrop(o schema.Object, c schema.Change) bool {
 	switch c := c.(type) {
 	case *schema.DropTable:
 		deps = c.T.Deps
+		for _, t := range c.T.Triggers {
+			deps = append(deps, t.Deps...)
+		}
 	case *schema.DropView:
 		deps = c.V.Deps
+		for _, t := range c.V.Triggers {
+			deps = append(deps, t.Deps...)
+		}
 	case *schema.DropFunc:
 		deps = c.F.Deps
 	case *schema.DropProc:
