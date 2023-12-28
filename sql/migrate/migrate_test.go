@@ -502,17 +502,17 @@ func TestExecutor_ExecOrderLinear(t *testing.T) {
 func TestExecutor(t *testing.T) {
 	// Passing nil raises error.
 	ex, err := migrate.NewExecutor(nil, nil, nil)
-	require.EqualError(t, err, "sql/migrate: execute: no driver given")
+	require.EqualError(t, err, "sql/migrate: no driver given")
 	require.Nil(t, ex)
 
 	ex, err = migrate.NewExecutor(&mockDriver{}, nil, nil)
-	require.EqualError(t, err, "sql/migrate: execute: no dir given")
+	require.EqualError(t, err, "sql/migrate: no dir given")
 	require.Nil(t, ex)
 
 	dir, err := migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
 	ex, err = migrate.NewExecutor(&mockDriver{}, dir, nil)
-	require.EqualError(t, err, "sql/migrate: execute: no revision storage given")
+	require.EqualError(t, err, "sql/migrate: no revision storage given")
 	require.Nil(t, ex)
 
 	// Does not operate on invalid migration dir.
@@ -648,7 +648,7 @@ func TestExecutor(t *testing.T) {
 	// Test ExecuteTo.
 	*rrw = []*migrate.Revision{}
 	*drv = mockDriver{}
-	require.EqualError(t, ex.ExecuteTo(context.Background(), ""), "sql/migrate: execute: migration with version \"\" not found")
+	require.EqualError(t, ex.ExecuteTo(context.Background(), ""), "sql/migrate: migration with version \"\" not found")
 	require.NoError(t, ex.ExecuteTo(context.Background(), "2.10.x-20"))
 	requireEqualRevisions(t, []*migrate.Revision{rev1, rev2}, *rrw)
 }

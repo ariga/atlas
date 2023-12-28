@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -55,7 +56,6 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 	}
 	var (
 		dir  migrate.Dir
-		opts []migrate.ReplayOption
 		path = filepath.Join(config.URLs[0].Host, config.URLs[0].Path)
 	)
 	switch fi, err := os.Stat(path); {
@@ -70,6 +70,7 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 		if dir, err = filesAsDir(migrate.NewLocalFile(fi.Name(), b)); err != nil {
 			return nil, err
 		}
+		return stateSchemaSQL(ctx, config, dir)
 	// The sum file is optional when reading the directory state.
 	case isSchemaDir(config.URLs[0], path):
 		dirs, err := os.ReadDir(path)
@@ -87,16 +88,18 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 		if dir, err = filesAsDir(files...); err != nil {
 			return nil, err
 		}
+		return stateSchemaSQL(ctx, config, dir)
 	// A migration directory.
 	default:
+		var opts []migrate.ReplayOption
 		if dir, err = cmdmigrate.DirURL(ctx, config.URLs[0], false); err != nil {
 			return nil, err
 		}
 		if v := config.URLs[0].Query().Get("version"); v != "" {
 			opts = append(opts, migrate.ReplayToVersion(v))
 		}
+		return stateReaderSQL(ctx, config, dir, nil, opts)
 	}
-	return stateReaderSQL(ctx, config, dir, opts...)
 }
 
 // isSchemaDir returns true if the given path is a schema directory (not a migration directory).
@@ -108,31 +111,49 @@ func isSchemaDir(u *url.URL, path string) bool {
 	return errors.Is(err, os.ErrNotExist)
 }
 
-// stateReaderSQL returns a migrate.StateReader from an SQL file or a directory of migrations.
-func stateReaderSQL(ctx context.Context, config *StateReaderConfig, dir migrate.Dir, opts ...migrate.ReplayOption) (*StateReadCloser, error) {
-	// Replaying a migration directory requires a dev connection.
-	if config.Dev == nil {
-		return nil, errors.New("--dev-url cannot be empty. See: https://atlasgo.io/atlas-schema/sql#dev-database")
+// errNoDevURL is returned when trying to read an SQL schema file/directory or replay a migration directory,
+// the dev-url was not set.
+var errNoDevURL = errors.New("--dev-url cannot be empty. See: https://atlasgo.io/atlas-schema/sql#dev-database")
+
+// stateSchemaSQL wraps stateReaderSQL for SQL schema files or directories to control errors when replay/read fails.
+func stateSchemaSQL(ctx context.Context, cfg *StateReaderConfig, dir migrate.Dir) (*StateReadCloser, error) {
+	if cfg.Dev == nil {
+		return nil, errNoDevURL
 	}
-	ex, err := migrate.NewExecutor(config.Dev.Driver, dir, migrate.NopRevisionReadWriter{})
+	log := cmdlog.NewMigrateApply(ctx, cfg.Dev, dir)
+	r, err := stateReaderSQL(ctx, cfg, dir, []migrate.ExecutorOption{migrate.WithLogger(log)}, nil)
+	if n := len(log.Applied); err != nil && n > 0 {
+		if serr := log.Applied[n-1].Error; serr != nil && serr.Stmt != "" && serr.Text != "" {
+			err = fmt.Errorf("read state from %q: executing statement: %q: %s", log.Applied[n-1].Name(), serr.Stmt, serr.Text)
+		}
+	}
+	return r, err
+}
+
+// stateReaderSQL returns a migrate.StateReader from an SQL file or a directory of migrations.
+func stateReaderSQL(ctx context.Context, cfg *StateReaderConfig, dir migrate.Dir, optsExec []migrate.ExecutorOption, optsReplay []migrate.ReplayOption) (*StateReadCloser, error) {
+	if cfg.Dev == nil {
+		return nil, errNoDevURL
+	}
+	ex, err := migrate.NewExecutor(cfg.Dev.Driver, dir, migrate.NopRevisionReadWriter{}, optsExec...)
 	if err != nil {
 		return nil, err
 	}
 	sr, err := ex.Replay(ctx, func() migrate.StateReader {
-		if config.Dev.URL.Schema != "" {
-			return migrate.SchemaConn(config.Dev, "", nil)
+		if cfg.Dev.URL.Schema != "" {
+			return migrate.SchemaConn(cfg.Dev, "", nil)
 		}
-		return migrate.RealmConn(config.Dev, &schema.InspectRealmOption{
-			Schemas: config.Schemas,
-			Exclude: config.Exclude,
+		return migrate.RealmConn(cfg.Dev, &schema.InspectRealmOption{
+			Schemas: cfg.Schemas,
+			Exclude: cfg.Exclude,
 		})
-	}(), opts...)
+	}(), optsReplay...)
 	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return nil, err
 	}
 	return &StateReadCloser{
 		StateReader: migrate.Realm(sr),
-		Schema:      config.Dev.URL.Schema,
+		Schema:      cfg.Dev.URL.Schema,
 	}, nil
 }
 

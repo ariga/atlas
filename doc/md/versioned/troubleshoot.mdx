@@ -66,7 +66,7 @@ Error 1062: Duplicate entry '1-2' for key 'user_groups.PRIMARY'
 
 ```text
 $ atlas --env local migrate apply 1 --tx-mode none
-Error: sql/migrate: execute: executing statement "INSERT INTO `user_groups` (`user_id`, `group_id`) VALUES
+Error: sql/migrate: executing statement "INSERT INTO `user_groups` (`user_id`, `group_id`) VALUES
     -- Founders\n    (2, 1), (3, 1),
     -- Seniors\n    (1, 2), (2, 2), (3, 2),
     -- Constraint error (adding masseelch twice to seniors)
