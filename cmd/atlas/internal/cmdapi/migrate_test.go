@@ -684,7 +684,7 @@ func TestMigrate_ApplyTxModeDirective(t *testing.T) {
 			"--url", u,
 			"--tx-mode", mode,
 		)
-		require.EqualError(t, err, `sql/migrate: execute: executing statement "INSERT INTO t1 VALUES (1), (1);" from version "20220925094021": UNIQUE constraint failed: t1.a`)
+		require.EqualError(t, err, `sql/migrate: executing statement "INSERT INTO t1 VALUES (1), (1);" from version "20220925094021": UNIQUE constraint failed: t1.a`)
 		db, err := sql.Open("sqlite3", strings.TrimPrefix(u, "sqlite://"))
 		require.NoError(t, err)
 		var n int
@@ -1270,7 +1270,7 @@ env {
 			"--var", "cloud_url="+srv.URL,
 			"--allow-dirty",
 		)
-		require.EqualError(t, err, `sql/migrate: execute: executing statement "create table bar (id int)" from version "2": table bar already exists`)
+		require.EqualError(t, err, `sql/migrate: executing statement "create table bar (id int)" from version "2": table bar already exists`)
 		require.Contains(t, s, "Migrating to version 2 (2 migrations in total):")
 		require.Contains(t, s, "Error: sql/migrate:")
 		require.NotEmpty(t, report.ID)
@@ -1281,7 +1281,7 @@ env {
 		require.Equal(t, 2, report.Planned)
 		require.Len(t, report.Completed, 1)
 		require.NotNil(t, report.Error)
-		require.Equal(t, `Error: sql/migrate: execute: executing statement "create table bar (id int)" from version "2": table bar already exists`, *report.Error)
+		require.Equal(t, `Error: sql/migrate: executing statement "create table bar (id int)" from version "2": table bar already exists`, *report.Error)
 
 		// Verify summary log.
 		require.Len(t, report.Log, 2)
@@ -1293,7 +1293,7 @@ env {
 		require.True(t, report.Log[1].Error)
 		require.Contains(t, report.Log[1].Log[0].Text, "Target URL: sqlite://file")
 		require.Contains(t, report.Log[1].Log[1].Text, "Migration directory: mem://migration_set")
-		require.Equal(t, `Error: sql/migrate: execute: executing statement "create table bar (id int)" from version "2": table bar already exists`, report.Log[1].Log[2].Text)
+		require.Equal(t, `Error: sql/migrate: executing statement "create table bar (id int)" from version "2": table bar already exists`, report.Log[1].Log[2].Text)
 	})
 }
 

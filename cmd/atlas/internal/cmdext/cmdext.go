@@ -463,7 +463,7 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	u := fmt.Sprintf("mem://%s", dirname)
 	// Allow using reading the computed dir as a state source.
 	memLoader.states[u] = StateLoaderFunc(func(ctx context.Context, config *StateReaderConfig) (*StateReadCloser, error) {
-		return stateReaderSQL(ctx, config, dir)
+		return stateReaderSQL(ctx, config, dir, nil, nil)
 	})
 	return cty.ObjectVal(map[string]cty.Value{
 		"url": cty.StringVal(u),
@@ -635,7 +635,10 @@ func SchemaExternal(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, er
 		}
 		return cty.NilVal, errorf("running program %v: %v", cmd.Path, msg)
 	}
-	dir, err := filesAsDir(migrate.NewLocalFile("schema.sql", out))
+	// Directory files must have an .sql extension to be read by the executor.
+	// The "schema" word is added to indicate that unlike data-source errors, load error
+	// comes from the output of the data-source (SQL representation of the state/schema).
+	dir, err := filesAsDir(migrate.NewLocalFile(fmt.Sprintf("%s/schema.sql", block.Labels[1]), out))
 	if err != nil {
 		return cty.NilVal, errorf("converting output to migration: %v", err)
 	}
@@ -644,7 +647,7 @@ func SchemaExternal(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, er
 		return cty.NilVal, errorf("build url: %v", err)
 	}
 	memLoader.states[u] = StateLoaderFunc(func(ctx context.Context, config *StateReaderConfig) (*StateReadCloser, error) {
-		return stateReaderSQL(ctx, config, dir)
+		return stateSchemaSQL(ctx, config, dir)
 	})
 	return cty.ObjectVal(map[string]cty.Value{
 		"url": cty.StringVal(u),

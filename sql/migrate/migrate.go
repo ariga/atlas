@@ -558,13 +558,13 @@ func (e MissingMigrationError) Error() string {
 // NewExecutor creates a new Executor with default values.
 func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOption) (*Executor, error) {
 	if drv == nil {
-		return nil, errors.New("sql/migrate: execute: no driver given")
+		return nil, errors.New("sql/migrate: no driver given")
 	}
 	if dir == nil {
-		return nil, errors.New("sql/migrate: execute: no dir given")
+		return nil, errors.New("sql/migrate: no dir given")
 	}
 	if rrw == nil {
-		return nil, errors.New("sql/migrate: execute: no revision storage given")
+		return nil, errors.New("sql/migrate: no revision storage given")
 	}
 	ex := &Executor{drv: drv, dir: dir, rrw: rrw}
 	for _, opt := range opts {
@@ -582,7 +582,7 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 		return nil, ErrCleanCheckerUnsupported
 	}
 	if ex.baselineVer != "" && ex.allowDirty {
-		return nil, errors.New("sql/migrate: execute: baseline and allow-dirty are mutually exclusive")
+		return nil, errors.New("sql/migrate: baseline and allow-dirty are mutually exclusive")
 	}
 	return ex, nil
 }
@@ -653,16 +653,16 @@ func WithOperatorVersion(v string) ExecutorOption {
 func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	// Don't operate with a broken migration directory.
 	if err := Validate(e.dir); err != nil {
-		return nil, fmt.Errorf("sql/migrate: execute: validate migration directory: %w", err)
+		return nil, fmt.Errorf("sql/migrate: validate migration directory: %w", err)
 	}
 	// Read all applied database revisions.
 	revs, err := e.rrw.ReadRevisions(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
+		return nil, fmt.Errorf("sql/migrate: read revisions: %w", err)
 	}
 	all, err := e.dir.Files()
 	if err != nil {
-		return nil, fmt.Errorf("sql/migrate: execute: select migration files: %w", err)
+		return nil, fmt.Errorf("sql/migrate: read migration directory files: %w", err)
 	}
 	migrations := SkipCheckpointFiles(all)
 	var pending []File
@@ -774,15 +774,15 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	hf, err := e.dir.Checksum()
 	if err != nil {
-		return fmt.Errorf("sql/migrate: execute: compute hash: %w", err)
+		return fmt.Errorf("sql/migrate: compute hash: %w", err)
 	}
 	hash, err := hf.SumByName(m.Name())
 	if err != nil {
-		return fmt.Errorf("sql/migrate: execute: scanning checksum from %q: %w", m.Name(), err)
+		return fmt.Errorf("sql/migrate: scanning checksum from %q: %w", m.Name(), err)
 	}
 	stmts, err := FileStmts(e.drv, m)
 	if err != nil {
-		return fmt.Errorf("sql/migrate: execute: scanning statements from %q: %w", m.Name(), err)
+		return fmt.Errorf("sql/migrate: scanning statements from %q: %w", m.Name(), err)
 	}
 	// Create checksums for the statements.
 	var (
@@ -800,7 +800,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	// and it is partially applied, continue where the last attempt was left off.
 	r, err := e.rrw.ReadRevision(ctx, version)
 	if err != nil && !errors.Is(err, ErrRevisionNotExist) {
-		return fmt.Errorf("sql/migrate: execute: read revision: %w", err)
+		return fmt.Errorf("sql/migrate: read revision: %w", err)
 	}
 	if errors.Is(err, ErrRevisionNotExist) {
 		// Haven't seen this file before, create a new revision.
@@ -841,7 +841,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 			r.done()
 			r.ErrorStmt = stmt
 			r.Error = err.Error()
-			return fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", stmt, r.Version, err)
+			return fmt.Errorf("sql/migrate: executing statement %q from version %q: %w", stmt, r.Version, err)
 		}
 		r.PartialHashes = append(r.PartialHashes, "h1:"+sums[r.Applied])
 		r.Applied++
@@ -857,7 +857,7 @@ func (e *Executor) writeRevision(ctx context.Context, r *Revision) error {
 	r.ExecutedAt = time.Now()
 	r.OperatorVersion = e.operator
 	if err := e.rrw.WriteRevision(ctx, r); err != nil {
-		return fmt.Errorf("sql/migrate: execute: write revision: %w", err)
+		return fmt.Errorf("sql/migrate: write revision: %w", err)
 	}
 	return nil
 }
@@ -869,7 +869,7 @@ type HistoryChangedError struct {
 }
 
 func (e HistoryChangedError) Error() string {
-	return fmt.Sprintf("sql/migrate: execute: history changed: statement %d from file %q changed", e.Stmt, e.File)
+	return fmt.Sprintf("sql/migrate: history changed: statement %d from file %q changed", e.Stmt, e.File)
 }
 
 // HistoryNonLinearError is returned if the migration history is not linear. Means, a file was added out of order.
@@ -919,7 +919,7 @@ func (e *Executor) ExecuteTo(ctx context.Context, version string) (err error) {
 		return file.Version() == version
 	}); idx {
 	case -1:
-		return fmt.Errorf("sql/migrate: execute: migration with version %q not found", version)
+		return fmt.Errorf("sql/migrate: migration with version %q not found", version)
 	default:
 		pending = pending[:idx+1]
 	}
@@ -929,7 +929,7 @@ func (e *Executor) ExecuteTo(ctx context.Context, version string) (err error) {
 func (e *Executor) exec(ctx context.Context, files []File) error {
 	revs, err := e.rrw.ReadRevisions(ctx)
 	if err != nil {
-		return fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
+		return fmt.Errorf("sql/migrate: read revisions: %w", err)
 	}
 	LogIntro(e.log, revs, files)
 	for _, m := range files {

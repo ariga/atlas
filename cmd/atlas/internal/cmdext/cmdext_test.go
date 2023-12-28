@@ -372,6 +372,27 @@ schema = data.external_schema.a8m.url
 schema "main" {
 }
 `, string(buf))
+
+	// Read state error.
+	err = state.EvalBytes([]byte(`
+data "external_schema" "a8m" {
+  program = [
+    "echo",
+    "CREATE TABLE t(c int);",
+    "CREATE UNKNOWN",
+  ]
+}
+
+schema = data.external_schema.a8m.url
+`), &v, nil)
+	require.NoError(t, err)
+	loader, ok = cmdext.States.Loader(u.Scheme)
+	require.True(t, ok)
+	sr, err = loader.LoadState(ctx, &cmdext.StateReaderConfig{
+		Dev:  drv,
+		URLs: []*url.URL{u},
+	})
+	require.EqualError(t, err, `read state from "a8m/schema.sql": executing statement: "CREATE UNKNOWN": near "UNKNOWN": syntax error`)
 }
 
 func TestExternal(t *testing.T) {
