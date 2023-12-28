@@ -14,7 +14,8 @@ only a bit over a week since our last release, but we have some exciting new fea
 couldn't wait to share with you:
 
 * **Trigger Support** - Atlas now supports managing triggers on MySQL, PostgreSQL, MariaDB and SQLite databases.
-* **Improved ERDs** - You can now visualize..
+* **Improved ERDs** - You can now visualize your schema's SQL views, as well as create filters to select the specific
+database objects you wish to see.
 * **Automatic Schema Documentation** - ..
 
 Without further ado, let's dive in!
@@ -200,6 +201,32 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
 
 
 ### Improved ERDs
+One of the most frequently used capabilities in Atlas is schema visualization. Having a visual representation of your
+data model can be helpful as it allows for easier comprehension of complex data structures, and enables
+developers to better understand and collaborate on the data model of the application they are building.
+
+#### Visualizing Database Views
+![schema-with-views](https://atlasgo.io/uploads/images/full-schema-with-views.png)
+Until recently, the ERD showed schema's tables and the relations between them. With the most recent release,
+the ERD now visualizes database views! "Views" are virtual tables created by a query and stored in the database.
+
+![erd-views](https://atlasgo.io/uploads/images/erd-views-two.png)
+
+Within each view you can find its:
+ * Columns - the view's columns, including their data types and nullability.
+ * Create Statement - the SQL CREATE statement, based on your specific database type.
+ * Dependencies - a list of the tables (or other views) it is connected to. Clicking on this
+ will map edges to each connected object in the schema.
+
+As of recently (including this release), we have added support for functions, stored procedures and triggers which are all
+coming soon to the ERD!
+
+#### ERD Filters
+In cases where you have many database objects and prefer to focus in on a specific set of tables and views,
+you can narrow down your selection by creating a filter. Filters can be saved for future use. This can be great when working
+on a feature that affects a specific part of the schema, this way you can easily refer to it as needed.
+
+![erd-filters](https://atlasgo.io/uploads/images/erd-filters2.png)
 
 ### Automatic Schema Documentation
 
