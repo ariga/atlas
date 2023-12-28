@@ -21,6 +21,184 @@ Without further ado, let's dive in!
 
 ### Trigger Support
 
+:::info LOGIN REQUIRED
+
+Trigger support is available for logged-in users only. To use this feature, run:
+
+```
+atlas login
+```
+:::
+
+Triggers are a powerful feature of relational databases that allow you to run custom
+code when certain events occur on a table. For example, you can use triggers to
+automatically update the amount of stock in your inventory when a new order is
+placed, to create an audit log of changes to a table. Using this event-based approach,
+you can implement complex business logic in your database, without having to write
+any additional code in your application.
+
+Managing triggers as part of the software development lifecycle can be quite a challenge.
+Luckily, Atlas's database schema-as-code approach makes it easy to do!
+
+Let's use Atlas to build a small chunk of a simple e-commerce application:
+
+1. Download the latest version of the Atlas CLI:
+   <InstallationInstructions/>
+2. Make sure you are logged in to Atlas:
+   ```
+   atlas login
+   ```
+3. Let's spin up a new PostgreSQL database using `docker`:
+
+    ```bash
+    docker run --name db -e POSTGRES_PASSWORD=pass -d -p 5432:5432 postgres:16
+    ```
+4. Next, let's define and apply the base tables for our application:
+
+   ```hcl title=schema.hcl
+    table "inventory" {
+      schema = schema.public
+      column "item_id" {
+        null = false
+        type = serial
+      }
+      column "item_name" {
+        null = false
+        type = character_varying(255)
+      }
+      column "quantity" {
+        null = false
+        type = integer
+      }
+      primary_key {
+        columns = [column.item_id]
+      }
+    }
+    table "orders" {
+      schema = schema.public
+      column "order_id" {
+        null = false
+        type = serial
+      }
+      column "item_id" {
+        null = false
+        type = integer
+      }
+      column "order_quantity" {
+        null = false
+        type = integer
+      }
+      primary_key {
+        columns = [column.order_id]
+      }
+      foreign_key "orders_item_id_fkey" {
+        columns     = [column.item_id]
+        ref_columns = [table.inventory.column.item_id]
+        on_update   = NO_ACTION
+        on_delete   = NO_ACTION
+      }
+    }
+    ```
+    This defines two tables: `inventory` and `orders`. The `inventory` table holds
+    information about the items in our store, and the `orders` table holds information
+    about orders placed by our customers. The `orders` table has a foreign key
+    constraint to the `inventory` table, to ensure that we can't place an order for
+    an item that doesn't exist in our inventory.
+
+    Apply this schema on our local Postgres instance using the Atlas CLI:
+
+    ```bash
+    atlas schema apply \
+       --dev-url 'docker://postgres/16?search_path=public' \
+       --to file://schema.hcl \
+       -u 'postgres://postgres:pass@:5432/postgres?search_path=public&sslmode=disable' \
+       --auto-approve
+    ```
+    This command will apply the schema defined in `schema.hcl` to the local Postgres instance.
+    Notice the `--auto-approve` flag, which instructs Atlas to automatically apply the schema
+    without prompting for confirmation.
+
+5.  Let's now populate our database with some inventory items. We can do this using
+    the `psql` command that is installed inside the default PostgreSQL Docker image:
+
+    ```bash
+    docker exec -it db psql -U postgres -c "INSERT INTO inventory (item_name, quantity) VALUES ('Apple', 10);"
+    docker exec -it db psql -U postgres -c "INSERT INTO inventory (item_name, quantity) VALUES ('Banana', 20);"
+    docker exec -it db psql -U postgres -c "INSERT INTO inventory (item_name, quantity) VALUES ('Orange', 30);"
+    ```
+
+6. Now, let's define the business logic for our store using a `FUNCTION` and a `TRIGGER`. Append
+   these definitions to `schema.hcl`:
+   ```hcl title=schema.hcl (continued)
+    function "update_inventory" {
+      schema = schema.public
+      lang   = PLpgSQL
+      return = trigger
+      as     = <<-SQL
+      BEGIN
+          UPDATE inventory
+          SET quantity = quantity - NEW.order_quantity
+          WHERE item_id = NEW.item_id;
+          RETURN NEW;
+      END;
+      SQL
+    }
+    trigger "after_order_insert" {
+      on = table.orders
+      after {
+        insert = true
+      }
+      foreach = ROW
+      execute {
+        function = function.update_inventory
+      }
+    }
+    ```
+    We start by defining a `FUNCTION` called `update_inventory`. This function is
+    written in `PL/pgSQL`, the procedural language for PostgreSQL. The function
+    accepts a single argument, which is a `TRIGGER` object. The function updates
+    the `inventory` table to reflect the new order, and then returns the `NEW`
+    row, which is the row that was just inserted into the `orders` table.
+
+    Next, we define a `TRIGGER` called `after_order_insert`. This trigger is
+    executed after a new row is inserted into the `orders` table. The trigger
+    executes the `update_inventory` function for each row that was inserted.
+
+    Apply the updated schema using the Atlas CLI:
+    ```bash
+    atlas schema apply \
+       --dev-url 'docker://postgres/16?search_path=public' \
+       --to file://schema.hcl \
+       -u 'postgres://postgres:pass@:5432/postgres?search_path=public&sslmode=disable' \
+       --auto-approve
+    ```
+    Notice that Atlas automatically detects that we have added a new `FUNCTION`
+    and a new `TRIGGER`, and applies them to the database.
+7. Finally, let's test our application to see that it actually works. We can do
+   this by inserting a new row into the `orders` table:
+   ```bash
+   docker exec -it db psql -U postgres -c "INSERT INTO orders (item_id, order_quantity) VALUES (1, 5);"
+   ```
+   This statement creates a new order for 5 `Apple`s.
+
+   Now, let's check the `inventory` table to see that the order was processed
+   correctly:
+
+   ```bash
+   docker exec -it db psql -U postgres -c "SELECT quantity FROM inventory WHERE item_name='Apple';"
+   ```
+   You should see the following output:
+   ```
+    quantity
+    ---------
+            5
+   (1 row)
+   ```
+
+   Amazing! Our trigger automatically detected the creation of a new order of apples,
+   and updated the inventory accordingly from 10 to 5.
+
+
 ### Improved ERDs
 
 ### Automatic Schema Documentation
