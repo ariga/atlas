@@ -14,7 +14,8 @@ only a bit over a week since our last release, but we have some exciting new fea
 couldn't wait to share with you:
 
 * **Trigger Support** - Atlas now supports managing triggers on MySQL, PostgreSQL, MariaDB and SQLite databases.
-* **Improved ERDs** - You can now visualize..
+* **Improved ERDs** - You can now visualize your schema's SQL views, as well as create filters to select the specific
+database objects you wish to see.
 * **Automatic Schema Documentation** - ..
 
 Without further ado, let's dive in!
@@ -200,6 +201,23 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
 
 
 ### Improved ERDs
+A few releases ago, we announced [official support](/atlas-v-0-13) for database views. "Views" are virtual tables created
+by a query and stored in the database. Now, you can visualize these database objects in the ERD.
+
+![erd-views](https://atlasgo.io/uploads/images/erd-views2.gif)
+
+Within each view you can find its:
+ * Columns - the view's columns, including their data types and nullability.
+ * Create Statement - the SQL CREATE statement, based on your specific database type.
+ * Dependencies - a list of the tables (or other views) it is connected to. Clicking on this
+ will map edges to each connected object in the schema.
+
+#### Filters
+In cases where you have many database objects and prefer to focus in on a specific set of tables and views,
+you can narrow down your selection by creating a filter. Filters can be saved for future use. This can be great when working
+on a feature that affects a specific part of the schema, this way you can easily refer to it as needed.
+
+![erd-filters](https://atlasgo.io/uploads/images/erd-filters.png)
 
 ### Automatic Schema Documentation
 
