@@ -668,6 +668,111 @@ table "users" {
 }
 ```
 
+## Trigger
+
+:::info BETA FEATURE
+Triggers are currently in beta and available to logged-in users only. To use this feature, run:
+```
+atlas login
+```
+:::
+
+The `trigger` block allows defining SQL triggers in HCL format.
+
+
+<Tabs>
+<TabItem label="PostgreSQL" value="postgres">
+
+```hcl
+function "audit_orders" {
+  schema = schema.public
+  lang   = PLpgSQL
+  return = trigger
+  as     = <<-SQL
+  BEGIN
+    INSERT INTO orders_audit(order_id, operation) VALUES (NEW.order_id, TG_OP);
+    RETURN NEW;
+  END;
+  SQL
+}
+trigger "trigger_orders_audit" {
+  on = table.orders
+  after {
+    insert    = true
+    update_of = [table.orders.column.amount]
+  }
+  foreach = ROW
+  execute {
+    function = function.audit_orders
+  }
+}
+```
+
+</TabItem>
+<TabItem label="MySQL" value="mysql">
+
+```hcl
+trigger "after_orders_insert" {
+  on = table.orders
+  after {
+    insert = true
+  }
+  foreach = ROW
+  as      = <<-SQL
+  BEGIN
+      INSERT INTO orders_audit(order_id, changed_at, operation)
+      VALUES (NEW.order_id, NOW(), 'INSERT');
+  END
+  SQL
+}
+trigger "after_orders_update" {
+  on = table.orders
+  after {
+    update = true
+  }
+  foreach = ROW
+  as      = <<-SQL
+  BEGIN
+      INSERT INTO orders_audit(order_id, changed_at, operation)
+      VALUES (NEW.order_id, NOW(), 'UPDATE');
+  END
+  SQL
+}
+```
+
+</TabItem>
+<TabItem label="SQLite" value="sqlite">
+
+```hcl
+trigger "after_orders_insert" {
+  on = table.orders
+  after {
+    insert = true
+  }
+  foreach = ROW
+  as      = <<-SQL
+  BEGIN
+      INSERT INTO orders_audit(order_id, operation) VALUES (NEW.order_id, 'INSERT');
+  END
+  SQL
+}
+trigger "after_orders_update" {
+  on = table.orders
+  after {
+    update_of = [table.orders.column.amount]
+  }
+  foreach = ROW
+  as      = <<-SQL
+  BEGIN
+      INSERT INTO orders_audit(order_id, operation) VALUES (NEW.order_id, 'UPDATE');
+  END
+  SQL
+}
+```
+
+</TabItem>
+</Tabs>
+
 ## Function
 
 :::info BETA FEATURE
@@ -682,7 +787,7 @@ The `function` block allows defining SQL functions in HCL format.
 <Tabs>
 <TabItem label="PostgreSQL" value="postgres">
 
-```sql
+```hcl
 function "positive" {
   schema = schema.public
   lang   = SQL
@@ -724,7 +829,7 @@ function "sql_body2" {
 </TabItem>
 <TabItem label="MySQL" value="mysql">
 
-```sql
+```hcl
 function "add2" {
   schema = schema.public
   arg "a" {
@@ -771,7 +876,7 @@ The `procedure` block allows defining SQL procedure in HCL format.
 <Tabs>
 <TabItem label="PostgreSQL" value="postgres">
 
-```sql
+```hcl
 procedure "proc" {
   schema = schema.public
   lang   = SQL
@@ -795,7 +900,7 @@ procedure "proc" {
 </TabItem>
 <TabItem label="MySQL" value="mysql">
 
-```sql
+```hcl
 procedure "p1" {
   schema = schema.public
   arg "x" {
