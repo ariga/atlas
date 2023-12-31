@@ -5,7 +5,7 @@ slug: /guides/orms/sqlalchemy
 ---
 
 ## TL;DR
-* [SQLAlchemy](https://www.sqlalchemy.org) is Python SQL toolkit and Object Relational Mapper.
+* [SQLAlchemy](https://www.sqlalchemy.org) is a Python SQL toolkit and Object Relational Mapper.
 * [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, linting and
   executing schema changes to your database.
 * Developers using SQLAlchemy can use Atlas to automatically plan schema migrations
@@ -18,8 +18,8 @@ manage their database schemas using its [declarative-mapping](https://docs.sqlal
 feature, which is usually sufficient during development and in many simple cases.
 
 However, at some point, teams need more control and decide to employ
-the [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations)  methodology,
-which is a more robust way to manage your database schema.
+the [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology,
+which is a more robust way to manage a database schema.
 
 The native way to manage migrations with SQLAlchemy is to use the [Alembic](https://alembic.sqlalchemy.org/en/latest/) migration tool.
 Alembic can [automatically generate](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#auto-generating-migrations)
@@ -32,11 +32,11 @@ and cannot be relied upon to generate production-ready migration scripts without
 
 Atlas can automatically plan database schema migrations for developers using SQLAlchemy.
 
-The desired schema of your application can be provided to Atlas via an [External Schema Datasource](/atlas-schema/projects#data-source-external_schema)
+The desired schema of your application can be provided to Atlas via an [External Schema Datasource](/atlas-schema/projects#data-source-external_schema),
 which is any program that can output a SQL schema definition to stdout.
 
 To use Atlas with SQLAlchemy, users can utilize the [SQLAlchemy Atlas Provider](https://github.com/ariga/atlas-provider-sqlalchemy),
-a small program that can be used to load the schema of a SQLAlchemy project into Atlas.
+which is a small program that can be used to load the schema of a SQLAlchemy project into Atlas.
 
 In this guide, we will show how Atlas can be used to automatically plan schema migrations for
 SQLAlchemy users.
@@ -60,6 +60,12 @@ curl -sSf https://atlasgo.sh | sh
 ```
 See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more installation options.
 
+Start Python virtual environment if you haven't already:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
 Install the provider by running:
 ```bash
 pip install atlas-provider-sqlalchemy
@@ -77,7 +83,7 @@ Therefore, you will need to run the provider from within your project's Python e
 
 The Atlas SQLAlchemy Provider can be used in two modes:
 
-* **Standalone** - If all of your SQLAlchemy models exist in a single Module,
+* **Standalone** - If all of your SQLAlchemy models exist in a single module,
  you can use the provider directly to load your SQLAlchemy schema into Atlas.
 * **Script** - In other cases, you can use the provider as a python script to load your SQLAlchemy schema into Atlas.
 
@@ -89,7 +95,7 @@ In your project directory, create a new file named `atlas.hcl` with the followin
 data "external_schema" "sqlalchemy" {
   program = [
     "atlas-provider-sqlalchemy",
-    "--path", "./path/to/models",
+    "--path", "./db",
     "--dialect", "mysql" // mariadb | postgresql | sqlite | mssql
   ]
 }
@@ -152,7 +158,7 @@ workflow, where each change to the database is versioned and recorded in a migra
 `atlas migrate diff` command to automatically generate a migration file that will migrate the database
 from its latest revision to the current SQLAlchemy schema.
 
-Suppose we have the following SQLAlchemy models in our `path/to/models/models.py` file:
+Suppose we have the following SQLAlchemy models in our `db/models.py` file:
 
 ```python
 from typing import List, Optional
@@ -182,7 +188,7 @@ class Address(Base):
     user: Mapped["User"] = relationship(back_populates="addresses")
 ```
 
-Using the [Standalone mode](#standalone-mode) configuration file for the provider,
+Using the [standalone mode](#standalone-mode) configuration file for the provider,
 we can generate a migration file by running this command:
 
 ```bash
@@ -250,7 +256,7 @@ ALTER TABLE `user_account` ADD COLUMN `age` int NULL;
 
 In this guide we demonstrated how projects using SQLAlchemy can use Atlas to automatically
 plan schema migrations based only on their data model. To learn more about executing
-these migrations against your production database, read the documentation for the
+migrations against your production database, read the documentation for the
 [`migrate apply`](/versioned/apply) command.
 
 Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT)
