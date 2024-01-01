@@ -144,8 +144,8 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-7', // Increment on change
-      content: `<strong>Announcing Atlas v0.15: Interactive Declarative Migrations, Functions, Procedures and Domains. </strong><a class="cta" href="https://atlasgo.io/blog/2023/10/19/atlas-v-0-15">Read it here</a>`,
+      id: 'announcementBar-8', // Increment on change
+      content: `<strong>Announcing Atlas v0.17: Triggers and Improved ERDs. </strong><a class="cta" href="https://atlasgo.io/blog/2024/01/01/atlas-v-0-17">Read it here</a>`,
       isCloseable: true,
       backgroundColor: '#008CFA',
       textColor: '#fff',
