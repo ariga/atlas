@@ -570,7 +570,7 @@ func migrateDiffCmd() *cobra.Command {
 by executing its files. It then compares its state to the desired state and create a new migration file containing
 SQL statements for moving from the current to the desired state. The desired state can be another another database,
 an HCL, SQL, or ORM schema. See: https://atlasgo.io/versioned/diff`,
-			Example: `  atlas migrate diff "--dev-url docker://mysql/8/dev" --to "file://schema.hcl"
+			Example: `  atlas migrate diff --dev-url "docker://mysql/8/dev" --to "file://schema.hcl"
   atlas migrate diff --dev-url "docker://postgres/15/dev?search_path=public" --to "file://atlas.hcl" add_users_table
   atlas migrate diff --dev-url "mysql://user:pass@localhost:3306/dev" --to "mysql://user:pass@localhost:3306/dbname"
   atlas migrate diff --env dev --format '{{ sql . "  " }}'`,
