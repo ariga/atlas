@@ -57,7 +57,7 @@ func ParserFor(name string) Parser {
 }
 
 func init() {
-	Register(mysql.DriverName, &myparse.Parser{})
+	Register(mysql.DriverName, &myparse.FileParser{})
 	Register(postgres.DriverName, &pgparse.Parser{})
 	Register(sqlite.DriverName, &sqliteparse.FileParser{})
 }
