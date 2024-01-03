@@ -209,4 +209,21 @@ func TestSortChanges(t *testing.T) {
 		&schema.DropTable{T: t1},
 	})
 	require.Equal(t, []schema.Change{&schema.DropTable{T: t1}, &schema.DropFunc{F: f1}}, planned)
+
+	// Ignore functions that do not reside on the same schema.
+	f1.Schema = schema.New("s1")
+	f2 := &schema.Func{Name: "f1", Args: []*schema.FuncArg{{Name: "a1"}}}
+	planned = SortChanges([]schema.Change{
+		&schema.AddFunc{F: f1},
+		&schema.DropFunc{F: f2},
+	})
+	require.Equal(t, []schema.Change{&schema.AddFunc{F: f1}, &schema.DropFunc{F: f2}}, planned)
+
+	// Order functions that reside on the same schema.
+	f2.Schema = schema.New("s1")
+	planned = SortChanges([]schema.Change{
+		&schema.AddFunc{F: f1},
+		&schema.DropFunc{F: f2},
+	})
+	require.Equal(t, []schema.Change{&schema.DropFunc{F: f2}, &schema.AddFunc{F: f1}}, planned)
 }

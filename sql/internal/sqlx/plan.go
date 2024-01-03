@@ -465,13 +465,13 @@ func dependsOn(c1, c2 schema.Change) bool {
 		case *schema.AddSchema:
 			return c1.T.Schema.Name == c2.S.Name
 		case *schema.DropTable:
-			return c1.T.Name == c2.T.Name && c1.T.Schema == c2.T.Schema // Table recreation.
+			return c1.T.Name == c2.T.Name && sameSchema(c1.T.Schema, c2.T.Schema) // Table recreation.
 		case *schema.AddTable:
 			if refTo(c1.T.ForeignKeys, c2.T) {
 				return true
 			}
 		case *schema.ModifyTable:
-			if (c1.T.Name != c2.T.Name || c1.T.Schema != c2.T.Schema) && refTo(c1.T.ForeignKeys, c2.T) {
+			if (c1.T.Name != c2.T.Name || sameSchema(c1.T.Schema, c2.T.Schema)) && refTo(c1.T.ForeignKeys, c2.T) {
 				return true
 			}
 		case *schema.AddObject:
@@ -506,7 +506,7 @@ func dependsOn(c1, c2 schema.Change) bool {
 		switch c2 := c2.(type) {
 		case *schema.AddTable:
 			// Table modification relies on its creation.
-			if c1.T.Name == c2.T.Name && c1.T.Schema == c2.T.Schema {
+			if c1.T.Name == c2.T.Name && sameSchema(c1.T.Schema, c2.T.Schema) {
 				return true
 			}
 			// Tables need to be created before referencing them.
@@ -548,7 +548,7 @@ func dependsOn(c1, c2 schema.Change) bool {
 		case *schema.AddSchema:
 			return c1.V.Schema.Name == c2.S.Name
 		case *schema.DropView:
-			return c1.V.Name == c2.V.Name && c1.V.Schema == c2.V.Schema // View recreation.
+			return c1.V.Name == c2.V.Name && sameSchema(c1.V.Schema, c2.V.Schema) // View recreation.
 		default:
 			return depOfAdd(c1.V.Deps, c2)
 		}
@@ -560,7 +560,7 @@ func dependsOn(c1, c2 schema.Change) bool {
 	case *schema.ModifyView:
 		if c2, ok := c2.(*schema.AddView); ok {
 			// View modification relies on its creation.
-			return c1.From.Name == c2.V.Name && c1.From.Schema == c2.V.Schema
+			return c1.From.Name == c2.V.Name && sameSchema(c1.From.Schema, c2.V.Schema)
 		}
 		return depOfAdd(c1.To.Deps, c2)
 	case *schema.AddFunc:
@@ -568,7 +568,7 @@ func dependsOn(c1, c2 schema.Change) bool {
 		case *schema.AddSchema:
 			return c1.F.Schema.Name == c2.S.Name
 		case *schema.DropFunc:
-			return c1.F.Name == c2.F.Name && c1.F.Schema == c2.F.Schema // Func recreation.
+			return c1.F.Name == c2.F.Name && sameSchema(c1.F.Schema, c2.F.Schema) // Func recreation.
 		default:
 			return depOfAdd(c1.F.Deps, c2)
 		}
@@ -577,7 +577,7 @@ func dependsOn(c1, c2 schema.Change) bool {
 	case *schema.ModifyFunc:
 		if c2, ok := c2.(*schema.AddFunc); ok {
 			// Func modification relies on its creation.
-			return c1.From.Name == c2.F.Name && c1.From.Schema == c2.F.Schema
+			return c1.From.Name == c2.F.Name && sameSchema(c1.From.Schema, c2.F.Schema)
 		}
 		return depOfAdd(c1.To.Deps, c2)
 	case *schema.AddProc:
@@ -585,7 +585,7 @@ func dependsOn(c1, c2 schema.Change) bool {
 		case *schema.AddSchema:
 			return c1.P.Schema.Name == c2.S.Name
 		case *schema.DropProc:
-			return c1.P.Name == c2.P.Name && c1.P.Schema == c2.P.Schema // Proc recreation.
+			return c1.P.Name == c2.P.Name && sameSchema(c1.P.Schema, c2.P.Schema) // Proc recreation.
 		default:
 			return depOfAdd(c1.P.Deps, c2)
 		}
@@ -594,7 +594,7 @@ func dependsOn(c1, c2 schema.Change) bool {
 	case *schema.ModifyProc:
 		if c2, ok := c2.(*schema.AddProc); ok {
 			// Proc modification relies on its creation.
-			return c1.From.Name == c2.P.Name && c1.From.Schema == c2.P.Schema
+			return c1.From.Name == c2.P.Name && sameSchema(c1.From.Schema, c2.P.Schema)
 		}
 		return depOfAdd(c1.To.Deps, c2)
 	case *schema.DropObject:
@@ -729,4 +729,14 @@ func dependsOnT(t1, t2 schema.Type) bool {
 	// Comparing might panic due to mismatch types.
 	defer func() { recover() }()
 	return t1 == t2 || schema.UnderlyingType(t1) == t2
+}
+
+// sameSchema reports if the given schemas are the same.
+// Objects can be different as they might reside in two
+// different states (current and desired).
+func sameSchema(s1, s2 *schema.Schema) bool {
+	if s1 == nil || s2 == nil {
+		return s1 == s2
+	}
+	return s1.Name == s2.Name
 }
