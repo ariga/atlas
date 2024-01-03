@@ -15,7 +15,8 @@ slug: /guides/orms/sqlalchemy
 
 SQLAlchemy is a popular ORM toolkit widely used in the Python community. SQLAlchemy allows users to
 describe their data model using its [declarative-mapping](https://docs.sqlalchemy.org/en/20/orm/declarative_tables.html)
-feature. To actually create the underlying tables, users can use the `Base.metadata.create_all` method which may be sufficient during development where tables can be routinely dropped and re-created.
+feature. To actually create the underlying tables, users can use the `Base.metadata.create_all` method
+which may be sufficient during development where tables can be routinely dropped and re-created.
 
 However, at some point, teams need more control and decide to employ
 the [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology,
@@ -27,11 +28,12 @@ migration scripts from the difference between the current state of the database 
 
 A downside of this approach is that in order for it to work, a pre-existing database with the current version of the schema must be connected to.
 In many production environments, databases should generally not be reachable from developer workstations,
-which means this comparison is normally done against a local copy of the database which may have undergone some changes that aren't reflected in the existing migrations.
+which means this comparison is normally done against a local copy of the database which may have
+undergone some changes that aren't reflected in the existing migrations.
 In addition, Alembic auto-generation is [fails to detect many kinds of changes](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect)
 and cannot be relied upon to generate production-ready migration scripts without routine manual intervention.
 
-Atlas, on the other hand, can automatically plan database schema migrations for developers using SQLAlchemy
+Atlas, on the other hand, can automatically plan database schema migrations for SQLAlchemy
 without requiring a connection to such a database and can detect almost any kind of schema change.
 Atlas plans migrations by calculating the diff between the _current_ state of the database,
 and its _desired_ state.
