@@ -785,27 +785,27 @@ func FromPrimaryKey(s *schema.Index) (*sqlspec.PrimaryKey, error) {
 }
 
 // FromColumn converts a *schema.Column into a *sqlspec.Column using the ColumnTypeSpecFunc.
-func FromColumn(col *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec.Column, error) {
-	ct, err := columnTypeSpec(col.Type.Type)
+func FromColumn(c *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec.Column, error) {
+	ct, err := columnTypeSpec(c.Type.Type)
 	if err != nil {
 		return nil, err
 	}
 	spec := &sqlspec.Column{
-		Name: col.Name,
+		Name: c.Name,
 		Type: ct.Type,
-		Null: col.Type.Null,
+		Null: c.Type.Null,
 		DefaultExtension: schemahcl.DefaultExtension{
 			Extra: schemahcl.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},
 	}
-	if col.Default != nil {
-		lv, err := ExprValue(col.Default)
+	if c.Default != nil {
+		lv, err := ColumnDefault(c)
 		if err != nil {
 			return nil, err
 		}
 		spec.Default = lv
 	}
-	convertCommentFromSchema(col.Attrs, &spec.Extra.Attrs)
+	convertCommentFromSchema(c.Attrs, &spec.Extra.Attrs)
 	return spec, nil
 }
 
@@ -852,10 +852,11 @@ func ConvertGenExpr(r *schemahcl.Resource, c *schema.Column, t func(string) stri
 	return nil
 }
 
-// ExprValue converts a schema.Expr to a cty.Value.
-func ExprValue(expr schema.Expr) (cty.Value, error) {
-	expr = schema.UnderlyingExpr(expr)
-	switch x := expr.(type) {
+// ColumnDefault converts the column default into cty.Value.
+func ColumnDefault(c *schema.Column) (cty.Value, error) {
+	switch x := schema.UnderlyingExpr(c.Default).(type) {
+	case nil:
+		return cty.NilVal, nil
 	case *schema.RawExpr:
 		return schemahcl.RawExprValue(&schemahcl.RawExpr{X: x.X}), nil
 	case *schema.Literal:
@@ -884,10 +885,17 @@ func ExprValue(expr schema.Expr) (cty.Value, error) {
 			}
 			return cty.NumberIntVal(i), nil
 		default:
-			return cty.NilVal, fmt.Errorf("unsupported literal value %q", x.V)
+			switch c.Type.Type.(type) {
+			// Literal values (non-expressions) are returned
+			// as strings for text-like types.
+			case *schema.StringType, *schema.EnumType:
+				return cty.StringVal(x.V), nil
+			default:
+				return cty.NilVal, fmt.Errorf("unsupported literal value %s for column %s", x.V, c.Name)
+			}
 		}
 	default:
-		return cty.NilVal, fmt.Errorf("converting expr %T to literal value", expr)
+		return cty.NilVal, fmt.Errorf("converting expr %T to literal value for column %s", x, c.Name)
 	}
 }
 
