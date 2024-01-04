@@ -14,90 +14,95 @@ import (
 )
 
 func TestSQLSpec(t *testing.T) {
-	f := `
-schema "schema" {
-}
-
-table "table" {
-	schema = schema.schema
-	column "col" {
-		type = int
-		comment = "column comment"
-	}
-	column "age" {
-		type = int
-	}
-	column "price1" {
-		type = int
-		auto_increment = false
-	}
-	column "price2" {
-		type = int
-		auto_increment = true
-	}
-	column "account_name" {
-		type = varchar(32)
-	}
-	column "created_at" {
-		type    = datetime(4)
-		default = sql("now(4)")
-	}
-	column "updated_at" {
-		type      = timestamp(6)
-		default   = sql("current_timestamp(6)")
-		on_update = sql("current_timestamp(6)")
-	}
-	primary_key {
-		columns = [table.table.column.col]
-	}
-	index "index" {
-		unique = true
-		columns = [
-			table.table.column.col,
-			table.table.column.age,
-		]
-		comment = "index comment"
-	}
-	foreign_key "accounts" {
-		columns = [
-			table.table.column.account_name,
-		]
-		ref_columns = [
-			table.accounts.column.name,
-		]
-		on_delete = SET_NULL
-	}
-	check "positive price" {
-		expr = "price1 > 0"
-	}
-	check {
-		expr     = "price1 <> price2"
-		enforced = true
-	}
-	check {
-		expr     = "price2 <> price1"
-		enforced = false
-	}
-	comment = "table comment"
-	auto_increment = 1000
+	f := `table "table" {
+  schema  = schema.schema
+  comment = "table comment"
+  auto_increment = 1000
+  column "col" {
+    null    = false
+    type    = int
+    comment = "column comment"
+  }
+  column "age" {
+    null = false
+    type = int
+  }
+  column "price1" {
+    null = false
+    type = int
+  }
+  column "price2" {
+    null           = false
+    type           = int
+    auto_increment = true
+  }
+  column "account_name" {
+    null    = false
+    type    = varchar(32)
+    default = "unknown"
+  }
+  column "account_type" {
+    null    = false
+    type    = enum("FREE","PRO")
+    default = "FREE"
+  }
+  column "created_at" {
+    null    = false
+    type    = datetime(4)
+    default = sql("now(4)")
+  }
+  column "updated_at" {
+    null      = false
+    type      = timestamp(6)
+    default   = sql("current_timestamp(6)")
+    on_update = sql("current_timestamp(6)")
+  }
+  primary_key {
+    columns = [column.col]
+  }
+  foreign_key "accounts" {
+    columns     = [column.account_name]
+    ref_columns = [table.accounts.column.name]
+    on_delete   = SET_NULL
+  }
+  index "index" {
+    unique  = true
+    columns = [column.col, column.age]
+    comment = "index comment"
+  }
+  check "positive price" {
+    expr     = "price1 > 0"
+    enforced = false
+  }
+  check {
+    expr = "price1 <> price2"
+  }
+  check "named" {
+    expr = "price2 > price1"
+  }
 }
 
 table "accounts" {
-	schema = schema.schema
-	column "name" {
-		type = varchar(32)
-	}
-	column "unsigned_float" {
-		type     = float(10)
-		unsigned = true
-	}
-	column "unsigned_decimal" {
-		type     = decimal(10,2)
-		unsigned = true
-	}
-	primary_key {
-		columns = [table.accounts.column.name]
-	}
+  schema = schema.schema
+  column "name" {
+    null = false
+    type = varchar(32)
+  }
+  column "unsigned_float" {
+    null     = false
+    type     = float(10)
+    unsigned = true
+  }
+  column "unsigned_decimal" {
+    null     = false
+    type     = decimal(10,2)
+    unsigned = true
+  }
+  primary_key {
+    columns = [column.name]
+  }
+}
+schema "schema" {
 }
 `
 	var s schema.Schema
@@ -154,6 +159,21 @@ table "accounts" {
 							Size: 32,
 						},
 					},
+					Default: &schema.Literal{
+						V: "unknown",
+					},
+				},
+				{
+					Name: "account_type",
+					Type: &schema.ColumnType{
+						Type: &schema.EnumType{
+							T:      TypeEnum,
+							Values: []string{"FREE", "PRO"},
+						},
+					},
+					Default: &schema.Literal{
+						V: "FREE",
+					},
 				},
 				{
 					Name: "created_at",
@@ -173,16 +193,16 @@ table "accounts" {
 			},
 			Attrs: []schema.Attr{
 				&schema.Check{
-					Name: "positive price",
-					Expr: "price1 > 0",
-				},
-				&schema.Check{
-					Expr:  "price1 <> price2",
-					Attrs: []schema.Attr{&Enforced{V: true}},
-				},
-				&schema.Check{
-					Expr:  "price2 <> price1",
+					Name:  "positive price",
+					Expr:  "price1 > 0",
 					Attrs: []schema.Attr{&Enforced{V: false}},
+				},
+				&schema.Check{
+					Expr: "price1 <> price2",
+				},
+				&schema.Check{
+					Name: "named",
+					Expr: "price2 > price1",
 				},
 				&schema.Comment{Text: "table comment"},
 				&AutoIncrement{V: 1000},
@@ -262,6 +282,9 @@ table "accounts" {
 		},
 	}
 	require.EqualValues(t, exp, &s)
+
+	_, err = MarshalHCL(&s)
+	require.NoError(t, err)
 }
 
 func TestUnmarshalViews(t *testing.T) {
@@ -833,7 +856,6 @@ schema "test" {
 					schema.NewIndex("idx2").
 						AddColumns(c).
 						AddAttrs(&IndexType{T: IndexTypeFullText}, &IndexParser{P: "custom"}),
-
 				),
 		)
 	c.Indexes = nil
