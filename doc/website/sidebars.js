@@ -313,6 +313,11 @@ module.exports = {
                 },
                 {
                     type: 'doc',
+                    id: 'guides/orms/sqlalchemy',
+                    label: 'SQLAlchemy'
+                },
+                {
+                    type: 'doc',
                     id: 'guides/frameworks/sqlc-declarative',
                     label: 'sqlc (declarative)'
                 },
