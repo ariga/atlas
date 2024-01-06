@@ -48,7 +48,7 @@ func main() {
 		os.Exit(1)
 	}()
 	ctx = extendContext(context.Background())
-	done := initialize(ctx)
+	ctx, done := initialize(ctx)
 	update := checkForUpdate(ctx)
 	err := cmdapi.Root.ExecuteContext(ctx)
 	if u := update(); u != "" {
