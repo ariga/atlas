@@ -226,6 +226,59 @@ table "b" "users" {
 }
 ```
 
+## Mixin
+
+In order to avoid code duplication, Atlas supports mixins. A mixin is a set of table properties that can be included in
+other tables. Mixins are defined using the `mixin` block, and they can be included in other tables using the `embed`
+statement.
+
+```hcl
+schema "a" {}
+
+table "a" "users" {
+  schema = schema.a
+  embed = mixin.base
+}
+
+mixin "base" {
+  column "id" {
+    type = int
+  }
+  column "created_at" {
+    type = timestamp
+    default = now()
+  }
+}
+```
+
+Multiple Mixins can be embedded in a table.
+
+```hcl
+schema "a" {}
+
+table "a" "users" {
+  schema = schema.a
+  embed = [mixin.base, mixin.deletable]
+}
+
+mixin "base" {
+  column "id" {
+    type = int
+  }
+  column "created_at" {
+    type = timestamp
+    default = now()
+  }
+}
+
+mixin "deletable" {
+  column "deleted_at" {
+    type = timestamp
+    null = true
+  }
+}
+```
+
 ## View
 
 A `view` is a virtual table in the database, defined by a statement that queries rows from one or more existing

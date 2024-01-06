@@ -954,6 +954,80 @@ CREATE TABLE "other"."users" ("id" integer NOT NULL);
 	})
 }
 
+func TestPostgres_Migrate_Mixin(t *testing.T) {
+	bin := cliPath(t)
+	pgRun(t, func(t *pgTest) {
+		dir := t.TempDir()
+		_, err := t.db.Exec("CREATE DATABASE migrate_mixin")
+		require.NoError(t, err)
+		defer t.db.Exec("DROP DATABASE IF EXISTS migrate_mixin")
+
+		hcl := `
+schema "public" {}
+table "users" {
+	schema = schema.public
+	embed = mixin.base
+}
+schema "other" {}
+table "posts" {
+	schema = schema.other
+	embed = mixin.base
+}
+mixin "base" {
+	column "id" { type = integer }
+}
+`
+		err = os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(hcl), 0600)
+		diff := func(name string) string {
+			out, err := exec.Command(
+				bin, "migrate", "diff", name,
+				"--dir", fmt.Sprintf("file://%s", filepath.Join(dir, "migrations")),
+				"--to", fmt.Sprintf("file://%s", filepath.Join(dir, "schema.hcl")),
+				"--dev-url", fmt.Sprintf("postgres://postgres:pass@localhost:%d/migrate_mixin?sslmode=disable", t.port),
+			).CombinedOutput()
+			require.NoError(t, err, string(out))
+			return strings.TrimSpace(string(out))
+		}
+		require.Empty(t, diff("initial"))
+
+		// Expect one file and read its contents.
+		files, err := os.ReadDir(filepath.Join(dir, "migrations"))
+		require.NoError(t, err)
+		require.Equal(t, 2, len(files))
+		require.Equal(t, "atlas.sum", files[1].Name())
+		b, err := os.ReadFile(filepath.Join(dir, "migrations", files[0].Name()))
+		require.NoError(t, err)
+		require.Equal(t,
+			`-- Add new schema named "other"
+CREATE SCHEMA "other";
+-- Create "users" table
+CREATE TABLE "public"."users" ("id" integer NOT NULL);
+-- Create "posts" table
+CREATE TABLE "other"."posts" ("id" integer NOT NULL);
+`, string(b))
+		require.Equal(t, "The migration directory is synced with the desired state, no changes to be made", diff("no_change"))
+
+		// Append a change to the schema and expect a migration to be created.
+		hcl += `
+table "other" "users" {
+	schema = schema.other
+	column "id" { type = integer }
+}`
+		err = os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(hcl), 0600)
+		require.Empty(t, diff("second"))
+		require.Equal(t, "The migration directory is synced with the desired state, no changes to be made", diff("no_change"))
+		files, err = os.ReadDir(filepath.Join(dir, "migrations"))
+		require.NoError(t, err)
+		require.Equal(t, 3, len(files), dir)
+		b, err = os.ReadFile(filepath.Join(dir, "migrations", files[1].Name()))
+		require.NoError(t, err)
+		require.Equal(t,
+			`-- Create "users" table
+CREATE TABLE "other"."users" ("id" integer NOT NULL);
+`, string(b))
+	})
+}
+
 func TestPostgres_SchemaDiff(t *testing.T) {
 	bin := cliPath(t)
 	pgRun(t, func(t *pgTest) {

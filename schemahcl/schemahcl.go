@@ -312,6 +312,7 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 			return err
 		}
 		blocks := make(hclsyntax.Blocks, 0, len(body.Blocks))
+		mixins := make(map[string]*hclsyntax.Block)
 		for _, b := range body.Blocks {
 			switch {
 			// Variable blocks are not reachable by reference.
@@ -324,11 +325,20 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 					return err
 				}
 				blocks = append(blocks, nb...)
+			case b.Type == BlockMixin:
+				mixins[b.Labels[len(b.Labels)-1]] = b
 			default:
 				blocks = append(blocks, b)
 			}
+		}
+		for _, b := range blocks {
+			err := s.applyMixin(b, mixins)
+			if err != nil {
+				return err
+			}
 			reg.child(extractDef(b, reg))
 		}
+
 		body.Blocks = blocks
 		allBlocks = append(allBlocks, blocks...)
 	}
