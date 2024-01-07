@@ -294,14 +294,20 @@ func (s *State) EvalFiles(paths []string, v any, input map[string]cty.Value) err
 // Eval evaluates the parsed HCL documents using the input variables and populates v
 // using the result.
 func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value) error {
-	ctx := s.newCtx()
-	reg := &blockDef{
-		fields:   make(map[string]struct{}),
-		children: make(map[string]*blockDef),
+	var (
+		ctx          = s.newCtx()
+		files        = parsed.Files()
+		fileNames    = make([]string, 0, len(files))
+		metaBlocks   = make(map[string][]*hclsyntax.Block, len(files))
+		staticBlocks = make([]*hclsyntax.Block, 0, len(files))
+		reg          = &blockDef{
+			fields:   make(map[string]struct{}),
+			children: make(map[string]*blockDef),
+		}
+	)
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]cty.Value)
 	}
-	files := parsed.Files()
-	fileNames := make([]string, 0, len(files))
-	allBlocks := make([]*hclsyntax.Block, 0, len(files))
 	for name, file := range files {
 		fileNames = append(fileNames, name)
 		if err := s.setInputVals(ctx, file.Body, input); err != nil {
@@ -314,33 +320,56 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 		blocks := make(hclsyntax.Blocks, 0, len(body.Blocks))
 		for _, b := range body.Blocks {
 			switch {
-			// Variable blocks are not reachable by reference.
 			case b.Type == BlockVariable:
-				continue
-			// Semi-evaluate blocks with the for_each meta argument.
 			case b.Body != nil && b.Body.Attributes[forEachAttr] != nil:
+				metaBlocks[name] = append(metaBlocks[name], b)
+			default:
+				blocks = append(blocks, b)
+				reg.child(extractDef(b, reg))
+			}
+		}
+		body.Blocks = blocks
+		staticBlocks = append(staticBlocks, blocks...)
+	}
+	vars, err := blockVars(staticBlocks, "", reg)
+	if err != nil {
+		return err
+	}
+	for k, v := range vars {
+		ctx.Variables[k] = v
+	}
+	// Semi-evaluate blocks with the for_each meta argument.
+	if len(metaBlocks) > 0 {
+		blocks := make([]*hclsyntax.Block, 0, len(metaBlocks))
+		for name, bs := range metaBlocks {
+			for _, b := range bs {
 				nb, err := forEachBlocks(ctx, b)
 				if err != nil {
 					return err
 				}
+				// Extract the definition of the top-level is enough.
+				reg.child(extractDef(b, reg))
 				blocks = append(blocks, nb...)
-			default:
-				blocks = append(blocks, b)
+				files[name].Body.(*hclsyntax.Body).Blocks = append(files[name].Body.(*hclsyntax.Body).Blocks, nb...)
 			}
-			reg.child(extractDef(b, reg))
 		}
-		body.Blocks = blocks
-		allBlocks = append(allBlocks, blocks...)
-	}
-	vars, err := blockVars(allBlocks, "", reg)
-	if err != nil {
-		return err
-	}
-	if ctx.Variables == nil {
-		ctx.Variables = make(map[string]cty.Value)
-	}
-	for k, v := range vars {
-		ctx.Variables[k] = v
+		if vars, err = blockVars(blocks, "", reg); err != nil {
+			return err
+		}
+		for k, v := range vars {
+			if v.IsNull() {
+				continue
+			}
+			if bs, ok := ctx.Variables[k]; !ok || bs.IsNull() {
+				ctx.Variables[k] = v
+			} else {
+				vs := bs.AsValueMap()
+				for k1, v1 := range v.AsValueMap() {
+					vs[k1] = v1
+				}
+				ctx.Variables[k] = cty.ObjectVal(vs)
+			}
+		}
 	}
 	spec := &Resource{}
 	sort.Slice(fileNames, func(i, j int) bool {
