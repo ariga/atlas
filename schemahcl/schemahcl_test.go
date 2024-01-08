@@ -461,6 +461,47 @@ env "dev" {
 		}),
 	})
 	require.EqualError(t, err, `variable "domains": a number is required`)
+
+	var (
+		// For-each resource depends on other resources.
+		doc1 struct {
+			Schema []*struct {
+				Name string `spec:",name"`
+			} `spec:"schema"`
+			Table []*struct {
+				Name   string `spec:"name,name"`
+				Schema *Ref   `spec:"schema"`
+			} `spec:"table"`
+		}
+		b1 = []byte(`
+schema "s1" {}
+schema "s2" {}
+
+table {
+  for_each = {
+    t1 = schema.s1
+	t2 = schema.s2
+  }
+  name = each.key
+  schema = each.value
+}
+`)
+	)
+	err = New().EvalBytes(b1, &doc1, nil)
+	require.NoError(t, err)
+	buf, err := Marshal.MarshalSpec(&doc1)
+	require.NoError(t, err)
+	require.Equal(t, `schema "s1" {
+}
+schema "s2" {
+}
+table "t1" {
+  schema = schema.s1
+}
+table "t2" {
+  schema = schema.s2
+}
+`, string(buf))
 }
 
 func TestDataLocalsRefs(t *testing.T) {

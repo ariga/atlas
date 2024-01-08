@@ -507,7 +507,10 @@ func extractDef(blk *hclsyntax.Block, parent *blockDef) *blockDef {
 		children: make(map[string]*blockDef),
 	}
 	for _, a := range blk.Body.Attributes {
-		cur.fields[a.Name] = struct{}{}
+		// Skip meta arguments.
+		if a.Name != forEachAttr {
+			cur.fields[a.Name] = struct{}{}
+		}
 	}
 	for _, c := range blk.Body.Blocks {
 		cur.child(extractDef(c, cur))
