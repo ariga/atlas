@@ -708,7 +708,6 @@ trigger "trigger_orders_audit" {
     insert    = true
     update_of = [table.orders.column.amount]
   }
-  foreach = ROW
   execute {
     function = function.audit_orders
   }
@@ -724,8 +723,7 @@ trigger "after_orders_insert" {
   after {
     insert = true
   }
-  foreach = ROW
-  as      = <<-SQL
+  as = <<-SQL
   BEGIN
       INSERT INTO orders_audit(order_id, changed_at, operation)
       VALUES (NEW.order_id, NOW(), 'INSERT');
@@ -737,8 +735,7 @@ trigger "after_orders_update" {
   after {
     update = true
   }
-  foreach = ROW
-  as      = <<-SQL
+  as = <<-SQL
   BEGIN
       INSERT INTO orders_audit(order_id, changed_at, operation)
       VALUES (NEW.order_id, NOW(), 'UPDATE');
@@ -756,8 +753,7 @@ trigger "after_orders_insert" {
   after {
     insert = true
   }
-  foreach = ROW
-  as      = <<-SQL
+  as = <<-SQL
   BEGIN
       INSERT INTO orders_audit(order_id, operation) VALUES (NEW.order_id, 'INSERT');
   END
@@ -768,8 +764,7 @@ trigger "after_orders_update" {
   after {
     update_of = [table.orders.column.amount]
   }
-  foreach = ROW
-  as      = <<-SQL
+  as = <<-SQL
   BEGIN
       INSERT INTO orders_audit(order_id, operation) VALUES (NEW.order_id, 'UPDATE');
   END
@@ -779,6 +774,27 @@ trigger "after_orders_update" {
 
 </TabItem>
 </Tabs>
+
+### Computed Triggers
+
+To configure the same trigger for multiple tables/views, users can utilize the `for_each` meta-argument. By setting it
+up, a `trigger` block will be computed for each item in the provided value. Note that `for_each` accepts either a `map`
+or a `set` of references.
+
+```hcl title="schema.pg.hcl" {2-3}
+trigger "audit_log_trigger" {
+  for_each = toset([table.users, table.orders, table.payments])
+  on       = each.value
+  after {
+    insert = true
+    update = true
+    delete = true
+  }
+  execute  {
+    function = function.audit_log_table
+  }
+}
+```
 
 ## Function
 
