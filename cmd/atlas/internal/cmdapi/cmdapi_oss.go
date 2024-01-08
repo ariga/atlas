@@ -131,5 +131,7 @@ func checkDirRebased(context.Context, *cobra.Command, migrate.Dir) error {
 	return nil // unimplemented.
 }
 
+func setEnvs(context.Context, []*Env) {}
+
 // specOptions are the options for the schema spec.
 var specOptions []schemahcl.Option
