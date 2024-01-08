@@ -378,6 +378,10 @@ func (e *Env) asMap() (map[string]string, error) {
 
 // EnvByName parses and returns the project configuration with selected environments.
 func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Project, []*Env, error) {
+	envs := make(map[string][]*Env)
+	defer func() {
+		setEnvs(cmd.Context(), envs[name])
+	}()
 	if p, e, ok := envsCache.load(GlobalFlags.ConfigURL, name, vars); ok {
 		return p, e, nil
 	}
@@ -411,7 +415,6 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 	if err := project.Lint.remainedLog(); err != nil {
 		return nil, nil, err
 	}
-	envs := make(map[string][]*Env)
 	for _, e := range project.Envs {
 		if e.Name == "" {
 			return nil, nil, fmt.Errorf("all envs must have names on file %q", path)
