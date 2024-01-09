@@ -9,22 +9,18 @@ import TabItem from '@theme/TabItem';
 
 ### Background
 
-Managing database schemas is hard. Since they are the (oftentimes only) stateful component in an application, issues
-originating in a faulty database state can have a wide impact on your products and services. A relatively simple issue
-that can have a huge impact is when the database schema is not in sync with what downstream consumers expect it to be.
-In this doc, we want to present how Atlas can help detect and notify you of these schema drifts by monitoring your databases and
-comparing their state with what you expect it to be.
+Some features require Atlas Cloud to connect to your database. As it is uncommon for databases to be directly accessible
+from the internet, you can run Atlas Agents in your database's network to facilitate this communication. Agents register
+themselves via credentials against your Atlas Cloud account and continuously poll it for work.
+
+The following features require an Atlas Agent installed in your databases network:
+* Drift Detection
+* Cloud mediated deployments (coming soon)
+* Schema monitoring and auditing (coming soon)
 
 :::info PREMIUM FEATURE
 Drift Detection is currently only available in the premium subscription.
 :::
-
-### Connect to your database from Atlas Cloud
-
-To allow Atlas to monitor our schemas and ensure they are in sync with what we have defined, Atlas needs
-to be able to connect to our database. However, opening up a production database (or any database) to the internet
-is not a good idea. A common solution to this is to have a "thing" running in your VPC, that has connection to the
-internet and to your database. This "thing" is commonly called an _agent_ and Atlas now offers such a solution as well.
 
 ### Create an Agent
 
@@ -38,7 +34,7 @@ Only admins can create agents. Ensure you have sufficient permissions before pro
 <details>
 <summary>Screenshot Example</summary>
 
-![image](https://github.com/ariga/atlas/assets/12862103/6551a17e-d1df-4ae6-a6d2-051419c900d1)
+![](https://atlasgo.io/uploads/cloud/drift-detection/1.png)
 </details>
 
 Pick a name for your agent and hit **Create Agent**.
@@ -47,7 +43,7 @@ Pick a name for your agent and hit **Create Agent**.
 <details>
 <summary>Screenshot Example</summary>
 
-![image](https://github.com/ariga/atlas/assets/12862103/8c6ea303-db9a-47da-bfef-ea0fa7a22401)
+![](https://atlasgo.io/uploads/cloud/drift-detection/2.png)
 </details>
 
 ### Connect the Agent
@@ -59,7 +55,7 @@ in a secure place, as you won't be able to see it again. However, you can always
 <details>
 <summary>Screenshot Example</summary>
 
-![image](https://github.com/ariga/atlas/assets/12862103/2aac6477-deea-4c4a-b555-b04253e0dd7a)
+![](https://atlasgo.io/uploads/cloud/drift-detection/3.png)
 </details>
 
 If the agent has access to the internet and can reach Atlas, you should see a success message.
@@ -67,7 +63,7 @@ If the agent has access to the internet and can reach Atlas, you should see a su
 <details>
 <summary>Screenshot Example</summary>
 
-![image](https://github.com/ariga/atlas/assets/12862103/55d0646f-197f-4881-8f95-7f5124dc3e79)
+![](https://atlasgo.io/uploads/cloud/drift-detection/4.png)
 </details>
 
 Now the agent is running and can connect to Atlas. However, in order to connect to your databases, it needs to know
@@ -89,7 +85,7 @@ Fill out the form with the connection details to your database.
 <details>
 <summary>Screenshot Example</summary>
 
-![image](https://github.com/ariga/atlas/assets/12862103/b9d17dbe-e5c3-460a-9dd9-864ddb888ff8)
+![](https://atlasgo.io/uploads/cloud/drift-detection/5.png)
 </details>
 
 <Tabs>
@@ -162,10 +158,16 @@ agent.
 <details>
 <summary>Screenshot Example</summary>
 
-![image](https://github.com/ariga/atlas/assets/12862103/a0371b48-fc1f-45fb-8f26-9ea1cb3a025f)
+![](https://atlasgo.io/uploads/cloud/drift-detection/6.png)
 </details>
 
 ### Drift Detection
+
+Managing database schemas is hard. Since they are the (oftentimes only) stateful component in an application, issues
+originating in a faulty database state can have a wide impact on your products and services. A relatively simple issue
+that can have a huge impact is when the database schema is not in sync with what downstream consumers expect it to be.
+In this doc, we want to present how Atlas can help detect and notify you of these schema drifts by monitoring your
+databases and comparing their state with what you expect it to be.
 
 Once Atlas can connect to your database, it can start monitoring your schema and warn you if it detects a drift
 between your migration directory and its deployment. In the migration directory overview, click on
@@ -174,7 +176,7 @@ between your migration directory and its deployment. In the migration directory 
 <details>
 <summary>Screenshot Example</summary>
 
-![image](https://github.com/ariga/atlas/assets/12862103/9c4e567d-c86b-4c7c-8b35-65dd43f2f123)
+![](https://atlasgo.io/uploads/cloud/drift-detection/7.png)
 </details>
 
 Once enabled, Atlas will run drift detection jobs twice a day. If there is a drift, Atlas will provide you with detailed
@@ -187,7 +189,7 @@ Do not apply the SQL blindly to fix the drift. It is potentially destructive.
 <details>
 <summary>Screenshot Example</summary>
 
-![image](https://github.com/ariga/atlas/assets/12862103/a48100c1-9f5d-41c9-b184-ffe816f1d623)
+![](https://atlasgo.io/uploads/cloud/drift-detection/8.png)
 </details>
 
 ### Notifications
@@ -198,5 +200,5 @@ Workplace or by a plain webhook.
 <details>
 <summary>Screenshot Example</summary>
 
-![image](https://github.com/ariga/atlas/assets/12862103/3bd8d392-d236-4110-a685-9b9fc3ba441c)
+![](https://atlasgo.io/uploads/cloud/drift-detection/9.png)
 </details>
