@@ -66,7 +66,22 @@ that are pushed to Atlas Cloud.  To generate docs for your schema, follow these 
 
 ## Drift Detection
 
-TODO @masseelch
+Managing database schemas is hard. Since they are the (oftentimes only) stateful component in an application, issues
+originating in a faulty database state can have wide impact on your products and services. A relatively simple issue,
+that can have a huge impact is when the database schema is not in sync with what downstream consumers expect it to be.
+In thi doc, we want to present how Atlas can help detect those schema drifts by monitoring your databases and
+comparing their state with what you expect it to be and notifying you, once there is a schema change.
+
+:::info PREMIUM FEATURE
+Drift Detection is currently only available in the premium subscription.
+:::
+
+Atlas now can periodically check if your deployed databases schemas match their desired state. However, this requires
+Atlas to connect to your database and opening up a database to the internet is never a good idea. Therefore, we added
+the Atlas Agent as well. It serves as a middleman between Atlas Cloud and your database. All it requires is access to
+Atlas and network access to the database.
+
+![image](https://github.com/ariga/atlas/assets/12862103/a48100c1-9f5d-41c9-b184-ffe816f1d623)
 
 ## SQLAlchemy Support
 
