@@ -95,6 +95,7 @@ module.exports = {
                 {type: 'doc', id: 'cloud/setup-ci', label: 'CI Setup'},
                 {type: 'doc', id: 'cloud/bots', label: 'Creating Bots'},
                 {type: 'doc', id: 'cloud/deployment', label: 'Deployments'},
+                {type: 'doc', id: 'cloud/agents', label: 'Drift Detection'},
             ],
         },
         {
