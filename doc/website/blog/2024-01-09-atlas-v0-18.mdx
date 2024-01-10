@@ -6,7 +6,7 @@ tags: [release, drift-detection, docs, release]
 
 import InstallationInstructions from '../../md/components/_installation_instructions.mdx'
 
-Hi Everyone,
+Hi everyone,
 
 Thanks for joining us today for another release announcement! We have a bunch of really exciting features to share with
 you today, so let's get started! Here's what we'll cover:
@@ -17,12 +17,15 @@ you today, so let's get started! Here's what we'll cover:
 * [Drift Detection](#drift-detection) - A common source of database trouble is that the schema in your database
   doesn't match the schema in your code. This can happen for a variety of reasons, including manual changes to the
   database, or changes made by other tools. Today, we are happy to announce the availability of a new feature that
-  lets you automatically detect these changes, and alert you when they happen.
+  lets you automatically detect these changes, and alerts you when they happen.
 * [SQLAlchemy Support](#sqlalchemy-support) - SQLAlchemy is a popular Python ORM. Developers using SQLAlchemy can
   use Atlas to automatically plan schema migrations for them, based on the desired state of their schema instead
   of crafting them by hand.
 * [VSCode ERDs](#vscode-erds) - We've added a new feature to our VSCode extension that lets you visualize your
   database schema as an ERD diagram.
+* [Composite Schemas](#composite-schemas) - The newly added `composite_schema` data source lets you combine
+  multiple schemas into one, which is useful for managing schemas that are loaded from multiple sources or
+  to describe applications that span multiple database schemas.
 
 ## Schema Docs
 
@@ -87,10 +90,10 @@ Atlas and network access to the database.
 
 #### Goodbye, Alembic. Hello, Atlas.
 
-SQLAlchemy is a popular ORM toolkit widely used in the Python community. SQLAlchemy allows users to
+[SQLAlchemy](https://sqlalchemy.org) is a popular ORM toolkit widely used in the Python community. SQLAlchemy allows users to
 describe their data model using its [declarative-mapping](https://docs.sqlalchemy.org/en/20/orm/declarative_tables.html)
 feature. To actually create the underlying tables, users can use the `Base.metadata.create_all` method
-which may be sufficient during development where tables can be routinely dropped and re-created.
+which may be sufficient during development where tables can be routinely dropped and recreated.
 
 However, at some point, teams need more control and decide to employ
 the [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology,
@@ -105,7 +108,7 @@ In many production environments, databases should generally not be reachable fro
 which means this comparison is normally done against a local copy of the database which may have
 undergone some changes that aren't reflected in the existing migrations.
 
-In addition, Alembic auto-generation is [fails to detect many kinds of changes](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect)
+In addition, Alembic auto-generation [fails to detect many kinds of changes](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect)
 and cannot be relied upon to generate production-ready migration scripts without routine manual intervention.
 
 Atlas, on the other hand, can automatically plan database schema migrations for SQLAlchemy
@@ -118,3 +121,6 @@ To learn how to use Atlas with SQLAlchemy, check out our [SQLAlchemy Guide](/gui
 Special thanks to [No'am (Miko) Tamir](https://github.com/noamtamir) (who also doubles as my young brother)
 for his fantastic work building the [prototype](https://github.com/noamtamir/atlas-provider-sqlalchemy) for this
 feature and to [Ronen Lubin](https://github.com/ronenlu) for making it production-ready.
+
+## Composite Schemas
+
