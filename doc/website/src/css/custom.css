@@ -262,3 +262,13 @@ div[class^='announcementBar_']  a.cta {
 .theme-admonition a {
   text-decoration: underline;
 }
+
+@media only screen and (min-width: 1000px) {
+  h4 {
+    position: relative;
+  }
+  h4 > .login {
+    right: 0;
+    position: absolute;
+  }
+}
