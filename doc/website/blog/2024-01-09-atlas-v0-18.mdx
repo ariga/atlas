@@ -69,22 +69,26 @@ that are pushed to Atlas Cloud.  To generate docs for your schema, follow these 
 
 ## Drift Detection
 
-Managing database schemas is hard. Since they are the (oftentimes only) stateful component in an application, issues
-originating in a faulty database state can have wide impact on your products and services. A relatively simple issue,
-that can have a huge impact is when the database schema is not in sync with what downstream consumers expect it to be.
-In thi doc, we want to present how Atlas can help detect those schema drifts by monitoring your databases and
-comparing their state with what you expect it to be and notifying you, once there is a schema change.
+We believe, that in an ideal world, schema migrations on production grade databases are done in an automated way,
+preferably in your CI/CD pipelines, with developers not having root access. However, we know that this is oftentimes
+is not the case. For this reason, it is also common to find databases which schemas differ from the ones they are
+supposed to have. This phenomenon, called a **Schema Drift** can cause a lot of trouble for a team.
 
-:::info PREMIUM FEATURE
-Drift Detection is currently only available in the premium subscription.
+Atlas now can periodically check if your deployed databases schemas match their desired state. Among others, this
+features requires [Atlas Cloud](https://atlasgo.cloud/) to connect to your database. As it is uncommon for databases
+to be directly accessible from the internet, you can run Atlas Agents in your database's network to facilitate this
+communication. Agents register themselves via credentials against your Atlas Cloud account and continuously poll it for
+work.
+
+:::info PAID FEATURE
+Drift Detection is currently only available in a [paid subscription](https://atlasgo.cloud/pricing).
 :::
 
-Atlas now can periodically check if your deployed databases schemas match their desired state. However, this requires
-Atlas to connect to your database and opening up a database to the internet is never a good idea. Therefore, we added
-the Atlas Agent as well. It serves as a middleman between Atlas Cloud and your database. All it requires is access to
-Atlas and network access to the database.
-
 ![](https://atlasgo.io/uploads/blog/v0.18/drift-detection.png)
+
+In addition, Atlas Agents enable you do use a lot more cool features, like
+* Cloud mediated deployments (coming soon)
+* Schema monitoring and auditing (coming soon)
 
 ## SQLAlchemy Support
 
