@@ -145,7 +145,7 @@ module.exports = {
     },
     announcementBar: {
       id: 'announcementBar-8', // Increment on change
-      content: `<strong>Announcing Atlas v0.17: Triggers and Improved ERDs. </strong><a class="cta" href="https://atlasgo.io/blog/2024/01/01/atlas-v-0-17">Read it here</a>`,
+      content: `<strong>Atlas v0.18: Drift Detection, Composite Schemas, VSCode ERDs, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/01/09/atlas-v0-18">Read it here</a>`,
       isCloseable: true,
       backgroundColor: '#008CFA',
       textColor: '#fff',
