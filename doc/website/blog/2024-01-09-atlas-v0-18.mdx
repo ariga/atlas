@@ -1,5 +1,5 @@
 ---
-title: "Announcing v0.18: Drift Detection, SQLAlchemy Support Composite Schemas and More"
+title: "Announcing v0.18: Drift Detection, SQLAlchemy Support, Composite Schemas and More"
 authors: rotemtam
 tags: [release, drift-detection, docs, release]
 ---
@@ -95,3 +95,48 @@ can now visualize your database schema as an ERD diagram. To use this feature, s
 
 ## Composite Schemas
 
+The `composite_schema` data source allows the composition of multiple Atlas schemas into a unified schema graph. This
+functionality is useful when projects schemas are split across various sources such as HCL, SQL, or application ORMs.
+For example, each service might have its own schema.
+
+Referring to the `url` returned by this data source allows reading the entire project schemas as a single unit by any of
+the Atlas commands, such as `migrate diff`, `schema apply`, or `schema inspect`.
+
+#### Usage example
+
+By running `atlas migrate diff` with the given configuration, Atlas loads the `inventory` schema from the [SQLAlchemy schema](/guides/orms/sqlalchemy),
+the `graph` schema from [ent/schema](https://entgo.io), and the `auth` and `internal` schemas from HCL and SQL schemas defined in
+Atlas format. Then, the composite schema, which represents these four schemas combined, will be compared against the
+current state of the migration directory. In case of a difference between the two states, a new migration file will be
+created with the necessary SQL statements.
+
+```hcl title="atlas.hcl" {1-14}
+data "composite_schema" "project" {
+  schema "inventory" {
+    url = data.external_schema.sqlalchemy.url
+  }
+  schema "graph" {
+    url = "ent://ent/schema"
+  }
+  schema "auth" {
+    url = "file://path/to/schema.hcl"
+  }
+  schema "internal" {
+    url = "file://path/to/schema.sql"
+  }
+}
+
+env "dev" {
+  src = data.composite_schema.project.url
+  dev = "docker://postgres/15/dev"
+  migration {
+    dir = "file://migrations"
+  }
+}
+```
+
+
+### Wrapping up
+
+That's it! I hope you try out (and enjoy) all of these new features and find them useful.
+As always, we would love to hear your feedback and suggestions on our [Discord server](https://discord.gg/zZ6sWVg6NT).
