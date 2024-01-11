@@ -1,5 +1,5 @@
 ---
-title: "Announcing v0.18: Schema Docs, Drift Detection, SQLAlchemy Support and More"
+title: "Announcing v0.18: Drift Detection, SQLAlchemy Support Composite Schemas and More"
 authors: rotemtam
 tags: [release, drift-detection, docs, release]
 ---
@@ -10,10 +10,7 @@ Hi everyone,
 
 Thanks for joining us today for another release announcement! We have a bunch of really exciting features to share with
 you today, so let's get started! Here's what we'll cover:
-* [Schema Docs](#schema-docs) - Atlas lets you manage your database schema as code. One of the things we love most
-  about code, is that because of its formal structure, it's possible to automatically generate documentation from it.
-  With this release, we're introducing a new feature that lets you generate code-grade documentation for
-  your database schema.
+
 * [Drift Detection](#drift-detection) - A common source of database trouble is that the schema in your database
   doesn't match the schema in your code. This can happen for a variety of reasons, including manual changes to the
   database, or changes made by other tools. Today, we are happy to announce the availability of a new feature that
@@ -27,56 +24,16 @@ you today, so let's get started! Here's what we'll cover:
   multiple schemas into one, which is useful for managing schemas that are loaded from multiple sources or
   to describe applications that span multiple database schemas.
 
-## Schema Docs
-
-One of the most surprising things we learned from working with teams on their Atlas journey, is that many teams
-do not have a single source of truth for their database schema.  As a result, it's impossible to maintain up-to-date
-documentation for the database schema, which is crucial for disseminating knowledge about the database across the team.
-
-Atlas changes this by creating a workflow that _begins_ with a single source of truth for the database schema - the
-desired state of the database, as defined in code. This is what enables Atlas to automatically plan migrations, detect
-drift (as we'll see below), and now, generate documentation.
-
-### How it works
-
-Documentation is currently generated for the most recent version of your schema for migration directories
-that are pushed to Atlas Cloud.  To generate docs for your schema, follow these steps:
-
-1. Make sure you have the most recent version of Atlas:
-   <InstallationInstructions/>
-
-2. Login to Atlas Cloud using the CLI:
-
-   ```bash
-   atlas login
-   ```
-   If you do not already have a (free) Atlas Cloud account, follow the instructions to create one.
-
-3. Push your migrations to Atlas Cloud:
-
-   ```bash
-   atlas migrate push <dir name>
-   ```
-   Be sure to replace `<dir name>` with the name of the directory containing your migrations. (e.g `app`)
-
-4. Atlas will print a link to the overview page for your migration directory, e.g:
-   ```
-   https://gh.atlasgo.cloud/dirs/4294967296
-   ```
-5. Click on "Doc" in the top tabs to view the documentation for your schema.
-
-![](https://atlasgo.io/uploads/blog/v0.18/schemadoc.png)
-
 ## Drift Detection
 
-We believe, that in an ideal world, schema migrations on production grade databases are done in an automated way,
+We believe, that in an ideal world, schema migrations on production databases should be done in an automated way,
 preferably in your CI/CD pipelines, with developers not having root access. However, we know that this is oftentimes
 is not the case. For this reason, it is also common to find databases which schemas differ from the ones they are
 supposed to have. This phenomenon, called a **Schema Drift** can cause a lot of trouble for a team.
 
-Atlas now can periodically check if your deployed databases schemas match their desired state. Among others, this
-features requires [Atlas Cloud](https://atlasgo.cloud/) to connect to your database. As it is uncommon for databases
-to be directly accessible from the internet, you can run Atlas Agents in your database's network to facilitate this
+Atlas now can periodically check if your deployed databases schemas match their desired state. To function correctly, this
+feature relies on [Atlas Cloud](https://atlasgo.cloud/) being able to communicate to your database. As it is uncommon for databases
+to be directly accessible from the internet, we have added the option to run Atlas Agents in your database's network to facilitate this
 communication. Agents register themselves via credentials against your Atlas Cloud account and continuously poll it for
 work.
 
@@ -85,6 +42,8 @@ Drift Detection is currently only available in a [paid subscription](https://atl
 :::
 
 ![](https://atlasgo.io/uploads/blog/v0.18/drift-detection.png)
+
+To learn more about how to use this feature, check out our [Drift Detection Guide](/cloud/agents).
 
 In addition, Atlas Agents enable you do use a lot more cool features, like
 * Cloud mediated deployments (coming soon)
