@@ -342,8 +342,8 @@ The `locals` block allows defining a list of local variables that can be reused 
 locals {
   tenants  = ["tenant_1", "tenant_2"]
   base_url = "mysql://${var.user}:${var.pass}@${var.addr}"
-  
-  // Reference local values. 
+
+  // Reference local values.
   db1_url  = "${local.base_url}/db1"
   db2_url  = "${local.base_url}/db2"
 }
@@ -700,7 +700,7 @@ appears in action:
 
 <details><summary>Screenshot example</summary>
 
-![](https://atlasgo.io/uploads/images/deploy-migration.png)
+![](https://atlasgo.io/uploads/cloud/images/full-deployment-example.png)
 
 </details>
 
@@ -883,7 +883,7 @@ set or map item. See the example [below](#multi-environment-example).
   - `dir` - The [URL](../concepts/url.mdx) to the migration directory.
   - `baseline` - An optional version to start the migration history from. Read more [here](../versioned/apply.mdx#existing-databases).
   - `exec_order` - Set the file execution order [`LINEAR` (default), `LINEAR_SKIP`, `NON_LINEAR`]. Read more [here](../versioned/apply.mdx#execution-order).
-  - `lock_timeout` - An optional timeout to wait for a database lock to be released. Defaults to `10s`. 
+  - `lock_timeout` - An optional timeout to wait for a database lock to be released. Defaults to `10s`.
   - `revisions_schema` - An optional name to control the schema that the revisions table resides in.
 
 - `format` - A block defines the formatting configuration of the env per command (previously named `log`).
