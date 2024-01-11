@@ -170,7 +170,7 @@ stored as a JSON, you can provide the path to the actual token using a dot-notat
 You can tell the Agent to look for the password in an environment variable. For example, if your password lives in an
 environment variable like `DATABASE_PASSWORD=passw0rd` you'd provide `DATABASE_PASSWORD` to the Agent.
 
-:::danger
+:::info
 We advise to use either IAM authentication or a Secrets Manager to obtain a database password.
 :::
 
@@ -205,7 +205,7 @@ between your migration directory and its deployment. In the migration directory 
 Once enabled, Atlas will run drift detection jobs twice a day. If there is a drift, Atlas will provide you with detailed
 information about the drift, including an ERD, HCL diff and SQL statements required to fix the drift.
 
-:::danger
+:::caution
 Do not apply the SQL blindly to fix the drift. It is potentially destructive.
 :::
 
