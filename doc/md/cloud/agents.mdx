@@ -1,0 +1,227 @@
+---
+title: Cloud Agents
+id: agents
+slug: /cloud/agents
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+### Background
+
+Some features require [Atlas Cloud](https://atlasgo.cloud/) to connect to your database. As it is uncommon for databases
+to be directly accessible from the internet, you can run Atlas Agents in your database's network to facilitate this
+communication. Agents register themselves via credentials against your Atlas Cloud account and continuously poll it for
+work.
+
+The following features require an Atlas Agent installed in your databases network:
+* Drift Detection
+* Cloud mediated deployments (coming soon)
+* Schema monitoring and auditing (coming soon)
+
+:::info PAID FEATURE
+Drift Detection is currently only available in a [paid subscription](https://atlasgo.cloud/pricing).
+:::
+
+### Create an Agent
+
+To create an Agent, head over to the general settings and click on the "Agents" tab.
+
+:::info
+Only admins can create Agents. Ensure you have sufficient permissions before proceeding.
+:::
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/drift-detection/1.png)
+</details>
+
+Pick a name for your Agent and hit **Create Agent**.
+
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/drift-detection/2.png)
+</details>
+
+### Connect the Agent
+
+Now that we have created an Agent in your Atlas Cloud account, we can run an Agent process. This is typically done by
+running it in the same network as our target database. To authenticate against your Atlas Cloud account, a token will
+be created which you will need to provide the Agent with. Store this token in a secure place, as you won't be able to
+see it again. If needed, you can always create a new one later.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/drift-detection/3.png)
+</details>
+
+To start the Agent and let it poll work from Atlas Cloud, simply follow the instructions shown. Currently, Ariga
+provides two builds, a docker image and a linux amd64 binary. All you need to provide the Agent with is a token to
+authenticate against Atlas Cloud.
+
+<Tabs>
+<TabItem value="docker" label="Docker">
+
+If you want to use the Docker image, run the following:
+
+```shell
+docker run -e ATLAS_TOKEN <your atlas token> arigaio/atlas-agent
+```
+
+</TabItem>
+<TabItem value="linux" label="Linux">
+
+If you want to use the linux build, run the following:
+
+```shell
+curl -L -o atlas-agent 'https://release.ariga.io/atlas-agent/atlas-agent-amd64-latest'
+chmod +x atlas-agent
+atlas-agent --token <your atlas token> arigaio/atlas-agent
+```
+
+</TabItem>
+</Tabs>
+
+If the Agent has access to the internet and can reach Atlas, you should see a success message.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/drift-detection/4.png)
+</details>
+
+Now the Agent is running and can connect to Atlas. However, in order to connect to your databases, it needs to know
+how to obtain valid credentials and how to use them.
+
+### Database Credentials
+
+Since we want the Agent to connect to our database on behalf of Atlas, it needs to know how to access it.
+For this we can assign an Agent multiple database connections. Either click the **Set up Database Connection** or
+select the **Database Connections** tab and hit **Create Connection**.
+
+:::info
+You can only create a connection with an actively running Agent. If there is no Agent selectable in the dropdown,
+ensure the Agent binary is still running and has access to the cloud.
+:::
+
+Fill out the form with the connection details to your database.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/drift-detection/5.png)
+</details>
+
+<Tabs>
+<TabItem value="aws_iam" label="AWS RDS Token (IAM Auth)">
+
+AWS RDS databases offer to obtain a short-lived token using an IAM role to authenticate against an RDS instance.
+
+1. Enable IAM Authentication for your database. For instructions on how to do this,
+   [see the AWS documentation](https://aws.github.io/aws-sdk-go-v2/docs/sdk-utilities/rds/#iam-authentication).
+
+2. Create an IAM role with the "rds-db:connect" permission for the specific database and user. For instructions on how
+   to do this, [see the AWS documentation](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html).
+
+All other info required to obtain a token is derived from the RDS endpoint you define in the connection modal.
+
+</TabItem>
+<TabItem value="aws_secrets" label="AWS Secrets Manager">
+
+AWS Secrets Manager is a secret store you can use to retrieve a secret from. This is somewhat similar to IAM
+authentication, since in this case you need to have access to the secret's store, usually using IAM authentication.
+Find the secret name and region for your secret. If you need more info,
+[read this guide](/guides/deploying/secrets##using-iam-authentication). If your secret is stored as JSON, e.g. when you
+choose to let RDS handle your database password in the Secrets Manager, you can provide the path to the actual token
+using a dot-notation. For example, for a secret like `{"password":"my_passw0rd!"}` you'd provide `.password` as the path
+to the token.
+
+</TabItem>
+<TabItem value="gcp_iam" label="GCP Cloud SQL Token (IAM Auth)">
+
+[GCP CloudSQL](https://cloud.google.com/sql) offers using
+[IAM Authentication](https://cloud.google.com/sql/docs/mysql/authentication#manual) to generate a short-lived token to
+use for authentication against a GCP CloudSQL database.
+
+1. Enable IAM Authentication for your database. For instructions on how to do this,
+   [see the GCP documentation](https://cloud.google.com/sql/docs/mysql/create-edit-iam-instances).
+
+2. Create a database user and grant it permission to authenticate using IAM, see
+   [the GCP documentation](https://cloud.google.com/sql/docs/mysql/add-manage-iam-users)
+   for instructions.
+
+All other info required to obtain a token is derived from the CloudSQL endpoint you define in the connection modal.
+
+</TabItem>
+<TabItem value="gcp_secrets" label="GCP Secrets Manager">
+
+GCP Secrets Manager is a secret store you can use to retrieve a secret from. Find the project ID and secret name of your
+secret. If you need more info, [read this guide](/guides/deploying/secrets##using-iam-authentication). If your secret is
+stored as a JSON, you can provide the path to the actual token using a dot-notation. For example, for a secret like
+`{"password":"my_passw0rd!"}` you'd provide `.password` as the path to the token.
+
+</TabItem>
+<TabItem value="env" label="Environment Variable">
+
+You can tell the Agent to look for the password in an environment variable. For example, if your password lives in an
+environment variable like `DATABASE_PASSWORD=passw0rd` you'd provide `DATABASE_PASSWORD` to the Agent.
+
+:::info
+We advise to use either IAM authentication or a Secrets Manager to obtain a database password.
+:::
+
+</TabItem>
+</Tabs>
+
+To ensure the credentials are correct, Atlas will check if the credentials are working before we can save them. Hit
+the **Test Connection** button and wait. It can take a few seconds before the Agent will pick up the job and check
+the connection to the database.
+
+If all goes well, we should see a message telling us that Atlas was able to connect to our database through the
+Agent.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/drift-detection/6.png)
+</details>
+
+### Drift Detection
+
+Once Atlas can connect to your database, it can start monitoring your schema and warn you if it detects a drift
+between your migration directory and its deployment. In the migration directory overview, click on
+**Enable Drift Detection**. You'll be asked which database connection the deployments are reachable on.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/drift-detection/7.png)
+</details>
+
+Once enabled, Atlas will run drift detection jobs twice a day. If there is a drift, Atlas will provide you with detailed
+information about the drift, including an ERD, HCL diff and SQL statements required to fix the drift.
+
+:::caution
+Do not apply the SQL blindly to fix the drift. It is potentially destructive.
+:::
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/drift-detection/8.png)
+</details>
+
+### Notifications
+
+You can instruct Atlas to notify you if there is a drift. Atlas supports various channels, such as email, Slack,
+Workplace or by a plain webhook.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/drift-detection/9.png)
+</details>
