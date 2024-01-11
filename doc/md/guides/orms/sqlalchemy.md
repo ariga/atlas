@@ -22,6 +22,8 @@ However, at some point, teams need more control and decide to employ
 the [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology,
 which is a more robust way to manage a database schema.
 
+### Replacing `alembic`
+
 The native way to manage migrations with SQLAlchemy is to use the [Alembic](https://alembic.sqlalchemy.org/en/latest/) migration tool.
 Alembic can [automatically generate](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#auto-generating-migrations)
 migration scripts from the difference between the current state of the database and the desired state of the application.
@@ -37,6 +39,8 @@ Atlas, on the other hand, can automatically plan database schema migrations for 
 without requiring a connection to such a database and can detect almost any kind of schema change.
 Atlas plans migrations by calculating the diff between the _current_ state of the database,
 and its _desired_ state.
+
+### How it works
 
 In the context of versioned migrations, the current state can be thought of as the database schema that would have
 been created by applying all previous migration scripts.
