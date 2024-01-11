@@ -32,7 +32,7 @@ A downside of this approach is that in order for it to work, a pre-existing data
 In many production environments, databases should generally not be reachable from developer workstations,
 which means this comparison is normally done against a local copy of the database which may have
 undergone some changes that aren't reflected in the existing migrations.
-In addition, Alembic auto-generation is [fails to detect many kinds of changes](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect)
+In addition, Alembic auto-generation [fails to detect many kinds of changes](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect)
 and cannot be relied upon to generate production-ready migration scripts without routine manual intervention.
 
 Atlas, on the other hand, can automatically plan database schema migrations for SQLAlchemy

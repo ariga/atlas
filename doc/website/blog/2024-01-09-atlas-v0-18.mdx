@@ -1,0 +1,142 @@
+---
+title: "Announcing v0.18: Drift Detection, SQLAlchemy Support, Composite Schemas and More"
+authors: rotemtam
+tags: [release, drift-detection, docs, release]
+---
+
+import InstallationInstructions from '../../md/components/_installation_instructions.mdx'
+
+Hi everyone,
+
+Thanks for joining us today for another release announcement! We have a bunch of really exciting features to share with
+you today, so let's get started! Here's what we'll cover:
+
+* [Drift Detection](#drift-detection) - A common source of database trouble is that the schema in your database
+  doesn't match the schema in your code. This can happen for a variety of reasons, including manual changes to the
+  database, or changes made by other tools. Today, we are happy to announce the availability of a new feature that
+  lets you automatically detect these changes, and alerts you when they happen.
+* [SQLAlchemy Support](#sqlalchemy-support) - SQLAlchemy is a popular Python ORM. Developers using SQLAlchemy can
+  use Atlas to automatically plan schema migrations for them, based on the desired state of their schema instead
+  of crafting them by hand.
+* [VSCode ERDs](#vscode-erds) - We've added a new feature to our VSCode extension that lets you visualize your
+  database schema as an ERD diagram.
+* [Composite Schemas](#composite-schemas) - The newly added `composite_schema` data source lets you combine
+  multiple schemas into one, which is useful for managing schemas that are loaded from multiple sources or
+  to describe applications that span multiple database schemas.
+
+## Drift Detection
+
+We believe, that in an ideal world, schema migrations on production databases should be done in an automated way,
+preferably in your CI/CD pipelines, with developers not having root access. However, we know that this is oftentimes
+is not the case. For this reason, it is also common to find databases which schemas differ from the ones they are
+supposed to have. This phenomenon, called a **Schema Drift** can cause a lot of trouble for a team.
+
+Atlas now can periodically check if your deployed databases schemas match their desired state. To function correctly, this
+feature relies on [Atlas Cloud](https://atlasgo.cloud/) being able to communicate to your database. As it is uncommon for databases
+to be directly accessible from the internet, we have added the option to run Atlas Agents in your database's network to facilitate this
+communication. Agents register themselves via credentials against your Atlas Cloud account and continuously poll it for
+work.
+
+:::info PAID FEATURE
+Drift Detection is currently only available in a [paid subscription](https://atlasgo.cloud/pricing).
+:::
+
+![](https://atlasgo.io/uploads/blog/v0.18/drift-detection.png)
+
+To learn more about how to use this feature, check out our [Drift Detection Guide](/cloud/agents).
+
+In addition, Atlas Agents enable you do use a lot more cool features, like
+* Cloud mediated deployments (coming soon)
+* Schema monitoring and auditing (coming soon)
+
+## SQLAlchemy Support
+
+#### Goodbye, Alembic. Hello, Atlas.
+
+[SQLAlchemy](https://sqlalchemy.org) is a popular ORM toolkit widely used in the Python community. SQLAlchemy allows users to
+describe their data model using its [declarative-mapping](https://docs.sqlalchemy.org/en/20/orm/declarative_tables.html)
+feature. To actually create the underlying tables, users can use the `Base.metadata.create_all` method
+which may be sufficient during development where tables can be routinely dropped and recreated.
+
+However, at some point, teams need more control and decide to employ
+the [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology,
+which is a more robust way to manage a database schema.
+
+The native way to manage migrations with SQLAlchemy is to use the [Alembic](https://alembic.sqlalchemy.org/en/latest/) migration tool.
+Alembic can [automatically generate](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#auto-generating-migrations)
+migration scripts from the difference between the current state of the database and the desired state of the application.
+
+A downside of this approach is that in order for it to work, a pre-existing database with the current version of the schema must be connected to.
+In many production environments, databases should generally not be reachable from developer workstations,
+which means this comparison is normally done against a local copy of the database which may have
+undergone some changes that aren't reflected in the existing migrations.
+
+In addition, Alembic auto-generation [fails to detect many kinds of changes](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect)
+and cannot be relied upon to generate production-ready migration scripts without routine manual intervention.
+
+Atlas, on the other hand, can automatically plan database schema migrations for SQLAlchemy
+without requiring a connection to such a database and can detect almost any kind of schema change.
+Atlas plans migrations by calculating the diff between the _current_ state of the database,
+and its _desired_ state.
+
+To learn how to use Atlas with SQLAlchemy, check out our [SQLAlchemy Guide](/guides/orms/sqlalchemy).
+
+Special thanks to [No'am (Miko) Tamir](https://github.com/noamtamir) (who also doubles as my young brother)
+for his fantastic work building the [prototype](https://github.com/noamtamir/atlas-provider-sqlalchemy) for this
+feature and to [Ronen Lubin](https://github.com/ronenlu) for making it production-ready.
+
+## VSCode ERDs
+
+![](https://atlasgo.io/uploads/blog/v0.18/vsc-erd.png)
+
+Starting with v0.4.2, our [VSCode Extension](https://marketplace.visualstudio.com/items?itemName=Ariga.atlas-hcl&ssr=false#overview)
+can now visualize your database schema as an ERD diagram. To use this feature, simply open the command palette
+(`Ctrl+Shift+P` on Windows/Linux, `Cmd+Shift+P` on Mac) and select `Atlas: View in ERD`.
+
+## Composite Schemas
+
+The `composite_schema` data source allows the composition of multiple Atlas schemas into a unified schema graph. This
+functionality is useful when projects schemas are split across various sources such as HCL, SQL, or application ORMs.
+For example, each service might have its own schema.
+
+Referring to the `url` returned by this data source allows reading the entire project schemas as a single unit by any of
+the Atlas commands, such as `migrate diff`, `schema apply`, or `schema inspect`.
+
+#### Usage example
+
+By running `atlas migrate diff` with the given configuration, Atlas loads the `inventory` schema from the [SQLAlchemy schema](/guides/orms/sqlalchemy),
+the `graph` schema from [ent/schema](https://entgo.io), and the `auth` and `internal` schemas from HCL and SQL schemas defined in
+Atlas format. Then, the composite schema, which represents these four schemas combined, will be compared against the
+current state of the migration directory. In case of a difference between the two states, a new migration file will be
+created with the necessary SQL statements.
+
+```hcl title="atlas.hcl" {1-14}
+data "composite_schema" "project" {
+  schema "inventory" {
+    url = data.external_schema.sqlalchemy.url
+  }
+  schema "graph" {
+    url = "ent://ent/schema"
+  }
+  schema "auth" {
+    url = "file://path/to/schema.hcl"
+  }
+  schema "internal" {
+    url = "file://path/to/schema.sql"
+  }
+}
+
+env "dev" {
+  src = data.composite_schema.project.url
+  dev = "docker://postgres/15/dev"
+  migration {
+    dir = "file://migrations"
+  }
+}
+```
+
+
+### Wrapping up
+
+That's it! I hope you try out (and enjoy) all of these new features and find them useful.
+As always, we would love to hear your feedback and suggestions on our [Discord server](https://discord.gg/zZ6sWVg6NT).
