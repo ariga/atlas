@@ -330,18 +330,6 @@ module.exports = {
         },
         {
             type: 'category',
-            label: 'Cloud',
-            collapsed: false,
-            items: [
-                {
-                    type: 'doc',
-                    id: 'guides/cloud/explore-inspection',
-                    label: 'How to inspect a local database in the Cloud'
-                }
-            ]
-        },
-        {
-            type: 'category',
             label: 'MySQL',
             collapsed: false,
             items: [
