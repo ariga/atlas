@@ -173,7 +173,7 @@ most methods covered in the [guides](/guides) section. In this example, we'll de
 [Atlas Cloud](https://auth.atlasgo.cloud/signup), much like how Docker images are pushed to Docker Hub.
 
 <div style={{textAlign: 'center'}}>
-    <img src="https://atlasgo.io/uploads/versioned/migrate-push1.jpg" alt="atlas migrate push" width="100%"/>
+    <img src="https://atlasgo.io/uploads/cloud/images/init-migration-dir.png" alt="atlas migrate push" width="100%"/>
     <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
 </div>
 
@@ -296,7 +296,7 @@ Boom! After applying the migration, you should receive a link to the deployment 
 was applied. Here's an example of what it should look like:
 
 <div style={{textAlign: 'center'}}>
-    <img src="https://atlasgo.io/uploads/versioned/migrate-target-1.jpg" alt="atlas migrate apply" width="100%"/>
+    <img src="https://atlasgo.io/uploads/cloud/images/db-deployments.png" alt="atlas migrate apply" width="100%"/>
     <p style={{fontSize: 12}}>Migration history of a database schema created with <code>atlas migrate apply</code></p>
 </div>
 
@@ -306,7 +306,7 @@ By clicking on the most recent deployment, you can view the full migration repor
 <summary>Screenshot example</summary>
 
 <div style={{textAlign: 'center'}}>
-    <img src="https://atlasgo.io/uploads/versioned/migrate-deployment-1.jpg" alt="atlas migrate apply" width="100%"/>
+    <img src="https://atlasgo.io/uploads/cloud/images/first-deployment.png" alt="atlas migrate apply" width="100%"/>
     <p style={{fontSize: 12}}>Migration deployment reported created with <code>atlas migrate apply</code></p>
 </div>
 
@@ -487,7 +487,7 @@ atlas migrate push app \
 </Tabs>
 
 <div style={{textAlign: 'center'}}>
-    <img src="https://atlasgo.io/uploads/versioned/atlas-push-2.jpg" alt="atlas migrate push" width="100%"/>
+    <img src="https://atlasgo.io/uploads/cloud/images/add-table.png" alt="atlas migrate push" width="100%"/>
     <p style={{fontSize: 12}}>Migration Directory updated with <code>atlas migrate push</code></p>
 </div>
 
@@ -495,7 +495,7 @@ Once pushed, you'll notice in the Databases tab that our database is in a _Pendi
 migration has been pushed but not yet applied to the database.
 
 <div style={{textAlign: 'center'}}>
-    <img src="https://atlasgo.io/uploads/versioned/migrate-target-pending.jpg" alt="atlas migrate push" width="100%"/>
+    <img src="https://atlasgo.io/uploads/cloud/images/pending-db.png" alt="atlas migrate push" width="100%"/>
     <p style={{fontSize: 12}}>Database schema <code>public</code> is in <i>Pending</i> mode</p>
 </div>
 
@@ -508,7 +508,7 @@ atlas migrate apply --env local
 As you can see below, the database is now _In Sync_ with the migration directory:
 
 <div style={{textAlign: 'center'}}>
-    <img src="https://atlasgo.io/uploads/versioned/migrate-target-in-sync.jpg" alt="atlas migrate push" width="100%"/>
+    <img src="https://atlasgo.io/uploads/cloud/images/synced-db.png" alt="atlas migrate push" width="100%"/>
     <p style={{fontSize: 12}}>Database schema <code>public</code> is in <i>In Sync</i> mode</p>
 </div>
 

@@ -6,6 +6,7 @@ slug: /atlas-schema/projects
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import LoginRequired from '../components/login-required.mdx'
 
 ### Project Files
 
@@ -342,8 +343,8 @@ The `locals` block allows defining a list of local variables that can be reused 
 locals {
   tenants  = ["tenant_1", "tenant_2"]
   base_url = "mysql://${var.user}:${var.pass}@${var.addr}"
-  
-  // Reference local values. 
+
+  // Reference local values.
   db1_url  = "${local.base_url}/db1"
   db2_url  = "${local.base_url}/db2"
 }
@@ -358,6 +359,7 @@ data sources are:
 - [`runtimevar`](#data-source-runtimevar)
 - [`hcl_schema`](#data-source-hcl_schema)
 - [`external_schema`](#data-source-external_schema)
+- [`composite_schema`](#data-source-composite_schema)
 - [`remote_dir`](#data-source-remote_dir)
 - [`template_dir`](#data-source-template_dir)
 - [`aws_rds_token`](#data-source-aws_rds_token)
@@ -608,7 +610,7 @@ With this data source, users have the flexibility to represent the desired state
 
 By running `atlas migrate diff` with the given configuration, the external program will be executed and its loaded state
 will be compared against the current state of the migration directory. In case of a difference between the two states,
-a new migration file will be created with the correct SQL statements.
+a new migration file will be created with the necessary SQL statements.
 
 ```hcl title="atlas.hcl"
 data "external_schema" "graph" {
@@ -622,6 +624,58 @@ data "external_schema" "graph" {
 env "local" {
   src = data.external_schema.graph.url
   dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+}
+```
+
+
+#### Data source: `composite_schema` <LoginRequired /> {#data-source-composite_schema}
+
+The `composite_schema` data source allows the composition of multiple Atlas schemas into a unified schema graph. This
+functionality is useful when projects schemas are split across various sources such as HCL, SQL, or application ORMs.
+For example, each service might have its own schema.
+
+Referring to the `url` returned by this data source allows reading the entire project schemas as a single unit by any of
+the Atlas commands, such as `migrate diff`, `schema apply`, or `schema inspect`.
+
+##### Arguments {#data-source-external-schema-arguments}
+
+- `schema` - one or more **named** blocks.
+  - `url` - A [URL](../concepts/url.mdx) to read the schema from.
+
+##### Attributes {#data-source-external-schema-attributes}
+
+- `url` - The [URL](../concepts/url.mdx) of the composite schema.
+
+#### Usage example
+
+By running `atlas migrate diff` with the given configuration, Atlas loads the `inventory` schema from the [SQLAlchemy schema](/guides/orms/sqlalchemy),
+the `graph` schema from [ent/schema](https://entgo.io), and the `auth` and `internal` schemas from HCL and SQL schemas defined in
+Atlas format. Then, the composite schema, which represents these four schemas combined, will be compared against the
+current state of the migration directory. In case of a difference between the two states, a new migration file will be
+created with the necessary SQL statements.
+
+```hcl title="atlas.hcl" {1-14}
+data "composite_schema" "project" {
+  schema "inventory" {
+    url = data.external_schema.sqlalchemy.url
+  }
+  schema "graph" {
+    url = "ent://ent/schema"
+  }
+  schema "auth" {
+    url = "file://path/to/schema.hcl"
+  }
+  schema "internal" {
+    url = "file://path/to/schema.sql"
+  }
+}
+
+env "dev" {
+  src = data.composite_schema.project.url
+  dev = "docker://postgres/15/dev"
   migration {
     dir = "file://migrations"
   }
@@ -700,7 +754,7 @@ appears in action:
 
 <details><summary>Screenshot example</summary>
 
-![](https://atlasgo.io/uploads/images/deploy-migration.png)
+![](https://atlasgo.io/uploads/cloud/images/full-deployment-example.png)
 
 </details>
 
@@ -883,7 +937,7 @@ set or map item. See the example [below](#multi-environment-example).
   - `dir` - The [URL](../concepts/url.mdx) to the migration directory.
   - `baseline` - An optional version to start the migration history from. Read more [here](../versioned/apply.mdx#existing-databases).
   - `exec_order` - Set the file execution order [`LINEAR` (default), `LINEAR_SKIP`, `NON_LINEAR`]. Read more [here](../versioned/apply.mdx#execution-order).
-  - `lock_timeout` - An optional timeout to wait for a database lock to be released. Defaults to `10s`. 
+  - `lock_timeout` - An optional timeout to wait for a database lock to be released. Defaults to `10s`.
   - `revisions_schema` - An optional name to control the schema that the revisions table resides in.
 
 - `format` - A block defines the formatting configuration of the env per command (previously named `log`).
