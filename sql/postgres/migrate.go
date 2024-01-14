@@ -161,7 +161,7 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 				Comment: fmt.Sprintf("Add new schema named %q", c.S.Name),
 			})
 			if cm := (schema.Comment{}); sqlx.Has(c.S.Attrs, &cm) {
-				s.append(s.schemaComment(c.S, cm.Text, ""))
+				s.append(s.schemaComment(c, c.S, cm.Text, ""))
 			}
 		case *schema.ModifySchema:
 			for i := range c.Changes {
@@ -173,14 +173,14 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 					if !ok {
 						return nil, fmt.Errorf("unexpected schema AddAttr: %T", change.A)
 					}
-					s.append(s.schemaComment(c.S, a.Text, ""))
+					s.append(s.schemaComment(c, c.S, a.Text, ""))
 				case *schema.ModifyAttr:
 					to, ok1 := change.To.(*schema.Comment)
 					from, ok2 := change.From.(*schema.Comment)
 					if !ok1 || !ok2 {
 						return nil, fmt.Errorf("unexpected schema ModifyAttr: (%T, %T)", change.To, change.From)
 					}
-					s.append(s.schemaComment(c.S, to.Text, from.Text))
+					s.append(s.schemaComment(c, c.S, to.Text, from.Text))
 				default:
 					return nil, fmt.Errorf("unsupported ModifySchema change: %T", change)
 				}
@@ -266,11 +266,11 @@ func (s *state) addTable(add *schema.AddTable) error {
 	})
 	for _, idx := range add.T.Indexes {
 		// Indexes do not need to be created concurrently on new tables.
-		if err := s.addIndexes(add.T, &schema.AddIndex{I: idx}); err != nil {
+		if err := s.addIndexes(add, add.T, &schema.AddIndex{I: idx}); err != nil {
 			return err
 		}
 	}
-	s.addComments(add.T)
+	s.addComments(add, add.T)
 	return nil
 }
 
@@ -329,12 +329,12 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 			if err != nil {
 				return err
 			}
-			changes = append(changes, s.tableComment(modify.T, to, from))
+			changes = append(changes, s.tableComment(modify, modify.T, to, from))
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %T", change)
 		case *schema.AddIndex:
 			if c := (schema.Comment{}); sqlx.Has(change.I.Attrs, &c) {
-				changes = append(changes, s.indexComment(modify.T, change.I, c.Text, ""))
+				changes = append(changes, s.indexComment(modify, modify.T, change.I, c.Text, ""))
 			}
 			addI = append(addI, change)
 		case *schema.DropIndex:
@@ -360,7 +360,7 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 				if err != nil {
 					return err
 				}
-				changes = append(changes, s.indexComment(modify.T, change.To, to, from))
+				changes = append(changes, s.indexComment(modify, modify.T, change.To, to, from))
 				// If only the comment of the index was changed.
 				if k &= ^schema.ChangeComment; k.Is(schema.NoChange) {
 					continue
@@ -386,7 +386,7 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 			})
 		case *schema.AddColumn:
 			if c := (schema.Comment{}); sqlx.Has(change.C.Attrs, &c) {
-				changes = append(changes, s.columnComment(modify.T, change.C, c.Text, ""))
+				changes = append(changes, s.columnComment(modify, modify.T, change.C, c.Text, ""))
 			}
 			alter = append(alter, change)
 		case *schema.ModifyColumn:
@@ -396,7 +396,7 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 				if err != nil {
 					return err
 				}
-				changes = append(changes, s.columnComment(modify.T, change.To, to, from))
+				changes = append(changes, s.columnComment(modify, modify.T, change.To, to, from))
 				// If only the comment of the column was changed.
 				if k &= ^schema.ChangeComment; k.Is(schema.NoChange) {
 					continue
@@ -417,7 +417,7 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 			alter = append(alter, change)
 		}
 	}
-	if err := s.dropIndexes(modify.T, dropI...); err != nil {
+	if err := s.dropIndexes(modify, modify.T, dropI...); err != nil {
 		return err
 	}
 	if len(alter) > 0 {
@@ -425,7 +425,7 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 			return err
 		}
 	}
-	if err := s.addIndexes(modify.T, addI...); err != nil {
+	if err := s.addIndexes(modify, modify.T, addI...); err != nil {
 		return err
 	}
 	s.append(changes...)
@@ -718,73 +718,78 @@ func (s *state) renameTable(c *schema.RenameTable) {
 	})
 }
 
-func (s *state) addComments(t *schema.Table) {
+func (s *state) addComments(src schema.Change, t *schema.Table) {
 	var c schema.Comment
 	if sqlx.Has(t.Attrs, &c) && c.Text != "" {
-		s.append(s.tableComment(t, c.Text, ""))
+		s.append(s.tableComment(src, t, c.Text, ""))
 	}
 	for i := range t.Columns {
 		if sqlx.Has(t.Columns[i].Attrs, &c) && c.Text != "" {
-			s.append(s.columnComment(t, t.Columns[i], c.Text, ""))
+			s.append(s.columnComment(src, t, t.Columns[i], c.Text, ""))
 		}
 	}
 	for i := range t.Indexes {
 		if sqlx.Has(t.Indexes[i].Attrs, &c) && c.Text != "" {
-			s.append(s.indexComment(t, t.Indexes[i], c.Text, ""))
+			s.append(s.indexComment(src, t, t.Indexes[i], c.Text, ""))
 		}
 	}
 }
 
-func (s *state) schemaComment(sc *schema.Schema, to, from string) *migrate.Change {
+func (s *state) schemaComment(src schema.Change, sc *schema.Schema, to, from string) *migrate.Change {
 	b := s.Build("COMMENT ON SCHEMA").Ident(sc.Name).P("IS")
 	return &migrate.Change{
 		Cmd:     b.Clone().P(quote(to)).String(),
+		Source:  src,
 		Comment: fmt.Sprintf("set comment to schema: %q", sc.Name),
 		Reverse: b.Clone().P(quote(from)).String(),
 	}
 }
 
-func (s *state) tableComment(t *schema.Table, to, from string) *migrate.Change {
+func (s *state) tableComment(src schema.Change, t *schema.Table, to, from string) *migrate.Change {
 	b := s.Build("COMMENT ON TABLE").Table(t).P("IS")
 	return &migrate.Change{
 		Cmd:     b.Clone().P(quote(to)).String(),
+		Source:  src,
 		Comment: fmt.Sprintf("set comment to table: %q", t.Name),
 		Reverse: b.Clone().P(quote(from)).String(),
 	}
 }
 
-func (s *state) columnComment(t *schema.Table, c *schema.Column, to, from string) *migrate.Change {
+func (s *state) columnComment(src schema.Change, t *schema.Table, c *schema.Column, to, from string) *migrate.Change {
 	b := s.Build("COMMENT ON COLUMN").Table(t)
 	b.WriteByte('.')
 	b.Ident(c.Name).P("IS")
 	return &migrate.Change{
 		Cmd:     b.Clone().P(quote(to)).String(),
+		Source:  src,
 		Comment: fmt.Sprintf("set comment to column: %q on table: %q", c.Name, t.Name),
 		Reverse: b.Clone().P(quote(from)).String(),
 	}
 }
 
-func (s *state) indexComment(t *schema.Table, idx *schema.Index, to, from string) *migrate.Change {
+func (s *state) indexComment(src schema.Change, t *schema.Table, idx *schema.Index, to, from string) *migrate.Change {
 	b := s.Build("COMMENT ON INDEX").Ident(idx.Name).P("IS")
 	return &migrate.Change{
 		Cmd:     b.Clone().P(quote(to)).String(),
+		Source:  src,
 		Comment: fmt.Sprintf("set comment to index: %q on table: %q", idx.Name, t.Name),
 		Reverse: b.Clone().P(quote(from)).String(),
 	}
 }
 
-func (s *state) dropIndexes(t *schema.Table, drops ...*schema.DropIndex) error {
+func (s *state) dropIndexes(src schema.Change, t *schema.Table, drops ...*schema.DropIndex) error {
 	adds := make([]*schema.AddIndex, len(drops))
 	for i, d := range drops {
 		adds[i] = &schema.AddIndex{I: d.I, Extra: d.Extra}
 	}
 	rs := &state{conn: s.conn, PlanOptions: s.PlanOptions}
-	if err := rs.addIndexes(t, adds...); err != nil {
+	if err := rs.addIndexes(src, t, adds...); err != nil {
 		return err
 	}
 	for i, add := range adds {
 		s.append(&migrate.Change{
 			Cmd:     rs.Changes[i].Reverse.(string),
+			Source:  src,
 			Comment: fmt.Sprintf("drop index %q from table: %q", add.I.Name, t.Name),
 			Reverse: rs.Changes[i].Cmd,
 		})
@@ -837,7 +842,7 @@ func (s *state) alterEnum(modify *schema.ModifyObject) error {
 	return nil
 }
 
-func (s *state) addIndexes(t *schema.Table, adds ...*schema.AddIndex) error {
+func (s *state) addIndexes(src schema.Change, t *schema.Table, adds ...*schema.AddIndex) error {
 	for _, add := range adds {
 		b, idx := s.Build("CREATE"), add.I
 		if idx.Unique {
@@ -856,6 +861,7 @@ func (s *state) addIndexes(t *schema.Table, adds ...*schema.AddIndex) error {
 		}
 		s.append(&migrate.Change{
 			Cmd:     b.String(),
+			Source:  src,
 			Comment: fmt.Sprintf("create index %q to table: %q", idx.Name, t.Name),
 			Reverse: func() string {
 				b := s.Build("DROP INDEX")
