@@ -62,7 +62,6 @@ module.exports = {
           className: 'header-newsletter-link',
           position: 'right',
         },
-
         {
           to: 'getting-started',
           label: 'Docs',
@@ -81,6 +80,11 @@ module.exports = {
         {
           to: 'https://atlasgo.cloud/?utm_term=topnav',
           label: 'Cloud',
+          position: 'left',
+        },
+        {
+          to: 'support',
+          label: 'Support',
           position: 'left',
         },
       ],

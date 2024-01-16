@@ -132,6 +132,10 @@ module.exports = {
                 },
             ]
         },
+        {
+            type: 'doc',
+            id: 'support',
+        }
     ],
     guides: [
         {
