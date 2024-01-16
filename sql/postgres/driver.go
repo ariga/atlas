@@ -164,16 +164,7 @@ func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (
 	}
 	return func() error {
 		defer conn.Close()
-		rows, err := conn.QueryContext(ctx, "SELECT pg_advisory_unlock($1)", id)
-		if err != nil {
-			return err
-		}
-		switch released, err := sqlx.ScanNullBool(rows); {
-		case err != nil:
-			return err
-		case !released.Valid || !released.Bool:
-			return fmt.Errorf("sql/postgres: failed releasing lock %d", id)
-		}
+		// Don't need to unlock explicitly cause transactional lock will be automatically released
 		return nil
 	}, nil
 }
@@ -337,7 +328,7 @@ func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout ti
 		fallthrough
 	// Infinite timeout.
 	case timeout < 0:
-		rows, err := conn.QueryContext(ctx, "SELECT pg_advisory_lock($1)", id)
+		rows, err := conn.QueryContext(ctx, "SELECT pg_advisory_xact_lock($1)", id)
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			err = schema.ErrLocked
 		}
@@ -347,7 +338,7 @@ func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout ti
 		return rows.Close()
 	// No timeout.
 	default:
-		rows, err := conn.QueryContext(ctx, "SELECT pg_try_advisory_lock($1)", id)
+		rows, err := conn.QueryContext(ctx, "SELECT pg_try_advisory_xact_lock($1)", id)
 		if err != nil {
 			return err
 		}
