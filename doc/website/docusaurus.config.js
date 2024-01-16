@@ -62,7 +62,6 @@ module.exports = {
           className: 'header-newsletter-link',
           position: 'right',
         },
-
         {
           to: 'getting-started',
           label: 'Docs',
@@ -79,8 +78,8 @@ module.exports = {
           position: 'left'
         },
         {
-          to: 'https://atlasgo.cloud/?utm_term=topnav',
-          label: 'Cloud',
+          to: 'support',
+          label: 'Support',
           position: 'left',
         },
       ],
@@ -96,7 +95,6 @@ module.exports = {
             {"label": "CLI Reference", "to": "cli-reference"},
             {"label": "Blog", "to": "blog"},
             {"label": "Guides", "to": "guides"},
-            {"label": "About", "to": "about"},
             {"label": "GoDoc", "to": "https://pkg.go.dev/ariga.io/atlas"},
           ]
         },

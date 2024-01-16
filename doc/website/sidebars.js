@@ -136,6 +136,10 @@ module.exports = {
                 },
             ]
         },
+        {
+            type: 'doc',
+            id: 'support',
+        }
     ],
     guides: [
         {
@@ -458,12 +462,5 @@ module.exports = {
             type: 'doc',
             id: 'guides/ddl'
         },
-    ],
-    about: [
-        {
-            type: 'doc',
-            label: 'About',
-            id: 'about',
-        }
     ]
 };
