@@ -128,6 +128,10 @@ module.exports = {
             items: [
                 {
                     type: 'doc',
+                    id: 'features'
+                },
+                {
+                    type: 'doc',
                     id: 'community-edition'
                 },
             ]
