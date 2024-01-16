@@ -99,7 +99,7 @@ func main() {
 		log.Fatalf("failed to initialize client: %v", err)
 	}
 	// Run `atlas migrate apply` on a SQLite database under /tmp.
-	res, err := client.Apply(context.Background(), &atlasexec.ApplyParams{
+	res, err := client.Apply(context.Background(), &atlasexec.MigrateApplyParams{
 		URL: "sqlite:///tmp/demo.db?_fk=1&cache=shared",
 	})
 	if err != nil {
