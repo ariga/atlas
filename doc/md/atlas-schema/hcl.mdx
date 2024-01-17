@@ -18,15 +18,8 @@ provides the ability to attach annotations to objects, such as PII or sensitive 
 The `schema` object describes a database schema. A `DATABASE` in MySQL and SQLite, or a `SCHEMA` in PostgreSQL.
 An HCL file can contain 1 or more schema objects.
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 In MySQL and MariaDB, the `schema` resource can contain the `charset` and `collate` attributes. Read more about them
 in [MySQL](https://dev.mysql.com/doc/refman/8.0/en/charset.html) or
@@ -45,7 +38,7 @@ schema "orders" {}
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```hcl
 schema "public" {
@@ -56,13 +49,24 @@ schema "private" {}
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 Atlas does not support [attached databases](https://www.sqlite.org/lang_attach.html), and support only the default
 database (i.e. `main`).
 
 ```hcl
 schema "main" {}
+```
+
+</TabItem>
+<TabItem label="SQLServer" value="sqlserver">
+
+```hcl
+schema "dbo" {
+  comment = "A schema comment"
+}
+
+schema "private" {}
 ```
 
 </TabItem>
@@ -341,14 +345,8 @@ column "active" {
 
 Generated columns are columns whose their values are computed using other columns or by deterministic expressions.
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```hcl
 table "users" {
@@ -372,7 +370,7 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```hcl
 table "users" {
@@ -396,7 +394,7 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```hcl
 table "users" {
@@ -414,6 +412,30 @@ table "users" {
     as {
       expr = "a * b"
       type = STORED
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem label="SQLServer" value="sqlserver">
+
+```hcl
+table "users" {
+  schema = schema.test
+  column "a" {
+    type = int
+  }
+  column "b" {
+    type = int
+    as = "a * 2"
+  }
+  column "c" {
+    type = int
+    as {
+      expr = "a * b"
+      # In SQLServer, computed columns are non-PERSISTED by default.
+      type = PERSISTED
     }
   }
 }
@@ -883,6 +905,115 @@ function "f1" {
 ```
 
 </TabItem>
+<TabItem label="SQLServer" value="sqlserver">
+
+```hcl
+function "fn_return_scalar" {
+  schema = schema.dbo
+  lang   = SQL
+  arg "@a" {
+    type = int
+  }
+  arg "@b" {
+    type    = int
+    default = 1
+  }
+  return       = int
+  as           = <<-SQL
+  BEGIN
+    RETURN @a * @a + @b * @b
+  END
+  SQL
+  schema_bound = true         // SCHEMABINDING
+  null_call    = RETURNS_NULL // (RETURNS NULL | CALLED) ON NULL INPUT
+  inline       = true         // INLINE = { (OFF | ON) }
+}
+
+function "fn_return_inline" {
+  schema = schema.dbo
+  lang   = SQL
+  arg "@a" {
+    type = int
+  }
+  arg "@b" {
+    type    = int
+    default = 1
+  }
+  return = sql("table")
+  as     = "RETURN SELECT @a as [a], @b as [b], (@a+@b)*2 as [p], @a*@b as [s]"
+}
+
+function "fn_return_table" {
+  schema = schema.dbo
+  lang   = SQL
+  arg "@a" {
+    type = int
+  }
+  arg "@b" {
+    type    = int
+    default = 1
+  }
+  return_table "@t1" {
+    column "c1" {
+      null = false
+      type = int
+    }
+    column "c2" {
+      null = false
+      type = nvarchar(255)
+    }
+    column "c3" {
+      null    = true
+      type    = nvarchar(255)
+      default = sql("N'G'")
+    }
+    column "c4" {
+      null = false
+      type = int
+    }
+    primary_key {
+      columns = [column.c1]
+    }
+    index {
+      unique       = true
+      nonclustered = true
+      on {
+        desc   = true
+        column = column.c3
+      }
+      on {
+        column = column.c4
+      }
+    }
+    index {
+      unique       = true
+      nonclustered = true
+      on {
+        column = column.c2
+      }
+      on {
+        desc   = true
+        column = column.c3
+      }
+    }
+    index "idx" {
+      columns      = [column.c2]
+      nonclustered = true
+    }
+    check {
+      expr = "([c4]>(0))"
+    }
+  }
+  as = <<-SQL
+  BEGIN
+    INSERT @t1
+    SELECT 1 AS [c1], 'A' AS [c2], NULL AS [c3], @a * @a + @b AS [c4];
+    RETURN
+  END
+  SQL
+}
+```
+</TabItem>
 </Tabs>
 
 ## Procedure
@@ -954,6 +1085,102 @@ procedure "p2" {
 }
 ```
 
+</TabItem>
+<TabItem label="SQLServer" value="sqlserver">
+
+```hcl
+procedure "p1" {
+  schema = schema.dbo
+  as     = <<-SQL
+  SET NOCOUNT ON;
+  	SELECT [c1], [c2], [c3]
+  	FROM [dbo].[t1];
+  SQL
+}
+procedure "p2" {
+  schema = schema.dbo
+  as     = <<-SQL
+  BEGIN
+  	SELECT TOP(10) [c1], [c2], [c3] FROM [dbo].[t1];
+  	SELECT TOP(10) [c1], [c4] FROM [dbo].[t2]; END
+  SQL
+}
+procedure "p3" {
+  schema = schema.dbo
+  arg "@c2" {
+    type = nvarchar(50)
+  }
+  arg "@c3" {
+    type = nvarchar(50)
+  }
+  as = <<-SQL
+  SET NOCOUNT ON;
+  	SELECT [c1], [c2], [c3]
+  	FROM [dbo].[t1]
+  	WHERE [c2] = @c2 AND [c3] = @c3;
+  SQL
+}
+procedure "p4" {
+  schema = schema.dbo
+  arg "@c2" {
+    type    = nvarchar(50)
+    default = "D%"
+  }
+  arg "@c3" {
+    type    = nvarchar(50)
+    default = "%"
+  }
+  as = <<-SQL
+  BEGIN
+  	SET NOCOUNT ON;
+  	SELECT [c1] as [c1], [c2], [c3]
+  	FROM [dbo].[t1]
+  	WHERE [c2] LIKE @c2 AND [c3] LIKE @c3;
+  END
+  SQL
+}
+procedure "p5" {
+  schema = schema.dbo
+  arg "@a" {
+    type = int
+  }
+  arg "@b" {
+    type = int
+  }
+  arg "@s" {
+    type = int
+    mode = OUT
+  }
+  arg "@p" {
+    type = int
+    mode = OUT
+  }
+  as = <<-SQL
+  SET NOCOUNT ON;
+  	SET @s = @a * @b;
+  	SET @p = (@a + @b) * 2;
+  SQL
+}
+procedure "p7" {
+  schema = schema.dbo
+  as     = "TRUNCATE TABLE [dbo].[t1];"
+}
+procedure "p8" {
+  schema = schema.dbo
+  arg "@c" {
+    type = cursor
+    mode = OUT
+  }
+  as = <<-SQL
+  SET NOCOUNT ON;
+  	SET @c = CURSOR
+  	FORWARD_ONLY STATIC FOR
+  	SELECT [c1], [c2]
+  	FROM [dbo].[t1];
+  	OPEN @c;
+  SQL
+}
+```
 </TabItem>
 </Tabs>
 
@@ -1129,13 +1356,8 @@ Read more about them in [MySQL](https://dev.mysql.com/doc/refman/8.0/en/charset.
 [MariaDB](https://mariadb.com/kb/en/setting-character-sets-and-collations/) and
 [PostgreSQL](https://www.postgresql.org/docs/current/collation.html) websites.
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'PostgreSQL', value: 'postgres'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```hcl
 schema "public" {
@@ -1153,7 +1375,7 @@ table "products" {
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```hcl
 schema "public" {}
@@ -1167,6 +1389,22 @@ table "products" {
 ```
 
 </TabItem>
+<TabItem label="SQLServer" value="sqlserver">
+
+SQLServer only support `collate` attribute on columns.
+```hcl
+schema "dbo" {}
+
+table "users" {
+  schema = schema.dbo
+  column "name" {
+    type    = varchar(255)
+    collate = "Vietnamese_CI_AS"
+  }
+}
+```
+
+</TabItem>
 </Tabs>
 
 ## Auto Increment
@@ -1175,14 +1413,8 @@ table "products" {
 generate a unique identity for new rows.
 
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 In MySQL/MariaDB the `auto_increment` attribute can be set on columns and tables.
 
@@ -1218,7 +1450,7 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 PostgreSQL supports `serial` columns and the `generated as identity` syntax for versions >= 10.
 
@@ -1241,7 +1473,7 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 SQLite allows configuring [`AUTOINCREMENT`](https://www.sqlite.org/autoinc.html) columns using the `auto_increment`
 attribute.
@@ -1253,6 +1485,26 @@ table "users" {
     null = false
     type = integer
     auto_increment = true
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+}
+```
+
+</TabItem>
+<TabItem label="SQLServer" value="sqlserver">
+
+```hcl
+table "users" {
+  schema = schema.dbo
+  column "id" {
+    null = false
+    type = bigint
+    identity {
+      seed      = 701
+      increment = 1000
+    }
   }
   primary_key  {
     columns = [column.id]
