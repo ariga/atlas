@@ -72,6 +72,14 @@ atlas migrate push app \
 ```
 
 </TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```bash
+atlas migrate push app \
+  --dev-url "docker://sqlserver/2022-latest"
+```
+
+</TabItem>
 <TabItem value="clickhouse" label="ClickHouse">
 
 ```bash
@@ -121,6 +129,15 @@ atlas migrate apply \
 ```
 
 </TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app" \
+  --url "sqlserver://sa:P@ssw0rd0995@:1433?database=master"
+```
+
+</TabItem>
 <TabItem value="clickhouse" label="ClickHouse">
 
 ```bash
@@ -167,6 +184,15 @@ atlas migrate apply \
 atlas migrate apply \
   --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
   --url "sqlite://example.db"
+```
+
+</TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
+  --url "sqlserver://sa:P@ssw0rd0995@:1433?database=master"
 ```
 
 </TabItem>
