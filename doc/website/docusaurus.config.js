@@ -82,6 +82,11 @@ module.exports = {
           label: 'Support',
           position: 'left',
         },
+        {
+          to: 'https://atlasgo.cloud/?utm_term=topnav',
+          label: 'Cloud',
+          position: 'left',
+        },
       ],
     },
     //
