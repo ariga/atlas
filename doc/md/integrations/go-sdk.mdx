@@ -94,7 +94,7 @@ func main() {
 	defer workdir.Close()
 
 	// Initialize the client.
-	client, err := atlasexec.NewClientWithDir(workdir.Path(), "atlas")
+	client, err := atlasexec.NewClient(workdir.Path(), "atlas")
 	if err != nil {
 		log.Fatalf("failed to initialize client: %v", err)
 	}
@@ -132,4 +132,3 @@ Applied 0 migrations
 In this tutorial, we have seen how to use the `atlasexec` package to drive the Atlas CLI from Go code.
 We focused on the `Apply` method, but the SDK also provides methods for `SchemaApply`, `Status`, `Inspect`, and more.
 For more information, please refer to the [package documentation](https://pkg.go.dev/ariga.io/atlas-go-sdk@master/atlasexec).
-
