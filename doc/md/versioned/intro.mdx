@@ -61,6 +61,25 @@ CREATE TABLE `repos` (
 ```
 
 </TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```sql title="schema.sql"
+CREATE TABLE [users] (
+  [id] bigint,
+  [name] nvarchar(255) NOT NULL,
+  PRIMARY KEY ([id])
+);
+
+CREATE TABLE [repos] (
+  [id] bigint,
+  [name] varchar(255) NOT NULL,
+  [owner_id] bigint NOT NULL,
+  PRIMARY KEY ([id]),
+  CONSTRAINT [owner_id] FOREIGN KEY ([owner_id]) REFERENCES [users] ([id])
+);
+```
+
+</TabItem>
 <TabItem value="clickhouse" label="ClickHouse">
 
 ```sql title="schema.sql"
@@ -101,6 +120,16 @@ atlas migrate diff initial \
 atlas migrate diff initial \
   --to file://schema.sql \
   --dev-url "docker://mysql/8/dev" \
+  --format '{{ sql . "  " }}'
+```
+
+</TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```bash
+atlas migrate diff initial \
+  --to file://schema.sql \
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=schema" \
   --format '{{ sql . "  " }}'
 ```
 
@@ -232,6 +261,13 @@ docker run --rm -d --name atlas-demo -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABA
 ```
 
 </TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```bash
+docker run --rm -d --name atlas-demo -e ACCEPT_EULA=Y -e MSSQL_PID=Developer -e MSSQL_SA_PASSWORD=P\@ssw0rd0995 -p 1434:1433 mcr.microsoft.com/mssql/server:2022-latest
+```
+
+</TabItem>
 <TabItem value="clickhouse" label="ClickHouse">
 
 ```bash
@@ -263,6 +299,19 @@ env "local" {
 # The "dev" environment represents our local testings.
 env "local" {
   url = "mysql://root:pass@:3306/example"
+  migration {
+    dir = "atlas://app"
+  }
+}
+```
+
+</TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```hcl title="atlas.hcl" {1}
+# The "dev" environment represents our local testings.
+env "local" {
+  url = "sqlserver://sa:P@ssw0rd0995@:1433?database=master"
   migration {
     dir = "atlas://app"
   }
@@ -390,6 +439,39 @@ CREATE TABLE `commits` (
 ```
 
 </TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```sql title="schema.sql"
+CREATE TABLE [users] (
+  [id] bigint,
+  [name] nvarchar(255) NOT NULL,
+  PRIMARY KEY ([id])
+);
+
+CREATE TABLE [repos] (
+  [id] bigint,
+  [name] nvarchar(255) NOT NULL,
+// highlight-next-line
+  [description] nvarchar(255) NULL,
+  [owner_id] bigint NOT NULL,
+  PRIMARY KEY ([id]),
+  CONSTRAINT [owner_id] FOREIGN KEY ([owner_id]) REFERENCES [users] ([id])
+);
+
+// highlight-start
+CREATE TABLE [commits] (
+  [id] bigint,
+  [message] nvarchar(255) NOT NULL,
+  [repo_id] bigint NOT NULL,
+  [author_id] bigint NOT NULL,
+  PRIMARY KEY ([id]),
+  CONSTRAINT [repo_id] FOREIGN KEY ([repo_id]) REFERENCES [repos] ([id]),
+  CONSTRAINT [author_id] FOREIGN KEY ([author_id]) REFERENCES [users] ([id])
+);
+// highlight-end
+```
+
+</TabItem>
 <TabItem value="clickhouse" label="ClickHouse">
 
 ```sql title="schema.sql"
@@ -443,6 +525,16 @@ atlas migrate diff add_commits \
 ```
 
 </TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```bash
+atlas migrate diff add_commits \
+  --to file://schema.sql \
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=schema" \
+  --format '{{ sql . "  " }}'
+```
+
+</TabItem>
 <TabItem value="clickhouse" label="ClickHouse">
 
 ```bash
@@ -473,6 +565,14 @@ atlas migrate push app \
 ```bash
 atlas migrate push app \
   --dev-url "docker://mysql/8/dev" \
+```
+
+</TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```bash
+atlas migrate push app \
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=schema" \
 ```
 
 </TabItem>

@@ -73,6 +73,15 @@ atlas migrate lint \
 ```
 
 </TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://sqlserver/2022-latest" \
+  -w
+```
+
+</TabItem>
 <TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
@@ -136,6 +145,15 @@ atlas migrate lint \
 ```
 
 </TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=schema" \
+  --latest 1
+```
+
+</TabItem>
 <TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
@@ -192,6 +210,16 @@ atlas migrate lint \
 ```shell
 atlas migrate lint \
   --dev-url "sqlite://file?mode=memory" \
+  --git-base "master" \
+  -w
+```
+
+</TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=schema" \
   --git-base "master" \
   -w
 ```
@@ -376,6 +404,20 @@ atlas login
 ```shell
 atlas migrate lint \
   --dev-url "sqlite://file?mode=memory" \
+  --latest 1 \
+  -w
+```
+
+</TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas login
+```
+
+```shell
+atlas migrate lint \
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=schema" \
   --latest 1 \
   -w
 ```

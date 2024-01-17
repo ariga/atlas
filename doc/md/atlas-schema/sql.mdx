@@ -65,6 +65,18 @@ few examples of how to use the docker driver:
 ```
 
 </TabItem>
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+# When working on a single database schema.
+--dev-url "docker://sqlserver/2022-latest/dev?mode=schema"
+
+# When working on multiple database schemas.
+--dev-url "docker://sqlserver/2022-latest/dev?mode=database"
+```
+
+</TabItem>
+
 <TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
