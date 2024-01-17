@@ -908,7 +908,7 @@ function "f1" {
 <TabItem label="SQLServer" value="sqlserver">
 
 ```hcl
-function "f1" {
+function "fn_return_scalar" {
   schema = schema.dbo
   lang   = SQL
   arg "@a" {
@@ -927,6 +927,90 @@ function "f1" {
   schema_bound = true         // SCHEMABINDING
   null_call    = RETURNS_NULL // (RETURNS NULL | CALLED) ON NULL INPUT
   inline       = true         // INLINE = { (OFF | ON) }
+}
+
+function "fn_return_inline" {
+  schema = schema.dbo
+  lang   = SQL
+  arg "@a" {
+    type = int
+  }
+  arg "@b" {
+    type    = int
+    default = 1
+  }
+  return = sql("table")
+  as     = "RETURN SELECT @a as [a], @b as [b], (@a+@b)*2 as [p], @a*@b as [s]"
+}
+
+function "fn_return_table" {
+  schema = schema.dbo
+  lang   = SQL
+  arg "@a" {
+    type = int
+  }
+  arg "@b" {
+    type    = int
+    default = 1
+  }
+  return_table "@t1" {
+    column "c1" {
+      null = false
+      type = int
+    }
+    column "c2" {
+      null = false
+      type = nvarchar(255)
+    }
+    column "c3" {
+      null    = true
+      type    = nvarchar(255)
+      default = sql("N'G'")
+    }
+    column "c4" {
+      null = false
+      type = int
+    }
+    primary_key {
+      columns = [column.c1]
+    }
+    index {
+      unique       = true
+      nonclustered = true
+      on {
+        desc   = true
+        column = column.c3
+      }
+      on {
+        column = column.c4
+      }
+    }
+    index {
+      unique       = true
+      nonclustered = true
+      on {
+        column = column.c2
+      }
+      on {
+        desc   = true
+        column = column.c3
+      }
+    }
+    index "idx" {
+      columns      = [column.c2]
+      nonclustered = true
+    }
+    check {
+      expr = "([c4]>(0))"
+    }
+  }
+  as = <<-SQL
+  BEGIN
+    INSERT @t1
+    SELECT 1 AS [c1], 'A' AS [c2], NULL AS [c3], @a * @a + @b AS [c4];
+    RETURN
+  END
+  SQL
 }
 ```
 </TabItem>
