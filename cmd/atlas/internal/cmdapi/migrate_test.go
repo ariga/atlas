@@ -193,8 +193,8 @@ func TestMigrate_Apply(t *testing.T) {
 	require.Contains(t, s, "20220318104614")                           // log to version
 	require.Contains(t, s, "CREATE TABLE tbl (`col` int NOT NULL);")   // logs statement
 	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;") // does not execute second file
-	require.Contains(t, s, "1 migrations")                             // logs amount of migrations
-	require.Contains(t, s, "1 sql statements")
+	require.Contains(t, s, "1 migration")                              // logs amount of migrations
+	require.Contains(t, s, "1 sql statement")
 
 	// Transactions will be wrapped per file. If the second file has an error, first still is applied.
 	s, err = runCmd(
@@ -208,8 +208,8 @@ func TestMigrate_Apply(t *testing.T) {
 	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;")    // does execute first stmt first second file
 	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_3` bigint;")    // does execute second stmt first second file
 	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_4` bigint;") // but not third
-	require.Contains(t, s, "1 migrations ok (1 with errors)")          // logs amount of migrations
-	require.Contains(t, s, "2 sql statements ok (1 with errors)")      // logs amount of statement
+	require.Contains(t, s, "-- 1 migration ok, 1 with errors")         // logs amount of migrations
+	require.Contains(t, s, "-- 2 sql statements ok, 1 with errors")    // logs amount of statement
 	require.Contains(t, s, "near \"asdasd\": syntax error")            // logs error summary
 
 	c, err := sqlclient.Open(ctx, fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")))
@@ -243,8 +243,8 @@ func TestMigrate_Apply(t *testing.T) {
 	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;")     // picks up first statement
 	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_3` bigint;")     // does execute second stmt first second file
 	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_4` bigint;")  // but not third
-	require.Contains(t, s, "0 migrations ok (1 with errors)")           // logs amount of migrations
-	require.Contains(t, s, "1 sql statements ok (1 with errors)")       // logs amount of statement
+	require.Contains(t, s, "-- 1 migration with errors")                // logs amount of migrations
+	require.Contains(t, s, "-- 1 sql statement ok, 1 with errors")      // logs amount of statement
 	require.Contains(t, s, "near \"asdasd\": syntax error")             // logs error summary
 
 	// Editing an applied line will raise error.
@@ -1055,7 +1055,7 @@ env {
 		)
 		require.NoError(t, err)
 		// Reporting error should not affect the migration execution.
-		require.True(t, strings.HasSuffix(s, "  -- 1 migrations\n  -- 1 sql statements\nError: unexpected status code: 500\n"))
+		require.True(t, strings.HasSuffix(s, "  -- 1 migration\n  -- 1 sql statement\nError: unexpected status code: 500\n"))
 
 		// Custom logging.
 		cmd = migrateCmd()

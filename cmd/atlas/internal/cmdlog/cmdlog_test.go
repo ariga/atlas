@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"testing"
 	"text/template"
+	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/sql/migrate"
@@ -345,5 +346,274 @@ func TestMigrateSet(t *testing.T) {
   - 2
   - 3 (desc)
 
+`, b.String())
+}
+
+func TestMigrateApply(t *testing.T) {
+	var (
+		b   bytes.Buffer
+		d   migrate.MemDir
+		log = &cmdlog.MigrateApply{Start: time.Now()}
+	)
+	log.End = log.Start.Add(time.Millisecond * 10)
+	color.NoColor = true
+	require.NoError(t, cmdlog.MigrateApplyTemplate.Execute(&b, log))
+	require.Equal(t, "No migration files to execute\n", b.String())
+
+	require.NoError(t, d.WriteFile("20240116000001.sql", nil))
+	require.NoError(t, d.WriteFile("20240116000002.sql", nil))
+	require.NoError(t, d.WriteFile("20240116000003.sql", nil))
+	files, err := d.Files()
+	require.NoError(t, err)
+
+	// Single file.
+	b.Reset()
+	log.Pending = files[:1]
+	log.Target = files[0].Version()
+	log.Applied = []*cmdlog.AppliedFile{
+		{
+			File:  files[0],
+			Start: log.Start,
+			End:   log.Start.Add(time.Millisecond * 5),
+			Applied: []string{
+				"CREATE TABLE users (id int NOT NULL);",
+				"CREATE TABLE posts (id int NOT NULL);",
+			},
+		},
+	}
+	require.NoError(t, cmdlog.MigrateApplyTemplate.Execute(&b, log))
+	require.Equal(t, `Migrating to version 20240116000001 (1 migrations in total):
+
+  -- migrating version 20240116000001
+    -> CREATE TABLE users (id int NOT NULL);
+    -> CREATE TABLE posts (id int NOT NULL);
+  -- ok (5ms)
+
+  -------------------------
+  -- 10ms
+  -- 1 migration
+  -- 2 sql statements
+`, b.String())
+
+	// Multiple files, with errors.
+	b.Reset()
+	log.Pending = files[1:3]
+	log.Current = files[0].Version()
+	log.Target = files[2].Version()
+	log.Applied = []*cmdlog.AppliedFile{
+		{
+			File:  files[1],
+			Start: log.Start,
+			End:   log.Start.Add(time.Millisecond),
+			Applied: []string{
+				"CREATE TABLE t1 (id int NOT NULL);",
+				"CREATE TABLE t2 (id int NOT NULL);",
+			},
+		},
+		{
+			File:  files[2],
+			Start: log.Start,
+			End:   log.Start.Add(time.Millisecond * 2),
+			Applied: []string{
+				"CREATE TABLE t3 (id int NOT NULL);",
+				"CREATE TABLE t4 (id int NOT NULL);",
+			},
+			Error: &cmdlog.StmtError{
+				Stmt: "CREATE TABLE t4 (id int NOT NULL);",
+				Text: "table t4 already exists",
+			},
+		},
+	}
+	require.NoError(t, cmdlog.MigrateApplyTemplate.Execute(&b, log))
+	require.Equal(t, `Migrating to version 20240116000003 from 20240116000001 (2 migrations in total):
+
+  -- migrating version 20240116000002
+    -> CREATE TABLE t1 (id int NOT NULL);
+    -> CREATE TABLE t2 (id int NOT NULL);
+  -- ok (1ms)
+
+  -- migrating version 20240116000003
+    -> CREATE TABLE t3 (id int NOT NULL);
+    -> CREATE TABLE t4 (id int NOT NULL);
+    table t4 already exists
+
+  -------------------------
+  -- 10ms
+  -- 1 migration ok, 1 with errors
+  -- 3 sql statements ok, 1 with errors
+`, b.String())
+
+	// Multiple files with checks, and without errors.
+	b.Reset()
+	log.Applied = []*cmdlog.AppliedFile{
+		{
+			File:  files[1],
+			Start: log.Start,
+			End:   log.Start.Add(time.Millisecond),
+			Applied: []string{
+				"CREATE TABLE t1 (id int NOT NULL);",
+				"CREATE TABLE t2 (id int NOT NULL);",
+			},
+		},
+		{
+			File:  files[2],
+			Start: log.Start,
+			End:   log.Start.Add(time.Millisecond * 2),
+			Checks: []*cmdlog.FileChecks{
+				{
+					Stmts: []*cmdlog.Check{
+						{Stmt: "SELECT 1;"},
+						{Stmt: "SELECT true;"},
+					},
+					Start: log.Start,
+					End:   log.Start.Add(time.Millisecond * 2),
+				},
+			},
+			Applied: []string{
+				"CREATE TABLE t3 (id int NOT NULL);",
+			},
+		},
+	}
+	require.NoError(t, cmdlog.MigrateApplyTemplate.Execute(&b, log))
+	require.Equal(t, `Migrating to version 20240116000003 from 20240116000001 (2 migrations in total):
+
+  -- migrating version 20240116000002
+    -> CREATE TABLE t1 (id int NOT NULL);
+    -> CREATE TABLE t2 (id int NOT NULL);
+  -- ok (1ms)
+
+  -- checks before migrating version 20240116000003
+    -> SELECT 1;
+    -> SELECT true;
+  -- ok (2ms)
+
+  -- migrating version 20240116000003
+    -> CREATE TABLE t3 (id int NOT NULL);
+  -- ok (2ms)
+
+  -------------------------
+  -- 10ms
+  -- 2 migrations
+  -- 2 checks
+  -- 3 sql statements
+`, b.String())
+
+	// Multiple files with check errors.
+	b.Reset()
+	log.Applied = []*cmdlog.AppliedFile{
+		{
+			File:  files[1],
+			Start: log.Start,
+			End:   log.Start.Add(time.Millisecond),
+			Applied: []string{
+				"CREATE TABLE t1 (id int NOT NULL);",
+				"CREATE TABLE t2 (id int NOT NULL);",
+			},
+		},
+		{
+			File:  files[2],
+			Start: log.Start,
+			End:   log.Start.Add(time.Millisecond * 2),
+			Checks: []*cmdlog.FileChecks{
+				{
+					Stmts: []*cmdlog.Check{
+						{Stmt: "SELECT 1;"},
+						{Stmt: "SELECT false;", Error: new(string)},
+					},
+					Start: log.Start,
+					End:   log.Start.Add(time.Millisecond * 2),
+					Error: &cmdlog.StmtError{Text: "assertion failure"},
+				},
+			},
+			Error: &cmdlog.StmtError{
+				Text: "assertion failure",
+			},
+		},
+	}
+	require.NoError(t, cmdlog.MigrateApplyTemplate.Execute(&b, log))
+	require.Equal(t, `Migrating to version 20240116000003 from 20240116000001 (2 migrations in total):
+
+  -- migrating version 20240116000002
+    -> CREATE TABLE t1 (id int NOT NULL);
+    -> CREATE TABLE t2 (id int NOT NULL);
+  -- ok (1ms)
+
+  -- checks before migrating version 20240116000003
+    -> SELECT 1;
+    -> SELECT false;
+    assertion failure
+
+  -------------------------
+  -- 10ms
+  -- 1 migration ok, 1 with errors
+  -- 1 check ok, 1 failure
+  -- 2 sql statements
+`, b.String())
+
+	// Multiple files with multiple checks.
+	b.Reset()
+	log.Applied = []*cmdlog.AppliedFile{
+		{
+			File:  files[1],
+			Start: log.Start,
+			End:   log.Start.Add(time.Millisecond),
+			Applied: []string{
+				"CREATE TABLE t1 (id int NOT NULL);",
+				"CREATE TABLE t2 (id int NOT NULL);",
+			},
+		},
+		{
+			File:  files[2],
+			Start: log.Start,
+			End:   log.Start.Add(time.Millisecond * 2),
+			Checks: []*cmdlog.FileChecks{
+				{
+					Name: "checks/1",
+					Stmts: []*cmdlog.Check{
+						{Stmt: "SELECT 1;"},
+						{Stmt: "SELECT true;"},
+					},
+					Start: log.Start,
+					End:   log.Start.Add(time.Millisecond * 2),
+				},
+				{
+					Name: "checks/2",
+					Stmts: []*cmdlog.Check{
+						{Stmt: "SELECT 1;"},
+						{Stmt: "SELECT false;", Error: new(string)},
+					},
+					Start: log.Start,
+					End:   log.Start.Add(time.Millisecond * 2),
+					Error: &cmdlog.StmtError{Text: "assertion failure"},
+				},
+			},
+			Error: &cmdlog.StmtError{
+				Text: "assertion failure",
+			},
+		},
+	}
+	require.NoError(t, cmdlog.MigrateApplyTemplate.Execute(&b, log))
+	require.Equal(t, `Migrating to version 20240116000003 from 20240116000001 (2 migrations in total):
+
+  -- migrating version 20240116000002
+    -> CREATE TABLE t1 (id int NOT NULL);
+    -> CREATE TABLE t2 (id int NOT NULL);
+  -- ok (1ms)
+
+  -- checks before migrating version 20240116000003
+    -> SELECT 1;
+    -> SELECT true;
+  -- ok (2ms)
+
+  -- checks before migrating version 20240116000003
+    -> SELECT 1;
+    -> SELECT false;
+    assertion failure
+
+  -------------------------
+  -- 10ms
+  -- 1 migration ok, 1 with errors
+  -- 3 checks ok, 1 failure
+  -- 2 sql statements
 `, b.String())
 }

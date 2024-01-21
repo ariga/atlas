@@ -53,6 +53,21 @@ type (
 	// File wraps migrate.File to implement json.Marshaler.
 	File struct{ migrate.File }
 
+	// FileChecks represents a set of checks to run before applying a file.
+	FileChecks struct {
+		Name  string     `json:"Name,omitempty"`  // File/group name.
+		Stmts []*Check   `json:"Stmts,omitempty"` // Checks statements executed.
+		Error *StmtError `json:"Error,omitempty"` // Assertion error.
+		Start time.Time  `json:"Start,omitempty"` // Start assertion time.
+		End   time.Time  `json:"End,omitempty"`   // End assertion time.
+	}
+
+	// Check represents an assertion and its status.
+	Check struct {
+		Stmt  string  `json:"Stmt,omitempty"`  // Assertion status.
+		Error *string `json:"Error,omitempty"` // Assertion error, if any.
+	}
+
 	// StmtError groups a statement with its execution error.
 	StmtError struct {
 		Stmt string `json:"Stmt,omitempty"` // SQL statement that failed.
@@ -101,7 +116,7 @@ var (
 			var buf bytes.Buffer
 			t, err := template.New("report").
 				Funcs(template.FuncMap{
-					"add": func(a, b int) int { return a + b },
+					"add": add,
 				}).
 				Funcs(ColorTemplateFuncs).
 				Parse(`Migration Status:
@@ -298,7 +313,7 @@ func (r *RevisionOp) ColoredVersion() string {
 var (
 	// ApplyTemplateFuncs are global functions available in apply report templates.
 	ApplyTemplateFuncs = merge(ColorTemplateFuncs, template.FuncMap{
-		"dec":        dec,
+		"add":        add,
 		"upper":      strings.ToUpper,
 		"json":       jsonEncode,
 		"json_merge": jsonMerge,
@@ -310,30 +325,45 @@ var (
 				New("report").
 				Funcs(ApplyTemplateFuncs).
 				Parse(`{{- if not .Pending -}}
-No migration files to execute
+{{- println "No migration files to execute" }}
 {{- else -}}
 Migrating to version {{ cyan .Target }}{{ with .Current }} from {{ cyan . }}{{ end }} ({{ len .Pending }} migrations in total):
 {{ range $i, $f := .Applied }}
-  {{ yellow "--" }} migrating version {{ cyan $f.File.Version }}{{ range $f.Applied }}
-    {{ cyan "->" }} {{ indent_ln . 7 }}{{ end }}
-  {{- with .Error }}
-    {{ redBgWhiteFg .Text }}
-  {{- else }}
-  {{ yellow "--" }} ok ({{ yellow (.End.Sub .Start).String }})
-  {{- end }}
-{{ end }}
-  {{ cyan "-------------------------" }}
-  {{ yellow "--" }} {{ .End.Sub .Start }}
-{{- $files := len .Applied }}
-{{- $stmts := .CountStmts }}
-{{- if .Error }}
-  {{ yellow "--" }} {{ dec $files }} migrations ok (1 with errors)
-  {{ yellow "--" }} {{ dec $stmts }} sql statements ok (1 with errors)
-{{- else }}
-  {{ yellow "--" }} {{ len .Applied }} migrations
-  {{ yellow "--" }} {{ .CountStmts  }} sql statements
+	{{- println }}
+	{{- $checkFailed := false }}
+	{{- range $cf := $f.Checks }}
+		{{- println " " (yellow "--") "checks before migrating version" (cyan $f.File.Version) }}
+		{{- range $s := $cf.Stmts }}
+			{{- if $s.Error }}
+				{{- println "   " (red "->") (indent_ln $s.Stmt 7) }}
+			{{- else }}
+				{{- println "   " (cyan "->") (indent_ln $s.Stmt 7) }}
+			{{- end }}
+		{{- end }}
+		{{- with $cf.Error }}
+			{{- $checkFailed = true }}
+			{{- println "   " (redBgWhiteFg .Text) }}
+		{{- else }}
+			{{- printf "  %s ok (%s)\n\n" (yellow "--") (yellow ($cf.End.Sub $cf.Start).String) }}
+		{{- end }}
+	{{- end }}
+	{{- if $checkFailed }}
+		{{- continue }} {{- /* No statements were applied. */}}
+	{{- end }}
+	{{- println " " (yellow "--") "migrating version" (cyan $f.File.Version) }}
+	{{- range $f.Applied }}
+		{{- println "   " (cyan "->") (indent_ln . 7) }}
+	{{- end }}
+	{{- with .Error }}
+		{{- println "   " (redBgWhiteFg .Text) }}
+	{{- else }}
+		{{- printf "  %s ok (%s)\n" (yellow "--") (yellow (.End.Sub .Start).String) }}
+	{{- end }}
 {{- end }}
-{{- end }}
+{{- println }}
+{{- println " " (cyan "-------------------------") }}
+{{- println " " (.Summary "  ") }}
+{{- end -}}
 `))
 )
 
@@ -358,8 +388,9 @@ type (
 		migrate.File
 		Start   time.Time
 		End     time.Time
-		Skipped int      // Amount of skipped SQL statements in a partially applied file.
-		Applied []string // SQL statements applied with success
+		Skipped int           // Amount of skipped SQL statements in a partially applied file.
+		Applied []string      // SQL statements applied with success
+		Checks  []*FileChecks // Assertion checks
 		Error   *StmtError
 	}
 )
@@ -395,6 +426,34 @@ func (a *MigrateApply) Log(e migrate.LogEntry) {
 			Start:   time.Now(),
 			Skipped: e.Skip,
 		})
+	case migrate.LogChecks:
+		f := a.Applied[len(a.Applied)-1]
+		f.Checks = append(f.Checks, &FileChecks{
+			Name:  e.Name,
+			Start: time.Now(),
+			Stmts: make([]*Check, 0, len(e.Stmts)),
+		})
+	case migrate.LogCheck:
+		var (
+			f  = a.Applied[len(a.Applied)-1]
+			cf = f.Checks[len(f.Checks)-1]
+			ck = &Check{Stmt: e.Stmt}
+		)
+		if e.Error != nil {
+			m := e.Error.Error()
+			ck.Error = &m
+		}
+		cf.Stmts = append(cf.Stmts, ck)
+	case migrate.LogChecksDone:
+		f := a.Applied[len(a.Applied)-1]
+		cf := f.Checks[len(f.Checks)-1]
+		cf.End = time.Now()
+		if e.Error != nil {
+			cf.Error = &StmtError{
+				Text: e.Error.Error(),
+				Stmt: cf.Stmts[len(cf.Stmts)-1].Stmt,
+			}
+		}
 	case migrate.LogStmt:
 		f := a.Applied[len(a.Applied)-1]
 		f.Applied = append(f.Applied, e.SQL)
@@ -417,10 +476,83 @@ func (a *MigrateApply) Log(e migrate.LogEntry) {
 	}
 }
 
-// CountStmts returns the amount of applied statements.
-func (a *MigrateApply) CountStmts() (n int) {
+// Summary returns a footer of the migration attempt.
+func (a *MigrateApply) Summary(ident string) string {
+	var (
+		passedC, failedC int
+		passedS, failedS int
+		passedF, failedF int
+		lines            = make([]string, 0, 3)
+	)
 	for _, f := range a.Applied {
-		n += len(f.Applied)
+		// For each check file, count the
+		// number of failed assertions.
+		for _, cf := range f.Checks {
+			for _, s := range cf.Stmts {
+				if s.Error != nil {
+					failedC++
+				} else {
+					passedC++
+				}
+			}
+		}
+		passedS += len(f.Applied)
+		if f.Error != nil {
+			failedF++
+			// Last statement failed (not an assertion).
+			if len(f.Checks) == 0 || f.Checks[len(f.Checks)-1].Error == nil {
+				passedS--
+				failedS++
+			}
+		} else {
+			passedF++
+		}
+	}
+	// Execution time.
+	lines = append(lines, fmt.Sprintf(a.End.Sub(a.Start).String()))
+	// Executed files.
+	switch {
+	case passedF > 0 && failedF > 0:
+		lines = append(lines, fmt.Sprintf("%d migration%s ok, %d with errors", passedF, plural(passedF), failedF))
+	case passedF > 0:
+		lines = append(lines, fmt.Sprintf("%d migration%s", passedF, plural(passedF)))
+	case failedF > 0:
+		lines = append(lines, fmt.Sprintf("%d migration%s with errors", failedF, plural(failedF)))
+	}
+	// Executed checks.
+	switch {
+	case passedC > 0 && failedC > 0:
+		lines = append(lines, fmt.Sprintf("%d check%s ok, %d failure%s", passedC, plural(passedC), failedC, plural(failedC)))
+	case passedC > 0:
+		lines = append(lines, fmt.Sprintf("%d check%s", passedC, plural(passedC)))
+	case failedC > 0:
+		lines = append(lines, fmt.Sprintf("%d check error%s", failedC, plural(failedC)))
+	}
+	// Executed statements.
+	switch {
+	case passedS > 0 && failedS > 0:
+		lines = append(lines, fmt.Sprintf("%d sql statement%s ok, %d with errors", passedS, plural(passedS), failedS))
+	case passedS > 0:
+		lines = append(lines, fmt.Sprintf("%d sql statement%s", passedS, plural(passedS)))
+	case failedS > 0:
+		lines = append(lines, fmt.Sprintf("%d sql statement%s with errors", failedS, plural(failedS)))
+	}
+	var b strings.Builder
+	for i, l := range lines {
+		b.WriteString(ColorYellow("--"))
+		b.WriteByte(' ')
+		b.WriteString(l)
+		if i < len(lines)-1 {
+			b.WriteByte('\n')
+			b.WriteString(ident)
+		}
+	}
+	return b.String()
+}
+
+func plural(n int) (s string) {
+	if n > 1 {
+		s += "s"
 	}
 	return
 }
@@ -920,8 +1052,8 @@ func jsonMerge(objects ...string) (string, error) {
 	return string(b), nil
 }
 
-func dec(i int) int {
-	return i - 1
+func add(a, b int) int {
+	return a + b
 }
 
 func indentLn(input string, indent int) string {

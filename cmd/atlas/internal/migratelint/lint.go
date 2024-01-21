@@ -270,11 +270,11 @@ func (d *DevLoader) base(ctx context.Context, base []migrate.File) (*schema.Real
 		base = base[i:]
 	}
 	for _, f := range base {
-		stmt, err := migrate.FileStmtDecls(d.Dev, f)
+		stmts, err := d.stmts(ctx, f, false)
 		if err != nil {
-			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
+			return nil, err
 		}
-		for _, s := range stmt {
+		for _, s := range stmts {
 			if _, err := d.Dev.ExecContext(ctx, s.Text); err != nil {
 				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err), Pos: s.Pos}
 			}
@@ -286,9 +286,9 @@ func (d *DevLoader) base(ctx context.Context, base []migrate.File) (*schema.Real
 // next returns the next state of the database after executing the statements in
 // the file. The changes detected by the statements are attached to the file.
 func (d *DevLoader) next(ctx context.Context, f *sqlcheck.File, start *schema.Realm) (current *schema.Realm, err error) {
-	stmts, err := migrate.FileStmtDecls(d.Dev, f)
+	stmts, err := d.stmts(ctx, f.File, true)
 	if err != nil {
-		return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
+		return nil, err
 	}
 	current = start
 	for _, s := range stmts {
