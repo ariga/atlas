@@ -652,8 +652,8 @@ func WithOperatorVersion(v string) ExecutorOption {
 // Pending returns all pending (not fully applied) migration files in the migration directory.
 func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	// Don't operate with a broken migration directory.
-	if err := Validate(e.dir); err != nil {
-		return nil, fmt.Errorf("sql/migrate: validate migration directory: %w", err)
+	if err := e.ValidateDir(ctx); err != nil {
+		return nil, err
 	}
 	// Read all applied database revisions.
 	revs, err := e.rrw.ReadRevisions(ctx)
@@ -780,7 +780,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	if err != nil {
 		return fmt.Errorf("sql/migrate: scanning checksum from %q: %w", m.Name(), err)
 	}
-	stmts, err := FileStmts(e.drv, m)
+	stmts, err := e.fileStmts(m)
 	if err != nil {
 		return fmt.Errorf("sql/migrate: scanning statements from %q: %w", m.Name(), err)
 	}
@@ -834,6 +834,12 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		}
 	}
 	e.log.Log(LogFile{m, r.Version, r.Description, r.Applied})
+	if err := e.fileChecks(ctx, m, r); err != nil {
+		e.log.Log(LogError{Error: err})
+		r.done()
+		r.Error = err.Error()
+		return err
+	}
 	for _, stmt := range stmts[r.Applied:] {
 		e.log.Log(LogStmt{stmt})
 		if _, err = e.drv.ExecContext(ctx, stmt); err != nil {
@@ -1109,16 +1115,37 @@ type (
 		Error error
 	}
 
+	// LogChecks is sent before the execution of a group of check statements.
+	LogChecks struct {
+		Name  string   // Optional name.
+		Stmts []string // Check statements.
+	}
+
+	// LogCheck is sent after a specific check statement was executed.
+	LogCheck struct {
+		Stmt  string // Check statement.
+		Error error  // Check error.
+	}
+
+	// LogChecksDone is sent after the execution of a group of checks
+	// together with some text message and error if the group failed.
+	LogChecksDone struct {
+		Error error // Optional error.
+	}
+
 	// NopLogger is a Logger that does nothing.
 	// It is useful for one-time replay of the migration directory.
 	NopLogger struct{}
 )
 
-func (LogExecution) logEntry() {}
-func (LogFile) logEntry()      {}
-func (LogStmt) logEntry()      {}
-func (LogDone) logEntry()      {}
-func (LogError) logEntry()     {}
+func (LogExecution) logEntry()  {}
+func (LogFile) logEntry()       {}
+func (LogStmt) logEntry()       {}
+func (LogCheck) logEntry()      {}
+func (LogChecks) logEntry()     {}
+func (LogChecksDone) logEntry() {}
+func (LogDone) logEntry()       {}
+func (LogError) logEntry()      {}
 
 // Log implements the Logger interface.
 func (NopLogger) Log(LogEntry) {}

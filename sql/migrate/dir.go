@@ -248,13 +248,13 @@ func (f *LocalFile) Bytes() []byte {
 	return f.b
 }
 
-// IsCheckpoint reports whether the file is a checkpoint file.
-func (f *LocalFile) IsCheckpoint() bool {
+// isCheckpoint reports whether the file is a checkpoint file.
+func (f *LocalFile) isCheckpoint() bool {
 	return len(f.Directive(directiveCheckpoint)) > 0
 }
 
-// CheckpointTag returns the tag of the checkpoint file, if defined.
-func (f *LocalFile) CheckpointTag() (string, error) {
+// checkpointTag returns the tag of the checkpoint file, if defined.
+func (f *LocalFile) checkpointTag() (string, error) {
 	ds := f.Directive(directiveCheckpoint)
 	if len(ds) == 0 {
 		return "", ErrNotCheckpoint
@@ -334,7 +334,7 @@ func (f *LocalFile) comments() []string {
 	}
 	// File comments are separated by double newlines from
 	// file content (detached from actual statements).
-	if !strings.HasPrefix(content, "\n") {
+	if !strings.HasPrefix(strings.TrimLeft(content, " \t"), "\n") {
 		return nil
 	}
 	return comments
@@ -343,7 +343,7 @@ func (f *LocalFile) comments() []string {
 type (
 	// MemDir provides an in-memory Dir implementation.
 	MemDir struct {
-		files  map[string]*LocalFile
+		fs     map[string]*LocalFile
 		syncTo []func(string, []byte) error
 	}
 	// An opened MemDir.
@@ -381,7 +381,7 @@ func OpenMemDir(name string) *MemDir {
 
 // Open implements fs.FS.
 func (d *MemDir) Open(name string) (fs.File, error) {
-	f, ok := d.files[name]
+	f, ok := d.fs[name]
 	if !ok {
 		return nil, fs.ErrNotExist
 	}
@@ -392,7 +392,7 @@ func (d *MemDir) Open(name string) (fs.File, error) {
 
 // Reset the in-memory directory to its initial state.
 func (d *MemDir) Reset() {
-	d.files = nil
+	d.fs = nil
 	d.syncTo = nil
 }
 
@@ -418,10 +418,10 @@ func (d *MemDir) Close() error {
 
 // WriteFile adds a new file in-memory.
 func (d *MemDir) WriteFile(name string, data []byte) error {
-	if d.files == nil {
-		d.files = make(map[string]*LocalFile)
+	if d.fs == nil {
+		d.fs = make(map[string]*LocalFile)
 	}
-	d.files[name] = NewLocalFile(name, data)
+	d.fs[name] = NewLocalFile(name, data)
 	for _, f := range d.syncTo {
 		if err := f(name, data); err != nil {
 			return err
@@ -461,8 +461,8 @@ func (d *MemDir) SyncWrites(fs ...func(string, []byte) error) {
 
 // Files returns a set of files stored in-memory to be executed on a database.
 func (d *MemDir) Files() ([]File, error) {
-	files := make([]File, 0, len(d.files))
-	for _, f := range d.files {
+	files := make([]File, 0, len(d.fs))
+	for _, f := range d.fs {
 		if filepath.Ext(f.Name()) == ".sql" {
 			files = append(files, f)
 		}
