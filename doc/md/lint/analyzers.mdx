@@ -230,44 +230,48 @@ lint {
 
 The following schema change checks are provided by Atlas:
 
-| **Check**                                 | **Short Description**                                                           |
-|-------------------------------------------|---------------------------------------------------------------------------------|
-| **AR**                                    | Atlas cloud checks                                                              |
-| [AR101](#AR101)                           | Creating table with non-optimal data alignment                                  |
-| **BC**                                    | **[Backward incompatible changes](#backward-incompatible-changes)**             |
-| [BC101](#BC101)                           | Renaming a table                                                                |
-| [BC102](#BC102)                           | Renaming a column                                                               |
-| **CD**                                    | Constraint deletion changes                                                     |
-| [CD101](#CD101)                           | Foreign-key constraint was dropped                                              |
-| **DS**                                    | **[Destructive changes](#destructive-changes)**                                 |
-| [DS101](#DS101)                           | Schema was dropped                                                              |
-| [DS102](#DS102)                           | Table was dropped                                                               |
-| [DS103](#DS103)                           | Non-virtual column was dropped                                                  |
-| **LT**                                    | SQLite specific checks                                                          |
-| [LT101](#LT101)                           | Modifying a nullable column to non-nullable without a `DEFAULT` value           |
-| **MF**                                    | **[Data-dependent changes](#data-dependent-changes)** (changes that might fail) |
-| [MF101](#MF101)                           | Add unique index to existing column                                             |
-| [MF102](#MF102)                           | Modifying non-unique index to unique                                            |
-| [MF103](#MF103)                           | Adding a non-nullable column to an existing table                               |
-| [MF104](#MF104)                           | Modifying a nullable column to non-nullable                                     |
-| **MY**                                    | MySQL and MariaDB specific checks                                               |
-| [MY101](#MY101)                           | Adding a non-nullable column without a `DEFAULT` value to an existing table     |
-| [MY102](#MY102)                           | Adding a column with an inline `REFERENCES` clause has no actual effect         |
-| [MY110](#MY110)                           | Removing enum values from a column requires a table copy                        |
-| [MY111](#MY111)                           | Reordering enum values of a colum requires a table copy                         |
-| [MY112](#MY112)                           | Inserting new enum values not at the end requires a table copy                  |
-| [MY113](#MY113)                           | Exceeding 256 enum values changes storage size and requires a table copy        |
-| **NM**                                    | **[Naming Conventions](#naming-conventions-policy)**                            |
-| [NM101](#NM101)                           | Schema name violates the naming convention                                      |
-| [NM102](#NM102)                           | Table name violates the naming convention                                       |
-| [NM103](#NM103)                           | Column name violates the naming convention                                      |
-| [NM104](#NM104)                           | Index name violates the naming convention                                       |
-| [NM105](#NM105)                           | Foreign-key constraint name violates the naming convention                      |
-| [NM106](#NM106)                           | Check constraint name violates the naming convention                            |
-| **PG1**                                   | **[Concurrent Indexes](#concurrent-index-policy-postgresql)**                   |
-| [PG101](#PG101)                           | Missing the `CONCURRENTLY` in index creation                                    |
-| [PG102](#PG102)                           | Missing the `CONCURRENTLY` in index deletion                                    |
-| [PG103](#PG103)                           | Missing `atlas:txmode none` directive in file header                            |
+| **Check**                                 | **Short Description**                                                                        |
+|-------------------------------------------|----------------------------------------------------------------------------------------------|
+| **AR**                                    | Atlas cloud checks                                                                           |
+| [AR101](#AR101)                           | Creating table with non-optimal data alignment                                               |
+| **BC**                                    | **[Backward incompatible changes](#backward-incompatible-changes)**                          |
+| [BC101](#BC101)                           | Renaming a table                                                                             |
+| [BC102](#BC102)                           | Renaming a column                                                                            |
+| **CD**                                    | Constraint deletion changes                                                                  |
+| [CD101](#CD101)                           | Foreign-key constraint was dropped                                                           |
+| **DS**                                    | **[Destructive changes](#destructive-changes)**                                              |
+| [DS101](#DS101)                           | Schema was dropped                                                                           |
+| [DS102](#DS102)                           | Table was dropped                                                                            |
+| [DS103](#DS103)                           | Non-virtual column was dropped                                                               |
+| **LT**                                    | SQLite specific checks                                                                       |
+| [LT101](#LT101)                           | Modifying a nullable column to non-nullable without a `DEFAULT` value                        |
+| **MF**                                    | **[Data-dependent changes](#data-dependent-changes)** (changes that might fail)              |
+| [MF101](#MF101)                           | Add unique index to existing column                                                          |
+| [MF102](#MF102)                           | Modifying non-unique index to unique                                                         |
+| [MF103](#MF103)                           | Adding a non-nullable column to an existing table                                            |
+| [MF104](#MF104)                           | Modifying a nullable column to non-nullable                                                  |
+| **MY**                                    | MySQL and MariaDB specific checks                                                            |
+| [MY101](#MY101)                           | Adding a non-nullable column without a `DEFAULT` value to an existing table                  |
+| [MY102](#MY102)                           | Adding a column with an inline `REFERENCES` clause has no actual effect                      |
+| [MY110](#MY110)                           | Removing enum values from a column requires a table copy                                     |
+| [MY111](#MY111)                           | Reordering enum values of a colum requires a table copy                                      |
+| [MY112](#MY112)                           | Inserting new enum values not at the end requires a table copy                               |
+| [MY113](#MY113)                           | Exceeding 256 enum values changes storage size and requires a table copy                     |
+| [MY120](#MY120)                           | Removing set values from a column requires a table copy                                      |
+| [MY121](#MY121)                           | Reordering set values of a colum requires a table copy                                       |
+| [MY122](#MY122)                           | Inserting new set values not at the end requires a table copy                                |
+| [MY123](#MY123)                           | Exceeding 8, 16, 24, 32 or 64 set values changes the storage size and requires a table copy  |
+| **NM**                                    | **[Naming Conventions](#naming-conventions-policy)**                                         |
+| [NM101](#NM101)                           | Schema name violates the naming convention                                                   |
+| [NM102](#NM102)                           | Table name violates the naming convention                                                    |
+| [NM103](#NM103)                           | Column name violates the naming convention                                                   |
+| [NM104](#NM104)                           | Index name violates the naming convention                                                    |
+| [NM105](#NM105)                           | Foreign-key constraint name violates the naming convention                                   |
+| [NM106](#NM106)                           | Check constraint name violates the naming convention                                         |
+| **PG1**                                   | **[Concurrent Indexes](#concurrent-index-policy-postgresql)**                                |
+| [PG101](#PG101)                           | Missing the `CONCURRENTLY` in index creation                                                 |
+| [PG102](#PG102)                           | Missing the `CONCURRENTLY` in index deletion                                                 |
+| [PG103](#PG103)                           | Missing `atlas:txmode none` directive in file header                                         |
 
 #### DS101 {#DS101}
 
@@ -464,6 +468,30 @@ If possible, it is recommended to add new enum values at the end of the enum def
 
 Exceeding 256 enum values changes storage size and requires a table copy. During this process, the table is locked for
 write operations.
+
+#### MY120 {#MY120}
+
+Removing set values from a column requires a table copy. During this process, the table
+is locked for write operations. In addition, operation may fail if the column contains values that are not in the new
+set definition.
+
+#### MY121 {#MY121}
+
+Reordering set values of a colum requires a table copy. During this process, the table is locked for write operations.
+
+#### MY122 {#MY122}
+
+Inserting new set values not at the end requires table copy. During this process, the table is locked for write operations.
+
+If possible, it is recommended to add new set values at the end of the set definition.
+
+#### MY123 {#MY123}
+
+Adding set values to a column changes its storage size and requires a table copy, if the new amount changes the number of bytes needed for the bitmap.
+The storage size of a set column is 1, 2, 3, 4 or 8 bytes, depending on the number of values:
+One byte can store up to 8 values, two bytes can store up to 16 etc.
+
+During this process, the table is locked for write operations.
 
 #### LT101 {#LT101}
 
