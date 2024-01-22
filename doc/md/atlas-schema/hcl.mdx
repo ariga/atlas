@@ -805,7 +805,7 @@ or a `set` of references.
 
 ```hcl title="schema.pg.hcl" {2-3}
 trigger "audit_log_trigger" {
-  for_each = toset([table.users, table.orders, table.payments])
+  for_each = [table.users, table.orders, table.payments]
   on       = each.value
   after {
     insert = true
