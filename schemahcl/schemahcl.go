@@ -942,7 +942,7 @@ func forEachBlocks(ctx *hcl.EvalContext, b *hclsyntax.Block) ([]*hclsyntax.Block
 	if diags.HasErrors() {
 		return nil, diags
 	}
-	if t := forEach.Type(); !t.IsSetType() && !t.IsObjectType() {
+	if t := forEach.Type(); !t.IsSetType() && !t.IsObjectType() && !t.IsTupleType() {
 		return nil, fmt.Errorf("schemahcl: for_each does not support %s type", t.FriendlyName())
 	}
 	delete(b.Body.Attributes, forEachAttr)

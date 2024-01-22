@@ -502,6 +502,37 @@ table "t2" {
   schema = schema.s2
 }
 `, string(buf))
+
+	// Tuple of type any.
+	b1 = []byte(`
+schema "s1" {
+  comment = "schema comment"
+}
+schema "s2" {
+  # object without comment.
+}
+
+table {
+  for_each = [schema.s1, schema.s2]
+  name = each.value.name
+  schema = each.value
+}
+`)
+	err = New().EvalBytes(b1, &doc1, nil)
+	require.NoError(t, err)
+	buf, err = Marshal.MarshalSpec(&doc1)
+	require.NoError(t, err)
+	require.Equal(t, `schema "s1" {
+}
+schema "s2" {
+}
+table "s1" {
+  schema = schema.s1
+}
+table "s2" {
+  schema = schema.s2
+}
+`, string(buf))
 }
 
 func TestDataLocalsRefs(t *testing.T) {
