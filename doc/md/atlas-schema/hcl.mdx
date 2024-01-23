@@ -795,6 +795,46 @@ trigger "after_orders_update" {
 ```
 
 </TabItem>
+<TabItem label="SQL Server" value="sqlserver">
+
+```hcl
+trigger "t1_trg" {
+  on = table.orders
+  after {
+    insert = true
+    update = true
+    delete = true
+  }
+  as = <<-SQL
+  BEGIN
+    SET NOCOUNT ON;
+    DECLARE @c INT;
+    SELECT @c = COUNT(*) FROM [dbo].[orders];
+    IF @c > 1000
+      RAISERROR('Too many rows in orders', 16, 1);
+  END
+  SQL
+}
+trigger "t2_trg" {
+  on = table.customers
+  instead_of {
+    insert = true
+  }
+  as = <<-SQL
+  BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO [dbo].[customers] ([name])
+    SELECT [ins].[name]
+    FROM [inserted] [ins]
+    WHERE [ins].[name] NOT IN (
+      SELECT [name] FROM [dbo].[blacklist_customers]
+    );
+  END
+  SQL
+}
+```
+
+</TabItem>
 </Tabs>
 
 ### Computed Triggers
