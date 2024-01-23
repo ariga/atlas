@@ -111,7 +111,31 @@ env "dev" {
 ```
 
 </TabItem>
-<TabItem value="clickhouse" label="ClickHouse" default>
+<TabItem value="sqlserver" label="SQL Server">
+
+```hcl
+// Define an environment named "local"
+env "local" {
+  // Declare where the schema definition resides.
+  // Also supported: ["file://multi.hcl", "file://schema.hcl"].
+  src = "file://project/schema.hcl"
+
+  // Define the URL of the database which is managed
+  // in this environment.
+  url = "sqlserver://sa:pass@remote:1433?database=master"
+
+  // Define the URL of the Dev Database for this environment
+  // See: https://atlasgo.io/concepts/dev-database
+  dev = "docker://sqlserver/2022-latest"
+}
+
+env "dev" {
+  // ... a different env
+}
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```hcl
 // Define an environment named "local"

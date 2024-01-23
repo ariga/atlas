@@ -150,15 +150,8 @@ Learn more on how to integrate Atlas into your [**GitHub Actions**](/cloud/setup
 
 Suppose we have an Atlas schema with one table and an empty migration directory:
 
-<Tabs
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```hcl title="schema.hcl"
 schema "test" {}
@@ -172,7 +165,7 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```hcl title="schema.hcl"
 schema "test" {}
@@ -186,7 +179,7 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```hcl title="schema.hcl"
 schema "test" {}
@@ -200,7 +193,7 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```hcl title="schema.hcl"
 schema "default" {}
@@ -215,7 +208,21 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```hcl title="schema.hcl"
+schema "dbo" {}
+
+table "users" {
+  schema = schema.dbo
+  column "id" {
+    type = int
+  }
+}
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```hcl title="schema.hcl"
 schema "default" {}
@@ -240,15 +247,8 @@ creating our `users` table:
 * `--dev-url` a [URL](/concepts/url) to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
 * `--format` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
 
-<Tabs
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell
 atlas migrate diff create_users \
@@ -258,7 +258,7 @@ atlas migrate diff create_users \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell
 atlas migrate diff create_users \
@@ -268,7 +268,7 @@ atlas migrate diff create_users \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell
 atlas migrate diff create_users \
@@ -278,7 +278,7 @@ atlas migrate diff create_users \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell
 atlas migrate diff create_users \
@@ -288,7 +288,17 @@ atlas migrate diff create_users \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "docker://sqlserver/2022-latest/test"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
 atlas migrate diff create_users \
@@ -341,15 +351,8 @@ h1:t1fEP1rSsGf1gYrYCjsGyEyuM0cnhATlq93B7h8uXxY=
 
 Let's repeat the process above by changing our HCL schema file and running Atlas migration authoring again.
 We add a new column `name` to our HCL schema:
-<Tabs
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```hcl title="schema.hcl" {8-10}
 schema "test" {}
@@ -366,7 +369,7 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```hcl title="schema.hcl" {8-10}
 schema "test" {}
@@ -383,7 +386,7 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```hcl title="schema.hcl" {8-10}
 schema "test" {}
@@ -400,7 +403,7 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```hcl title="schema.hcl" {8-10}
 schema "test" {}
@@ -417,7 +420,24 @@ table "users" {
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```hcl title="schema.hcl" {8-10}
+schema "dbo" {}
+
+table "users" {
+  schema = schema.dbo
+  column "id" {
+    type = int
+  }
+  column "name" {
+    type = nvarchar(255)
+  }
+}
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```hcl title="schema.hcl" {8-10}
 schema "default" {}
@@ -439,58 +459,61 @@ table "users" {
 
 Then, run `atlas migrate diff`:
 
-<Tabs
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell
-atlas migrate diff create_users \
+atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
   --dev-url "docker://mysql/8/dev"
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell
-atlas migrate diff create_users \
+atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
   --dev-url "docker://mariadb/latest/dev"
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell
-atlas migrate diff create_users \
+atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
   --dev-url "docker://postgres/15/dev?search_path=public"
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell
-atlas migrate diff create_users \
+atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
   --dev-url "sqlite://dev?mode=memory"
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
 
 ```shell
-atlas migrate diff create_users \
+atlas migrate diff add_users_name \
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "docker://sqlserver/2022-latest"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```shell
+atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
   --dev-url "docker://clickhouse/23.11/dev"
@@ -555,15 +578,8 @@ Atlas allows you to define your desired state using SQL schemas. An SQL schema c
 and `ALTER` statements, or a directory with multiple SQL files. As an example, suppose we have an SQL schema with one
 table and an empty migration directory:
 
-<Tabs
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```sql title="schema.sql"
 CREATE TABLE `users` (
@@ -572,7 +588,7 @@ CREATE TABLE `users` (
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```sql title="schema.sql"
 CREATE TABLE `users` (
@@ -581,7 +597,7 @@ CREATE TABLE `users` (
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```sql title="schema.sql"
 CREATE TABLE `users` (
@@ -590,7 +606,7 @@ CREATE TABLE `users` (
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```sql title="schema.sql"
 CREATE TABLE `users` (
@@ -599,7 +615,16 @@ CREATE TABLE `users` (
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```sql title="schema.sql"
+CREATE TABLE [users] (
+  [id] int NOT NULL
+)
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```sql title="schema.sql"
 CREATE TABLE `users` (
@@ -617,15 +642,8 @@ creating our `users` table:
 * `--to` the URL of the desired state, an [HCL](/atlas-schema/hcl) or SQL schema definition, or a database [URL](../concepts/url).
 * `--dev-url` a [URL](/concepts/url) to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
 
-<Tabs
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell
 atlas migrate diff create_users \
@@ -635,7 +653,7 @@ atlas migrate diff create_users \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell
 atlas migrate diff create_users \
@@ -645,7 +663,7 @@ atlas migrate diff create_users \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell
 atlas migrate diff create_users \
@@ -655,7 +673,7 @@ atlas migrate diff create_users \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell
 atlas migrate diff create_users \
@@ -665,7 +683,17 @@ atlas migrate diff create_users \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.sql" \
+  --dev-url "docker://sqlserver/2022-latest/dev"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
 atlas migrate diff create_users \
@@ -719,15 +747,8 @@ h1:t1fEP1rSsGf1gYrYCjsGyEyuM0cnhATlq93B7h8uXxY=
 Let's repeat the process above by changing our SQL schema file and running Atlas migration authoring again.
 We add a new column `name` to our SQL schema:
 
-<Tabs
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```sql title="schema.sql" {3}
 CREATE TABLE `users` (
@@ -737,7 +758,7 @@ CREATE TABLE `users` (
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```sql title="schema.sql" {3}
 CREATE TABLE `users` (
@@ -747,7 +768,7 @@ CREATE TABLE `users` (
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```sql title="schema.sql" {3}
 CREATE TABLE `users` (
@@ -757,7 +778,7 @@ CREATE TABLE `users` (
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```sql title="schema.sql" {3}
 CREATE TABLE `users` (
@@ -767,7 +788,17 @@ CREATE TABLE `users` (
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```sql title="schema.sql" {3}
+CREATE TABLE [users] (
+  [id] int NOT NULL,
+  [name] nvarchar(255) NOT NULL
+)
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```sql title="schema.sql" {3}
 CREATE TABLE `users` (
@@ -782,58 +813,61 @@ CREATE TABLE `users` (
 Then, run `atlas migrate diff`:
 
 
-<Tabs
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell
-atlas migrate diff create_users \
+atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.sql" \
   --dev-url "docker://mysql/8/dev"
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell
-atlas migrate diff create_users \
+atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.sql" \
   --dev-url "docker://mariadb/latest/dev"
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell
-atlas migrate diff create_users \
+atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.sql" \
   --dev-url "docker://postgres/15/dev?search_path=public"
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell
-atlas migrate diff create_users \
+atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.sql" \
   --dev-url "sqlite://file?mode=memory"
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
 
 ```shell
-atlas migrate diff create_users \
+atlas migrate diff add_users_name \
+  --dir "file://migrations" \
+  --to "file://schema.sql" \
+  --dev-url "docker://sqlserver/2022-latest/dev"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
+
+```shell
+atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.sql" \
   --dev-url "docker://clickhouse/23.11/dev"

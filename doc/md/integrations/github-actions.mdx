@@ -68,6 +68,7 @@ values={[
     {label: 'MariaDB', value: 'maria'},
     {label: 'PostgreSQL', value: 'postgres'},
     {label: 'SQLite', value: 'sqlite'},
+    {label: 'SQL Server', value: 'sqlserver'},
 ]}>
 <TabItem value="mysql">
 
@@ -216,6 +217,42 @@ jobs:
           dev-url: sqlite://file?mode=memory&_fk=1
 ```
 </TabItem>
+<TabItem value="sqlserver">
+
+```yaml
+name: Push Migrations
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+jobs:
+  push:
+    services:
+      # Spin up a SQL Server container to be used as the dev-database.
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: P@ssw0rd0995
+        ports:
+          - 1433:1433
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/push@v1
+        with:
+          dir: 'file://migrations'
+          dir-name: 'my-project'
+          dev-url: sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master
+```
+
+</TabItem>
 </Tabs>
 
 ### Inputs
@@ -263,6 +300,7 @@ values={[
     {label: 'MariaDB', value: 'maria'},
     {label: 'PostgreSQL', value: 'postgres'},
     {label: 'SQLite', value: 'sqlite'},
+    {label: 'SQL Server', value: 'sqlserver'},
 ]}>
 <TabItem value="mysql">
 
@@ -427,6 +465,46 @@ jobs:
           dir-name: 'my-project' # The name of the project in Atlas Cloud
           dev-url: sqlite://file?mode=memory&_fk=1
 ```
+</TabItem>
+<TabItem value="sqlserver">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  lint:
+    services:
+      # Spin up a SQL Server container to be used as the dev-database for analysis.
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: P@ssw0rd0995
+        ports:
+          - 1433:1433
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/lint@v1
+        with:
+          dir: 'file://migrations'
+          dir-name: 'my-project' # The name of the project in Atlas Cloud
+          dev-url: sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master
+```
+
 </TabItem>
 </Tabs>
 

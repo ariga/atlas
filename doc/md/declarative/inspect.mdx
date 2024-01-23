@@ -47,16 +47,8 @@ parameters:
 
 The following commands demonstrate how to inspect the entire database, including all its schemas:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema inspect -u "mysql://localhost"
@@ -65,7 +57,7 @@ atlas schema inspect -u "mysql://user:pass@localhost:3306"
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema inspect -u "maria://localhost"
@@ -74,7 +66,7 @@ atlas schema inspect -u "maria://user:pass@localhost:3306"
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema inspect -u "postgres://localhost:5432/database"
@@ -83,7 +75,7 @@ atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?sslmode=
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```shell
 atlas schema inspect -u "sqlite://file.db"
@@ -92,7 +84,16 @@ atlas schema inspect -u "sqlite://file?cache=shared&mode=memory"
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema inspect -u "sqlserver://user:pass@localhost:1433?database=master&mode=database"
+
+atlas schema inspect -u "sqlserver://user:pass@0.0.0.0:1433?database=master&mode=database"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema inspect -u "clickhouse//localhost:9000"
@@ -107,15 +108,8 @@ atlas schema inspect -u "clickhouse://user:pass@0.0.0.0:9000?secure=true"
 
 The following commands show how to inspect a single schema:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema inspect -u "mysql://localhost/schema"
@@ -124,7 +118,7 @@ atlas schema inspect -u "mysql://user:pass@localhost:3306/schema"
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema inspect -u "maria://localhost/schema"
@@ -133,7 +127,7 @@ atlas schema inspect -u "maria://user:pass@localhost:3306/schema"
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema inspect -u "postgres://localhost:5432/database?search_path=public"
@@ -142,7 +136,16 @@ atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?search_p
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema inspect -u "sqlserver://user:pass@localhost:1433?database=master"
+
+atlas schema inspect -u "sqlserver://user:pass@0.0.0.0:1433?database=master"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema inspect -u "clickhouse://localhost:9000/database"
@@ -157,15 +160,8 @@ atlas schema inspect -u "clickhouse://user:pass@0.0.0.0:9000/database?secure=tru
 
 The following commands show how to inspect multiple schemas:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema inspect -u "mysql://localhost" --schema schema1 --schema schema2
@@ -174,7 +170,7 @@ atlas schema inspect -u "mysql://user:pass@localhost:3306" -s schema1,schema2
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema inspect -u "maria://localhost" --schema schema1 --schema schema2
@@ -183,7 +179,7 @@ atlas schema inspect -u "maria://user:pass@localhost:3306" -s schema1,schema2
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema inspect -u "postgres://localhost:5432/database" --schema schema1 --schema schema2
@@ -192,7 +188,16 @@ atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?sslmode=
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema inspect -u "sqlserver://user:pass@localhost:1433?database=master&mode=database" --schema schema1 --schema schema2
+
+atlas schema inspect -u "sqlserver://user:pass@0.0.0.0:1433?database=master&mode=database" -s schema1,schema2
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema inspect -u "clickhouse://localhost:9000/database" --schema schema1 --schema schema2

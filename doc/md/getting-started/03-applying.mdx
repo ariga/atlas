@@ -44,6 +44,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'SQL Server', value: 'sqlserver'},
 ]}>
 <TabItem value="mysql">
 
@@ -73,6 +74,14 @@ atlas schema inspect -u "sqlite://file.db" > schema.hcl
 ```
 
 </TabItem>
+<TabItem value="sqlserver">
+
+```shell
+atlas schema inspect -u "sqlserver://sa:Passw0rd0995@localhost:1433?database=master" > schema.hcl
+```
+
+</TabItem>
+
 </Tabs>
 
 Next, add the following table definition to the file:
@@ -103,6 +112,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'SQL Server', value: 'sqlserver'},
 ]}>
 <TabItem value="mysql">
 
@@ -129,6 +139,13 @@ atlas schema apply -u "postgres://postgres:pass@localhost:5432/example?sslmode=d
 
 ```shell
 atlas schema apply -u "sqlite://file.db" -f schema.hcl
+```
+
+</TabItem>
+<TabItem value="sqlserver">
+
+```shell
+atlas schema apply -u "sqlserver://sa:Passw0rd0995@localhost:1433?database=master" -f schema.hcl
 ```
 
 </TabItem>
