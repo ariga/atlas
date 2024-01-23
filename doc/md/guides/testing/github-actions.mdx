@@ -50,6 +50,7 @@ values={[
     {label: 'MySQL', value: 'mysql'},
     {label: 'MariaDB', value: 'maria'},
     {label: 'PostgreSQL', value: 'postgres'},
+    {label: 'SQL Server', value: 'sqlserver'},
 ]}>
 <TabItem value="mysql">
 
@@ -150,6 +151,36 @@ jobs:
           curl -sSf https://atlasgo.sh | sh 
       - run: |
           atlas migrate apply --dir file://migrations/ -u 'postgres://postgres:pass@localhost:5432/test?sslmode=disable'
+      - run: |
+          echo "Run your tests here!"
+```
+
+</TabItem>
+<TabItem value="sqlserver">
+
+```yaml
+name: Integration Test (SQL Server)
+on:
+  push:
+jobs:
+  integration:
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: P@ssw0rd0995
+        ports:
+          - 1433:1433
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.0.1
+      - name: Install Atlas
+        run: |
+          curl -sSf https://atlasgo.sh | sh 
+      - run: |
+          atlas migrate apply --dir file://migrations/ -u 'sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master'
       - run: |
           echo "Run your tests here!"
 ```

@@ -111,16 +111,8 @@ env "local" {
 The following example demonstrates how to use [Atlas DDL](../atlas-schema/hcl) (HCL) as the desired state and
 update the database schema to match it:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema apply \
@@ -130,7 +122,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema apply \
@@ -140,7 +132,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema apply \
@@ -150,7 +142,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```shell
 atlas schema apply \
@@ -160,7 +152,17 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema apply \
+  --url "sqlserver://sa:P@ssw0rd0995@:1433?database=master" \
+  --to "file://schema.hcl" \
+  --dev-url "docker://sqlserver/2022-latest/dev"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema apply \
@@ -177,16 +179,8 @@ atlas schema apply \
 The following example demonstrates how to use an SQL schema file as the desired state and update the database schema to
 match it:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema apply \
@@ -196,7 +190,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema apply \
@@ -206,7 +200,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema apply \
@@ -216,7 +210,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```shell
 atlas schema apply \
@@ -226,7 +220,17 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema apply \
+  --url "sqlserver://sa:P@ssw0rd0995@:1433?database=master" \
+  --to "file://schema.sql" \
+  --dev-url "docker://sqlserver/2022-latest/dev"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema apply \
@@ -251,16 +255,8 @@ schema to match it. The URL for the migration directory can contain two optional
 * `format` - migration directory format: atlas (default), golang-migrate, goose, dbmate, flyway, liquibase.
 * `version` - until which version of migration files to read. By default, all migrations are read.
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema apply \
@@ -270,7 +266,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema apply \
@@ -280,7 +276,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema apply \
@@ -290,7 +286,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```shell
 atlas schema apply \
@@ -300,7 +296,17 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema apply \
+  --url "sqlserver://sa:P@ssw0rd0995@:1433?database=master" \
+  --to "file://migrations" \
+  --dev-url "docker://sqlserver/2022-latest/dev"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema apply \

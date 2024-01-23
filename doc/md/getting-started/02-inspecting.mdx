@@ -28,6 +28,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'SQL Server', value: 'sqlserver'},
 ]}>
 <TabItem value="mysql">
 
@@ -89,6 +90,20 @@ schema "main" {
 ```
 
 </TabItem>
+<TabItem value="sqlserver">
+
+```shell
+atlas schema inspect -u "sqlserver://sa:Passw0rd@localhost:1433?database=master" > schema.hcl
+```
+
+Then, view the contents of the file:
+
+```hcl title="schema.hcl"
+schema "dbo" {
+}
+```
+
+</TabItem>
 </Tabs>
 
 As you can see, Atlas inspected our (empty) database and wrote an Atlas HCL document
@@ -134,6 +149,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'SQL Server', value: 'sqlserver'},
 ]}>
 <TabItem value="mysql">
 
@@ -160,6 +176,13 @@ atlas schema inspect -u "postgres://postgres:pass@localhost:5432/example?sslmode
 
 ```shell
 atlas schema inspect -u "sqlite://file.db" > schema.hcl
+```
+
+</TabItem>
+<TabItem value="sqlserver">
+
+```shell
+atlas schema inspect -u "sqlserver://sa:Passw0rd@localhost:1433?database=master" > schema.hcl
 ```
 
 </TabItem>

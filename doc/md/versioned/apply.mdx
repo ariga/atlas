@@ -301,16 +301,8 @@ If you have an existing database project and want to switch over to Atlas Versio
 Atlas with a starting point. The first step is to create a migration file reflecting the current schema state. This can
 be easily done:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell
 atlas migrate diff my_baseline \
@@ -320,7 +312,7 @@ atlas migrate diff my_baseline \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell
 atlas migrate diff my_baseline \
@@ -330,7 +322,7 @@ atlas migrate diff my_baseline \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell
 atlas migrate diff my_baseline \
@@ -340,7 +332,7 @@ atlas migrate diff my_baseline \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell
 atlas migrate diff my_baseline \
@@ -350,7 +342,17 @@ atlas migrate diff my_baseline \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas migrate diff my_baseline \
+  --dir "file://migrations" \
+  --dev-url "docker://sqlserver/2022-latest" \
+  --to "sqlserver://sa:pass@localhost:1433?database=master"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
 atlas migrate diff my_baseline \
@@ -417,16 +419,8 @@ revert schema changes made by specific migration files using the `schema clean` 
 1\. To undo the changes made by migration files that have already been deleted, you can use the [`schema apply`](../declarative/apply#migration-directory)
 command to roll back the database state to the state defined by the migration directory:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell
 atlas schema apply \
@@ -437,7 +431,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell
 atlas schema apply \
@@ -448,7 +442,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell
 atlas schema apply \
@@ -459,7 +453,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell
 atlas schema apply \
@@ -470,7 +464,18 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas schema apply \
+  --url "sqlserver://sa:pass@remote:1433?database=master" \
+  --to "file://migrations" \
+  --dev-url "docker://sqlserver/2022-latest" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
 atlas schema apply \
@@ -485,16 +490,8 @@ atlas schema apply \
 
 2\. Remove the files/versions that were rolled back from the revision table:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell
 atlas migrate set \
@@ -503,7 +500,7 @@ atlas migrate set \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell
 atlas migrate set \
@@ -512,7 +509,7 @@ atlas migrate set \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell
 atlas migrate set \
@@ -521,7 +518,7 @@ atlas migrate set \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell
 atlas migrate set \
@@ -530,7 +527,16 @@ atlas migrate set \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas migrate set \
+  --url "sqlserver://sa:pass@remote:1433?database=master" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
 atlas migrate set \
@@ -558,16 +564,8 @@ atlas migrate set \
 
 3\. Verify the migration status by using the `atlas migrate status` command:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell
 atlas migrate status \
@@ -576,7 +574,7 @@ atlas migrate status \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell
 atlas migrate status \
@@ -585,7 +583,7 @@ atlas migrate status \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell
 atlas migrate status \
@@ -594,7 +592,7 @@ atlas migrate status \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell
 atlas migrate status \
@@ -603,7 +601,16 @@ atlas migrate status \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas migrate status \
+  --url "sqlserver://sa:pass@remote:1433?database=master" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
 atlas migrate status \
@@ -635,16 +642,8 @@ atlas migrate status \
 `version` parameter to specify that the database should be rolled back to the state defined in a specific version of
 the migration directory. For example:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell {3}
 atlas schema apply \
@@ -655,7 +654,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell {3}
 atlas schema apply \
@@ -666,7 +665,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell {3}
 atlas schema apply \
@@ -677,7 +676,7 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell {3}
 atlas schema apply \
@@ -688,7 +687,18 @@ atlas schema apply \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell {3}
+atlas schema apply \
+  --url "sqlserver://sa:pass@remote:1433?database=master" \
+  --to "file://migrations?version=20220925094437" \
+  --dev-url "docker://sqlserver/2022-latest" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```shell {3}
 atlas schema apply \
@@ -713,16 +723,8 @@ atlas schema apply \
 
 2\. To remove the `20220925094438` version from the revision table, set the current version to the preceding one `20220925094437`:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell
 atlas migrate set 20220925094437 \
@@ -731,7 +733,7 @@ atlas migrate set 20220925094437 \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell
 atlas migrate set 20220925094437 \
@@ -740,7 +742,7 @@ atlas migrate set 20220925094437 \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell
 atlas migrate set 20220925094437 \
@@ -749,7 +751,7 @@ atlas migrate set 20220925094437 \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell
 atlas migrate set 20220925094437 \
@@ -758,7 +760,16 @@ atlas migrate set 20220925094437 \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas migrate set 20220925094437 \
+  --url "sqlserver://sa:pass@remote:1433?database=master" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
 atlas migrate set 20220925094437 \
@@ -785,16 +796,8 @@ atlas migrate set 20220925094437 \
 
 3\. Verify the migration status by using the `atlas migrate status` command:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell
 atlas migrate status \
@@ -803,7 +806,7 @@ atlas migrate status \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell
 atlas migrate status \
@@ -812,7 +815,7 @@ atlas migrate status \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell
 atlas migrate status \
@@ -821,7 +824,7 @@ atlas migrate status \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell
 atlas migrate status \
@@ -830,7 +833,16 @@ atlas migrate status \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas migrate status \
+  --url "sqlserver://sa:pass@remote:1433?database=master" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
 atlas migrate status \
@@ -861,16 +873,8 @@ atlas migrate status \
 In order to clean the entire schema, use the [`schema clean`](../cli-reference#atlas-schema-clean) command, and then use
 [`migrate apply`](#flags) to replay the migration files. For example:
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem value="mysql" label="MySQL">
 
 ```shell
 atlas schema clean -u "mysql://root:pass@:3306/example"
@@ -878,7 +882,7 @@ atlas migrate apply -u "mysql://root:pass@:3306/example"
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem value="maria" label="MariaDB">
 
 ```shell
 atlas schema clean -u "maria://root:pass@localhost:3306/example"
@@ -886,7 +890,7 @@ atlas migrate apply -u "maria://root:pass@localhost:3306/example"
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem value="postgres" label="PostgreSQL">
 
 ```shell
 atlas schema clean -u "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
@@ -894,7 +898,7 @@ atlas migrate apply -u "postgres://postgres:pass@localhost:5432/database?search_
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem value="sqlite" label="SQLite">
 
 ```shell
 atlas migrate status \
@@ -903,7 +907,15 @@ atlas migrate status \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem value="sqlserver" label="SQL Server">
+
+```shell
+atlas schema clean -u "sqlserver://sa:pass@remote:1433?database=master"
+atlas migrate apply -u "sqlserver://sa:pass@remote:1433?database=master"
+```
+
+</TabItem>
+<TabItem value="clickhouse" label="ClickHouse">
 
 ```shell
 atlas schema clean -u "clickhouse://user:pass@remote:9000/database"

@@ -84,16 +84,8 @@ env "local" {
 
 ### Compare databases
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema diff \
@@ -102,7 +94,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema diff \
@@ -111,7 +103,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema diff \
@@ -120,7 +112,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```shell
 atlas schema diff \
@@ -129,7 +121,16 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema diff \
+  --from "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master&mode=database" \
+  --to "sqlserver://sa:P@ssw0rd0995@remote:1433?database=master&mode=database"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema diff \
@@ -142,15 +143,8 @@ atlas schema diff \
 
 ### Compare database schemas
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 Compare two MySQL [schemas](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_schema)/[databases](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_database)
 named `example`:
@@ -162,7 +156,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 Compare two MariaDB [schemas](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_schema)/[databases](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_database)
 named `example`:
@@ -174,7 +168,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 Compare two PostgreSQL [schemas](https://www.postgresql.org/docs/current/ddl-schemas.html) named `public` under the
 `example` database:
@@ -186,7 +180,18 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+Compare two SQL Server schemas:
+
+```shell
+atlas schema diff \
+  --from "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master" \
+  --to "sqlserver://sa:P@ssw0rd0995@remote:1433?database=master"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 Compare two ClickHouse schemas/named-databases:
 
@@ -201,16 +206,8 @@ atlas schema diff \
 
 ### Compare HCL schemas
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema diff \
@@ -220,7 +217,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema diff \
@@ -230,7 +227,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema diff \
@@ -240,7 +237,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```shell
 atlas schema diff \
@@ -250,7 +247,17 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.hcl" \
+  --to "file://schema2.hcl" \
+  --dev-url "docker://sqlserver/2022-latest"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema diff \
@@ -264,16 +271,8 @@ atlas schema diff \
 
 ### Compare SQL schemas
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema diff \
@@ -293,7 +292,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema diff \
@@ -313,7 +312,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema diff \
@@ -323,7 +322,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```shell
 atlas schema diff \
@@ -333,7 +332,17 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.sql" \
+  --to "file://schema2.sql" \
+  --dev-url "docker://sqlserver/2022-latest"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema diff \
@@ -348,16 +357,8 @@ atlas schema diff \
 
 ### Compare migration directories
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema diff \
@@ -377,7 +378,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema diff \
@@ -397,7 +398,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema diff \
@@ -407,7 +408,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```shell
 atlas schema diff \
@@ -417,7 +418,17 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema diff \
+  --from "file://migrations1" \
+  --to "file://migrations2" \
+  --dev-url "docker://sqlserver/2022-latest"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema diff \
@@ -431,16 +442,8 @@ atlas schema diff \
 
 ### Compare SQL to HCL
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema diff \
@@ -450,7 +453,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema diff \
@@ -460,7 +463,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema diff \
@@ -470,7 +473,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```shell
 atlas schema diff \
@@ -480,7 +483,17 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema diff \
+  --from "file://schema.hcl" \
+  --to "file://schema.sql" \
+  --dev-url "docker://sqlserver/2022-latest"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema diff \
@@ -495,16 +508,8 @@ atlas schema diff \
 
 ### Compare a migration directory to a database
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'MariaDB', value: 'maria'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-{label: 'ClickHouse', value: 'clickhouse'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```shell
 atlas schema diff \
@@ -514,7 +519,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="maria">
+<TabItem label="MariaDB" value="maria">
 
 ```shell
 atlas schema diff \
@@ -524,7 +529,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```shell
 atlas schema diff \
@@ -534,7 +539,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```shell
 atlas schema diff \
@@ -544,7 +549,17 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="clickhouse">
+<TabItem label="SQL Server" value="sqlserver">
+
+```shell
+atlas schema diff \
+  --from "file://migrations" \
+  --to "sqlserver://sa:P@ssw0rd0995@:1433?database=master" \
+  --dev-url "docker://sqlserver/2022-latest"
+```
+
+</TabItem>
+<TabItem label="ClickHouse" value="clickhouse">
 
 ```shell
 atlas schema diff \
