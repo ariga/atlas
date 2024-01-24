@@ -12,20 +12,20 @@ Most backend applications are backed by a database, and maintaining the database
 development process.
 
 Our industry has seen many trends in the way database schemas evolve over the years. In the early days, DBAs would
-manually run SQL DDL commands directly against the database through a terminal.  Then came GUI based, point-and-click
+manually run SQL DDL commands directly against the database through a terminal. Then came GUI based, point-and-click
 database management tools that included schema editing capabilities.
 
-In the early 2000s, we saw the rise of "database migration tools" that  allowed developers to write versioned
-database upgrade scripts (usually in SQL), called "migrations", that would be executed by the migration tool.
+In the early 2000s, we saw the rise of "database migration tools" that allowed developers to write versioned
+database upgrade scripts (usually in SQL), called "migrations", that would be executed by the tool itself.
 This trend was further intensified with the rise of DevOps and CI/CD, as it became the de-facto standard way for
-automating the management of database schemas.
+automating database schema management.
 
 ### The Rise of Database Schema-as-Code
 
 ![](https://atlasgo.io/uploads/blog/why-db-schema-as-code/declarative-vs-imperative.png)
 
 In recent years, we have witnessed a seismic shift in the way cloud infrastructure is managed. The rise of
-tools such as Terraform and Kubernetes has led to the concept of "Infrastructure-as-Code".  As the complexity of
+tools such as Terraform and Kubernetes has led to the concept of "Infrastructure-as-Code". As the complexity of
 infrastructure grew, it became clear that the only way to manage it effectively was to use a declarative approach
 and treat it "as code".
 
@@ -34,13 +34,13 @@ and stored in a version control system (such as Git). The infrastructure is then
 the desired state to the actual state and makes the necessary changes to bring the actual state to the desired state.
 
 This approach has many advantages over the traditional imperative approach of manually running commands against the
-infrastructure. It allows for better collaboration between team members, it is more robust and less error-prone,
-it is self documenting, it allows for better visibility, governance and control into the state of the infrastructure.
+infrastructure. It allows for better collaboration between team members, it is more robust and less susceptible to errors,
+it is self documenting, and allows for better visibility, governance and control into the state of the infrastructure.
 
 Following this trend, some projects such as [Atlas](https://atlasgo.io) and [Skeema](https://skeema.io) have started
 to apply the same principles to database schema management. Instead of using an imperative approach, where developers
 do the planning and tools are only used to execute the plan and keep track of what has been done, they bring to the
-table a simpler approach. This approach, which is gaining the name "Database Schema-as-Code" applies a declarative
+table a simpler approach. This approach, which is gaining the name "Database Schema-as-Code", applies a declarative
 approach to database schema management: developers provide the desired state of the database and the tool automatically
 plans the required migrations.
 
@@ -72,7 +72,7 @@ and avoid human errors.
 By requiring all migrations to be checked in to source control, traditional migration tools can go a long way to
 ensure that the database schema is in a consistent state, but they suffer from two issues in this regard:
 
-1. They only keep track of the changes to the database ("migrations"), to figure out the actual schema of the database
+1. They only keep track of the changes to the database ("migrations"). To figure out the actual schema of the database
    at any given version, you need to apply all the migrations up to that version to an empty database and inspect
    the result with an additional tool. Database Schema-as-Code tools, on the other hand, naturally document the
    schema of the database in any given version.
@@ -81,16 +81,16 @@ ensure that the database schema is in a consistent state, but they suffer from t
    using a Database Schema-as-Code tool, it will compare the desired state to the actual state and make the necessary
    changes to bring the actual state to the desired state.
 
-   This ensures, that over time, your actual databases will not drift from the desired state.
+   This ensures that over time your actual databases will not drift from the desired state.
 
 #### 3. You don't have any database experts on your team
 
 In the past, managing database schemas was under the responsibility of DBAs. They were the ones who were responsible
-for making sure that the database schema is consistent and that all changes are done in a safe way.
+for making sure that the database schema is consistent and that all changes are done safely.
 
 In recent years, as cloud-native, microservices-based architectures have become more popular, the amount of databases
-that each team manages has grown significantly. This has led to a situation where many teams don't have any DBAs
-on their team, and the responsibility for managing the database schema falls on the shoulders of the developers.
+that each team manages has grown significantly. This has led to a situation where many teams don't have a DBA
+, and the responsibility for managing the database schema falls on the shoulders of the developers.
 
 If you maintain a small schema with a few tables, you might not feel the need for a tool to help you manage it.
 But as schemas grow in size and complexity, to contain thousands of database objects (tables, views, functions,
@@ -109,12 +109,12 @@ outage. This is usually followed by a change in review processes where migration
 multiple team members, and a manual verification process is added to make sure that the migration
 is safe to run.
 
-This process is time-consuming and error-prone. Even worse, it turns certain people with more database
+This process is time-consuming and error-prone. Even worse, it turns team members with more database
 experience into bottlenecks, slowing down the development process and team velocity.
 
 Database Schema-as-Code tools can help you automate this process and make it more robust. [Atlas](https://atlasgo.io),
 for example, comes with built-in support for [Migration Linting](/versioned/lint), [Diff Policies](/declarative/apply#diff-policy),
-and other safety mechanisms that help you catch errors and issues before they become a full-blown production outage.
+and other safety mechanisms that help you catch errors and issues before they lead to a full-blown production outage.
 
 #### 5. Your app and infra delivery are way better than your database deployments
 
@@ -122,7 +122,7 @@ and other safety mechanisms that help you catch errors and issues before they be
 
 When interviewing platform engineers about how their deployment infrastructure works, we keep hearing the same story:
 "Our deployments are 100% pure Infrastructure-as-Code GitOps goodness, we can do them 50 times a day!" And when
-we ask about databases… oh yeah, there’s that part... It’s not as great.
+we ask about databases… "Oh yeah, there’s that part... It’s not as great."
 
 A lot has changed in the way applications are deployed since the early days of database migrations. The versioned migrations
 paradigm was a great improvement over the previous manual approach, but it is still very much an imperative approach.
@@ -131,7 +131,7 @@ Modern application delivery principles such as [GitOps](https://opengitops.dev/)
 work in a declarative way, and so they need a database schema management tool that works in a similar way.
 
 If your application and infra delivery feel like a well-oiled machine, but your database deployments are still
-semi manual, or feel clunky and error-prone, you should consider switching to a Database Schema-as-Code tool where
+semi-manual, or feel clunky and error-prone, you should consider switching to a Database Schema-as-Code tool where
 you can manage your database schema in a [Kubernetes Operator](https://thenewstack.io/gitops-for-databases-on-kubernetes/)
 or a [Terraform Provider](https://atlasgo.io/blog/2023/07/19/bridging-the-gap-between-iac-and-schema-management).
 
@@ -139,7 +139,7 @@ or a [Terraform Provider](https://atlasgo.io/blog/2023/07/19/bridging-the-gap-be
 
 [Atlas](https://atlasgo.io) is a Database Schema-as-Code tool that allows you to manage your database schema
 in a declarative way. With Atlas, developers provide the desired state of the database schema and Atlas
-automatically plans the required migrations.  To get started with Atlas, you can follow our [quickstart guide.](/getting-started).
+automatically plans the required migrations. To get started with Atlas, you can follow our [quickstart guide.](/getting-started).
 
 ### Wrapping up
 
