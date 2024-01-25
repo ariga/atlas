@@ -900,6 +900,276 @@ table "t" {
 }
 ```
 
+## SQL Server
+
+### Bit
+
+The `bit` type allows creating [BIT](https://learn.microsoft.com/en-us/sql/t-sql/data-types/bit-transact-sql) columns.
+
+```hcl
+table "t" {
+  schema = schema.dbo
+  column "c1" {
+    type = bit
+  }
+}
+```
+
+### Binary strings
+
+The `varbinary` and `binary` types allow storing binary byte strings.
+
+```hcl
+table "t" {
+  schema = schema.dbo
+  column "c1" {
+    // Equals to binary(1).
+    type = binary
+  }
+  column "c2" {
+    type = binary(10)
+  }
+  column "c3" {
+    type = varbinary(255)
+  }
+  column "c4" {
+    // Max length: 8,000 bytes.
+    type = varbinary(MAX)
+  }
+}
+```
+
+### Date and Time
+
+Atlas supports the standard SQL Server types for storing date and time values: `date`, `datetime`, `datetime2`, `datetimeoffset`, `smalldatetime` and `time`.
+The document on Microsoft website has more information on [date and time types](https://learn.microsoft.com/en-us/sql/t-sql/data-types/data-types-transact-sql#date-and-time).
+
+```hcl
+table "t" {
+  schema = schema.dbo
+  column "c1" {
+    type = date
+  }
+  column "c2" {
+    type = datetime
+  }
+  column "c3" {
+    type = datetime2
+  }
+  column "c4" {
+    type = datetimeoffset
+  }
+  column "c5" {
+    type = smalldatetime
+  }
+  column "c6" {
+    // Equals to time(7).
+    type = time
+  }
+  column "c7" {
+    type = time(1)
+  }
+  column "c8" {
+    type = time(2)
+  }
+  column "c9" {
+    type = time(3)
+  }
+  column "c10" {
+    type = time(4)
+  }
+  column "c11" {
+    type = time(5)
+  }
+  column "c12" {
+    type = time(6)
+  }
+}
+```
+
+### Integer
+
+The `int`, `bigint`, `smallint`, and `tinyint` integer types are support by Atlas.
+See document on Microsoft website for more information on [integer types](https://learn.microsoft.com/en-us/sql/t-sql/data-types/int-bigint-smallint-and-tinyint-transact-sql).
+
+```hcl
+table "t" {
+  schema = schema.dbo
+  column "c1" {
+    type = int
+  }
+  column "c2" {
+    type = tinyint
+  }
+  column "c3" {
+    type = smallint
+  }
+  column "c4" {
+    type = bigint
+  }
+}
+```
+
+#### Integer Blocks
+
+The [`identity`](https://learn.microsoft.com/en-us/sql/t-sql/functions/identity-function-transact-sql) block can be used to create an identity column.
+
+```hcl
+table "t" {
+  schema = schema.dbo
+  column "c1" {
+    type = tinyint
+  }
+  column "c2" {
+    type = bigint
+    identity {
+      seed      = 701
+      increment = 1000
+    }
+  }
+  primary_key {
+    columns = [column.c2]
+  }
+}
+```
+
+### Fixed Point (Decimal)
+
+The [`decimal` and `numeric`](https://learn.microsoft.com/en-us/sql/t-sql/data-types/decimal-and-numeric-transact-sql) types are supported for storing exact numeric values. Note that in SQL Server the two types are identical.
+
+```hcl
+table "t" {
+  schema = schema.dbo
+  column "c1" {
+    // Equals to decimal(18, 0) as the
+    // default precision is 18.
+    type = decimal
+  }
+  column "c2" {
+    // Equals to decimal(5,0).
+    type = decimal(5)
+  }
+  column "c3" {
+    type = decimal(5,2)
+  }
+  column "c4" {
+    type = numeric
+  }
+}
+```
+
+### Floating Point (Float)
+
+The `float` and `real` types are supported for storing approximate numeric values.
+The document on Microsoft website has more information on [float types](https://learn.microsoft.com/en-us/sql/t-sql/data-types/float-and-real-transact-sql).
+
+```hcl
+table "t" {
+  schema = schema.dbo
+  column "c1" {
+    // Equals to float(53).
+    type = float
+  }
+  column "c2" {
+    // float(n) is between 1 and 53.
+    type = float(12)
+  }
+  column "c3" {
+    // The ISO synonym for real is `float(24)`.
+    type = real
+  }
+}
+```
+
+### Money
+
+The [`money` and `smallmoney`](https://learn.microsoft.com/en-us/sql/t-sql/data-types/money-and-smallmoney-transact-sql) data types allows creating columns for storing currency amount with a fixed fractional precision.
+
+```hcl
+table "t" {
+  schema = schema.dbo
+  column "c1" {
+    type = money
+  }
+  column "c2" {
+    type = smallmoney
+  }
+}
+```
+
+### Character strings
+
+The `char`, and `varchar` types allow creating string columns. The document on Microsoft website has more information on [string types](https://learn.microsoft.com/en-us/sql/t-sql/data-types/char-and-varchar-transact-sql).
+
+```hcl
+table "t" {
+  schema = schema.dbo
+  column "c1" {
+    // Equals to varchar(1).
+    type = varchar
+  }
+  column "c2" {
+    type = varchar(255)
+  }
+  column "c3" {
+    type = varchar(MAX)
+  }
+  column "c4" {
+    // Equals to char(1).
+    type = char
+  }
+  column "c5" {
+    type = char(5)
+  }
+}
+```
+
+### Unicode character strings
+
+The `nchar`, and `nvarchar` types allow creating string columns. The document on Microsoft website has more information on [unicode string types](https://learn.microsoft.com/en-us/sql/t-sql/data-types/nchar-and-nvarchar-transact-sql).
+
+```hcl
+table "t" {
+  schema = schema.dbo
+  column "c1" {
+    // Equals to nvarchar(1).
+    type = nvarchar
+  }
+  column "c2" {
+    type = nvarchar(255)
+  }
+  column "c3" {
+    type = nvarchar(MAX)
+  }
+  column "c4" {
+    // Equals to nchar(1).
+    type = nchar
+  }
+  column "c5" {
+    type = nchar(5)
+  }
+}
+```
+
+### `ntext`, `text` and `image`
+
+Atlas supports some deprecated types for backward compatibility. The document on Microsoft website has more information on [ntext, text and image types](https://learn.microsoft.com/en-us/sql/t-sql/data-types/ntext-text-and-image-transact-sql).
+
+```hcl
+table "t" {
+  schema = schema.dbo
+  column "c1" {
+    type = ntext
+  }
+  column "c2" {
+    type = text
+  }
+  column "c3" {
+    type = image
+  }
+}
+```
+
 ## ClickHouse
 
 ### Array
