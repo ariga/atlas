@@ -46,7 +46,7 @@ table a simpler approach. This approach, which is gaining the name "Database Sch
 approach to database schema management: developers provide the desired state of the database and the tool automatically
 plans the required migrations.
 
-### How do these tools work?
+### A practical example
 
 Let's use Atlas to show a quick example of how database schema-as-code tools work.
 
@@ -173,7 +173,7 @@ CREATE TABLE `users` (
 </TabItem>
 </Tabs>
 
-Now let's run the `migrate apply` command again, and view the migration plan that Atlas will create for us:
+Now let's run the `schema apply` command again, and view the migration plan that Atlas will create for us:
 
 ```shell
 -- Planned Changes:
