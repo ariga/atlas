@@ -173,6 +173,11 @@ jobs:
           MSSQL_SA_PASSWORD: P@ssw0rd0995
         ports:
           - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -U sa -P \"${MSSQL_SA_PASSWORD}\" -Q \"SELECT 1\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3.0.1

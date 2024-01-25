@@ -576,14 +576,8 @@ atlas schema diff \
 The `schema diff` command can also be used to compare external schemas defined in data sources, such as ORM schemas,
 with a database, HCL or SQL schemas, or even with other ORM schemas.
 
-<Tabs
-defaultValue="mysql"
-values={[
-{label: 'MySQL', value: 'mysql'},
-{label: 'PostgreSQL', value: 'postgres'},
-{label: 'SQLite', value: 'sqlite'},
-]}>
-<TabItem value="mysql">
+<Tabs defaultValue="mysql">
+<TabItem label="MySQL" value="mysql">
 
 ```hcl
 data "external_schema" "gorm" {
@@ -622,7 +616,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="postgres">
+<TabItem label="PostgreSQL" value="postgres">
 
 ```hcl
 data "external_schema" "gorm" {
@@ -661,7 +655,7 @@ atlas schema diff \
 ```
 
 </TabItem>
-<TabItem value="sqlite">
+<TabItem label="SQLite" value="sqlite">
 
 ```hcl
 data "external_schema" "gorm" {
@@ -686,6 +680,45 @@ data "external_schema" "sequelize" {
 
 env "drift" {
   dev = "sqlite://dev?mode=memory"
+  # Variables defined and available with env:// prefix.
+  gorm       = data.hcl_schema.gorm.url
+  sequelize  = data.hcl_schema.sequelize.url
+}
+```
+
+```shell
+atlas schema diff \
+  --env "drift" \
+  --from "env://gorm" \
+  --to "env://sequelize"
+```
+
+</TabItem>
+<TabItem label="SQL Server" value="sqlserver">
+
+```hcl
+data "external_schema" "gorm" {
+  program = [
+    "go", "run", "-mod=mod",
+    "ariga.io/atlas-provider-gorm",
+    "load",
+    "--path", "./path/to/models",
+    "--dialect", "sqlserver",
+  ]
+}
+
+data "external_schema" "sequelize" {
+  program = [
+    "npx",
+    "@ariga/atlas-provider-sequelize",
+    "load",
+    "--path", "./path/to/models",
+    "--dialect", "mssql",
+  ]
+}
+
+env "drift" {
+  dev = "docker://sqlserver/2022-latest"
   # Variables defined and available with env:// prefix.
   gorm       = data.hcl_schema.gorm.url
   sequelize  = data.hcl_schema.sequelize.url

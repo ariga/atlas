@@ -91,7 +91,7 @@ data "external_schema" "gorm" {
     "ariga.io/atlas-provider-gorm",
     "load",
     "--path", "./path/to/models",
-    "--dialect", "mysql", // | postgres | sqlite
+    "--dialect", "mysql", // | postgres | sqlite | sqlserver
   ]
 }
 
