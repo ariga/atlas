@@ -3,6 +3,8 @@ title: "Why Your Team Needs a Database Schema-as-Code Tool"
 authors: rotemtam
 tags: [database-schema-as-code, devops, ci/cd, migrations, terraform, kubernetes, gitops]
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 ### The Evolution of Database Schema Management
 
@@ -43,6 +45,147 @@ do the planning and tools are only used to execute the plan and keep track of wh
 table a simpler approach. This approach, which is gaining the name "Database Schema-as-Code", applies a declarative
 approach to database schema management: developers provide the desired state of the database and the tool automatically
 plans the required migrations.
+
+### How do these tools work?
+
+Let's use Atlas to show a quick example of how database schema-as-code tools work.
+
+Atlas allows users to represent their database schema
+in plain SQL or in [HCL](/quides/ddl#hcl). The schema is saved in a schema file, which holds the _desired_ state of our
+database.
+
+We will start with a simple schema that represents a `users` table, in which each user has an ID and a name:
+
+<Tabs>
+<TabItem value="hcl" label="Atlas DDL (HCL)" default>
+
+```hcl title="schema.hcl"
+table "users" {
+  schema = schema.example
+  column "id" {
+    null = false
+    type = int
+  }
+  column "name" {
+    null = true
+    type = varchar(100)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+```
+
+Now, let's apply this schema to an empty MySQL database:
+
+```shell
+atlas schema apply \
+  -u "mysql://root:pass@localhost:3306/example" \
+  --to file://schema.hcl \
+  --dev-url "docker://mysql/8/example"
+```
+</TabItem>
+
+<TabItem value="sql" label="SQL">
+
+```sql title="schema.sql"
+-- create "users" table
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` varchar(100) NULL,
+  PRIMARY KEY (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+```
+
+Now, let's apply this schema to an empty MySQL database:
+
+```shell
+atlas schema apply \
+  -u "mysql://root:pass@localhost:3306/example" \
+  --to file://schema.sql \
+  --dev-url "docker://mysql/8/example"
+```
+</TabItem>
+</Tabs>
+
+Atlas will compare the desired state from our schema file to the database URL provided,
+and plan the migration:
+
+```shell
+-- Planned Changes:
+-- Create "users" table
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` varchar(100) NULL,
+  PRIMARY KEY (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+? Are you sure?:
+  ▸ Apply
+    Lint and edit
+    Abort
+```
+After applying this to our database, we will run the command once more and see that Atlas recognizes there is no drift
+between the two states:
+
+```shell
+Schema is synced, no changes to be made
+```
+
+Let's make a simple change to our schema by adding an `email` column:
+
+<Tabs>
+<TabItem value="hcl" label="Atlas DDL (HCL)" default>
+
+```hcl title="schema.hcl" {11-14}
+table "users" {
+  schema = schema.example
+  column "id" {
+    null = false
+    type = int
+  }
+  column "name" {
+    null = true
+    type = varchar(100)
+  }
+  column "email" {
+    null = true
+    type = varchar(255)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+```
+
+</TabItem>
+
+<TabItem value="sql" label="SQL">
+
+```sql title="schema.sql" {5}
+-- create "users" table
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` varchar(100) NULL,
+  `email` varchar(255) NULL,
+  PRIMARY KEY (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+```
+</TabItem>
+</Tabs>
+
+Now let's run the `migrate apply` command again, and view the migration plan that Atlas will create for us:
+
+```shell
+-- Planned Changes:
+-- Modify "users" table
+ALTER TABLE `users` ADD COLUMN `email` varchar(255) NULL;
+? Are you sure?:
+  ▸ Apply
+    Lint and edit
+    Abort
+```
+To conclude, in this example, we got a glimpse of how a tool like Atlas works with a database schema using the
+declarative approach.
 
 ### Do you need a Database Schema-as-Code tool?
 
