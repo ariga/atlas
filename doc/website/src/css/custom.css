@@ -231,6 +231,16 @@ div[class^='announcementBar_']  a.cta {
   width:100%;
 }
 
+/* Full-width supported ORMs table. */
+.docs-doc-id-atlas-schema\/external-schema table {
+  display:table;
+  width:100%;
+}
+
+.docs-doc-id-atlas-schema\/external-schema table td:first-child {
+  width: 20%;
+}
+
 .join-discord {
   background-color:#5C4AEC;
   border-radius:6px;
