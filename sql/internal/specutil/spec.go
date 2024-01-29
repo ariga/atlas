@@ -79,7 +79,7 @@ func Marshal(v any, marshaler schemahcl.Marshaler, funcs RealmFuncs) ([]byte, er
 			}
 			d.Tables = append(d.Tables, spec.Tables...)
 			d.Views = append(d.Views, spec.Views...)
-			d.Materialized = spec.Materialized
+			d.Materialized = append(d.Materialized, spec.Materialized...)
 			d.Schemas = append(d.Schemas, spec.Schema)
 			d.Funcs = append(d.Funcs, spec.Funcs...)
 			d.Procs = append(d.Procs, spec.Procs...)
