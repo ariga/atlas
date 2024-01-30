@@ -7,6 +7,7 @@ import Image from '@theme/IdealImage';
 export enum CardImage {
     Action = "action",
     CI = "ci",
+    ClickHouse = "clickhouse",
     Cloud = "cloud",
     Config = "config",
     DataSource = "datasource",

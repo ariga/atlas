@@ -484,6 +484,8 @@ CREATE TABLE `users` (
 CREATE TABLE `repos` (
   `id` UInt64,
   `name` String NOT NULL,
+// highlight-next-line
+  `description` String NULL,
   `owner_id` Bigint NOT NULL,
   PRIMARY KEY (`id`),
 ) ENGINE = MergeTree() ORDER BY id;
@@ -615,7 +617,7 @@ As you can see below, the database is now _In Sync_ with the migration directory
 ### Next Steps
 
 In this short tutorial we learned how to use `atlas` to generate migrations, push them to an Atlas workspace and apply them to
-databases. For a more in-depth guides, please check out the other pages in this section or visit our [Guides](/guides) section.
+databases. For more in-depth guides, please check out the other pages in this section or visit our [Guides](/guides) section.
 
 :::info Need help getting started?
 
