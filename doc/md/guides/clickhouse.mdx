@@ -4,7 +4,8 @@ title: Manage ClickHouse with Atlas
 slug: /guides/clickhouse
 tags: [clickhouse]
 ---
-import InstallationInstructions from '../../components/_installation_instructions.mdx';
+
+import InstallationInstructions from '../components/_installation_instructions.mdx';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
@@ -396,6 +397,7 @@ was applied. Here's an example of what it should look like:
 </div>
 
 ### Generating another migration
+
 After applying the first migration, it's time to update our schema defined in the schema file and tell Atlas to generate
 another migration. This will bring the migration directory (and the database) in line with the new state defined by the
 desired schema (schema file).
@@ -523,7 +525,22 @@ atlas migrate diff add_commits \
   --dev-url "docker://clickhouse/23.11/dev"
 ```
 
-Run `ls migrations`, and you'll notice that a new migration has been generated. Let's run `atlas migrate push` again and
+Run `ls migrations`, and you'll notice that a new migration has been generated.
+
+```sql title="20240130141055.sql"
+ALTER TABLE `repos` ADD COLUMN `description` Nullable(String);
+-- Create "commits" table
+CREATE TABLE `commits` (
+   `id` UInt64,
+   `message` String,
+   `repo_id` Int64,
+   `author_id` Int64
+) ENGINE = MergeTree
+PRIMARY KEY (`id`)
+SETTINGS index_granularity = 8192;
+```
+
+Let's run `atlas migrate push` again and
 observe the new file on the migration directory page.
 
 ```shell
@@ -542,12 +559,12 @@ In this guide we learned about the declarative and versioned workflows, and how 
 push them to an Atlas workspace and apply them to databases.
 
 Next steps:
-* Read the [full docs](/atlas-schema/hcl) to learn the ClickHouse HCL schema syntax
+* Read the [full docs](/atlas-schema/hcl) to learn HCL schema syntax or about specific ClickHouse [column types](/atlas-schema/hcl-types#clickhouse)
 * Learn how to [set up CI](/cloud/setup-ci) for your migration directory
 * Deploy schema changes with [Terraform](/integrations/terraform-provider) or [Kubernetes](/integrations/kubernetes/operator)
 * Learn about [modern CI/CD principles](/guides/modern-database-ci-cd) for databases
 
-For more in-depth guides, check out the other pages in this section or visit our [Docs](/getting-started) section.
+For more in-depth guides, check out the other pages in [this section](/guides) or visit our [Docs](/getting-started) section.
 
 Have questions? Feedback? Find our team on our [Discord server](https://discord.com/invite/zZ6sWVg6NT).
 

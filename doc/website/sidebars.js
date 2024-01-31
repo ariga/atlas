@@ -459,16 +459,9 @@ module.exports = {
             ],
         },
         {
-            type: 'category',
-            label: 'ClickHouse',
-            collapsed: false,
-            items: [
-                {
-                    type: 'doc',
-                    id: 'guides/clickhouse/getting-started-clickhouse',
-                    label: 'Getting Started'
-                }
-            ],
+            type: 'doc',
+            id: 'guides/getting-started-clickhouse',
+            label: 'ClickHouse'
         },
         {
             type: 'doc',
