@@ -264,9 +264,10 @@ atlas schema apply \
 ```shell
 atlas schema apply \
 -u "clickhouse://localhost:9000/demo" \
---to file://schema.hcl
+--to file://schema.sql \
 --dev-url "docker://clickhouse/23.11/demo"
 ```
+  
 </TabItem>
 </Tabs>
 
@@ -300,11 +301,26 @@ To create our first migration file, we will run the `atlas migrate diff` command
 * `--to` the URL of the desired state. A state can be specified using a database URL, HCL or SQL schema, or another migration directory.
 * `--dev-url` a URL to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
 
+<Tabs>
+<TabItem value="hcl" label="Atlas DDL (HCL)" default>
+
 ```shell
 atlas migrate diff initial \
   --to file://schema.hcl \
   --dev-url "docker://clickhouse/23.11/dev"
 ```
+
+</TabItem>
+<TabItem value="sql" label="SQL">
+
+```shell
+atlas migrate diff initial \
+  --to file://schema.sql \
+  --dev-url "docker://clickhouse/23.11/dev"
+```
+
+</TabItem>
+</Tabs>
 
 Run `ls migrations`, and you'll notice that Atlas has automatically created a migration directory for us, as well as
 two files:
@@ -519,11 +535,27 @@ CREATE TABLE `commits` (
 
 Next, let's run the `atlas migrate diff` command once more:
 
+
+<Tabs>
+<TabItem value="hcl" label="Atlas DDL (HCL)" default>
+
 ```shell
 atlas migrate diff add_commits \
   --to file://schema.hcl \
   --dev-url "docker://clickhouse/23.11/dev"
 ```
+
+</TabItem>
+<TabItem value="sql" label="SQL">
+
+```shell
+atlas migrate diff add_commits \
+  --to file://schema.sql \
+  --dev-url "docker://clickhouse/23.11/dev"
+```
+
+</TabItem>
+</Tabs>
 
 Run `ls migrations`, and you'll notice that a new migration has been generated.
 
