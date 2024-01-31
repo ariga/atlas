@@ -460,6 +460,11 @@ module.exports = {
         },
         {
             type: 'doc',
+            id: 'guides/getting-started-clickhouse',
+            label: 'ClickHouse'
+        },
+        {
+            type: 'doc',
             id: 'guides/ddl'
         },
     ]
