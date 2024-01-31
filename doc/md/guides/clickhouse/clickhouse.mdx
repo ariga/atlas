@@ -62,7 +62,13 @@ ATLAS_TOKEN="ATLAS_TOKEN" atlas login
 
 ## Inspecting our Database
 
-Let's start off with a minimal database with a `users` table and an `id` as the primary key.
+Let's start off by spinning up a database using Docker:
+
+```shell
+docker run --rm -d --name atlas-demo -e CLICKHOUSE_DB=demo -p 9000:9000 clickhouse/clickhouse-server:latest
+```
+
+For this example we will begin with a minimal database with a `users` table and an `id` as the primary key.
 
 ```sql
 CREATE TABLE `users` (
@@ -70,6 +76,12 @@ CREATE TABLE `users` (
   `name` String NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE = MergeTree() ORDER BY id;
+```
+
+To create the table above on our local database, we can run the following command:
+
+```sql
+ docker exec -it atlas-demo clickhouse-client --query 'CREATE TABLE demo.users (id UInt64, name String NOT NULL, PRIMARY KEY (id)) ENGINE = MergeTree() ORDER BY id'
 ```
 
 The `atlas schema inspect` command supports reading the database description provided by a [URL](/concepts/url) and outputting it in
@@ -354,14 +366,9 @@ image above.
 ### Applying migrations
 
 Once our `app` migration directory has been pushed, we can apply it to a database from any CD platform without
-necessarily having our directory there. For the sake of this example, let's spin up a local database that represents
-our production database to apply the migrations to it:
+necessarily having our directory there.
 
-```shell
-docker run --rm -d --name atlas-demo -e CLICKHOUSE_DB=example -p 9000:9000 clickhouse/clickhouse-server:latest
-```
-
-Then, we'll create a simple Atlas configuration file (`atlas.hcl`) to store the settings for our environment:
+We'll create a simple Atlas configuration file (`atlas.hcl`) to store the settings for our local environment:
 
 ```hcl title="atlas.hcl" {1}
 # The "dev" environment represents our local testings.
@@ -543,3 +550,4 @@ Next steps:
 For more in-depth guides, check out the other pages in this section or visit our [Docs](/getting-started) section.
 
 Have questions? Feedback? Find our team on our [Discord server](https://discord.com/invite/zZ6sWVg6NT).
+
