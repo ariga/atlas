@@ -1,7 +1,7 @@
 ---
 id: getting-started-clickhouse
 title: Manage ClickHouse with Atlas
-slug: /guides/clickhouse/getting-started
+slug: /guides/clickhouse
 tags: [clickhouse]
 ---
 import InstallationInstructions from '../../components/_installation_instructions.mdx';
@@ -13,8 +13,8 @@ providing exceptional speed and efficiency in handling large datasets.
 
 Many teams adopt ClickHouse for its speed and cost-efficiency only to discover that the day 2 operations of managing its
 schema can be a puzzle. Sure, if your schema contains a handful of tables that rarely change,
-you’re probably not going to feel much of this pain. But for mission-critical applications complex and interconnected
-schemas moving fast without breaking things becomes difficult.
+you’re probably not going to feel much of this pain. But for mission-critical applications, managing complex and interconnected
+schemas while moving fast without breaking things becomes difficult.
 
 #### Enter: Atlas
 Atlas helps developers manage their database schema as code - abstracting away the intricacies of database schema
@@ -29,6 +29,35 @@ In this guide, we will dive into setting up Atlas for ClickHouse, and introduce 
 3. Atlas installed on your machine:
 <InstallationInstructions />
 
+## Logging in to Atlas
+
+To use ClickHouse with Atlas, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time,
+you will be prompted to create both an account and a workspace (organization):
+
+<Tabs>
+<TabItem value="web" label="Via Web">
+
+```shell
+atlas login
+```
+
+</TabItem>
+<TabItem value="token" label="Via Token">
+
+```shell
+atlas login --token "ATLAS_TOKEN"
+```
+
+</TabItem>
+<TabItem value="env-var" label="Via Environment Variable">
+
+```shell
+ATLAS_TOKEN="ATLAS_TOKEN" atlas login
+```
+
+</TabItem>
+</Tabs>
+
 ## Inspecting our Database
 
 Let's start off with a minimal database with a `users` table and an `id` as the primary key.
@@ -42,7 +71,7 @@ CREATE TABLE `users` (
 ```
 
 The `atlas schema inspect` command supports reading the database description provided by a [URL](/concepts/url) and outputting it in
-three different formats: [Atlas DDL](/atlas-schema/hcl.mdx) (default), SQL, and JSON. In this guide, we will
+different formats, including [Atlas DDL](/atlas-schema/hcl.mdx) (default), SQL, and JSON. In this guide, we will
 demonstrate the flow using both the Atlas DDL and SQL formats, as the JSON format is often used for processing the
 output using `jq`.
 
@@ -123,7 +152,7 @@ atlas schema inspect -u "clickhouse://localhost:9000/example" -w
 ![clickhouse-inspect](https://atlasgo.io/uploads/clickhouse/images/clickhouse-inspect.png)
 
 ## Declarative Migrations
-The declarative approach requires the user to define the desired end schema, and Atlas provides a safe way to
+The declarative approach allows the user to define the desired end schema, and Atlas provides a safe way to
 alter the database to get there. Let's see this in action.
 
 We will start off by making a change to our schema file, such as adding a `repos` table:
@@ -210,7 +239,8 @@ by running the `atlas schema apply` command:
 ```shell
 atlas schema apply \
 -u "clickhouse://localhost:9000/demo" \
---to file://schema.hcl
+--to file://schema.hcl \
+--dev-url "docker://clickhouse/23.11/demo"
 ```
 
 </TabItem>
@@ -306,34 +336,7 @@ most methods covered in the [guides](/guides) section. In this example, we'll de
     <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
 </div>
 
-Firstly, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time, you'll be
-prompted to create both an account and a workspace (organization):
-
-<Tabs>
-<TabItem value="web" label="Via Web">
-
-```shell
-atlas login
-```
-
-</TabItem>
-<TabItem value="token" label="Via Token">
-
-```shell
-atlas login --token "ATLAS_TOKEN"
-```
-
-</TabItem>
-<TabItem value="env-var" label="Via Environment Variable">
-
-```shell
-ATLAS_TOKEN="ATLAS_TOKEN" atlas login
-```
-
-</TabItem>
-</Tabs>
-
-After logging in, let's name our new migration project `app` and run `atlas migrate push`:
+Let's name our new migration project `app` and run `atlas migrate push`:
 
 ```shell
 atlas migrate push app \
