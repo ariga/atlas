@@ -17,6 +17,7 @@ you’re probably not going to feel much of this pain. But for mission-critical 
 schemas while moving fast without breaking things becomes difficult.
 
 #### Enter: Atlas
+
 Atlas helps developers manage their database schema as code - abstracting away the intricacies of database schema
 management. With Atlas, users provide the desired state of the database schema and Atlas automatically plans the
 required migrations.
@@ -24,6 +25,7 @@ required migrations.
 In this guide, we will dive into setting up Atlas for ClickHouse, and introduce the different workflows available.
 
 ## Prerequisites
+
 1. A ClickHouse database
 2. Docker
 3. Atlas installed on your machine:
@@ -107,11 +109,10 @@ schema "demo" {
 }
 ```
 
-This block represents a [table](/atlas-schema/hcl.mdx#table) resource with `id`, and `name`
-columns. The `schema` field references the `demo` schema that is defined elsewhere
-in this document. In addition, the `primary_key` sub-block defines the `id` column as
-the primary key for the table. Atlas strives to mimic the syntax of the database that the user is working against. In
-this case, the type for the `id` column is `UInt64`, and `String` for the `name` column.
+This first block represents a [table](/atlas-schema/hcl.mdx#table) resource with `id`, and `name`
+columns. The `schema` field references the `demo` schema that is defined in the block below. In addition, the `primary_key`
+sub-block defines the `id` column as the primary key for the table. Atlas strives to mimic the syntax of the database
+that the user is working against. In this case, the type for the `id` column is `UInt64`, and `String` for the `name` column.
 
 </TabItem>
 <TabItem value="sql" label="SQL">
@@ -152,8 +153,9 @@ atlas schema inspect -u "clickhouse://localhost:9000/example" -w
 ![clickhouse-inspect](https://atlasgo.io/uploads/clickhouse/images/clickhouse-inspect.png)
 
 ## Declarative Migrations
-The declarative approach allows the user to define the desired end schema, and Atlas provides a safe way to
-alter the database to get there. Let's see this in action.
+
+The declarative approach allows users to manage their database schemas by simply defining the desired end schema, and
+Atlas provides a safe way to alter the database to get there. Let's see this in action.
 
 We will start off by making a change to our schema file, such as adding a `repos` table:
 
@@ -268,11 +270,13 @@ and view the ERD:
 ![atlas-schema](https://atlasgo.io/uploads/clickhouse/images/clickhouse-two-tables.png)
 
 ## Versioned Migrations
+
 Alternatively, the versioned migration workflow, sometimes called "change-based migrations", allows each change to the
 database schema to be checked-in to source control and reviewed during code-review. Users can still benefit from Atlas
 intelligently planning migrations for them, however they are not automatically applied.
 
 ### Creating the first migration
+
 In the versioned migration workflow, our database state is managed by a _migration directory_. The migration directory
 holds all of the migration files created by Atlas, and the sum of all files in lexicographical order represents the current
 state of the database.
@@ -323,10 +327,11 @@ h1:NrYfakYn4W3xiS9VqcP98sqvgLUPn9pJpxFndh1GWsQ=
 </TabItem>
 </Tabs>
 
-The migration file represents the current state of our database, and the sum file is in charge of maintaining the integrity
+The migration file represents the current state of our database, and the sum file is used by Atlas to maintain the integrity
 of the migration directory. To learn more about the sum file, read the [documentation](/concepts/migration-directory-integrity).
 
 ### Pushing migration directories to Atlas
+
 Now that we have our first migration, we can apply it to a database. There are multiple ways to accomplish this, with
 most methods covered in the [guides](/guides) section. In this example, we'll demonstrate how to push migrations to
 [Atlas Cloud](https://atlasgo.cloud), much like how Docker images are pushed to Docker Hub.
@@ -347,6 +352,7 @@ Once the migration directory is pushed, Atlas prints a URL to the created direct
 image above.
 
 ### Applying migrations
+
 Once our `app` migration directory has been pushed, we can apply it to a database from any CD platform without
 necessarily having our directory there. For the sake of this example, let's spin up a local database that represents
 our production database to apply the migrations to it:
@@ -528,8 +534,11 @@ atlas migrate push app \
 In this guide we learned about the declarative and versioned workflows, and how to use Atlas to generate migrations,
 push them to an Atlas workspace and apply them to databases.
 
-Next, we recommend you [set up CI](/cloud/setup-ci) for your migration directory, to ensure that all changes applied to
-your database are safe and automatically updated when pushed.
+Next steps:
+* Read the [full docs](/atlas-schema/hcl) to learn the ClickHouse HCL schema syntax
+* Learn how to [set up CI](/cloud/setup-ci) for your migration directory
+* Deploy schema changes with [Terraform](/integrations/terraform-provider) or [Kubernetes](/integrations/kubernetes/operator)
+* Learn about [modern CI/CD principles](/guides/modern-database-ci-cd) for databases
 
 For more in-depth guides, check out the other pages in this section or visit our [Docs](/getting-started) section.
 
