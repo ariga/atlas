@@ -64,7 +64,7 @@ type (
 
 	// Check represents an assertion and its status.
 	Check struct {
-		Stmt  string  `json:"Stmt,omitempty"`  // Assertion status.
+		Stmt  string  `json:"Stmt,omitempty"`  // Assertion statement.
 		Error *string `json:"Error,omitempty"` // Assertion error, if any.
 	}
 

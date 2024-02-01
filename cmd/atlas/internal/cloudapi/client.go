@@ -147,13 +147,29 @@ type (
 
 	// DeployedFileInput represents the input type for a deployed file.
 	DeployedFileInput struct {
-		Name      string          `json:"name"`
-		Content   string          `json:"content"`
-		StartTime time.Time       `json:"startTime"`
-		EndTime   time.Time       `json:"endTime"`
-		Skipped   int             `json:"skipped"`
-		Applied   int             `json:"applied"`
-		Error     *StmtErrorInput `json:"error,omitempty"`
+		Name      string            `json:"name"`
+		Content   string            `json:"content"`
+		StartTime time.Time         `json:"startTime"`
+		EndTime   time.Time         `json:"endTime"`
+		Skipped   int               `json:"skipped"`
+		Applied   int               `json:"applied"`
+		Checks    []FileChecksInput `json:"checks"`
+		Error     *StmtErrorInput   `json:"error,omitempty"`
+	}
+
+	// FileChecksInput represents the input type for a file checks.
+	FileChecksInput struct {
+		Name   string           `json:"name"`
+		Start  time.Time        `json:"start"`
+		End    time.Time        `json:"end"`
+		Checks []CheckStmtInput `json:"checks"`
+		Error  *StmtErrorInput  `json:"error,omitempty"`
+	}
+
+	// CheckStmtInput represents the input type for a statement check.
+	CheckStmtInput struct {
+		Stmt  string  `json:"stmt"`
+		Error *string `json:"error,omitempty"`
 	}
 
 	// StmtErrorInput represents the input type for a statement error.
