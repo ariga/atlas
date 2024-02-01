@@ -6,7 +6,7 @@ on:
       - master
 
 env:
-  CRDB_VERSIONS: v21.2.11 v22.1.0
+  CRDB_VERSIONS: v21.2.11 v22.1.0 v23.1.14
 
 jobs:
   build-services:

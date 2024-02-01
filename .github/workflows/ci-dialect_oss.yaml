@@ -420,7 +420,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       cockroach:
-        image: ghcr.io/ariga/cockroachdb-single-node:v21.2.11
+        image: ghcr.io/ariga/cockroachdb-single-node:v23.1.14
         
         ports:
           - 26257:26257
