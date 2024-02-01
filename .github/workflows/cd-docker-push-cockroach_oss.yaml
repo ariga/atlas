@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-
+  workflow_dispatch:
 env:
   CRDB_VERSIONS: v21.2.11 v22.1.0 v23.1.14
 
