@@ -199,10 +199,6 @@ div[class^='announcementBar_']  a.cta {
   margin: 2px;
 }
 
-.tabs-container p {
-  margin-bottom: 10px;
-}
-
 .code-block-error-message {
   background-color: #ff6f8780;
   display: block;
@@ -281,4 +277,17 @@ div[class^='announcementBar_']  a.cta {
     right: 0;
     position: absolute;
   }
+}
+
+.language-applylog .version, .language-applylog .action2, .language-applylog .action3 {
+  color: #62cece;
+}
+
+.language-applylog .duration, .language-applylog .action1 {
+  color: #c0c028;
+}
+
+.language-applylog .error {
+  background: #db4b4b;
+  color: white;
 }

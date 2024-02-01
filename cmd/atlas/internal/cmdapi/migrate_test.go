@@ -895,7 +895,7 @@ func TestMigrate_ApplyCloudReport(t *testing.T) {
 			}
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&m))
 			switch {
-			case strings.Contains(m.Query, "query") && strings.Contains(m.Query, "bot"):
+			case strings.Contains(m.Query, "query") && strings.Contains(m.Query, "me"):
 				fmt.Fprintln(w, `{"data": {"me":{ "name": "a8m", "org": "graph"}}}`)
 			case strings.Contains(m.Query, "query"):
 				// Checksum before archiving.
@@ -1139,7 +1139,7 @@ func TestMigrate_ApplyCloudReportSet(t *testing.T) {
 			}
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&m))
 			switch {
-			case strings.Contains(m.Query, "query") && strings.Contains(m.Query, "bot"):
+			case strings.Contains(m.Query, "query") && strings.Contains(m.Query, "me"):
 				fmt.Fprintln(w, `{"data": {"me":{ "name": "a8m", "org": "graph"}}}`)
 			case strings.Contains(m.Query, "query"):
 				// Checksum before archiving.
