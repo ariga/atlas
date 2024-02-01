@@ -286,6 +286,9 @@ atlas login
 ```
 :::
 
+<Tabs>
+<TabItem label="PostgreSQL" value="postgres">
+
 ```hcl
 materialized "mat_view" {
   schema = schema.public
@@ -311,6 +314,50 @@ materialized "mat_view" {
   depends_on = [materialized.m1]
 }
 ```
+
+</TabItem>
+<TabItem label="Clickhouse" value="clickhouse">
+
+When creating materialized views with `TO [db.]table`, 
+the view will be created with the same structure as the table or view specified in the `TO` clause.
+```hcl
+materialized "mat_view" {
+  schema     = schema.public
+  to         = table.dest
+  as         = "SELECT * FROM table.src"
+  depends_on = [table.src]
+}
+```
+
+The `engine` and `primary_key` attributes are required if the `TO` clause is not specified.
+In this syntax, `populate` can be used for the first time to populate the materialized view.
+
+```hcl
+materialized "mat_view" {
+  schema = schema.public
+  engine = MergeTree
+  column "id" {
+    type = UInt32
+  }
+  column "name" {
+    type = String
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  as         = "SELECT * FROM table.src"
+  populate   = true
+  depends_on = [table.src]
+}
+```
+
+:::info
+Note that modifying the materialized view structure 
+after the initial creation is not supported by Atlas currently.
+:::
+
+</TabItem>
+</Tabs>
 
 ## Column
 
