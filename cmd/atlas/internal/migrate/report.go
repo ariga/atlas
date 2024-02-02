@@ -105,7 +105,7 @@ func (r *StatusReporter) Report(ctx context.Context) (*cmdlog.MigrateStatus, err
 			if idx == -1 {
 				return nil, fmt.Errorf("migration file with version %q not found", last.Version)
 			}
-			stmts, err := rep.Available[idx].Stmts()
+			stmts, err := migrate.FileStmts(r.Client.Driver, rep.Available[idx])
 			if err != nil {
 				return nil, err
 			}

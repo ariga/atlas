@@ -1,0 +1,152 @@
+---
+id: checks
+slug: /versioned/checks
+title: Pre-migration checks
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+
+Atlas supports the concept of pre-migration checks, where each migration version can include a list of assertions
+(predicates) that must evaluate to true before the migration is applied.
+For example, before dropping a table, we aim to ensure that no data is deleted and the table must be empty, or we check
+for the absence of duplicate values before adding a unique index to a table.
+
+:::info Cloud Directory
+Pre-migration checks work for cloud directories only. Check out the [introduction guide](/versioned/intro#pushing-migrations-to-atlas)
+to get started with Atlas Cloud.
+:::
+
+### `atlas:txtar` directive
+
+Atlas supports a text-based file archive to describe "migration plans". Unlike regular migration files, which mainly
+contain a list of DDL statements (with optional directives), Atlas `txtar` files (currently) support two file
+types: migration files and pre-execution check files. For example:
+
+<Tabs>
+<TabItem default value="one-checks" label="One check file">
+
+The code below presents the most standard example of pre-migration checks. The default checks file is named `checks.sql`,
+and the `migration.sql` file contains the actual DDLs to be executed on the database in case the assertions are passed.
+
+```sql title="20240201131900_drop_users.sql"
+-- atlas:txtar
+
+// highlight-next-line
+-- checks.sql --
+-- The assertion below must be evaluated to true. Hence, table users must be empty.
+SELECT NOT EXISTS(SELECT * FROM users);
+
+// highlight-next-line
+-- migration.sql --
+-- The statement below will be executed only if the assertion above is evaluated to true.
+DROP TABLE users;
+```
+
+</TabItem>
+<TabItem default value="multi-checks" label="Multiple check files">
+
+The example below presents a case where an archive file includes two check files:
+
+- `checks/users.sql` - The default policy for check files dictates that all assertions must be evaluated to true.
+- `checks/roles.sql` - This check file utilizes the `atlas:assert oneof` directive, indicating that at least one of
+   the assertions must be evaluated to true.
+
+```sql title="20240201131900_drop_users.sql"
+-- atlas:txtar
+
+// highlight-next-line
+-- checks/users.sql --
+-- All assertions below must be evaluated to true. The tables mentioned below must be empty.
+SELECT NOT EXISTS(SELECT * FROM internal_users);
+SELECT NOT EXISTS(SELECT * FROM external_users);
+
+// highlight-next-line
+-- checks/roles.sql --
+-- atlas:assert oneof
+
+-- At least one of the assertions below must be evaluated to true. Hence, we drop
+-- the "roles" table only if it is empty, or there are no associations to it.
+SELECT NOT EXISTS(SELECT * FROM roles);
+SELECT NOT EXISTS(SELECT * FROM user_roles);
+
+// highlight-next-line
+-- migration.sql --
+-- The statements below will be executed only if the check files above are passed.
+DROP TABLE internal_users;
+DROP TABLE external_users;
+DROP TABLE roles;
+```
+
+</TabItem>
+</Tabs>
+
+:::note <a href="#file-directive" id="file-directive">File directives</a>
+File directives, like `atlas:txtar` are located at the top of the migration file and should not be associated with any
+statement. Therefore, double new lines (`\n\n`) are used to separate file directives from its content.
+:::
+
+### Examples
+
+Executing the migration examples defined above will result in the following output:
+
+#### Pre-execution checks passed
+
+If the pre-execution checks pass, the migration will be applied, and Atlas will report the results.
+
+```bash
+atlas migrate --dir atlas://app --env prod
+```
+
+![Check passed](https://atlasgo.io/uploads/cloud/deploy/check-passed.png)
+
+```applylog title="Output"
+Migrating to version 20240201131900 from 20240201131800 (1 migrations in total):
+
+// highlight-start
+  -- checks before migrating version 20240201131900
+    -> SELECT NOT EXISTS(SELECT * FROM users);
+  -- ok (624.004µs)
+// highlight-end
+
+  -- migrating version 20240201131900
+    -> DROP TABLE users;
+  -- ok (5.412737ms)
+
+  -------------------------
+  -- 22.138088ms
+  -- 1 migration
+  -- 1 check
+  -- 1 sql statement
+```
+
+#### Pre-execution checks failed
+
+If the pre-execution checks fail, the migration will not be applied, and Atlas will exit with an error.
+
+```bash
+atlas migrate --dir atlas://app --env prod
+```
+
+![Check failed](https://atlasgo.io/uploads/cloud/deploy/check-failed.png)
+
+```applylog title="Output"
+Migrating to version 20240201131900 from 20240201131800 (1 migrations in total):
+
+  -- checks before migrating version 20240201131900
+    -> SELECT NOT EXISTS(SELECT * FROM internal_users);
+    -> SELECT NOT EXISTS(SELECT * FROM external_users);
+  -- ok (1.322842ms)
+
+  -- checks before migrating version 20240201131900
+    -> SELECT NOT EXISTS(SELECT * FROM roles);
+    -> SELECT NOT EXISTS(SELECT * FROM user_roles);
+    2 of 2 assertions failed: check assertion "SELECT NOT EXISTS(SELECT * FROM user_roles);" returned false
+
+  -------------------------
+  -- 19.396779ms
+  -- 1 migration with errors
+  -- 2 checks ok, 2 failures
+Error: 2 of 2 assertions failed: check assertion "SELECT NOT EXISTS(SELECT * FROM user_roles);" returned false
+```

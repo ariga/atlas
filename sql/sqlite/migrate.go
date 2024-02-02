@@ -171,10 +171,11 @@ func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
 		return fmt.Errorf("calculate reverse for drop table %q: %w", drop.T.Name, err)
 	}
 	s.skipFKs = true
-	b := s.Build("DROP TABLE").Ident(drop.T.Name)
+	b := s.Build("DROP TABLE")
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
 	}
+	b.Ident(drop.T.Name)
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  drop,
