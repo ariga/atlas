@@ -188,30 +188,30 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
 4. Next, let's define and apply the base table for our application:
 
    ```hcl title=schema.hcl
-   schema "dbo" {
-   }
-    table "grades" {
-      schema = schema.dbo
-      column "student_id" {
-        null = false
-        type = bigint
-      }
-      column "course_id" {
-        null = false
-        type = bigint
-      }
-      column "grade" {
-        null = false
-        type = int
-      }
-      column "grade_status" {
-        null = true
-        type = varchar(10)
-      }
-      primary_key {
-        columns = [column.student_id, column.course_id]
-      }
+  schema "dbo" {
+  }
+  table "grades" {
+    schema = schema.dbo
+    column "student_id" {
+      null = false
+      type = bigint
     }
+    column "course_id" {
+      null = false
+      type = bigint
+    }
+    column "grade" {
+      null = false
+      type = int
+    }
+    column "grade_status" {
+      null = true
+      type = varchar(10)
+    }
+    primary_key {
+      columns = [column.student_id, column.course_id]
+    }
+  }
     ```
     The `grades` table represents a student's grade for a specific course. The column `grade_status` will remain null
     at first, and we will use a trigger to update whether it the grade is pass or fail.
