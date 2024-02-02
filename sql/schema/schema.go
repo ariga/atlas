@@ -289,6 +289,10 @@ func (t *Table) Column(name string) (*Column, bool) {
 
 // Index returns the first index that matched the given name.
 func (t *Table) Index(name string) (*Index, bool) {
+	// Check if the index is a primary key.
+	if t.PrimaryKey != nil && t.PrimaryKey.Name == name {
+		return t.PrimaryKey, true
+	}
 	for _, i := range t.Indexes {
 		if i.Name == name {
 			return i, true
