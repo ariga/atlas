@@ -221,6 +221,10 @@ func convertSequences(_ []*sqlspec.Table, seqs []*sequence, _ *schema.Realm) err
 	return nil
 }
 
+func normalizeRealm(*schema.Realm) error {
+	return nil
+}
+
 func qualifySeqRefs([]*sequence, []*sqlspec.Table, *schema.Realm) error {
 	return nil // unimplemented.
 }
