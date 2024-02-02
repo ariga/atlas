@@ -24,7 +24,7 @@ Atlas now supports the concept of pre-migration checks, where each migration ver
 (predicates) that must evaluate to true before the migration is applied.
 
 For example, before dropping a table, we aim to ensure that no data is deleted and the table must be empty, or we check
-for the absence of duplicate values before adding a unique index to a table.
+for the absence of duplicate values before adding a unique constraint to a table.
 
 This is especially useful if we want to add our own specific logic to migration versions, and it helps to ensure that our
 database changes are safe.
@@ -38,7 +38,7 @@ To add these checks, Atlas supports a text-based file archive to describe "migra
 which mainly contain a list of DDL statements (with optional directives), Atlas `txtar` files (currently) support two file
 types: migration files and pre-execution check files.
 
-The code below presents a simple example of pre-migration checks. The default checks file is named `checks.sql`,
+The code below presents a simple example of a pre-migration check. The default checks file is named `checks.sql`,
 and the `migration.sql` file contains the actual DDLs to be executed on the database in case the assertions are passed.
 
 ```sql title="20240201131900_drop_users.sql"
@@ -46,12 +46,12 @@ and the `migration.sql` file contains the actual DDLs to be executed on the data
 
 // highlight-next-line
 -- checks.sql --
--- The assertion below must be evaluated to true. Hence, table users must be empty.
+-- The assertion below must be evaluated to true. Hence, the "users" table must not contain any rows.
 SELECT NOT EXISTS(SELECT * FROM users);
 
 // highlight-next-line
 -- migration.sql --
--- The statement below will be executed only if the assertion above is evaluated to true.
+-- The statement below will be executed only if the assertion above evaluates to true.
 DROP TABLE users;
 ```
 
@@ -150,7 +150,7 @@ that are pushed to Atlas Cloud. To generate docs for your schema, follow these s
 
 ## SQL Server Trigger Support
 
-In a [recent version](/blog/2024/01/01/atlas-v-0-17), we released trigger support for PostgreSQL, MySQL and
+In [version v0.17](/blog/2024/01/01/atlas-v-0-17), we released trigger support for PostgreSQL, MySQL and
 SQLite. In this release, we have added support for SQL Server as well.
 
 Triggers are a powerful feature of relational databases that allow you to run custom
@@ -182,8 +182,9 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
 3. Let's spin up a new SQL Server database using `docker`:
 
     ```bash
-    docker run --rm -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=P@ssw0rd0995' -p 1433:1433 -d mcr.microsoft.com/mssql/server:latest
+    docker run --rm -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=P@ssw0rd0995' -p 1433:1433 --name atlas-demo -d mcr.microsoft.com/mssql/server:latest
     ```
+
 4. Next, let's define and apply the base table for our application:
 
    ```hcl title=schema.hcl
@@ -201,7 +202,7 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
       }
       column "grade" {
         null = false
-        type = integer
+        type = int
       }
       column "grade_status" {
         null = true
@@ -237,16 +238,14 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
       on = table.grades
       after {
         insert = true
-        update_of = [table.grades.column.grade]
       }
       as = <<-SQL
        BEGIN
          SET NOCOUNT ON;
 
-
         UPDATE grades
         SET grade_status = CASE
-            WHEN grade >= 70 THEN 'Pass'
+            WHEN inserted.grade >= 70 THEN 'Pass'
             ELSE 'Fail'
             END
             FROM grades
@@ -254,7 +253,6 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
         END
        SQL
       }
-    }
     ```
 
     We defined a `TRIGGER` called `after_grade_insert`. This trigger is
@@ -272,12 +270,10 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
     Notice that Atlas automatically detects that we have added a new `TRIGGER`, and applies it to the database.
 
 6. Finally, let's test our application to see that it actually works. We can do this by populating our database with
-   some students' grades. To do so, connect to the SQL Server container and open a `sqlcmd` session. Update your container
-   name or ID when copying the command below:
-
+   some students' grades. To do so, connect to the SQL Server container and open a `sqlcmd` session.
 
     ```bash
-    docker exec -it <container_name_or_id> /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'P@ssw0rd0995'
+    docker exec -it atlas-demo /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'P@ssw0rd0995'
     ```
 
     Now that a `sqlcmd` session is open, we can populate the items:
@@ -287,20 +283,24 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
     INSERT INTO grades (student_id, course_id, grade, grade_status) VALUES (1, 2, 99, null);
     INSERT INTO grades (student_id, course_id, grade, grade_status) VALUES (2, 2, 68, null);
     ```
-        To exit the session write `Quit`.
+
+   To exit the session write `Quit`.
 
    Now, let's check the `grades` table to see that the `grade_status` column was updated correctly:
 
    ```bash
-         docker exec -it <container_name_or_id> /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'P@ssw0rd0995' -Q "SELECT * FROM grades;"
-   ```
+    docker exec -it atlas-demo /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'P@ssw0rd0995' -Q "SELECT * FROM grades;"
+    ```
+
    You should see the following output:
 
    ```
-    grades
-    ---------
-
-   (3 rows)
+    student_id    course_id        grade   grade_status
+    ---------- ------------- ----------- --------------
+             1             1          87 Pass
+             1             2          99 Pass
+             2             2          68 Fail
+    (3 rows affected)
    ```
 
    Amazing! Our trigger automatically updated the `grade_status` for each of the rows.
