@@ -386,16 +386,17 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 		return err
 	}
 	pingURL := c.PingURL(*u)
-	for {
+	for err := error(nil); ; {
 		select {
 		case <-time.After(100 * time.Millisecond):
+			var client *sqlclient.Client
 			// Ping against the root connection.
-			client, err := sqlclient.Open(ctx, pingURL)
+			client, err = sqlclient.Open(ctx, pingURL)
 			if err != nil {
 				continue
 			}
 			db := client.DB
-			if err := db.PingContext(ctx); err != nil {
+			if err = db.PingContext(ctx); err != nil {
 				continue
 			}
 			for _, s := range c.cfg.setup {
@@ -410,6 +411,9 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-done:
+			if err != nil {
+				return fmt.Errorf("timeout: %w", err)
+			}
 			return errors.New("timeout")
 		}
 	}
