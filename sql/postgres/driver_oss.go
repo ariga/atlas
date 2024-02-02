@@ -221,7 +221,7 @@ func convertSequences(_ []*sqlspec.Table, seqs []*sequence, _ *schema.Realm) err
 	return nil
 }
 
-func normalizeRealm(_ *schema.Realm) error {
+func normalizeRealm(*schema.Realm) error {
 	return nil
 }
 
