@@ -150,7 +150,7 @@ module.exports = {
       id: 'announcementBar-9', // Increment on change
       content: `<strong>Atlas v0.19: Pre-migration Checks, Schema Doc, MSSQL Triggers, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/02/02/atlas-v-0-19">Read it here</a>`,
       isCloseable: true,
-      backgroundColor: '#008CFA',
+      backgroundColor: '#0084ec',
       textColor: '#fff',
     },
   },
