@@ -386,7 +386,7 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 		return err
 	}
 	pingURL := c.PingURL(*u)
-	for err := error(nil); ; {
+	for {
 		select {
 		case <-time.After(100 * time.Millisecond):
 			var client *sqlclient.Client
