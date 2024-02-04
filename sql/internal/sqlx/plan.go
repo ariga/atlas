@@ -582,14 +582,14 @@ func dependsOn(c1, c2 schema.Change) bool {
 		return depOfAdd(c1.F.Deps, c2)
 	case *schema.DropFunc:
 		switch c2 := c2.(type) {
-		// Dropped function should be removed before
-		// the definitions it relies on.
 		case *schema.DropFunc:
-			if funcDep(c1.F, c2.F) {
+			if funcDep(c2.F, c1.F) {
+				// If f1 depends on f2, f1 should be dropped before f2.
 				return true
 			}
 		case *schema.ModifyFunc:
-			if funcDep(c1.F, c2.From) {
+			if funcDep(c2.From, c1.F) {
+				// If f1 depends on previous definition of f2, f1 should be dropped before f2.
 				return true
 			}
 		}
@@ -606,10 +606,6 @@ func dependsOn(c1, c2 schema.Change) bool {
 		case *schema.ModifyFunc:
 			if funcDep(c1.To, c2.To) {
 				return true // New definition relies on a new definition.
-			}
-		case *schema.DropFunc:
-			if funcDep(c1.From, c2.F) {
-				return true // Old definition relies on a dropped function.
 			}
 		}
 		return depOfAdd(c1.To.Deps, c2)
@@ -630,14 +626,14 @@ func dependsOn(c1, c2 schema.Change) bool {
 		}
 	case *schema.DropProc:
 		switch c2 := c2.(type) {
-		// Dropped procedure should be removed before
-		// the definitions it relies on.
 		case *schema.DropProc:
-			if procDep(c1.P, c2.P) {
+			if procDep(c2.P, c1.P) {
+				// If f1 depends on f2, f1 should be dropped before f2.
 				return true
 			}
 		case *schema.ModifyProc:
-			if procDep(c1.P, c2.From) {
+			if procDep(c2.From, c1.P) {
+				// If f1 depends on previous definition of f2, f1 should be dropped before f2.
 				return true
 			}
 		}
@@ -654,10 +650,6 @@ func dependsOn(c1, c2 schema.Change) bool {
 		case *schema.ModifyProc:
 			if procDep(c1.To, c2.To) {
 				return true // New definition relies on a new definition.
-			}
-		case *schema.DropProc:
-			if procDep(c1.From, c2.P) {
-				return true // Old definition relies on a dropped procedure.
 			}
 		}
 		return depOfAdd(c1.To.Deps, c2)
