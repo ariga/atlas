@@ -810,8 +810,11 @@ func TrimViewExtra(s string) string {
 // trigger has changed. There is a small task here that normalizes the indentation,
 // which might be added during inspection or by the user.
 func BodyDefChanged(from, to string) bool {
-	if from == to || TrimViewExtra(from) == TrimViewExtra(to) {
-		return false
+	if from == to {
+		return false // Exact match.
+	}
+	if from, to = TrimViewExtra(from), TrimViewExtra(to); from == to {
+		return false // Match after trimming.
 	}
 	noident := func(v string) string {
 		var b strings.Builder
