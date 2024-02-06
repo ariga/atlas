@@ -1028,7 +1028,7 @@ DROP TABLE "posts";`, diff("test2?sslmode=disable&search_path=other", "test2?ssl
 			"--to", fmt.Sprintf("postgres://postgres:pass@localhost:%d/test2?sslmode=disable&search_path=public", t.port),
 		).CombinedOutput()
 		require.Error(t, err, string(out))
-		require.Equal(t, "Error: cannot diff a schema with a database connection: \"\" <> \"public\"\n", string(out))
+		require.Equal(t, "Error: cannot diff a schema \"public\" with a database connection. See: https://atlasgo.io/url\n", string(out))
 	})
 }
 
