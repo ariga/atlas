@@ -39,9 +39,11 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
 	"gocloud.dev/runtimevar"
+	_ "gocloud.dev/runtimevar/awsparamstore"
 	_ "gocloud.dev/runtimevar/awssecretsmanager"
 	_ "gocloud.dev/runtimevar/constantvar"
 	_ "gocloud.dev/runtimevar/filevar"
+	_ "gocloud.dev/runtimevar/gcpruntimeconfig"
 	_ "gocloud.dev/runtimevar/gcpsecretmanager"
 	_ "gocloud.dev/runtimevar/httpvar"
 )
