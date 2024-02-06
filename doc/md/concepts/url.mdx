@@ -26,6 +26,7 @@ values={[
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLServer', value: 'sqlserver'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 {label: 'Docker', value: 'docker'},
 ]}>
 <TabItem value="mysql">
@@ -124,6 +125,19 @@ Atlas also supports WebSocket connections to remote `libsql` databases:
 ```shell
 libsql+ws://database-url # For local environments
 libsql+wss://database-url
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+Connecting to a local ClickHouse server (all schemas/databases):
+```shell
+clickhouse://localhost:9000
+```
+
+Connecting to a specific ClickHouse schema (database) with a username and password:
+```shell
+clickhouse://user:pass@localhost:9000/schema
 ```
 
 </TabItem>
