@@ -801,6 +801,40 @@ func TestDefaultDiff(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, changes, 1)
 	require.IsType(t, &schema.DropTable{}, changes[0])
+
+	changes, err = DefaultDiff.SchemaDiff(
+		schema.New("public").
+			SetCollation("utf8mb4_0900_ai_ci").
+			SetCharset("utf8mb4").
+			AddTables(
+				schema.NewTable("users").SetCollation("utf8mb4_bin"),
+			),
+		schema.New("public").
+			SetCollation("utf8mb4_0900_ai_ci").
+			SetCharset("utf8mb4").
+			AddTables(
+				schema.NewTable("users").SetCollation("utf8mb4_bin"),
+			),
+	)
+	require.NoError(t, err)
+	require.Empty(t, changes)
+
+	changes, err = DefaultDiff.SchemaDiff(
+		schema.New("public").
+			SetCollation("utf8mb4_0900_ai_ci").
+			SetCharset("utf8mb4").
+			AddTables(
+				schema.NewTable("users").SetCharset("utf8mb4"),
+			),
+		schema.New("public").
+			SetCollation("utf8mb4_0900_ai_ci").
+			SetCharset("utf8mb4").
+			AddTables(
+				schema.NewTable("users").SetCharset("utf8mb4"),
+			),
+	)
+	require.NoError(t, err)
+	require.Empty(t, changes)
 }
 
 func TestSkipChanges(t *testing.T) {
