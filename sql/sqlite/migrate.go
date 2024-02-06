@@ -39,6 +39,9 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 	for _, o := range opts {
 		o(&s.PlanOptions)
 	}
+	if err := verifyChanges(ctx, changes); err != nil {
+		return nil, err
+	}
 	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
 	}
