@@ -150,7 +150,7 @@ func TestSchemaInspect_EncodeSQL(t *testing.T) {
 		b    bytes.Buffer
 		tmpl = template.Must(template.New("format").Funcs(cmdlog.InspectTemplateFuncs).Parse(`{{ sql . }}`))
 	)
-	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{Client: client, Realm: realm}))
+	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{Context: ctx, Client: client, Realm: realm}))
 	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL, `name` text NOT NULL);\n", b.String())
 }
 
@@ -287,7 +287,8 @@ func TestSchemaDiff_MarshalSQL(t *testing.T) {
 	require.NoError(t, err)
 	defer client.Close()
 	diff := &cmdlog.SchemaDiff{
-		Client: client,
+		Context: context.Background(),
+		Client:  client,
 		Changes: schema.Changes{
 			&schema.AddTable{
 				T: schema.NewTable("users").
