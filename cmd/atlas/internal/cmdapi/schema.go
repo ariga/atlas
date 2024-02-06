@@ -703,8 +703,10 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *cmdext
 		if err != nil {
 			return nil, err
 		}
-	case from.Schema == "", to.Schema == "":
-		return nil, fmt.Errorf("cannot diff a schema with a database connection: %q <> %q", from.Schema, to.Schema)
+	case from.Schema == "" && to.Schema != "":
+		return nil, fmt.Errorf("cannot diff a schema %q with a database connection. See: https://atlasgo.io/url", to.Schema)
+	case from.Schema != "" && to.Schema == "":
+		return nil, fmt.Errorf("cannot diff a database connection with a schema %q. See: https://atlasgo.io/url", from.Schema)
 	default:
 		// SchemaDiff checks for name equality which is irrelevant in the case
 		// the user wants to compare their contents, reset them to allow the comparison.

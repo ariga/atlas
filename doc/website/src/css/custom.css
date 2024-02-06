@@ -291,3 +291,7 @@ div[class^='announcementBar_']  a.cta {
   background: #db4b4b;
   color: white;
 }
+
+.sticky-anchor {
+  scroll-margin-top:calc(var(--ifm-navbar-height) + 0.5rem);
+}
