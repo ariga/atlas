@@ -111,7 +111,8 @@ func TestSchemaInspect_MarshalSQL(t *testing.T) {
 	require.NoError(t, err)
 	defer client.Close()
 	report := &cmdlog.SchemaInspect{
-		Client: client,
+		Context: context.Background(),
+		Client:  client,
 		Realm: schema.NewRealm(
 			schema.New("main").
 				AddTables(
