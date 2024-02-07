@@ -10,7 +10,7 @@ import siteConfig from '@generated/docusaurus.config';
 const prismIncludeLanguages = (Prism) => {
   Prism.languages.applylog = {
     'version': /\d{14}/,
-    'duration': /[\d\\.]+(s|ms|µs|m)/,
+    'duration': /\b[\d\\.]+(s|ms|µs|m)/,
     'action1': /\s\s+-{2}\s/,
     'action2': /\s\s+-{25}/,
     'action3': /\s\s+->\s/,
