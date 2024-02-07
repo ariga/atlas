@@ -1,0 +1,96 @@
+---
+title: Pre-migration checks
+id: pre-migration-checks
+slug: /cloud/features/pre-migration-checks
+---
+
+## Overview
+
+With pre-migration checks, you can provide a list of assertions to make on the target database
+before starting a migration. This can greatly reduce the failure rate of migrations by catching
+issues early.
+
+## Why use pre-migration checks?
+
+Atlas provides a [comprehensive set of safety checks](/lint/analyzers) that can be made against migrations during the
+Continuous Integration (CI) process.
+
+However, some issues can only be classified as "might fail" during the CI process because they depend on the
+actual state of the target database. For example, a migration might fail when you're adding a uniqueness
+constraint to a column that already contains duplicate values. Alternatively, you might decide that you only
+want to delete a column if it doesn't contain data.
+
+## How it works
+
+To add these checks, Atlas supports a text-based file archive to describe "migration plans". Unlike regular migration files,
+which mainly contain a list of DDL statements (with optional directives), Atlas `txtar` files (currently) support two file
+types: migration files and pre-execution check files.
+
+The code below presents a simple example of a pre-migration check. The default checks file is named `checks.sql`,
+and the `migration.sql` file contains the actual DDLs to be executed on the database in case the assertions are passed.
+
+```sql title="20240201131900_drop_users.sql"
+-- atlas:txtar
+
+// highlight-next-line
+-- checks.sql --
+-- The assertion below must be evaluated to true. Hence, the "users" table must not contain any rows.
+SELECT NOT EXISTS(SELECT * FROM users);
+
+// highlight-next-line
+-- migration.sql --
+-- The statement below will be executed only if the assertion above evaluates to true.
+DROP TABLE users;
+```
+
+If the pre-execution checks pass, the migration will be applied and Atlas will report the results.
+
+```bash
+atlas migrate --dir atlas://app --env prod
+```
+
+![Check passed](https://atlasgo.io/uploads/cloud/deploy/check-passed.png)
+
+```applylog title="Output"
+Migrating to version 20240201131900 from 20240201131800 (1 migrations in total):
+// highlight-start
+  -- checks before migrating version 20240201131900
+    -> SELECT NOT EXISTS(SELECT * FROM users);
+  -- ok (624.004µs)
+// highlight-end
+  -- migrating version 20240201131900
+    -> DROP TABLE users;
+  -- ok (5.412737ms)
+  -------------------------
+  -- 22.138088ms
+  -- 1 migration
+  -- 1 check
+  -- 1 sql statement
+```
+
+If the pre-execution checks fail, the migration will not be applied, and Atlas will exit with an error.
+
+```bash
+atlas migrate --dir atlas://app --env prod
+```
+
+![Check failed](https://atlasgo.io/uploads/cloud/deploy/check-failed.png)
+
+```applylog title="Output"
+Migrating to version 20240201131900 from 20240201131800 (1 migrations in total):
+  -- checks before migrating version 20240201131900
+    -> SELECT NOT EXISTS(SELECT * FROM internal_users);
+    -> SELECT NOT EXISTS(SELECT * FROM external_users);
+  -- ok (1.322842ms)
+  -- checks before migrating version 20240201131900
+    -> SELECT NOT EXISTS(SELECT * FROM roles);
+    -> SELECT NOT EXISTS(SELECT * FROM user_roles);
+    2 of 2 assertions failed: check assertion "SELECT NOT EXISTS(SELECT * FROM user_roles);" returned false
+  -------------------------
+  -- 19.396779ms
+  -- 1 migration with errors
+  -- 2 checks ok, 2 failures
+Error: 2 of 2 assertions failed: check assertion "SELECT NOT EXISTS(SELECT * FROM user_roles);" returned false
+```
+
+

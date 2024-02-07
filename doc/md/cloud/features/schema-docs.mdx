@@ -1,0 +1,36 @@
+---
+title: Schema Docs
+id: schema-docs
+slug: /cloud/features/schema-docs
+---
+
+
+<img src={"https://atlasgo.io/uploads/blog/v0.18/schemadoc.png"} alt="Schema Docs" style={{"max-width": "85%"}}/>
+
+### Overview
+
+Atlas Cloud maintains always up-to-date, automatically generated documentation for your database schema.
+
+### Why Schema Docs?
+
+When working in a larger organization, having up-to-date documentation of the database schema
+becomes increasingly important. Whether it's for onboarding new team members, or for streamlining
+collaboration between different functions in the organization, having a single source of truth for the database schema
+in a format that is easy to understand and navigate is crucial.
+
+In addition, as a company matures, it is common to see some databases grow in complexity to a point where it becomes
+difficult to keep track of all the tables, columns, and relationships. After many years of development and changes,
+it is not uncommon to see databases with hundreds of tables and thousands of columns whose authors are no longer with
+the company. In such cases, having a tool that can automatically generate and keep up-to-date the documentation of the database
+can bring clarity and understanding that is necessary for the organization to continue to grow and evolve.
+
+### How it works
+
+Schema Docs are regenerated whenever you push a new version of your schema to Atlas Cloud. It is therefore
+recommended to set up your CI pipeline in such a way that it pushes the schema to Atlas Cloud whenever changes are made to the
+main branch of your project.
+
+[Learn how to connect a directory to Atlas Cloud](/cloud/directories)
+
+Schema Docs available from within the project overview page. You can access it by clicking on the "Docs" tab
+at the top of the page.
