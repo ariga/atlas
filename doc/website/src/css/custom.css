@@ -291,3 +291,14 @@ div[class^='announcementBar_']  a.cta {
   background: #db4b4b;
   color: white;
 }
+
+article .example-img {
+  max-width: 65%;
+}
+
+/* full width on mobile */
+@media only screen and (max-width: 800px) {
+  article .example-img {
+    max-width: 100%;
+  }
+}

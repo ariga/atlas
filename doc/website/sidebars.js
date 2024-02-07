@@ -97,6 +97,15 @@ module.exports = {
                 {type: 'doc', id: 'cloud/bots', label: 'Creating Bots'},
                 {type: 'doc', id: 'cloud/deployment', label: 'Deployments'},
                 {type: 'doc', id: 'cloud/agents', label: 'Drift Detection'},
+                {
+                    type: 'category',
+                    label: 'Features',
+                    collapsed: true,
+                    items: [
+                        {type: 'doc', id: 'cloud/features/registry', label: 'Registry'},
+                        {type: 'doc', id: 'cloud/features/schema-docs', label: 'Schema Docs'},
+                    ],
+                },
             ],
         },
         {

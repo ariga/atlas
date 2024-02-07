@@ -1,0 +1,35 @@
+---
+title: Schema Registry
+id: registry
+slug: /cloud/features/registry
+---
+
+### Overview
+
+By pushing your schemas to the Atlas Cloud Schema Registry, teams can maintain a single source of truth for their database
+schemas and schema changes. It is like Docker Hub but for database schema changes.
+
+### How it works
+
+Push your migration directory to the Schema Registry by using the `atlas migrate push` command. This will upload your
+migration files to the registry and make it available to others in your organization:
+
+```
+atlas migrate push --env local helloworld
+
+https://example.atlasgo.cloud/dirs/4294967370
+```
+
+### Simplifying Deployments
+
+When you push a migration directory to the Schema Registry, you can give it a tag in the same way that you would tag a
+Docker image. This makes any version of your schema effectively _addressable_ which dramatically simplifies deployments.
+References to a schema version can then be used in your deployment pipelines with an expression similar to:
+```
+atlas://
+```
+
+```yaml
+
+
+
