@@ -550,6 +550,12 @@ env "dev" {
 }
 ```
 
+:::note
+It's common case when you use [the hierarchies format](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-hierarchies.html) for you parameters in AWS Parameter Store. So the `url` should
+contain the path to the hierarchy, for example `awsparamstore:///production/tenant_a/password?region=<region>&decoder=string` - there are three slashes after the protocol.
+:::
+
+
 #### Usage example
 
 ```shell
