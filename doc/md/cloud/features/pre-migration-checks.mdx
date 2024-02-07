@@ -16,9 +16,9 @@ Atlas provides a [comprehensive set of safety checks](/lint/analyzers) that can 
 Continuous Integration (CI) process.
 
 However, some issues can only be classified as "might fail" during the CI process because they depend on the
-actual state of the target database. For example, A migration might fail when you're adding a uniqueness
+actual state of the target database. For example, a migration might fail when you're adding a uniqueness
 constraint to a column that already contains duplicate values. Alternatively, you might decide that you only
-want to delete a column if it contains no data.
+want to delete a column if it doesn't contain data.
 
 ## How it works
 
@@ -43,7 +43,7 @@ SELECT NOT EXISTS(SELECT * FROM users);
 DROP TABLE users;
 ```
 
-If the pre-execution checks pass, the migration will be applied, and Atlas will report the results.
+If the pre-execution checks pass, the migration will be applied and Atlas will report the results.
 
 ```bash
 atlas migrate --dir atlas://app --env prod
