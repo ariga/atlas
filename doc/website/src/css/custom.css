@@ -292,13 +292,6 @@ div[class^='announcementBar_']  a.cta {
   color: white;
 }
 
-article .example-img {
-  max-width: 65%;
-}
-
-/* full width on mobile */
-@media only screen and (max-width: 800px) {
-  article .example-img {
-    max-width: 100%;
-  }
+.sticky-anchor {
+  scroll-margin-top:calc(var(--ifm-navbar-height) + 0.5rem);
 }
