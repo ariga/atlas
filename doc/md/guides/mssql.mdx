@@ -1,6 +1,6 @@
 ---
 id: getting-started-mssql
-title: Manage MSSQL with Atlas
+title: Automatic Migrations for SQL Server with Atlas
 slug: /guides/mssql
 tags: [mssql]
 ---
@@ -9,11 +9,11 @@ import InstallationInstructions from '../components/_installation_instructions.m
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-[Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server/) (MSSQL) is a powerful relational database management
-system that has one of the prominent enterprise-grade data solutions for decades. Commonly used by enterprises, MSSQL
+[Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server/) is a powerful relational database management
+system that has one of the prominent enterprise-grade data solutions for decades. Commonly used by enterprises, SQL Server
 can efficiently handle growing amounts of data and users, making it easy to scale.
 
-However, managing a large database schema in MSSQL can be challenging due to the complexity of related data
+However, managing a large database schema in SQL Server can be challenging due to the complexity of related data
 structures and the need for coordinated schema changes across multiple teams and applications.
 
 #### Enter: Atlas
@@ -22,7 +22,7 @@ Atlas helps developers manage their database schema as code - abstracting away t
 management. With Atlas, users provide the desired state of the database schema and Atlas automatically plans the
 required migrations.
 
-In this guide, we will dive into setting up Atlas for MSSQL, and introduce the different workflows available.
+In this guide, we will dive into setting up Atlas for SQL Server, and introduce the different workflows available.
 
 ## Prerequisites
 
@@ -32,7 +32,7 @@ In this guide, we will dive into setting up Atlas for MSSQL, and introduce the d
 
 ## Logging in to Atlas
 
-To use MSSQL with Atlas, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time,
+To use SQL Server with Atlas, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time,
 you will be prompted to create both an account and a workspace (organization):
 
 <Tabs>
@@ -76,7 +76,7 @@ CREATE TABLE users (
 )
 ```
 
-To create this on our MSSQL database, run the following command:
+To create this on our SQL Server database, run the following command:
 
 ```bash
 docker exec -it atlas-demo /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'P@ssw0rd0995' -Q "CREATE TABLE users (ID bigint PRIMARY KEY, name varchar(255) NOT NULL);"
@@ -91,7 +91,7 @@ output using `jq`.
 <Tabs>
 <TabItem value="hcl" label="Atlas DDL (HCL)" default>
 
-To inspect our locally-running MSSQL instance, use the `-u` flag and write the output to a file named `schema.hcl`:
+To inspect our locally-running SQL Server instance, use the `-u` flag and write the output to a file named `schema.hcl`:
 
 ```shell
 atlas schema inspect -u "sqlserver://SA:P@ssw0rd0995@localhost:1433?database=master&mode=database > schema.hcl
@@ -126,7 +126,7 @@ that the user is working against. In this case, the type for the `id` column is 
 </TabItem>
 <TabItem value="sql" label="SQL">
 
-To inspect our locally-running MSSQL instance, use the `-u` flag and write the output to a file named `schema.sql`:
+To inspect our locally-running SQL Server instance, use the `-u` flag and write the output to a file named `schema.sql`:
 
 ```shell
 atlas schema inspect -u "sqlserver://SA:P@ssw0rd0995@localhost:1433?database=master&mode=database" --format '{{ sql . }}' > schema.sql
@@ -162,12 +162,10 @@ atlas schema inspect -u "sqlserver://SA:P@ssw0rd0995@localhost:1433?database=mas
 ![mssql-inspect](https://atlasgo.io/uploads/mssql/images/schema-inspect-hcl.png)
 
 ## Declarative Migrations
-
-The declarative approach allows users to manage their database schemas by simply defining the desired end schema, and
-Atlas provides a safe way to alter the database to get there. Let's see this in action.
+The declarative approach lets users manage schemas by defining the desired state. Atlas then safely alters the database
+to match. Let's see this in action.
 
 We will start off by making a change to our schema file, such as adding a `repos` table:
-
 
 <Tabs>
 <TabItem value="hcl" label="Atlas DDL (HCL)" default>
@@ -607,7 +605,7 @@ In this guide we learned about the declarative and versioned workflows, and how 
 push them to an Atlas workspace and apply them to databases.
 
 Next steps:
-* Read the [full docs](/atlas-schema/hcl) to learn HCL schema syntax or about specific MSSQL [column types](/atlas-schema/hcl-types#sql-server)
+* Read the [full docs](/atlas-schema/hcl) to learn HCL schema syntax or about specific SQL Server [column types](/atlas-schema/hcl-types#sql-server)
 * Learn how to [set up CI](/cloud/setup-ci) for your migration directory
 * Deploy schema changes with [Terraform](/integrations/terraform-provider) or [Kubernetes](/integrations/kubernetes/operator)
 * Learn about [modern CI/CD principles](/guides/modern-database-ci-cd) for databases
