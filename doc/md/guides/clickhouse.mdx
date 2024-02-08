@@ -166,8 +166,10 @@ atlas schema inspect -u "clickhouse://localhost:9000/example" -w
 
 ## Declarative Migrations
 
-The declarative approach allows users to manage their database schemas by simply defining the desired end schema, and
-Atlas provides a safe way to alter the database to get there. Let's see this in action.
+The declarative approach lets users manage schemas by defining the desired state of the database as code.
+Atlas then inspects the target database and calculates an execution plan to reconcile the difference between the desired and actual states.
+Let's see this in action.
+
 
 We will start off by making a change to our schema file, such as adding a `repos` table:
 
