@@ -435,7 +435,7 @@ func SortChanges(changes []schema.Change) []schema.Change {
 }
 
 // Depender can be implemented by an object to determine if a change to it
-// depends on other change, or if an other change depends on it. For example:
+// depends on other change, or if other change depends on it. For example:
 // A table creation depends on type creation, and a type deletion depends on
 // table deletion.
 type Depender interface {
@@ -465,13 +465,14 @@ func dependsOn(c1, c2 schema.Change) bool {
 		case *schema.AddSchema:
 			return c1.T.Schema.Name == c2.S.Name
 		case *schema.DropTable:
-			return c1.T.Name == c2.T.Name && sameSchema(c1.T.Schema, c2.T.Schema) // Table recreation.
+			// Table recreation.
+			return c1.T.Name == c2.T.Name && sameSchema(c1.T.Schema, c2.T.Schema)
 		case *schema.AddTable:
 			if refTo(c1.T.ForeignKeys, c2.T) {
 				return true
 			}
 		case *schema.ModifyTable:
-			if (c1.T.Name != c2.T.Name || sameSchema(c1.T.Schema, c2.T.Schema)) && refTo(c1.T.ForeignKeys, c2.T) {
+			if (c1.T.Name != c2.T.Name || !sameSchema(c1.T.Schema, c2.T.Schema)) && refTo(c1.T.ForeignKeys, c2.T) {
 				return true
 			}
 		case *schema.AddObject:
@@ -569,32 +570,87 @@ func dependsOn(c1, c2 schema.Change) bool {
 			return c1.F.Schema.Name == c2.S.Name
 		case *schema.DropFunc:
 			return c1.F.Name == c2.F.Name && sameSchema(c1.F.Schema, c2.F.Schema) // Func recreation.
-		default:
-			return depOfAdd(c1.F.Deps, c2)
+		case *schema.AddFunc:
+			if funcDep(c1.F, c2.F) {
+				return true // Relies on other function or overload.
+			}
+		case *schema.ModifyFunc:
+			if funcDep(c1.F, c2.To) {
+				return true // Relies on the new definition.
+			}
 		}
+		return depOfAdd(c1.F.Deps, c2)
 	case *schema.DropFunc:
+		switch c2 := c2.(type) {
+		case *schema.DropFunc:
+			if funcDep(c2.F, c1.F) {
+				// If f1 depends on f2, f1 should be dropped before f2.
+				return true
+			}
+		case *schema.ModifyFunc:
+			if funcDep(c2.From, c1.F) {
+				// If f1 depends on previous definition of f2, f1 should be dropped before f2.
+				return true
+			}
+		}
 		return depOfDrop(c1.F, c2)
 	case *schema.ModifyFunc:
-		if c2, ok := c2.(*schema.AddFunc); ok {
-			// Func modification relies on its creation.
-			return c1.From.Name == c2.F.Name && sameSchema(c1.From.Schema, c2.F.Schema)
+		switch c2 := c2.(type) {
+		case *schema.AddFunc:
+			if c1.From.Name == c2.F.Name && sameSchema(c1.From.Schema, c2.F.Schema) {
+				return true // Func modification relies on its creation.
+			}
+			if funcDep(c1.To, c2.F) {
+				return true // New definition relies on a new function.
+			}
+		case *schema.ModifyFunc:
+			if funcDep(c1.To, c2.To) {
+				return true // New definition relies on a new definition.
+			}
 		}
 		return depOfAdd(c1.To.Deps, c2)
 	case *schema.AddProc:
 		switch c2 := c2.(type) {
 		case *schema.AddSchema:
 			return c1.P.Schema.Name == c2.S.Name
-		case *schema.DropProc:
-			return c1.P.Name == c2.P.Name && sameSchema(c1.P.Schema, c2.P.Schema) // Proc recreation.
-		default:
-			return depOfAdd(c1.P.Deps, c2)
+		case *schema.DropFunc:
+			return c1.P.Name == c2.F.Name && sameSchema(c1.P.Schema, c2.F.Schema) // Proc recreation.
+		case *schema.AddProc:
+			if procDep(c1.P, c2.P) {
+				return true // Relies on other procedure or overload.
+			}
+		case *schema.ModifyProc:
+			if procDep(c1.P, c2.To) {
+				return true // Relies on the new definition.
+			}
 		}
 	case *schema.DropProc:
+		switch c2 := c2.(type) {
+		case *schema.DropProc:
+			if procDep(c2.P, c1.P) {
+				// If f1 depends on f2, f1 should be dropped before f2.
+				return true
+			}
+		case *schema.ModifyProc:
+			if procDep(c2.From, c1.P) {
+				// If f1 depends on previous definition of f2, f1 should be dropped before f2.
+				return true
+			}
+		}
 		return depOfDrop(c1.P, c2)
 	case *schema.ModifyProc:
-		if c2, ok := c2.(*schema.AddProc); ok {
-			// Proc modification relies on its creation.
-			return c1.From.Name == c2.P.Name && sameSchema(c1.From.Schema, c2.P.Schema)
+		switch c2 := c2.(type) {
+		case *schema.AddProc:
+			if c1.From.Name == c2.P.Name && sameSchema(c1.From.Schema, c2.P.Schema) {
+				return true // Proc modification relies on its creation.
+			}
+			if procDep(c1.To, c2.P) {
+				return true // New definition relies on a new procedure.
+			}
+		case *schema.ModifyProc:
+			if procDep(c1.To, c2.To) {
+				return true // New definition relies on a new definition.
+			}
 		}
 		return depOfAdd(c1.To.Deps, c2)
 	case *schema.DropObject:

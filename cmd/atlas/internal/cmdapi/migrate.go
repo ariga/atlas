@@ -506,7 +506,7 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 		Files: func() []cloudapi.DeployedFileInput {
 			files := make([]cloudapi.DeployedFileInput, len(r.log.Applied))
 			for i, f := range r.log.Applied {
-				files[i] = cloudapi.DeployedFileInput{
+				f1 := cloudapi.DeployedFileInput{
 					Name:      f.Name(),
 					Content:   string(f.Bytes()),
 					StartTime: f.Start,
@@ -514,7 +514,25 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 					Skipped:   f.Skipped,
 					Applied:   len(f.Applied),
 					Error:     (*cloudapi.StmtErrorInput)(f.Error),
+					Checks:    make([]cloudapi.FileChecksInput, 0, len(f.Checks)),
 				}
+				for _, c := range f.Checks {
+					stmts := make([]cloudapi.CheckStmtInput, 0, len(c.Stmts))
+					for _, s := range c.Stmts {
+						stmts = append(stmts, cloudapi.CheckStmtInput{
+							Stmt:  s.Stmt,
+							Error: s.Error,
+						})
+					}
+					f1.Checks = append(f1.Checks, cloudapi.FileChecksInput{
+						Name:   c.Name,
+						Start:  c.Start,
+						End:    c.End,
+						Checks: stmts,
+						Error:  (*cloudapi.StmtErrorInput)(c.Error),
+					})
+				}
+				files[i] = f1
 			}
 			return files
 		}(),

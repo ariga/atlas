@@ -175,13 +175,20 @@ func (e *Env) VarFromURL(s string) (string, error) {
 	if u.Host == "" || u.Path != "" || u.RawQuery != "" {
 		return "", fmt.Errorf("invalid env:// variable %q", s)
 	}
-	attr, ok := e.Attr(u.Host)
-	if !ok {
-		return "", fmt.Errorf("env://%s (attribute) not found in env.%s", s, e.Name)
-	}
-	sv, err := attr.String()
-	if err != nil {
-		return "", fmt.Errorf("env://%s: %w", s, err)
+	var sv string
+	switch u.Host {
+	case "url":
+		sv = e.URL
+	case "dev":
+		sv = e.DevURL
+	default:
+		attr, ok := e.Attr(u.Host)
+		if !ok {
+			return "", fmt.Errorf("env://%s (attribute) not found in env.%s", u.Host, e.Name)
+		}
+		if sv, err = attr.String(); err != nil {
+			return "", fmt.Errorf("env://%s: %w", u.Host, err)
+		}
 	}
 	if strings.HasPrefix(sv, envAttrScheme+"://") {
 		return "", fmt.Errorf("env://%s (attribute) cannot reference another env://", s)

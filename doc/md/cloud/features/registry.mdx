@@ -1,0 +1,92 @@
+---
+title: Schema Registry
+id: registry
+slug: /cloud/features/registry
+---
+
+## Overview
+
+By pushing your schemas to the Atlas Cloud Schema Registry, teams can maintain a single source of truth for their database
+schemas and schema changes. It is like Docker Hub but for database schema changes.
+
+## How it works
+
+Push your migration directory to the Schema Registry by using the `atlas migrate push` command. This will upload your
+migration files to the registry and make it available to others in your organization:
+
+```
+atlas migrate push --env local helloworld
+
+https://example.atlasgo.cloud/dirs/4294967370
+```
+
+## Simplifying Deployments
+
+When you push a migration directory to the Schema Registry, you can give it a tag in the same way that you would tag a
+Docker image. This makes any version of your schema effectively _addressable_ which dramatically simplifies deployments.
+
+References to a schema version can then be used in your deployment pipelines with an expression similar to:
+
+```bash
+# Reference by version
+atlas migrate apply \
+    --dir "atlas://myapp?version=20231201182011" \
+    --url "postgres://postgres:pass@:5432/example?search_path=public&sslmode=disable"
+
+# Reference by tag
+atlas migrate apply \
+  --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
+  --url "postgres://postgres:pass@:5432/example?search_path=public&sslmode=disable"
+```
+
+Using the Schema Registry completely eliminates the need to create custom Docker images for migrations or grant your runtime
+environments access to your source code repository.
+
+### Example: Kubernetes Deployment
+
+Let's see how we can use tagged schema versions in a Kubernetes deployment:
+
+```yaml
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasMigration
+metadata:
+  name: migration
+spec:
+  urlFrom:
+    secretKeyRef:
+      key: url
+      name: postgres-credentials
+  cloud:
+    project: "atlasdemo" # Atlas Cloud project name
+    tokenFrom:
+      secretKeyRef:
+        name: atlas-credentials
+        key: token
+  dir:
+    // highlight-start
+    remote:
+      name: "myapp" # Migration directory name in your atlas cloud project
+      tag: "39e7e4e35fce7409bd26d25d8140061695d4ffd5" # See below on how to obtain this value for your project.
+   // highlight-end
+```
+
+### Example: Terraform
+
+You can also use references to the Schema Registry in your Terraform modules:
+
+```hcl
+resource "atlas_migration" "myapp" {
+  url = "postgres://postgres:pass@:5432/example?search_path=public&sslmode=disable"
+  // highlight-start
+  remote_dir {
+    name = "myapp"
+    tag  = "39e7e4e35fce7409bd26d25d8140061695d4ffd5"
+  }
+  // highlight-end
+}
+```
+
+## Additional Benefits
+
+* [Schema Docs](schema-docs.mdx) - Get automatically generated documentation for your schemas when you
+  push them to the Schema Registry.

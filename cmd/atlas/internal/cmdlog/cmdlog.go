@@ -20,7 +20,6 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/fatih/color"
-	"github.com/olekukonko/tablewriter"
 )
 
 var (
@@ -64,7 +63,7 @@ type (
 
 	// Check represents an assertion and its status.
 	Check struct {
-		Stmt  string  `json:"Stmt,omitempty"`  // Assertion status.
+		Stmt  string  `json:"Stmt,omitempty"`  // Assertion statement.
 		Error *string `json:"Error,omitempty"` // Assertion error, if any.
 	}
 
@@ -111,7 +110,6 @@ var (
 	StatusTemplateFuncs = merge(template.FuncMap{
 		"json":       jsonEncode,
 		"json_merge": jsonMerge,
-		"table":      table,
 		"default": func(report *MigrateStatus) (string, error) {
 			var buf bytes.Buffer
 			t, err := template.New("report").
@@ -178,56 +176,6 @@ func (r *MigrateStatus) FromCheckpoint() bool {
 	}
 	ck, ok := r.Pending[0].(migrate.CheckpointFile)
 	return ok && ck.IsCheckpoint()
-}
-
-func table(report *MigrateStatus) (string, error) {
-	var buf strings.Builder
-	tbl := tablewriter.NewWriter(&buf)
-	tbl.SetRowLine(true)
-	tbl.SetAutoMergeCellsByColumnIndex([]int{0})
-	tbl.SetHeader([]string{
-		"Version",
-		"Description",
-		"Status",
-		"Count",
-		"Executed At",
-		"Execution Time",
-		"Error",
-		"SQL",
-	})
-	for _, r := range report.Applied {
-		tbl.Append([]string{
-			r.Version,
-			r.Description,
-			r.Type.String(),
-			fmt.Sprintf("%d/%d", r.Applied, r.Total),
-			r.ExecutedAt.Format("2006-01-02 15:04:05 MST"),
-			r.ExecutionTime.String(),
-			r.Error,
-			r.ErrorStmt,
-		})
-	}
-	for i, f := range report.Pending {
-		var c string
-		if i == 0 {
-			if r := report.Applied[len(report.Applied)-1]; f.Version() == r.Version && r.Applied < r.Total {
-				stmts, err := f.Stmts()
-				if err != nil {
-					return "", err
-				}
-				c = fmt.Sprintf("%d/%d", len(stmts)-r.Applied, len(stmts))
-			}
-		}
-		tbl.Append([]string{
-			f.Version(),
-			f.Desc(),
-			"pending",
-			c,
-			"", "", "", "",
-		})
-	}
-	tbl.Render()
-	return buf.String(), nil
 }
 
 // MigrateSetTemplate holds the default template of the 'migrate set' command.

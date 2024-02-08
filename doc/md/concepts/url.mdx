@@ -7,16 +7,14 @@ slug: /concepts/url
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-## What is a URL?
-
-Uniform Resource Locators, or URLs are a standardized method for specifying a location of a resource.
-All the component parts of a URL are shown below:
+Atlas uses a standard URL format to connect to databases and load schemas and migrations from various sources. The format
+below covers the supported parts of a URL, with subsequent sections providing more detailed examples.
 
 ```
 driver://[username[:password]@]address/[schema|database][?param1=value1&...&paramN=valueN]
 ```
 
-An example might look like:
+To inspect a database using a URL, refer to one of the examples below:
 
 <Tabs
 defaultValue="mysql"
@@ -26,6 +24,7 @@ values={[
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLServer', value: 'sqlserver'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'ClickHouse', value: 'clickhouse'},
 {label: 'Docker', value: 'docker'},
 ]}>
 <TabItem value="mysql">
@@ -127,6 +126,19 @@ libsql+wss://database-url
 ```
 
 </TabItem>
+<TabItem value="clickhouse">
+
+Connecting to a local ClickHouse server (all schemas/databases):
+```shell
+clickhouse://localhost:9000
+```
+
+Connecting to a specific ClickHouse schema (database) with a username and password:
+```shell
+clickhouse://user:pass@localhost:9000/schema
+```
+
+</TabItem>
 <TabItem value="docker">
 
 Atlas can spin up an ephemeral local docker container for you by specifying a special URL like below. This can be useful
@@ -156,6 +168,72 @@ docker://maria/latest/test
 
 </TabItem>
 </Tabs>
+
+:::info <a class="sticky-anchor" id={"scope"} href={"#scope"}>Schema vs. Database scope</a>
+
+When the database URL is set to a specific schema (e.g., `mysql://:3306/dev`), the scope of the work done by Atlas
+(inspection, diffing, planning, applying, etc.) is limited to one schema. As a result, DDL statements printed during
+diffing or planning will be formatted without schema qualifiers and can be executed on any schema. e.g., `table` instead
+of `schema.table`
+
+However, if the database URL does not specify a schema (e.g., `mysql://:3306/`), Atlas operates on the selected schemas
+(defaulting to all), and the generated DDL statements include schema qualifiers. e.g., `schema.table` instead of `table`.
+:::
+
+## Supported Schemes
+
+Besides the standard database URLs mentioned above, Atlas supports various schemes for loading schemas and migration states:
+
+#### `file`
+
+The `file://` scheme is used to load schema state from a local file or a directory. The supported extensions
+are `.sql` and `.hcl`. For example:
+
+```shell
+file://path/to/schema.hcl
+file://path/to/schema.sql
+file://path/to/schemadir
+
+file://path/to/migrations
+file://path/to/migrations?version=20231201182011
+```
+
+#### `atlas`
+
+The `atlas://` scheme is used to load the state of a remote schema or a migrations directory from the Atlas Cloud, the
+schema registry, and migrations artifactory of Atlas. For example:
+
+```shell
+atlas://dir-slug
+atlas://dir-slug?version=20231201182011
+```
+
+#### `env`
+
+The `env://` scheme is useful for referencing the state of a schema after it has been loaded by a data source. For example:
+
+```hcl title="atlas.hcl"
+data "external_schema" "orm" {
+  program = [
+    ...
+  ]
+}
+
+env "dev" {
+  orm = data.external_schema.orm
+}
+```
+```shell
+atlas schema inspect --env dev -u env://orm
+```
+
+#### `ent`
+
+The `ent://` scheme is used to load the state an [ent](https://entgo.io) schema. For example:
+
+```shell
+ent://path/to/ent/schema
+```
 
 ## SSL/TLS Mode
 

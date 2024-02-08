@@ -257,3 +257,22 @@ func TestIsUint(t *testing.T) {
 	require.False(t, IsUint("1.2"))
 	require.False(t, IsUint("1.2.3"))
 }
+
+func TestBodyDefChanged(t *testing.T) {
+	for i, tt := range []struct {
+		from, to string
+		changed  bool
+	}{
+		{"", "", false},
+		{"a", "a", false},
+		{"a", "b", true},
+		{"select 1;", "select 1", false},
+		{"\nselect 1\n", "\nselect 1;", false},
+		{"\nselect \n  \n1\n", "\nselect \n\n1;", false},
+		{"\nselect \n  \n1\n'  '", "\nselect \n\n' ';", true},
+	} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			require.Equal(t, tt.changed, BodyDefChanged(tt.from, tt.to))
+		})
+	}
+}

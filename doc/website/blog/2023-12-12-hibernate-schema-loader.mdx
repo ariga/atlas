@@ -320,7 +320,7 @@ atlas migrate apply --env hibernate --url 'postgres://postgres:password@0.0.0.0:
 
 Atlas provides details on the applied migrations:
 
-```
+```applylog
 Migrating to version 20231211121102 (1 migrations in total):
 
   -- migrating version 20231211121102
@@ -396,8 +396,9 @@ Atlas can help us avoid dangerous schema changes by linting the migration direct
 
 Running the following command, we can see that Atlas will warn us about a destructive change to the database:
 
-```bash
+```text {3-4}
 atlas migrate lint --env hibernate --latest 1
+
 20231211124321.sql: destructive changes detected:
         L2: Dropping non-virtual column "numberinseries"
 ```

@@ -5,6 +5,7 @@
 package specutil
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -380,7 +381,13 @@ func Default(d cty.Value) (schema.Expr, error) {
 	case d.Type() == cty.String:
 		x = &schema.Literal{V: d.AsString()}
 	case d.Type() == cty.Number:
-		x = &schema.Literal{V: d.AsBigFloat().String()}
+		f := d.AsBigFloat()
+		// If the number is an integer, convert it to an integer.
+		if f.IsInt() {
+			x = &schema.Literal{V: f.Text('f', -1)}
+		} else {
+			x = &schema.Literal{V: f.String()}
+		}
 	case d.Type() == cty.Bool:
 		x = &schema.Literal{V: strconv.FormatBool(d.True())}
 	case d.Type().IsCapsuleType():
@@ -879,11 +886,18 @@ func ColumnDefault(c *schema.Column) (cty.Value, error) {
 			}
 			return cty.NumberFloatVal(f), nil
 		case sqlx.IsLiteralNumber(x.V):
-			i, err := strconv.ParseInt(x.V, 10, 64)
-			if err != nil {
+			switch i, err := strconv.ParseInt(x.V, 10, 64); {
+			case errors.Is(err, strconv.ErrRange):
+				u, err := strconv.ParseUint(x.V, 10, 64)
+				if err != nil {
+					return cty.NilVal, err
+				}
+				return cty.NumberUIntVal(u), nil
+			case err != nil:
 				return cty.NilVal, err
+			default:
+				return cty.NumberIntVal(i), nil
 			}
-			return cty.NumberIntVal(i), nil
 		default:
 			switch c.Type.Type.(type) {
 			// Literal values (non-expressions) are returned

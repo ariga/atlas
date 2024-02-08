@@ -157,16 +157,17 @@ ALTER TABLE users modify bio varchar(100) not null;
 In cases where the `users.bio` column already contains null values,
 this migration will partially fail:
 
-```
+```applylog
   -- migrating version 20230409123337
     -> CREATE TABLE biographies (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    bio TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      bio TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
     -> alter table users modify bio varchar(100) not null;
-    Error 1138 (22004): Invalid use of NULL value
+
+    Error: Error 1138 (22004): Invalid use of NULL value
 ```
 This can be solved by *backfilling* the table with non-null values in the relevant column. To do this, we can update our migration script to contain this `UPDATE` statement:
 ```sql
@@ -191,7 +192,7 @@ resume from where it stopped. If we run:
 atlas migrate apply -u mysql://root:pass@/test
 ```
 Atlas runs to completion:
-```
+```applylog
 Migrating to version 20230409123337 from 20230409123337 (1 migrations in total):
 
   -- migrating version 20230409123337

@@ -155,6 +155,9 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		if err := convertSequences(d.Tables, d.Sequences, v); err != nil {
 			return err
 		}
+		if err := normalizeRealm(v); err != nil {
+			return err
+		}
 	case *schema.Schema:
 		var d doc
 		if err := hclState.Eval(p, &d, input); err != nil {
@@ -174,6 +177,9 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return err
 		}
 		if err := convertSequences(d.Tables, d.Sequences, r); err != nil {
+			return err
+		}
+		if err := normalizeRealm(r); err != nil {
 			return err
 		}
 		*v = *r.Schemas[0]

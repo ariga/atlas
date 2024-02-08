@@ -474,7 +474,36 @@ env "local" {
 - The loaded variable is a `string` type with no attributes.
 
 <Tabs>
-<TabItem value="gcp" label="GCP Secret Manager" default>
+<TabItem value="gcprc" label="GCP Runtime Configurator" default>
+
+The data source uses [Application Default Credentials](https://cloud.google.com/docs/authentication/production) by default;
+if you have authenticated via [`gcloud auth application-default login`](https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login),
+it will use those credentials.
+
+```hcl title="atlas.hcl"
+data "runtimevar" "db" {
+  url = "gcpruntimeconfig://projects/<project>/configs/<config-id>/variables/<variable>?decoder=string"
+}
+
+env "dev" {
+  src = "schema.hcl"
+  url = "mysql://root:pass@host:3306/${data.runtimevar.db}"
+}
+```
+
+#### Usage example
+
+```shell
+gcloud auth application-default login
+atlas schema apply --env dev
+```
+
+```shell
+GOOGLE_APPLICATION_CREDENTIALS="/path/to/credentials.json" atlas schema apply --env dev
+```
+
+</TabItem>
+<TabItem value="gcpsm" label="GCP Secret Manager" default>
 
 The data source uses [Application Default Credentials](https://cloud.google.com/docs/authentication/production) by default;
 if you have authenticated via [`gcloud auth application-default login`](https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login),
@@ -503,7 +532,43 @@ GOOGLE_APPLICATION_CREDENTIALS="/path/to/credentials.json" atlas schema apply --
 ```
 
 </TabItem>
-<TabItem value="aws" label="AWS Secrets Manager">
+<TabItem value="awsps" label="AWS Parameter Store">
+
+The data source provides two ways to work with AWS Parameter Store:
+- If the `awssdk` query parameter is not set or is set to `v1`, a default AWS Session will be created with the
+  SharedConfigEnable option enabled; if you have authenticated with the AWS CLI, it will use those credentials.
+- If the `awssdk` query parameter is set to `v2`, the data source will create an AWS Config based on the AWS SDK V2.
+
+```hcl title="atlas.hcl"
+data "runtimevar" "db" {
+  url = "awsparamstore://<name>?region=<region>&decoder=string"
+}
+
+env "dev" {
+  src = "schema.hcl"
+  url = "mysql://root:pass@host:3306/${data.runtimevar.db}"
+}
+```
+
+:::note
+It's common case when you use [the hierarchies format](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-hierarchies.html) for you parameters in AWS Parameter Store. So the `url` should
+contain the path to the hierarchy, for example `awsparamstore:///production/tenant_a/password?region=<region>&decoder=string` - there are three slashes after the protocol.
+:::
+
+
+#### Usage example
+
+```shell
+# Default credentials reside in ~/.aws/credentials.
+atlas schema apply --env dev
+```
+
+```shell
+AWS_ACCESS_KEY_ID="ACCESS_ID" AWS_SECRET_ACCESS_KEY="SECRET_KEY" atlas schema apply --env dev
+```
+
+</TabItem>
+<TabItem value="awssm" label="AWS Secrets Manager">
 
 The data source provides two ways to work with AWS Secrets Manager:
 - If the `awssdk` query parameter is not set or is set to `v1`, a default AWS Session will be created with the
