@@ -466,6 +466,11 @@ module.exports = {
         },
         {
             type: 'doc',
+            id: 'guides/getting-started-mssql',
+            label: 'MSSQL'
+        },
+        {
+            type: 'doc',
             id: 'guides/ddl'
         },
     ]

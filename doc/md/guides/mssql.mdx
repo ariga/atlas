@@ -1,21 +1,20 @@
 ---
-id: getting-started-clickhouse
-title: Manage ClickHouse with Atlas
-slug: /guides/clickhouse
-tags: [clickhouse]
+id: getting-started-mssql
+title: Manage MSSQL with Atlas
+slug: /guides/mssql
+tags: [mssql]
 ---
 
 import InstallationInstructions from '../components/_installation_instructions.mdx';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-[ClickHouse](https://clickhouse.com/), one of the prominent columnar databases, is designed for real-time analytics,
-providing exceptional speed and efficiency in handling large datasets.
+[Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server/) (MSSQL) is a powerful relational database management
+system that has one of the prominent enterprise-grade data solutions for decades. Commonly used by enterprises, MSSQL
+can efficiently handle growing amounts of data and users, making it easy to scale.
 
-Many teams adopt ClickHouse for its speed and cost-efficiency only to discover that the day 2 operations of managing its
-schema can be a puzzle. Sure, if your schema contains a handful of tables that rarely change,
-you’re probably not going to feel much of this pain. But for mission-critical applications, managing complex and interconnected
-schemas while moving fast without breaking things becomes difficult.
+However, managing a large database schema in MSSQL can be challenging due to the complexity of related data
+structures and the need for coordinated schema changes across multiple teams and applications.
 
 #### Enter: Atlas
 
@@ -23,7 +22,7 @@ Atlas helps developers manage their database schema as code - abstracting away t
 management. With Atlas, users provide the desired state of the database schema and Atlas automatically plans the
 required migrations.
 
-In this guide, we will dive into setting up Atlas for ClickHouse, and introduce the different workflows available.
+In this guide, we will dive into setting up Atlas for MSSQL, and introduce the different workflows available.
 
 ## Prerequisites
 
@@ -33,7 +32,7 @@ In this guide, we will dive into setting up Atlas for ClickHouse, and introduce 
 
 ## Logging in to Atlas
 
-To use ClickHouse with Atlas, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time,
+To use MSSQL with Atlas, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time,
 you will be prompted to create both an account and a workspace (organization):
 
 <Tabs>
@@ -64,24 +63,23 @@ ATLAS_TOKEN="ATLAS_TOKEN" atlas login
 
 Let's start off by spinning up a database using Docker:
 
-```shell
-docker run --rm -d --name atlas-demo -e CLICKHOUSE_DB=demo -p 9000:9000 clickhouse/clickhouse-server:latest
+```bash
+docker run --rm -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=P@ssw0rd0995' -p 1433:1433 --name atlas-demo -d mcr.microsoft.com/mssql/server:latest
 ```
 
 For this example we will begin with a minimal database with a `users` table and an `id` as the primary key.
 
 ```sql
-CREATE TABLE `users` (
-  `id` UInt64,
-  `name` String NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE = MergeTree() ORDER BY id;
+CREATE TABLE users (
+  id bigint PRIMARY KEY,
+  name varchar(255) NOT NULL
+)
 ```
 
-To create the table above on our local database, we can run the following command:
+To create this on our MSSQL database, run the following command:
 
-```sql
- docker exec -it atlas-demo clickhouse-client --query 'CREATE TABLE demo.users (id UInt64, name String NOT NULL, PRIMARY KEY (id)) ENGINE = MergeTree() ORDER BY id'
+```bash
+docker exec -it atlas-demo /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'P@ssw0rd0995' -Q "CREATE TABLE users (ID bigint PRIMARY KEY, name varchar(255) NOT NULL);"
 ```
 
 The `atlas schema inspect` command supports reading the database description provided by a [URL](/concepts/url) and outputting it in
@@ -89,65 +87,64 @@ different formats, including [Atlas DDL](/atlas-schema/hcl.mdx) (default), SQL, 
 demonstrate the flow using both the Atlas DDL and SQL formats, as the JSON format is often used for processing the
 output using `jq`.
 
+
 <Tabs>
 <TabItem value="hcl" label="Atlas DDL (HCL)" default>
 
-To inspect our locally-running ClickHouse instance, use the `-u` flag and write the output to a file named `schema.hcl`:
+To inspect our locally-running MSSQL instance, use the `-u` flag and write the output to a file named `schema.hcl`:
 
 ```shell
-atlas schema inspect -u "clickhouse://localhost:9000/demo" > schema.hcl
+atlas schema inspect -u "sqlserver://SA:P@ssw0rd0995@localhost:1433?database=master&mode=database > schema.hcl
 ```
 
 Open the `schema.hcl` file to view the Atlas schema that describes our database.
 
 ```hcl title="schema.hcl"
 table "users" {
-  schema = schema.demo
-  engine = MergeTree
-  column "id" {
+  schema = schema.dbo
+  column "ID" {
+    type = bigint
     null = false
-    type = UInt64
   }
   column "name" {
+    type = varchar(255)
     null = false
-    type = String
   }
   primary_key {
-    columns = [column.id]
+    columns = [column.ID]
   }
 }
-schema "demo" {
-  engine  = sql("Memory")
+schema "dbo" {
 }
 ```
 
 This first block represents a [table](/atlas-schema/hcl.mdx#table) resource with `id`, and `name`
-columns. The `schema` field references the `demo` schema that is defined in the block below. In addition, the `primary_key`
+columns. The `schema` field references the `dbo` schema that is defined in the block below. In addition, the `primary_key`
 sub-block defines the `id` column as the primary key for the table. Atlas strives to mimic the syntax of the database
-that the user is working against. In this case, the type for the `id` column is `UInt64`, and `String` for the `name` column.
+that the user is working against. In this case, the type for the `id` column is `bigint`, and `varchar(255)` for the `name` column.
 
 </TabItem>
 <TabItem value="sql" label="SQL">
 
-To inspect our locally-running ClickHouse instance, use the `-u` flag and write the output to a file named `schema.sql`:
+To inspect our locally-running MSSQL instance, use the `-u` flag and write the output to a file named `schema.sql`:
 
 ```shell
-atlas schema inspect -u "clickhouse://localhost:9000/demo" --format '{{ sql . }}' > schema.sql
+atlas schema inspect -u "sqlserver://SA:P@ssw0rd0995@localhost:1433?database=master&mode=database" --format '{{ sql . }}' > schema.sql
 ```
 
 Open the `schema.sql` file to view the inspected SQL schema that describes our database.
 
 ```sql title="schema.sql"
-CREATE TABLE `users` (
-    `id` UInt64,
-    `name` String)
- ENGINE = MergeTree
- PRIMARY KEY (`id`)
- SETTINGS index_granularity = 8192;
+CREATE TABLE [dbo].[users] (
+    [ID] bigint NOT NULL,
+    [name] varchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
+    CONSTRAINT [PK_users] PRIMARY KEY CLUSTERED ([ID] ASC)
+);
 ```
 
 </TabItem>
 </Tabs>
+
 
 :::info
 For in-depth details on the `atlas schema inspect` command, covering aspects like inspecting specific schemas,
@@ -159,10 +156,10 @@ To generate an Entity Relationship Diagram (ERD), or a visual representation of 
 to the inspect command:
 
 ```shell
-atlas schema inspect -u "clickhouse://localhost:9000/example" -w
+atlas schema inspect -u "sqlserver://SA:P@ssw0rd0995@localhost:1433?database=master&mode=database" -w
 ```
 
-![clickhouse-inspect](https://atlasgo.io/uploads/clickhouse/images/clickhouse-inspect.png)
+![mssql-inspect](https://atlasgo.io/uploads/mssql/images/schema-inspect-hcl.png)
 
 ## Declarative Migrations
 
@@ -171,48 +168,50 @@ Atlas provides a safe way to alter the database to get there. Let's see this in 
 
 We will start off by making a change to our schema file, such as adding a `repos` table:
 
+
 <Tabs>
 <TabItem value="hcl" label="Atlas DDL (HCL)" default>
 
 ```hcl title=schema.hcl
 table "users" {
-  schema = schema.demo
-  engine = MergeTree
-  column "id" {
+  schema = schema.dbo
+  column "ID" {
+    type = bigint
     null = false
-    type = UInt64
   }
   column "name" {
+    type = varchar(255)
     null = false
-    type = String
   }
   primary_key {
-    columns = [column.id]
+    columns = [column.ID]
   }
 }
 
 // highlight-start
 table "repos" {
-  schema = schema.demo
-  engine = MergeTree
-  column "id" {
-    type = UInt64
+  schema = schema.dbo
+  column "ID" {
+    type = bigint
     null = false
   }
   column "name" {
-    type = String
+    type = varchar(255)
     null = false
   }
   column "owner_id" {
-    type = Bigint
+    type = bigint
     null = false
   }
   primary_key {
-    columns = [column.id]
+    columns = [column.ID]
+  }
+  foreign_key "fk_repo_owner" {
+    columns     = [column.owner_id]
+    ref_columns = [table.users.column.ID]
   }
 }
-schema "demo" {
-  engine  = sql("Memory")
+schema "dbo" {
 }
 // highlight-end
 ```
@@ -222,22 +221,21 @@ schema "demo" {
 
 ```sql title="schema.sql"
 -- Create "users" table
-CREATE TABLE `users` (
-    `id` UInt64,
-    `name` String)
- ENGINE = MergeTree
- PRIMARY KEY (`id`)
- SETTINGS index_granularity = 8192;
+CREATE TABLE [dbo].[users] (
+    [ID] bigint NOT NULL,
+    [name] varchar(255) NOT NULL,
+    CONSTRAINT [PK_users] PRIMARY KEY CLUSTERED ([ID] ASC)
+)
 
 // highlight-start
 -- Create "repos" table
-CREATE TABLE `repos` (
-    `id` UInt64,
-    `name` String,
-    `owner_id` Int64)
- ENGINE = MergeTree
- PRIMARY KEY (`id`)
- SETTINGS index_granularity = 8192;
+CREATE TABLE [dbo].[repos] (
+    [ID] bigint NOT NULL,
+    [name] varchar(255) NOT NULL,
+    [owner_id] bigint,
+    CONSTRAINT [PK_repos] PRIMARY KEY CLUSTERED ([ID] ASC),
+    CONSTRAINT [fk_repo_owner] FOREIGN KEY ([owner_id]) REFERENCES [dbo].[users]([ID])
+);
  //highlight-end
 ```
 
@@ -252,9 +250,9 @@ by running the `atlas schema apply` command:
 
 ```shell
 atlas schema apply \
--u "clickhouse://localhost:9000/demo" \
+-u "sqlserver://SA:P@ssw0rd0995@localhost:1433?database=master&mode=database" \
 --to file://schema.hcl \
---dev-url "docker://clickhouse/23.11/demo"
+--dev-url "docker://sqlserver/2022-latest/dev?mode=database"
 ```
 
 </TabItem>
@@ -262,9 +260,9 @@ atlas schema apply \
 
 ```shell
 atlas schema apply \
--u "clickhouse://localhost:9000/demo" \
+-u "sqlserver://SA:P@ssw0rd0995@localhost:1433?database=master&mode=database" \
 --to file://schema.sql \
---dev-url "docker://clickhouse/23.11/demo"
+--dev-url "docker://sqlserver/2022-latest/dev?mode=database"
 ```
 
 </TabItem>
@@ -280,7 +278,7 @@ For a more detailed description of the `atlas schema apply` command refer to our
 To ensure that the changes have been made to the schema, let's run the `inspect` command with the `-w` flag once more
 and view the ERD:
 
-![atlas-schema](https://atlasgo.io/uploads/clickhouse/images/clickhouse-two-tables.png)
+![atlas-schema](https://atlasgo.io/uploads/mssql/images/schema-inspect-repos.png)
 
 ## Versioned Migrations
 
@@ -306,7 +304,7 @@ To create our first migration file, we will run the `atlas migrate diff` command
 ```shell
 atlas migrate diff initial \
   --to file://schema.hcl \
-  --dev-url "docker://clickhouse/23.11/dev"
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=database"
 ```
 
 </TabItem>
@@ -315,7 +313,7 @@ atlas migrate diff initial \
 ```shell
 atlas migrate diff initial \
   --to file://schema.sql \
-  --dev-url "docker://clickhouse/23.11/dev"
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=database"
 ```
 
 </TabItem>
@@ -325,32 +323,32 @@ Run `ls migrations`, and you'll notice that Atlas has automatically created a mi
 two files:
 
 <Tabs>
-<TabItem value="file" label="20240130122951_initial.sql" default>
+<TabItem value="file" label="20240208092238_initial.sql" default>
 
 ```sql
 -- Create "users" table
-CREATE TABLE `users` (
-    `id` UInt64,
-    `name` String)
- ENGINE = MergeTree
- PRIMARY KEY (`id`)
- SETTINGS index_granularity = 8192;
+CREATE TABLE [dbo].[users] (
+    [ID] bigint NOT NULL,
+    [name] varchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
+    CONSTRAINT [PK_users] PRIMARY KEY CLUSTERED ([ID] ASC)
+);
+
 -- Create "repos" table
-CREATE TABLE `repos` (
-    `id` UInt64,
-    `name` String,
-    `owner_id` Int64)
- ENGINE = MergeTree
- PRIMARY KEY (`id`)
- SETTINGS index_granularity = 8192;
+CREATE TABLE [dbo].[repos] (
+    [ID] bigint NOT NULL,
+    [name] varchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
+    [owner_id] bigint NOT NULL,
+    CONSTRAINT [PK_repos] PRIMARY KEY CLUSTERED ([ID] ASC),
+    CONSTRAINT [repo_owner] FOREIGN KEY ([owner_id]) REFERENCES [dbo].[users] ([ID]) ON UPDATE NO ACTION ON DELETE NO ACTION
+);
 ```
 
 </TabItem>
 <TabItem value="atlas.sum" label="atlas.sum">
 
 ```shell
-h1:NrYfakYn4W3xiS9VqcP98sqvgLUPn9pJpxFndh1GWsQ=
-20240130122951.sql h1:R+eBw2nOk2+VLBvJ/dn49OphxzfxoWEBUxAy4Zp3VAE=
+h1:rjaBcqArMcMRxbSJh/xykNO0DXqnwBFNkHpkaeuoZaM=
+20240208092238_initial.sql h1:y2p3yVltYcwc7mbsvPf5JfeZkzubYEBrhra71/ILVWc=
 ```
 </TabItem>
 </Tabs>
@@ -365,7 +363,7 @@ most methods covered in the [guides](/guides) section. In this example, we'll de
 [Atlas Cloud](https://atlasgo.cloud), much like how Docker images are pushed to Docker Hub.
 
 <div style={{textAlign: 'center'}}>
-    <img src="https://atlasgo.io/uploads/clickhouse/images/first-push.png" alt="clickhouse migrate push" width="100%"/>
+    <img src="https://atlasgo.io/uploads/mssql/images/first-dir-push.png" alt="mssql migrate push" width="100%"/>
     <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
 </div>
 
@@ -373,7 +371,7 @@ Let's name our new migration project `app` and run `atlas migrate push`:
 
 ```shell
 atlas migrate push app \
-  --dev-url "docker://clickhouse/23.11"
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=database"
 ```
 
 Once the migration directory is pushed, Atlas prints a URL to the created directory, similar to the once shown in the
@@ -384,12 +382,18 @@ image above.
 Once our `app` migration directory has been pushed, we can apply it to a database from any CD platform without
 necessarily having our directory there.
 
-We'll create a simple Atlas configuration file (`atlas.hcl`) to store the settings for our local environment:
+Let's create another database using Docker to resemble a local environment, this time on port `1434`:
+
+```bash
+docker run --platform linux/amd64 -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=P@ssw0rd0995' -p 1434:1433 --name atlas-local -d mcr.microsoft.com/mssql/server:latest
+```
+
+Next, we'll create a simple Atlas configuration file (`atlas.hcl`) to store the settings for our local environment:
 
 ```hcl title="atlas.hcl" {1}
 # The "dev" environment represents our local testings.
 env "local" {
-  url = "clickhouse://localhost:9000/example"
+  url = "sqlserver://SA:P@ssw0rd0995@localhost:1434?database=master&mode=database"
   migration {
     dir = "atlas://app"
   }
@@ -407,7 +411,7 @@ Boom! After applying the migration, you should receive a link to the deployment 
 was applied. Here's an example of what it should look like:
 
 <div style={{textAlign: 'center'}}>
-    <img src="https://atlasgo.io/uploads/clickhouse/images/clickhouse-deployment.png" alt="first deployment" width="100%"/>
+    <img src="https://atlasgo.io/uploads/mssql/images/mssql-deployment.png" alt="first deployment" width="100%"/>
     <p style={{fontSize: 12}}>Migration deployment reported created with <code>atlas migrate apply</code></p>
 </div>
 
@@ -422,111 +426,122 @@ Let's make two changes to our schema:
 * Add a new `description` column to our repos table
 * Add a new `commits` table
 
+
 <Tabs>
 <TabItem value="hcl" label="Atlas DDL (HCL)" default>
 
 ```hcl title="schema.hcl"
 table "users" {
-  schema = schema.demo
-  engine = MergeTree
-  column "id" {
+  schema = schema.dbo
+  column "ID" {
+    type = bigint
     null = false
-    type = UInt64
   }
   column "name" {
+    type = varchar(255)
     null = false
-    type = String
   }
   primary_key {
-    columns = [column.id]
+    columns = [column.ID]
   }
 }
+
 table "repos" {
-  schema = schema.demo
-  engine = MergeTree
-  column "id" {
-    type = UInt64
+  schema = schema.dbo
+  column "ID" {
+    type = bigint
     null = false
   }
   column "name" {
-    type = String
+    type = varchar(255)
+    null = false
+  }
+  column "owner_id" {
+    type = bigint
     null = false
   }
 // highlight-start
-  column "description" {
-    type = sql("Nullable(String)")
-    null = true
-  }
+   column "description" {
+     type = varchar(max)
+     null = true
+   }
 // highlight-end
-  column "owner_id" {
-    type = Bigint
-    null = false
-  }
   primary_key {
-    columns = [column.id]
+    columns = [column.ID]
+  }
+  foreign_key "fk_repo_owner" {
+    columns     = [column.owner_id]
+    ref_columns = [table.users.column.ID]
   }
 }
 // highlight-start
 table "commits" {
-  schema = schema.demo
-  engine = MergeTree
-  column "id" {
-    type = UInt64
+  schema = schema.dbo
+  column "ID" {
+    type = bigint
     null = false
   }
   column "message" {
-    type = String
+    type = varchar(255)
     null = false
   }
   column "repo_id" {
-    type = Bigint
+    type = bigint
     null = false
   }
   column "author_id" {
-    type = Bigint
+    type = bigint
     null = false
   }
   primary_key {
     columns = [column.id]
   }
+  foreign_key "fk_repo_commit" {
+    columns     = [column.repo_id]
+    ref_columns = [table.repos.column.ID]
+  }
+  foreign_key "fk_commit_author" {
+    columns     = [column.author_id]
+    ref_columns = [table.users.column.ID]
+  }
 }
 // highlight-end
-schema "demo" {
-  engine  = sql("Memory")
+schema "dbo" {
 }
-
 ```
 
 </TabItem>
 <TabItem value="sql" label="SQL">
 
-```sql title = "schema.sql"
-CREATE TABLE `users` (
-  `id` UInt64,
-  `name` String NOT NULL
-)  ENGINE = MergeTree
-   PRIMARY KEY (`id`)
-   SETTINGS index_granularity = 8192;
+```sql title="schema.sql"
+-- Create "users" table
+CREATE TABLE [dbo].[users] (
+    [ID] bigint NOT NULL,
+    [name] varchar(255) NOT NULL,
+    CONSTRAINT [PK_users] PRIMARY KEY CLUSTERED ([ID] ASC)
+)
 
-CREATE TABLE `repos` (
-  `id` UInt64,
-  `name` String NOT NULL,
-// highlight-next-line
-  `description` String NULL,
-  `owner_id` Bigint NOT NULL
-) ENGINE = MergeTree
-  PRIMARY KEY (`id`)
-  SETTINGS index_granularity = 8192;;
+-- Create "repos" table
+CREATE TABLE [dbo].[repos] (
+    [ID] bigint NOT NULL,
+    [name] varchar(255) NOT NULL,
+    [owner_id] bigint,
+    // highlight-next-line
+    [description] varchar(max) NULL,
+    CONSTRAINT [PK_repos] PRIMARY KEY CLUSTERED ([ID] ASC),
+    CONSTRAINT [fk_repo_owner] FOREIGN KEY ([owner_id]) REFERENCES [dbo].[users]([ID])
+)
 
 // highlight-start
 CREATE TABLE `commits` (
-  `id` UInt64,
-  `message` String NOT NULL,
-  `repo_id` Bigint NOT NULL,
-  `author_id` Bigint NOT NULL,
-)  ENGINE = MergeTree
-   PRIMARY KEY (`id`)
-   SETTINGS index_granularity = 8192;
+  [ID] bigint  NOT NULL,
+  [message] varchar(255) NOT NULL,
+  [repo_id] bigint NOT NULL,
+  [author_id] bigint NOT NULL,
+  CONSTRAINT [PK_commits] PRIMARY KEY CLUSTERED ([ID] ASC),
+  CONSTRAINT [fk_repo_commit] FOREIGN KEY ([repo_id]) REFERENCES [dbo].[repos]([ID]),
+  CONSTRAINT [fk_commit_author] FOREIGN KEY ([author_id]) REFERENCES [dbo].[users]([ID])
+)
 // highlight-end
 ```
 </TabItem>
@@ -534,14 +549,13 @@ CREATE TABLE `commits` (
 
 Next, let's run the `atlas migrate diff` command once more:
 
-
 <Tabs>
 <TabItem value="hcl" label="Atlas DDL (HCL)" default>
 
 ```shell
 atlas migrate diff add_commits \
   --to file://schema.hcl \
-  --dev-url "docker://clickhouse/23.11/dev"
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=database"
 ```
 
 </TabItem>
@@ -550,7 +564,7 @@ atlas migrate diff add_commits \
 ```shell
 atlas migrate diff add_commits \
   --to file://schema.sql \
-  --dev-url "docker://clickhouse/23.11/dev"
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=database"
 ```
 
 </TabItem>
@@ -558,17 +572,20 @@ atlas migrate diff add_commits \
 
 Run `ls migrations`, and you'll notice that a new migration file has been generated.
 
-```sql title="20240130141055.sql"
-ALTER TABLE `repos` ADD COLUMN `description` Nullable(String);
+```sql title="20240208115924_add_commits.sql"
+ALTER TABLE [dbo].[repos] ADD [description] varchar(MAX) COLLATE SQL_Latin1_General_CP1_CI_AS NULL;
+-- Modify "repos" table
+ALTER TABLE [dbo].[repos] ADD CONSTRAINT [fk_repo_owner] FOREIGN KEY ([owner_id]) REFERENCES [dbo].[users] ([ID]) ON UPDATE NO ACTION ON DELETE NO ACTION;
 -- Create "commits" table
-CREATE TABLE `commits` (
-   `id` UInt64,
-   `message` String,
-   `repo_id` Int64,
-   `author_id` Int64
-) ENGINE = MergeTree
-PRIMARY KEY (`id`)
-SETTINGS index_granularity = 8192;
+CREATE TABLE [dbo].[commits] (
+    [ID] bigint NOT NULL,
+    [message] varchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
+    [repo_id] bigint NOT NULL,
+    [author_id] bigint NOT NULL,
+    CONSTRAINT [PK_commits] PRIMARY KEY CLUSTERED ([ID] ASC),
+    CONSTRAINT [FK_commits_repos] FOREIGN KEY ([repo_id]) REFERENCES [dbo].[repos] ([ID]) ON UPDATE NO ACTION ON DELETE NO ACTION,
+    CONSTRAINT [FK_commits_users] FOREIGN KEY ([author_id]) REFERENCES [dbo].[users] ([ID]) ON UPDATE NO ACTION ON DELETE NO ACTION
+);
 ```
 
 Let's run `atlas migrate push` again and
@@ -576,11 +593,11 @@ observe the new file on the migration directory page.
 
 ```shell
 atlas migrate push app \
-  --dev-url "docker://clickhouse/23.11/dev"
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=database"
 ```
 
 <div style={{textAlign: 'center'}}>
-    <img src="https://atlasgo.io/uploads/clickhouse/images/second-push.png" alt="clickhouse migrate push" width="100%"/>
+    <img src="https://atlasgo.io/uploads/mssql/images/mssql-second-push.png" alt="mssql migrate push" width="100%"/>
     <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
 </div>
 
@@ -590,7 +607,7 @@ In this guide we learned about the declarative and versioned workflows, and how 
 push them to an Atlas workspace and apply them to databases.
 
 Next steps:
-* Read the [full docs](/atlas-schema/hcl) to learn HCL schema syntax or about specific ClickHouse [column types](/atlas-schema/hcl-types#clickhouse)
+* Read the [full docs](/atlas-schema/hcl) to learn HCL schema syntax or about specific MSSQL [column types](/atlas-schema/hcl-types#sql-server)
 * Learn how to [set up CI](/cloud/setup-ci) for your migration directory
 * Deploy schema changes with [Terraform](/integrations/terraform-provider) or [Kubernetes](/integrations/kubernetes/operator)
 * Learn about [modern CI/CD principles](/guides/modern-database-ci-cd) for databases
