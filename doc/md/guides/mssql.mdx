@@ -162,8 +162,9 @@ atlas schema inspect -u "sqlserver://SA:P@ssw0rd0995@localhost:1433?database=mas
 ![mssql-inspect](https://atlasgo.io/uploads/mssql/images/schema-inspect-hcl.png)
 
 ## Declarative Migrations
-The declarative approach lets users manage schemas by defining the desired state. Atlas then safely alters the database
-to match. Let's see this in action.
+
+The declarative approach lets users manage schemas by defining the desired state of the database as code.
+Atlas then inspects the target database and calculates an execution plan to reconcile the difference between the desired and actual states.  Let's see this in action.
 
 We will start off by making a change to our schema file, such as adding a `repos` table:
 
