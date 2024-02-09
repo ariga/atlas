@@ -110,6 +110,21 @@ func TestResource(t *testing.T) {
 	require.EqualValues(t, f, string(buf))
 }
 
+func TestInvalidRefs(t *testing.T) {
+	var doc struct {
+		Tables []struct {
+			Name string `spec:",name"`
+			Refs []*Ref `spec:"ref"`
+		}
+	}
+	err := New().EvalBytes([]byte(`
+table "bar" {
+  refs = [table]
+}
+`), &doc, nil)
+	require.EqualError(t, err, ":3,3-17: invalid reference used in refs")
+}
+
 func ExampleUnmarshal() {
 	f := `
 show "seinfeld" {
