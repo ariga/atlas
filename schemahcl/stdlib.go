@@ -48,7 +48,7 @@ func stdTypes(ctx *hcl.EvalContext) *hcl.EvalContext {
 				{Name: "elem_type", Type: ctyNilType},
 			},
 			Type: function.StaticReturnType(ctyNilType),
-			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 				argT := args[0].EncapsulatedValue().(*cty.Type)
 				setT := cty.Set(*argT)
 				return cty.CapsuleVal(ctyNilType, &setT), nil
@@ -59,7 +59,7 @@ func stdTypes(ctx *hcl.EvalContext) *hcl.EvalContext {
 				{Name: "elem_type", Type: ctyNilType},
 			},
 			Type: function.StaticReturnType(ctyNilType),
-			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 				argT := args[0].EncapsulatedValue().(*cty.Type)
 				mapT := cty.Map(*argT)
 				return cty.CapsuleVal(ctyNilType, &mapT), nil
@@ -70,7 +70,7 @@ func stdTypes(ctx *hcl.EvalContext) *hcl.EvalContext {
 				{Name: "elem_type", Type: cty.List(ctyNilType)},
 			},
 			Type: function.StaticReturnType(ctyNilType),
-			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 				argV := args[0]
 				argsT := make([]cty.Type, 0, argV.LengthInt())
 				for it := argV.ElementIterator(); it.Next(); {
@@ -86,7 +86,7 @@ func stdTypes(ctx *hcl.EvalContext) *hcl.EvalContext {
 				{Name: "attr_type", Type: cty.Map(ctyNilType)},
 			},
 			Type: function.StaticReturnType(ctyNilType),
-			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 				argV := args[0]
 				argsT := make(map[string]cty.Type)
 				for it := argV.ElementIterator(); it.Next(); {
@@ -262,7 +262,7 @@ var (
 			{Name: "def", Type: cty.String, AllowNull: false},
 		},
 		Type: function.StaticReturnType(ctyRawExpr),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			x := args[0].AsString()
 			if len(x) == 0 {
 				return cty.NilVal, errors.New("empty expression")
@@ -288,7 +288,7 @@ var (
 			},
 		},
 		Type: function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			u, err := url.Parse(args[0].AsString())
 			if err != nil {
 				return cty.NilVal, err
@@ -317,7 +317,7 @@ var (
 			AllowNull: true,
 		},
 		Type: function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			u, err := url.Parse(args[0].AsString())
 			if err != nil {
 				return cty.NilVal, err
@@ -344,7 +344,7 @@ var (
 			},
 		},
 		Type: function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			u, err := url.Parse(args[0].AsString())
 			if err != nil {
 				return cty.NilVal, err
@@ -362,7 +362,7 @@ var (
 			},
 		},
 		Type: function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			u := url.QueryEscape(args[0].AsString())
 			return cty.StringVal(u), nil
 		},
@@ -378,7 +378,7 @@ var (
 		Type: func(args []cty.Value) (cty.Type, error) {
 			return args[0].Type(), nil
 		},
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			switch args[0].Type() {
 			case cty.String:
 				fmt.Println(args[0].AsString())
@@ -409,7 +409,7 @@ var (
 			},
 		},
 		Type: function.StaticReturnType(cty.Bool),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			if s1, s2 := args[0].AsString(), args[1].AsString(); strings.HasPrefix(s1, s2) {
 				return cty.True, nil
 			}
@@ -429,7 +429,7 @@ var (
 			},
 		},
 		Type: function.StaticReturnType(cty.Bool),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			if s1, s2 := args[0].AsString(), args[1].AsString(); strings.HasSuffix(s1, s2) {
 				return cty.True, nil
 			}
@@ -449,7 +449,7 @@ func MakeFileFunc(base string) function.Function {
 			},
 		},
 		Type: function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			if !filepath.IsAbs(base) {
 				return cty.NilVal, fmt.Errorf("base directory must be an absolute path. got: %s", base)
 			}

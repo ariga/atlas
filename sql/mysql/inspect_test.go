@@ -629,7 +629,7 @@ func TestDriver_InspectTable(t *testing.T) {
 `))
 				m.noFKs()
 			},
-			expect: func(require *require.Assertions, t *schema.Table, err error) {
+			expect: func(require *require.Assertions, _ *schema.Table, err error) {
 				// nothing to expect, ExpectQuery is enough for this test
 				require.NoError(err)
 			},
