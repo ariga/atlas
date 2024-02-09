@@ -545,6 +545,9 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, vr SchemaValidator, hclAttrs hclsy
 			for it := value.ElementIterator(); it.Next(); {
 				_, v := it.Element()
 				if isRef(v) {
+					if !v.Type().HasAttribute("__ref") {
+						return nil, fmt.Errorf("%s: invalid reference used in %s", hclAttr.SrcRange, hclAttr.Name)
+					}
 					v = cty.CapsuleVal(ctyRefType, &Ref{V: v.GetAttr("__ref").AsString()})
 				}
 				if vt != cty.NilType && vt != v.Type() {
@@ -559,7 +562,6 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, vr SchemaValidator, hclAttrs hclsy
 		}
 		attrs = append(attrs, at)
 	}
-	// hclsyntax.Attrs is an alias for map[string]*Attribute
 	sort.Slice(attrs, func(i, j int) bool {
 		return attrs[i].K < attrs[j].K
 	})
