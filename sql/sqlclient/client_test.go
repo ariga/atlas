@@ -22,7 +22,7 @@ func TestRegisterOpen(t *testing.T) {
 	c := &sqlclient.Client{}
 	sqlclient.Register(
 		"mysql",
-		sqlclient.OpenerFunc(func(ctx context.Context, url *url.URL) (*sqlclient.Client, error) {
+		sqlclient.OpenerFunc(func(context.Context, *url.URL) (*sqlclient.Client, error) {
 			return c, nil
 		}),
 		sqlclient.RegisterFlavours("maria"),
@@ -39,7 +39,7 @@ func TestRegisterOpen(t *testing.T) {
 		t,
 		"sql/sqlclient: Register called twice for mysql",
 		func() {
-			sqlclient.Register("mysql", sqlclient.OpenerFunc(func(ctx context.Context, url *url.URL) (*sqlclient.Client, error) {
+			sqlclient.Register("mysql", sqlclient.OpenerFunc(func(context.Context, *url.URL) (*sqlclient.Client, error) {
 				return c, nil
 			}))
 		},

@@ -865,7 +865,7 @@ func TestTypeLabelBlock(t *testing.T) {
 				callT++
 				return cty.ObjectVal(map[string]cty.Value{"url": cty.StringVal("driver://" + v.AsString())}), nil
 			}),
-			WithTypeLabelBlock("driver", "not_called", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+			WithTypeLabelBlock("driver", "not_called", func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
 				t.Fatal("should not be called")
 				return cty.NilVal, nil
 			}),
