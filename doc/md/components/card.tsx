@@ -24,6 +24,7 @@ export enum CardImage {
     Postgres = "postgres",
     Schema = "schema",
     SQLite = "sqlite",
+    SQLServer = "sqlserver",
     Terraform = "terraform",
     Testing = "testing",
     Tools = "tools",
