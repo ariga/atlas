@@ -579,8 +579,8 @@ func autoincPK(pk *schema.Index) bool {
 
 // Build instantiates a new builder and writes the given phrase to it.
 func (s *state) Build(phrases ...string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteOpening: '`', QuoteClosing: '`', Schema: s.SchemaQualifier, Indent: s.Indent}
-	return b.P(phrases...)
+	return (*Driver).StmtBuilder(nil, s.PlanOptions).
+		P(phrases...)
 }
 
 func defaultValue(c *schema.Column) (string, error) {
