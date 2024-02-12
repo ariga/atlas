@@ -189,6 +189,16 @@ func (*Driver) ParseType(s string) (schema.Type, error) {
 	return ParseType(s)
 }
 
+// StmtBuilder is a helper method used to build statements with SQLite formatting.
+func (*Driver) StmtBuilder(opts migrate.PlanOptions) *sqlx.Builder {
+	return &sqlx.Builder{
+		QuoteOpening: '`',
+		QuoteClosing: '`',
+		Schema:       opts.SchemaQualifier,
+		Indent:       opts.Indent,
+	}
+}
+
 // ScanStmts implements migrate.StmtScanner.
 func (*Driver) ScanStmts(input string) ([]*migrate.Stmt, error) {
 	return (&migrate.Scanner{
