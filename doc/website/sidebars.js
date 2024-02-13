@@ -228,7 +228,12 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/deploying/secrets',
                     label: 'Working with secrets'
-                }
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/k8s-operator-certs',
+                    label: 'SSL Certs (Kubernetes)'
+                },
             ]
         },
         {
