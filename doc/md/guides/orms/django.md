@@ -12,22 +12,33 @@ slug: /guides/orms/django
   for them.
 
 ## Automatic migration planning for Django
+
 Django is the most popular web framework in the Python community. It includes a [built-in ORM](https://docs.djangoproject.com/en/5.0/#the-model-layer)
-which allows users to describe their data model using Python classes. Then create [migrations](https://docs.djangoproject.com/en/5.0/topics/migrations)
+which allows users to describe their data model using Python classes. Migrations are then [created](https://docs.djangoproject.com/en/5.0/topics/migrations)
 using the `python manage.py makemigrations` command, which can be applied to the database using `python manage.py migrate`.
 
-A downside of this approach is that in order to [generate migrations](https://docs.djangoproject.com/en/5.0/ref/django-admin/#django-admin-makemigrations),
-a pre-existing database with the current version of the schema must be connected to.
-In many production environments, databases should generally not be reachable from developer workstations,
-which means this comparison is normally done against a local copy of the database which may have
-undergone some changes that aren't reflected in the existing migrations.
+Among the many ORMs available in our industry, Django's automatic migration is one of the most powerful and robust. 
+It can handle a wide range of schema changes, including adding new tables, adding new columns, changing column types, and more.
+However, having been created in 2014, a very different era in software engineering, it naturally has some limitations.
 
-Atlas, on the other hand, can automatically plan database schema migrations for Django
-without requiring a connection to such a database and can detect almost any kind of schema change.
-Atlas plans migrations by calculating the diff between the _current_ state of the database,
-and its _desired_ state.
+Some of the limitations of Django's migration system include:
+
+* **Database Features.** Because it was created to provide interoperability across database engines, Django's 
+  migration system is centered around the "lowest common denominator" of database features. More advanced 
+  features such as Triggers, Views, and Stored Procedures have very limited support and require developers to jump through [all kinds of hoops](https://docs.djangoproject.com/en/5.0/ref/migration-operations/#django.db.migrations.operations.SeparateDatabaseAndState)
+  to use them.
+* **Ensuring Migration Safety.** Migrations are a risky business. If you're not careful, you can easily cause data loss or 
+  a production outage. Django's migration system does not provide a native way to ensure that a migration is safe to apply.
+* **Modern Deployments.**  Django does not provide native integration with modern deployment practices such as [GitOps](/2023/12/06/gitops-for-databases-part-1)
+  or [Infrastructure-as-Code](/blog/2023/07/19/bridging-the-gap-between-iac-and-schema-management).
+
+Atlas, on the other hand, lets you manage your Django applications using the [Database Schema-as-Code](/blog/2024/01/24/why-schema-as-code)
+paradigm. This means that you can use Atlas to automatically plan schema migrations for your Django project, and then apply them to your database.
+Using Atlas, you can enjoy automatic migration planning, automatic code review and integrations with your favorite CI/CD tools.
 
 ### How it works
+
+Atlas works by planning migrations from the database's current state to the desired state.
 
 In the context of [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations),
 the current state can be thought of as the database schema that would have
