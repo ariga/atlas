@@ -96,7 +96,7 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 					if !ok || p.File.ColumnSpan(c.T, d.C) == sqlcheck.SpanTemporary {
 						continue
 					}
-					if g := (schema.GeneratedExpr{}); !sqlx.Has(d.C.Attrs, &g) || strings.ToUpper(g.Type) != "VIRTUAL" {
+					if g := (schema.GeneratedExpr{}); (!sqlx.Has(d.C.Attrs, &g) || strings.ToUpper(g.Type) != "VIRTUAL") && !a.hasEmptyColumnCheck(p, c.T, d.C) {
 						names = append(names, strconv.Quote(d.C.Name))
 						if stmt, err := a.emptyColumnCheckStmt(p, c.T, d.C.Name); err == nil {
 							edits = append(edits, stmt)
