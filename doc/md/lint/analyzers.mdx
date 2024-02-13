@@ -283,17 +283,43 @@ DROP SCHEMA test;
 
 #### DS102 {#DS102}
 
-Destructive change that is reported when a table schema was dropped. For example:
+A destructive change is reported when a table is dropped, posing a risk of data loss. For example:
 
 ```sql
-DROP TABLE test.t;
+DROP TABLE t;
+```
+
+The suggested solution is to back up the data before dropping the table, or add a [pre-migration check](/versioned/checks)
+to ensure that the table is empty before dropping it:
+
+```diff
++ -- atlas:txtar
++
++ -- checks/destructive.sql --
++ SELECT NOT EXISTS (SELECT 1 FROM t1) AS t1_empty;
++
++ -- migration.sql --
+DROP TABLE t1;
 ```
 
 #### DS103 {#DS103}
 
-Destructive change that is reported when a non-virtual column was dropped. For example:
+A destructive change is reported when a non-virtual column is dropped, posing a risk of data loss. For example:
 
 ```sql
+ALTER TABLE t DROP COLUMN c;
+```
+
+The suggest solution to resolve these errors is to add a [pre-migration check](/versioned/checks) that ensures the
+column is empty before dropping it:
+
+```diff
++ -- atlas:txtar
++
++ -- checks/destructive.sql --
++ SELECT NOT EXISTS (SELECT 1 FROM t WHERE c IS NOT NULL) AS t_c_empty;
++
++ -- migration.sql --
 ALTER TABLE t DROP COLUMN c;
 ```
 
