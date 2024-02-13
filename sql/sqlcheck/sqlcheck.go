@@ -77,15 +77,34 @@ type (
 
 	// A Report describes an analysis report with an optional specific diagnostic.
 	Report struct {
-		Text        string       // Report text.
-		Diagnostics []Diagnostic // Report diagnostics.
+		Text           string         `json:"Text"`                     // Report text.
+		Diagnostics    []Diagnostic   `json:"Diagnostics,omitempty"`    // Report diagnostics.
+		SuggestedFixes []SuggestedFix `json:"SuggestedFixes,omitempty"` // Report-level suggested fixes.
 	}
 
 	// A Diagnostic is a text associated with a specific position of a statement in a file.
 	Diagnostic struct {
-		Pos  int    // Diagnostic position.
-		Text string // Diagnostic text.
-		Code string // Code describes the check. For example, DS101
+		Pos            int            `json:"Pos"`                      // Diagnostic position.
+		Text           string         `json:"Text"`                     // Diagnostic text.
+		Code           string         `json:"Code"`                     // Code describes the check. For example, DS101
+		SuggestedFixes []SuggestedFix `json:"SuggestedFixes,omitempty"` // Fixes to this specific diagnostics (statement-level).
+	}
+
+	// A SuggestedFix is a change associated with a diagnostic that can
+	// be applied to fix the issue. Both the message and the text edits
+	// are optional.
+	SuggestedFix struct {
+		Message   string     `json:"Message"`
+		TextEdits []TextEdit `json:"TextEdits,omitempty"`
+	}
+
+	// A TextEdit represents a code changes in a file. If End is set to Pos or 0,
+	// it means that the change is an insertion at the given position. Otherwise,
+	// it represents a replacement of the text between Pos and End with NewText.
+	TextEdit struct {
+		Pos     int    `json:"Pos"`
+		End     int    `json:"End"`
+		NewText string `json:"NewText"`
 	}
 
 	// ReportWriter represents a writer for analysis reports.
