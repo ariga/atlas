@@ -1,0 +1,221 @@
+---
+id: django
+title: Automatic migration planning for Django
+slug: /guides/orms/django
+---
+
+# Import the installation instructions component found elsewhere
+
+import InstallationInstructions from '../../components/_installation_instructions.mdx'
+
+## TL;DR
+* [Django](https://www.djangoproject.com) is a Python web framework, with a built-in ORM.
+* [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, linting and
+  executing schema changes to your database.
+* Developers using Django can use Atlas to automatically plan schema migrations
+  for them.
+
+## Automatic migration planning for Django
+
+Django is the most popular web framework in the Python community. It includes a [built-in ORM](https://docs.djangoproject.com/en/5.0/#the-model-layer)
+which allows users to describe their data model using Python classes. Migrations are then [created](https://docs.djangoproject.com/en/5.0/topics/migrations)
+using the `python manage.py makemigrations` command, which can be applied to the database using `python manage.py migrate`.
+
+Among the many ORMs available in our industry, Django's automatic migration is one of the most powerful and robust. 
+It can handle a wide range of schema changes, including adding new tables, adding new columns, changing column types, and more.
+However, having been created in 2014, a very different era in software engineering, it naturally has some limitations.
+
+Some of the limitations of Django's migration system include:
+
+* **Database Features.** Because it was created to provide interoperability across database engines, Django's 
+  migration system is centered around the "lowest common denominator" of database features. More advanced 
+  features such as Triggers, Views, and Stored Procedures have very limited support and require developers to jump through [all kinds of hoops](https://docs.djangoproject.com/en/5.0/ref/migration-operations/#django.db.migrations.operations.SeparateDatabaseAndState)
+  to use them.
+* **Ensuring Migration Safety.** Migrations are a risky business. If you're not careful, you can easily cause data loss or 
+  a production outage. Django's migration system does not provide a native way to ensure that a migration is safe to apply.
+* **Modern Deployments.**  Django does not provide native integration with modern deployment practices such as [GitOps](/blog/2023/12/06/gitops-for-databases-part-1)
+  or [Infrastructure-as-Code](/blog/2023/07/19/bridging-the-gap-between-iac-and-schema-management).
+
+Atlas, on the other hand, lets you manage your Django applications using the [Database Schema-as-Code](/blog/2024/01/24/why-schema-as-code)
+paradigm. This means that you can use Atlas to automatically plan schema migrations for your Django project, and then apply them to your database.
+Using Atlas, you can enjoy automatic migration planning, automatic code review and integrations with your favorite CI/CD tools.
+
+### How it works
+
+Atlas works by planning migrations from the database's current state to the desired state.
+
+In the context of [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations),
+the current state can be thought of as the database schema that would have
+been created by applying all previous migration scripts.
+
+The desired schema of your application can be provided to Atlas via an [External Schema Datasource](/atlas-schema/projects#data-source-external_schema),
+which is any program that can output a SQL schema definition to stdout.
+
+To use Atlas with Django, users can utilize the [Django Atlas Provider](https://github.com/ariga/atlas-provider-django)
+which is a small program that can be used to load the schema of a Django project into Atlas.
+
+In this guide, we will show how Atlas can be used to automatically plan schema migrations for Django users.
+
+
+## Prerequisites
+
+* A local [Django](https://www.djangoproject.com) project.
+
+If you don't have a Django project handy, check out the [Django getting started page](https://docs.djangoproject.com/en/5.0/intro/tutorial01/)
+
+## Using the Atlas Django Provider
+
+In this guide, we will use the [Django Atlas Provider](https://github.com/ariga/atlas-provider-django)
+to automatically plan schema migrations for a Django project.
+
+### Installation
+
+<InstallationInstructions />
+
+Start Python virtual environment if you haven't already:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Install the provider by running:
+```bash
+pip install atlas-provider-django
+``` 
+
+### Configuration
+
+Add the provider to your Django project's `INSTALLED_APPS` in [`settings.py`](https://docs.djangoproject.com/en/5.0/topics/settings/):
+
+```python
+INSTALLED_APPS = [
+    ...,
+    'atlas_provider_django',
+    ...
+]
+```
+
+In your project directory, where [`manage.py`](https://docs.djangoproject.com/en/5.0/ref/django-admin/) file is located, 
+create a new file named `atlas.hcl` with the following contents:
+
+```hcl
+data "external_schema" "django" {
+  program = [
+    "python",
+    "manage.py",
+    "atlas-provider-django",
+    "--dialect", "mysql" // mariadb | postgresql | sqlite | mssql
+    
+    // if you want to only load a subset of your app models, you can specify the apps by adding
+    // "--apps", "app1", "app2", "app3"
+  ]
+}
+
+env "django" {
+  src = data.external_schema.django.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+```
+
+## Usage
+
+Atlas supports a [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations)
+workflow, where each change to the database is versioned and recorded in a migration file. You can use the
+`atlas migrate diff` command to automatically generate a migration file that will migrate the database
+from its latest revision to the current Django schema.
+
+Suppose we have installed [app](https://docs.djangoproject.com/en/5.0/ref/applications/) named `polls`, 
+with the following models in our `polls/models.py` file:
+
+```python
+from django.db import models
+
+
+class Question(models.Model):
+    question_text = models.CharField(max_length=200)
+    pub_date = models.DateTimeField("date published")
+
+
+class Choice(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    choice_text = models.CharField(max_length=200)
+    votes = models.IntegerField(default=0)
+```
+
+We can generate a migration file by running this command:
+
+```bash
+atlas migrate diff --env django
+```
+
+Running this command will generate files similar to this in the `migrations` directory:
+
+```
+migrations
+|-- 20240126104629.sql
+`-- atlas.sum
+
+0 directories, 2 files
+```
+
+Examining the contents of `20240126104629.sql`:
+
+```sql
+-- Create "polls_question" table
+CREATE TABLE `polls_question` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `question_text` varchar(200) NOT NULL,
+  `pub_date` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- Create "polls_choice" table
+CREATE TABLE `polls_choice` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `choice_text` varchar(200) NOT NULL,
+  `votes` int NOT NULL,
+  `question_id` bigint NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `polls_choice_question_id_c5b4b260_fk_polls_question_id` (`question_id`),
+  CONSTRAINT `polls_choice_question_id_c5b4b260_fk_polls_question_id` FOREIGN KEY (`question_id`) REFERENCES `polls_question` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+```
+
+Amazing! Atlas automatically generated a migration file that will create the `polls_question` and `polls_choice` tables in our database.
+Next, alter the `Question` class to add a new `question_type` field:
+
+```diff
+class Question(models.Model):
+    question_text = models.CharField(max_length=200)
++   question_type = models.CharField(max_length=20, null=True)
+    pub_date = models.DateTimeField("date published")
+```
+Re-run this command:
+
+```bash
+atlas migrate diff --env django
+```
+
+Observe a new migration file is generated:
+
+```sql
+-- Modify "polls_question" table
+ALTER TABLE `polls_question` ADD COLUMN `question_type` varchar(20) NULL;
+```
+
+## Conclusion
+
+In this guide we demonstrated how projects using Django can use Atlas to automatically
+plan schema migrations based only on their data model. To learn more about executing
+migrations against your production database, read the documentation for the
+[`migrate apply`](/versioned/apply) command.
+
+Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT)

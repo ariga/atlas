@@ -343,6 +343,11 @@ module.exports = {
                 },
                 {
                     type: 'doc',
+                    id: 'guides/orms/django',
+                    label: 'Django'
+                },
+                {
+                    type: 'doc',
                     id: 'guides/frameworks/sqlc-declarative',
                     label: 'sqlc (declarative)'
                 },
