@@ -36,6 +36,38 @@ atlas license
 ```
 
 
+## atlas login
+
+Log in to Atlas Cloud.
+
+#### Usage
+```
+atlas login [org] [flags]
+```
+
+#### Details
+'atlas login' authenticates the CLI against Atlas Cloud.
+
+#### Flags
+```
+      --token string   API token to authenticate to an Atlas Cloud organization
+
+```
+
+
+## atlas logout
+
+Logout from Atlas Cloud.
+
+#### Usage
+```
+atlas logout
+```
+
+#### Details
+'atlas logout' removes locally-stored credentials.
+
+
 ## atlas migrate
 
 Manage versioned migration files
@@ -68,11 +100,11 @@ atlas migrate apply [flags] [amount]
 
 #### Details
 'atlas migrate apply' reads the migration state of the connected database and computes what migrations are pending.
-It then attempts to apply the pending migration files in the correct order onto the database. 
+It then attempts to apply the pending migration files in the correct order onto the database.
 The first argument denotes the maximum number of migration files to apply.
 As a safety measure 'atlas migrate apply' will abort with an error, if:
-  - the migration directory is not in sync with the 'atlas.sum' file
-  - the migration and database history do not match each other
+- the migration directory is not in sync with the 'atlas.sum' file
+- the migration and database history do not match each other
 
 If run with the "--dry-run" flag, atlas will not execute any SQL.
 
@@ -96,6 +128,42 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
       --tx-mode string            set transaction mode [none, file, all] (default "file")
       --exec-order string         set file execution order [linear, linear-skip, non-linear] (default "linear")
       --allow-dirty               allow start working on a non-clean database
+
+```
+
+
+### atlas migrate checkpoint
+
+Generate a checkpoint file representing the state of the migration directory.
+
+#### Usage
+```
+atlas migrate checkpoint [flags] [tag]
+```
+
+#### Details
+The 'atlas migrate checkpoint' command uses the dev-database to calculate the current state of the migration directory
+by executing its files. It then creates a checkpoint file that represents this state, enabling new environments to bypass
+previous files and immediately skip to this checkpoint when executing the 'atlas migrate apply' command.
+
+#### Example
+
+```
+  atlas migrate checkpoint --dev-url docker://mysql/8/dev
+  atlas migrate checkpoint --dev-url "docker://postgres/15/dev?search_path=public"
+  atlas migrate checkpoint --dev-url "sqlite://dev?mode=memory"
+  atlas migrate checkpoint --env dev --format '{{ sql . "  " }}'
+```
+#### Flags
+```
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string              select migration directory using URL format (default "file://migrations")
+      --dir-format string       select migration file format (default "atlas")
+  -s, --schema strings          set schema names
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+      --format string           Go template to use to format the output
+      --qualifier string        qualify tables with custom qualifier when working on a single schema
+      --edit                    edit the generated migration file(s)
 
 ```
 
@@ -134,6 +202,30 @@ an HCL, SQL, or ORM schema. See: https://atlasgo.io/versioned/diff
       --format string           Go template to use to format the output
       --qualifier string        qualify tables with custom qualifier when working on a single schema
       --edit                    edit the generated migration file(s)
+
+```
+
+
+### atlas migrate edit
+
+Edit a migration file by its name or version and update the atlas.sum file.
+
+#### Usage
+```
+atlas migrate edit [flags] {name | version}
+```
+
+#### Example
+
+```
+  atlas migrate edit 20060102150405
+  atlas migrate edit 20060102150405 --env dev
+  atlas migrate edit 20060102150405_name.sql --dir file://migrations
+```
+#### Flags
+```
+      --dir string          select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
 
 ```
 
@@ -213,6 +305,7 @@ atlas migrate lint [flags]
       --latest uint         run analysis on the latest N migration files
       --git-base string     run analysis against the base Git branch
       --git-dir string      path to the repository working directory (default ".")
+  -w, --web                 open the lint report in the browser
 
 ```
 
@@ -239,6 +332,55 @@ atlas migrate new [flags] [name]
       --dir string          select migration directory using URL format (default "file://migrations")
       --dir-format string   select migration file format (default "atlas")
       --edit                edit the created migration file(s)
+
+```
+
+
+### atlas migrate push
+
+Push a migration directory with an optional tag to Atlas
+
+#### Usage
+```
+atlas migrate push [flags] directory[:tag]
+```
+
+#### Example
+
+```
+  atlas migrate push --dev-url docker://mysql/8/dev app
+  atlas migrate push --env dev app:latest
+```
+#### Flags
+```
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string              select migration directory using URL format (default "file://migrations")
+      --dir-format string       select migration file format (default "atlas")
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+
+```
+
+
+### atlas migrate rebase
+
+Rebase one or more migration file on top of all other files and update the atlas.sum file.
+
+#### Usage
+```
+atlas migrate rebase [flags] {name | version}...
+```
+
+#### Example
+
+```
+  atlas migrate rebase 20060102150405
+  atlas migrate rebase 20060102150405 --env dev
+  atlas migrate rebase 20060102150405_name.sql --dir file://migrations
+```
+#### Flags
+```
+      --dir string          select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
 
 ```
 
@@ -368,10 +510,10 @@ atlas schema apply [flags]
 database to the state described in the provided Atlas schema. Before running the
 migration, Atlas will print the migration plan and prompt the user for approval.
 
-The schema is provided by one or more URLs (to a HCL file or 
+The schema is provided by one or more URLs (to a HCL file or
 directory, database or migration directory) using the "--to, -t" flag:
-  atlas schema apply -u URL --to "file://file1.hcl" --to "file://file2.hcl"
-  atlas schema apply -u URL --to "file://schema/" --to "file://override.hcl"
+atlas schema apply -u URL --to "file://file1.hcl" --to "file://file2.hcl"
+atlas schema apply -u URL --to "file://schema/" --to "file://override.hcl"
 
 As a convenience, schema URLs may also be provided via an environment definition in
 the project file (see: https://atlasgo.io/cli/projects).
@@ -439,7 +581,7 @@ atlas schema diff [flags]
 ```
 
 #### Details
-'atlas schema diff' reads the state of two given schema definitions, 
+'atlas schema diff' reads the state of two given schema definitions,
 calculates the difference in their schemas, and prints a plan of
 SQL statements to migrate the "from" database to the schema of the "to" database.
 The database states can be read from a connected database, an HCL project or a migration directory.
@@ -459,6 +601,7 @@ The database states can be read from a connected database, an HCL project or a m
   -s, --schema strings    set schema names
       --exclude strings   list of glob patterns used to filter resources from applying
       --format string     Go template to use to format the output
+  -w, --web               open the schema diff ERD in the browser
 
 ```
 
@@ -496,7 +639,7 @@ atlas schema inspect [flags]
 It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be
 saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
 
-  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > schema.hcl
+atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > schema.hcl
 
 This file can then be edited and used with the `atlas schema apply` command to plan
 and execute schema migrations against the given database. In cases where users wish to inspect
@@ -504,7 +647,7 @@ all multiple schemas in a given database (for instance a MySQL server may contai
 databases), omit the relevant part from the url, e.g. "mysql://user:pass@localhost:3306/".
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
-	
+
 
 #### Example
 
@@ -521,6 +664,7 @@ flag.
   -s, --schema strings    set schema names
       --exclude strings   list of glob patterns used to filter resources from applying
       --format string     Go template to use to format the output
+  -w, --web               open the schema ERD in the browser
 
 ```
 

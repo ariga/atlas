@@ -60,7 +60,9 @@ func prepare(cmd *cobra.Command, existing []*block, depth int) []*block {
 		})
 	}
 	for _, child := range cmd.Commands() {
-		existing = prepare(child, existing, depth+1)
+		if !child.Hidden {
+			existing = prepare(child, existing, depth+1)
+		}
 	}
 	return existing
 }
