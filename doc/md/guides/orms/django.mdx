@@ -4,6 +4,10 @@ title: Automatic migration planning for Django
 slug: /guides/orms/django
 ---
 
+# Import the installation instructions component found elsewhere
+
+import InstallationInstructions from '../../components/_installation_instructions.mdx'
+
 ## TL;DR
 * [Django](https://www.djangoproject.com) is a Python web framework, with a built-in ORM.
 * [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, linting and
@@ -29,7 +33,7 @@ Some of the limitations of Django's migration system include:
   to use them.
 * **Ensuring Migration Safety.** Migrations are a risky business. If you're not careful, you can easily cause data loss or 
   a production outage. Django's migration system does not provide a native way to ensure that a migration is safe to apply.
-* **Modern Deployments.**  Django does not provide native integration with modern deployment practices such as [GitOps](/2023/12/06/gitops-for-databases-part-1)
+* **Modern Deployments.**  Django does not provide native integration with modern deployment practices such as [GitOps](/blog/2023/12/06/gitops-for-databases-part-1)
   or [Infrastructure-as-Code](/blog/2023/07/19/bridging-the-gap-between-iac-and-schema-management).
 
 Atlas, on the other hand, lets you manage your Django applications using the [Database Schema-as-Code](/blog/2024/01/24/why-schema-as-code)
@@ -66,11 +70,7 @@ to automatically plan schema migrations for a Django project.
 
 ### Installation
 
-Install Atlas from macOS or Linux by running:
-```bash
-curl -sSf https://atlasgo.sh | sh
-```
-See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more installation options.
+<InstallationInstructions />
 
 Start Python virtual environment if you haven't already:
 ```bash
