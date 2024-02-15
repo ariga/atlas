@@ -1,26 +1,77 @@
 # Ignore all diagnostics.
-atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1 > got.txt
-cmp got.txt empty.txt
+atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- no diagnostics found'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version ok'
+stdout '  -- 2 schema changes'
 
 # Ignore specific diagnostics.
-atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1 > got.txt
-cmp got.txt empty.txt
+atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- no diagnostics found'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version ok'
+stdout '  -- 2 schema changes'
 
 # Ignore by code.
-atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
-cmp got.txt expected3.txt
+atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- data dependent changes detected:'
+stdout '      -- L1: Adding a non-nullable "text" column "name" will fail in case table "users" is not'
+stdout '         empty https://atlasgo.io/lint/analyzers#MF103'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version with warnings'
+stdout '  -- 2 schema changes'
+stdout '  -- 1 diagnostic'
 
 # Ignore entire file.
-atlas migrate lint --dir file://migrations4 --dev-url URL --latest=1 > got.txt
-cmp got.txt empty.txt
+atlas migrate lint --dir file://migrations4 --dev-url URL --latest=1
+stdout ''
 
 # Ignore destructive changes globally.
-atlas migrate lint --dir file://migrations5 --dev-url URL --latest=1 > got.txt
-cmp got.txt expected5.txt
+atlas migrate lint --dir file://migrations5 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- data dependent changes detected:'
+stdout '      -- L4: Adding a non-nullable "text" column "name" will fail in case table "users" is not'
+stdout '         empty https://atlasgo.io/lint/analyzers#MF103'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version with warnings'
+stdout '  -- 2 schema changes'
+stdout '  -- 1 diagnostic'
 
 # Ignore multiple change codes globally.
-atlas migrate lint --dir file://migrations6 --dev-url URL --latest=1 > got.txt
-cmp got.txt empty.txt
+atlas migrate lint --dir file://migrations6 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- no diagnostics found'
+stdout '  -- ok (.+)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version ok'
+stdout '  -- 2 schema changes'
 
 -- migrations1/1.sql --
 CREATE TABLE users (id int);
@@ -46,7 +97,6 @@ ALTER TABLE users ADD COLUMN name text NOT NULL;
 -- atlas:nolint destructive
 DROP TABLE pets;
 
--- empty.txt --
 -- migrations3/1.sql --
 CREATE TABLE users (id int);
 CREATE TABLE pets (id int);
@@ -55,11 +105,6 @@ CREATE TABLE pets (id int);
 ALTER TABLE users ADD COLUMN name text NOT NULL;
 -- atlas:nolint DS102
 DROP TABLE pets;
-
--- expected3.txt --
-2.sql: data dependent changes detected:
-
-	L1: Adding a non-nullable "text" column "name" will fail in case table "users" is not empty
 
 -- migrations4/1.sql --
 CREATE TABLE users (id int);
@@ -80,11 +125,6 @@ CREATE TABLE pets (id int);
 
 DROP TABLE pets;
 ALTER TABLE users ADD COLUMN name text NOT NULL;
-
--- expected5.txt --
-2.sql: data dependent changes detected:
-
-	L4: Adding a non-nullable "text" column "name" will fail in case table "users" is not empty
 
 -- migrations6/1.sql --
 CREATE TABLE users (id int);

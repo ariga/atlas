@@ -1,5 +1,21 @@
-atlas migrate lint --dir file://migrations --dev-url URL --latest=2 > got1.txt
-cmp got1.txt expected1.txt
+atlas migrate lint --dir file://migrations --dev-url URL --latest=2
+stdout 'Analyzing changes until version 2 \(2 migrations in total\):'
+stdout ''
+stdout '  -- analyzing version 1'
+stdout '    -- no diagnostics found'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- data dependent changes detected:'
+stdout '      -- L1: Adding a non-nullable "int" column "c2" will fail in case table "users" is not empty'
+stdout '         https://atlasgo.io/lint/analyzers#MF103'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version ok, 1 with warnings'
+stdout '  -- 4 schema changes'
+stdout '  -- 1 diagnostic'
 
 -- migrations/1.sql --
 CREATE TABLE users (id int);
@@ -11,9 +27,3 @@ ALTER TABLE users ADD COLUMN c1 int NOT NULL;
 ALTER TABLE users ADD COLUMN c2 int NOT NULL;
 
 ALTER TABLE users ADD COLUMN c3 int NOT NULL DEFAULT 1;
-
--- expected1.txt --
-2.sql: data dependent changes detected:
-
-	L1: Adding a non-nullable "int" column "c2" will fail in case table "users" is not empty
-

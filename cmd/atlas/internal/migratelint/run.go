@@ -13,11 +13,14 @@ import (
 	"io/fs"
 	"strings"
 	"text/template"
+	"time"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 
+	"github.com/fatih/color"
 	"golang.org/x/exp/slices"
 )
 
@@ -79,6 +82,7 @@ const (
 
 func (r *Runner) summary(ctx context.Context) error {
 	r.sum = NewSummaryReport(r.Dev, r.Dir)
+	defer func() { r.sum.End = time.Now() }()
 
 	// Integrity check.
 	switch err := migrate.Validate(r.Dir); {
@@ -100,6 +104,13 @@ func (r *Runner) summary(ctx context.Context) error {
 	// No error.
 	case nil:
 		r.sum.StepResult(StepDetectChanges, fmt.Sprintf("Found %d new migration files (from %d total)", len(feat), len(base)+len(feat)), nil)
+		if len(base) > 0 {
+			r.sum.FromV = base[len(base)-1].Version()
+		}
+		if len(feat) > 0 {
+			r.sum.ToV = feat[len(feat)-1].Version()
+		}
+		r.sum.TotalFiles = len(feat)
 	// Error that should be reported, but not halt the lint.
 	case interface{ StepReport() *StepReport }:
 		r.sum.Steps = append(r.sum.Steps, err.StepReport())
@@ -159,7 +170,7 @@ func (r *Runner) analyze(ctx context.Context, files []*sqlcheck.File) error {
 
 var (
 	// TemplateFuncs are global functions available in templates.
-	TemplateFuncs = template.FuncMap{
+	TemplateFuncs = cmdlog.WithColorFuncs(template.FuncMap{
 		"json": func(v any, args ...string) (string, error) {
 			var (
 				b   []byte
@@ -175,30 +186,102 @@ var (
 			}
 			return string(b), err
 		},
-	}
+		"sub":    func(i, j int) int { return i - j },
+		"add":    func(i, j int) int { return i + j },
+		"repeat": strings.Repeat,
+		"join":   strings.Join,
+		"underline": func(s string) string {
+			return color.New(color.Underline, color.Attribute(90)).Sprint(s)
+		},
+		"maxWidth": func(s string, n int) []string {
+			var (
+				j, k  int
+				words = strings.Fields(s)
+				lines = make([]string, 0, len(words))
+			)
+			for i := 0; i < len(words); i++ {
+				if k+len(words[i]) > n {
+					lines = append(lines, strings.Join(words[j:i], " "))
+					k, j = 0, i
+				}
+				k += len(words[i])
+			}
+			return append(lines, strings.Join(words[j:], " "))
+		},
+	})
 	// DefaultTemplate is the default template used by the CI job.
 	DefaultTemplate = template.Must(template.New("report").
 			Funcs(TemplateFuncs).
 			Parse(`
-{{- range $f := .Files }}
-	{{- /* If there is an error but not diagnostics, print it. */}}
-	{{- if and $f.Error (not $f.Reports) }}
-		{{- printf "%s: %s\n" $f.Name $f.Error }}
-	{{- else }}
-		{{- range $r := $f.Reports }}
-			{{- if $r.Text }}
-				{{- printf "%s: %s:\n\n" $f.Name $r.Text }}
-			{{- else if $r.Diagnostics }}
-				{{- printf "Unnamed diagnostics for file %s:\n\n" $f.Name }}
-			{{- end }}
-			{{- range $d := $r.Diagnostics }}
-				{{- printf "\tL%d: %s\n" ($f.Line $d.Pos) $d.Text }}
-			{{- end }}
-			{{- if $r.Diagnostics }}
-				{{- print "\n" }}
-			{{- end }}
-		{{- end }}
-	{{- end }}
+{{- if .Files }}
+  {{- $total := len .Files }}{{- with .TotalFiles }}{{- $total = . }}{{ end }}
+  {{- $s := "s" }}{{ if eq $total 1 }}{{ $s = "" }}{{ end }}
+  {{- if and .FromV .ToV }}
+    {{- printf "Analyzing changes from version %s to %s (%d migration%s in total):\n" (cyan .FromV) (cyan .ToV) $total $s }}
+  {{- else if .ToV }}
+    {{- printf "Analyzing changes until version %s (%d migration%s in total):\n" (cyan .ToV) $total $s }}
+  {{- else }}
+    {{- printf "Analyzing changes (%d migration%s in total):\n" $total $s }}
+  {{- end }}
+  {{- println }}
+  {{- range $i, $f := .Files }}
+    {{- /* Replay or checksum errors. */ -}}
+    {{- if and $f.Error (eq $f.File nil) (eq $i (sub (len $.Files) 1)) }}
+      {{- printf "  %s\n\n" (redBgWhiteFg (printf "Error: %s" $f.Error)) }}
+      {{- break }}
+    {{- end }}
+    {{- $heading := printf "analyzing version %s" (cyan $f.Version) }}
+    {{- $headinglen := len (printf "analyzing version %s" $f.Version) }}
+    {{- println (yellow "  --") $heading }}
+    {{- if and $f.Error (not $f.Reports) }}
+       {{- printf "Error: %s\n" $f.Name $f.Error }}
+       {{- continue }}
+    {{- end }}
+    {{- range $i, $r := $f.Reports }}
+      {{- if $r.Text }}
+         {{- printf "    %s %s:\n" (yellow "--") $r.Text }}
+      {{- else if $r.Diagnostics }}
+         {{- printf "    %s Unnamed diagnostics detected:\n" (yellow "--") }}
+      {{- end }}
+      {{- range $d := $r.Diagnostics }}
+        {{- $prefix := printf "      %s L%d: " (cyan "--") ($f.Line $d.Pos) }}
+        {{- print $prefix }}
+        {{- $text := printf "%s %s" $d.Text (underline (print "https://atlasgo.io/lint/analyzers#" $d.Code)) }}
+        {{- $lines := maxWidth $text (sub 85 (len $prefix)) }}
+        {{- range $i, $line := $lines }}{{- if $i }}{{- print "         " }}{{- end }}{{- println $line }}{{- end }}
+      {{- end }}
+    {{- else }}
+      {{- printf "    %s no diagnostics found\n" (cyan "--") }}
+    {{- end }}
+    {{- $fixes := $f.SuggestedFixes }}
+    {{- if $fixes }}
+      {{- $s := "es" }}{{- if eq (len $fixes) 1 }}{{ $s = "" }}{{ end }}
+      {{- printf "    %s suggested fix%s:\n" (yellow "--") $s }}
+      {{- range $f := $fixes }}
+        {{- $prefix := printf "      %s " (cyan "->") }}
+        {{- print $prefix }}
+        {{- $lines := maxWidth $f.Message (sub 85 (len $prefix)) }}
+        {{- range $i, $line := $lines }}{{- if $i }}{{- print "         " }}{{- end }}{{- println $line }}{{- end }}
+      {{- end }}
+    {{- end }}
+    {{- if or (not $f.Error) $f.Reports }}
+      {{- printf "  %s ok (%s)\n" (yellow "--") (yellow (.End.Sub .Start).String) }}
+    {{- end }}
+    {{- println }}
+  {{- end }}
+  {{- println (cyan "  -------------------------") }}
+  {{- printf "  %s %s\n" (yellow "--") (.End.Sub .Start).String }}
+  {{- with .VersionStatuses }}
+	{{- printf "  %s %s\n" (yellow "--") . }}
+  {{- end }}
+  {{- with .TotalChanges }}
+    {{- $s := "s" }}{{ if eq . 1 }}{{ $s = "" }}{{ end }}
+	{{- printf "  %s %d schema change%s\n" (yellow "--") . $s }}
+  {{- end }}
+  {{- with .DiagnosticsCount }}
+    {{- $s := "s" }}{{ if eq . 1 }}{{ $s = "" }}{{ end }}
+	{{- printf "  %s %d diagnostic%s\n" (yellow "--") . $s }}
+  {{- end }}
 {{- end -}}
 `))
 	// JSONTemplate is the JSON template used by CI wrappers.
@@ -231,6 +314,12 @@ type (
 
 		// Files reports. Non-empty in case there are findings.
 		Files []*FileReport `json:"Files,omitempty"`
+
+		// Logging only info.
+		Start      time.Time `json:"-"` // Start time of the analysis.
+		End        time.Time `json:"-"` // End time of the analysis.
+		FromV, ToV string    `json:"-"` // From and to versions.
+		TotalFiles int       `json:"-"` // Total number of files to analyze.
 	}
 
 	// StepReport contains a summary of the analysis of a single step.
@@ -247,6 +336,11 @@ type (
 		Text    string            `json:"Text,omitempty"`    // Contents of the file.
 		Reports []sqlcheck.Report `json:"Reports,omitempty"` // List of reports.
 		Error   string            `json:"Error,omitempty"`   // File specific error.
+
+		// Logging only info.
+		Start          time.Time  `json:"-"` // Start time of the analysis.
+		End            time.Time  `json:"-"` // End time of the analysis.
+		*sqlcheck.File `json:"-"` // Underlying file.
 	}
 
 	// ReportWriter is a type of report writer that writes a summary of analysis reports.
@@ -268,6 +362,7 @@ type (
 // NewSummaryReport returns a new SummaryReport.
 func NewSummaryReport(c *sqlclient.Client, dir migrate.Dir) *SummaryReport {
 	sum := &SummaryReport{
+		Start: time.Now(),
 		Env: struct {
 			Driver string         `json:"Driver,omitempty"`
 			URL    *sqlclient.URL `json:"URL,omitempty"`
@@ -286,6 +381,9 @@ func NewSummaryReport(c *sqlclient.Client, dir migrate.Dir) *SummaryReport {
 
 // StepResult appends step result to the summary.
 func (r *SummaryReport) StepResult(name, text string, result *FileReport) {
+	if result != nil {
+		result.End = time.Now()
+	}
 	r.Steps = append(r.Steps, &StepReport{
 		Name:   name,
 		Text:   text,
@@ -324,14 +422,76 @@ func (r *SummaryReport) DiagnosticsCount() int {
 	return n
 }
 
+// VersionStatuses returns statuses description of all versions (migration files).
+func (r *SummaryReport) VersionStatuses() string {
+	var ok, errs, warns int
+	for _, f := range r.Files {
+		switch {
+		case f.Error != "":
+			errs++
+		case len(f.Reports) > 0:
+			warns++
+		default:
+			ok++
+		}
+	}
+	parts := make([]string, 0, 3)
+	for _, s := range []struct {
+		n int
+		s string
+	}{
+		{ok, "ok"},
+		{warns, "with warnings"},
+		{errs, "with errors"},
+	} {
+		switch {
+		case s.n == 0:
+		case s.n == 1 && len(parts) == 0:
+			parts = append(parts, fmt.Sprintf("1 version %s", s.s))
+		case s.n > 1 && len(parts) == 0:
+			parts = append(parts, fmt.Sprintf("%d versions %s", s.n, s.s))
+		default:
+			parts = append(parts, fmt.Sprintf("%d %s", s.n, s.s))
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// TotalChanges returns the total number of changes that were analyzed.
+func (r *SummaryReport) TotalChanges() int {
+	var n int
+	for _, f := range r.Files {
+		if f.File != nil {
+			n += len(f.Changes)
+		}
+	}
+	return n
+}
+
 // NewFileReport returns a new FileReport.
-func NewFileReport(f migrate.File) *FileReport {
-	return &FileReport{Name: f.Name(), Text: string(f.Bytes())}
+func NewFileReport(f *sqlcheck.File) *FileReport {
+	return &FileReport{Name: f.Name(), Text: string(f.Bytes()), Start: time.Now(), File: f}
 }
 
 // Line returns the line number from a position.
 func (f *FileReport) Line(pos int) int {
 	return strings.Count(f.Text[:pos], "\n") + 1
+}
+
+// SuggestedFixes returns the list of suggested fixes for a specific report.
+func (f *FileReport) SuggestedFixes() []sqlcheck.SuggestedFix {
+	var fixes []sqlcheck.SuggestedFix
+	for _, r := range f.Reports {
+		// Report-level fixes.
+		if len(r.SuggestedFixes) > 0 {
+			fixes = append(fixes, r.SuggestedFixes...)
+		}
+		// Diagnostic-level fixes.
+		for _, d := range r.Diagnostics {
+			fixes = append(fixes, d.SuggestedFixes...)
+		}
+	}
+	return fixes
 }
 
 // WriteReport implements sqlcheck.ReportWriter.

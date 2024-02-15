@@ -38,6 +38,14 @@ var (
 	}
 )
 
+// WithColorFuncs extends the given template.FuncMap with the color functions.
+func WithColorFuncs(f template.FuncMap) template.FuncMap {
+	for k, v := range ColorTemplateFuncs {
+		f[k] = v
+	}
+	return f
+}
+
 type (
 	// Env holds the environment information.
 	Env struct {
@@ -107,7 +115,7 @@ func NewEnv(c *sqlclient.Client, dir migrate.Dir) Env {
 
 var (
 	// StatusTemplateFuncs are global functions available in status report templates.
-	StatusTemplateFuncs = merge(template.FuncMap{
+	StatusTemplateFuncs = WithColorFuncs(template.FuncMap{
 		"json":       jsonEncode,
 		"json_merge": jsonMerge,
 		"default": func(report *MigrateStatus) (string, error) {
@@ -142,7 +150,7 @@ Last migration attempt had errors:
 			err = t.Execute(&buf, report)
 			return buf.String(), err
 		},
-	}, ColorTemplateFuncs)
+	})
 
 	// MigrateStatusTemplate holds the default template of the 'migrate status' command.
 	MigrateStatusTemplate = template.Must(template.New("report").Funcs(StatusTemplateFuncs).Parse("{{ default . }}"))
@@ -260,7 +268,7 @@ func (r *RevisionOp) ColoredVersion() string {
 
 var (
 	// ApplyTemplateFuncs are global functions available in apply report templates.
-	ApplyTemplateFuncs = merge(ColorTemplateFuncs, template.FuncMap{
+	ApplyTemplateFuncs = WithColorFuncs(template.FuncMap{
 		"add":        add,
 		"upper":      strings.ToUpper,
 		"json":       jsonEncode,
@@ -867,23 +875,6 @@ func fmtPlan(ctx context.Context, client *sqlclient.Client, changes schema.Chang
 		return "", fmt.Errorf("unexpected number of files: %d", len(files))
 	default:
 		return string(files[0].Bytes()), nil
-	}
-}
-
-func merge(maps ...template.FuncMap) template.FuncMap {
-	switch len(maps) {
-	case 0:
-		return nil
-	case 1:
-		return maps[0]
-	default:
-		m := maps[0]
-		for _, e := range maps[1:] {
-			for k, v := range e {
-				m[k] = v
-			}
-		}
-		return m
 	}
 }
 

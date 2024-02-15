@@ -1,11 +1,45 @@
-atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1 > got.txt
-cmp got.txt expected1.txt
+atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- backward incompatible changes detected:'
+stdout '      -- L1: Renaming table "users" to "atlas_users"'
+stdout '         https://atlasgo.io/lint/analyzers#BC101'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version with warnings'
+stdout '  -- 1 schema change'
+stdout '  -- 1 diagnostic'
 
-atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1 > got.txt
-cmp got.txt expected2.txt
+atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- backward incompatible changes detected:'
+stdout '      -- L1: Renaming column "id" to "uid" https://atlasgo.io/lint/analyzers#BC102'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version with warnings'
+stdout '  -- 1 schema change'
+stdout '  -- 1 diagnostic'
 
-atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
-cmp got.txt expected3.txt
+atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- backward incompatible changes detected:'
+stdout '      -- L5: Renaming column "id" to "cid" https://atlasgo.io/lint/analyzers#BC102'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version with warnings'
+stdout '  -- 6 schema changes'
+stdout '  -- 1 diagnostic'
 
 -- migrations1/1.sql --
 CREATE TABLE users (id int);
@@ -13,21 +47,11 @@ CREATE TABLE users (id int);
 -- migrations1/2.sql --
 ALTER TABLE users RENAME TO atlas_users;
 
--- expected1.txt --
-2.sql: backward incompatible changes detected:
-
-	L1: Renaming table "users" to "atlas_users"
-
 -- migrations2/1.sql --
 CREATE TABLE users (id int);
 
 -- migrations2/2.sql --
 ALTER TABLE users RENAME COLUMN id TO uid;
-
--- expected2.txt --
-2.sql: backward incompatible changes detected:
-
-	L1: Renaming column "id" to "uid"
 
 -- migrations3/1.sql --
 CREATE TABLE users (id int);
@@ -41,9 +65,3 @@ ALTER TABLE posts RENAME COLUMN id TO uid;
 ALTER TABLE posts ADD COLUMN id int AS (uid);
 ALTER TABLE cards RENAME COLUMN id TO cid;
 ALTER TABLE cards ADD COLUMN name text;
-
--- expected3.txt --
-2.sql: backward incompatible changes detected:
-
-	L5: Renaming column "id" to "cid"
-

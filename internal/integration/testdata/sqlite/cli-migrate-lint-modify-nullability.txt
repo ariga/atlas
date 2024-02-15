@@ -1,14 +1,44 @@
 # Modify column from nullable to non-nullable with default value.
-atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1 > got.txt
-cmp got.txt empty.txt
+atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- no diagnostics found'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version ok'
+stdout '  -- 3 schema changes'
 
 # Modify column from nullable to non-nullable without default value.
-atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1 > got.txt
-cmp got.txt expected2.txt
+atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- data dependent changes detected:'
+stdout '      -- L4: Modifying nullable column "a" to non-nullable without default value might fail in'
+stdout '         case it contains NULL values https://atlasgo.io/lint/analyzers#LT101'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version with warnings'
+stdout '  -- 3 schema changes'
+stdout '  -- 1 diagnostic'
 
 # Modify column from nullable to non-nullable without default value but backfill previous rows.
-atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
-cmp got.txt empty.txt
+atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- no diagnostics found'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version ok'
+stdout '  -- 4 schema changes'
 
 -- empty.txt --
 -- migrations1/1.sql --
@@ -44,11 +74,6 @@ DROP TABLE `users`;
 ALTER TABLE `new_users` RENAME TO `users`;
 -- Enable back the enforcement of foreign-keys constraints
 PRAGMA foreign_keys = on;
-
--- expected2.txt --
-2.sql: data dependent changes detected:
-
-	L4: Modifying nullable column "a" to non-nullable without default value might fail in case it contains NULL values
 
 -- migrations3/1.sql --
 CREATE TABLE `users` (`a` int NULL);

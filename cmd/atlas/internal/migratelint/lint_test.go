@@ -6,12 +6,11 @@ package migratelint_test
 
 import (
 	"context"
-	"io/fs"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -109,26 +108,27 @@ func TestDirChangeDetector(t *testing.T) {
 }
 
 func TestLatestChanges(t *testing.T) {
-	files := []migrate.File{
-		testFile{name: "1.sql", content: "CREATE TABLE t1 (id INT)"},
-		testFile{name: "2.sql", content: "CREATE TABLE t2 (id INT)\nDROP TABLE users"},
-	}
-	base, feat, err := migratelint.LatestChanges(testDir{files: files}, 0).DetectChanges(context.Background())
+	dir := &migrate.MemDir{}
+	require.NoError(t, dir.WriteFile("1.sql", []byte("CREATE TABLE t1 (id INT)")))
+	require.NoError(t, dir.WriteFile("2.sql", []byte("CREATE TABLE t2 (id INT)")))
+	base, feat, err := migratelint.LatestChanges(dir, 0).DetectChanges(context.Background())
+	require.NoError(t, err)
+	files, err := dir.Files()
 	require.NoError(t, err)
 	require.Equal(t, files, base)
 	require.Empty(t, feat)
 
-	base, feat, err = migratelint.LatestChanges(testDir{files: files}, 2).DetectChanges(context.Background())
+	base, feat, err = migratelint.LatestChanges(dir, 2).DetectChanges(context.Background())
 	require.NoError(t, err)
 	require.Empty(t, base)
 	require.Equal(t, files, feat)
 
-	base, feat, err = migratelint.LatestChanges(testDir{files: files}, -1).DetectChanges(context.Background())
+	base, feat, err = migratelint.LatestChanges(dir, -1).DetectChanges(context.Background())
 	require.NoError(t, err)
 	require.Empty(t, base)
 	require.Equal(t, files, feat)
 
-	base, feat, err = migratelint.LatestChanges(testDir{files: files}, 1).DetectChanges(context.Background())
+	base, feat, err = migratelint.LatestChanges(dir, 1).DetectChanges(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, files[:1], base)
 	require.Equal(t, files[1:], feat)
@@ -145,22 +145,23 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	require.Empty(t, diff.Files)
 
 	diff, err = l.LoadChanges(ctx, []migrate.File{
-		testFile{name: "base.sql", content: "---\n\nCREATE INVALID users (id INT);\n"},
+		migrate.NewLocalFile("0_base.sql", []byte("---\n\nCREATE INVALID users (id INT);\n")),
 	}, nil)
 	require.Error(t, err)
 	require.Nil(t, diff)
-	fr := err.(*migratelint.FileError)
+	var fr *migratelint.FileError
+	require.True(t, errors.As(err, &fr))
 	require.Equal(t, `executing statement: near "INVALID": syntax error`, fr.Err.Error())
 	require.Equal(t, 5, fr.Pos)
 
 	base := []migrate.File{
-		testFile{name: "base.sql", content: "CREATE TABLE users (id INT);"},
+		migrate.NewLocalFile("0_base.sql", []byte("CREATE TABLE users (id INT);")),
 	}
 	files := []migrate.File{
-		testFile{name: "1.sql", content: "CREATE TABLE t1 (id INT);\nINSERT INTO t1 (id) VALUES (1);"},
-		testFile{name: "2.sql", content: "CREATE TABLE t2 (id INT);\nDROP TABLE users;"},
-		testFile{name: "3.sql", content: "CREATE TABLE t3 (id INT);\nDROP TABLE t3;"},
-		testFile{name: "4.sql", content: "ALTER TABLE t2 RENAME id TO oid;"},
+		migrate.NewLocalFile("1.sql", []byte("CREATE TABLE t1 (id INT);\nINSERT INTO t1 (id) VALUES (1);")),
+		migrate.NewLocalFile("2.sql", []byte("CREATE TABLE t2 (id INT);\nDROP TABLE users;")),
+		migrate.NewLocalFile("3.sql", []byte("CREATE TABLE t3 (id INT);\nDROP TABLE t3;")),
+		migrate.NewLocalFile("4.sql", []byte("ALTER TABLE t2 RENAME id TO oid;")),
 	}
 	diff, err = l.LoadChanges(ctx, base, files)
 	require.NoError(t, err)
@@ -257,44 +258,6 @@ func TestDevLoader_LoadCheckpoints(t *testing.T) {
 	isAddTable(t, diff.Files[1].Changes[0].Changes[0], "t1")
 	isAddTable(t, diff.Files[1].Changes[1].Changes[0], "t2")
 	isAddTable(t, diff.Files[1].Changes[2].Changes[0], "t3")
-}
-
-type testDir struct {
-	migrate.Dir
-	files []migrate.File
-}
-
-func (t testDir) Path() string {
-	return "migrations"
-}
-
-func (t testDir) Open(string) (fs.File, error) {
-	return nil, fs.ErrNotExist
-}
-
-func (t testDir) Files() ([]migrate.File, error) {
-	return t.files, nil
-}
-
-type testFile struct {
-	migrate.File
-	name, content string
-}
-
-func (f testFile) Name() string {
-	return f.name
-}
-
-func (f testFile) Bytes() []byte {
-	return []byte(f.content)
-}
-
-func (f testFile) Stmts() ([]string, error) {
-	return strings.Split(f.content, "\n"), nil
-}
-
-func (f testFile) StmtDecls() (stmts []*migrate.Stmt, err error) {
-	return migrate.Stmts(f.content)
 }
 
 func isAddTable(t *testing.T, c schema.Change, name string) {
