@@ -1,5 +1,19 @@
-atlas migrate lint --env local --latest=1 > got.txt
-cmp got.txt expected.txt
+atlas migrate lint --env local --latest=1
+stdout 'Analyzing changes until version 1 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 1'
+stdout '    -- naming violations detected:'
+stdout '      -- L1: Table named "Users" violates the naming policy: must be lowercase'
+stdout '         https://atlasgo.io/lint/analyzers#NM102'
+stdout '      -- L2: Index named "users_name" violates the naming policy: must be lowercase and end with'
+stdout '         _idx https://atlasgo.io/lint/analyzers#NM104'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version with warnings'
+stdout '  -- 2 schema changes'
+stdout '  -- 2 diagnostics'
 
 -- atlas.hcl --
 env "local" {
@@ -18,10 +32,3 @@ lint {
 -- migrations/1.sql --
 CREATE TABLE Users (id int, name varchar(255));
 CREATE INDEX users_name ON Users (name);
-
--- expected.txt --
-1.sql: naming violations detected:
-
-	L1: Table named "Users" violates the naming policy: must be lowercase
-	L2: Index named "users_name" violates the naming policy: must be lowercase and end with _idx
-

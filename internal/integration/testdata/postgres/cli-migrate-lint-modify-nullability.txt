@@ -1,16 +1,63 @@
 only postgres14
 
-atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1 > got.txt
-cmp got.txt expected1.txt
+atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- data dependent changes detected:'
+stdout '      -- L2: Modifying nullable column "id" to non-nullable might fail in case it contains NULL'
+stdout '         values https://atlasgo.io/lint/analyzers#MF104'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version with warnings'
+stdout '  -- 2 schema changes'
+stdout '  -- 1 diagnostic'
 
-atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1 > got.txt
-cmp got.txt expected2.txt
+atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- data dependent changes detected:'
+stdout '      -- L5: Modifying nullable column "c" to non-nullable might fail in case it contains NULL'
+stdout '         values https://atlasgo.io/lint/analyzers#MF104'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version with warnings'
+stdout '  -- 4 schema changes'
+stdout '  -- 1 diagnostic'
 
-atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
-cmp got.txt empty.txt
+atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1
+stdout 'Analyzing changes until version 1 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 1'
+stdout '    -- no diagnostics found'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version ok'
+stdout '  -- 2 schema changes'
 
-atlas migrate lint --dir file://migrations4 --dev-url URL --latest=1 > got.txt
-cmp got.txt expected4.txt
+atlas migrate lint --dir file://migrations4 --dev-url URL --latest=1
+stdout 'Analyzing changes from version 1 to 2 \(1 migration in total\):'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- data dependent changes detected:'
+stdout '      -- L9: Modifying nullable column "name" to non-nullable might fail in case it contains NULL'
+stdout '         values https://atlasgo.io/lint/analyzers#MF104'
+stdout '      -- L9: Modifying nullable column "age" to non-nullable might fail in case it contains NULL'
+stdout '         values https://atlasgo.io/lint/analyzers#MF104'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version with warnings'
+stdout '  -- 6 schema changes'
+stdout '  -- 2 diagnostics'
 
 -- empty.txt --
 -- migrations1/1.sql --

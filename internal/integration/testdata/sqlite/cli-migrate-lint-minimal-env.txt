@@ -1,6 +1,24 @@
 # Expect the command to fail; exit code 1.
-! atlas migrate lint --env local --latest=2 > got1.txt
-cmp got1.txt expected1.txt
+! atlas migrate lint --env local --latest=2
+stdout 'Analyzing changes until version 2 \(2 migrations in total\):'
+stdout ''
+stdout '  -- analyzing version 1'
+stdout '    -- no diagnostics found'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -- analyzing version 2'
+stdout '    -- destructive changes detected:'
+stdout '      -- L1: Dropping table "users" https://atlasgo.io/lint/analyzers#DS102'
+stdout '    -- suggested fix:'
+stdout '      -> Add a pre-migration check to ensure table "users" is empty before dropping it'
+stdout '  -- ok \(.+\)'
+stdout ''
+stdout '  -------------------------'
+stdout '  -- .+'
+stdout '  -- 1 version ok, 1 with errors'
+stdout '  -- 2 schema changes'
+stdout '  -- 1 diagnostic'
+
 
 -- atlas.hcl --
 env "local" {
@@ -10,8 +28,3 @@ env "local" {
 CREATE TABLE users (id int);
 -- migrations/2.sql --
 DROP TABLE users;
--- expected1.txt --
-2.sql: destructive changes detected:
-
-	L1: Dropping table "users"
-

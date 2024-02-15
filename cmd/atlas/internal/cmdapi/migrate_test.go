@@ -1940,7 +1940,21 @@ func TestMigrate_Lint(t *testing.T) {
 		"--latest", "1",
 	)
 	require.Error(t, err)
-	require.Equal(t, "2.sql: destructive changes detected:\n\n\tL1: Dropping table \"t\"\n\n", s)
+	require.Regexp(t, `Analyzing changes from version 1 to 2 \(1 migration in total\):
+
+  -- analyzing version 2
+    -- destructive changes detected:
+      -- L1: Dropping table "t" https://atlasgo.io/lint/analyzers#DS102
+    -- suggested fix:
+      -> Add a pre-migration check to ensure table "t" is empty before dropping it
+  -- ok \(.+\)
+
+  -------------------------
+  -- .+
+  -- 1 version with errors
+  -- 1 schema change
+  -- 1 diagnostic
+`, s)
 	s, err = runCmd(
 		migrateLintCmd(),
 		"--dir", "file://"+p,
@@ -1976,7 +1990,21 @@ lint {
 			"-c", "file://"+cfg,
 		)
 		require.NoError(t, err)
-		require.Equal(t, "2.sql: destructive changes detected:\n\n\tL1: Dropping table \"t\"\n\n", s)
+		require.Regexp(t, `Analyzing changes from version 1 to 2 \(1 migration in total\):
+
+  -- analyzing version 2
+    -- destructive changes detected:
+      -- L1: Dropping table "t" https://atlasgo.io/lint/analyzers#DS102
+    -- suggested fix:
+      -> Add a pre-migration check to ensure table "t" is empty before dropping it
+  -- ok \(.+\)
+
+  -------------------------
+  -- .+
+  -- 1 version with warnings
+  -- 1 schema change
+  -- 1 diagnostic
+`, s)
 
 		cmd = migrateCmd()
 		cmd.AddCommand(migrateLintCmd())
@@ -1988,7 +2016,21 @@ lint {
 			"--var", "error=true",
 		)
 		require.Error(t, err)
-		require.Equal(t, "2.sql: destructive changes detected:\n\n\tL1: Dropping table \"t\"\n\n", s)
+		require.Regexp(t, `Analyzing changes from version 1 to 2 \(1 migration in total\):
+
+  -- analyzing version 2
+    -- destructive changes detected:
+      -- L1: Dropping table "t" https://atlasgo.io/lint/analyzers#DS102
+    -- suggested fix:
+      -> Add a pre-migration check to ensure table "t" is empty before dropping it
+  -- ok (.+)
+
+  -------------------------
+  -- .+
+  -- 1 version with errors
+  -- 1 schema change
+  -- 1 diagnostic
+`, s)
 	})
 
 	// Change files to golang-migrate format.
@@ -2024,7 +2066,14 @@ lint {
 		"--latest", "1",
 	)
 	require.Error(t, err)
-	require.Equal(t, "2.up.sql: executing statement: near \"BORING\": syntax error\n", s)
+	require.Regexp(t, `Analyzing changes from version 1.up to 2.up \(1 migration in total\):
+
+  Error: executing statement: near "BORING": syntax error
+
+  -------------------------
+  -- .+
+  -- 1 version with errors
+`, s)
 }
 
 const testSchema = `
