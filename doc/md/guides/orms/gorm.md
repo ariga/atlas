@@ -141,11 +141,12 @@ Create a new program named `loader/main.go` with the following contents:
 package main
 
 import (
-	"io"
+    "fmt"
+    "io"
     "os"
 
     "ariga.io/atlas-provider-gorm/gormschema"
-    _ "ariga.io/atlas-provider-gorm/recordriver"
+	
     "github.com/<yourorg>/<yourrepo>/path/to/models"
 )
 
