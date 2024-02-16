@@ -98,13 +98,12 @@ type (
 		TextEdits []TextEdit `json:"TextEdits,omitempty"`
 	}
 
-	// A TextEdit represents a code changes in a file. If End is set to Pos or 0,
-	// it means that the change is an insertion at the given position. Otherwise,
-	// it represents a replacement of the text between Pos and End with NewText.
+	// A TextEdit represents a code changes in a file.
+	// The suggested edits are line-based starting from 1.
 	TextEdit struct {
-		Pos     int    `json:"Pos"`
-		End     int    `json:"End"`
-		NewText string `json:"NewText"`
+		Line    int    `json:"Line"`    // Start line to edit.
+		End     int    `json:"End"`     // End line to edit.
+		NewText string `json:"NewText"` // New text to replace.
 	}
 
 	// ReportWriter represents a writer for analysis reports.

@@ -30,6 +30,6 @@ func (*Analyzer) emptyColumnCheckStmt(*sqlcheck.Pass, *schema.Table, string) (*m
 	return nil, errors.New("unimplemented")
 }
 
-func suggestFix(*sqlcheck.Pass, []*migrate.Stmt) []sqlcheck.SuggestedFix {
-	return nil // unimplemented.
+func withSuggestion(_ *sqlcheck.Pass, r sqlcheck.Report, _ []*migrate.Stmt) sqlcheck.Report {
+	return r // unimplemented.
 }
