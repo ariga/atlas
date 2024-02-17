@@ -660,10 +660,27 @@ func dependsOn(c1, c2 schema.Change) bool {
 		}
 		// Dropping a type must occur after all its usage were dropped.
 		switch c2 := c2.(type) {
+		case *schema.DropView:
+			// Dropping a view also drops its triggers
+			// and they might depend on the type.
+			if slices.ContainsFunc(c2.V.Triggers, func(tg *schema.Trigger) bool {
+				return slices.Contains(tg.Deps, c1.O)
+			}) {
+				return true
+			}
 		case *schema.DropTable:
-			return slices.ContainsFunc(c2.T.Columns, func(c *schema.Column) bool {
+			// Dropping a table also drops its triggers
+			// and they might depend on the type.
+			if slices.ContainsFunc(c2.T.Triggers, func(tg *schema.Trigger) bool {
+				return slices.Contains(tg.Deps, c1.O)
+			}) {
+				return true
+			}
+			if slices.ContainsFunc(c2.T.Columns, func(c *schema.Column) bool {
 				return dependsOnT(c.Type.Type, t)
-			})
+			}) {
+				return true
+			}
 		case *schema.ModifyTable:
 			return slices.ContainsFunc(c2.Changes, func(c schema.Change) bool {
 				d, ok := c.(*schema.DropColumn)

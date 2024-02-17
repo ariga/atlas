@@ -177,7 +177,9 @@ func TestSortChanges(t *testing.T) {
 	}
 	t1.AddForeignKeys(schema.NewForeignKey("t1").AddColumns(t1.Columns[1:2]...).SetRefTable(t1).AddRefColumns(t1.Columns[:1]...))
 	f1 := &schema.Func{Name: "f1", Deps: []schema.Object{t1}}
+	e1 := &schema.EnumType{T: "e1", Values: []string{"v1", "v2"}}
 	tr1 := &schema.Trigger{Name: "tr", Table: t1, Deps: []schema.Object{f1}}
+	tr2 := &schema.Trigger{Name: "tr2", Table: t1, Deps: []schema.Object{e1}}
 	changes := []schema.Change{
 		&schema.ModifyTable{T: t1},
 		&schema.AddTrigger{T: tr1},
@@ -201,6 +203,15 @@ func TestSortChanges(t *testing.T) {
 		&schema.DropTable{T: t1},
 	})
 	require.Equal(t, []schema.Change{&schema.DropFunc{F: f1}, &schema.DropTable{T: t1}}, planned)
+
+	// The table must be dropped before the enum type if one of its triggers depends on the enum type.
+	t1.Triggers = []*schema.Trigger{tr2}
+	changes = []schema.Change{
+		&schema.DropObject{O: e1},
+		&schema.DropTable{T: t1},
+	}
+	planned = SortChanges(changes)
+	require.Equal(t, []schema.Change{changes[1], changes[0]}, planned)
 
 	// The table must be dropped before the function if one of its triggers depends on the function.
 	t1.Triggers = []*schema.Trigger{tr1}
