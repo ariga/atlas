@@ -724,17 +724,71 @@ env "local" {
 
 The `composite_schema` data source allows the composition of multiple Atlas schemas into a unified schema graph. This
 functionality is useful when projects schemas are split across various sources such as HCL, SQL, or application ORMs.
-For example, each service might have its own schema.
+For example, each service have its own database schema, or an ORM schema is extended or relies on other database schemas.
 
 Referring to the `url` returned by this data source allows reading the entire project schemas as a single unit by any of
 the Atlas commands, such as `migrate diff`, `schema apply`, or `schema inspect`.
 
-##### Arguments {#data-source-external-schema-arguments}
+##### Arguments {#data-source-composite-schema-arguments}
 
-- `schema` - one or more **named** blocks.
-  - `url` - A [URL](../concepts/url.mdx) to read the schema from.
+- `schema` - one or more **named** blocks containing the [URL](../concepts/url.mdx) to read the schema from.
 
-##### Attributes {#data-source-external-schema-attributes}
+<details><summary>Usage Details</summary>
+
+##### Mapping to Database schemas
+
+The name of the `schema` block represents the database schema to be created in the composed graph. For example, the
+following schemas refer to the `public` and `private` schemas within a PostgreSQL database:
+
+```hcl
+data "composite_schema" "project" {
+  schema "public" {
+    url = ...
+  }
+  schema "private" {
+    url = ...
+  }
+}
+```
+
+##### Schema Dependencies
+
+The order of the `schema` blocks defines the order in which Atlas will load the schemas to compose the entire database
+graph. This is useful in the case of dependencies between the schemas. For example, the following schemas refer to the
+`inventory` and `auth` schemas, where the `auth` schema depends on the `inventory` schema and therefore should be loaded
+after it:
+
+```hcl
+data "composite_schema" "project" {
+  schema "inventory" {
+    url = ...
+  }
+  schema "auth" {
+    url = ...
+  }
+}
+```
+
+##### Schema Composition
+
+Defining multiple `schema` blocks with the same name enables extending the same database schema from multiple sources.
+For example, the following configuration shows how an ORM schema, which relies on database types that cannot be defined
+within the ORM itself, can load them separately from another schema source that supports it:
+
+```hcl
+data "composite_schema" "project" {
+  schema "public" {
+    url = "file://types.pg.hcl"
+  }
+  schema "public" {
+    url = "ent://ent/schema"
+  }
+}
+```
+
+</details>
+
+##### Attributes {#data-source-composite-schema-attributes}
 
 - `url` - The [URL](../concepts/url.mdx) of the composite schema.
 
