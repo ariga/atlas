@@ -91,11 +91,11 @@ type (
 	}
 
 	// A SuggestedFix is a change associated with a diagnostic that can
-	// be applied to fix the issue. Both the message and the text edits
+	// be applied to fix the issue. Both the message and the text edit
 	// are optional.
 	SuggestedFix struct {
-		Message   string     `json:"Message"`
-		TextEdits []TextEdit `json:"TextEdits,omitempty"`
+		Message  string    `json:"Message"`
+		TextEdit *TextEdit `json:"TextEdit,omitempty"`
 	}
 
 	// A TextEdit represents a code changes in a file.
