@@ -111,7 +111,7 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 						Text: fmt.Sprintf("Dropping non-virtual column %s", names[0]),
 						SuggestedFixes: []sqlcheck.SuggestedFix{
 							{
-								Message: fmt.Sprintf("Add a pre-migration check to ensure column %q is NULL before dropping it", c.T.Name),
+								Message: fmt.Sprintf("Add a pre-migration check to ensure column %s is NULL before dropping it", names[0]),
 							},
 						},
 					})

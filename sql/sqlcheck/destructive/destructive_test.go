@@ -245,6 +245,8 @@ func TestAnalyzer_DropColumn(t *testing.T) {
 	require.Len(t, report.Diagnostics, 1)
 	require.Equal(t, "destructive changes detected", report.Text)
 	require.Equal(t, `Dropping non-virtual column "c"`, report.Diagnostics[0].Text)
+	require.Len(t, report.Diagnostics[0].SuggestedFixes, 1)
+	require.Equal(t, "Add a pre-migration check to ensure column \"c\" is NULL before dropping it", report.Diagnostics[0].SuggestedFixes[0].Message)
 }
 
 type testFile struct {
