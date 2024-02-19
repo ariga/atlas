@@ -6,10 +6,10 @@
 package parseutil
 
 import (
+	"slices"
+
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-
-	"golang.org/x/exp/slices"
 )
 
 // Rename describes rename of a resource.

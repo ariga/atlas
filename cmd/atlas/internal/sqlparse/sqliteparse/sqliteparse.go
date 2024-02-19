@@ -7,6 +7,7 @@ package sqliteparse
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -15,7 +16,6 @@ import (
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/antlr4-go/antlr/v4"
-	"golang.org/x/exp/slices"
 )
 
 type (

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -21,7 +22,6 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/fatih/color"
-	"golang.org/x/exp/slices"
 )
 
 // Runner is used to execute CI jobs.
