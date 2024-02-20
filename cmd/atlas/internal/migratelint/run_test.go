@@ -143,7 +143,9 @@ schema "main" {
 	// Suggested fixes.
 	az.reports = append(az.reports, sqlcheck.Report{
 		Text: "Report 3", Diagnostics: []sqlcheck.Diagnostic{
-			{Pos: 2, Text: "Diagnostic 3", Code: "TS101"},
+			{Pos: 2, Text: "Diagnostic 3", Code: "TS101", SuggestedFixes: []sqlcheck.SuggestedFix{
+				{TextEdit: &sqlcheck.TextEdit{NewText: "Not shown"}},
+			}},
 			{Pos: 2, Text: "Diagnostic 4", Code: "TS101", SuggestedFixes: []sqlcheck.SuggestedFix{
 				{Message: `Add a pre-migration check to ensure table "users" is empty before dropping it`},
 			}},

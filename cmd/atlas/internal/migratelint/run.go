@@ -483,12 +483,18 @@ func (f *FileReport) SuggestedFixes() []sqlcheck.SuggestedFix {
 	var fixes []sqlcheck.SuggestedFix
 	for _, r := range f.Reports {
 		// Report-level fixes.
-		if len(r.SuggestedFixes) > 0 {
-			fixes = append(fixes, r.SuggestedFixes...)
+		for _, x := range r.SuggestedFixes {
+			if x.Message != "" {
+				fixes = append(fixes, x)
+			}
 		}
 		// Diagnostic-level fixes.
 		for _, d := range r.Diagnostics {
-			fixes = append(fixes, d.SuggestedFixes...)
+			for _, x := range d.SuggestedFixes {
+				if x.Message != "" {
+					fixes = append(fixes, x)
+				}
+			}
 		}
 	}
 	return fixes
