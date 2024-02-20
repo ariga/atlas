@@ -202,6 +202,25 @@ func TestFixChange_CreateIndexCon(t *testing.T) {
 	m, ok := changes[0].(*schema.ModifyTable)
 	require.True(t, ok)
 	require.Equal(t, &postgres.Concurrently{}, m.Changes[0].(*schema.AddIndex).Extra[0])
+
+	// Support qualified quoted identifiers.
+	changes, err = p.FixChange(
+		nil,
+		`CREATE INDEX CONCURRENTLY "i1" ON "public".t1 (c1)`,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1").
+					SetSchema(schema.New("public")),
+				Changes: schema.Changes{
+					&schema.AddIndex{I: schema.NewIndex("i1")},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	m, ok = changes[0].(*schema.ModifyTable)
+	require.True(t, ok)
+	require.Equal(t, &postgres.Concurrently{}, m.Changes[0].(*schema.AddIndex).Extra[0])
 }
 
 func TestFixChange_DropIndexCon(t *testing.T) {
@@ -318,6 +337,44 @@ func TestFixChange_DropIndexCon(t *testing.T) {
 	)
 	require.NoError(t, err)
 	m, ok := changes[0].(*schema.ModifyTable)
+	require.True(t, ok)
+	require.Equal(t, &postgres.Concurrently{}, m.Changes[0].(*schema.DropIndex).Extra[0])
+
+	// Support qualified identifiers.
+	changes, err = p.FixChange(
+		nil,
+		`DROP INDEX CONCURRENTLY public.i1`,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1").
+					SetSchema(schema.New("public")),
+				Changes: schema.Changes{
+					&schema.DropIndex{I: schema.NewIndex("i1")},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	m, ok = changes[0].(*schema.ModifyTable)
+	require.True(t, ok)
+	require.Equal(t, &postgres.Concurrently{}, m.Changes[0].(*schema.DropIndex).Extra[0])
+
+	// Support qualified quoted identifiers.
+	changes, err = p.FixChange(
+		nil,
+		`DROP INDEX CONCURRENTLY "public"."i1"`,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1").
+					SetSchema(schema.New("public")),
+				Changes: schema.Changes{
+					&schema.DropIndex{I: schema.NewIndex("i1")},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	m, ok = changes[0].(*schema.ModifyTable)
 	require.True(t, ok)
 	require.Equal(t, &postgres.Concurrently{}, m.Changes[0].(*schema.DropIndex).Extra[0])
 
