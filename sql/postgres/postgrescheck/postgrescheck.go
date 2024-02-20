@@ -38,33 +38,31 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 	}, nil
 }
 
-func init() {
-	sqlcheck.Register(postgres.DriverName, func(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
-		ds, err := destructive.New(r)
-		if err != nil {
-			return nil, err
-		}
-		cd, err := condrop.New(r)
-		if err != nil {
-			return nil, err
-		}
-		dd, err := datadepend.New(r, datadepend.Handler{
-			AddNotNull: addNotNull,
-		})
-		bc, err := incompatible.New(r)
-		if err != nil {
-			return nil, err
-		}
-		nm, err := naming.New(r)
-		if err != nil {
-			return nil, err
-		}
-		ci, err := NewConcurrentIndex(r)
-		if err != nil {
-			return nil, err
-		}
-		return []sqlcheck.Analyzer{ds, dd, cd, bc, nm, ci}, nil
+func analyzers(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
+	ds, err := destructive.New(r)
+	if err != nil {
+		return nil, err
+	}
+	cd, err := condrop.New(r)
+	if err != nil {
+		return nil, err
+	}
+	dd, err := datadepend.New(r, datadepend.Handler{
+		AddNotNull: addNotNull,
 	})
+	bc, err := incompatible.New(r)
+	if err != nil {
+		return nil, err
+	}
+	nm, err := naming.New(r)
+	if err != nil {
+		return nil, err
+	}
+	ci, err := NewConcurrentIndex(r)
+	if err != nil {
+		return nil, err
+	}
+	return []sqlcheck.Analyzer{ds, dd, cd, bc, nm, ci}, nil
 }
 
 type (
