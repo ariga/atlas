@@ -147,10 +147,19 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 			}
 			for _, p := range stmt.GetDropStmt().GetObjects() {
 				items := p.GetList().GetItems()
-				if len(items) != 1 || items[0].GetString_().GetSval() == "" {
+				var name string
+				switch {
+				// Match DROP INDEX <name>.
+				case len(items) == 1 && items[0].GetString_().GetSval() != "":
+					name = items[0].GetString_().GetSval()
+				// Match DROP INDEX <schema>.<name>.
+				case len(items) == 2 && modify.T.Schema != nil &&
+					items[0].GetString_().GetSval() == modify.T.Schema.Name &&
+					items[1].GetString_().GetSval() != "":
+					name = items[1].GetString_().GetSval()
+				default:
 					continue
 				}
-				name := items[0].GetString_().GetSval()
 				i := schema.Changes(modify.Changes).IndexDropIndex(name)
 				if i == -1 {
 					return nil, fmt.Errorf("DropIndex %q command not found", name)
