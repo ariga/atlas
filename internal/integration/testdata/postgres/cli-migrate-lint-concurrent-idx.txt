@@ -105,7 +105,7 @@ stdout ''
 stdout '  -------------------------'
 stdout '  -- .+'
 stdout '  -- 1 version ok'
-stdout '  -- 1 schema change'
+stdout '  -- 2 schema changes'
 
 -- migrations1/1.sql --
 CREATE TABLE t(c int);
@@ -144,7 +144,9 @@ DROP INDEX CONCURRENTLY i1;
 -- migrations7/1.sql --
 CREATE TABLE t(c int);
 CREATE INDEX i1 ON t(c);
+CREATE INDEX i2 ON t(c);
 -- migrations7/2.sql --
 -- atlas:txmode none
 
 DROP INDEX CONCURRENTLY i1;
+DROP INDEX CONCURRENTLY script_cli_migrate_lint_concurrent_idx.i2;
