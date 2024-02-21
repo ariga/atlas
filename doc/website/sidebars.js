@@ -438,8 +438,8 @@ module.exports = {
                 },
                 {
                     type: 'doc',
-                    id: 'guides/postgres/ar-101',
-                    label: 'Optimal data alignment (AR101)'
+                    id: 'guides/postgres/pg-110',
+                    label: 'Optimal data alignment (PG110)'
                 },
                 {
                     type: 'doc',

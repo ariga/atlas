@@ -232,8 +232,6 @@ The following schema change checks are provided by Atlas:
 
 | **Check**                                 | **Short Description**                                                                        |
 |-------------------------------------------|----------------------------------------------------------------------------------------------|
-| **AR**                                    | Atlas cloud checks                                                                           |
-| [AR101](#AR101)                           | Creating table with non-optimal data alignment                                               |
 | **BC**                                    | **[Backward incompatible changes](#backward-incompatible-changes)**                          |
 | [BC101](#BC101)                           | Renaming a table                                                                             |
 | [BC102](#BC102)                           | Renaming a column                                                                            |
@@ -268,6 +266,8 @@ The following schema change checks are provided by Atlas:
 | [NM104](#NM104)                           | Index name violates the naming convention                                                    |
 | [NM105](#NM105)                           | Foreign-key constraint name violates the naming convention                                   |
 | [NM106](#NM106)                           | Check constraint name violates the naming convention                                         |
+| **PG**                                    | PostgreSQL specific checks                                                                   |
+| [PG110](#PG110)                           | Creating table with non-optimal data alignment                                               |
 | **PG1**                                   | **[Concurrent Indexes](#concurrent-index-policy-postgresql)**                                |
 | [PG101](#PG101)                           | Missing the `CONCURRENTLY` in index creation                                                 |
 | [PG102](#PG102)                           | Missing the `CONCURRENTLY` in index deletion                                                 |
@@ -556,7 +556,7 @@ ALTER TABLE `new_users` RENAME TO `users`;
 PRAGMA foreign_keys = on;
 ```
 
-#### AR101 {#AR101}
+#### PG110 {#PG110}
 
 Creating a table with optimal data alignment may help minimize the amount of required disk space.
 For example consider the next Postgres table on a 64-bit system:
