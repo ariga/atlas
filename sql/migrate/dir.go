@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -625,21 +626,60 @@ func (f HashFile) SumByName(n string) (string, error) {
 	return "", errors.New("checksum not found")
 }
 
+// Reason for a checksum mismatch.
+const (
+	ReasonAdded Reason = iota + 1
+	ReasonEdited
+	ReasonRemoved
+)
+
 var (
 	// ErrChecksumFormat is returned from Validate if the sum files format is invalid.
 	ErrChecksumFormat = errors.New("checksum file format invalid")
-	// ErrChecksumMismatch is returned from Validate if the hash sums don't match.
+	// ErrChecksumMismatch is returned when unmarshalling from a sum file and the files sum entries don't match.
 	ErrChecksumMismatch = errors.New("checksum mismatch")
 	// ErrChecksumNotFound is returned from Validate if the hash file does not exist.
 	ErrChecksumNotFound = errors.New("checksum file not found")
 )
 
+type (
+	// ChecksumError indicates a mismatch between a directories files and its sum.
+	ChecksumError struct {
+		Line, Total int    // line number in file of the mismatch, total number of lines
+		File        string // filename of the mismatch
+		Reason      Reason // reason of a mismatch by filename
+	}
+	// Reason for a checksum mismatch.
+	Reason uint
+)
+
+// Error implements the error interface.
+func (err ChecksumError) Error() string { return ErrChecksumMismatch.Error() }
+
+// Is exists for backwards compatability reasons.
+func (err ChecksumError) Is(target error) bool {
+	return errors.Is(ErrChecksumMismatch, target)
+}
+
+// String implements fmt.Stringer.
+func (r Reason) String() string {
+	switch r {
+	case ReasonAdded:
+		return "added"
+	case ReasonEdited:
+		return "edited"
+	case ReasonRemoved:
+		return "removed"
+	}
+	return "unknown reason"
+}
+
 // Validate checks if the migration dir is in sync with its sum file.
 // If they don't match ErrChecksumMismatch is returned.
 func Validate(dir Dir) error {
-	fh, err := readHashFile(dir)
+	ac, err := readHashFile(dir)
 	if errors.Is(err, fs.ErrNotExist) {
-		// If there are no migration files yet this is okay.
+		// If there are no migration files yet, this is okay.
 		if files, err := dir.Files(); err != nil {
 			return err
 		} else if len(files) > 0 {
@@ -650,12 +690,41 @@ func Validate(dir Dir) error {
 	if err != nil {
 		return err
 	}
-	mh, err := dir.Checksum()
+	ex, err := dir.Checksum()
 	if err != nil {
 		return err
 	}
-	if fh.Sum() != mh.Sum() {
-		return ErrChecksumMismatch
+	if ac.Sum() != ex.Sum() {
+		err := &ChecksumError{Total: len(ac)}
+		// Determine the reason for the mismatch. Iterate over the file sum,
+		// based on it determine if a file was removed, added or edited.
+		for i, h := range ac {
+			// Proceed until we find the mismatch.
+			if len(ex) > i && ex[i] == h {
+				continue
+			}
+			// Index is now pointing at the file with the mismatch.
+			err.Line = i + 1
+			err.File = h.N
+			switch idx := slices.IndexFunc(ex, func(e struct{ N, H string }) bool { return e.N == h.N }); {
+			case idx < 0:
+				err.Reason = ReasonRemoved
+			case idx == i:
+				// If the file is in its original place, it was edited.
+				err.Reason = ReasonEdited
+			default:
+				// File was not in its original place, meaning another file was added before it.
+				err.File = ex[i].N
+				err.Reason = ReasonAdded
+			}
+			return err
+		}
+		// If we land here, all migrations in the sum file are present unchanged in the computed sum.
+		// But there is a mismatch, meaning the next file in the computed sum was added.
+		err.Line = err.Total + 1
+		err.File = ex[err.Total].N
+		err.Reason = ReasonAdded
+		return err
 	}
 	return nil
 }

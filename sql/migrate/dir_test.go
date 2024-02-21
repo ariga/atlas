@@ -78,8 +78,12 @@ func TestHashSum(t *testing.T) {
 	require.NotContains(t, string(c), "exclude_2.sql")
 }
 
-//go:embed testdata/migrate/atlas.sum
-var hash []byte
+var (
+	//go:embed testdata/migrate/atlas.sum
+	hash []byte
+	//go:embed testdata/migrate/1_initial.up.sql
+	initialUp []byte
+)
 
 func TestValidate(t *testing.T) {
 	// Add the sum file form the testdata/migrate dir without any files in it - should fail.
@@ -87,7 +91,7 @@ func TestValidate(t *testing.T) {
 	d, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)
 	require.NoError(t, d.WriteFile("atlas.sum", hash))
-	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
+	require.Equal(t, removed(1, 2, "1_initial.down.sql"), migrate.Validate(d))
 
 	td := "testdata/migrate"
 	d, err = migrate.NewLocalDir(td)
@@ -115,19 +119,37 @@ func TestValidate(t *testing.T) {
 	require.Equal(t, migrate.ErrChecksumFormat, migrate.Validate(d))
 	require.NoError(t, os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644))
 
+	// Changing the contents of the file will report it edited.
+	f, err = os.OpenFile(filepath.Join(td, "1_initial.up.sql"), os.O_RDWR, os.ModeAppend)
+	require.NoError(t, err)
+	_, err = f.WriteString("something")
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	t.Cleanup(func() {
+		require.NoError(t, os.WriteFile(filepath.Join(td, "1_initial.up.sql"), initialUp, 0644))
+	})
+	require.Equal(t, edited(2, 2, "1_initial.up.sql"), migrate.Validate(d))
+	require.NoError(t, os.WriteFile(filepath.Join(td, "1_initial.up.sql"), initialUp, 0644))
+
+	// Adding a file at the end.
+	require.NoError(t, os.WriteFile(filepath.Join(td, "2_second.sql"), []byte("stmt"), os.ModePerm))
+	t.Cleanup(func() { os.Remove(filepath.Join(td, "2_second.sql")) })
+	require.Equal(t, added(3, 2, "2_second.sql"), migrate.Validate(d))
+	require.NoError(t, os.Remove(filepath.Join(td, "2_second.sql")))
+
 	// Changing the filename should raise validation error.
 	require.NoError(t, os.Rename(filepath.Join(td, "1_initial.up.sql"), filepath.Join(td, "1_first.up.sql")))
 	t.Cleanup(func() {
 		require.NoError(t, os.Rename(filepath.Join(td, "1_first.up.sql"), filepath.Join(td, "1_initial.up.sql")))
 	})
-	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
+	require.Equal(t, added(1, 2, "1_first.up.sql"), migrate.Validate(d))
 
 	// Removing it as well (move it out of the dir).
 	require.NoError(t, os.Rename(filepath.Join(td, "1_first.up.sql"), filepath.Join(td, "..", "bak")))
 	t.Cleanup(func() {
 		require.NoError(t, os.Rename(filepath.Join(td, "..", "bak"), filepath.Join(td, "1_first.up.sql")))
 	})
-	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
+	require.Equal(t, removed(2, 2, "1_initial.up.sql"), migrate.Validate(d))
 }
 
 func TestHash_MarshalText(t *testing.T) {
@@ -506,4 +528,25 @@ func fileNames(r io.Reader) ([]string, error) {
 		out = append(out, hdr.Name)
 	}
 	return out, nil
+}
+
+func removed(line, total int, file string) *migrate.ChecksumError {
+	return reason(line, total, file, migrate.ReasonRemoved)
+}
+
+func added(line, total int, file string) *migrate.ChecksumError {
+	return reason(line, total, file, migrate.ReasonAdded)
+}
+
+func edited(line, total int, file string) *migrate.ChecksumError {
+	return reason(line, total, file, migrate.ReasonEdited)
+}
+
+func reason(line, total int, file string, reason migrate.Reason) *migrate.ChecksumError {
+	return &migrate.ChecksumError{
+		Line:   line,
+		Total:  total,
+		File:   file,
+		Reason: reason,
+	}
 }
