@@ -24,6 +24,76 @@ func TestRunner_Run(t *testing.T) {
 	b := &bytes.Buffer{}
 	c, err := sqlclient.Open(ctx, "sqlite://run?mode=memory&cache=shared&_fk=1")
 	require.NoError(t, err)
+
+	t.Run("checksum mismatch", func(t *testing.T) {
+		var (
+			d = &migrate.MemDir{}
+			r = &migratelint.Runner{
+				Dir: d,
+				Dev: c,
+				ReportWriter: &migratelint.TemplateWriter{
+					T: migratelint.DefaultTemplate,
+					W: b,
+				},
+			}
+			err = &migrate.ChecksumError{}
+		)
+		// File was added at the end.
+		require.NoError(t, migrate.WriteSumFile(d, migrate.HashFile{}))
+		require.NoError(t, d.WriteFile("1.sql", []byte("content")))
+		require.ErrorAs(t, r.Run(ctx), &err)
+		require.Regexp(t, `Analyzing changes \(1 migration in total\):
+
+  Error: checksum mismatch \(atlas.sum\): L1: 1\.sql was added
+
+  -------------------------
+  -- .*
+  -- 1 version with errors
+`, b.String())
+		// File was edited.
+		b.Reset()
+		require.NoError(t, migrate.WriteSumFile(d, must(d.Checksum())))
+		require.NoError(t, d.WriteFile("1.sql", []byte("content changed")))
+		require.ErrorAs(t, r.Run(ctx), &err)
+		require.Regexp(t, `Analyzing changes \(1 migration in total\):
+
+  Error: checksum mismatch \(atlas.sum\): L1: 1\.sql was edited
+
+  -------------------------
+  -- .*
+  -- 1 version with errors
+`, b.String())
+		// File was removed.
+		b.Reset()
+		h := must(d.Checksum())
+		*d = migrate.MemDir{}
+		require.NoError(t, migrate.WriteSumFile(d, h))
+		require.ErrorAs(t, r.Run(ctx), &err)
+		require.Regexp(t, `Analyzing changes \(1 migration in total\):
+
+  Error: checksum mismatch \(atlas.sum\): L1: 1\.sql was removed
+
+  -------------------------
+  -- .*
+  -- 1 version with errors
+`, b.String())
+		// File was added in the middle.
+		b.Reset()
+		require.NoError(t, d.WriteFile("1.sql", []byte("content")))
+		require.NoError(t, d.WriteFile("3.sql", []byte("content")))
+		require.NoError(t, migrate.WriteSumFile(d, must(d.Checksum())))
+		require.NoError(t, d.WriteFile("2.sql", []byte("content")))
+		require.ErrorAs(t, r.Run(ctx), &err)
+		require.Regexp(t, `Analyzing changes \(1 migration in total\):
+
+  Error: checksum mismatch \(atlas.sum\): L2: 2\.sql was added
+
+  -------------------------
+  -- .*
+  -- 1 version with errors
+`, b.String())
+	})
+
 	az := &testAnalyzer{
 		reports: []sqlcheck.Report{
 			{Text: "Report 1", Diagnostics: []sqlcheck.Diagnostic{{Pos: 1, Text: "Diagnostic 1", Code: "TS101"}}},
@@ -200,4 +270,11 @@ type testDetector struct {
 
 func (t testDetector) DetectChanges(context.Context) ([]migrate.File, []migrate.File, error) {
 	return t.base, t.feat, nil
+}
+
+func must[T any](t T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return t
 }

@@ -645,9 +645,9 @@ var (
 type (
 	// ChecksumError indicates a mismatch between a directories files and its sum.
 	ChecksumError struct {
-		Line, Total int    // line number in file of the mismatch, total number of lines
-		File        string // filename of the mismatch
-		Reason      Reason // reason of a mismatch by filename
+		Line, Total, Pos int    // line number in file of the mismatch, total number of lines, pos in file
+		File             string // filename of the mismatch
+		Reason           Reason // reason of a mismatch by filename
 	}
 	// Reason for a checksum mismatch.
 	Reason uint
@@ -698,13 +698,17 @@ func Validate(dir Dir) error {
 		err := &ChecksumError{Total: len(ac)}
 		// Determine the reason for the mismatch. Iterate over the file sum,
 		// based on it determine if a file was removed, added or edited.
+		const hashSize = 3 + 44 // h1: (3) + base64(sha256sum) (44)
+		pos := hashSize + 1     // total hash + newline
 		for i, h := range ac {
 			// Proceed until we find the mismatch.
 			if len(ex) > i && ex[i] == h {
+				pos += len(h.N) + 1 + hashSize + 1 // filename + space + hash + newline
 				continue
 			}
 			// Index is now pointing at the file with the mismatch.
 			err.Line = i + 1
+			err.Pos = pos
 			err.File = h.N
 			switch idx := slices.IndexFunc(ex, func(e struct{ N, H string }) bool { return e.N == h.N }); {
 			case idx < 0:
@@ -723,6 +727,7 @@ func Validate(dir Dir) error {
 		// But there is a mismatch, meaning the next file in the computed sum was added.
 		err.Line = err.Total + 1
 		err.File = ex[err.Total].N
+		err.Pos = pos
 		err.Reason = ReasonAdded
 		return err
 	}

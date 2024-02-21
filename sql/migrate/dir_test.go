@@ -91,7 +91,7 @@ func TestValidate(t *testing.T) {
 	d, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)
 	require.NoError(t, d.WriteFile("atlas.sum", hash))
-	require.Equal(t, removed(1, 2, "1_initial.down.sql"), migrate.Validate(d))
+	require.Equal(t, removed(1, 2, 48, "1_initial.down.sql"), migrate.Validate(d))
 
 	td := "testdata/migrate"
 	d, err = migrate.NewLocalDir(td)
@@ -128,13 +128,13 @@ func TestValidate(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, os.WriteFile(filepath.Join(td, "1_initial.up.sql"), initialUp, 0644))
 	})
-	require.Equal(t, edited(2, 2, "1_initial.up.sql"), migrate.Validate(d))
+	require.Equal(t, edited(2, 2, 115, "1_initial.up.sql"), migrate.Validate(d))
 	require.NoError(t, os.WriteFile(filepath.Join(td, "1_initial.up.sql"), initialUp, 0644))
 
 	// Adding a file at the end.
 	require.NoError(t, os.WriteFile(filepath.Join(td, "2_second.sql"), []byte("stmt"), os.ModePerm))
 	t.Cleanup(func() { os.Remove(filepath.Join(td, "2_second.sql")) })
-	require.Equal(t, added(3, 2, "2_second.sql"), migrate.Validate(d))
+	require.Equal(t, added(3, 2, 180, "2_second.sql"), migrate.Validate(d))
 	require.NoError(t, os.Remove(filepath.Join(td, "2_second.sql")))
 
 	// Changing the filename should raise validation error.
@@ -142,14 +142,14 @@ func TestValidate(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, os.Rename(filepath.Join(td, "1_first.up.sql"), filepath.Join(td, "1_initial.up.sql")))
 	})
-	require.Equal(t, added(1, 2, "1_first.up.sql"), migrate.Validate(d))
+	require.Equal(t, added(1, 2, 48, "1_first.up.sql"), migrate.Validate(d))
 
 	// Removing it as well (move it out of the dir).
 	require.NoError(t, os.Rename(filepath.Join(td, "1_first.up.sql"), filepath.Join(td, "..", "bak")))
 	t.Cleanup(func() {
 		require.NoError(t, os.Rename(filepath.Join(td, "..", "bak"), filepath.Join(td, "1_first.up.sql")))
 	})
-	require.Equal(t, removed(2, 2, "1_initial.up.sql"), migrate.Validate(d))
+	require.Equal(t, removed(2, 2, 115, "1_initial.up.sql"), migrate.Validate(d))
 }
 
 func TestHash_MarshalText(t *testing.T) {
@@ -530,21 +530,22 @@ func fileNames(r io.Reader) ([]string, error) {
 	return out, nil
 }
 
-func removed(line, total int, file string) *migrate.ChecksumError {
-	return reason(line, total, file, migrate.ReasonRemoved)
+func removed(line, total, pos int, file string) *migrate.ChecksumError {
+	return reason(line, total, pos, file, migrate.ReasonRemoved)
 }
 
-func added(line, total int, file string) *migrate.ChecksumError {
-	return reason(line, total, file, migrate.ReasonAdded)
+func added(line, total, pos int, file string) *migrate.ChecksumError {
+	return reason(line, total, pos, file, migrate.ReasonAdded)
 }
 
-func edited(line, total int, file string) *migrate.ChecksumError {
-	return reason(line, total, file, migrate.ReasonEdited)
+func edited(line, total, pos int, file string) *migrate.ChecksumError {
+	return reason(line, total, pos, file, migrate.ReasonEdited)
 }
 
-func reason(line, total int, file string, reason migrate.Reason) *migrate.ChecksumError {
+func reason(line, total, pos int, file string, reason migrate.Reason) *migrate.ChecksumError {
 	return &migrate.ChecksumError{
 		Line:   line,
+		Pos:    pos,
 		Total:  total,
 		File:   file,
 		Reason: reason,

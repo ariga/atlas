@@ -88,8 +88,18 @@ func (r *Runner) summary(ctx context.Context) error {
 	switch err := migrate.Validate(r.Dir); {
 	case errors.Is(err, migrate.ErrChecksumNotFound):
 	case err != nil:
-		err := &FileError{File: migrate.HashFileName, Err: err}
-		r.sum.Files = append(r.sum.Files, &FileReport{Name: migrate.HashFileName, Error: err.Error()})
+		var (
+			err = &FileError{File: migrate.HashFileName, Err: err}
+			rep = &FileReport{Name: migrate.HashFileName, Error: err.Error()}
+		)
+		if csErr := (&migrate.ChecksumError{}); errors.As(err, &csErr) {
+			err.Pos = csErr.Pos
+			rep = &FileReport{
+				Name:  migrate.HashFileName,
+				Error: fmt.Sprintf("%s (atlas.sum): L%d: %s was %s", csErr, csErr.Line, csErr.File, csErr.Reason),
+			}
+		}
+		r.sum.Files = append(r.sum.Files, rep)
 		return r.sum.StepError(StepIntegrityCheck, fmt.Sprintf("File %s is invalid", migrate.HashFileName), err)
 	default:
 		// If the hash file exists, it is valid.
@@ -503,6 +513,8 @@ func (f *FileReport) WriteReport(r sqlcheck.Report) {
 func (w *TemplateWriter) WriteReport(r *SummaryReport) error {
 	return w.T.Execute(w.W, r)
 }
+
+func (err SilentError) Unwrap() error { return err.error }
 
 func nolintRules(f *sqlcheck.File) *skipRules {
 	s := &skipRules{pos2rules: make(map[int][]string)}
