@@ -1878,6 +1878,24 @@ func TestMigrate_Validate(t *testing.T) {
 	// Should fail since the files are not compatible with SQLite.
 	_, err = runCmd(migrateValidateCmd(), "--dir", "file://testdata/mysql", "--dev-url", openSQLite(t, ""))
 	require.Error(t, err)
+
+	// Will report detailed information when there is a checksum mismatch.
+	p = t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(p, "1_initial.sql"), []byte("create table t1 (c1 int)"), 0644))
+	s, err = runCmd(migrateValidateCmd(), "--dir", "file://"+p)
+	require.ErrorIs(t, err, migrate.ErrChecksumNotFound)
+	require.Contains(t, s, "You have a checksum error")
+	_, err = runCmd(migrateHashCmd(), "--dir", "file://"+p)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(p, "2_second.sql"), []byte("create table t2 (c2 int)"), 0644))
+	s, err = runCmd(migrateValidateCmd(), "--dir", "file://"+p)
+	csErr := &migrate.ChecksumError{}
+	require.ErrorAs(t, err, &csErr)
+	require.Equal(t, 2, csErr.Line)
+	require.Equal(t, "2_second.sql", csErr.File)
+	require.Equal(t, migrate.ReasonAdded, csErr.Reason)
+	require.Contains(t, s, "You have a checksum error")
+	require.Contains(t, s, "L 2: 2_second.sql was added")
 }
 
 func TestMigrate_Hash(t *testing.T) {

@@ -172,7 +172,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		return err
 	}
 	if err := migrate.Validate(dir); err != nil {
-		printChecksumError(cmd)
+		printChecksumError(cmd, err)
 		return err
 	}
 	// Open a client to the database.
@@ -841,7 +841,7 @@ func migrateImportCmd() *cobra.Command {
 					return err
 				}
 				if err = migrate.Validate(d); err != nil && !errors.Is(err, migrate.ErrChecksumNotFound) {
-					printChecksumError(cmd)
+					printChecksumError(cmd, err)
 					return err
 				}
 				return nil
@@ -1340,7 +1340,8 @@ files are executed on the connected database in order to validate SQL semantics.
 				if err := dirFormatBC(flags.dirFormat, &flags.dirURL); err != nil {
 					return err
 				}
-				return checkDir(cmd, flags.dirURL, false)
+				err := checkDir(cmd, flags.dirURL, false)
+				return err
 			},
 			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				return migrateValidateRun(cmd, args, flags)
@@ -1601,23 +1602,24 @@ func checkDir(cmd *cobra.Command, url string, create bool) error {
 		return err
 	}
 	if err = migrate.Validate(d); err != nil {
-		printChecksumError(cmd)
+		printChecksumError(cmd, err)
 		return err
 	}
 	return nil
 }
 
-func printChecksumError(cmd *cobra.Command) {
-	fmt.Fprintf(cmd.OutOrStderr(), `You have a checksum error in your migration directory.
-This happens if you manually create or edit a migration file.
-Please check your migration files and run
-
-'atlas migrate hash'
-
-to re-hash the contents and resolve the error
-
-`)
+func printChecksumError(cmd *cobra.Command, err error) {
 	cmd.SilenceUsage = true
+	out := cmd.OutOrStderr()
+	fmt.Fprintln(out, "You have a checksum error in your migration directory.")
+	if csErr := (&migrate.ChecksumError{}); errors.As(err, &csErr) {
+		fmt.Fprintf(out, "\n\tL %d: %s was %s\n\n", csErr.Line, csErr.File, csErr.Reason)
+	}
+	fmt.Fprintf(
+		out,
+		"Please check your migration files and run %v to re-hash the contents\n\n",
+		cmdlog.ColorCyan("'atlas migrate hash'"),
+	)
 }
 
 // selectScheme validates the scheme of the provided to urls and returns the selected
