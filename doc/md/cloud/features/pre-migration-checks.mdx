@@ -53,14 +53,17 @@ atlas migrate --dir atlas://app --env prod
 
 ```applylog title="Output"
 Migrating to version 20240201131900 from 20240201131800 (1 migrations in total):
+
 // highlight-start
   -- checks before migrating version 20240201131900
     -> SELECT NOT EXISTS(SELECT * FROM users);
   -- ok (624.004µs)
 // highlight-end
+
   -- migrating version 20240201131900
     -> DROP TABLE users;
   -- ok (5.412737ms)
+
   -------------------------
   -- 22.138088ms
   -- 1 migration
@@ -78,14 +81,17 @@ atlas migrate --dir atlas://app --env prod
 
 ```applylog title="Output"
 Migrating to version 20240201131900 from 20240201131800 (1 migrations in total):
+
   -- checks before migrating version 20240201131900
     -> SELECT NOT EXISTS(SELECT * FROM internal_users);
     -> SELECT NOT EXISTS(SELECT * FROM external_users);
   -- ok (1.322842ms)
+
   -- checks before migrating version 20240201131900
     -> SELECT NOT EXISTS(SELECT * FROM roles);
     -> SELECT NOT EXISTS(SELECT * FROM user_roles);
     2 of 2 assertions failed: check assertion "SELECT NOT EXISTS(SELECT * FROM user_roles);" returned false
+
   -------------------------
   -- 19.396779ms
   -- 1 migration with errors
