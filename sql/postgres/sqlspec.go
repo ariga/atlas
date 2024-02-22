@@ -594,13 +594,6 @@ func enumName(ref *schemahcl.Type) (string, error) {
 	return s[1], nil
 }
 
-// enumRef returns a reference string to the given enum name.
-func enumRef(n string) *schemahcl.Ref {
-	return &schemahcl.Ref{
-		V: "$enum." + n,
-	}
-}
-
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
 func schemaSpec(s *schema.Schema) (*doc, []*schema.Trigger, error) {
 	spec, err := specutil.FromSchema(s, specFuncs)
@@ -752,18 +745,23 @@ func fromIdentity(i *Identity) *schemahcl.Resource {
 
 // columnTypeSpec converts from a concrete Postgres schema.Type into sqlspec.Column Type.
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
-	// Handle postgres enum types. They cannot be put into the TypeRegistry since their name is dynamic.
 	switch o := t.(type) {
 	case *schema.EnumType:
-		return &sqlspec.Column{Type: &schemahcl.Type{
-			T:     enumRef(o.T).V,
-			IsRef: true,
-		}}, nil
+		return &sqlspec.Column{
+			Type: &schemahcl.Type{
+				IsRef: true,
+				T: specutil.ObjectRef(o.Schema, "enum", o.T, func(t *schema.EnumType) string {
+					return t.T
+				}).V},
+		}, nil
 	case *DomainType:
-		return &sqlspec.Column{Type: &schemahcl.Type{
-			T:     o.Ref().V,
-			IsRef: true,
-		}}, nil
+		return &sqlspec.Column{
+			Type: &schemahcl.Type{
+				IsRef: true,
+				T: specutil.ObjectRef(o.Schema, "domain", o.T, func(t *DomainType) string {
+					return t.T
+				}).V},
+		}, nil
 	default:
 		st, err := TypeRegistry.Convert(t)
 		if err != nil {
