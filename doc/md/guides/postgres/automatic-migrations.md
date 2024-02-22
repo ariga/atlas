@@ -181,7 +181,6 @@ table "repos" {
     columns     = [column.owner_id]
     ref_columns = [table.users.column.id]
   }
-
 // highlight-end
 schema "public" {
   comment = "standard public schema"
@@ -241,9 +240,7 @@ atlas schema apply \
 </TabItem>
 </Tabs>
 
-
 Approve the proposed changes, and that's it! You have successfully run a declarative migration.
-
   
 :::info
 For a more detailed description of the `atlas schema apply` command refer to our documentation
