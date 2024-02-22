@@ -363,3 +363,5 @@ type FileError struct {
 }
 
 func (e FileError) Error() string { return e.Err.Error() }
+
+func (e FileError) Unwrap() error { return e.Err }
