@@ -270,11 +270,6 @@ func columnType(c *columnDesc) (schema.Type, error) {
 			if err != nil {
 				return nil, err
 			}
-			if c.elemtyp == "e" {
-				// Override the element type in
-				// case it is an enum.
-				tt = newEnumType(t, c.typelem)
-			}
 			typ.(*ArrayType).Type = tt
 		}
 	case TypeTSVector, TypeTSQuery:
@@ -294,13 +289,8 @@ func columnType(c *columnDesc) (schema.Type, error) {
 		typ = &schema.UnsupportedType{T: t}
 	}
 	switch c.typtype {
-	case "e":
-		// The `typtype` column is set to 'e' for enum types, and the
-		// values are filled in batch after the rows above is closed.
-		// https://postgresql.org/docs/current/catalog-pg-type.html
-		typ = newEnumType(c.fmtype, c.typid)
-	case "d":
-		// Use user-defined for domain types as not all atlas versions support it.
+	case "d", "e":
+		// User-defined types supported by Atlas.
 		typ = &UserDefinedType{T: c.fmtype}
 	}
 	return typ, nil
@@ -339,7 +329,6 @@ type columnDesc struct {
 	size          int64  // character_maximum_length
 	typtype       string // pg_type.typtype
 	typelem       int64  // pg_type.typelem
-	elemtyp       string // pg_type.typtype of the array element type above.
 	typid         int64  // pg_type.oid
 	precision     int64
 	timePrecision *int64

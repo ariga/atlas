@@ -173,8 +173,6 @@ func (cd *crdbDiff) normalize(table *schema.Table) {
 				// is equivalent to character(1).
 				t.Size = 1
 			}
-		case *enumType:
-			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
 		}
 	}
 }
@@ -324,7 +322,6 @@ SELECT
 	col_description(t3.oid, "ordinal_position") AS comment,
 	t4.typtype,
 	t4.typelem,
-	(CASE WHEN t4.typcategory = 'A' AND t4.typelem <> 0 THEN (SELECT t.typtype FROM pg_catalog.pg_type t WHERE t.oid = t4.typelem) END) AS elemtyp,
 	t4.oid
 FROM
 	"information_schema"."columns" AS t1

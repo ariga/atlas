@@ -41,6 +41,14 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		mode = sqlx.ModeInspectRealm(opts)
 	)
 	if len(schemas) > 0 {
+		if err := i.inspectEnums(ctx, r); err != nil {
+			return nil, err
+		}
+		if mode.Is(schema.InspectTypes) {
+			if err := i.inspectTypes(ctx, r, nil); err != nil {
+				return nil, err
+			}
+		}
 		if mode.Is(schema.InspectTables) {
 			if err := i.inspectTables(ctx, r, nil); err != nil {
 				return nil, err
@@ -54,14 +62,6 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		}
 		if mode.Is(schema.InspectFuncs) {
 			if err := i.inspectFuncs(ctx, r, nil); err != nil {
-				return nil, err
-			}
-		}
-		if err := i.inspectEnums(ctx, r); err != nil {
-			return nil, err
-		}
-		if mode.Is(schema.InspectTypes) {
-			if err := i.inspectTypes(ctx, r, nil); err != nil {
 				return nil, err
 			}
 		}
@@ -106,6 +106,14 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		r    = schema.NewRealm(schemas...)
 		mode = sqlx.ModeInspectSchema(opts)
 	)
+	if err := i.inspectEnums(ctx, r); err != nil {
+		return nil, err
+	}
+	if mode.Is(schema.InspectTypes) {
+		if err := i.inspectTypes(ctx, r, opts); err != nil {
+			return nil, err
+		}
+	}
 	if mode.Is(schema.InspectTables) {
 		if err := i.inspectTables(ctx, r, opts); err != nil {
 			return nil, err
@@ -119,14 +127,6 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	}
 	if mode.Is(schema.InspectFuncs) {
 		if err := i.inspectFuncs(ctx, r, opts); err != nil {
-			return nil, err
-		}
-	}
-	if err := i.inspectEnums(ctx, r); err != nil {
-		return nil, err
-	}
-	if mode.Is(schema.InspectTypes) {
-		if err := i.inspectTypes(ctx, r, opts); err != nil {
 			return nil, err
 		}
 	}
@@ -249,12 +249,12 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 // addColumn scans the current row and adds a new column from it to the scope (table or view).
 func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 	var (
-		typid, typelem, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast                                                  sql.NullInt64
-		table, name, typ, fmtype, nullable, defaults, identity, genidentity, genexpr, charset, collate, comment, typtype, elemtyp, interval sql.NullString
+		typid, typelem, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast                                         sql.NullInt64
+		table, name, typ, fmtype, nullable, defaults, identity, genidentity, genexpr, charset, collate, comment, typtype, interval sql.NullString
 	)
 	if err = rows.Scan(
 		&table, &name, &typ, &fmtype, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &interval, &charset,
-		&collate, &identity, &seqstart, &seqinc, &seqlast, &genidentity, &genexpr, &comment, &typtype, &typelem, &elemtyp, &typid,
+		&collate, &identity, &seqstart, &seqinc, &seqlast, &genidentity, &genexpr, &comment, &typtype, &typelem, &typid,
 	); err != nil {
 		return err
 	}
@@ -282,12 +282,23 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 		scale:         scale.Int64,
 		typtype:       typtype.String,
 		typelem:       typelem.Int64,
-		elemtyp:       elemtyp.String,
 		typid:         typid.Int64,
 		interval:      interval.String,
 		precision:     precision.Int64,
 		timePrecision: &timeprecision.Int64,
 	})
+	switch tt := c.Type.Type.(type) {
+	case *ArrayType:
+		if u, ok := tt.Underlying().(*UserDefinedType); ok {
+			tt.Type = i.underlyingType(s, u)
+		}
+	case *UserDefinedType:
+		ut := i.underlyingType(s, tt)
+		if ut != tt {
+			c.Type.Raw = tt.T
+			c.Type.Type = ut
+		}
+	}
 	if defaults.Valid {
 		columnDefault(c, defaults.String)
 	}
@@ -319,43 +330,70 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 	return nil
 }
 
+// parseType is like ParseType, but aware of the Realm state.
+func (i *inspect) parseType(ns *schema.Schema, s string) (schema.Type, error) {
+	t, err := ParseType(s)
+	if err != nil {
+		return nil, err
+	}
+	switch tt := t.(type) {
+	case *ArrayType:
+		if u, ok := tt.Underlying().(*UserDefinedType); ok {
+			tt.Type = i.underlyingType(ns, u)
+		}
+	case *UserDefinedType:
+		t = i.underlyingType(ns, tt)
+	}
+	return t, nil
+}
+
+// underlyingType returns the underlying type of the given user-defined
+// type by searching the realm.
+func (i *inspect) underlyingType(s *schema.Schema, u *UserDefinedType) schema.Type {
+	var (
+		sr       []*schema.Schema
+		ns, name = parseFmtType(u.T)
+	)
+	switch nsScope := i.schema != ""; {
+	// If the scope is one schema, the namespace defined
+	// on the type because it resides on a different schema.
+	case ns == "":
+		if !nsScope && s.Realm != nil {
+			// Search in the "public" schema first, because in the default
+			// configuration unqualified types refer to the public schema.
+			if s1, ok := s.Realm.Schema("public"); ok {
+				sr = append(sr, s1)
+			}
+		}
+		sr = append(sr, s)
+	// Allow searching in other schemas, only if
+	// we are not in a schema scope.
+	case ns != "" && !nsScope && s.Realm != nil:
+		if s1, ok := s.Realm.Schema(ns); ok {
+			sr = []*schema.Schema{s1}
+		}
+	}
+	for _, s := range sr {
+		for _, o := range s.Objects {
+			if e, ok := o.(*schema.EnumType); ok && e.T == name {
+				return e
+			} else if d, ok := o.(*DomainType); ok && d.T == name {
+				return d
+			}
+		}
+	}
+	// No match.
+	return u
+}
+
 // enumValues fills enum columns with their values from the database.
 func (i *inspect) inspectEnums(ctx context.Context, r *schema.Realm) error {
 	var (
 		ids  = make(map[int64]*schema.EnumType)
 		args = make([]any, 0, len(r.Schemas))
-		newE = func(e1 *enumType) *schema.EnumType {
-			e2, ok := ids[e1.ID]
-			if ok {
-				return e2
-			}
-			e2 = &schema.EnumType{T: e1.T}
-			ids[e1.ID] = e2
-			return e2
-		}
-		scanC = func(cs []*schema.Column) {
-			for _, c := range cs {
-				switch t := c.Type.Type.(type) {
-				case *enumType:
-					e := newE(t)
-					c.Type.Type = e
-					c.Type.Raw = e.T
-				case *ArrayType:
-					if e, ok := t.Type.(*enumType); ok {
-						t.Type = newE(e)
-					}
-				}
-			}
-		}
 	)
 	for _, s := range r.Schemas {
 		args = append(args, s.Name)
-		for _, t := range s.Tables {
-			scanC(t.Columns)
-		}
-		for _, v := range s.Views {
-			scanC(v.Columns)
-		}
 	}
 	if len(args) == 0 {
 		return nil
@@ -787,7 +825,7 @@ func canConvert(t schema.Type, x string) (string, bool) {
 	q := x[0:i]
 	x = x[1 : i-1]
 	switch t.(type) {
-	case *enumType:
+	case *schema.EnumType:
 		return q, true
 	case *schema.BoolType:
 		if sqlx.IsLiteralBool(x) {
@@ -821,16 +859,6 @@ type (
 	OID struct {
 		schema.Attr
 		V int64
-	}
-
-	// enumType represents an enum type. It serves aa intermediate representation of a Postgres enum type,
-	// to temporary save TypeID and TypeName of an enum column until the enum values can be extracted.
-	enumType struct {
-		schema.Type
-		T      string // Type name.
-		Schema string // Optional schema name.
-		ID     int64  // Type id.
-		Values []string
 	}
 
 	// ArrayType defines an array type.
@@ -1314,11 +1342,6 @@ func parseFmtType(t string) (s, n string) {
 	return s, n
 }
 
-func newEnumType(t string, id int64) *enumType {
-	s, n := parseFmtType(t)
-	return &enumType{T: n, Schema: s, ID: id}
-}
-
 const (
 	// Query to list runtime parameters.
 	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('server_version_num', 'crdb_version') ORDER BY name DESC`
@@ -1421,7 +1444,6 @@ SELECT
 	col_description(t3.oid, "ordinal_position") AS comment,
 	t4.typtype,
 	t4.typelem,
-	(CASE WHEN t4.typcategory = 'A' AND t4.typelem <> 0 THEN (SELECT t.typtype FROM pg_catalog.pg_type t WHERE t.oid = t4.typelem) END) AS elemtyp,
 	t4.oid
 FROM
 	"information_schema"."columns" AS t1

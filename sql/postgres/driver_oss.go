@@ -242,3 +242,75 @@ func objectSpec(d *doc, spec *specutil.SchemaSpec, s *schema.Schema) error {
 	}
 	return nil
 }
+
+// convertEnums converts possibly referenced column types (like enums) to
+// an actual schema.Type and sets it on the correct schema.Column.
+func convertTypes(d *doc, r *schema.Realm) error {
+	if len(d.Enums) == 0 {
+		return nil
+	}
+	byName := make(map[string]*schema.EnumType)
+	for _, e := range d.Enums {
+		if byName[e.Name] != nil {
+			return fmt.Errorf("duplicate enum %q", e.Name)
+		}
+		ns, err := specutil.SchemaName(e.Schema)
+		if err != nil {
+			return fmt.Errorf("extract schema name from enum reference: %w", err)
+		}
+		es, ok := r.Schema(ns)
+		if !ok {
+			return fmt.Errorf("schema %q defined on enum %q was not found in realm", ns, e.Name)
+		}
+		e1 := &schema.EnumType{T: e.Name, Schema: es, Values: e.Values}
+		es.AddObjects(e1)
+		byName[e.Name] = e1
+	}
+	for _, t := range d.Tables {
+		for _, c := range t.Columns {
+			var enum *schema.EnumType
+			switch {
+			case c.Type.IsRefTo("enum"):
+				n, err := enumName(c.Type)
+				if err != nil {
+					return err
+				}
+				e, ok := byName[n]
+				if !ok {
+					return fmt.Errorf("enum %q was not found in realm", n)
+				}
+				enum = e
+			default:
+				if n, ok := arrayType(c.Type.T); ok {
+					enum = byName[n]
+				}
+			}
+			if enum == nil {
+				continue
+			}
+			schemaT, err := specutil.SchemaName(t.Schema)
+			if err != nil {
+				return fmt.Errorf("extract schema name from table reference: %w", err)
+			}
+			ts, ok := r.Schema(schemaT)
+			if !ok {
+				return fmt.Errorf("schema %q not found in realm for table %q", schemaT, t.Name)
+			}
+			tt, ok := ts.Table(t.Name)
+			if !ok {
+				return fmt.Errorf("table %q not found in schema %q", t.Name, ts.Name)
+			}
+			cc, ok := tt.Column(c.Name)
+			if !ok {
+				return fmt.Errorf("column %q not found in table %q", c.Name, t.Name)
+			}
+			switch t := cc.Type.Type.(type) {
+			case *ArrayType:
+				t.Type = enum
+			default:
+				cc.Type.Type = enum
+			}
+		}
+	}
+	return nil
+}
