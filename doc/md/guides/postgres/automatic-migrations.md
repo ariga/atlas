@@ -241,6 +241,7 @@ atlas schema apply \
 </Tabs>
 
 Approve the proposed changes, and that's it! You have successfully run a declarative migration.
+
 :::info
 For a more detailed description of the `atlas schema apply` command refer to our documentation
 [here](/declarative/apply).
