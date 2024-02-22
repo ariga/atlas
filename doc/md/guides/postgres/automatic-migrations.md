@@ -603,7 +603,7 @@ In this guide we learned about the declarative and versioned workflows, and how 
 push them to an Atlas workspace and apply them to databases.
 
 Next steps:
-* Read the [full docs](/atlas-schema/hcl) to learn HCL schema syntax or about specific ClickHouse [column types](/atlas-schema/hcl-types#clickhouse)
+* Read the [full docs](/atlas-schema/hcl) to learn HCL schema syntax or about specific Postgres [column types](/atlas-schema/hcl-types#postgresql)
 * Learn how to [set up CI](/cloud/setup-ci) for your migration directory
 * Deploy schema changes with [Terraform](/integrations/terraform-provider) or [Kubernetes](/integrations/kubernetes/operator)
 * Learn about [modern CI/CD principles](/guides/modern-database-ci-cd) for databases
