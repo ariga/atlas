@@ -97,7 +97,7 @@ func SetReversible(p *migrate.Plan) error {
 // creation, or deletes fks before deletes their tables.
 func DetachCycles(changes []schema.Change) ([]schema.Change, error) {
 	sorted, err := sortMap(changes)
-	if err == errCycle {
+	if errors.Is(err, errCycle) {
 		return detachReferences(changes), nil
 	}
 	if err != nil {

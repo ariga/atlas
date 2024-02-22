@@ -146,10 +146,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		if err := specutil.Scan(v, d.ScanDoc(), scanFuncs); err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
-		if err := convertEnums(d.Tables, d.Enums, v); err != nil {
-			return err
-		}
-		if err := convertDomains(d.Tables, d.Domains, v); err != nil {
+		if err := convertTypes(&d, v); err != nil {
 			return err
 		}
 		if err := convertSequences(d.Tables, d.Sequences, v); err != nil {
@@ -170,10 +167,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		if err := specutil.Scan(r, d.ScanDoc(), scanFuncs); err != nil {
 			return err
 		}
-		if err := convertEnums(d.Tables, d.Enums, r); err != nil {
-			return err
-		}
-		if err := convertDomains(d.Tables, d.Domains, r); err != nil {
+		if err := convertTypes(&d, r); err != nil {
 			return err
 		}
 		if err := convertSequences(d.Tables, d.Sequences, r); err != nil {
@@ -589,78 +583,6 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 		}
 	}
 	return typ, nil
-}
-
-// convertEnums converts possibly referenced column types (like enums) to
-// an actual schema.Type and sets it on the correct schema.Column.
-func convertEnums(tables []*sqlspec.Table, enums []*enum, r *schema.Realm) error {
-	if len(enums) == 0 {
-		return nil
-	}
-	byName := make(map[string]*schema.EnumType)
-	for _, e := range enums {
-		if byName[e.Name] != nil {
-			return fmt.Errorf("duplicate enum %q", e.Name)
-		}
-		ns, err := specutil.SchemaName(e.Schema)
-		if err != nil {
-			return fmt.Errorf("extract schema name from enum reference: %w", err)
-		}
-		es, ok := r.Schema(ns)
-		if !ok {
-			return fmt.Errorf("schema %q defined on enum %q was not found in realm", ns, e.Name)
-		}
-		e1 := &schema.EnumType{T: e.Name, Schema: es, Values: e.Values}
-		es.AddObjects(e1)
-		byName[e.Name] = e1
-	}
-	for _, t := range tables {
-		for _, c := range t.Columns {
-			var enum *schema.EnumType
-			switch {
-			case c.Type.IsRefTo("enum"):
-				n, err := enumName(c.Type)
-				if err != nil {
-					return err
-				}
-				e, ok := byName[n]
-				if !ok {
-					return fmt.Errorf("enum %q was not found in realm", n)
-				}
-				enum = e
-			default:
-				if n, ok := arrayType(c.Type.T); ok {
-					enum = byName[n]
-				}
-			}
-			if enum == nil {
-				continue
-			}
-			schemaT, err := specutil.SchemaName(t.Schema)
-			if err != nil {
-				return fmt.Errorf("extract schema name from table reference: %w", err)
-			}
-			ts, ok := r.Schema(schemaT)
-			if !ok {
-				return fmt.Errorf("schema %q not found in realm for table %q", schemaT, t.Name)
-			}
-			tt, ok := ts.Table(t.Name)
-			if !ok {
-				return fmt.Errorf("table %q not found in schema %q", t.Name, ts.Name)
-			}
-			cc, ok := tt.Column(c.Name)
-			if !ok {
-				return fmt.Errorf("column %q not found in table %q", c.Name, t.Name)
-			}
-			switch t := cc.Type.Type.(type) {
-			case *ArrayType:
-				t.Type = enum
-			default:
-				cc.Type.Type = enum
-			}
-		}
-	}
-	return nil
 }
 
 // enumName extracts the name of the referenced Enum from the reference string.
