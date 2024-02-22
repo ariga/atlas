@@ -6,6 +6,7 @@ package specutil
 
 import (
 	"fmt"
+	"slices"
 
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
@@ -241,6 +242,21 @@ func QualifyReferences(tableSpecs []*sqlspec.Table, realm *schema.Realm) error {
 		}
 	}
 	return nil
+}
+
+// ObjectRef returns a reference to the object. In case there is more than one object of
+// this type with the same name, the reference will be qualified with the schema name.
+func ObjectRef[T schema.Object](s *schema.Schema, typ, name string, objName func(T) string) *schemahcl.Ref {
+	idx := schemahcl.PathIndex{T: typ, V: []string{name}}
+	if s != nil && s.Realm != nil && len(s.Realm.Schemas) > 1 && slices.ContainsFunc(s.Realm.Schemas, func(s1 *schema.Schema) bool {
+		return s1 != s && slices.ContainsFunc(s1.Objects, func(o1 schema.Object) bool {
+			e, ok := o1.(T)
+			return ok && objName(e) == name
+		})
+	}) {
+		idx.V = append([]string{s.Name}, idx.V...)
+	}
+	return schemahcl.BuildRef([]schemahcl.PathIndex{idx})
 }
 
 // HCLBytesFunc returns a helper that evaluates an HCL document from a byte slice instead
