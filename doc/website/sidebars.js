@@ -418,6 +418,11 @@ module.exports = {
             items: [
                 {
                     type: 'doc',
+                    id: 'guides/postgres/postgres-automatic-migrations',
+                    label: 'Automatic Migration Planning'
+                },
+                {
+                    type: 'doc',
                     id: 'guides/postgres/serial-columns',
                     label: 'Serial Type Columns'
                 },
