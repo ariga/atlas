@@ -775,6 +775,15 @@ func fromDependsOn[T interface{ AddDeps(...schema.Object) T }](loc string, t T, 
 			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (*schema.Proc, bool) {
 				return s.Proc(name)
 			})
+		default:
+			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (schema.Object, bool) {
+				return s.Object(func(o schema.Object) bool {
+					if o, ok := o.(interface{ MatchName(string) bool }); ok {
+						return o.MatchName(name)
+					}
+					return false
+				})
+			})
 		}
 		if err != nil {
 			return fmt.Errorf("find %s refrence for %s.depends_on[%d]: %w", loc, p[0].T, i, err)
