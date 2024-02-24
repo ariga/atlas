@@ -722,6 +722,10 @@ func dependsOn(realm *schema.Realm, objects []schema.Object) (*schemahcl.Attr, b
 			n, s = d.Name, d.Schema.Name
 		case *schema.Proc:
 			n, s = d.Name, d.Schema.Name
+		case interface{ Ref() *schemahcl.Ref }:
+			// If the object is a reference, add it to the depends_on list.
+			deps = append(deps, d.Ref())
+			continue
 		}
 		if names[name(o, n)] > 1 {
 			path = append(path, s)

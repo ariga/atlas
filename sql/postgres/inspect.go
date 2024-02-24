@@ -17,6 +17,7 @@ import (
 	"sync"
 
 	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/postgres/internal/postgresop"
 	"ariga.io/atlas/sql/schema"
@@ -1109,7 +1110,9 @@ type (
 
 // Ref returns a reference to the domain type.
 func (d *DomainType) Ref() *schemahcl.Ref {
-	return &schemahcl.Ref{V: "$domain." + d.T}
+	return specutil.ObjectRef(d.Schema, "domain", d.T, func(d *DomainType) string {
+		return d.T
+	})
 }
 
 // Underlying returns the underlying type of the domain.
