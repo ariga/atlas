@@ -1108,11 +1108,21 @@ type (
 	ReferenceOption schema.ReferenceOption
 )
 
+var _ specutil.RefNamer = (*DomainType)(nil)
+
 // Ref returns a reference to the domain type.
 func (d *DomainType) Ref() *schemahcl.Ref {
-	return specutil.ObjectRef(d.Schema, "domain", d.T, func(d *DomainType) string {
-		return d.T
-	})
+	return specutil.ObjectRef(d.Schema, d)
+}
+
+// SpecType returns the type of the domain.
+func (d *DomainType) SpecType() string {
+	return "domain"
+}
+
+// SpecName returns the name of the domain.
+func (d *DomainType) SpecName() string {
+	return d.T
 }
 
 // Underlying returns the underlying type of the domain.

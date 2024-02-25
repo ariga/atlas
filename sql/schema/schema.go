@@ -639,6 +639,12 @@ func (*Collation) attr()       {}
 func (*GeneratedExpr) attr()   {}
 func (*ViewCheckOption) attr() {}
 
+// SpecType returns the type of the spec.
+func (e *EnumType) SpecType() string { return "enum" }
+
+// SpecName returns the name of the spec.
+func (e *EnumType) SpecName() string { return e.T }
+
 // UnderlyingExpr returns the underlying expression of x.
 func UnderlyingExpr(x Expr) Expr {
 	if w, ok := x.(interface{ Underlying() Expr }); ok {

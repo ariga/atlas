@@ -74,10 +74,14 @@ type (
 		Proc  func(*schema.Proc) (*sqlspec.Func, error)
 	}
 	// RefNamer is an interface for objects that can
-	// return their reference and type name.
+	// return their reference.
 	RefNamer interface {
 		// Ref returns the reference to the object.
 		Ref() *schemahcl.Ref
+	}
+	// ObjectSpec is an interface for objects that can
+	// return their spec type and name.
+	ObjectSpec interface {
 		// SpecType returns the spec type of the object.
 		SpecType() string
 		// SpecName returns the spec name of the object.
@@ -795,7 +799,7 @@ func fromDependsOn[T interface{ AddDeps(...schema.Object) T }](loc string, t T, 
 		default:
 			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (schema.Object, bool) {
 				return s.Object(func(o schema.Object) bool {
-					if o, ok := o.(RefNamer); ok {
+					if o, ok := o.(ObjectSpec); ok {
 						return p[0].T == o.SpecType() && name == o.SpecName()
 					}
 					return false

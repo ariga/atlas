@@ -750,17 +750,13 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 		return &sqlspec.Column{
 			Type: &schemahcl.Type{
 				IsRef: true,
-				T: specutil.ObjectRef(o.Schema, "enum", o.T, func(t *schema.EnumType) string {
-					return t.T
-				}).V},
+				T:     specutil.ObjectRef(o.Schema, o).V},
 		}, nil
 	case *DomainType:
 		return &sqlspec.Column{
 			Type: &schemahcl.Type{
 				IsRef: true,
-				T: specutil.ObjectRef(o.Schema, "domain", o.T, func(t *DomainType) string {
-					return t.T
-				}).V},
+				T:     specutil.ObjectRef(o.Schema, o).V},
 		}, nil
 	default:
 		st, err := TypeRegistry.Convert(t)
