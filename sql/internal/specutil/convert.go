@@ -61,6 +61,8 @@ type (
 		Proc  func(*sqlspec.Func) (*schema.Proc, error)
 		// Triggers add themselves to the relevant tables/views.
 		Triggers func(*schema.Realm, []*sqlspec.Trigger) error
+		// Objects add themselves to the realm.
+		Objects func(*schema.Realm) error
 	}
 
 	// SchemaFuncs represents a set of spec functions
@@ -240,6 +242,11 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 	}
 	if funcs.Triggers != nil {
 		if err := funcs.Triggers(r, doc.Triggers); err != nil {
+			return err
+		}
+	}
+	if funcs.Objects != nil {
+		if err := funcs.Objects(r); err != nil {
 			return err
 		}
 	}
