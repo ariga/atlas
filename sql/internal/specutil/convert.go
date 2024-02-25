@@ -7,6 +7,7 @@ package specutil
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -756,6 +757,9 @@ func dependsOn(realm *schema.Realm, objects []schema.Object) (*schemahcl.Attr, b
 		}))
 	}
 	if len(deps) > 0 {
+		slices.SortFunc(deps, func(l, r *schemahcl.Ref) int {
+			return strings.Compare(l.V, r.V)
+		})
 		return schemahcl.RefsAttr("depends_on", deps...), true
 	}
 	return nil, false
