@@ -246,12 +246,12 @@ func QualifyReferences(tableSpecs []*sqlspec.Table, realm *schema.Realm) error {
 
 // ObjectRef returns a reference to the object. In case there is more than one object of
 // this type with the same name, the reference will be qualified with the schema name.
-func ObjectRef(s *schema.Schema, o ObjectSpec) *schemahcl.Ref {
+func ObjectRef(s *schema.Schema, o SpecTypeNamer) *schemahcl.Ref {
 	typ, name := o.SpecType(), o.SpecName()
 	idx := schemahcl.PathIndex{T: typ, V: []string{name}}
 	if s != nil && s.Realm != nil && len(s.Realm.Schemas) > 1 && slices.ContainsFunc(s.Realm.Schemas, func(s1 *schema.Schema) bool {
 		return s1 != s && slices.ContainsFunc(s1.Objects, func(o1 schema.Object) bool {
-			if e, ok := o1.(ObjectSpec); ok {
+			if e, ok := o1.(SpecTypeNamer); ok {
 				return e.SpecType() == typ && e.SpecName() == name
 			}
 			return false
