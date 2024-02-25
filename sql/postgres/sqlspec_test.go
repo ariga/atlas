@@ -372,7 +372,7 @@ view "v3" {
 view "v4" {
   schema     = schema.public
   as         = "SELECT * FROM v2 JOIN t1 USING (id)"
-  depends_on = [view.v2, table.t1]
+  depends_on = [table.t1, view.v2]
 }
 materialized "m1" {
   schema = schema.public
@@ -381,7 +381,7 @@ materialized "m1" {
 materialized "m2" {
   schema     = schema.public
   as         = "SELECT * FROM t1"
-  depends_on = [view.v2, materialized.m1, table.t1]
+  depends_on = [materialized.m1, table.t1, view.v2]
 }
 schema "public" {
 }

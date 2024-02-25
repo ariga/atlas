@@ -578,6 +578,13 @@ func dependsOn(c1, c2 schema.Change) bool {
 			if funcDep(c1.F, c2.To) {
 				return true // Relies on the new definition.
 			}
+		case *schema.AddObject:
+			t, ok := c2.O.(schema.Type)
+			if ok && (c1.F.Ret == t || slices.ContainsFunc(c1.F.Args, func(f *schema.FuncArg) bool {
+				return dependsOnT(f.Type, t)
+			})) {
+				return true
+			}
 		}
 		return depOfAdd(c1.F.Deps, c2)
 	case *schema.DropFunc:
@@ -622,6 +629,13 @@ func dependsOn(c1, c2 schema.Change) bool {
 		case *schema.ModifyProc:
 			if procDep(c1.P, c2.To) {
 				return true // Relies on the new definition.
+			}
+		case *schema.AddObject:
+			t, ok := c2.O.(schema.Type)
+			if ok && slices.ContainsFunc(c1.P.Args, func(f *schema.FuncArg) bool {
+				return dependsOnT(f.Type, t)
+			}) {
+				return true
 			}
 		}
 	case *schema.DropProc:
@@ -687,11 +701,11 @@ func dependsOn(c1, c2 schema.Change) bool {
 				return ok && dependsOnT(d.C.Type.Type, t)
 			})
 		case *schema.DropFunc:
-			return c2.F.Ret == t || slices.ContainsFunc(c2.F.Args, func(f *schema.FuncArg) bool {
+			return slices.Contains(c2.F.Deps, c1.O) || c2.F.Ret == t || slices.ContainsFunc(c2.F.Args, func(f *schema.FuncArg) bool {
 				return dependsOnT(f.Type, t)
 			})
 		case *schema.DropProc:
-			return slices.ContainsFunc(c2.P.Args, func(f *schema.FuncArg) bool {
+			return slices.Contains(c2.P.Deps, c1.O) || slices.ContainsFunc(c2.P.Args, func(f *schema.FuncArg) bool {
 				return dependsOnT(f.Type, t)
 			})
 		}
