@@ -73,6 +73,16 @@ type (
 		Func  func(*schema.Func) (*sqlspec.Func, error)
 		Proc  func(*schema.Proc) (*sqlspec.Func, error)
 	}
+	// RefNamer is an interface for objects that can
+	// return their reference and type name.
+	RefNamer interface {
+		// Ref returns the reference to the object.
+		Ref() *schemahcl.Ref
+		// SpecType returns the spec type of the object.
+		SpecType() string
+		// SpecName returns the spec name of the object.
+		SpecName() string
+	}
 )
 
 const (
@@ -729,7 +739,7 @@ func dependsOn(realm *schema.Realm, objects []schema.Object) (*schemahcl.Attr, b
 			n, s = d.Name, d.Schema.Name
 		case *schema.Proc:
 			n, s = d.Name, d.Schema.Name
-		case interface{ Ref() *schemahcl.Ref }:
+		case RefNamer:
 			// If the object is a reference, add it to the depends_on list.
 			deps = append(deps, d.Ref())
 			continue
@@ -785,8 +795,8 @@ func fromDependsOn[T interface{ AddDeps(...schema.Object) T }](loc string, t T, 
 		default:
 			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (schema.Object, bool) {
 				return s.Object(func(o schema.Object) bool {
-					if o, ok := o.(interface{ MatchName(string) bool }); ok {
-						return o.MatchName(name)
+					if o, ok := o.(RefNamer); ok {
+						return p[0].T == o.SpecType() && name == o.SpecName()
 					}
 					return false
 				})
