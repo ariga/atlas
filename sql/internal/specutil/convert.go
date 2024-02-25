@@ -61,6 +61,8 @@ type (
 		Proc  func(*sqlspec.Func) (*schema.Proc, error)
 		// Triggers add themselves to the relevant tables/views.
 		Triggers func(*schema.Realm, []*sqlspec.Trigger) error
+		// Objects add themselves to the realm.
+		Objects func(*schema.Realm) error
 	}
 
 	// SchemaFuncs represents a set of spec functions
@@ -70,6 +72,20 @@ type (
 		View  ViewSpecFunc
 		Func  func(*schema.Func) (*sqlspec.Func, error)
 		Proc  func(*schema.Proc) (*sqlspec.Func, error)
+	}
+	// RefNamer is an interface for objects that can
+	// return their reference.
+	RefNamer interface {
+		// Ref returns the reference to the object.
+		Ref() *schemahcl.Ref
+	}
+	// SpecTypeNamer is an interface for objects that can
+	// return their spec type and name.
+	SpecTypeNamer interface {
+		// SpecType returns the spec type of the object.
+		SpecType() string
+		// SpecName returns the spec name of the object.
+		SpecName() string
 	}
 )
 
@@ -240,6 +256,11 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 	}
 	if funcs.Triggers != nil {
 		if err := funcs.Triggers(r, doc.Triggers); err != nil {
+			return err
+		}
+	}
+	if funcs.Objects != nil {
+		if err := funcs.Objects(r); err != nil {
 			return err
 		}
 	}
@@ -722,6 +743,10 @@ func dependsOn(realm *schema.Realm, objects []schema.Object) (*schemahcl.Attr, b
 			n, s = d.Name, d.Schema.Name
 		case *schema.Proc:
 			n, s = d.Name, d.Schema.Name
+		case RefNamer:
+			// If the object is a reference, add it to the depends_on list.
+			deps = append(deps, d.Ref())
+			continue
 		}
 		if names[name(o, n)] > 1 {
 			path = append(path, s)
@@ -770,6 +795,15 @@ func fromDependsOn[T interface{ AddDeps(...schema.Object) T }](loc string, t T, 
 		case typeProcedure:
 			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (*schema.Proc, bool) {
 				return s.Proc(name)
+			})
+		default:
+			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (schema.Object, bool) {
+				return s.Object(func(o schema.Object) bool {
+					if o, ok := o.(SpecTypeNamer); ok {
+						return p[0].T == o.SpecType() && name == o.SpecName()
+					}
+					return false
+				})
 			})
 		}
 		if err != nil {
