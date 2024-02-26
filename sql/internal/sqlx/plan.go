@@ -620,8 +620,8 @@ func dependsOn(c1, c2 schema.Change) bool {
 		switch c2 := c2.(type) {
 		case *schema.AddSchema:
 			return c1.P.Schema.Name == c2.S.Name
-		case *schema.DropFunc:
-			return c1.P.Name == c2.F.Name && sameSchema(c1.P.Schema, c2.F.Schema) // Proc recreation.
+		case *schema.DropProc:
+			return c1.P.Name == c2.P.Name && sameSchema(c1.P.Schema, c2.P.Schema) // Proc recreation.
 		case *schema.AddProc:
 			if procDep(c1.P, c2.P) {
 				return true // Relies on other procedure or overload.
