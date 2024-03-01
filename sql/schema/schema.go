@@ -10,6 +10,7 @@ type (
 	Realm struct {
 		Schemas []*Schema
 		Attrs   []Attr
+		Objects []Object // Realm-level objects (e.g., users or extensions).
 	}
 
 	// A Schema describes a database schema (i.e. named database).
@@ -21,7 +22,7 @@ type (
 		Funcs   []*Func
 		Procs   []*Proc
 		Attrs   []Attr   // Attrs and options.
-		Objects []Object // Driver specific objects.
+		Objects []Object // Schema-level objects (e.g., types or sequences).
 	}
 
 	// An Object represents a generic database object.
@@ -212,6 +213,16 @@ func (r *Realm) Schema(name string) (*Schema, bool) {
 	for _, s := range r.Schemas {
 		if s.Name == name {
 			return s, true
+		}
+	}
+	return nil, false
+}
+
+// Object returns the first object that matched the given predicate.
+func (r *Realm) Object(f func(Object) bool) (Object, bool) {
+	for _, o := range r.Objects {
+		if f(o) {
+			return o, true
 		}
 	}
 	return nil, false

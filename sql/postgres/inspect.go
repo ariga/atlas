@@ -70,6 +70,9 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 			if err := i.inspectSequences(ctx, r, nil); err != nil {
 				return nil, err
 			}
+			if err := i.inspectExtensions(ctx, r, nil); err != nil {
+				return nil, err
+			}
 		}
 		if mode.Is(schema.InspectTriggers) {
 			if err := i.inspectTriggers(ctx, r, nil); err != nil {
