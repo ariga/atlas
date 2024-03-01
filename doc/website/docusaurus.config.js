@@ -1,7 +1,7 @@
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
 module.exports = {
-  title: 'Atlas | Open-source database schema management tool',
-  tagline: 'Manage your database schemas with Atlas CLI',
+  title: 'Atlas | Manage your database schema as code',
+  tagline: 'Manage your database schema as code',
   url: 'https://atlasgo.io',
   baseUrl: '/',
   onBrokenLinks: 'throw',
