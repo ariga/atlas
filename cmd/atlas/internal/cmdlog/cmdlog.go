@@ -787,6 +787,9 @@ func (s *SchemaInspect) MarshalSQL(indent ...string) (string, error) {
 
 func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 	var changes schema.Changes
+	for _, o := range report.Realm.Objects {
+		changes = append(changes, &schema.AddObject{O: o})
+	}
 	for _, s := range report.Realm.Schemas {
 		// Generate commands for creating the schemas on realm-mode.
 		if report.Client.URL.Schema == "" {

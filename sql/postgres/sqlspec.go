@@ -32,6 +32,7 @@ type (
 		Funcs        []*sqlspec.Func    `spec:"function"`
 		Procs        []*sqlspec.Func    `spec:"procedure"`
 		Triggers     []*sqlspec.Trigger `spec:"trigger"`
+		Extensions   []*extension       `spec:"extension"`
 		Schemas      []*sqlspec.Schema  `spec:"schema"`
 	}
 
@@ -56,13 +57,22 @@ type (
 		schemahcl.DefaultExtension
 	}
 
-	// Sequence holds a specification for a sequence.
+	// sequence holds a specification for a sequence.
 	sequence struct {
 		Name      string         `spec:",name"`
 		Qualifier string         `spec:",qualifier"`
 		Schema    *schemahcl.Ref `spec:"schema"`
 		// Type, Start, Increment, Min, Max, Cache, Cycle
 		// are optionally added to the sequence definition.
+		schemahcl.DefaultExtension
+	}
+
+	// extension holds a specification for a postgres extension.
+	// Note, extension names are unique within a realm (database).
+	extension struct {
+		Name string `spec:",name"`
+		// Schema, version and comment are conditionally
+		// added to the extension definition.
 		schemahcl.DefaultExtension
 	}
 )
@@ -77,6 +87,7 @@ func (d *doc) merge(d1 *doc) {
 	d.Domains = append(d.Domains, d1.Domains...)
 	d.Schemas = append(d.Schemas, d1.Schemas...)
 	d.Sequences = append(d.Sequences, d1.Sequences...)
+	d.Extensions = append(d.Extensions, d1.Extensions...)
 	d.Triggers = append(d.Triggers, d1.Triggers...)
 	d.Materialized = append(d.Materialized, d1.Materialized...)
 }
@@ -133,6 +144,7 @@ func init() {
 	schemahcl.Register("enum", &enum{})
 	schemahcl.Register("domain", &domain{})
 	schemahcl.Register("sequence", &sequence{})
+	schemahcl.Register("extension", &sequence{})
 }
 
 // evalSpec evaluates an Atlas DDL document into v using the input.
@@ -150,6 +162,9 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return err
 		}
 		if err := convertSequences(d.Tables, d.Sequences, v); err != nil {
+			return err
+		}
+		if err := convertExtensions(d.Extensions, v); err != nil {
 			return err
 		}
 		if err := normalizeRealm(v); err != nil {
@@ -173,6 +188,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		if err := convertSequences(d.Tables, d.Sequences, r); err != nil {
 			return err
 		}
+		// Extensions are skipped in schema scope.
 		if err := normalizeRealm(r); err != nil {
 			return err
 		}
@@ -191,22 +207,25 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 		d  doc
 		ts []*schema.Trigger
 	)
-	switch s := v.(type) {
+	switch rv := v.(type) {
 	case *schema.Schema:
-		d1, trs, err := schemaSpec(s)
+		d1, trs, err := schemaSpec(rv)
 		if err != nil {
 			return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 		}
 		ts = trs
 		d.merge(d1)
 	case *schema.Realm:
-		for _, s := range s.Schemas {
+		for _, s := range rv.Schemas {
 			d1, trs, err := schemaSpec(s)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 			}
 			d.merge(d1)
 			ts = append(ts, trs...)
+		}
+		if err := realmObjectsSpec(&d, rv); err != nil {
+			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Tables); err != nil {
 			return nil, err
@@ -232,10 +251,10 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 		if err := specutil.QualifyObjects(d.Procs); err != nil {
 			return nil, err
 		}
-		if err := specutil.QualifyReferences(d.Tables, s); err != nil {
+		if err := specutil.QualifyReferences(d.Tables, rv); err != nil {
 			return nil, err
 		}
-		if err := qualifySeqRefs(d.Sequences, d.Tables, s); err != nil {
+		if err := qualifySeqRefs(d.Sequences, d.Tables, rv); err != nil {
 			return nil, err
 		}
 	default:

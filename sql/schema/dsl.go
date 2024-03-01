@@ -121,6 +121,12 @@ func (r *Realm) AddSchemas(schemas ...*Schema) *Realm {
 	return r
 }
 
+// AddObjects adds the given objects to the realm.
+func (r *Realm) AddObjects(objs ...Object) *Realm {
+	r.Objects = append(r.Objects, objs...)
+	return r
+}
+
 // SetCharset sets or appends the Charset attribute
 // to the realm with the given value.
 func (r *Realm) SetCharset(v string) *Realm {

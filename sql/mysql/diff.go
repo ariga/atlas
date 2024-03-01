@@ -53,6 +53,12 @@ func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
 	return changes
 }
 
+// RealmObjectDiff returns a changeset for migrating realm (database) objects
+// from one state to the other. For example, adding extensions or users.
+func (*diff) RealmObjectDiff(_, _ *schema.Realm) ([]schema.Change, error) {
+	return nil, nil
+}
+
 // SchemaObjectDiff returns a changeset for migrating schema objects from
 // one state to the other.
 func (*diff) SchemaObjectDiff(_, _ *schema.Schema) ([]schema.Change, error) {

@@ -27,6 +27,10 @@ type (
 	// have database-specific diff logic. See sql/schema/mysql/diff.go for an
 	// implementation example.
 	DiffDriver interface {
+		// RealmObjectDiff returns a changeset for migrating realm (database) objects
+		// from one state to the other. For example, adding extensions or users.
+		RealmObjectDiff(from, to *schema.Realm) ([]schema.Change, error)
+
 		// SchemaAttrDiff returns a changeset for migrating schema attributes
 		// from one state to the other. For example, changing schema collation.
 		SchemaAttrDiff(from, to *schema.Schema) []schema.Change
@@ -116,6 +120,12 @@ func (d *Diff) RealmDiff(from, to *schema.Realm, options ...schema.DiffOption) (
 		changes schema.Changes
 		opts    = schema.NewDiffOptions(options...)
 	)
+	// Realm-level objects.
+	change, err := d.RealmObjectDiff(from, to)
+	if err != nil {
+		return nil, err
+	}
+	changes = opts.AddOrSkip(changes, change...)
 	// Drop or modify schema.
 	for _, s1 := range from.Schemas {
 		s2, ok := to.Schema(s1.Name)

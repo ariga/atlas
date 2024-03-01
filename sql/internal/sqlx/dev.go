@@ -50,6 +50,14 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 			Schemas: make([]string, 0, len(r.Schemas)),
 		}
 	)
+	for _, o := range r.Objects {
+		changes = append(changes, &schema.AddObject{
+			O: o,
+			Extra: []schema.Clause{
+				&schema.IfNotExists{},
+			},
+		})
+	}
 	for _, s := range r.Schemas {
 		opts.Schemas = append(opts.Schemas, s.Name)
 		changes = append(changes, &schema.AddSchema{

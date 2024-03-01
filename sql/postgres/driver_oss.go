@@ -30,6 +30,10 @@ var (
 	}
 )
 
+func realmObjectsSpec(*doc, *schema.Realm) error {
+	return nil // unimplemented.
+}
+
 func triggersSpec([]*schema.Trigger, *doc) error {
 	return nil // unimplemented.
 }
@@ -55,6 +59,10 @@ func (*inspect) inspectTriggers(context.Context, *schema.Realm, *schema.InspectO
 }
 
 func (*inspect) inspectDeps(context.Context, *schema.Realm, *schema.InspectOptions) error {
+	return nil // unimplemented.
+}
+
+func (*inspect) inspectExtensions(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
 }
 
@@ -165,6 +173,12 @@ func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
 	return false // unimplemented.
 }
 
+// RealmObjectDiff returns a changeset for migrating realm (database) objects
+// from one state to the other. For example, adding extensions or users.
+func (*diff) RealmObjectDiff(_, _ *schema.Realm) ([]schema.Change, error) {
+	return nil, nil // unimplemented.
+}
+
 // SchemaObjectDiff returns a changeset for migrating schema objects from
 // one state to the other.
 func (*diff) SchemaObjectDiff(from, to *schema.Schema) ([]schema.Change, error) {
@@ -217,6 +231,13 @@ func convertDomains(_ []*sqlspec.Table, domains []*domain, _ *schema.Realm) erro
 func convertSequences(_ []*sqlspec.Table, seqs []*sequence, _ *schema.Realm) error {
 	if len(seqs) > 0 {
 		return fmt.Errorf("postgres: sequences are not supported by this version. Use: https://atlasgo.io/getting-started")
+	}
+	return nil
+}
+
+func convertExtensions(exs []*extension, _ *schema.Realm) error {
+	if len(exs) > 0 {
+		return fmt.Errorf("postgres: extensions are not supported by this version. Use: https://atlasgo.io/getting-started")
 	}
 	return nil
 }
