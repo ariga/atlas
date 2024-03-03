@@ -147,8 +147,8 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-9', // Increment on change
-      content: `<strong>Atlas v0.19: Pre-migration Checks, Schema Doc, MSSQL Triggers, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/02/02/atlas-v-0-19">Read it here</a>`,
+      id: 'announcementBar-10', // Increment on change
+      content: `<strong>Upcoming Pricing Changes to Atlas Cloud. </strong><a class="cta" href="https://atlasgo.io/blog/2024/03/03/pricing-change">Read all about it here.</a>`,
       isCloseable: true,
       backgroundColor: '#0084ec',
       textColor: '#fff',
