@@ -1172,6 +1172,10 @@ table "t" {
 
 ### User-defined types
 
+There are two types of [user-defined types](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-type-transact-sql) are supported by Atlas: Alias Types and Table Types.
+
+The CLR user-defined types are not supported by Atlas.
+
 #### Alias Types
 
 The `type_alias` type allows creating columns with user-defined types.
@@ -1258,7 +1262,7 @@ type_alias "zip" {
 ```
 
 :::note
-SQL Server doesn't support creating a named unique constraint on a user-defined table type. Atlas was unable to handle duplicate unique constraints on table types. The below example will cause schema diff for every time it applies schema.
+SQL Server doesn't support creating a named unique constraint on a user-defined table type. Atlas was unable to handle duplicate unique constraints (the unique constraints on the same columns) on table types. The below example will cause schema diff for every time it applies schema.
 
 ```sql
 CREATE TYPE [typ1] AS TABLE (
