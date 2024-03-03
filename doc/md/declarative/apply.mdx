@@ -15,6 +15,19 @@ and the desired schema, while Atlas does the planning.
 
 [Read more about declarative workflows](/concepts/declarative-vs-versioned)
 
+:::info Login to Atlas
+By default, running `atlas schema apply` applies only **schemas**, **tables**, and their associated **indexes** and
+constraints such as **foreign keys** and **checks**.
+
+**Views**, **materialized views**, **functions**, **procedures**, **triggers**, **sequences**, **domains**, **extensions**,
+and additional beta features are available to logged-in users only. To include these resources in schema migrations, use
+the following command:
+
+```shell
+atlas login
+```
+:::
+
 ## Flags
 
 The `schema apply` command generates a migration plan and applies it to the database to bring it to the desired state.
