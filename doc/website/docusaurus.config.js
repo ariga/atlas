@@ -125,7 +125,7 @@ module.exports = {
           "title": "Atlas Cloud",
           "items": [
             {"label": "Discover Atlas Cloud", "to": "https://atlasgo.cloud/?utm_term=footer"},
-            {"label": "Live Demo", "to": "https://gh.atlasgo.cloud/dirs?utm_term=footer"},
+            {"label": "Live Demo", "to": "https://gh.atlasgo.cloud/projects?utm_term=footer"},
             {"label": "Sign Up", "to": "https://auth.atlasgo.cloud/signup?utm_term=footer"},
           ]
         },
