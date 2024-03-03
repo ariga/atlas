@@ -1170,6 +1170,108 @@ table "t" {
 }
 ```
 
+### User-defined types
+
+There are two types of [user-defined types](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-type-transact-sql) are supported by Atlas: Alias Types and Table Types.
+
+The CLR user-defined types are not supported by Atlas.
+
+#### Alias Types
+
+The `type_alias` type allows creating columns with user-defined types.
+
+```hcl
+type_alias "ssn" {
+  schema = schema.dbo
+  type   = varchar(11)
+  null   = false
+}
+type_alias "age" {
+  schema = schema.dbo
+  type   = smallint
+  null   = false
+}
+table "t" {
+  schema = schema.dbo
+  column "ssn" {
+    type = type_alias.ssn
+  }
+  column "age" {
+    type = type_alias.age
+  }
+}
+```
+
+#### Table Types
+
+The `type_table` type allows the creation of columns with user-defined table types. The User-Defined table type only allows to use of functions/procedures arguments and not on table columns.
+
+```hcl
+type_table "address" {
+  schema = schema.dbo
+  column "ssn" {
+    type = type_alias.ssn
+  }
+  column "street" {
+    type = varchar(255)
+  }
+  column "city" {
+    type = varchar(255)
+  }
+  column "state" {
+    type = varchar(2)
+  }
+  column "zip" {
+    type = type_alias.zip
+  }
+  index {
+    unique  = true
+    columns = [column.ssn]
+  }
+  check "zip_check" {
+    expr = "len(zip) = 5"
+  }
+}
+function "fn1" {
+  schema = schema.dbo
+  lang   = SQL
+  arg "@a1" {
+    type     = type_table.address
+    readonly = true // The table type is readonly argument.
+  }
+  arg "@zip" {
+    type = type_alias.zip
+  }
+  return = int
+  as     = <<-SQL
+  BEGIN
+    RETURN (SELECT COUNT(1) FROM @a1 WHERE zip = @zip);
+  END
+  SQL
+}
+type_alias "ssn" {
+  schema = schema.foo
+  type   = varchar(11)
+  null   = false
+}
+type_alias "zip" {
+  schema = schema.foo
+  type   = varchar(5)
+  null   = false
+}
+```
+
+:::note
+SQL Server doesn't support creating a named unique constraint on a user-defined table type. Atlas was unable to handle duplicate unique constraints (the unique constraints on the same columns) on table types. The below example will cause schema diff for every time it applies schema.
+
+```sql
+CREATE TYPE [typ1] AS TABLE (
+  [c1] int NOT NULL UNIQUE ([c1] DESC),
+  UNIQUE ([c1] ASC)
+);
+```
+:::
+
 ## ClickHouse
 
 ### Array
