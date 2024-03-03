@@ -746,8 +746,8 @@ table "users" {
 
 ## Trigger
 
-:::info BETA FEATURE
-Triggers are currently in beta and available to logged-in users only. To use this feature, run:
+:::info LOGIN REQUIRED
+Triggers are currently available to logged-in users only. To use this feature, run:
 ```
 atlas login
 ```
@@ -907,8 +907,8 @@ trigger "audit_log_trigger" {
 
 ## Function
 
-:::info BETA FEATURE
-Functions are currently in beta and available to logged-in users only. To use this feature, run:
+:::info LOGIN REQUIRED
+Functions are currently available to logged-in users only. To use this feature, run:
 ```
 atlas login
 ```
@@ -1105,8 +1105,8 @@ function "fn_return_table" {
 
 ## Procedure
 
-:::info BETA FEATURE
-Procedures are currently in beta and available to logged-in users only. To use this feature, run:
+:::info LOGIN REQUIRED
+Procedures are currently available to logged-in users only. To use this feature, run:
 ```
 atlas login
 ```
@@ -1273,8 +1273,8 @@ procedure "p8" {
 
 ## Domain
 
-:::info BETA FEATURE
-Domains are currently in beta and available to logged-in users only. To use this feature, run:
+:::info LOGIN REQUIRED
+Domains are currently available to logged-in users only. To use this feature, run:
 ```
 atlas login
 ```
@@ -1320,8 +1320,8 @@ schema "public" {
 
 ## Sequence
 
-:::info BETA FEATURE
-Sequences are currently in beta and available to logged-in users only. To use this feature, run:
+:::info LOGIN REQUIRED
+Sequences are currently available to logged-in users only. To use this feature, run:
 ```
 atlas login
 ```
@@ -1413,6 +1413,50 @@ table "t2" {
   }
 }
 ```
+
+## Extension
+
+:::info BETA FEATURE
+Extensions are currently in beta and available to logged-in users only. To use this feature, run:
+```
+atlas login
+```
+:::
+
+The `extension` block allows the definition of PostgreSQL extensions to be loaded into the database. The following
+arguments are supported:
+- `schema` (Optional) - The schema in which to install the extension's objects, given that the extension allows its contents to be relocated.
+- `version` (Optional) - The version of the extension to install. Defaults to the version specified in the extension's control file.
+- `comment` (Read-only) - The description of the extension. This field is populated in `atlas inspect` output.
+
+```hcl
+extension "adminpack" {
+  version = "2.1"
+  comment = "administrative functions for PostgreSQL"
+}
+extension "postgis" {
+  schema  = schema.public
+  version = "3.4.1"
+  comment = "PostGIS geometry and geography spatial types and functions"
+}
+extension "pgcrypto" {
+  schema  = schema.public
+  version = "1.3"
+  comment = "cryptographic functions"
+}
+schema "public" {
+  comment = "standard public schema"
+}
+```
+
+:::info Extensions work in [database-scope](/concepts/url#scope) only
+Although the `schema` argument is supported, it only indicates where the extension's objects will be installed. However,
+the extension itself is installed at the database level and cannot be loaded multiple times into different schemas.
+
+Therefore, to avoid conflicts with other schemas, when working with extensions, the scope of the migration should be
+set to the database, where objects are qualified with the schema name. To learn more about the difference between
+database and schema scopes, visit [this doc](/concepts/url#scope).
+:::
 
 ## Comment
 
