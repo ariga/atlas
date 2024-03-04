@@ -4,27 +4,43 @@ title: Getting Started with Atlas Cloud
 sidebar_label: Getting Started
 ---
 
-### What is Atlas Cloud?
+## What is Atlas Cloud?
 
 [Atlas Cloud](https://atlasgo.cloud) is an online platform that supplements the Atlas CLI
-to allow teams to build robust, end-to-end schema management workflows.  We built it to help
+to allow teams to build robust, end-to-end schema management workflows. We built it to help
 teams make the most out of Atlas with as little friction and effort as possible.
 
-### What can I do with Atlas Cloud?
+## What can I do with Atlas Cloud?
 
-* **Store your migration directories in a central location** - Atlas Cloud allows you to push your migrations in a
-  central location which greatly simplifies the process of deploying your migrations to
-  production.
-* **Continuous Integration** - If you're not careful, it's easy to accidentally deploy a schema migration
-  that breaks your application.  Atlas Cloud automatically simulates and reviews your migrations during
-  the CI process to ensure that your migrations are safe to deploy.
-* **Deployments** - Atlas Cloud seamlessly integrates with modern deployment tools like Kubernetes and Terraform
-  to make it easy to deploy your migrations to production as part of your existing CD process.
-* **Visibility** - Atlas Cloud provides a single pane of glass to view the status of your migrations across
-  all of your environments.  You can also view the status of individual migrations to see which migrations
-  have been deployed to which environments.
+### For Individuals: Unlock the full power of Atlas CLI
 
-### How do I get started?
+By logging in to Atlas Cloud, get access to enhanced schema management, such as views, triggers, functions and stored procedures.
+You will also get access to various database drivers, private visualizations, and more. For a full list of the CLI features
+that require login access, click [here](/features#feature-availability).
+
+### For Teams: Take database schema management to the next level
+* **[Schema Documentation](/cloud/features/schema-docs)** - Enjoy always up-to-date automatically generated docs for your schema. Atlas Cloud manages a
+single source of truth for the database schema in a format that is easy to understand and navigate.
+
+* **[Automatic Code Review](/cloud/setup-ci)** - If you're not careful, it's easy to accidentally deploy a schema migration
+ that breaks your application. Atlas Cloud automatically simulates and reviews your migrations during
+the CI process to ensure that your migrations are safe to deploy. With the Cloud, you can view detailed reports breaking down
+each change and its severity.
+
+* **[Stronger Safety Guarantees](/cloud/features/pre-migration-checks)** - Safeguard deployments with pre-migration checks and interactive migrations.
+
+* **Full Visibility** - Atlas Cloud provides a single pane of glass to view your database schemas, and the status of your migrations across
+ all of your environments.
+
+* **[Fast Troubleshooting](/cloud/deployment#visualizing-migration-runs)** - Quickly resolve failed migrations with detailed deployment logs.
+
+* **[Simplify your Pipelines](/cloud/deployment)** - Declutter deployment pipelines by pushing migrations to Atlas Cloud. Atlas Cloud seamlessly
+integrates with modern deployment tools like Kubernetes and Terraform to make it easy to deploy your migrations to production
+as part of your existing CD process.
+
+* **[Send Notifications](/cloud/directories#slack-integration)** - Notify the right people when schema changes are proposed and deployed via Slack and other integrations.
+
+## How do I get started?
 
 1. **Create an account** - in the [signup page](https://auth.atlasgo.cloud/signup) or from the CLI:
 
@@ -36,38 +52,12 @@ teams make the most out of Atlas with as little friction and effort as possible.
 3. **Deploy from your connected directory** - Once you've connected a migration directory, you can deploy migrations
    from your Cloud account.  [Follow this guide](/cloud/deployment) to learn how.
 
-### Can I see a demo?
+## Can I see a demo?
 
 Yes, head over to our [live demo account](https://gh.atlasgo.cloud) to see Atlas Cloud in action.
 
-### Can I use Atlas Cloud for free?
+## Can I use Atlas Cloud for free?
 
 Atlas Cloud comes with a free "Community" plan which should be more than enough for most teams.
 
 To learn more see the [pricing page](https://atlasgo.cloud/pricing).
-
-### How do I get access to beta drivers?
-
-Atlas Cloud users can get early access to beta drivers by joining the Atlas Cloud Beta Program. To join the program,
-you first need to create an account on Atlas Cloud, enable it in your account settings, and then login to the CLI
-using your Atlas identity.
-
-1. Sign up first on [Atlas Cloud](https://auth.atlasgo.cloud/signup).
-
-2. Go to the account settings by clicking your avatar. Then, select the driver you want to get access to. For example,
-Microsoft SQL Server.
-
-  <details>
-  <summary>Screenshot example</summary>
-
-  ![](https://atlasgo.io/uploads/cloud/images/beta-drivers.png)
-
-  </details>
-
-3. Last, run `atlas login` to login or refetch your account permissions:
-
-  ```text
-  $ atlas login a8m
-  //highlight-next-line-info
-  You are now connected to "a8m" on Atlas Cloud.
-  ```
