@@ -32,7 +32,9 @@ type crdbTest struct {
 }
 
 var crdbTests = map[string]*crdbTest{
-	"cockroach": {port: 26257},
+	"cockroach-21": {port: 26257},
+	"cockroach-22": {port: 26258},
+	"cockroach-23": {port: 26259},
 }
 
 func crdbRun(t *testing.T, fn func(*crdbTest)) {

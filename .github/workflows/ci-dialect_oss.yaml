@@ -416,10 +416,10 @@ jobs:
         run: go test -race -count=2 -v -run="TiDB" -version="tidb6" -timeout 15m ./...
         
 
-  integration-cockroach:
+  integration-cockroach-21:
     runs-on: ubuntu-latest
     services:
-      cockroach:
+      cockroach-21:
         image: ghcr.io/ariga/cockroachdb-single-node:v21.2.11
         
         ports:
@@ -430,8 +430,46 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
-      - name: Run integration tests for cockroach
+      - name: Run integration tests for cockroach-21
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="Cockroach" -version="cockroach" -timeout 15m ./...
+        run: go test -race -count=2 -v -run="Cockroach" -version="cockroach-21" -timeout 15m ./...
+        
+
+  integration-cockroach-22:
+    runs-on: ubuntu-latest
+    services:
+      cockroach-22:
+        image: ghcr.io/ariga/cockroachdb-single-node:v22.1.0
+        
+        ports:
+          - 26258:26257
+        
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version-file: cmd/atlas/go.mod
+      - name: Run integration tests for cockroach-22
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Cockroach" -version="cockroach-22" -timeout 15m ./...
+        
+
+  integration-cockroach-23:
+    runs-on: ubuntu-latest
+    services:
+      cockroach-23:
+        image: ghcr.io/ariga/cockroachdb-single-node:v23.1.14
+        
+        ports:
+          - 26259:26257
+        
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version-file: cmd/atlas/go.mod
+      - name: Run integration tests for cockroach-23
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Cockroach" -version="cockroach-23" -timeout 15m ./...
         
 

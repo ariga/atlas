@@ -24,10 +24,22 @@ func init() {
 			Ports:   []string{"4310:4000"},
 		},
 		Job{
-			Version: "cockroach",
+			Version: "cockroach-21",
 			Image:   "ghcr.io/ariga/cockroachdb-single-node:v21.2.11",
 			Regex:   "Cockroach",
 			Ports:   []string{"26257:26257"},
+		},
+		Job{
+			Version: "cockroach-22",
+			Image:   "ghcr.io/ariga/cockroachdb-single-node:v22.1.0",
+			Regex:   "Cockroach",
+			Ports:   []string{"26258:26257"},
+		},
+		Job{
+			Version: "cockroach-23",
+			Image:   "ghcr.io/ariga/cockroachdb-single-node:v23.1.14",
+			Regex:   "Cockroach",
+			Ports:   []string{"26259:26257"},
 		},
 	)
 }
