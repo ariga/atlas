@@ -1,0 +1,38 @@
+---
+id: beta-drivers
+title: Get access to beta drivers
+---
+
+Atlas Cloud users can get early access to beta drivers by joining the Atlas Cloud Beta Program. To join the program,
+you first need to create an account on Atlas Cloud, enable it in your account settings, and then login to the CLI
+using your Atlas identity.
+
+### Sign up to Atlas Cloud
+
+The first step is to sign up to [Atlas Cloud](https://auth.atlasgo.cloud/signup). If you already have an account, you can skip this step.
+
+### Opt-in to the beta program
+
+Go to the account settings by clicking your avatar. Then, select the driver you want to get access to. For example,
+Microsoft SQL Server.
+
+![](https://atlasgo.io/uploads/cloud/images/beta-drivers.png)
+
+### Login to the CLI
+
+Then, run `atlas login` to login or update your account permissions:
+
+```text
+$ atlas login a8m
+//highlight-next-line-info
+You are now connected to "a8m" on Atlas Cloud.
+```
+
+### Use the beta driver
+
+```bash
+atlas schema apply \
+  --url "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master" \
+  --to "file://schema.hcl"
+```
+
