@@ -9,7 +9,8 @@ jobs:
 {{- range $.Jobs }}
   integration-{{ .Version }}:
     runs-on: {{ $.Runner }}
-    {{ if .Image }}services:
+    {{- if .Image }}
+    services:
       {{ .Version }}:
         image: {{ .Image }}
         {{ with .Env }}env:{{ range . }}
@@ -23,6 +24,17 @@ jobs:
         {{- end }}{{ end }}
     steps:
       - uses: actions/checkout@v2.3.4
+      {{- with .ExtraSteps }}
+      {{ range . }}
+      - name: {{ .Name }}
+        uses: {{ .Action }}
+        {{- with .With }}
+        with:
+          {{- range . }}
+          {{ . }}{{ end }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
