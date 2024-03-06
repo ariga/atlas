@@ -24,6 +24,9 @@ jobs:
         {{- end }}{{ end }}
     steps:
       - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v4
+        with:
+          go-version-file: cmd/atlas/go.mod
       {{- with .Steps }}
       {{ range . }}
       - name: {{ .Name }}
@@ -35,9 +38,6 @@ jobs:
         {{- end }}
       {{- end }}
       {{- end }}
-      - uses: actions/setup-go@v4
-        with:
-          go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for {{ .Version }}
         working-directory: internal/integration
         run: go test {{ with $.Tags }}-tags={{ . }} {{ end }}-race -count=2 -v -run="{{ .Regex }}" -version="{{ .Version }}" -timeout 15m ./...
