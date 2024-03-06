@@ -367,7 +367,6 @@ jobs:
 
   integration-sqlite:
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v4
