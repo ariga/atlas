@@ -9,7 +9,8 @@ jobs:
 {{- range $.Jobs }}
   integration-{{ .Version }}:
     runs-on: {{ $.Runner }}
-    {{ if .Image }}services:
+    {{- if .Image }}
+    services:
       {{ .Version }}:
         image: {{ .Image }}
         {{ with .Env }}env:{{ range . }}
@@ -26,6 +27,17 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
+      {{- with .Steps }}
+      {{ range . }}
+      - name: {{ .Name }}
+        uses: {{ .Action }}
+        {{- with .With }}
+        with:
+          {{- range . }}
+          {{ . }}{{ end }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
       - name: Run integration tests for {{ .Version }}
         working-directory: internal/integration
         run: go test {{ with $.Tags }}-tags={{ . }} {{ end }}-race -count=2 -v -run="{{ .Regex }}" -version="{{ .Version }}" -timeout 15m ./...
