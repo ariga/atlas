@@ -27,13 +27,13 @@ type (
 	}
 	// Job defines an integration job to run.
 	Job struct {
-		Version    string   // version to test (passed to go test as flag which database dialect/version)
-		Image      string   // name of service
-		Regex      string   // run regex
-		Env        []string // env of service
-		Ports      []string // port mappings
-		Options    []string // other options
-		ExtraSteps []Step   // extra steps to run
+		Version string   // version to test (passed to go test as flag which database dialect/version)
+		Image   string   // name of service
+		Regex   string   // run regex
+		Env     []string // env of service
+		Ports   []string // port mappings
+		Options []string // other options
+		Steps   []Step   // extra steps to run
 	}
 )
 
