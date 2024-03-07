@@ -15,7 +15,7 @@ schema changes to databases is as follows: **Develop** ⇨ **Check (CI)** ⇨ **
    and align with best practices. Add Atlas to your CI pipeline in [GitHub Actions](/cloud/setup-ci) or [GitLab](/guides/ci-platforms/gitlab)
    to review migrations files before they get merged into the main branch.
 3. **Push (Delivery)** - Use `atlas migrate push`, or set up a CI pipeline to push the latest migrations state to the
-   [Atlas Cloud Schema Registry](/cloud/features/registry). Alternatively, you can package the migrations directory into
+   [Atlas Schema Registry](/cloud/features/registry). Alternatively, you can package the migrations directory into
    a custom Docker image and push it to an artifactory.
 4. **Deploy** - Use `atlas migrate apply` to apply the pending migrations to your database(s).
 
@@ -30,7 +30,7 @@ The following flags are required:
 * `--dir` the URL to the migration directory. It defaults to `file://migrations`.
 
 :::info Reading remote directories
-Users who have connected or pushed their migration directories to the Atlas Cloud Schema Registry can read the migrations state directly from
+Users who have connected or pushed their migration directories to the Atlas Schema Registry can read the migrations state directly from
 there without needing to have them locally. For example, `atlas migrate apply --dir "atlas://app"` will apply the pending
 migrations of the `app` project based on the most recent pushed state. To see it in action, run the following:
 
