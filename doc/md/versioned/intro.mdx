@@ -11,7 +11,7 @@ import Discord from '../../website/src/assets/icons/discord-white.svg'
 
 This guide offers a high-level overview of the Atlas versioned migration workflow. It walks you through the steps of
 creating a migration directory, automatically generating SQL migration from its desired schema, pushing the migration
-directory to Atlas, and applying changes to databases. For more in-depth guides, please check out the other pages in
+directory to the Atlas Schema Registry, and applying changes to databases. For more in-depth guides, please check out the other pages in
 this section or visit our [guides](/guides).
 
 ## Creating the first migration
@@ -195,18 +195,18 @@ h1:kGsXTVLtL0vs9Un8aaGKwMHZ2iMibgTQxwyAt7+Elcw=
 </TabItem>
 </Tabs>
 
-## Pushing migrations to Atlas
+## Pushing migrations to the Schema Registry
 
 Now that we have our first migration, we can apply it to a database. There are multiple ways to accomplish this, with
 most methods covered in the [guides](/guides) section. In this example, we'll demonstrate how to push migrations to
-[Atlas Cloud](https://auth.atlasgo.cloud/signup), much like how Docker images are pushed to Docker Hub.
+the [Atlas Cloud Schema Registry](/cloud/features/registry), much like how Docker images are pushed to Docker Hub.
 
 <div style={{textAlign: 'center'}}>
     <img src="https://atlasgo.io/uploads/cloud/images/init-migration-dir.png" alt="atlas migrate push" width="100%"/>
     <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
 </div>
 
-Firstly, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time, you'll be
+First, [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time, you'll be
 prompted to create both an account and a workspace (organization):
 
 <Tabs>
@@ -243,8 +243,8 @@ image above.
 ## Applying migrations
 
 Once our `app` migration directory has been pushed, we can apply it to a database from any CD platform without
-necessarily having our directory there. For the sake of this example, let's spin up a local database that represents
-our production database to apply the migrations to it:
+needing to pull our migration files from source control. For the sake of this example, let's spin up a local database
+that represents our production database to apply the migrations to it:
 
 <Tabs>
 <TabItem value="postgres" label="PostgreSQL">
