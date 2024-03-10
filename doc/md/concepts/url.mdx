@@ -266,7 +266,7 @@ can read this value and escape it using the `urlescape` function:
 
 ```hcl title="atlas.hcl"
 locals {
-  db_pass = urlescape(env("DB_PASSWORD"))
+  db_pass = urlescape(getenv("DB_PASSWORD"))
 }
 
 env "local" {
