@@ -16,8 +16,8 @@ import TabItem from '@theme/TabItem';
   for them, based on the desired state of their schema instead of crafting them by hand.
 
 ## Automatic migration planning for Doctrine
-Doctrine is a popular ORM widely used in the PHP community, used by projects like Symfony. 
-Doctrine allows users to manage their database schemas using its [orm:schema-tool](https://www.doctrine-project.org/projects/doctrine-orm/en/3.1/reference/tools.html#schematool) Console command,
+Doctrine is a popular ORM widely used in the PHP community, used by projects like [Symfony](https://symfony.com/).
+Doctrine allows users to manage their database schemas using its [orm:schema-tool](https://www.doctrine-project.org/projects/doctrine-orm/en/3.1/reference/tools.html#schematool) Console Command,
 which is usually sufficient during development and in many simple cases.
 
 However, at some point, teams need more control and decide to employ [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology.
@@ -25,22 +25,21 @@ Doctrine has a [Migration tool](https://www.doctrine-project.org/projects/doctri
 Doctrine can also [generate a migration](https://www.doctrine-project.org/projects/doctrine-migrations/en/3.7/reference/generating-migrations.html)
 for you by comparing the current state of your database schema to the state defined by using the ORM.
 
-
-A downside of this approach is that in order for it to work, a pre-existing database with the current version of the schema must be connected to.
+A downside of this approach is that in order for it to work, you must be connected to a pre-existing database with the current version of the schema.
 In many production environments, databases should generally not be reachable from developer workstations,
 which means this comparison is normally done against a local copy of the database which may have
 undergone some changes that aren't reflected in the existing migrations.
 
-More of the limitations of Doctrine migration tool include:
+More of the limitations of the Doctrine migration tool include:
 
 * **Ensuring Migration Safety.** Migrations are a risky business. If you're not careful, you can easily cause data loss or 
-  a production outage. Doctrine migration tool does not provide a native way to ensure that a migration is safe to apply.
-* **Modern Deployments.**  Doctrine does not provide native integration with modern deployment practices such as [GitOps](/blog/2023/12/06/gitops-for-databases-part-1)
+  a production outage. The Doctrine migration tool does not provide a native way to ensure that a migration is safe to apply.
+* **Modern Deployments.**  Doctrine does not provide native integrations with modern deployment practices such as [GitOps](/blog/2023/12/06/gitops-for-databases-part-1)
   or [Infrastructure-as-Code](/blog/2023/07/19/bridging-the-gap-between-iac-and-schema-management).
 
 Using Atlas, you can enjoy automatic migration planning, automatic code review and integrations with your favorite CI/CD tools.
 
-Atlas works in similar way to Doctrine migration tool, by calculating the diff between the _current_ state of the database,
+Atlas works in similar way to the Doctrine migration tool, by calculating the diff between the _current_ state of the database,
 
 In the context of [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations),
 the current state can be thought of as the database schema that would have
@@ -92,7 +91,7 @@ The Atlas Doctrine Provider can be used in two modes:
 
 * **Doctrine Command** - If all of your Doctrine entities exist under single directory,
 you can add the atlas-provider command to the [Doctrine Console](https://www.doctrine-project.org/projects/doctrine-orm/en/3.0/reference/tools.html) file.
-* **Script** - In other cases, you can use the provider as a php script to load your Doctrine schema into Atlas.
+* **Script** - In other cases, you can use the provider as a PHP script to load your Doctrine schema into Atlas.
 
 ### Using the Doctrine Command
 
@@ -303,7 +302,7 @@ CREATE TABLE `bugs` (
 
 Amazing! Atlas automatically generated a migration file that will create the `users` and `bugs` tables in our database.
 
-Next, alter the `User` entity to include `$name` property.
+Next, alter the `User` entity to include a `$name` property.
 
 ```diff
     #[ORM\Id]
