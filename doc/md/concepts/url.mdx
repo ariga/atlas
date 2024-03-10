@@ -101,9 +101,17 @@ Connecting to a local SQLServer database named `master` (all schemas). The user 
 sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master&mode=database
 ```
 
+Azure Active Directory (AAD) authentication:
+
+Use the `fedauth` parameter to specify the AAD authentication method. For more information, see [the document on the underlying driver](https://github.com/microsoft/go-mssqldb?tab=readme-ov-file#azure-active-directory-authentication).
+```shell
+azuresql://<instance>.database.windows.net?fedauth=ActiveDirectoryDefault&database=master
+```
+
 :::note
 - The `mode` parameter is Atlas-specific and isn't used for opening the underlying connection.
 - The default `mode` is `schema`.
+- The `azuresql` schema is used for AAD authentication with Azure SQL Database and Azure SQL Managed Instance.
 :::
 </TabItem>
 <TabItem value="sqlite">
