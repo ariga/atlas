@@ -23,17 +23,17 @@ import (
 
 type (
 	doc struct {
-		Tables       []*sqlspec.Table   `spec:"table"`
-		Views        []*sqlspec.View    `spec:"view"`
-		Materialized []*sqlspec.View    `spec:"materialized"`
-		Enums        []*enum            `spec:"enum"`
-		Domains      []*domain          `spec:"domain"`
-		Sequences    []*sequence        `spec:"sequence"`
-		Funcs        []*sqlspec.Func    `spec:"function"`
-		Procs        []*sqlspec.Func    `spec:"procedure"`
-		Triggers     []*sqlspec.Trigger `spec:"trigger"`
-		Extensions   []*extension       `spec:"extension"`
-		Schemas      []*sqlspec.Schema  `spec:"schema"`
+		Tables       []*sqlspec.Table    `spec:"table"`
+		Views        []*sqlspec.View     `spec:"view"`
+		Materialized []*sqlspec.View     `spec:"materialized"`
+		Enums        []*enum             `spec:"enum"`
+		Domains      []*domain           `spec:"domain"`
+		Sequences    []*sqlspec.Sequence `spec:"sequence"`
+		Funcs        []*sqlspec.Func     `spec:"function"`
+		Procs        []*sqlspec.Func     `spec:"procedure"`
+		Triggers     []*sqlspec.Trigger  `spec:"trigger"`
+		Extensions   []*extension        `spec:"extension"`
+		Schemas      []*sqlspec.Schema   `spec:"schema"`
 	}
 
 	// Enum holds a specification for an enum type.
@@ -54,16 +54,6 @@ type (
 		Null      bool             `spec:"null"`
 		Default   cty.Value        `spec:"default"`
 		Checks    []*sqlspec.Check `spec:"check"`
-		schemahcl.DefaultExtension
-	}
-
-	// sequence holds a specification for a sequence.
-	sequence struct {
-		Name      string         `spec:",name"`
-		Qualifier string         `spec:",qualifier"`
-		Schema    *schemahcl.Ref `spec:"schema"`
-		// Type, Start, Increment, Min, Max, Cache, Cycle
-		// are optionally added to the sequence definition.
 		schemahcl.DefaultExtension
 	}
 
@@ -128,23 +118,10 @@ func (d *domain) SetQualifier(q string) { d.Qualifier = q }
 // SchemaRef returns the schema reference for the domain.
 func (d *domain) SchemaRef() *schemahcl.Ref { return d.Schema }
 
-// Label returns the defaults label used for the sequence resource.
-func (s *sequence) Label() string { return s.Name }
-
-// QualifierLabel returns the qualifier label used for the sequence resource, if any.
-func (s *sequence) QualifierLabel() string { return s.Qualifier }
-
-// SetQualifier sets the qualifier label used for the sequence resource.
-func (s *sequence) SetQualifier(q string) { s.Qualifier = q }
-
-// SchemaRef returns the schema reference for the sequence.
-func (s *sequence) SchemaRef() *schemahcl.Ref { return s.Schema }
-
 func init() {
 	schemahcl.Register("enum", &enum{})
 	schemahcl.Register("domain", &domain{})
-	schemahcl.Register("sequence", &sequence{})
-	schemahcl.Register("extension", &sequence{})
+	schemahcl.Register("extension", &extension{})
 }
 
 // evalSpec evaluates an Atlas DDL document into v using the input.
