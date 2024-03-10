@@ -69,7 +69,8 @@ atlas migrate apply \
   --url docker://mysql/8/dev
 ```
 
-<details><summary>Example output</summary>
+<details>
+<summary>Example output</summary>
 
 ```text title="Output"
 Migrating to version 20230719093802 (1 migrations in total):
@@ -131,7 +132,8 @@ atlas migrate apply \
   --var users_initial_id=1000
 ```
 
-<details><summary>Example output</summary>
+<details>
+<summary>Example output</summary>
 
 ```text title="Output"
 Migrating to version 20230719093802 (1 migrations in total):
@@ -214,7 +216,8 @@ atlas migrate apply \
   --var users_initial_id=1000
 ```
 
-<details><summary>Example output</summary>
+<details>
+<summary>Example output</summary>
 
 ```text title="Output"
 Migrating to version 20230719102332 (2 migrations in total):
