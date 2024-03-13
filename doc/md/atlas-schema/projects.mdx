@@ -1074,8 +1074,8 @@ set or map item. See the example [below](#multi-environment-example).
   - `file://schema.hcl`
   - `file://schema.sql`
   - `file://relative/path/to/file.hcl`
-  - Directories are also accepts: `file://schema/`
-  - Lists are also accepted:
+  - Directories are also accepted: `file://schema/`
+  - Lists are accepted as well:
     ```
     env "local" {
         src = [
@@ -1085,7 +1085,7 @@ set or map item. See the example [below](#multi-environment-example).
     }
     ```
   - As mentioned, references to data sources such as [`external_schema`](#data-source-external_schema)
-    or [`composite_schema`](#data-source-composite_schema) are accepted as well.
+    or [`composite_schema`](#data-source-composite_schema) are a valid value for the `src` attribute.
 
 - `url` - The [URL](../concepts/url.mdx) of the target database.
 
