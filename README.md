@@ -294,7 +294,7 @@ Atlas offers additional commands to assist users managing their database migrati
 `migrate status`, and more. For more information, see the versioned migration documentation at https://atlasgo.io/versioned/diff.
 
 ### Supported databases
-MySQL, MariaDB, PostgresSQL, SQLite, TiDB, CockroachDB, SQL Server.
+MySQL, MariaDB, PostgresSQL, SQLite, TiDB, CockroachDB, SQL Server, ClickHouse.
 
 [HCL]: https://atlasgo.io/atlas-schema/hcl
 [SQL]: https://atlasgo.io/atlas-schema/sql
