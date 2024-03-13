@@ -1070,6 +1070,21 @@ The `env` block defines an environment block that can be selected by using the `
 - `for_each` - A meta-argument that accepts a map or a set of strings and is used to compute an `env` instance for each
 set or map item. See the example [below](#multi-environment-example).
 
+- `src` - The [URL](../concepts/url.mdx) for the desired schema of this environment. For example:
+  - `file://schema.hcl`
+  - `file://schema.sql`
+  - `file://relative/path/to/file.hcl`
+  - Directories are also accepts: `file://schema/`
+  - Lists are also accepted:
+    ```
+    env "local" {
+        src = [
+            "file://a.hcl",
+            "file://b.hcl"
+        ]
+    }
+    ```
+
 - `url` - The [URL](../concepts/url.mdx) of the target database.
 
 - `dev` - The [URL](../concepts/url.mdx) of the [Dev Database](../concepts/dev.mdx).
