@@ -108,6 +108,7 @@ module.exports = {
                         {type: 'doc', id: 'cloud/features/pre-migration-checks', label: 'Pre-migration Checks'},
                     ],
                 },
+                {type: 'doc', id: 'cloud/pricing', label: 'Pricing'},
             ],
         },
         {
