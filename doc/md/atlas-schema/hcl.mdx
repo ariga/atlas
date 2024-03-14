@@ -1327,7 +1327,10 @@ atlas login
 ```
 :::
 
-The `sequence` block allows defining sequence number generator. Supported by PostgreSQL.
+The `sequence` block allows defining sequence number generator. Supported by PostgreSQL and SQL Server.
+
+<Tabs>
+<TabItem label="PostgreSQL" value="postgres">
 
 Note, a `sequence` block is printed by Atlas on inspection, or it may be manually defined in the schema only if it
 represents a PostgreSQL sequence that is not implicitly created by the database for identity or `serial` columns.
@@ -1388,6 +1391,47 @@ schema "public" {
   comment = "standard public schema"
 }
 ```
+</TabItem>
+<TabItem label="SQL Server" value="sqlserver">
+
+Atlas support define sequence in SQL Server by using `sequence` block. See more about [SQL Server sequence](https://learn.microsoft.com/en-us/sql/relational-databases/sequence-numbers/sequence-numbers).
+
+```hcl
+#highlight-next-line
+# Simple sequence with default values.
+sequence "s1" {
+  schema = schema.dbo
+}
+
+#highlight-next-line
+# Sequence with custom configuration.
+sequence "s2" {
+  schema    = schema.dbo
+  type      = decimal(18, 0)
+  start     = 100000000000000000
+  increment = 1
+  min_value = 100000000000000000
+  max_value = 999999999999999999
+  cycle     = true
+}
+
+#highlight-next-line
+# The sequences with alias-type.
+sequence "s3" {
+  schema    = schema.dbo
+  type      = type_alias.ssn
+  start     = 111111111
+  increment = 1
+  min_value = 111111111
+}
+type_alias "ssn" {
+  schema = schema.dbo
+  type   = dec(9, 0)
+  null   = false
+}
+```
+</TabItem>
+</Tabs>
 
 ## Enum
 
