@@ -17,13 +17,13 @@ require (
 	github.com/google/uuid v1.4.0
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/lib/pq v1.10.9
-	github.com/libsql/libsql-client-go v0.0.0-20230602133133-5905f0c4f8a5
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pganalyze/pg_query_go/v4 v4.2.3
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
+	github.com/tursodatabase/libsql-client-go v0.0.0-20240220085343-4ae0eb9d0898
 	github.com/vektah/gqlparser/v2 v2.5.1
 	github.com/zclconf/go-cty v1.8.0
 	gocloud.dev v0.36.0
@@ -84,7 +84,7 @@ require (
 	github.com/klauspost/compress v1.15.15 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/libsql/sqlite-antlr4-parser v0.0.0-20230512205400-b2348f0d1196 // indirect
+	github.com/libsql/sqlite-antlr4-parser v0.0.0-20230802215326-5cb5bb604475 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.18 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect

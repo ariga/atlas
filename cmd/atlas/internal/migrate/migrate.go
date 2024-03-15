@@ -76,10 +76,13 @@ func NewEntRevisions(ctx context.Context, ac *sqlclient.Client, opts ...Option) 
 			return nil, err
 		}
 	}
+
+	entDialect := r.getEntDialect()
+
 	// Create the connection with the underlying migrate.Driver to have it inside a possible transaction.
-	entopts := []ent.Option{ent.Driver(sql.NewDriver(r.ac.Name, sql.Conn{ExecQuerier: r.ac.Driver}))}
+	entopts := []ent.Option{ent.Driver(sql.NewDriver(entDialect, sql.Conn{ExecQuerier: r.ac.Driver}))}
 	// SQLite does not support multiple schema, therefore schema-config is only needed for other dialects.
-	if r.ac.Name != dialect.SQLite {
+	if entDialect != dialect.SQLite {
 		// Make sure the schema to store the revisions table in does exist.
 		_, err := r.ac.InspectSchema(ctx, r.schema, &schema.InspectOptions{Mode: schema.InspectSchemas})
 		if err != nil && !schema.IsNotExistError(err) {
@@ -189,9 +192,11 @@ func (r *EntRevisions) DeleteRevision(ctx context.Context, v string) error {
 // execution in a transaction and assumes the underlying connection is of type *sql.DB, which is not true for actually
 // reading and writing revisions.
 func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
-	c := ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
+	entDialect := r.getEntDialect()
+
+	c := ent.NewClient(ent.Driver(sql.OpenDB(entDialect, r.ac.DB)))
 	// Ensure the ent client is bound to the requested revision schema. Open a new connection, if not.
-	if r.ac.Name != dialect.SQLite && r.ac.URL.Schema != r.schema {
+	if entDialect != dialect.SQLite && r.ac.URL.Schema != r.schema {
 		sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
 		if err != nil {
 			return err
@@ -199,7 +204,7 @@ func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
 		defer sc.Close()
 		c = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
 	}
-	if r.ac.Name == dialect.SQLite {
+	if entDialect == dialect.SQLite {
 		var on sql.NullBool
 		if err := r.ac.DB.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&on); err != nil {
 			return err
@@ -375,4 +380,13 @@ func DirURL(ctx context.Context, u *url.URL, create bool) (migrate.Dir, error) {
 		}
 	}
 	return d, err
+}
+
+// getEntDialect returns the corresponding ent dialect of the underlying Atlas client
+func (r *EntRevisions) getEntDialect() string {
+	if r.ac.Name == "libsql" {
+		return dialect.SQLite
+	}
+
+	return r.ac.Name
 }
