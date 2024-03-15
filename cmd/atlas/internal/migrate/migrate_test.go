@@ -15,6 +15,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
+	"entgo.io/ent/dialect"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
@@ -147,6 +148,45 @@ func runRevisionsTests(ctx context.Context, t *testing.T, drv migrate.Driver, r 
 	id1, err = r.ID(ctx, "v0.10.1")
 	require.NoError(t, err)
 	require.Equal(t, id, id1)
+}
+
+func TestGetEntDialect(t *testing.T) {
+	tests := []struct {
+		name     string
+		acName   string
+		expected string
+	}{
+		{
+			name:     "libsql dialect",
+			acName:   "libsql",
+			expected: dialect.SQLite,
+		},
+		{
+			name:     "sqlite dialect",
+			acName:   "sqlite3",
+			expected: dialect.SQLite,
+		},
+		{
+			name:     "Other dialect",
+			acName:   "mysql",
+			expected: dialect.MySQL,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ac := &sqlclient.Client{
+				Name: tt.acName,
+			}
+
+			r := &EntRevisions{ac: ac}
+
+			dialect := r.getEntDialect()
+			if dialect != tt.expected {
+				t.Errorf("Unexpected dialect. Got: %s, want: %s", dialect, tt.expected)
+			}
+		})
+	}
 }
 
 type (
