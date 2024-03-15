@@ -9,13 +9,10 @@ package cmdext
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -33,7 +30,6 @@ import (
 	"ariga.io/atlas/sql/sqltool"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
-	"github.com/go-sql-driver/mysql"
 	"golang.org/x/oauth2/google"
 	sqladmin "google.golang.org/api/sqladmin/v1beta4"
 
@@ -155,24 +151,6 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	token, err := auth.BuildAuthToken(bgctx, args.Endpoint, args.Region, args.Username, cfg.Credentials)
 	if err != nil {
 		return cty.NilVal, errorf("building auth token: %v", err)
-	}
-	// Database network traffic is encrypted using SSL/TLS when using IAM on mysql RDS.
-	// So we need to download the RDS CA certificate, and register it with the mysql driver.
-	resp, err := http.DefaultClient.Get("https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem")
-	if err != nil {
-		return cty.NilVal, errorf("downloading ca bundle: %v", err)
-	}
-	pem, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return cty.NilVal, errorf("reading ca bundle: %v", err)
-	}
-	rootCertPool := x509.NewCertPool()
-	if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
-		return cty.NilVal, errorf("appending certs from pem: %v", err)
-	}
-	err = mysql.RegisterTLSConfig("rds", &tls.Config{RootCAs: rootCertPool, InsecureSkipVerify: true})
-	if err != nil {
-		return cty.NilVal, errorf("registering tls config: %v", err)
 	}
 	return cty.StringVal(token), nil
 }
