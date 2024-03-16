@@ -15,7 +15,7 @@ import (
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 
-	pgquery "github.com/pganalyze/pg_query_go/v4"
+	pgquery "github.com/pganalyze/pg_query_go/v5"
 )
 
 // Parser implements the sqlparse.Parser
