@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -480,7 +481,7 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 		dirName = cloudapi.DefaultDirName
 	// Directory slug.
 	default:
-		dirName = filepath.Join(u.Host, u.Path)
+		dirName = path.Join(u.Host, u.Path)
 	}
 	r.done(&cloudapi.ReportMigrationInput{
 		ProjectName:  r.env.cfg.Project,
@@ -1798,23 +1799,23 @@ func (d *editDir) WriteFile(name string, b []byte) (err error) {
 
 // edit allows editing the file content using editor.
 func edit(name string, src []byte) ([]byte, error) {
-	path := filepath.Join(os.TempDir(), name)
-	if err := os.WriteFile(path, src, 0644); err != nil {
+	p := filepath.Join(os.TempDir(), name)
+	if err := os.WriteFile(p, src, 0644); err != nil {
 		return nil, fmt.Errorf("write source content to temp file: %w", err)
 	}
-	defer os.Remove(path)
+	defer os.Remove(p)
 	editor := "vi"
 	if e := os.Getenv("EDITOR"); e != "" {
 		editor = e
 	}
-	cmd := exec.Command("sh", "-c", editor+" "+path)
+	cmd := exec.Command("sh", "-c", editor+" "+p)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("exec edit: %w", err)
 	}
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return nil, fmt.Errorf("read edited temp file: %w", err)
 	}
