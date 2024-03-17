@@ -147,11 +147,9 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-10', // Increment on change
-      content: `<strong>Upcoming Pricing Changes to Atlas Cloud. </strong><a class="cta" href="https://atlasgo.io/blog/2024/03/03/pricing-change">Read all about it here.</a>`,
+      id: 'announcementBar-11', // Increment on change
+      content: `<strong>Atlas v0.20: New Pricing Model, Django Support, Postgres Extensions, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/03/18/atlas-v-0-20">Read it here</a>`,
       isCloseable: true,
-      backgroundColor: '#0084ec',
-      textColor: '#fff',
     },
   },
   plugins: [
