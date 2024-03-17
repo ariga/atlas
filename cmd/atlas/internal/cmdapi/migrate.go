@@ -1829,11 +1829,6 @@ type (
 	dryRunRevisions struct{ migrate.RevisionReadWriter }
 )
 
-// QueryContext overrides the wrapped schema.ExecQuerier to not execute any SQL.
-func (dryRunDriver) QueryContext(context.Context, string, ...any) (*sql.Rows, error) {
-	return nil, nil
-}
-
 // ExecContext overrides the wrapped schema.ExecQuerier to not execute any SQL.
 func (dryRunDriver) ExecContext(context.Context, string, ...any) (sql.Result, error) {
 	return nil, nil

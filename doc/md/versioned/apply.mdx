@@ -403,9 +403,18 @@ atlas migrate apply \
 
 ### Dry Run
 
-If you want to check what exactly Atlas would do when attempting a migration execution, you can provide the `--dry-run`
-flag:
-* `--dry-run` to not execute any SQL but print it on the screen.
+Atlas allows users to review and verify the safety of migration plans before applying them to the database.
+
+By using the `dry-run` option, Atlas prints the migration files and their SQL statements that are pending to be applied
+without executing them. However, if the migration plan contains [pre-migration checks](/versioned/checks), Atlas executes
+them on the database and report the results.
+
+```shell
+atlas migrate apply \
+  --url "mysql://root:pass@localhost:3306/example" \
+  --dir "file://migrations" \
+  --dry-run
+```
 
 ### Down migrations
 
