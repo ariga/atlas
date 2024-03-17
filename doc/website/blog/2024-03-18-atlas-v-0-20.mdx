@@ -1,0 +1,219 @@
+---
+title: "Announcing v0.20: New Pricing Model, Django Support, Postgres Extensions, and more"
+authors: hilakashai
+tags: [release, postgresql, django, sql-server, ]
+---
+
+Hi everyone,
+
+It's been a few weeks since our last version announcement and today I'm happy to share with you v0.20, which includes
+some big changes and exciting features:
+
+* [__New Pricing Model__](#new-pricing-model) - As we announced earlier this month, beginning March 15th
+the new pricing model took effect. The new pricing is usage-based, offering you more flexibility and cost
+efficiency. Read about what [prompted this change](/blog/2024/03/03/pricing-change) and view the new pricing plans [here](https://atlasgo.cloud/pricing).
+* [__Django ORM Integration__](#django-orm-integration) -  Atlas now supports [Django](https://www.djangoproject.com)! Django is a  popular ORM for Python. Developers using either ORM can now use Atlas to automatically plan schema migrations for them, based on the desired state of their schema instead of crafting them by hand.
+* [__Support for PostgreSQL Extensions__](#support-for-postgresql-extensions) - Atlas now supports installing and managing PostgreSQL extensions. 
+* [__Dashboards in the Cloud__](#dashboards-in-the-cloud) - The dashboard (previously the 'Projects' page) got a whole new look in Atlas Cloud. Now you can view the state of your projects and environments at a glance.
+* [__SQL Server is out of Beta__](#sql-server-is-out-of-beta) - SQL Server is officially out of Beta! Along with this official support, we have included some new features:
+    * __User-Defined Types support for SQL Server__ - Atlas now supports two [User-Defined Types](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-type-transact-sql?view=sql-server-ver22):
+    alias types and table types.
+    * __Azure Active Directory (AAD) Authentication for SQL Server__ - Connect to your SQL Server database
+    using [AAD Authentication](https://learn.microsoft.com/en-us/azure/data-api-builder/authentication-azure-ad).
+
+Let’s dive in!
+
+## New Pricing Model
+As of March 15th, there is a [new pricing model](https://atlasgo.cloud/pricing) for Atlas users. This change is
+a result of feedback we received from many teams that the previous $295/month minimum was prohibitive, and a gradual,
+usage-based pricing model would help them adopt Atlas in their organizations.
+
+You can read the full reasoning for the change and a breakdown of the new pricing in this [blog post](/blog/2024/03/03/pricing-change).
+
+## Django ORM Integration
+[Django](https://www.djangoproject.com) is the most popular web framework in the Python community. It includes a built-in ORM
+which allows users to describe their data model using Python classes. Migrations are then created using the
+`makemigrations` command, which can be applied to the database using `migrate` command.
+
+Among the many ORMs available in our industry, Django's automatic migration tool is one of the most powerful and robust.
+It can handle a wide range of schema changes, however, having been created in 2014, a very different era in software engineering,
+it naturally has some limitations.
+
+Some of the limitations of Django's migration system include:
+
+1. **Database Features** - Because it was created to provide interoperability across database engines, Django's migration system
+is centered around the "lowest common denominator" of database features.
+
+2. **Ensuring Migration Safety** -  Migrations are a risky business. If you're not careful, you can easily cause data loss
+or a production outage. Django's migration system does not provide a native way to ensure that a migration is safe to apply.
+
+3. **Modern Deployments** - Django does not provide native integration with modern deployment practices such as GitOps or Infrastructure-as-Code.
+
+Atlas, on the other hand, lets you manage your Django applications using the Database Schema-as-Code paradigm. This means that you can use
+Atlas to automatically plan schema migrations for your Django project, and then apply them to your database.
+
+Read the [full guide](/guides/orms/django) to set up Atlas for your Django project.
+
+## Support for PostgreSQL Extensions
+
+[Postgres extensions](https://www.postgresql.org/docs/current/sql-createextension.html) are add-on modules that
+enhance the functionality of the database by introducing new objects, such as functions, data types, operators, and more.
+
+The support for extensions has been highly requested, so we are excited to announce that they are finally available!
+
+To load an extension, add the extension block to your [schema file](/atlas-schema/hcl). For example, adding [PostGIS](https://postgis.net/) would look similar to:
+
+```hcl title=schema.hcl
+extension "postgis" {
+ schema  = schema.public
+ version = "3.4.1"
+ comment = "PostGIS geometry and geography spatial types and functions"
+}
+```
+Read more about configuring extensions in your schema [here](/atlas-schema/hcl#extension).
+
+## Dashboards in the Cloud
+
+[Atlas Cloud](https://atlasgo.cloud) has a new and improved dashboard view!
+
+When working with multiple databases, environments, or even projects - it becomes increasingly difficult to
+track and manage the state of each of these components. With Atlas Cloud, we aim to provide a single source of truth,
+allowing you to get a clear overview of each schema, database, environment, deployment and their respective statuses.
+
+![project-dashboard](https://atlasgo.io/uploads/cloud/images/projects-dashboard.png)
+
+Once you [push your migration directory](/cloud/features/registry) to the schema registry, you will be able to see a
+detailed dashboard like the one shown above.
+
+Let’s break down what we see:
+
+* The usage calendar shows when changes are made to your migration directory via the `migrate push` command in [CI](/cloud/setup-ci).
+
+* The databases show the state of your target databases. This list will be populated once you have set up [deployments](/cloud/deployment) for your migration directory. The state of the database can be one of the following:
+    * __Synced__ - the database is at the same version as the latest version of your migration directory schema.
+    * __Failed__ - the last deployment has failed on this database.
+    * __Pending__ - the database is not up to date with the latest version of your migration directory schema.
+
+An alternate view to this page is viewing it per environment. This way, you can see a comprehensive list of the status of each database in each environment.
+
+![project-envs](https://atlasgo.io/uploads/cloud/images/projects-envs.png)
+
+## SQL Server out of Beta
+
+We are proud to announce that SQL Server is officially supported by Atlas! Since our [release of SQL Server in Beta](/blog/2023/08/06/atlas-v-0-13)
+last August, our team has been working hard to refine and stabilize its performance.
+
+In addition, we have added two new capabilities to the SQL Server driver.
+
+### User-Defined Types Support
+
+In SQL Server, [user-defined types](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-type-transact-sql?view=sql-server-ver22)
+(UDTs) are a way to create custom data types that group together existing data types.
+Atlas now supports [alias types](https://learn.microsoft.com/en-us/sql/relational-databases/databases/create-a-user-defined-data-type-alias?view=sql-server-ver16&viewFallbackFrom=sql-server-ver22) and
+[table types](https://learn.microsoft.com/en-us/sql/relational-databases/clr-integration-database-objects-user-defined-types/working-with-user-defined-types-defining-udt-tables-and-columns?view=sql-server-ver16).
+
+#### Alias Types
+Alias types allow you to create a custom data type, which can then make your code more readable and maintainable.
+
+For example, you might want to create an alias type `email_address` for the `VARCHAR(100)` data type. Instead of rewriting this
+throughout the code, and in order to maintain consistency, you can simply use `email_address` for clarity.
+
+In the `schema.hcl` file, you would define this like so:
+
+```hcl title=schema.hcl
+type_alias "email_address" {
+ schema = schema.dbo
+ type   = varchar(100)
+ null   = false
+}
+table "users" {
+ schema = schema.dbo
+ column "email_address" {
+   type = type_alias.email_address
+ }
+}
+```
+
+#### Table Types
+
+Table types allow you to define a structured data type that represents a table structure. These are particularly
+useful for passing sets of data between stored procedures and functions. They can also be used as parameters in
+stored procedures or functions, allowing you to pass multiple rows of data with a single parameter.
+
+For example, we have a `type_table` to describe the structure of an address. We can declare this table and later
+use it in a function:
+
+```hcl
+type_table "address" {
+ schema = schema.dbo
+ column "street" {
+   type = varchar(255)
+ }
+ column "city" {
+   type = varchar(255)
+ }
+ column "state" {
+   type = varchar(2)
+ }
+ column "zip" {
+   type = type_alias.zip
+ }
+ index {
+   unique  = true
+   columns = [column.ssn]
+ }
+ check "zip_check" {
+   expr = "len(zip) = 5"
+ }
+}
+function "insert_address" {
+ schema = schema.dbo
+ lang   = SQL
+ arg "@address_table" {
+   type     = type_table.address
+   readonly = true // The table type is readonly argument.
+ }
+ arg "@zip" {
+   type = type_alias.zip
+ }
+ return = int
+ as     = <<-SQL
+ BEGIN
+   DECLARE @RowCount INT;
+   INSERT INTO address_table (street, city, state, zip)
+   SELECT street, city, state, zip
+   FROM @address_table;
+
+   SELECT @RowCount = @ROWCOUNT;
+
+  RETURN @RowCount;
+ END
+ SQL
+}
+type_alias "zip" {
+ schema = schema.dbo
+ type   = varchar(5)
+ null   = false
+}
+```
+
+Read the [documentation](/atlas-schema/hcl-types#user-defined-types) to learn how to use these types in Atlas.
+
+### Azure Active Directory (AAD) Authentication
+
+Now when using SQL Server with Atlas, instead of providing your regular database [URL](/concepts/url), you can connect to your Azure instance
+with [Azure Active Directory Authentication](https://learn.microsoft.com/en-us/azure/data-api-builder/authentication-azure-ad).
+
+Use the `fedauth` parameter to specify the AAD authentication method. For more information, see the [document on the underlying driver](https://github.com/microsoft/go-mssqldb?tab=readme-ov-file#azure-active-directory-authentication).
+
+To connect to your Azure instance using AAD, the URL will look similar to:
+
+```
+azuresql://<instance>.database.windows.net?fedauth=ActiveDirectoryDefault&database=master
+```
+
+## Wrapping up
+
+That's it! I hope you try out (and enjoy) all of these new features and find them useful.
+As always, we would love to hear your feedback and suggestions on our [Discord server](https://discord.gg/zZ6sWVg6NT).
+
