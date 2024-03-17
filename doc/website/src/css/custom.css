@@ -192,6 +192,12 @@ div.language-hcl * span.token.property {
   --ifm-footer-title-color: white;
 }
 
+div[class^='announcementBar_'] {
+  background-image: linear-gradient(to right, #202a58 10%, #3d4fb4);
+  min-height: 35px;
+  color: white;
+}
+
 div[class^='announcementBar_']  a.cta {
   border: 1px solid white;
   padding: 2px 6px;
