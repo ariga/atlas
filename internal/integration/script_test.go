@@ -403,22 +403,22 @@ func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 }
 
 func (t *myTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
-	cmdCLI(ts, neg, args, t.url(ts.Getenv("db")), ts.Getenv(atlasPathKey))
+	cmdCLI(ts, neg, args, t.url(ts.Getenv("db")), t.url(ts.Getenv("dev")), ts.Getenv(atlasPathKey))
 }
 
 func (t *pgTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
-	cmdCLI(ts, neg, args, t.url(ts.Getenv("db")), ts.Getenv(atlasPathKey))
+	cmdCLI(ts, neg, args, t.url(ts.Getenv("db")), t.url(ts.Getenv("dev")), ts.Getenv(atlasPathKey))
 }
 
 func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
 	dbURL := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", ts.Getenv("WORK"))
-	cmdCLI(ts, neg, args, dbURL, ts.Getenv(atlasPathKey))
+	cmdCLI(ts, neg, args, dbURL, "sqlite://dev?mode=memory", ts.Getenv(atlasPathKey))
 }
 
-func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, cliPath string) {
+func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, devURL, cliPath string) {
 	var (
 		workDir = ts.Getenv("WORK")
-		r       = strings.NewReplacer("URL", dbURL, "$db", ts.Getenv("db"))
+		r       = strings.NewReplacer("URL", dbURL, "DEV_URL", devURL, "$db", ts.Getenv("db"))
 	)
 	for i, arg := range args {
 		args[i] = r.Replace(arg)
