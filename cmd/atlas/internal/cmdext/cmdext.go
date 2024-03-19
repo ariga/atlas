@@ -127,6 +127,7 @@ func RuntimeVar(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 //		endpoint = "db.hostname.io:3306"
 //		region   = "us-east-1"
 //		username = "admin"
+//		profile  = "prod-ext"
 //	}
 func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
@@ -134,6 +135,7 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 			Endpoint string `hcl:"endpoint"`
 			Region   string `hcl:"region,optional"`
 			Username string `hcl:"username"`
+			Profile  string `hcl:"profile,optional"`
 		}
 		errorf = blockError("data.aws_rds_token", block)
 	)
@@ -141,7 +143,10 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 		return cty.NilVal, errorf("decoding body: %v", diags)
 	}
 	bgctx := context.Background()
-	cfg, err := config.LoadDefaultConfig(bgctx)
+	cfg, err := config.LoadDefaultConfig(
+		bgctx,
+		config.WithSharedConfigProfile(args.Profile), // Ignored if empty.
+	)
 	if err != nil {
 		return cty.NilVal, errorf("loading aws config: %v", err)
 	}

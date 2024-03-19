@@ -94,6 +94,28 @@ v = data.aws_rds_token.token
 	require.Contains(t, q.Get("X-Amz-Credential"), "EXAMPLE_KEY_ID")
 }
 
+// TestRDSTokenProfile verifies the profile option propagates to the AWS SDK.
+func TestRDSTokenProfile(t *testing.T) {
+	doc := `
+data "aws_rds_token" "token" {
+	username = "root"
+	endpoint = "localhost:3306"
+	region = "us-east-1"
+	profile = "errorneous"
+}
+
+v = data.aws_rds_token.token
+`
+	var (
+		v struct {
+			V string `spec:"v"`
+		}
+		state = schemahcl.New(cmdext.SpecOptions...)
+	)
+	err := state.EvalBytes([]byte(doc), &v, nil)
+	require.EqualError(t, err, "data.aws_rds_token.token: loading aws config: failed to get shared config profile, errorneous")
+}
+
 func TestGCPToken(t *testing.T) {
 	t.Cleanup(
 		backupEnv("GOOGLE_APPLICATION_CREDENTIALS"),
