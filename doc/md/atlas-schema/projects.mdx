@@ -539,9 +539,17 @@ The data source provides two ways to work with AWS Parameter Store:
   SharedConfigEnable option enabled; if you have authenticated with the AWS CLI, it will use those credentials.
 - If the `awssdk` query parameter is set to `v2`, the data source will create an AWS Config based on the AWS SDK V2.
 
+Using local AWS Profiles:
+* Using a local AWS Credentials profile is supported in the `v2` mode. The `profile` query parameter is used
+  to specify the profile name. To use profiles set `awssdk=v2` and `profile=<profile>` in the URL.
+
 ```hcl title="atlas.hcl"
 data "runtimevar" "db" {
   url = "awsparamstore://<name>?region=<region>&decoder=string"
+}
+
+data "runtimevar" "from_profile" {
+    url = "awsparamstore://<name>?region=<region>&decoder=string&awssdk=v2&profile=<profile>"
 }
 
 env "dev" {
@@ -575,9 +583,17 @@ The data source provides two ways to work with AWS Secrets Manager:
   SharedConfigEnable option enabled; if you have authenticated with the AWS CLI, it will use those credentials.
 - If the `awssdk` query parameter is set to `v2`, the data source will create an AWS Config based on the AWS SDK V2.
 
+Using local AWS Profiles:
+* Using a local AWS Credentials profile is supported in the `v2` mode. The `profile` query parameter is used
+    to specify the profile name. To use profiles set `awssdk=v2` and `profile=<profile>` in the URL.
+
 ```hcl title="atlas.hcl"
 data "runtimevar" "pass" {
   url = "awssecretsmanager://<secret>?region=<region>"
+}
+
+data "runtimevar" "pass_from_profile" {
+    url = "awssecretsmanager://<secret>?region=<region>&awssdk=v2&profile=<profile>"
 }
 
 env "dev" {
@@ -595,6 +611,10 @@ atlas schema apply --env dev
 
 ```shell
 AWS_ACCESS_KEY_ID="ACCESS_ID" AWS_SECRET_ACCESS_KEY="SECRET_KEY" atlas schema apply --env dev
+```
+
+```shell
+
 ```
 
 </TabItem>
