@@ -367,14 +367,40 @@ env "dev" {
 	require.Equal(t, "env: unnamed", envs[0].Format.Schema.Apply)
 	_, envs, err = EnvByName(&cobra.Command{}, "dev", nil)
 	require.NoError(t, err)
-	require.Len(t, envs, 2)
-	for _, e := range envs {
-		attr, ok := e.Extra.Attr("a")
-		require.True(t, ok)
-		v, err := attr.String()
-		require.NoError(t, err)
-		require.Equal(t, "b", v)
-	}
+	require.Len(t, envs, 1)
+	attr, ok := envs[0].Extra.Attr("a")
+	require.True(t, ok)
+	v, err := attr.String()
+	require.NoError(t, err)
+	require.Equal(t, "b", v)
+
+	h = `
+data "remote_dir" "ignored" {
+  name = "ignored"
+}
+
+env {
+  name = atlas.env
+  a = data.remote_dir.ignored.url
+}
+
+env "dev" {
+  a = "b"
+}`
+	require.NoError(t, os.WriteFile(path, []byte(h), 0600))
+	_, envs, err = EnvByName(&cobra.Command{}, "dev", nil)
+	require.NoError(t, err)
+	require.Len(t, envs, 1)
+	attr, ok = envs[0].Extra.Attr("a")
+	require.True(t, ok)
+	v, err = attr.String()
+	require.NoError(t, err)
+	require.Equal(t, "b", v)
+
+	// Loading remote directory should fail.
+	_, envs, err = EnvByName(&cobra.Command{}, "other", nil)
+	require.Error(t, err)
+	require.Empty(t, envs)
 }
 
 func TestDiff_Options(t *testing.T) {

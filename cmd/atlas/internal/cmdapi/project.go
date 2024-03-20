@@ -553,7 +553,7 @@ func partialParse(path, env string) (*hclparse.Parser, error) {
 	if err != nil {
 		return nil, err
 	}
-	var used []*hclsyntax.Block
+	var labeled, nonlabeled, used []*hclsyntax.Block
 	for _, b := range fi.Body.(*hclsyntax.Body).Blocks {
 		switch b.Type {
 		case blockEnv:
@@ -562,17 +562,25 @@ func partialParse(path, env string) (*hclparse.Parser, error) {
 			case env == "" && n == 0:
 			// Exact env was selected.
 			case n == 1 && b.Labels[0] == env:
-				used = append(used, b)
+				labeled = append(labeled, b)
 			// Dynamic env selection.
 			case n == 0 && b.Body != nil && b.Body.Attributes[schemahcl.AttrName] != nil:
 				t, ok := b.Body.Attributes[schemahcl.AttrName].Expr.(*hclsyntax.ScopeTraversalExpr)
 				if ok && len(t.Traversal) == 2 && t.Traversal.RootName() == refAtlas && t.Traversal[1].(hcl.TraverseAttr).Name == blockEnv {
-					used = append(used, b)
+					nonlabeled = append(nonlabeled, b)
 				}
 			}
 		default:
 			used = append(used, b)
 		}
+	}
+	// Labeled blocks take precedence
+	// over non-labeled env blocks.
+	switch {
+	case len(labeled) > 0:
+		used = append(used, labeled...)
+	case len(nonlabeled) > 0:
+		used = append(used, nonlabeled...)
 	}
 	fi.Body = &hclsyntax.Body{
 		Blocks:     used,
