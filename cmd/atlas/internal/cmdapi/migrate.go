@@ -1694,6 +1694,13 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 		if err := maySetFlag(cmd, flagExecOrder, strings.ReplaceAll(strings.ToLower(env.Migration.ExecOrder), "_", "-")); err != nil {
 			return err
 		}
+	case "down":
+		if err := maySetFlag(cmd, flagFormat, env.Format.Migrate.Down); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, flagLockTimeout, env.Migration.LockTimeout); err != nil {
+			return err
+		}
 	case "diff", "checkpoint":
 		if err := maySetFlag(cmd, flagLockTimeout, env.Migration.LockTimeout); err != nil {
 			return err

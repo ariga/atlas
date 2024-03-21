@@ -146,6 +146,8 @@ type (
 		Migrate struct {
 			// Apply configures the formatting for 'migrate apply'.
 			Apply string `spec:"apply"`
+			// Down configures the formatting for 'migrate down'.
+			Down string `spec:"down"`
 			// Lint configures the formatting for 'migrate lint'.
 			Lint string `spec:"lint"`
 			// Status configures the formatting for 'migrate status'.
