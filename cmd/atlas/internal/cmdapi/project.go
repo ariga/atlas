@@ -392,7 +392,7 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 		setEnvs(cmd.Context(), envs[name])
 	}()
 	if p, e, ok := envsCache.load(GlobalFlags.ConfigURL, name, vars); ok {
-		return p, e, nil
+		return p, e, maySetTokenContext(cmd, p)
 	}
 	u, err := url.Parse(GlobalFlags.ConfigURL)
 	if err != nil {
@@ -414,12 +414,8 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 	}
 	// The project token predates 'atlas login' command. If exists,
 	// attach it to the context to indicate the user is authenticated.
-	if project.cfg.Token != "" && project.cfg.Client != nil {
-		ctx, err := withTokenContext(cmd.Context(), project.cfg.Token, project.cfg.Client)
-		if err != nil {
-			return nil, nil, err
-		}
-		cmd.SetContext(ctx)
+	if err := maySetTokenContext(cmd, project); err != nil {
+		return nil, nil, err
 	}
 	if err := project.Lint.remainedLog(); err != nil {
 		return nil, nil, err
@@ -451,10 +447,23 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 		// return only the project.
 		return project, nil, nil
 	case len(envs[name]) == 0:
-		return nil, nil, fmt.Errorf("env %q not defined in project file", name)
+		return nil, nil, fmt.Errorf("env %q not defined in config file", name)
 	default:
 		return project, envs[name], nil
 	}
+}
+
+// maySetTokenContext sets the token context and cloud client if
+// defined in the project file.
+func maySetTokenContext(cmd *cobra.Command, p *Project) error {
+	if p.cfg.Token != "" && p.cfg.Client != nil {
+		ctx, err := withTokenContext(cmd.Context(), p.cfg.Token, p.cfg.Client)
+		if err != nil {
+			return err
+		}
+		cmd.SetContext(ctx)
+	}
+	return nil
 }
 
 type (

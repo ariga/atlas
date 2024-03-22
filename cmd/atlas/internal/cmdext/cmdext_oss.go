@@ -24,6 +24,11 @@ func RemoteSchema(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
 	return cty.Zero, fmt.Errorf("data.remote_schema is not supported by this release. See: https://atlasgo.io/getting-started")
 }
 
+// RemoteDir is a data source that reads a remote migration directory.
+func RemoteDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+	return cty.Zero, fmt.Errorf("data.remote_dir is not supported by this release. See: https://atlasgo.io/getting-started")
+}
+
 // StateReaderAtlas returns a migrate.StateReader from an Atlas Cloud schema.
 func StateReaderAtlas(context.Context, *StateReaderConfig) (*StateReadCloser, error) {
 	return nil, fmt.Errorf("atlas remote state is not supported by this release. See: https://atlasgo.io/getting-started")

@@ -7,7 +7,6 @@ package cmdext_test
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -523,91 +522,6 @@ atlas {
 `), &v, map[string]cty.Value{})
 	require.NoError(t, err)
 	require.Equal(t, cloudapi.DefaultProjectName, cfg.Project)
-}
-
-func TestRemoteDir(t *testing.T) {
-	var (
-		v struct {
-			Dir string `spec:"dir"`
-		}
-		token, tag string
-		cfg        = &cmdext.AtlasConfig{}
-		state      = schemahcl.New(append(cmdext.SpecOptions, cfg.InitBlock())...)
-		srv        = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token = r.Header.Get("Authorization")
-			di := struct {
-				Variables struct {
-					DirInput cloudapi.DirInput `json:"input"`
-				} `json:"variables"`
-			}{}
-			err := json.NewDecoder(r.Body).Decode(&di)
-			require.NoError(t, err)
-			tag = di.Variables.DirInput.Tag
-			d := migrate.MemDir{}
-			if err := d.WriteFile("1.sql", []byte("create table t(c int);")); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-			sum, err := d.Checksum()
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-			if err := migrate.WriteSumFile(&d, sum); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-			arch, err := migrate.ArchiveDir(&d)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-			fmt.Fprintf(w, `{"data":{"dirState":{"content":%q}}}`, base64.StdEncoding.EncodeToString(arch))
-		}))
-	)
-	defer srv.Close()
-
-	err := state.EvalBytes([]byte(`
-data "remote_dir" "hello" {
-  name  = "atlas"
-}
-
-dir = data.remote_dir.hello.url
-`), &v, map[string]cty.Value{"cloud_url": cty.StringVal(srv.URL)})
-	require.EqualError(t, err, "data.remote_dir.hello: missing atlas cloud config")
-
-	err = state.EvalBytes([]byte(`
-variable "cloud_url" {
-  type = string
-}
-
-variable "tag" {
-  type = string
-}
-
-atlas {
-  cloud {
-    token = "token"
-    url = var.cloud_url
-  }
-}
-
-data "remote_dir" "hello" {
-  name  = "atlas"
-  tag = var.tag
-}
-
-dir = data.remote_dir.hello.url
-`), &v, map[string]cty.Value{"cloud_url": cty.StringVal(srv.URL), "tag": cty.StringVal("xyz")})
-	require.NoError(t, err)
-	require.Equal(t, "Bearer token", token)
-	require.Equal(t, "xyz", tag)
-	md := migrate.OpenMemDir(strings.TrimPrefix(v.Dir, "mem://"))
-	defer md.Close()
-	files, err := md.Files()
-	require.NoError(t, err)
-	require.Len(t, files, 1)
-	require.Equal(t, "1.sql", files[0].Name())
-	require.Equal(t, "create table t(c int);", string(files[0].Bytes()))
-	require.NoError(t, migrate.Validate(md))
-	_, err = md.Open(migrate.HashFileName)
-	require.NoError(t, err)
 }
 
 // backupEnv backs up the current value of an environment variable
