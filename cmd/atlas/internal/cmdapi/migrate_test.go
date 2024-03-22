@@ -546,7 +546,7 @@ env "local" {
 			"--var", fmt.Sprintf("cache=%s", uuid.NewString()),
 		)
 		// Empty list is expanded to zero blocks.
-		require.EqualError(t, err, `env "local" not defined in project file`)
+		require.EqualError(t, err, `env "local" not defined in config file`)
 	})
 
 	t.Run("TemplateDir", func(t *testing.T) {
