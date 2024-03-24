@@ -377,6 +377,7 @@ func (s *MigrateReportSet) ReportFor(flags migrateApplyFlags, e *Env) *MigrateRe
 		env: e,
 		done: func(r *cloudapi.ReportMigrationInput) {
 			s.done++
+			r.DryRun = flags.dryRun
 			s.Log[len(s.Log)-1].EndTime = time.Now()
 			if r.Error != nil && *r.Error != "" {
 				s.StepLogError(*r.Error)
