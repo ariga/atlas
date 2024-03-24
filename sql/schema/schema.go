@@ -450,8 +450,9 @@ type (
 
 	// StringType represents a string type.
 	StringType struct {
-		T    string
-		Size int
+		T     string
+		Size  int
+		Attrs []Attr
 	}
 
 	// BoolType represents a boolean type.
