@@ -136,6 +136,7 @@ type (
 		Files          []DeployedFileInput `json:"files"`
 		Log            string              `json:"log"`
 		Context        *DeployContextInput `json:"context,omitempty"`
+		DryRun         bool                `json:"dryRun,omitempty"`
 	}
 
 	// DeployedTargetInput represents the input type for a deployed target.
