@@ -35,7 +35,6 @@ jobs:
         env:
           MYSQL_DATABASE: test
           MYSQL_ROOT_PASSWORD: pass
-
   integration-mysql57:
     runs-on: ubuntu-latest
     services:
@@ -63,7 +62,6 @@ jobs:
         env:
           MYSQL_DATABASE: test
           MYSQL_ROOT_PASSWORD: pass
-
   integration-mysql8:
     runs-on: ubuntu-latest
     services:
@@ -91,7 +89,6 @@ jobs:
         env:
           MYSQL_DATABASE: test
           MYSQL_ROOT_PASSWORD: pass
-
   integration-maria107:
     runs-on: ubuntu-latest
     services:
@@ -119,7 +116,6 @@ jobs:
         env:
           MYSQL_DATABASE: test
           MYSQL_ROOT_PASSWORD: pass
-
   integration-maria102:
     runs-on: ubuntu-latest
     services:
@@ -147,7 +143,6 @@ jobs:
         env:
           MYSQL_DATABASE: test
           MYSQL_ROOT_PASSWORD: pass
-
   integration-maria103:
     runs-on: ubuntu-latest
     services:
@@ -175,7 +170,6 @@ jobs:
         env:
           MYSQL_DATABASE: test
           MYSQL_ROOT_PASSWORD: pass
-
   integration-postgres-ext-postgis:
     runs-on: ubuntu-latest
     services:
@@ -202,7 +196,6 @@ jobs:
         env:
           POSTGRES_DB: test
           POSTGRES_PASSWORD: pass
-
   integration-postgres10:
     runs-on: ubuntu-latest
     services:
@@ -229,7 +222,6 @@ jobs:
         env:
           POSTGRES_DB: test
           POSTGRES_PASSWORD: pass
-
   integration-postgres11:
     runs-on: ubuntu-latest
     services:
@@ -256,7 +248,6 @@ jobs:
         env:
           POSTGRES_DB: test
           POSTGRES_PASSWORD: pass
-
   integration-postgres12:
     runs-on: ubuntu-latest
     services:
@@ -283,7 +274,6 @@ jobs:
         env:
           POSTGRES_DB: test
           POSTGRES_PASSWORD: pass
-
   integration-postgres13:
     runs-on: ubuntu-latest
     services:
@@ -310,7 +300,6 @@ jobs:
         env:
           POSTGRES_DB: test
           POSTGRES_PASSWORD: pass
-
   integration-postgres14:
     runs-on: ubuntu-latest
     services:
@@ -337,7 +326,6 @@ jobs:
         env:
           POSTGRES_DB: test
           POSTGRES_PASSWORD: pass
-
   integration-postgres15:
     runs-on: ubuntu-latest
     services:
@@ -364,7 +352,6 @@ jobs:
         env:
           POSTGRES_DB: test
           POSTGRES_PASSWORD: pass
-
   integration-sqlite:
     runs-on: ubuntu-latest
     steps:
@@ -375,17 +362,13 @@ jobs:
       - name: Run integration tests for sqlite
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="SQLite.*" -version="sqlite" -timeout 15m ./...
-        
-
   integration-tidb5:
     runs-on: ubuntu-latest
     services:
       tidb5:
         image: pingcap/tidb:v5.4.0
-        
         ports:
           - 4309:4000
-        
     steps:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v4
@@ -394,17 +377,13 @@ jobs:
       - name: Run integration tests for tidb5
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="TiDB" -version="tidb5" -timeout 15m ./...
-        
-
   integration-tidb6:
     runs-on: ubuntu-latest
     services:
       tidb6:
         image: pingcap/tidb:v6.0.0
-        
         ports:
           - 4310:4000
-        
     steps:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v4
@@ -413,17 +392,13 @@ jobs:
       - name: Run integration tests for tidb6
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="TiDB" -version="tidb6" -timeout 15m ./...
-        
-
   integration-cockroach:
     runs-on: ubuntu-latest
     services:
       cockroach:
         image: ghcr.io/ariga/cockroachdb-single-node:v21.2.11
-        
         ports:
           - 26257:26257
-        
     steps:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v4
@@ -432,5 +407,3 @@ jobs:
       - name: Run integration tests for cockroach
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Cockroach" -version="cockroach" -timeout 15m ./...
-        
-
