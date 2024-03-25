@@ -20,8 +20,8 @@ Doctrine is a popular ORM widely used in the PHP community, used by projects lik
 Doctrine allows users to manage their database schemas using its [orm:schema-tool](https://www.doctrine-project.org/projects/doctrine-orm/en/3.1/reference/tools.html#schematool) Console Command,
 which is usually sufficient during development and in many simple cases.
 
-However, at some point, teams need more control and decide to employ [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology.
-Doctrine has a [Migration tool](https://www.doctrine-project.org/projects/doctrine-migrations/en/3.7/index.html) that can be used to manage versioned migrations.
+However, at some point, teams need more control and decide to employ a [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology.
+Doctrine has a [migration tool](https://www.doctrine-project.org/projects/doctrine-migrations/en/3.7/index.html) that can be used to manage versioned migrations.
 Doctrine can also [generate a migration](https://www.doctrine-project.org/projects/doctrine-migrations/en/3.7/reference/generating-migrations.html)
 for you by comparing the current state of your database schema to the state defined by using the ORM.
 
@@ -39,7 +39,7 @@ More of the limitations of the Doctrine migration tool include:
 
 Using Atlas, you can enjoy automatic migration planning, automatic code review and integrations with your favorite CI/CD tools.
 
-Atlas works in similar way to the Doctrine migration tool, by calculating the diff between the _current_ state of the database,
+Atlas works in a similar way to the Doctrine migration tool, by calculating the diff between the _current_ state of the database.
 
 In the context of [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations),
 the current state can be thought of as the database schema that would have
@@ -49,9 +49,9 @@ The desired schema of your application can be provided to Atlas via an [External
 which is any program that can output a SQL schema definition to stdout.
 
 To use Atlas with Doctrine, users can utilize the [Doctrine Atlas Provider](https://github.com/ariga/atlas-provider-doctrine),
-which is a small program that can be used to load the schema of a Doctrine project into Atlas.
+which is a small program that loads the schema of a Doctrine project into Atlas.
 
-In this guide, we will show how Atlas can be used to automatically plan schema migrations for Doctrine users.
+In this guide, we will show how to use Atlas to automatically plan schema migrations for Doctrine users.
 
 ## Prerequisites
 
@@ -94,14 +94,14 @@ composer require ariga/atlas-provider-doctrine:^4
 
 The Atlas Doctrine Provider can be used in two modes:
 
-* **Doctrine Command** - If all of your Doctrine entities exist under single directory,
-you can add the atlas-provider command to the [Doctrine Console](https://www.doctrine-project.org/projects/doctrine-orm/en/3.0/reference/tools.html) file.
+* **Doctrine Command** - If all of your Doctrine entities exist under a single directory,
+you can add the `atlas-provider` command to the [Doctrine Console](https://www.doctrine-project.org/projects/doctrine-orm/en/3.0/reference/tools.html) file.
 * **Script** - In other cases, or if you use a [Symfony](https://symfony.com/) project,
 you can use the provider as a PHP script to load your Doctrine schema into Atlas.
 
 ### Using the Doctrine Command
 
-Add the atlas-provider command to the Doctrine Console file:
+Add the `atlas-provider` command to the Doctrine Console file:
 
 ```diff
 #!/usr/bin/env php
@@ -147,7 +147,7 @@ env "doctrine" {
 ```
 
 
-### As PHP Script
+### As a PHP Script
 
 Create a new file named `atlas.php` with the following contents:
 
@@ -264,13 +264,13 @@ class Bug
 </TabItem>
 </Tabs>
 
-We can generate a migration file by running this command:
+We can generate a migration file by running the following command:
 
 ```bash
 atlas migrate diff --env doctrine
 ```
 
-Running this command will generate files similar to this in the `migrations` directory:
+Running this command will generate files in the `migrations` directory, similarly to:
 
 ```
 migrations
@@ -326,7 +326,7 @@ Re-run this command:
 atlas migrate diff --env doctrine
 ```
 
-Observe a new migration file is generated:
+Observe that a new migration file is generated:
 
 ```sql
 -- Modify "users" table
@@ -335,9 +335,9 @@ ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL;
 
 ## Conclusion
 
-In this guide we demonstrated how projects using Dcotrine can use Atlas to automatically
+In this guide, we demonstrated how projects using Dcotrine can use Atlas to automatically
 plan schema migrations based only on their data model. To learn more about executing
-migrations against your production database, read the documentation for the
+migrations against your production database, read the documentation about the
 [`migrate apply`](/versioned/apply) command.
 
 Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT)
