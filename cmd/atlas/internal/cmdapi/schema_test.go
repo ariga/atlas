@@ -841,6 +841,49 @@ env "local" {
 	}, lines)
 }
 
+func TestSchema_ToFlagPrecedence(t *testing.T) {
+	var (
+		p       = t.TempDir()
+		cfg     = filepath.Join(p, "atlas.hcl")
+		hclFile = filepath.Join(p, "schema.hcl")
+		sqlFile = filepath.Join(p, "schema.sql")
+	)
+	err := os.WriteFile(hclFile, []byte(`
+schema "main" {}
+
+table "one" {
+  schema = schema.main
+  column "id" {
+    type = int
+  }
+}
+`), 0600)
+	require.NoError(t, err)
+	err = os.WriteFile(sqlFile, []byte("create table tbl (col integer)"), 0600)
+	require.NoError(t, err)
+	err = os.WriteFile(cfg, []byte(fmt.Sprintf(`
+env "local" {
+  src = "file://%s"
+}`, sqlFile)), 0600)
+	require.NoError(t, err)
+
+	cmd := schemaCmd()
+	cmd.AddCommand(schemaApplyCmd())
+	s, err := runCmd(
+		cmd, "apply",
+		"-u", openSQLite(t, ""),
+		"-c", "file://"+cfg,
+		"--to", "file://"+hclFile,
+		"--env", "local",
+		"--auto-approve",
+	)
+	require.NoError(t, err)
+	require.Equal(t,
+		"-- Planned Changes:\n-- Create \"one\" table\nCREATE TABLE `one` (\n  `id` int NOT NULL\n);",
+		strings.TrimSpace(s),
+	)
+}
+
 func TestSchema_ApplySQL(t *testing.T) {
 	t.Run("File", func(t *testing.T) {
 		db := openSQLite(t, "")
