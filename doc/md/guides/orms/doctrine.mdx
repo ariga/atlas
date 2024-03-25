@@ -57,7 +57,11 @@ In this guide, we will show how Atlas can be used to automatically plan schema m
 
 * A local [Doctrine](https://www.doctrine-project.org/projects/doctrine-orm/en/3.1/index.html) project.
 
-If you don't have a Doctrine project, you can create one by following the [Getting Started](https://www.doctrine-project.org/projects/doctrine-orm/en/3.1/tutorials/getting-started.html) guide.
+If you don't have a Doctrine project, you can use [symfony/demo](https://github.com/symfony/demo) as a starting point:
+
+```bash
+git clone git@github.com:symfony/demo.git
+```
 
 ## Using the Atlas Doctrine Provider
 
@@ -68,19 +72,20 @@ to automatically plan schema migrations for a Doctrine project.
 
 <InstallationInstructions />
 
-Install the provider by running:
+Install the provider, depending on the [`doctrine/dbal`](https://www.doctrine-project.org/projects/dbal.html)
+version you are using in the `composer.json` file:
 <Tabs>
-<TabItem value="v2" label="Dcotrine 2" default>
+<TabItem value="v3" label="Dcotrine DBAL v3" default>
 
 ```bash
-composer require ariga/atlas-provider-doctrine:v2
+composer require ariga/atlas-provider-doctrine:^3
 ```
 
 </TabItem>
-<TabItem value="v3" label="Doctrine 3">
+<TabItem value="v4" label="Doctrine DBAL v4">
 
 ```bash
-composer require ariga/atlas-provider-doctrine:v3
+composer require ariga/atlas-provider-doctrine:^4
 ```
 </TabItem>
 </Tabs>
@@ -91,7 +96,8 @@ The Atlas Doctrine Provider can be used in two modes:
 
 * **Doctrine Command** - If all of your Doctrine entities exist under single directory,
 you can add the atlas-provider command to the [Doctrine Console](https://www.doctrine-project.org/projects/doctrine-orm/en/3.0/reference/tools.html) file.
-* **Script** - In other cases, you can use the provider as a PHP script to load your Doctrine schema into Atlas.
+* **Script** - In other cases, or if you use a [Symfony](https://symfony.com/) project,
+you can use the provider as a PHP script to load your Doctrine schema into Atlas.
 
 ### Using the Doctrine Command
 
@@ -141,7 +147,7 @@ env "doctrine" {
 ```
 
 
-#### As PHP Script
+### As PHP Script
 
 Create a new file named `atlas.php` with the following contents:
 
@@ -151,7 +157,7 @@ Create a new file named `atlas.php` with the following contents:
 require "vendor/autoload.php";
 require "vendor/ariga/atlas-provider-doctrine/src/LoadEntities.php";
 
-print (DumpDDL(["./path/to/first/entities", "./path/to/more/entities"], "mysql"));
+print (DumpDDL(["./src/Entity"], "mysql")); // mariadb | postgres | sqlite | sqlserver
 ```
 
 Next, in your project directory, create a new file named `atlas.hcl` with the following contents:
