@@ -131,11 +131,13 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 	}
 	// If the old -f flag is given convert them to the URL format. If both are given,
 	// cobra would throw an error since they are marked as mutually exclusive.
-	for _, p := range flags.paths {
-		if !isURL(p) {
-			p = "file://" + p
+	if len(flags.toURLs) == 0 {
+		for _, p := range flags.paths {
+			if !isURL(p) {
+				p = "file://" + p
+			}
+			flags.toURLs = append(flags.toURLs, p)
 		}
-		flags.toURLs = append(flags.toURLs, p)
 	}
 	var (
 		err    error
