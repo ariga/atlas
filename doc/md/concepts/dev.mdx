@@ -162,6 +162,21 @@ docker+clickhouse://_/clickhousedb:latest
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+Redshift is a managed service and does not support running in a Docker container. To user dev-database with Redshift,
+We recommend using a real Redshift cluster with separate database
+
+```shell
+# When working on a single database schema, use the auth-created
+# "public" schema as the search path.
+--dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public"
+
+# When working on multiple database schemas.
+--dev-url "redshift://user:pass@redshift-cluster:5439/dev"
+```
+
+</TabItem>
 </Tabs>
 
 ## Baseline Schema

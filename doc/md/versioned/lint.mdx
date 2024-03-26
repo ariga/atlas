@@ -91,6 +91,15 @@ atlas migrate lint \
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate lint \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
+  -w
+```
+
+</TabItem>
 </Tabs>
 
 :::info Preventing non-additive changes
@@ -163,6 +172,15 @@ atlas migrate lint \
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate lint \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
+  --latest 1
+```
+
+</TabItem>
 </Tabs>
 
 Similarly to the previous method, the `-w`/`--web` can be used to open the report in the browser, see the changes in ERD
@@ -230,6 +248,16 @@ atlas migrate lint \
 ```shell
 atlas migrate lint \
   --dev-url "docker://clickhouse/23.11/dev" \
+  --git-base "master" \
+  -w
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate lint \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
   --git-base "master" \
   -w
 ```
@@ -432,6 +460,20 @@ atlas login
 ```shell
 atlas migrate lint \
   --dev-url "docker://clickhouse/23.11/dev" \
+  --latest 1 \
+  -w
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas login
+```
+
+```shell
+atlas migrate lint \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
   --latest 1 \
   -w
 ```

@@ -159,6 +159,30 @@ env "dev" {
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+// Define an environment named "local"
+
+```hcl
+env "local" {
+  // Declare where the schema definition resides.
+  // Also supported: ["file://multi.hcl", "file://schema.hcl"].
+  src = "file://project/schema.hcl"
+
+  // Define the URL of the database which is managed
+  // in this environment.
+  url = "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable"
+
+  // Define the URL of the Dev Database for this environment
+  // See: https://atlasgo.io/concepts/dev-database
+  dev = "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
+}
+
+env "dev" {
+  // ... a different env
+}
+```
+
+</TabItem>
 </Tabs>
 
 ### Flags

@@ -88,6 +88,17 @@ schema "atomic" {
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```hcl
+schema "public" {
+  comment = "A schema comment"
+}
+
+schema "private" {}
+```
+
+</TabItem>
 </Tabs>
 
 ## Table
@@ -230,6 +241,63 @@ table "b" "users" {
 }
 ```
 
+### Distribution
+
+The `distribution` attribute allows for specifying the distribution method of the table.
+
+:::note
+Distribution are currently supported only by the Redshift driver. Support for the remaining drivers will be added in future versions.
+:::
+
+<Tabs>
+<TabItem label="Redshift" value="redshift">
+
+```hcl
+table "users" {
+  schema = schema.public
+  // highlight-next-line
+  column "id" {
+    type = int
+  }
+  distribution {
+    style = KEY // EVEN | ALL | AUTO
+    key = column.id // only for KEY style
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### Sorting
+
+The `sort` attribute allows for specifying the sorting method of the table.
+
+:::note
+Sorting are currently supported only by the Redshift driver. Support for the remaining drivers will be added in future versions.
+:::
+
+<Tabs>
+<TabItem label="Redshift" value="redshift">
+
+```hcl
+table "users" {
+  schema = schema.public
+  // highlight-next-line
+  column "id" {
+    type = int
+  }
+  sort {
+    style = COMPOUND // INTERLEAVED | COMPOUND | AUTO
+    columns = [column.id]
+  }
+}
+
+```
+
+</TabItem>
+</Tabs>
+
 ## View
 
 A `view` is a virtual table in the database, defined by a statement that queries rows from one or more existing
@@ -355,6 +423,28 @@ materialized "mat_view" {
 Note that modifying the materialized view structure 
 after the initial creation is not supported by Atlas currently.
 :::
+
+</TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```hcl
+materialized "mat_view" {
+  schema = schema.public
+  column "c1" {
+    null = true
+    type = smallint
+  }
+  as      = "SELECT * FROM t1;"
+  comment = "example materialized view"
+  distribution {
+    style = EVEN
+  }
+  sort {
+    style = AUTO
+  }
+  depends_on = [table.t1]
+}
+```
 
 </TabItem>
 </Tabs>
@@ -494,6 +584,25 @@ table "users" {
 :::info
 Note, it is recommended to use the [`--dev-url`](../concepts/dev-database) option when generated columns are used.
 :::
+
+### Encodings
+
+Encodings are used to define the compression algorithm for the column data. Supported by ClickHouse and Redshift.
+
+<Tabs>
+<TabItem label="Redshift" value="redshift">
+
+```hcl
+table "users" {
+  schema = schema.public
+  column "name" {
+    type = text
+    encode = LZ4 // AZ64 | RAW | LZ4 | ZSTD
+  }
+}
+```
+</TabItem>
+</Tabs>
 
 ## Column Types
 

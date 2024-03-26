@@ -185,6 +185,16 @@ atlas schema apply \
 ```
 
 </TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema apply \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable" \
+  --to "file://schema.hcl" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
+```
+
+</TabItem>
 </Tabs>
 
 ### SQL schema
@@ -250,6 +260,16 @@ atlas schema apply \
   --url "clickhouse://localhost:9000/default" \
   --to "file://schema.sql" \
   --dev-url "docker://clickhouse/23.11/dev"
+```
+
+</TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema apply \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable" \
+  --to "file://schema.sql" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
@@ -326,6 +346,16 @@ atlas schema apply \
   --url "clickhouse://localhost:9000/default" \
   --to "file://migrations" \
   --dev-url "docker://clickhouse/23.11/dev"
+```
+
+</TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema apply \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable" \
+  --to "file://migrations" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
 ```
 
 </TabItem>

@@ -103,6 +103,15 @@ atlas schema inspect -u "clickhouse://user:pass@0.0.0.0:9000?secure=true"
 ```
 
 </TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema inspect -u "redshift://user:pass@redshift-cluster:5439/database"
+
+atlas schema inspect -u "redshift://user:pass@redshift-cluster:5439/database?sslmode=disable"
+```
+
+</TabItem>
 </Tabs>
 
 ### Inspect a schema
@@ -155,6 +164,15 @@ atlas schema inspect -u "clickhouse://user:pass@0.0.0.0:9000/database?secure=tru
 ```
 
 </TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema inspect -u "redshift://user:pass@redshift-cluster:5439/database?search_path=public"
+
+atlas schema inspect -u "redshift://user:pass@redshift-cluster:5439/database?search_path=public&sslmode=disable"
+```
+
+</TabItem>
 </Tabs>
 
 ### Inspect multiple schemas
@@ -204,6 +222,15 @@ atlas schema inspect -u "sqlserver://user:pass@0.0.0.0:1433?database=master&mode
 atlas schema inspect -u "clickhouse://localhost:9000/database" --schema schema1 --schema schema2
 
 atlas schema inspect -u "clickhouse://user:pass@0.0.0.0:9000/database?secure=true" -s schema1,schema2
+```
+
+</TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema inspect -u "redshift://user:pass@redshift-cluster:5439/database" --schema schema1 --schema schema2
+
+atlas schema inspect -u "redshift://user:pass@redshift-cluster:5439/database?search_path=public&sslmode=disable" -s schema1,schema2
 ```
 
 </TabItem>
