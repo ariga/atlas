@@ -98,6 +98,22 @@ CREATE TABLE `repos` (
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```sql title="schema.sql"
+CREATE TABLE "users" (
+  "id" bigint,
+  "name" varchar NOT NULL
+);
+
+CREATE TABLE "repos" (
+  "id" bigint,
+  "name" varchar NOT NULL,
+  "owner_id" bigint NOT NULL
+);
+```
+
+</TabItem>
 </Tabs>
 
 After creating our desired schema (`schema.sql`), let's run Atlas to generate the migration script needed to apply it to
@@ -140,6 +156,16 @@ atlas migrate diff initial \
 atlas migrate diff initial \
   --to file://schema.sql \
   --dev-url "docker://clickhouse/23.11/dev" \
+  --format '{{ sql . "  " }}'
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```bash
+atlas migrate diff initial \
+  --to file://schema.sql \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
   --format '{{ sql . "  " }}'
 ```
 
@@ -332,6 +358,19 @@ env "local" {
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```hcl title="atlas.hcl" {1}
+# The "local" environment represents our local testings.
+env "local" {
+  url = "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable"
+  migration {
+    dir = "atlas://app"
+  }
+}
+```
+
+</TabItem>
 </Tabs>
 
 The final step is to apply the migrations to the database. Let's run `atlas migrate apply` with the `--env` flag
@@ -502,6 +541,34 @@ CREATE TABLE `commits` (
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```sql title="schema.sql"
+CREATE TABLE "users" (
+  "id" bigint,
+  "name" varchar NOT NULL,
+  PRIMARY KEY ("id")
+);
+
+CREATE TABLE "repos" (
+  "id" bigint,
+  "name" varchar NOT NULL,
+// highlight-next-line
+  "description" varchar NULL,
+  "owner_id" bigint NOT NULL
+);
+
+// highlight-start
+CREATE TABLE "commits" (
+  "id" bigint,
+  "message" varchar NOT NULL,
+  "repo_id" bigint NOT NULL,
+  "author_id" bigint NOT NULL
+);
+// highlight-end
+```
+
+</TabItem>
 </Tabs>
 
 Next, we're ready to run `atlas migrate diff` again to generate the new migration:
@@ -547,6 +614,16 @@ atlas migrate diff add_commits \
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```bash
+atlas migrate diff add_commits \
+  --to file://schema.sql \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
+  --format '{{ sql . "  " }}'
+```
+
+</TabItem>
 </Tabs>
 
 Run `ls migrations`, and you'll notice that a new migration has been generated. Let's run `atlas migrate push` again
@@ -583,6 +660,14 @@ atlas migrate push app \
 ```bash
 atlas migrate push app \
   --dev-url "docker://clickhouse/23.11/dev" \
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```bash
+atlas migrate push app \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
 ```
 
 </TabItem>

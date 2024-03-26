@@ -90,6 +90,14 @@ atlas migrate push app \
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```bash
+atlas migrate push app \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev"
+```
+
+</TabItem>
 </Tabs>
 
 
@@ -149,6 +157,15 @@ atlas migrate apply \
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app" \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable"
+```
+
+</TabItem>
 </Tabs>
 
 **Deploy a specific tag** to a local database the remote migration directory named `app`:
@@ -204,6 +221,15 @@ atlas migrate apply \
 atlas migrate apply \
   --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
   --url "clickhouse://user:pass@:9000/default"
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
@@ -387,6 +413,16 @@ atlas migrate diff my_baseline \
   --dir "file://migrations" \
   --dev-url "docker://clickhouse/23.11/default" \
   --to "clickhouse://user:pass@remote:9000/default"
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate diff my_baseline \
+  --dir "file://migrations" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
+  --to "postgres://postgres:pass@localhost:5432/example?search_path=public&sslmode=disable"
 ```
 
 </TabItem>

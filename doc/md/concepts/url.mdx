@@ -25,6 +25,7 @@ values={[
 {label: 'SQLServer', value: 'sqlserver'},
 {label: 'SQLite', value: 'sqlite'},
 {label: 'ClickHouse', value: 'clickhouse'},
+{label: 'Redshift', value: 'redshift'},
 {label: 'Docker', value: 'docker'},
 ]}>
 <TabItem value="mysql">
@@ -155,6 +156,19 @@ To connect [ClickHouse Cloud](https://clickhouse.com/cloud),
 we need to use native protocol port [`9440`](https://clickhouse.com/docs/en/guides/sre/network-ports) with SSL enabled:
 ```shell
 clickhouse://user:pass@CLICKHOUSE-CLOUD-HOST:9440/schema?secure=true
+```
+
+</TabItem>
+<TabItem value="redshift">
+
+Connecting to a specific Redshift cluster with schema named `public`:
+```shell
+redshift://user:pass@redshift-cluster:5439/database?search_path=public
+```
+
+Connecting to a specific Redshift cluster with schema named `public` with SSL disabled:
+```shell
+redshift://user:pass@redshift-cluster:5439/database?search_path=public&sslmode=disable
 ```
 
 </TabItem>
