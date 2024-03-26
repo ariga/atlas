@@ -1615,7 +1615,7 @@ func printChecksumError(cmd *cobra.Command, err error) {
 	out := cmd.OutOrStderr()
 	fmt.Fprintln(out, "You have a checksum error in your migration directory.")
 	if csErr := (&migrate.ChecksumError{}); errors.As(err, &csErr) {
-		fmt.Fprintf(out, "\n\tL %d: %s was %s\n\n", csErr.Line, csErr.File, csErr.Reason)
+		fmt.Fprintf(out, "\n\tL%d: %s was %s\n\n", csErr.Line, csErr.File, csErr.Reason)
 	}
 	fmt.Fprintf(
 		out,

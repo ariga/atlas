@@ -654,10 +654,10 @@ type (
 )
 
 // Error implements the error interface.
-func (err ChecksumError) Error() string { return ErrChecksumMismatch.Error() }
+func (err *ChecksumError) Error() string { return ErrChecksumMismatch.Error() }
 
 // Is exists for backwards compatability reasons.
-func (err ChecksumError) Is(target error) bool {
+func (err *ChecksumError) Is(target error) bool {
 	return errors.Is(ErrChecksumMismatch, target)
 }
 
@@ -707,7 +707,7 @@ func Validate(dir Dir) error {
 				continue
 			}
 			// Index is now pointing at the file with the mismatch.
-			err.Line = i + 1
+			err.Line = i + 2 // first line is global hash
 			err.Pos = pos
 			err.File = h.N
 			switch idx := slices.IndexFunc(ex, func(e struct{ N, H string }) bool { return e.N == h.N }); {
@@ -725,7 +725,7 @@ func Validate(dir Dir) error {
 		}
 		// If we land here, all migrations in the sum file are present unchanged in the computed sum.
 		// But there is a mismatch, meaning the next file in the computed sum was added.
-		err.Line = err.Total + 1
+		err.Line = err.Total + 2 // first line is global hash
 		err.File = ex[err.Total].N
 		err.Pos = pos
 		err.Reason = ReasonAdded

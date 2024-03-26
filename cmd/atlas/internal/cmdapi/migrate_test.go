@@ -1470,11 +1470,11 @@ func TestMigrate_Validate(t *testing.T) {
 	s, err = runCmd(migrateValidateCmd(), "--dir", "file://"+p)
 	csErr := &migrate.ChecksumError{}
 	require.ErrorAs(t, err, &csErr)
-	require.Equal(t, 2, csErr.Line)
+	require.Equal(t, 3, csErr.Line)
 	require.Equal(t, "2_second.sql", csErr.File)
 	require.Equal(t, migrate.ReasonAdded, csErr.Reason)
 	require.Contains(t, s, "You have a checksum error")
-	require.Contains(t, s, "L 2: 2_second.sql was added")
+	require.Contains(t, s, "L3: 2_second.sql was added")
 }
 
 func TestMigrate_Hash(t *testing.T) {
