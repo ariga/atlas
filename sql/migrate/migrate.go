@@ -812,6 +812,12 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 			Hash:        hash,
 		}
 	}
+
+	// Update total statements in the existing revision to support
+	// statement-level granularity in cases when users add new statements to
+	// existing migrations to resolve partial failures.
+	r.Total = len(stmts)
+
 	// Save once to mark as started in the database.
 	if err = e.writeRevision(ctx, r); err != nil {
 		return err
