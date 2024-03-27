@@ -573,7 +573,6 @@ type migrateDiffFlags struct {
 	desiredURLs       []string
 	dirURL, dirFormat string
 	devURL            string
-	noSchema          bool
 	schemas           []string
 	lockTimeout       time.Duration
 	format            string
@@ -617,7 +616,6 @@ an HCL, SQL, or ORM schema. See: https://atlasgo.io/versioned/diff`,
 	cmd.Flags().SortFlags = false
 	addFlagToURLs(cmd.Flags(), &flags.desiredURLs)
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
-	addFlagNoSchema(cmd.Flags(), &flags.noSchema)
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
 	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
@@ -703,21 +701,16 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 		migrate.PlanWithDiffOptions(env.DiffOptions()...),
 	}
 
-	// Disable tables qualifier in schema-mode.
 	if dev.URL.Schema != "" {
-		if flags.noSchema {
-			opts = append(opts, migrate.PlanWithSchemaQualifier(""))
-		} else {
-			opts = append(opts, migrate.PlanWithSchemaQualifier(flags.qualifier))
-		}
-	}
-
-	if flags.noSchema {
-		opts = append(opts, migrate.PlanWithDiffOptions(schema.DiffSkipChanges(
-			&schema.AddSchema{},
-			&schema.DropSchema{},
-			&schema.ModifySchema{},
-		)))
+		// Disable tables qualifier in schema-mode.
+		opts = append(opts,
+			migrate.PlanWithSchemaQualifier(""),
+			migrate.PlanWithDiffOptions(schema.DiffSkipChanges(
+				&schema.AddSchema{},
+				&schema.DropSchema{},
+				&schema.ModifySchema{},
+			)),
+		)
 	}
 
 	// Plan the changes and create a new migration file.
