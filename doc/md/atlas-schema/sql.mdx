@@ -88,6 +88,19 @@ few examples of how to use the docker driver:
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+
+```shell
+# When working on a single database schema, use the auth-created
+# "public" schema as the search path.
+--dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public"
+
+# When working on multiple database schemas.
+--dev-url "redshift://user:pass@redshift-cluster:5439/dev"
+```
+
+</TabItem>
 </Tabs>
 
 ## Schema Definition

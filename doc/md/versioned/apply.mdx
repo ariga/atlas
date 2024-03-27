@@ -89,6 +89,14 @@ atlas migrate push app \
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```bash
+atlas migrate push app \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev"
+```
+
+</TabItem>
 </Tabs>
 
 
@@ -148,6 +156,15 @@ atlas migrate apply \
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app" \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable"
+```
+
+</TabItem>
 </Tabs>
 
 **Deploy a specific tag** to a local database the remote migration directory named `app`:
@@ -203,6 +220,15 @@ atlas migrate apply \
 atlas migrate apply \
   --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
   --url "clickhouse://user:pass@:9000/default"
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```bash
+atlas migrate apply \
+  --dir "atlas://app?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5" \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
@@ -363,6 +389,16 @@ atlas migrate diff my_baseline \
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate diff my_baseline \
+  --dir "file://migrations" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
+  --to "postgres://postgres:pass@localhost:5432/example?search_path=public&sslmode=disable"
+```
+
+</TabItem>
 </Tabs>
 
 Atlas will generate a "baseline" file from the database schema. For example:
@@ -496,6 +532,17 @@ atlas schema apply \
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas schema apply \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable" \
+  --to "file://migrations" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
 </Tabs>
 
 2\. Remove the files/versions that were rolled back from the revision table:
@@ -551,6 +598,15 @@ atlas migrate set \
 ```shell
 atlas migrate set \
   --url "clickhouse://user:pass@remote:9000/default" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate set \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable" \
   --dir "file://migrations"
 ```
 
@@ -625,6 +681,15 @@ atlas migrate status \
 ```shell
 atlas migrate status \
   --url "clickhouse://user:pass@remote:9000/default" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate status \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable" \
   --dir "file://migrations"
 ```
 
@@ -719,6 +784,17 @@ atlas schema apply \
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell {3}
+atlas schema apply \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable" \
+  --to "file://migrations?version=20220925094437" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
+  --exclude "atlas_schema_revisions"
+```
+
+</TabItem>
 </Tabs>
 
 ```shell title="tree ." {6}
@@ -784,6 +860,15 @@ atlas migrate set 20220925094437 \
 ```shell
 atlas migrate set 20220925094437 \
   --url "clickhouse://user:pass@remote:9000/default" \
+  --dir "file://migrations"
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate set 20220925094437 \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable" \
   --dir "file://migrations"
 ```
 
@@ -861,6 +946,15 @@ atlas migrate status \
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate status \
+  --url "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable" \
+  --dir "file://migrations"
+```
+
+</TabItem>
 </Tabs>
 
 <details>
@@ -930,6 +1024,14 @@ atlas migrate apply -u "sqlserver://sa:pass@remote:1433?database=master"
 ```shell
 atlas schema clean -u "clickhouse://user:pass@remote:9000/database"
 atlas migrate apply -u "clickhouse://user:pass@remote:9000/database"
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas schema clean -u "redshift://user:pass@redshift-cluster:5439/database?search_path=public&sslmode=disable"
+atlas migrate apply -u "redshift://user:pass@redshift-cluster:5439/database?search_path=public&sslmode=disable"
 ```
 
 </TabItem>

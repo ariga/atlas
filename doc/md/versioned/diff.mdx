@@ -237,6 +237,20 @@ table "users" {
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```hcl title="schema.hcl"
+schema "test" {}
+
+table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+}
+```
+
+</TabItem>
 </Tabs>
 
 Let's run `atlas migrate diff` with the necessary parameters to generate a migration script for
@@ -305,6 +319,16 @@ atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
   --dev-url "docker://clickhouse/23.11/test"
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
@@ -455,6 +479,23 @@ table "users" {
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```hcl title="schema.hcl" {8-10}
+schema "test" {}
+
+table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+  column "name" {
+    type = varchar(255)
+  }
+}
+```
+
+</TabItem>
 </Tabs>
 
 Then, run `atlas migrate diff`:
@@ -517,6 +558,16 @@ atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.hcl" \
   --dev-url "docker://clickhouse/23.11/dev"
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate diff add_users_name \
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
@@ -633,6 +684,15 @@ CREATE TABLE `users` (
 ```
 
 </TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```sql title="schema.sql"
+CREATE TABLE "users" (
+  "id" int NOT NULL
+)
+```
+
+</TabItem>
 </Tabs>
 
 Let's run `atlas migrate diff` with the necessary parameters to generate a migration script for
@@ -700,6 +760,16 @@ atlas migrate diff create_users \
   --dir "file://migrations" \
   --to "file://schema.sql" \
   --dev-url "docker://clickhouse/23.11/dev"
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate diff create_users \
+  --dir "file://migrations" \
+  --to "file://schema.sql" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
@@ -771,9 +841,9 @@ CREATE TABLE `users` (
 <TabItem value="postgres" label="PostgreSQL">
 
 ```sql title="schema.sql" {3}
-CREATE TABLE `users` (
-  `id` int NOT NULL,
-  `name` varchar(255) NOT NULL
+CREATE TABLE "users" (
+  "id" int NOT NULL,
+  "name" varchar(255) NOT NULL
 )
 ```
 
@@ -805,6 +875,16 @@ CREATE TABLE `users` (
   `id` int NOT NULL,
   `name` varchar(255) NOT NULL
 ) ENGINE = Memory
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```sql title="schema.sql" {3}
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` varchar(255) NOT NULL
+)
 ```
 
 </TabItem>
@@ -871,6 +951,16 @@ atlas migrate diff add_users_name \
   --dir "file://migrations" \
   --to "file://schema.sql" \
   --dev-url "docker://clickhouse/23.11/dev"
+```
+
+</TabItem>
+<TabItem value="redshift" label="Redshift">
+
+```shell
+atlas migrate diff add_users_name \
+  --dir "file://migrations" \
+  --to "file://schema.sql" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
