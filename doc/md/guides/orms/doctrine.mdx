@@ -75,29 +75,29 @@ to automatically plan schema migrations for a Doctrine project.
 Install the provider, depending on the [`doctrine/dbal`](https://www.doctrine-project.org/projects/dbal.html)
 version you are using in the `composer.json` file:
 <Tabs>
-<TabItem value="v3" label="Dcotrine DBAL v3" default>
+<TabItem value="v4" label="Doctrine DBAL v4" default>
+
+```bash
+composer require ariga/atlas-provider-doctrine:^4
+```
+</TabItem>
+<TabItem value="v3" label="Dcotrine DBAL v3">
 
 ```bash
 composer require ariga/atlas-provider-doctrine:^3
 ```
 
 </TabItem>
-<TabItem value="v4" label="Doctrine DBAL v4">
-
-```bash
-composer require ariga/atlas-provider-doctrine:^4
-```
-</TabItem>
 </Tabs>
 
-### Doctrine Command vs Script mode
+### Configuration
 
-The Atlas Doctrine Provider can be used in two modes:
+The Atlas Doctrine Provider can be used in three modes:
 
 * **Doctrine Command** - If all of your Doctrine entities exist under a single directory,
 you can add the `atlas-provider` command to the [Doctrine Console](https://www.doctrine-project.org/projects/doctrine-orm/en/3.0/reference/tools.html) file.
-* **Script** - In other cases, or if you use a [Symfony](https://symfony.com/) project,
-you can use the provider as a PHP script to load your Doctrine schema into Atlas.
+* **Symfony Bundle** - If you use a [Symfony](https://symfony.com/) project, you can register the provider as a Symfony bundle.
+* **Script** - In other cases, you can use the provider as a PHP script to load your Doctrine schema into Atlas.
 
 ### Using the Doctrine Command
 
@@ -126,7 +126,7 @@ data "external_schema" "doctrine" {
   program = [
     "php",
     "bin/doctrine", // path to your Doctrine Console file
-    "atlas:dump-sql",
+    "atlas:schema",
     "--path", "./path/to/entities",
     "--dialect", "mysql" // mariadb | postgres | sqlite | sqlserver
   ]
@@ -146,6 +146,46 @@ env "doctrine" {
 }
 ```
 
+### As Symfony Bundle
+
+Add the following bundle to your `config/bundles.php` file:
+
+```diff
+<?php
+
+require "vendor/autoload.php";
+
+return [
+    ...
++  Ariga\AtlasDoctrineBundle::class => ['all' => true],
+];
+
+```
+
+Next, in your project directory, create a new file named `atlas.hcl` with the following contents:
+
+```hcl
+data "external_schema" "doctrine" {
+  program = [
+    "php",
+    "bin/console",
+    "atlas:schema"
+  ]
+}
+
+env "doctrine" {
+  src = data.external_schema.doctrine.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+```
 
 ### As a PHP Script
 
@@ -157,7 +197,7 @@ Create a new file named `atlas.php` with the following contents:
 require "vendor/autoload.php";
 require "vendor/ariga/atlas-provider-doctrine/src/LoadEntities.php";
 
-print (DumpDDL(["./src/Entity"], "mysql")); // mariadb | postgres | sqlite | sqlserver
+print (DumpDDL(["./path/to/first/entities", "./path/to/more/entities"], "mysql"));
 ```
 
 Next, in your project directory, create a new file named `atlas.hcl` with the following contents:
