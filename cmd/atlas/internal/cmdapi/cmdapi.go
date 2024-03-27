@@ -285,6 +285,7 @@ const (
 	flagConfig         = "config"
 	flagContext        = "context"
 	flagDevURL         = "dev-url"
+	flagNoSchema       = "no-schema"
 	flagDirURL         = "dir"
 	flagDirFormat      = "dir-format"
 	flagDryRun         = "dry-run"
@@ -352,6 +353,10 @@ func addFlagDevURL(set *pflag.FlagSet, target *string) {
 		"",
 		"[driver://username:password@address/dbname?param=value] select a dev database using the URL format",
 	)
+}
+
+func addFlagNoSchema(set *pflag.FlagSet, target *bool) {
+	set.BoolVar(target, flagNoSchema, false, "omit schema from the output")
 }
 
 func addFlagDryRun(set *pflag.FlagSet, target *bool) {
