@@ -813,7 +813,7 @@ func SingleQuote(s string) (string, error) {
 // TrimViewExtra trims the extra unnecessary
 // characters from the view definition.
 func TrimViewExtra(s string) string {
-	return strings.Trim(s, " \n\t;")
+	return strings.Trim(s, " \r\n\t;")
 }
 
 // BodyDefChanged reports if the body definition of a function, procedure, view, or
