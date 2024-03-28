@@ -48,6 +48,7 @@ module.exports = {
                     ]
                 },
                 {type: 'doc', id: 'versioned/apply', label: 'Applying Migrations'},
+                {type: 'doc', id: 'versioned/down', label: 'Down Migrations'},
                 {type: 'doc', id: 'versioned/checks', label: 'Pre-migration Checks'},
                 {type: 'doc', id: 'versioned/new', label: 'Manual Migrations'},
                 {type: 'doc', id: 'versioned/troubleshoot', label: 'Migration Troubleshooting'},
