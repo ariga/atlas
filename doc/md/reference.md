@@ -416,6 +416,30 @@ atlas migrate rebase [flags] {name | version}...
 ```
 
 
+### atlas migrate rm
+
+Remove a migration file from the migration directory. Does not work for remote directories.
+
+#### Usage
+```
+atlas migrate rm [flags] [amount]
+```
+
+#### Example
+
+```
+  atlas migrate rm
+  atlas migrate rm --env local 20060102150405
+  atlas migrate rm --env local 20060102150405_name.sql
+```
+#### Flags
+```
+      --dir string          select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
+
+```
+
+
 ### atlas migrate set
 
 Set the current version of the migration history table.
