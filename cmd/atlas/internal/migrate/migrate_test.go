@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -76,32 +77,40 @@ func TestDirURL(t *testing.T) {
 	localDir := t.TempDir()
 	tests := []struct {
 		name        string
-		u           *url.URL
+		url         string
 		create      bool
-		expected    migrate.Dir
+		expected    func() migrate.Dir
 		expectedErr error
 	}{
 		{
-			name:     "Valid file URL",
-			u:        &url.URL{Scheme: "file", Path: localDir},
-			create:   false,
-			expected: must(migrate.NewLocalDir(localDir)),
+			name:   "Valid file URL",
+			url:    "file://" + localDir,
+			create: false,
+			expected: func() migrate.Dir {
+				d, err := migrate.NewLocalDir(localDir)
+				require.NoError(t, err)
+				return d
+			},
 		},
 		{
-			name:     "Create local dir",
-			u:        &url.URL{Scheme: "file", Path: "new/dir"},
-			create:   true,
-			expected: must(migrate.NewLocalDir("new/dir")),
+			name:   "Create local dir",
+			url:    "file://" + filepath.Join(localDir, "new/dir"),
+			create: true,
+			expected: func() migrate.Dir {
+				d, err := migrate.NewLocalDir(filepath.Join(localDir, "new/dir"))
+				require.NoError(t, err)
+				return d
+			},
 		},
 		{
 			name:        "Dont create local dir",
-			u:           &url.URL{Scheme: "file", Path: "new/dir/2"},
+			url:         "file://" + filepath.Join(localDir, "new/dir/2"),
 			create:      false,
-			expectedErr: errors.New("sql/migrate: stat new/dir/2: no such file or directory"),
+			expectedErr: fmt.Errorf("sql/migrate: stat %s: no such file or directory", filepath.Join(localDir, "new/dir/2")),
 		},
 		{
 			name:        "No scheme",
-			u:           &url.URL{Path: localDir},
+			url:         localDir,
 			create:      false,
 			expectedErr: fmt.Errorf("missing scheme for dir url. Did you mean %q? ", "file://"+localDir),
 		},
@@ -109,22 +118,15 @@ func TestDirURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir, err := DirURL(context.Background(), tt.u, tt.create)
+			dir, err := Dir(context.Background(), tt.url, tt.create)
 			if tt.expectedErr != nil {
 				require.EqualError(t, err, tt.expectedErr.Error())
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, tt.expected, dir)
+				require.Equal(t, tt.expected(), dir)
 			}
 		})
 	}
-}
-
-func must[T any](t T, err error) T {
-	if err != nil {
-		panic(err)
-	}
-	return t
 }
 
 func runRevisionsTests(ctx context.Context, t *testing.T, drv migrate.Driver, r RevisionReadWriter) {

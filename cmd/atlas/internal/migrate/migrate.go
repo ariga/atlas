@@ -345,7 +345,7 @@ func DirURL(ctx context.Context, u *url.URL, create bool) (migrate.Dir, error) {
 	case DirTypeAtlas:
 		return openAtlasDir(ctx, u)
 	case "":
-		return nil, fmt.Errorf("missing scheme for dir url. Did you mean %q? ", fmt.Sprintf("file://%s", u.Path))
+		return nil, fmt.Errorf("missing scheme for dir url. Did you mean %q? ", fmt.Sprintf("%s://%s", DirTypeFile, u.Path))
 	default:
 		return nil, fmt.Errorf("unsupported driver %q", u.Scheme)
 	}
