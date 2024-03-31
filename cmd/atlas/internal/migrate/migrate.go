@@ -332,7 +332,7 @@ const (
 // DefaultDirName is the default directory name.
 const DefaultDirName = "migrations"
 
-// DirURL returns a migrate.Dir to use as migration directory. For now only local directories are supported.
+// DirURL returns a migrate.Dir to use as migration directory.
 func DirURL(ctx context.Context, u *url.URL, create bool) (migrate.Dir, error) {
 	p := filepath.Join(u.Host, u.Path)
 	switch u.Scheme {
@@ -344,6 +344,8 @@ func DirURL(ctx context.Context, u *url.URL, create bool) (migrate.Dir, error) {
 		}
 	case DirTypeAtlas:
 		return openAtlasDir(ctx, u)
+	case "":
+	 	return nil, fmt.Errorf("missing scheme for dir url. Did you mean %q? ", fmt.Sprintf("file://%s", u.Path))
 	default:
 		return nil, fmt.Errorf("unsupported driver %q", u.Scheme)
 	}
