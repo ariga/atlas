@@ -375,12 +375,19 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 	var (
 		reverse    []schema.Change
+		name       = t.Name
 		reversible = true
 	)
 	build := func(changes []schema.Change) (string, error) {
-		b := s.Build("ALTER TABLE").Table(t)
+		b := s.Build("ALTER TABLE").SchemaResource(t.Schema, name)
 		err := b.MapCommaErr(changes, func(i int, b *sqlx.Builder) error {
 			switch change := changes[i].(type) {
+			case *schema.RenameTable:
+				b.P("RENAME TO").Table(change.To)
+				// Next time "build" is called, it
+				// will refer to the new table name.
+				name = change.To.Name
+				reverse = append(reverse, &schema.RenameTable{From: change.To, To: change.From})
 			case *schema.AddColumn:
 				b.P("ADD COLUMN")
 				if err := s.column(b, t, change.C); err != nil {
