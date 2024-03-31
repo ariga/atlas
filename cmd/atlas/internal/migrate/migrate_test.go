@@ -7,6 +7,7 @@ package migrate
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"testing"
 	"time"
@@ -69,6 +70,61 @@ func TestNewEntRevisions(t *testing.T) {
 	r, err := NewEntRevisions(ctx, c)
 	require.NoError(t, err)
 	runRevisionsTests(ctx, t, c.Driver, r)
+}
+
+func TestDirURL(t *testing.T) {
+	localDir := t.TempDir()
+	tests := []struct {
+		name        string
+		u           *url.URL
+		create      bool
+		expected    migrate.Dir
+		expectedErr error
+	}{
+		{
+			name:     "Valid file URL",
+			u:        &url.URL{Scheme: "file", Path: localDir},
+			create:   false,
+			expected: must(migrate.NewLocalDir(localDir)),
+		},
+		{
+			name:     "Create local dir",
+			u:        &url.URL{Scheme: "file", Path: "new/dir"},
+			create:   true,
+			expected: must(migrate.NewLocalDir("new/dir")),
+		},
+		{
+			name:        "Dont create local dir",
+			u:           &url.URL{Scheme: "file", Path: "new/dir/2"},
+			create:      false,
+			expectedErr: errors.New("sql/migrate: stat new/dir/2: no such file or directory"),
+		},
+		{
+			name:        "No scheme",
+			u:           &url.URL{Path: localDir},
+			create:      false,
+			expectedErr: fmt.Errorf("missing scheme for dir url. Did you mean %q? ", "file://"+localDir),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir, err := DirURL(context.Background(), tt.u, tt.create)
+			if tt.expectedErr != nil {
+				require.EqualError(t, err, tt.expectedErr.Error())
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, dir)
+			}
+		})
+	}
+}
+
+func must[T any](t T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return t
 }
 
 func runRevisionsTests(ctx context.Context, t *testing.T, drv migrate.Driver, r RevisionReadWriter) {
