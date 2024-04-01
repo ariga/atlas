@@ -69,6 +69,7 @@ values={[
     {label: 'PostgreSQL', value: 'postgres'},
     {label: 'SQLite', value: 'sqlite'},
     {label: 'SQL Server', value: 'sqlserver'},
+    {label: 'Clickhouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -239,6 +240,11 @@ jobs:
           MSSQL_SA_PASSWORD: P@ssw0rd0995
         ports:
           - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -U sa -P P@ssw0rd0995 -Q \"SELECT 1\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -250,6 +256,48 @@ jobs:
           dir: 'file://migrations'
           dir-name: 'my-project'
           dev-url: sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```yaml
+name: Push Migrations
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+jobs:
+  push:
+    services:
+      # Spin up a Clickhouse container to be used as the dev-database.
+      clickhouse:
+        image: clickhouse/clickhouse-server:23.10
+        env:
+          CLICKHOUSE_DB: test
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+          CLICKHOUSE_PASSWORD: pass
+          CLICKHOUSE_USER: root
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "clickhouse-client --host localhost --query 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/push@v1
+        with:
+          dir: 'file://migrations'
+          dir-name: 'my-project'
+          dev-url: 'clickhouse://root:pass@localhost:9000/test'
 ```
 
 </TabItem>
@@ -301,6 +349,7 @@ values={[
     {label: 'PostgreSQL', value: 'postgres'},
     {label: 'SQLite', value: 'sqlite'},
     {label: 'SQL Server', value: 'sqlserver'},
+    {label: 'Clickhouse', value: 'clickhouse'},
 ]}>
 <TabItem value="mysql">
 
@@ -492,6 +541,11 @@ jobs:
           MSSQL_SA_PASSWORD: P@ssw0rd0995
         ports:
           - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -U sa -P P@ssw0rd0995 -Q \"SELECT 1\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -503,6 +557,52 @@ jobs:
           dir: 'file://migrations'
           dir-name: 'my-project' # The name of the project in Atlas Cloud
           dev-url: sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  lint:
+    services:
+      # Spin up a Clickhouse container to be used as the dev-database for analysis.
+      clickhouse:
+        image: clickhouse/clickhouse-server:23.10
+        env:
+          CLICKHOUSE_DB: test
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+          CLICKHOUSE_PASSWORD: pass
+          CLICKHOUSE_USER: root
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "clickhouse-client --host localhost --query 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/lint@v1
+        with:
+          dir: 'file://migrations'
+          dir-name: 'my-project' # The name of the project in Atlas Cloud
+          dev-url: 'clickhouse://root:pass@localhost:9000/test'
 ```
 
 </TabItem>
