@@ -148,7 +148,7 @@ module.exports = {
     },
     announcementBar: {
       id: 'announcementBar-12', // Increment on change
-      content: `<strong>Atlas v0.21: Introducing Atlas Migrate Down. </strong><a class="cta" href="https://atlasgo.io/blog/2024/04/01/migrate-down">Read it here</a>`,
+      content: `<strong>Atlas v0.21: Introducing Atlas Migrate Down </strong><a class="cta" href="https://atlasgo.io/blog/2024/04/01/migrate-down">Read it here</a>`,
       isCloseable: true,
     },
   },
