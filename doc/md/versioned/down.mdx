@@ -154,7 +154,7 @@ atlas migrate down \
 </Tabs>
 
 3\. After downgrading your database to the desired version, you can safely delete the migration file `20240305171146.sql`
-from the migration directory and then run `atlas migrate hash` to update the `atlas.sum` file.
+from the migration directory by running `atlas migrate rm 20240305171146`.
 
 4\. After the file was deleted and the database downgraded, you can generate a new migration using the `atlas migrate diff`
     command with the optional `--edit` flag to open the generated file in your default editor.
