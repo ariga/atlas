@@ -147,8 +147,8 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-11', // Increment on change
-      content: `<strong>Atlas v0.20: New Pricing Model, Django Support, Postgres Extensions, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/03/18/atlas-v-0-20">Read it here</a>`,
+      id: 'announcementBar-12', // Increment on change
+      content: `<strong>Atlas v0.21: Introducing Atlas Migrate Down. </strong><a class="cta" href="https://atlasgo.io/blog/2024/04/01/migrate-down">Read it here</a>`,
       isCloseable: true,
     },
   },
