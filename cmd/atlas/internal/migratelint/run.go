@@ -490,7 +490,7 @@ func (r *SummaryReport) TotalChanges() int {
 
 // NewFileReport returns a new FileReport.
 func NewFileReport(f *sqlcheck.File) *FileReport {
-	return &FileReport{Name: f.Name(), Text: string(f.Bytes()), Change: FileChangeAdded, Start: time.Now(), File: f}
+	return &FileReport{Name: f.Name(), Text: string(f.Bytes()), Start: time.Now(), File: f}
 }
 
 // Line returns the line number from a position.
