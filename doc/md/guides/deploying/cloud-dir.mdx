@@ -42,15 +42,11 @@ atlas {
   }
 }
 
-data "remote_dir" "migration" {
-  name = "<name of dir>"
-}
-
 env {
   name = atlas.env
   url  = getenv("DATABASE_URL")
   migration {
-    dir = data.remote_dir.migration.url
+    dir = "atlas://<name of dir>"
   }
 }
 ```
@@ -60,11 +56,10 @@ Let's review what this configuration file does:
    in your environment or pass it in as a command line argument.
 2. The `atlas` block sets global configuration for Atlas. In this case, we are setting Atlas to work against
    Atlas Cloud, using the token we defined in the previous step.
-3. We define a data source of the type `remote_dir` to fetch the migration directory from Atlas Cloud.
-   We use the `name` parameter to specify the name of the directory we want to fetch. This name is the
-   same as the name you used when you [synced your migration directory](../../cloud/directory.mdx).
-4. Finally, we define an environment using the `env` block that uses the migration directory we fetched from Atlas Cloud.
+3. We define an environment using the `env` block.
    To avoid setting database credentials in the configuration file, we use the `DATABASE_URL` environment variable.
+4. To fetch the migration directory from Atlas Cloud we use the `atlas://<name of dir>` URL in the `migration.dir` field.
+   The name is the same as the name you used when you [synced your migration directory](../../cloud/directory.mdx).
 
 ### Running migrations from Atlas Cloud
 
