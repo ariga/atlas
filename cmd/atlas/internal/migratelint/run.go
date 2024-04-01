@@ -332,6 +332,9 @@ type (
 		TotalFiles int       `json:"-"` // Total number of files to analyze.
 	}
 
+	// FileChange specifies whether the file was added, deleted or changed.
+	FileChange string
+
 	// StepReport contains a summary of the analysis of a single step.
 	StepReport struct {
 		Name   string      `json:"Name,omitempty"`   // Step name.
@@ -346,6 +349,7 @@ type (
 		Text    string            `json:"Text,omitempty"`    // Contents of the file.
 		Reports []sqlcheck.Report `json:"Reports,omitempty"` // List of reports.
 		Error   string            `json:"Error,omitempty"`   // File specific error.
+		Change  FileChange        `json:"Change,omitempty"`  // Change of the file.
 
 		// Logging only info.
 		Start          time.Time  `json:"-"` // Start time of the analysis.
@@ -367,6 +371,12 @@ type (
 	// SilentError is returned in case the wrapped error is already
 	// printed by the runner and should not be printed by its caller
 	SilentError struct{ error }
+)
+
+const (
+	FileChangeAdded    FileChange = "ADDED"
+	FileChangeDeleted  FileChange = "DELETED"
+	FileChangeModified FileChange = "MODIFIED"
 )
 
 // NewSummaryReport returns a new SummaryReport.
@@ -480,7 +490,7 @@ func (r *SummaryReport) TotalChanges() int {
 
 // NewFileReport returns a new FileReport.
 func NewFileReport(f *sqlcheck.File) *FileReport {
-	return &FileReport{Name: f.Name(), Text: string(f.Bytes()), Start: time.Now(), File: f}
+	return &FileReport{Name: f.Name(), Text: string(f.Bytes()), Change: FileChangeAdded, Start: time.Now(), File: f}
 }
 
 // Line returns the line number from a position.
