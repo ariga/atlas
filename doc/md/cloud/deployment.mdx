@@ -29,19 +29,10 @@ with a single command (or using popular CD tools such as Kubernetes and Terrafor
 
 ## Deploying migrations from Atlas Cloud
 
-To deploy migrations directly from your cloud account, use the `atlas://` scheme in the `migration.dir` field of your `atlas.hcl` configuration file.
+To read the migrations directory from the [Schema Registry](https://atlasgo.io/cloud/features/registry),
+use the `atlas://` scheme in the migration URL as follows:
 
 ```hcl title="atlas.hcl"
-variable "cloud_token" {
-  type = string
-}
-
-atlas {
-  cloud {
-    token = var.cloud_token
-  }
-}
-
 env {
   // Set environment name dynamically based on --env value.
   name = atlas.env
@@ -55,11 +46,11 @@ env {
 Now you can deploy migrations from Atlas Cloud using the following command:
 
 ```shell
+export ATLAS_TOKEN="<ATLAS_TOKEN>"
 atlas migrate apply \
   --url "<DATABASE_URL>" \
   --config file://path/to/atlas.hcl \
-  --env prod \
-  --var cloud_token="<ATLAS_TOKEN>"
+  --env prod
 ```
 
 ## Visualizing Migration Runs
