@@ -662,7 +662,14 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	}
 	// Avoid printing the index type if it is the default.
 	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && strings.ToUpper(i.T) != IndexTypeBTree {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
+		var attr *schemahcl.Attr
+		switch strings.ToUpper(i.T) {
+		case IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, IndexTypeSPGiST:
+			attr = specutil.VarAttr("type", strings.ToUpper(i.T))
+		default:
+			attr = schemahcl.StringAttr("type", i.T)
+		}
+		spec.Extra.Attrs = append(spec.Extra.Attrs, attr)
 	}
 	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
@@ -699,8 +706,10 @@ func partAttr(idx *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart
 	case d:
 	case len(op.Params) > 0:
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.RawAttr("ops", op.String()))
-	default:
+	case postgresop.HasClass(op.String()):
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("ops", op.String()))
+	default:
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.StringAttr("ops", op.String()))
 	}
 	return nil
 }
