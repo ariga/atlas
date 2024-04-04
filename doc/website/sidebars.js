@@ -17,9 +17,13 @@ module.exports = {
             collapsed: false,
             items: [
                 'getting-started/getting-started',
+                {
+                    type: 'doc',
+                    id: 'atlas-vs-classic',
+                    label: 'Atlas vs Other Tools'
+                }
             ]
         },
-
         {
             type: "category",
             label: "Declarative Workflows",
