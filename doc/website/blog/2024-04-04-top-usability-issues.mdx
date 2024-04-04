@@ -63,7 +63,7 @@ listing the needed steps to build it. It's correct, but it's not very useful.
 :::info Issue #1: Migrations as a source of truth
 
 **Problem**: As a human, I can't understand the current state of the database by looking at the migration files.
-I need to run them in order to understand the current state of the database.
+I need to run them in chronological order to understand the current state of the database.
 
 **Solution**: Use a declarative [schema-as-code approach](/blog/2024/01/24/why-schema-as-code) to describe the current state of the database.
 Then, in every version of our project, we can read the current schema in plain text and understand it.
