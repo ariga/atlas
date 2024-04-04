@@ -136,7 +136,7 @@ database up to date.
 When migrations succeed, everything is great. But in my experience, when migrations fail, especially when they fail
 partially, it can be a nightmare to recover from.
 
-Suppose you planning a migration to version `N+1` of the database, from version `N`.  The migration script for version
+Suppose you planning a migration to version `N+1` of the database, from version `N`. The migration script for version
 `N` contains 10 changes.  The migration fails after applying the 5th change.  If you use a database that supports fully
 transactional DDL (like Postgres), and all of your changes are transactional, then you are in luck - your migration tool
 can safely roll back the changes that were applied and your database (revisions table) will remain in version `N1`.
