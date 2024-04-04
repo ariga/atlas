@@ -207,7 +207,7 @@ are never used because:
 
 **Problem**: Pre-planned rollbacks ("down migrations") are never used in practice. They are naive, destructive,
 and incompatible with broader rollback mechanisms. This leads to a false sense of security which is unraveled
-when a rollback is actually needed and realize that they will need to handle it manually.
+when a rollback is actually needed and the user realizes that they will need to handle it manually.
 
 **Solution**: Use a tool that support dynamically-planned, [safe rollbacks](/blog/2024/04/01/migrate-down) that
 can revert the database to a previous state without data loss even in cases of partial failures.
