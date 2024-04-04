@@ -142,7 +142,7 @@ transactional DDL (like Postgres), and all of your changes are transactional, th
 can safely roll back the changes that were applied and your database (revisions table) will remain in version `N1`.
 
 But if you are using a database that doesn't support transactional DDL, or if your changes are not transactional, then
-you are in trouble.  The migration tool can't rollback the changes that were applied, and your database will in a state that
+you are in trouble. The migration tool can't rollback the changes that were applied, and your database will in a state that
 is somewhere in the middle between version `N1` and version `N+1`.  All of the migration tools that I know of don't
 capture this interim state, and so you are left with a database that is in an unknown state and a revision table that
 is out of sync with the actual state of the database.
