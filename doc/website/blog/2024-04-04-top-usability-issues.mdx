@@ -168,7 +168,7 @@ And the solution?
 
 **Problem**: Classic migration tools don't handle partial failures well. When a migration fails, especially when it fails
 partially, it can leave your database in an unknown state with the revision table out of sync with the actual state of the
-database.  Resolving this issue requires manual handling of the database which is dangerous and error-prone.
+database. Resolving this issue requires manual handling of the database which is dangerous and error-prone.
 
 **Solution**: Use a tool that natively supports [transactions](/versioned/apply#transaction-configuration) where possible,
 and uses [statement-level granularity](/blog/2023/04/10/troubleshooting-migrations#statement-level-granularity) to
