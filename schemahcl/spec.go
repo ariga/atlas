@@ -392,6 +392,20 @@ func (r *Resource) Resource(t string) (*Resource, bool) {
 	return nil, false
 }
 
+// Resources returns all child Resources by its type.
+func (r *Resource) Resources(t string) []*Resource {
+	if r == nil {
+		return nil
+	}
+	var rs []*Resource
+	for i := range r.Children {
+		if r.Children[i].Type == t {
+			rs = append(rs, r.Children[i])
+		}
+	}
+	return rs
+}
+
 // Attr returns the Attr by the provided name and reports whether it was found.
 func (r *Resource) Attr(name string) (*Attr, bool) {
 	if at, ok := attrVal(r.Attrs, name); ok {

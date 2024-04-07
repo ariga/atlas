@@ -1169,6 +1169,11 @@ func (o *ReferenceOption) Scan(v any) error {
 // IsUnique reports if the type is unique constraint.
 func (c Constraint) IsUnique() bool { return strings.ToLower(c.T) == "u" }
 
+// UniqueConstraint returns constraint with type "u".
+func UniqueConstraint(name string) *Constraint {
+	return &Constraint{T: "u", N: name}
+}
+
 // IntegerType returns the underlying integer type this serial type represents.
 func (s *SerialType) IntegerType() *schema.IntegerType {
 	t := &schema.IntegerType{T: TypeInteger}

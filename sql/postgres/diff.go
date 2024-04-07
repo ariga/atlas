@@ -189,6 +189,11 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 	if indexNullsDistinct(to) != indexNullsDistinct(from) {
 		return true
 	}
+	_, u1 := uniqueConst(from)
+	_, u2 := uniqueConst(to)
+	if u1 != u2 {
+		return true
+	}
 	var p1, p2 IndexPredicate
 	if sqlx.Has(from, &p1) != sqlx.Has(to, &p2) || (p1.P != p2.P && p1.P != sqlx.MayWrap(p2.P)) {
 		return true
@@ -494,6 +499,16 @@ func indexNullsDistinct(attrs []schema.Attr) bool {
 	// The default PostgreSQL behavior. The inverse of
 	// "indnullsnotdistinct" in pg_index which is false.
 	return true
+}
+
+// uniqueConst returns the first unique constraint from the given attributes.
+func uniqueConst(attrs []schema.Attr) (*Constraint, bool) {
+	for _, a := range attrs {
+		if c, ok := a.(*Constraint); ok && c.IsUnique() {
+			return c, true
+		}
+	}
+	return nil, false
 }
 
 func trimCast(s string) string {
