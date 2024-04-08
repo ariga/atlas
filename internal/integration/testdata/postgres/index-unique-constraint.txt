@@ -24,12 +24,10 @@ table "users" {
     null = true
     type = text
   }
-  index "users_name_last_key" {
-    unique  = true
+  unique "users_name_last_key" {
     columns = [column.name, column.last]
   }
-  index "users_nickname_key" {
-    unique  = true
+  unique "users_nickname_key" {
     columns = [column.nickname]
   }
 }
@@ -51,8 +49,7 @@ table "users" {
     null = true
     type = text
   }
-  index "users_name_last_key" {
-    unique  = true
+  unique "users_name_last_key" {
     columns = [column.name, column.last]
   }
 }

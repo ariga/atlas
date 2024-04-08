@@ -650,6 +650,17 @@ var (
 	exprsType   = reflect.TypeOf(([]schema.Expr)(nil))
 )
 
+// AttrOr returns the first attribute of the given type,
+// or the given default value.
+func AttrOr[T schema.Attr](attrs []schema.Attr, t T) T {
+	for _, attr := range attrs {
+		if a, ok := attr.(T); ok {
+			return a
+		}
+	}
+	return t
+}
+
 // Has finds the first element in the elements list that
 // matches target, and if so, sets target to that attribute
 // value and returns true.

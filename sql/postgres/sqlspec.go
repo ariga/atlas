@@ -45,7 +45,7 @@ type (
 		schemahcl.DefaultExtension
 	}
 
-	// Domain holds a specification for a domain type.
+	// domain holds a specification for a domain type.
 	domain struct {
 		Name      string           `spec:",name"`
 		Qualifier string           `spec:",qualifier"`
@@ -282,6 +282,9 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 	if err != nil {
 		return nil, err
 	}
+	if err := convertUniques(spec.Extra, t); err != nil {
+		return nil, err
+	}
 	if err := convertPartition(spec.Extra, t); err != nil {
 		return nil, err
 	}
@@ -308,6 +311,24 @@ func convertView(spec *sqlspec.View, parent *schema.Schema) (*schema.View, error
 		return nil, err
 	}
 	return v, nil
+}
+
+// convertUniques converts the unique constraints into indexes.
+func convertUniques(spec schemahcl.Resource, t *schema.Table) error {
+	rs := spec.Resources("unique")
+	for _, r := range rs {
+		var sx sqlspec.Index
+		if err := r.As(&sx); err != nil {
+			return fmt.Errorf("parse %s.unique constraint: %w", t.Name, err)
+		}
+		idx, err := convertIndex(&sx, t)
+		if err != nil {
+			return err
+		}
+		idx.SetUnique(true).AddAttrs(UniqueConstraint(sx.Name))
+		t.AddIndexes(idx)
+	}
+	return nil
 }
 
 // convertPartition converts and appends the partition block into the table attributes if exists.
@@ -613,9 +634,9 @@ func schemaSpec(s *schema.Schema) (*doc, []*schema.Trigger, error) {
 }
 
 // tableSpec converts from a concrete Postgres sqlspec.Table to a schema.Table.
-func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
+func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	spec, err := specutil.FromTable(
-		table,
+		t,
 		tableColumnSpec,
 		pkSpec,
 		indexSpec,
@@ -625,7 +646,26 @@ func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p := (Partition{}); sqlx.Has(table.Attrs, &p) {
+	idxs := make([]*sqlspec.Index, 0, len(spec.Indexes))
+	for i, idx1 := range spec.Indexes {
+		if len(t.Indexes) <= i || t.Indexes[i].Name != idx1.Name {
+			return nil, fmt.Errorf("unexpected spec index %q was not found in table %q", idx1.Name, t.Name)
+		}
+		if c := (&Constraint{}); sqlx.Has(t.Indexes[i].Attrs, c) && c.IsUnique() && c.N != "" {
+			spec.Extra.Children = append(spec.Extra.Children, &schemahcl.Resource{
+				Type: "unique",
+				Name: c.N,
+				Attrs: append(
+					[]*schemahcl.Attr{schemahcl.RefsAttr("columns", idx1.Columns...)},
+					idx1.Extra.Attrs...,
+				),
+			})
+		} else {
+			idxs = append(idxs, idx1)
+		}
+	}
+	spec.Indexes = idxs
+	if p := (Partition{}); sqlx.Has(t.Attrs, &p) {
 		spec.Extra.Children = append(spec.Extra.Children, fromPartition(p))
 	}
 	return spec, nil

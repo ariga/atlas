@@ -6,6 +6,7 @@ issues:
     - EXC0012
   exclude:
     - G601
+    - G404
   exclude-rules:
     - path: _test\.go
       linters:

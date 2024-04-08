@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -422,6 +423,11 @@ func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, devURL, c
 	)
 	for i, arg := range args {
 		args[i] = r.Replace(arg)
+	}
+	// Whenever a migrate diff/apply command is executed, increase the default lock
+	// timeout to 30s, as the default (10s) for synchronizing all our tests.
+	if len(args) > 1 && args[0] == "migrate" && (args[1] == "diff" || args[1] == "apply") && !slices.Contains(args, "--lock-timeout") {
+		args = append(args, "--lock-timeout", "30s")
 	}
 	switch l := len(args); {
 	// If command was run with a unix redirect-like suffix.

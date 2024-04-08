@@ -335,3 +335,7 @@ func convertTypes(d *doc, r *schema.Realm) error {
 	}
 	return nil
 }
+
+func indexToUnique(*schema.ModifyIndex) (*AddUniqueConstraint, bool) {
+	return nil, false // unimplemented.
+}

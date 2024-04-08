@@ -605,40 +605,44 @@ Indexes are child resources of a `table`, and it defines an index on the table.
 #### Example
 
 ```hcl
+# Columns only.
 index "idx_name" {
-    columns = [
-      column.name
-    ]
-    unique = true
+  unique = true
+  columns = [column.name]
 }
 
+# Columns and order.
 index "idx_name" {
-    on {
-        column = column.rank
-    }
-    on {
-        column = column.score
-        desc = true
-    }
-    unique = true
+  unique = true
+  on {
+    column = column.rank
+  }
+  on {
+    column = column.score
+    desc = true
+  }
 }
 
+# Custom index type.
 index "idx_name" {
   type = GIN
   columns = [column.data]
 }
 
+# Control storage options.
 index "idx_range" {
   type = BRIN
   columns = [column.range]
   page_per_range = 128
 }
 
+# Include non-key columns.
 index "idx_include" {
   columns = [column.range]
   include = [column.version]
 }
 
+# Define operator class.
 index "idx_operator_class" {
   type = GIN
   on {
@@ -647,12 +651,14 @@ index "idx_operator_class" {
   }
 }
 
+# Full-text index with ngram parser.
 index "index_parser" {
   type    = FULLTEXT
   columns = [column.text]
   parser  = ngram
 }
 
+# Postgres-specific NULLS [NOT] DISTINCT option.
 index "index_nulls_not_distinct" {
   unique         = true
   columns        = [column.text]
@@ -743,6 +749,33 @@ table "users" {
   }
 }
 ```
+
+### Unique Constraints
+
+The `unique` block allows defining a [unique constraint](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-UNIQUE-CONSTRAINTS)
+supported by PostgreSQL:
+
+```hcl
+# Columns only.
+unique "name" {
+  columns = [column.name]
+}
+
+# Include non-key columns.
+unique "name_include_version" {
+  columns = [column.name]
+  include = [column.version]
+}
+```
+
+:::info <a class="sticky-anchor" id={"adding-unique-constraints-concurrently"} href={"#adding-unique-constraints-concurrently"}>Adding unique constraints concurrently</a>
+In order to add a unique constraint in non-blocking mode, the index supporting the constraint needs to be created
+concurrently first and then converted to a unique constraint. To achieve this, follow the steps below:
+1. Define a unique `index` block on the desired table.
+2. Ensure a [Diff Policy](/versioned/diff#diff-policy) is used to instruct Atlas to create the index concurrently.
+3. Apply the migration and ensure the index was created.
+4. Replace the `index` block with a `unique` block to create a new unique constraint using the existing index.
+:::
 
 ## Trigger
 
@@ -1460,8 +1493,8 @@ table "t2" {
 
 ## Extension
 
-:::info BETA FEATURE
-Extensions are currently in beta and available to logged-in users only. To use this feature, run:
+:::info LOGIN REQUIRED
+Extensions are currently available to logged-in users only. To use this feature, run:
 ```
 atlas login
 ```

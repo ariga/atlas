@@ -2326,3 +2326,92 @@ schema "s3" {
 }
 `, string(buf))
 }
+
+func TestMarshalSpec_UniqueConstraint(t *testing.T) {
+	s := schema.New("public").
+		AddTables(
+			schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("id", "int"),
+					schema.NewIntColumn("uid", "int"),
+				).
+				AddIndexes(
+					schema.NewUniqueIndex("u1").AddColumns(schema.NewColumn("id")).AddAttrs(UniqueConstraint("u1")),
+					schema.NewUniqueIndex("u2").AddColumns(schema.NewColumn("id")).AddAttrs(UniqueConstraint("u2"), &IndexNullsDistinct{}),
+					schema.NewUniqueIndex("u3").AddColumns(schema.NewColumn("id")).AddAttrs(UniqueConstraint("u3"), &IndexInclude{Columns: []*schema.Column{schema.NewColumn("uid")}}),
+				),
+		)
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	require.Equal(t, `table "t1" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = int
+  }
+  column "uid" {
+    null = false
+    type = int
+  }
+  unique "u1" {
+    columns = [column.id]
+  }
+  unique "u2" {
+    columns        = [column.id]
+    nulls_distinct = false
+  }
+  unique "u3" {
+    columns = [column.id]
+    include = [column.uid]
+  }
+}
+schema "public" {
+}
+`,
+		string(buf))
+}
+
+func TestUnmarshalSpec_UniqueConstraint(t *testing.T) {
+	var s schema.Schema
+	require.NoError(t, EvalHCLBytes([]byte(`table "t1" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = int
+  }
+  column "uid" {
+    null = false
+    type = int
+  }
+  unique "u1" {
+    columns = [column.id]
+  }
+  unique "u2" {
+    columns        = [column.id]
+    nulls_distinct = false
+  }
+  unique "u3" {
+    columns = [column.id]
+    include = [column.uid]
+  }
+}
+schema "public" {
+}
+`), &s, nil))
+	require.Len(t, s.Tables, 1)
+	require.Len(t, s.Tables[0].Indexes, 3)
+	// u1
+	u1 := s.Tables[0].Indexes[0]
+	require.Equal(t, "u1", u1.Name)
+	require.Equal(t, UniqueConstraint("u1"), u1.Attrs[0].(*Constraint))
+	// u2
+	u2 := s.Tables[0].Indexes[1]
+	require.Equal(t, "u2", u2.Name)
+	require.Equal(t, &IndexNullsDistinct{}, u2.Attrs[0])
+	require.Equal(t, UniqueConstraint("u2"), u2.Attrs[1].(*Constraint))
+	// u3
+	u3 := s.Tables[0].Indexes[2]
+	require.Equal(t, "u3", u3.Name)
+	require.Equal(t, &IndexInclude{Columns: []*schema.Column{s.Tables[0].Columns[1]}}, u3.Attrs[0])
+	require.Equal(t, UniqueConstraint("u3"), u3.Attrs[1].(*Constraint))
+}
