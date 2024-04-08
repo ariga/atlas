@@ -486,6 +486,38 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Add a primary key using index.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						SetSchema(schema.New("test")).
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+						)
+					users.SetPrimaryKey(schema.NewPrimaryKey(users.Columns...))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&AddPKConstraint{
+								Name:  "users_pkey",
+								Using: schema.NewUniqueIndex("users_pkey"),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "test"."users" ADD CONSTRAINT "users_pkey" PRIMARY KEY USING INDEX "users_pkey"`,
+						Reverse: `ALTER TABLE "test"."users" DROP CONSTRAINT "users_pkey"`,
+					},
+				},
+			},
+		},
 		// Modify a primary key.
 		{
 			changes: []schema.Change{

@@ -460,9 +460,17 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 
 type (
 	// AddUniqueConstraint to the table using the given index. Note, if the index
-	// name does not match the constraint name, PostgreSQL implicitly renames it to
-	// the constraint name.
+	// name does not match the unique constraint name, PostgreSQL implicitly renames
+	// it to the constraint name.
 	AddUniqueConstraint struct {
+		schema.Change
+		Name  string        // Name of the constraint.
+		Using *schema.Index // Index to use for the constraint.
+	}
+	// AddPKConstraint to the table using the given index. Note, if the index
+	// name does not match the primary-key constraint name, PostgreSQL implicitly
+	// renames it to the constraint name.
+	AddPKConstraint struct {
 		schema.Change
 		Name  string        // Name of the constraint.
 		Using *schema.Index // Index to use for the constraint.
@@ -506,6 +514,16 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				reverse = append(reverse, &schema.AddColumn{C: change.C})
 			case *AddUniqueConstraint:
 				b.P("ADD CONSTRAINT").Ident(change.Name).P("UNIQUE USING INDEX").Ident(change.Using.Name)
+				drop := change.Using
+				if drop.Name != change.Name {
+					drop = sqlx.P(*change.Using)
+					drop.Name = change.Name
+				}
+				// Translated to the DROP CONSTRAINT below,
+				// which drops the index as well.
+				reverse = append(reverse, &schema.DropIndex{I: drop})
+			case *AddPKConstraint:
+				b.P("ADD CONSTRAINT").Ident(change.Name).P("PRIMARY KEY USING INDEX").Ident(change.Using.Name)
 				drop := change.Using
 				if drop.Name != change.Name {
 					drop = sqlx.P(*change.Using)
