@@ -192,7 +192,7 @@ environment. This is typically done by running the following steps in your workf
 atlas login --token $ATLAS_TOKEN
 
 # deploy the latest revision of the database to the staging environment
-atlas migrate apply --url mysql://user:pass@host:port/dbname --dir atlas://project-id
+atlas migrate apply --url mysql://user:pass@host:port/dbname --dir atlas://dir-name
 ```
 
 When you run the `atlas migrate apply` command, Atlas will connect to the target database,
