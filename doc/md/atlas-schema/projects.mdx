@@ -859,7 +859,7 @@ tag (e.g., `master` branch) will be used.
 
 :::note
 The `remote_dir` data source predates the `atlas://` URL scheme. The example below is equivalent to executing Atlas with
-`--dir "atlas://graph"`.
+`--dir "atlas://myapp"`.
 :::
 
 ```hcl title="atlas.hcl" {6-10}
@@ -870,8 +870,8 @@ variable "database_url" {
 
 data "remote_dir" "migrations" {
   // The slug of the migration directory in Atlas Cloud.
-  // In this example, the directory is named "graph".
-  name = "graph"
+  // In this example, the directory is named "myapp".
+  name = "myapp"
 }
 
 env {

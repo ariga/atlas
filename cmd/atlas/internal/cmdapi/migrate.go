@@ -945,7 +945,7 @@ type migrateLintFlags struct {
 	latest            uint   // --latest 1
 	gitBase, gitDir   string // --git-base master --git-dir /path/to/git/repo
 	// Not enabled by default.
-	dirBase string // --base atlas://graph
+	dirBase string // --base atlas://myapp
 	web     bool   // Open the web browser
 	context string // Run context. See cloudapi.ContextInput.
 }
