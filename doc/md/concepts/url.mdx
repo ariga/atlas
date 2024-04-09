@@ -146,6 +146,17 @@ Connecting to a specific ClickHouse schema (database) with a username and passwo
 clickhouse://user:pass@localhost:9000/schema
 ```
 
+Connecting to a specific ClickHouse schema with SSL enabled:
+```shell
+clickhouse://user:pass@localhost:9000/schema?secure=true
+```
+
+To connect [ClickHouse Cloud](https://clickhouse.com/cloud),
+we need to use native protocol port [`9440`](https://clickhouse.com/docs/en/guides/sre/network-ports) with SSL enabled:
+```shell
+clickhouse://user:pass@CLICKHOUSE-CLOUD-HOST:9440/schema?secure=true
+```
+
 </TabItem>
 <TabItem value="docker">
 
