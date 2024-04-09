@@ -687,7 +687,8 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 
 // addChecks scans the rows and adds the checks to the table.
 func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
-	names := make(map[string]*schema.Check)
+	type tc struct{ t, n string }
+	names := make(map[tc]*schema.Check)
 	for rows.Next() {
 		var (
 			noInherit                            bool
@@ -703,13 +704,13 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 		if _, ok := t.Column(column); !ok {
 			return fmt.Errorf("postgres: column %q was not found for check %q", column, name)
 		}
-		check, ok := names[name]
+		check, ok := names[tc{t: table, n: name}]
 		if !ok {
 			check = &schema.Check{Name: name, Expr: clause, Attrs: []schema.Attr{&CheckColumns{}}}
 			if noInherit {
 				check.Attrs = append(check.Attrs, &NoInherit{})
 			}
-			names[name] = check
+			names[tc{t: table, n: name}] = check
 			t.Attrs = append(t.Attrs, check)
 		}
 		c := check.Attrs[0].(*CheckColumns)

@@ -1,0 +1,78 @@
+# Inspect SQL format.
+atlas schema inspect --url file://schema.sql --dev-url URL --format '{{ sql . "  " }}' > got
+cmp schema.inspected.sql got
+# Inspect HCL format.
+atlas schema inspect --url file://schema.sql --dev-url URL > got
+cmp schema.inspected.hcl got
+
+-- schema.sql --
+create table t1 (
+  a int constraint c1 check (a > 0),
+  b int constraint c2 check (b > 0),
+  constraint c3 check (a < b)
+);
+create table t2 (
+  a int constraint c1 check (a > 0),
+  c int constraint c4 check (c > 0),
+  constraint c5 check (a < c)
+);
+-- schema.inspected.sql --
+-- Create "t1" table
+CREATE TABLE "t1" (
+  "a" integer NULL,
+  "b" integer NULL,
+  CONSTRAINT "c1" CHECK (a > 0),
+  CONSTRAINT "c2" CHECK (b > 0),
+  CONSTRAINT "c3" CHECK (a < b)
+);
+-- Create "t2" table
+CREATE TABLE "t2" (
+  "a" integer NULL,
+  "c" integer NULL,
+  CONSTRAINT "c1" CHECK (a > 0),
+  CONSTRAINT "c4" CHECK (c > 0),
+  CONSTRAINT "c5" CHECK (a < c)
+);
+-- schema.inspected.hcl --
+table "t1" {
+  schema = schema.script_table_checks
+  column "a" {
+    null = true
+    type = integer
+  }
+  column "b" {
+    null = true
+    type = integer
+  }
+  check "c1" {
+    expr = "(a > 0)"
+  }
+  check "c2" {
+    expr = "(b > 0)"
+  }
+  check "c3" {
+    expr = "(a < b)"
+  }
+}
+table "t2" {
+  schema = schema.script_table_checks
+  column "a" {
+    null = true
+    type = integer
+  }
+  column "c" {
+    null = true
+    type = integer
+  }
+  check "c1" {
+    expr = "(a > 0)"
+  }
+  check "c4" {
+    expr = "(c > 0)"
+  }
+  check "c5" {
+    expr = "(a < c)"
+  }
+}
+schema "script_table_checks" {
+}
