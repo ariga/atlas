@@ -416,6 +416,14 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 					return false, fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
 				}
 				change = changes[i]
+			case *schema.RenameColumn:
+				if c.To.Name != column.Name {
+					break
+				}
+				if change != nil {
+					return false, fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
+				}
+				change = changes[i]
 			case *schema.DropColumn:
 				if c.C.Name == column.Name {
 					return false, fmt.Errorf("unexpected drop column: %q", column.Name)
@@ -439,6 +447,9 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 			} else {
 				fromC = append(fromC, column.Name)
 			}
+		case *schema.RenameColumn:
+			toC = append(toC, change.To.Name)
+			fromC = append(fromC, change.From.Name)
 		// Columns without changes should be transferred as-is.
 		case nil:
 			toC = append(toC, column.Name)
