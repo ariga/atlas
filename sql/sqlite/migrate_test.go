@@ -198,6 +198,7 @@ func TestPlanChanges(t *testing.T) {
 					users := schema.NewTable("users").
 						AddColumns(
 							schema.NewIntColumn("id", "bigint"),
+							schema.NewIntColumn("name", "text"),
 							schema.NewIntColumn("nid", "bigint").
 								SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
 						)
@@ -205,7 +206,12 @@ func TestPlanChanges(t *testing.T) {
 						T: users,
 						Changes: []schema.Change{
 							&schema.AddColumn{
-								C: users.Columns[1],
+								C: users.Columns[2],
+							},
+							// Rename should be respected in INSERT command.
+							&schema.RenameColumn{
+								From: schema.NewColumn("uname"),
+								To:   users.Columns[1],
 							},
 						},
 					}
@@ -215,8 +221,8 @@ func TestPlanChanges(t *testing.T) {
 				Transactional: true,
 				Changes: []*migrate.Change{
 					{Cmd: "PRAGMA foreign_keys = off"},
-					{Cmd: "CREATE TABLE `new_users` (`id` bigint NOT NULL, `nid` bigint NOT NULL AS (1) STORED)", Reverse: "DROP TABLE `new_users`"},
-					{Cmd: "INSERT INTO `new_users` (`id`) SELECT `id` FROM `users`"},
+					{Cmd: "CREATE TABLE `new_users` (`id` bigint NOT NULL, `name` text NOT NULL, `nid` bigint NOT NULL AS (1) STORED)", Reverse: "DROP TABLE `new_users`"},
+					{Cmd: "INSERT INTO `new_users` (`id`, `name`) SELECT `id`, `uname` FROM `users`"},
 					{Cmd: "DROP TABLE `users`"},
 					{Cmd: "ALTER TABLE `new_users` RENAME TO `users`"},
 					{Cmd: "PRAGMA foreign_keys = on"},
