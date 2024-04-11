@@ -181,7 +181,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		return err
 	}
 	defer to.Close()
-	diff, err := computeDiff(ctx, client, from, to, env.DiffOptions()...)
+	diff, err := computeDiff(ctx, client, from, to, diffOptions(cmd, env)...)
 	if err != nil {
 		return err
 	}
@@ -433,7 +433,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	diff, err := computeDiff(ctx, c, from, to, env.DiffOptions()...)
+	diff, err := computeDiff(ctx, c, from, to, diffOptions(cmd, env)...)
 	if err != nil {
 		return err
 	}

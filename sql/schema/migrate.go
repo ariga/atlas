@@ -418,6 +418,10 @@ type (
 		// Extra defines per-driver configuration. If not
 		// nil, should be set to schemahcl.Extension.
 		Extra any // avoid circular dependency with schemahcl.
+
+		// AskFunc can be implemented by the caller to
+		// make diff process interactive.
+		AskFunc func(string, []string) (string, error)
 	}
 
 	// DiffOption allows configuring the DiffOptions using functional options.
