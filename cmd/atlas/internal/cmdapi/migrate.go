@@ -679,7 +679,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 			Indent:  indent,
 			Dir:     dir,
 			Dev:     dev,
-			Options: env.DiffOptions(),
+			Options: diffOptions(cmd, env),
 		})
 		return maskNoPlan(cmd, err)
 	}
@@ -698,7 +698,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	opts := []migrate.PlannerOption{
 		migrate.PlanFormat(f),
 		migrate.PlanWithIndent(indent),
-		migrate.PlanWithDiffOptions(env.DiffOptions()...),
+		migrate.PlanWithDiffOptions(diffOptions(cmd, env)...),
 	}
 	if dev.URL.Schema != "" {
 		// Disable tables qualifier in schema-mode.
