@@ -339,3 +339,9 @@ func convertTypes(d *doc, r *schema.Realm) error {
 func indexToUnique(*schema.ModifyIndex) (*AddUniqueConstraint, bool) {
 	return nil, false // unimplemented.
 }
+
+func uniqueConstChanged(_, _ []schema.Attr) bool {
+	// Unsupported change in package mode (ariga.io/sql/postgres)
+	// to keep BC with old versions.
+	return false
+}

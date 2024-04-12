@@ -189,9 +189,7 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 	if indexNullsDistinct(to) != indexNullsDistinct(from) {
 		return true
 	}
-	_, u1 := uniqueConst(from)
-	_, u2 := uniqueConst(to)
-	if u1 != u2 {
+	if uniqueConstChanged(from, to) {
 		return true
 	}
 	var p1, p2 IndexPredicate
