@@ -273,7 +273,8 @@ type (
 
 	// AddForeignKey describes a foreign-key creation change.
 	AddForeignKey struct {
-		F *ForeignKey
+		F     *ForeignKey
+		Extra []Clause // Extra clauses and options.
 	}
 
 	// DropForeignKey describes a foreign-key removal change.
@@ -289,7 +290,8 @@ type (
 
 	// AddCheck describes a CHECK constraint creation change.
 	AddCheck struct {
-		C *Check
+		C     *Check
+		Extra []Clause // Extra clauses and options.
 	}
 
 	// DropCheck describes a CHECK constraint removal change.

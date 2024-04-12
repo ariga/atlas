@@ -1066,6 +1066,12 @@ type (
 		schema.Clause
 	}
 
+	// NotValid describes the NOT VALID clause for the creation
+	// of check and foreign-key constraints.
+	NotValid struct {
+		schema.Clause
+	}
+
 	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.
 	// https://postgresql.org/docs/current/catalog-pg-constraint.html
 	NoInherit struct {

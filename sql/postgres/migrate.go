@@ -551,14 +551,19 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				b.P("DROP CONSTRAINT").Ident(pkName(t, change.P))
 				reverse = append(reverse, &schema.AddPrimaryKey{P: change.P})
 			case *schema.AddForeignKey:
-				b.P("ADD")
-				s.fks(b, change.F)
+				s.fks(b.P("ADD"), change.F)
+				if sqlx.Has(change.Extra, &NotValid{}) {
+					b.P("NOT VALID")
+				}
 				reverse = append(reverse, &schema.DropForeignKey{F: change.F})
 			case *schema.DropForeignKey:
 				b.P("DROP CONSTRAINT").Ident(change.F.Symbol)
 				reverse = append(reverse, &schema.AddForeignKey{F: change.F})
 			case *schema.AddCheck:
 				check(b.P("ADD"), change.C)
+				if sqlx.Has(change.Extra, &NotValid{}) {
+					b.P("NOT VALID")
+				}
 				// Reverse operation is supported if
 				// the constraint name is not generated.
 				if reversible = reversible && change.C.Name != ""; reversible {
