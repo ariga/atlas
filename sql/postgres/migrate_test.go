@@ -1395,6 +1395,9 @@ func TestPlanChanges(t *testing.T) {
 							From:   schema.NewColumn("c1").SetType(&SerialType{T: "smallserial"}),
 							To:     schema.NewIntColumn("c1", "integer"),
 							Change: schema.ChangeType,
+							Extra: []schema.Clause{
+								&ConvertUsing{X: "c1::int"},
+							},
 						},
 						&schema.ModifyColumn{
 							From:   schema.NewColumn("c2").SetType(&SerialType{T: "serial", SequenceName: "previous_name"}),
@@ -1409,7 +1412,7 @@ func TestPlanChanges(t *testing.T) {
 				Transactional: true,
 				Changes: []*migrate.Change{
 					{
-						Cmd:     `ALTER TABLE "public"."posts" ALTER COLUMN "c1" DROP DEFAULT, ALTER COLUMN "c1" TYPE integer, ALTER COLUMN "c2" DROP DEFAULT`,
+						Cmd:     `ALTER TABLE "public"."posts" ALTER COLUMN "c1" DROP DEFAULT, ALTER COLUMN "c1" TYPE integer USING c1::int, ALTER COLUMN "c2" DROP DEFAULT`,
 						Reverse: `ALTER TABLE "public"."posts" ALTER COLUMN "c2" SET DEFAULT nextval('"public"."previous_name"'), ALTER COLUMN "c1" SET DEFAULT nextval('"public"."posts_c1_seq"'), ALTER COLUMN "c1" TYPE smallint`,
 					},
 					{

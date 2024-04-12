@@ -428,7 +428,7 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 					continue
 				}
 			}
-			alter = append(alter, &schema.ModifyColumn{To: change.To, From: change.From, Change: k})
+			alter = append(alter, &schema.ModifyColumn{To: change.To, From: change.From, Change: k, Extra: change.Extra})
 		case *schema.RenameColumn:
 			// "RENAME COLUMN" cannot be combined with other alterations.
 			b := s.Build("ALTER TABLE").Table(modify.T).P("RENAME COLUMN")
@@ -774,6 +774,9 @@ func (s *state) alterType(b *sqlx.Builder, alter *changeGroup, t *schema.Table, 
 	}
 	if collate := (schema.Collation{}); sqlx.Has(c.To.Attrs, &collate) {
 		b.P("COLLATE", collate.V)
+	}
+	if using := (ConvertUsing{}); sqlx.Has(c.Extra, &using) {
+		b.P("USING", using.X)
 	}
 	return nil
 }
