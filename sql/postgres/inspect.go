@@ -960,6 +960,13 @@ type (
 		T string
 	}
 
+	// ConvertUsing describes the USING clause to convert
+	// one type to another.
+	ConvertUsing struct {
+		schema.Clause
+		X string // Conversion expression.
+	}
+
 	// Constraint describes a postgres constraint.
 	// https://postgresql.org/docs/current/catalog-pg-constraint.html
 	Constraint struct {

@@ -225,6 +225,7 @@ type (
 	ModifyColumn struct {
 		From, To *Column
 		Change   ChangeKind
+		Extra    []Clause // Extra clauses and options.
 	}
 
 	// RenameColumn describes a column rename change.
