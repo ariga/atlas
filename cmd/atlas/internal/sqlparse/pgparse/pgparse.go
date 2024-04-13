@@ -172,6 +172,10 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 					drop.Extra = append(drop.Extra, &postgres.Concurrently{})
 				}
 			}
+		case stmt.GetAlterTableStmt() != nil:
+			if fixed, err := FixAlterTable(s, stmt.GetAlterTableStmt(), changes); err == nil {
+				changes = fixed // Make ALTER fixes optional.
+			}
 		}
 	}
 	return changes, nil
