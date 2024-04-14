@@ -1,5 +1,7 @@
 apply 1.hcl
 cmpshow users 1.sql
+atlas schema inspect -u URL > got
+cmp 1.inspected.hcl got
 
 # Change column default.
 apply 2.hcl
@@ -22,8 +24,38 @@ table "users" {
     type = boolean
     default = true
   }
+  column "bpchar" {
+    type = bpchar
+    default = "foo"
+  }
 }
 
+-- 1.inspected.hcl --
+table "users" {
+  schema = schema.script_column_default
+  column "name" {
+    null    = false
+    type    = character_varying
+    default = "unknown"
+  }
+  column "age" {
+    null    = false
+    type    = integer
+    default = 1
+  }
+  column "active" {
+    null    = false
+    type    = boolean
+    default = true
+  }
+  column "bpchar" {
+    null    = false
+    type    = bpchar
+    default = "foo"
+  }
+}
+schema "script_column_default" {
+}
 -- 1.sql --
                        Table "script_column_default.users"
  Column |       Type        | Collation | Nullable |           Default
@@ -31,7 +63,7 @@ table "users" {
  name   | character varying |           | not null | 'unknown'::character varying
  age    | integer           |           | not null | 1
  active | boolean           |           | not null | true
-
+ bpchar | bpchar            |           | not null | 'foo'::bpchar
 
 -- 2.hcl --
 schema "$db" {}
