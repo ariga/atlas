@@ -1,10 +1,13 @@
-## Atlas: A modern tool for managing database schemas
+## Atlas: manage your database schema as code
 
 [![Twitter](https://img.shields.io/twitter/url.svg?label=Follow%20%40ariga%2Fatlas&style=social&url=https%3A%2F%2Ftwitter.com%2Fariga_io)](https://twitter.com/ariga_io)
 [![Discord](https://img.shields.io/discord/930720389120794674?label=discord&logo=discord&style=flat-square&logoColor=white)](https://discord.com/invite/zZ6sWVg6NT)
 
-<img width="25%" align="right" style="display: block; margin:40px auto;"
-src="https://atlasgo.io/uploads/github-mascot-light.png"/>
+<p>
+  <a href="https://atlasgo.io" target="_blank">
+  <img alt="image" src="https://github.com/ariga/atlas/assets/7413593/2e27cb81-bad6-491a-8d9c-20920995a186">
+  </a>
+</p>
 
 Atlas is a language-agnostic tool for managing and migrating database schemas using modern DevOps principles.
 It offers two workflows:
