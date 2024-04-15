@@ -651,7 +651,7 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 		if len(t.Indexes) <= i || t.Indexes[i].Name != idx1.Name {
 			return nil, fmt.Errorf("unexpected spec index %q was not found in table %q", idx1.Name, t.Name)
 		}
-		if c := (&Constraint{}); sqlx.Has(t.Indexes[i].Attrs, c) && c.IsUnique() && c.N != "" {
+		if c, ok := uniqueConst(t.Indexes[i].Attrs); ok && c.N != "" {
 			spec.Extra.Children = append(spec.Extra.Children, &schemahcl.Resource{
 				Type: "unique",
 				Name: c.N,
