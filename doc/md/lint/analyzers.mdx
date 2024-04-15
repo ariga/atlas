@@ -272,6 +272,8 @@ The following schema change checks are provided by Atlas:
 | [PG101](#PG101)                           | Missing the `CONCURRENTLY` in index creation                                                 |
 | [PG102](#PG102)                           | Missing the `CONCURRENTLY` in index deletion                                                 |
 | [PG103](#PG103)                           | Missing `atlas:txmode none` directive in file header                                         |
+| **PG3**                                   | PostgreSQL-specific blocking column changes                                                  |
+| [PG301](#PG301)                           | Column type change that requires table and indexes rewrite                                   |
 
 #### DS101 {#DS101}
 
@@ -612,3 +614,8 @@ Dropping an index non-concurrently locks the table against write operations.
 #### PG103 {#PG103}
 Indexes cannot be created or deleted concurrently within a transaction. Add the `atlas:txmode none` directive to the
 header to prevent this file from running in a transaction.
+
+#### PG301 {#PG301}
+A change to the column type that requires adjusting the actual stored data and triggers a rewrite of the table and potentially
+indexes. During this operation, an [`ACCESS EXCLUSIVE`](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)
+lock is acquired on the table, preventing any level of access, including `SELECT`.
