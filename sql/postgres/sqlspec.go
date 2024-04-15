@@ -823,6 +823,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.AliasTypeSpec("character_varying", TypeCharVar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec(TypeChar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec(TypeCharacter, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeBPChar),
 		schemahcl.NewTypeSpec(TypeInt2),
 		schemahcl.NewTypeSpec(TypeInt4),
 		schemahcl.NewTypeSpec(TypeInt8),

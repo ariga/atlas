@@ -67,7 +67,7 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.StringType:
 		switch f = strings.ToLower(t.T); f {
-		case TypeText, typeName:
+		case TypeText, TypeBPChar, typeName:
 		// CHAR(n) is alias for CHARACTER(n). If not length was
 		// specified, the definition is equivalent to CHARACTER(1).
 		case TypeChar, TypeCharacter:
@@ -217,7 +217,10 @@ func columnType(c *columnDesc) (schema.Type, error) {
 		typ = &schema.BoolType{T: t}
 	case TypeBytea:
 		typ = &schema.BinaryType{T: t}
-	case TypeCharacter, TypeChar, TypeCharVar, TypeVarChar, TypeText, typeName:
+	case TypeCharacter, TypeChar, TypeCharVar, TypeVarChar, TypeText, TypeBPChar, typeName:
+		if t == TypeCharacter && c.size == 0 && c.fmtype == TypeBPChar {
+			t = TypeBPChar
+		}
 		// A `character` column without length specifier is equivalent to `character(1)`,
 		// but `varchar` without length accepts strings of any size (same as `text`).
 		typ = &schema.StringType{T: t, Size: int(c.size)}

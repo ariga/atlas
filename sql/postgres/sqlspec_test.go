@@ -1610,6 +1610,10 @@ func TestTypes(t *testing.T) {
 			expected: &schema.StringType{T: TypeText},
 		},
 		{
+			typeExpr: "bpchar",
+			expected: &schema.StringType{T: TypeBPChar},
+		},
+		{
 			typeExpr: "smallint",
 			expected: &schema.IntegerType{T: TypeSmallInt},
 		},
