@@ -242,13 +242,21 @@ The following schema change checks are provided by Atlas:
 | [DS101](#DS101)                           | Schema was dropped                                                                           |
 | [DS102](#DS102)                           | Table was dropped                                                                            |
 | [DS103](#DS103)                           | Non-virtual column was dropped                                                               |
-| **LT**                                    | SQLite specific checks                                                                       |
-| [LT101](#LT101)                           | Modifying a nullable column to non-nullable without a `DEFAULT` value                        |
 | **MF**                                    | **[Data-dependent changes](#data-dependent-changes)** (changes that might fail)              |
 | [MF101](#MF101)                           | Add unique index to existing column                                                          |
 | [MF102](#MF102)                           | Modifying non-unique index to unique                                                         |
 | [MF103](#MF103)                           | Adding a non-nullable column to an existing table                                            |
 | [MF104](#MF104)                           | Modifying a nullable column to non-nullable                                                  |
+| **PG**                                    | PostgreSQL specific checks                                                                   |
+| [PG110](#PG110)                           | Creating table with non-optimal data alignment                                               |
+| **PG1**                                   | **[Concurrent Indexes](#concurrent-index-policy-postgresql)**                                |
+| [PG101](#PG101)                           | Missing the `CONCURRENTLY` in index creation                                                 |
+| [PG102](#PG102)                           | Missing the `CONCURRENTLY` in index deletion                                                 |
+| [PG103](#PG103)                           | Missing `atlas:txmode none` directive in file header                                         |
+| **PG3**                                   | PostgreSQL-specific blocking column changes &nbsp <LoginRequired/>                           |
+| [PG301](#PG301)                           | Column type change that requires table and indexes rewrite                                   |
+| [PG302](#PG302)                           | Adding a column with a volatile `DEFAULT` value requires a rewrite of the table              |
+| [PG303](#PG303)                           | Modifying a nullable column to non-nullable requires a full table scan                       |
 | **MY**                                    | MySQL and MariaDB specific checks                                                            |
 | [MY101](#MY101)                           | Adding a non-nullable column without a `DEFAULT` value to an existing table                  |
 | [MY102](#MY102)                           | Adding a column with an inline `REFERENCES` clause has no actual effect                      |
@@ -267,15 +275,8 @@ The following schema change checks are provided by Atlas:
 | [NM104](#NM104)                           | Index name violates the naming convention                                                    |
 | [NM105](#NM105)                           | Foreign-key constraint name violates the naming convention                                   |
 | [NM106](#NM106)                           | Check constraint name violates the naming convention                                         |
-| **PG**                                    | PostgreSQL specific checks                                                                   |
-| [PG110](#PG110)                           | Creating table with non-optimal data alignment                                               |
-| **PG1**                                   | **[Concurrent Indexes](#concurrent-index-policy-postgresql)**                                |
-| [PG101](#PG101)                           | Missing the `CONCURRENTLY` in index creation                                                 |
-| [PG102](#PG102)                           | Missing the `CONCURRENTLY` in index deletion                                                 |
-| [PG103](#PG103)                           | Missing `atlas:txmode none` directive in file header                                         |
-| **PG3**                                   | PostgreSQL-specific blocking column changes &nbsp <LoginRequired/>                           |
-| [PG301](#PG301)                           | Column type change that requires table and indexes rewrite                                   |
-| [PG302](#PG302)                           | Adding a column with a volatile `DEFAULT` value requires a rewrite of the table              |
+| **LT**                                    | SQLite specific checks                                                                       |
+| [LT101](#LT101)                           | Modifying a nullable column to non-nullable without a `DEFAULT` value                        |
 
 #### DS101 {#DS101}
 
@@ -560,6 +561,24 @@ ALTER TABLE `new_users` RENAME TO `users`;
 PRAGMA foreign_keys = on;
 ```
 
+#### NM101 {#NM101}
+A schema has been given a name that violates the naming convention.
+
+#### NM102 {#NM102}
+A table has been given a name that violates the naming convention.
+
+#### NM103 {#NM103}
+A column has been given a name that violates the naming convention.
+
+#### NM104 {#NM104}
+An index has been given a name that violates the naming convention.
+
+#### NM105 {#NM105}
+A foreign-key constraint has been given a name that violates the naming convention.
+
+#### NM106 {#NM106}
+A check constraint has been given a name that violates the naming convention.
+
 #### PG110 {#PG110}
 
 Creating a table with optimal data alignment may help minimize the amount of required disk space.
@@ -589,24 +608,6 @@ CREATE TABLE accounts (
 );
 ```
 
-#### NM101 {#NM101}
-A schema has been given a name that violates the naming convention.
-
-#### NM102 {#NM102}
-A table has been given a name that violates the naming convention.
-
-#### NM103 {#NM103}
-A column has been given a name that violates the naming convention.
-
-#### NM104 {#NM104}
-An index has been given a name that violates the naming convention.
-
-#### NM105 {#NM105}
-A foreign-key constraint has been given a name that violates the naming convention.
-
-#### NM106 {#NM106}
-A check constraint has been given a name that violates the naming convention.
-
 #### PG101 {#PG101}
 Creating an index non-concurrently locks the table against write operations.
 
@@ -626,3 +627,13 @@ lock is acquired on the table, preventing any level of access, including `SELECT
 Adding a column with a volatile `DEFAULT` value requires a rewrite of the table. During this operation, an
 [`ACCESS EXCLUSIVE`](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES) lock is acquired on the
 table, preventing any level of access, including `SELECT`.
+
+#### PG303 <LoginRequired /> {#PG303}
+Modifying a column from `NULL` to `NOT NULL` requires a full table scan. During this operation, an
+[`ACCESS EXCLUSIVE`](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES) lock is acquired on the
+table, preventing any level of access, including `SELECT`.
+
+:::note Columns with CHECK constraints
+If the table has a `CHECK` constraint that ensures `NULL` cannot exist, such as `CHECK (c > 10 AND c IS NOT NULL)`,
+the table scan is skipped, and therefore this check is not reported.
+:::
