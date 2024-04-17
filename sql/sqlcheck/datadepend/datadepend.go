@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"ariga.io/atlas/schemahcl"
@@ -137,7 +138,7 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 					}
 				case *schema.ModifyColumn:
 					switch {
-					case p.File.TableSpan(m.T)&sqlcheck.SpanAdded == 1 || !(c.From.Type.Null && !c.To.Type.Null):
+					case p.File.TableSpan(m.T)&sqlcheck.SpanAdded == 1 || !(c.From.Type.Null && !c.To.Type.Null) || HasNotNullCheck(p, c.From):
 					case a.ModifyNotNull != nil:
 						d, err := a.Handler.ModifyNotNull(&ColumnPass{Pass: p, Change: sc, Table: m.T, Column: c.To})
 						if err != nil {
@@ -196,4 +197,21 @@ func ColumnFilled(p *sqlcheck.Pass, t *schema.Table, c *schema.Column, pos int) 
 	}
 	filled, _ := pr.ColumnFilledBefore(stmts, t, c, pos)
 	return filled
+}
+
+// HasNotNullCheck checks if the given column has a check constraint with a NOT NULL check.
+// In case a CHECK exists, this reduces the risk for data-depend conflicts when changing
+// a nullable column to non-nullable.
+func HasNotNullCheck(p *sqlcheck.Pass, c *schema.Column) bool {
+	pr, ok := p.File.Parser.(interface {
+		CheckNotNullFor(*schema.Check, string) (bool, error)
+	})
+	return ok && slices.ContainsFunc(c.Attrs, func(a schema.Attr) bool {
+		ck, ok := a.(*schema.Check)
+		if !ok {
+			return false
+		}
+		v, err := pr.CheckNotNullFor(ck, c.Name)
+		return err == nil && v
+	})
 }
