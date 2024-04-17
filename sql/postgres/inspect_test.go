@@ -316,18 +316,19 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1
 				require.NoError(err)
 				require.Equal("users", t.Name)
 				require.Equal("public", t.Schema.Name)
-				require.EqualValues([]*schema.Column{
-					{Name: "c1", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}},
-					{Name: "c2", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}},
-					{Name: "c3", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}},
-				}, t.Columns)
-				require.EqualValues([]schema.Attr{
+				checks := []schema.Attr{
 					&schema.Check{Name: "boring", Expr: "(c1 > 1)", Attrs: []schema.Attr{&CheckColumns{Columns: []string{"c1"}}, &NoInherit{}}},
 					&schema.Check{Name: "users_c2_check", Expr: "(c2 > 0)", Attrs: []schema.Attr{&CheckColumns{Columns: []string{"c2"}}}},
 					&schema.Check{Name: "users_c2_check1", Expr: "(c2 > 0)", Attrs: []schema.Attr{&CheckColumns{Columns: []string{"c2"}}}},
 					&schema.Check{Name: "users_check", Expr: "((c2 + c1) > 2)", Attrs: []schema.Attr{&CheckColumns{Columns: []string{"c2", "c1"}}}},
 					&schema.Check{Name: "users_check1", Expr: "(((c2 + c1) + c3) > 10)", Attrs: []schema.Attr{&CheckColumns{Columns: []string{"c2", "c1", "c3"}}}},
-				}, t.Attrs)
+				}
+				require.EqualValues([]*schema.Column{
+					{Name: "c1", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{checks[0], checks[3], checks[4]}},
+					{Name: "c2", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{checks[1], checks[2], checks[3], checks[4]}},
+					{Name: "c3", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{checks[4]}},
+				}, t.Columns)
+				require.EqualValues(checks, t.Attrs)
 			},
 		},
 	}

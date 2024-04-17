@@ -701,20 +701,22 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 		if !ok {
 			return fmt.Errorf("table %q was not found in schema", table)
 		}
-		if _, ok := t.Column(column); !ok {
+		c, ok := t.Column(column)
+		if !ok {
 			return fmt.Errorf("postgres: column %q was not found for check %q", column, name)
 		}
-		check, ok := names[tc{t: table, n: name}]
+		ck, ok := names[tc{t: table, n: name}]
 		if !ok {
-			check = &schema.Check{Name: name, Expr: clause, Attrs: []schema.Attr{&CheckColumns{}}}
+			ck = &schema.Check{Name: name, Expr: clause, Attrs: []schema.Attr{&CheckColumns{}}}
 			if noInherit {
-				check.Attrs = append(check.Attrs, &NoInherit{})
+				ck.AddAttrs(&NoInherit{})
 			}
-			names[tc{t: table, n: name}] = check
-			t.Attrs = append(t.Attrs, check)
+			names[tc{t: table, n: name}] = ck
+			t.AddAttrs(ck)
 		}
-		c := check.Attrs[0].(*CheckColumns)
-		c.Columns = append(c.Columns, column)
+		c.AddAttrs(ck)
+		attr := ck.Attrs[0].(*CheckColumns)
+		attr.Columns = append(attr.Columns, column)
 	}
 	return nil
 }

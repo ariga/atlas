@@ -970,7 +970,7 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 	s.columnDefault(b, c)
 	for _, attr := range c.Attrs {
 		switch a := attr.(type) {
-		case *schema.Comment:
+		case *schema.Comment, *schema.Check:
 		case *schema.Collation:
 			b.P("COLLATE").Ident(a.V)
 		case *Identity, *schema.GeneratedExpr:
