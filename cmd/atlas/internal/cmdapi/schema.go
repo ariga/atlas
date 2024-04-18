@@ -663,6 +663,10 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 		return err
 	}
 	switch cmd.Name() {
+	case "inspect":
+		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Inspect); err != nil {
+			return err
+		}
 	case "apply":
 		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Apply); err != nil {
 			return err
