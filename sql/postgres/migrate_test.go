@@ -486,7 +486,70 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
-		// Add a primary key using index.
+		// Add a named unique constraint using index.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						SetSchema(schema.New("test")).
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+						)
+					users.SetPrimaryKey(schema.NewPrimaryKey(users.Columns...))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&AddUniqueConstraint{
+								Name:  "users_unique",
+								Using: schema.NewUniqueIndex("boring"),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "test"."users" ADD CONSTRAINT "users_unique" UNIQUE USING INDEX "boring"`,
+						Reverse: `ALTER TABLE "test"."users" DROP CONSTRAINT "users_unique"`,
+					},
+				},
+			},
+		},
+		// Add an unnamed unique constraint using index.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						SetSchema(schema.New("test")).
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+						)
+					users.SetPrimaryKey(schema.NewPrimaryKey(users.Columns...))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&AddUniqueConstraint{
+								Using: schema.NewUniqueIndex("boring"),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "test"."users" ADD UNIQUE USING INDEX "boring"`,
+						Reverse: `ALTER TABLE "test"."users" DROP CONSTRAINT "boring"`,
+					},
+				},
+			},
+		},
+		// Add a named primary key constraint using index.
 		{
 			changes: []schema.Change{
 				func() schema.Change {
@@ -513,6 +576,37 @@ func TestPlanChanges(t *testing.T) {
 				Changes: []*migrate.Change{
 					{
 						Cmd:     `ALTER TABLE "test"."users" ADD CONSTRAINT "users_pkey" PRIMARY KEY USING INDEX "users_pkey"`,
+						Reverse: `ALTER TABLE "test"."users" DROP CONSTRAINT "users_pkey"`,
+					},
+				},
+			},
+		},
+		// Add an unnamed primary key constraint using index.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						SetSchema(schema.New("test")).
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+						)
+					users.SetPrimaryKey(schema.NewPrimaryKey(users.Columns...))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&AddPKConstraint{
+								Using: schema.NewUniqueIndex("users_pkey"),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "test"."users" ADD PRIMARY KEY USING INDEX "users_pkey"`,
 						Reverse: `ALTER TABLE "test"."users" DROP CONSTRAINT "users_pkey"`,
 					},
 				},
