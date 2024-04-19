@@ -513,25 +513,29 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				b.P("DROP COLUMN").Ident(change.C.Name)
 				reverse = append(reverse, &schema.AddColumn{C: change.C})
 			case *AddUniqueConstraint:
-				b.P("ADD CONSTRAINT").Ident(change.Name).P("UNIQUE USING INDEX").Ident(change.Using.Name)
+				b.P("ADD")
 				drop := change.Using
-				if drop.Name != change.Name {
+				if change.Name != "" {
+					b.P("CONSTRAINT").Ident(change.Name)
 					drop = sqlx.P(*change.Using)
 					drop.Name = change.Name
 				}
+				b.P("UNIQUE USING INDEX").Ident(change.Using.Name)
 				// Translated to the DROP CONSTRAINT below,
 				// which drops the index as well.
 				reverse = append(reverse, &schema.DropIndex{I: drop})
 			case *AddPKConstraint:
-				b.P("ADD CONSTRAINT").Ident(change.Name).P("PRIMARY KEY USING INDEX").Ident(change.Using.Name)
+				b.P("ADD")
 				drop := change.Using
-				if drop.Name != change.Name {
+				if change.Name != "" {
+					b.P("CONSTRAINT").Ident(change.Name)
 					drop = sqlx.P(*change.Using)
 					drop.Name = change.Name
 				}
+				b.P("PRIMARY KEY USING INDEX").Ident(change.Using.Name)
 				// Translated to the DROP CONSTRAINT below,
 				// which drops the index as well.
-				reverse = append(reverse, &schema.DropIndex{I: drop})
+				reverse = append(reverse, &schema.DropPrimaryKey{P: drop})
 			case *schema.AddIndex:
 				b.P("ADD")
 				if err := s.unique(b, change.I); err != nil {
