@@ -14,7 +14,7 @@ import (
 )
 
 func (d *DevLoader) stmts(_ context.Context, f migrate.File, _ bool) ([]*migrate.Stmt, error) {
-	stmts, err := migrate.FileStmtDecls(d.Dev, f)
+	stmts, err := migrate.FileStmtDecls(d.Dev.Driver, f)
 	if err != nil {
 		return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 	}
