@@ -4,6 +4,14 @@ slug: /guides/deploying/helm
 title: Deploying schema migrations to Kubernetes with Helm
 ---
 
+:::note Deprecation Notice
+
+This method of running schema migrations is deprecated an no longer recommended.
+
+Please use the [Kubernetes Operator](k8s-argo.md) to manage schema migrations in Kubernetes.
+
+:::
+
 [Helm](https://helm.sh) is a popular package manager for Kubernetes that allows
 developers to package applications into distributable modules called 
 [Charts](https://helm.sh/docs/intro/using_helm/#three-big-concepts) that can be

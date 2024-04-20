@@ -4,6 +4,14 @@ slug: /guides/deploying/k8s-init-container
 title: Deploying schema migrations to Kubernetes with Init Containers
 ---
 
+:::note Deprecation Notice
+
+This method of running schema migrations is deprecated an no longer recommended. 
+
+Please use the [Kubernetes Operator](k8s-argo.md) to manage schema migrations in Kubernetes.
+
+:::
+
 In [Kubernetes](https://kubernetes.io), [Init Containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/)
 are specialized containers that run before app containers in a Pod. Init containers
 can contain utilities or setup scripts not present in an app image. 

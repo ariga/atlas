@@ -189,26 +189,6 @@ module.exports = {
                 },
                 {
                     type: 'doc',
-                    id: 'guides/deploying/image',
-                    label: 'Creating container images'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/deploying/aws-ecs-fargate',
-                    label: 'AWS ECS (Fargate)'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/deploying/helm',
-                    label: 'Kubernetes (Helm)'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/deploying/k8s-init-containers',
-                    label: 'Kubernetes (Init Container)'
-                },
-                {
-                    type: 'doc',
                     id: 'guides/deploying/k8s-argo',
                     label: 'Kubernetes (Argo CD)'
                 },
@@ -216,6 +196,16 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/deploying/k8s-flux',
                     label: 'Kubernetes (Flux CD)'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/image',
+                    label: 'Creating container images'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/aws-ecs-fargate',
+                    label: 'AWS ECS (Fargate)'
                 },
                 {
                     type: 'doc',
@@ -501,5 +491,22 @@ module.exports = {
             type: 'doc',
             id: 'guides/ddl'
         },
+        {
+            type: 'category',
+            label: 'Archive',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/helm',
+                    label: 'Kubernetes (Helm)'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/k8s-init-containers',
+                    label: 'Kubernetes (Init Container)'
+                },
+            ]
+        }
     ]
 };
