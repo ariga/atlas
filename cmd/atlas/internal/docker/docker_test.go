@@ -144,6 +144,20 @@ func TestFromURL(t *testing.T) {
 		Out:      io.Discard,
 	}, cfg)
 
+	u, err = url.Parse("docker://postgis/14-3.4/dev")
+	require.NoError(t, err)
+	cfg, err = FromURL(u)
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		driver:   "postgres",
+		Image:    "postgis/postgis:14-3.4",
+		Database: "dev",
+		Env:      []string{"POSTGRES_PASSWORD=pass"},
+		Port:     "5432",
+		Out:      io.Discard,
+		setup:    []string{`CREATE DATABASE "dev"`},
+	}, cfg)
+
 	// SQL Server
 	u, err = url.Parse("docker://sqlserver")
 	require.NoError(t, err)
