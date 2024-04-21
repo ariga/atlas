@@ -145,3 +145,17 @@ func TestDefault(t *testing.T) {
 		require.True(t, tt.v.Equals(v).True())
 	}
 }
+
+func TestFromView(t *testing.T) {
+	spec, err := FromView(&schema.View{
+		Name:   "view",
+		Def:    "SELECT * FROM users\r\n WHERE c NOT LIKE \"\\r\\n\"",
+		Schema: schema.New("public").SetRealm(schema.NewRealm()),
+	}, nil, nil)
+	require.NoError(t, err)
+	as, ok := spec.DefaultExtension.Attr("as")
+	require.True(t, ok)
+	s, err := as.String()
+	require.NoError(t, err)
+	require.Equal(t, "<<-SQL\n  SELECT * FROM users\n   WHERE c NOT LIKE \"\\r\\n\"\n  SQL", s)
+}

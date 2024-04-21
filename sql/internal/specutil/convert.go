@@ -680,10 +680,10 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc, idxFn IndexSpecFunc) (*s
 		}
 		spec.Indexes = append(spec.Indexes, i)
 	}
-	as := v.Def
+	as := normalizeCRLF(v.Def)
 	// In case the view definition is multi-line,
 	// format it as indented heredoc with two spaces.
-	if lines := strings.Split(v.Def, "\n"); len(lines) > 1 {
+	if lines := strings.Split(as, "\n"); len(lines) > 1 {
 		as = fmt.Sprintf("<<-SQL\n  %s\n  SQL", strings.Join(lines, "\n  "))
 	}
 	embed := &schemahcl.Resource{
@@ -706,6 +706,15 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc, idxFn IndexSpecFunc) (*s
 	convertCommentFromSchema(v.Attrs, &embed.Attrs)
 	spec.Extra.Children = append(spec.Extra.Children, embed)
 	return spec, nil
+}
+
+// normalizeCRLF for heredoc strings that inspected and printed in the HCL as-is to
+// avoid having mixed endings in the printed file - Unix-like (default) and Windows-like.
+func normalizeCRLF(s string) string {
+	if strings.Contains(s, "\r\n") {
+		return strings.ReplaceAll(s, "\r\n", "\n")
+	}
+	return s
 }
 
 // dependsOn returns the depends_on attribute for the given objects.
