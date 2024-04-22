@@ -96,7 +96,7 @@ module.exports = {
           "title": "Docs",
           "items": [
             {"label": "Getting Started", "to": "getting-started"},
-            {"label": "Data Definition Language ", "to": "guides/ddl"},
+            {"label": "Atlas vs Others ", "to": "atlas-vs-others"},
             {"label": "CLI Reference", "to": "cli-reference"},
             {"label": "Blog", "to": "blog"},
             {"label": "Guides", "to": "guides"},
