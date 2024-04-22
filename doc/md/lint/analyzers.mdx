@@ -255,11 +255,12 @@ The following schema change checks are provided by Atlas:
 | [PG103](#PG103) | Missing `atlas:txmode none` directive in file header                                                    |
 | [PG104](#PG104) | `PRIMARY KEY` constraint creation that acquires an `ACCESS EXCLUSIVE` lock on the table                 |
 | [PG105](#PG105) | `UNIQUE` constraint creation that acquires an `ACCESS EXCLUSIVE` lock on the table                      |
-| **PG3**         | PostgreSQL-specific blocking column changes &nbsp <LoginRequired/>                                      |
+| **PG3**         | PostgreSQL-specific blocking table changes &nbsp <LoginRequired/>                                       |
 | [PG301](#PG301) | Column type change that requires table and indexes rewrite                                              |
 | [PG302](#PG302) | Adding a column with a volatile `DEFAULT` value requires a rewrite of the table                         |
 | [PG303](#PG303) | Modifying a nullable column to non-nullable requires a full table scan                                  |
 | [PG304](#PG304) | Adding a `PRIMARY KEY` on nullable columns implicitly set them to `NOT NULL` requires a full table scan |
+| [PG305](#PG305) | Adding a `CHECK` constraint that requires a full table scan                                             |
 | **MY**          | MySQL and MariaDB specific checks                                                                       |
 | [MY101](#MY101) | Adding a non-nullable column without a `DEFAULT` value to an existing table                             |
 | [MY102](#MY102) | Adding a column with an inline `REFERENCES` clause has no actual effect                                 |
@@ -696,3 +697,8 @@ the table scan is skipped, and therefore this check is not reported.
 #### PG304 <LoginRequired /> {#PG304}
 Adding a `PRIMARY KEY` on a nullable columns implicitly sets them to `NOT NULL`, resulting a full table scan unless
 there is a `CHECK` constraint that ensures `NULL` cannot exist.
+
+#### PG305 <LoginRequired /> {#PG305}
+Adding a `CHECK` constraint without the `NOT VALID` clause requires scanning the table to verify that all rows satisfy
+the constraint. During this operation, an [`ACCESS EXCLUSIVE`](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)
+lock is acquired on the table, preventing any level of access, including `SELECT`.
