@@ -89,13 +89,13 @@ To assist you in deciding which migration tool is right for you, we will compare
 
 |                         | Description                | Atlas | Liquibase | Flyway    | ORMs    |
 |-------------------------|----------------------------|-------|-----------|-----------|---------|
-| Schema-as-code          | How is the schema defined? | ✅     | Revisions | Revisions | Mix     |
-| Auto migration planning | How are changes planned?   | ✅     | Manual    | Manual    | Manual* |
-| Auto code review        | How is safety ensured?     | ✅     | Some      | Some      | Some    |
+| [Schema-as-code](#schema-as-code) | Schema-first approach? | ✅     | Revisions | Revisions | Mix     |
+| [Auto migration planning](#planning-migrations) | Are changes planned by the tool?   | ✅     | Manual    | Manual    | Manual* |
+| [Auto code review](#quality-checks) | Are automated quality checks available?     | ✅     | Some      | Some      | Some    |
 | CLI Support             | Is CLI support available?  | ✅     | ✅        | ✅        | ✅       |
-| Kubernetes Operator     | Natively deploy from k8s   | ✅     | ☒         | ☒         | ☒       |
-| Terraform Provider      | Natively deploy from TF    | ✅     | ☒         | ☒         | ☒       |
-| Database Support        | Database driver count      | 9      | 60        | 31        | Varies  |
+| Kubernetes Operator     | Can users natively deploy from k8s?   | ✅     | ☒         | ☒         | ☒       |
+| Terraform Provider      | Does the tool integrate with IaC?  | ✅     | ☒         | ☒         | ☒       |
+| [Database Support](#database-support) | Database driver count      | 9      | 60        | 31        | Varies  |
 
 
 \* Exceptions exist
@@ -186,11 +186,11 @@ to plan changes (such as: "always create indexes concurrently" or "verify column
 Additionally, Atlas detects ambiguous change types such as resource renames (which can also be interpreted as
 drop-and-add), and prompts the user to disambiguate.
 
-### Quality Checks
+### Automated Quality Checks
 
 |                                        | Atlas | Liquibase | Flyway | ORMs         |
 |----------------------------------------|-------|-----------|--------|--------------|
-| Enforce Naming Conventions             | ✅     | ✅         | ✅      | ☒         |
+| Enforce Naming Conventions             | ✅     | Paid         | Paid      | ☒         |
 | Detect Destructive Changes             | ✅     | Paid      | ☒      | ☒         |
 | Detect Table Locks                     | ✅     | ☒         | ☒      | ☒         |
 | Detect Breaking Changes                | ✅     | ☒         | ☒      | ☒         |
