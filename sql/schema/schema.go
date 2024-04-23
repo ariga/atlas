@@ -103,7 +103,7 @@ type (
 
 	// A ForeignKey represents an index definition.
 	ForeignKey struct {
-		Symbol     string
+		Symbol     string // Constraint name, if exists.
 		Table      *Table
 		Columns    []*Column
 		RefTable   *Table

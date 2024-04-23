@@ -261,6 +261,7 @@ The following schema change checks are provided by Atlas:
 | [PG303](#PG303) | Modifying a nullable column to non-nullable requires a full table scan                                  |
 | [PG304](#PG304) | Adding a `PRIMARY KEY` on nullable columns implicitly set them to `NOT NULL` requires a full table scan |
 | [PG305](#PG305) | Adding a `CHECK` constraint that requires a full table scan                                             |
+| [PG306](#PG306) | Adding a `FOREIGN KEY` constraint that requires a full table scan and blocks write operations           |
 | **MY**          | MySQL and MariaDB specific checks                                                                       |
 | [MY101](#MY101) | Adding a non-nullable column without a `DEFAULT` value to an existing table                             |
 | [MY102](#MY102) | Adding a column with an inline `REFERENCES` clause has no actual effect                                 |
@@ -702,3 +703,8 @@ there is a `CHECK` constraint that ensures `NULL` cannot exist.
 Adding a `CHECK` constraint without the `NOT VALID` clause requires scanning the table to verify that all rows satisfy
 the constraint. During this operation, an [`ACCESS EXCLUSIVE`](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)
 lock is acquired on the table, preventing any level of access, including `SELECT`.
+
+#### PG306 <LoginRequired /> {#PG306}
+Adding a `FOREIGN KEY` constraint without the `NOT VALID` clause requires a full table scan to verify that all rows
+satisfy the constraint. During this process, a `SHARE ROW EXCLUSIVE` lock is acquired on both tables blocking write
+operations.
