@@ -19,7 +19,11 @@ module.exports = {
                 'getting-started/getting-started',
             ]
         },
-
+        {
+            type: 'doc',
+            id: 'atlas-vs-others',
+            label: 'Atlas vs Others'
+        },
         {
             type: "category",
             label: "Declarative Workflows",
