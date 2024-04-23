@@ -1635,3 +1635,24 @@ table "t" {
   }
 }
 ```
+
+### AggregateFunction
+Atlas supports defining ClickHouse aggregate data types by using the `sql` function.
+
+```hcl
+table "t" {
+  schema = schema.test
+  engine = Memory
+  column "c1" {
+    null = false
+    type = sql("AggregateFunction(uniq, UInt64)")
+  }
+  column "c2" {
+    null = false
+    type = sql("SimpleAggregateFunction(sum, Int32)")
+  }
+}
+```
+
+:::info 
+The `AggregateFunction` and `SimpleAggregateFunction` are complex data types. Therefore, we recommend using a [Dev Database](../../md/concepts//dev.mdx) to normalize these types.
