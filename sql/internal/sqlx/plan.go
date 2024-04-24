@@ -800,6 +800,8 @@ func depOfAdd(refs []schema.Object, c schema.Change) bool {
 		o = c.P
 	case *schema.AddObject:
 		o = c.O
+	case *schema.AddTrigger:
+		o = c.T
 	default:
 		return false
 	}
