@@ -7,6 +7,7 @@ package migrate_test
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	_ "embed"
 	"io"
 	"os"
@@ -509,6 +510,22 @@ func TestDirTar(t *testing.T) {
 	require.NoError(t, err)
 	files, err := dir.Files()
 	require.NoError(t, err)
+	require.Len(t, files, 1)
+	require.Equal(t, "1.sql", files[0].Name())
+	require.Equal(t, "create table t(c int);", string(files[0].Bytes()))
+
+	// Compress the dir.
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	require.NoError(t, migrate.ArchiveDirTo(w, d))
+	require.NoError(t, w.Close()) // flush and Close.
+
+	// Decompress.
+	rr, err := gzip.NewReader(&buf)
+	require.NoError(t, err)
+	dir, err = migrate.UnarchiveDirFrom(rr)
+	require.NoError(t, err)
+	files, err = dir.Files()
 	require.Len(t, files, 1)
 	require.Equal(t, "1.sql", files[0].Name())
 	require.Equal(t, "create table t(c int);", string(files[0].Bytes()))
