@@ -1163,7 +1163,7 @@ func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) (re
 	default:
 		return fmt.Errorf("accepts 1 arg(s), received %d", n)
 	}
-	log := &cmdlog.MigrateSet{Context: ctx}
+	log := cmdlog.NewMigrateSet(ctx)
 	for _, r := range revs {
 		// Check all existing revisions and ensure they precede the given version. If we encounter a partially
 		// applied revision, or one with errors, mark them "fixed".

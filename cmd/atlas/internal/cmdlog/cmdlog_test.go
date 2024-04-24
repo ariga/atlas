@@ -110,10 +110,10 @@ func TestSchemaInspect_MarshalSQL(t *testing.T) {
 	client, err := sqlclient.Open(context.Background(), "sqlite://ci?mode=memory&_fk=1")
 	require.NoError(t, err)
 	defer client.Close()
-	report := &cmdlog.SchemaInspect{
-		Context: context.Background(),
-		Client:  client,
-		Realm: schema.NewRealm(
+	report := cmdlog.NewSchemaInspect(
+		context.Background(),
+		client,
+		schema.NewRealm(
 			schema.New("main").
 				AddTables(
 					schema.NewTable("users").
@@ -122,7 +122,7 @@ func TestSchemaInspect_MarshalSQL(t *testing.T) {
 						),
 				),
 		),
-	}
+	)
 	b, err := report.MarshalSQL()
 	require.NoError(t, err)
 	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL);\n", b)
@@ -150,7 +150,7 @@ func TestSchemaInspect_EncodeSQL(t *testing.T) {
 		b    bytes.Buffer
 		tmpl = template.Must(template.New("format").Funcs(cmdlog.InspectTemplateFuncs).Parse(`{{ sql . }}`))
 	)
-	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{Context: ctx, Client: client, Realm: realm}))
+	require.NoError(t, tmpl.Execute(&b, cmdlog.NewSchemaInspect(ctx, client, realm)))
 	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL, `name` text NOT NULL);\n", b.String())
 }
 
@@ -168,10 +168,10 @@ func TestSchemaInspect_Mermaid(t *testing.T) {
 			)
 		tmpl = template.Must(template.New("format").Funcs(cmdlog.InspectTemplateFuncs).Parse(`{{ mermaid . }}`))
 	)
-	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{
-		Client: client,
-		Realm:  schema.NewRealm(schema.New("main").AddTables(users)),
-	}))
+	require.NoError(t, tmpl.Execute(&b, cmdlog.NewSchemaInspect(context.Background(),
+		client,
+		schema.NewRealm(schema.New("main").AddTables(users))),
+	))
 	require.Equal(t, `erDiagram
     users {
       int id
@@ -198,10 +198,10 @@ func TestSchemaInspect_Mermaid(t *testing.T) {
 			AddRefColumns(users.Columns[0]),
 	)
 
-	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{
-		Client: client,
-		Realm:  schema.NewRealm(schema.New("main").AddTables(users, posts)),
-	}))
+	require.NoError(t, tmpl.Execute(&b, cmdlog.NewSchemaInspect(
+		context.Background(),
+		client, schema.NewRealm(schema.New("main").AddTables(users, posts)))),
+	)
 	require.Equal(t, `erDiagram
     users {
       int id PK
@@ -215,13 +215,14 @@ func TestSchemaInspect_Mermaid(t *testing.T) {
 `, b.String())
 
 	b.Reset()
-	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{
-		Client: client,
-		Realm: schema.NewRealm(
+	require.NoError(t, tmpl.Execute(&b, cmdlog.NewSchemaInspect(
+		context.Background(),
+		client,
+		schema.NewRealm(
 			schema.New("main").AddTables(users),
 			schema.New("temp").AddTables(posts),
 		),
-	}))
+	)))
 	require.Equal(t, `erDiagram
     main_users["main.users"] {
       int id PK
@@ -249,10 +250,11 @@ func TestSchemaInspect_Mermaid(t *testing.T) {
 				SetRefTable(users).
 				AddRefColumns(users.Columns[0]),
 		)
-	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{
-		Client: client,
-		Realm:  schema.NewRealm(schema.New("main").AddTables(users)),
-	}))
+	require.NoError(t, tmpl.Execute(&b, cmdlog.NewSchemaInspect(
+		context.Background(),
+		client,
+		schema.NewRealm(schema.New("main").AddTables(users)),
+	)))
 	require.Equal(t, `erDiagram
     users {
       int id PK
@@ -267,10 +269,11 @@ func TestSchemaInspect_Mermaid(t *testing.T) {
 		AddColumns(
 			schema.NewFloatColumn("time duration", "double precision"),
 		)
-	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{
-		Client: client,
-		Realm:  schema.NewRealm(schema.New("main").AddTables(users)),
-	}))
+	require.NoError(t, tmpl.Execute(&b, cmdlog.NewSchemaInspect(
+		context.Background(),
+		client,
+		schema.NewRealm(schema.New("main").AddTables(users)),
+	)))
 	require.Equal(t, `erDiagram
     users {
       int id PK
@@ -286,18 +289,14 @@ func TestSchemaDiff_MarshalSQL(t *testing.T) {
 	client, err := sqlclient.Open(context.Background(), "sqlite://ci?mode=memory&_fk=1")
 	require.NoError(t, err)
 	defer client.Close()
-	diff := &cmdlog.SchemaDiff{
-		Context: context.Background(),
-		Client:  client,
-		Changes: schema.Changes{
-			&schema.AddTable{
-				T: schema.NewTable("users").
-					AddColumns(
-						schema.NewIntColumn("id", "int"),
-					),
-			},
+	diff := cmdlog.NewSchemaDiff(context.Background(), client, nil, nil, schema.Changes{
+		&schema.AddTable{
+			T: schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("id", "int"),
+				),
 		},
-	}
+	})
 	b, err := diff.MarshalSQL()
 	require.NoError(t, err)
 	require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL);\n", b)
