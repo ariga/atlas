@@ -437,13 +437,9 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 	if err != nil {
 		return err
 	}
-	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaDiff{
-		Client:  c,
-		Context: ctx,
-		From:    diff.from,
-		To:      diff.to,
-		Changes: diff.changes,
-	})
+	return format.Execute(cmd.OutOrStdout(),
+		cmdlog.NewSchemaDiff(ctx, c, diff.from, diff.to, diff.changes),
+	)
 }
 
 type schemaInspectFlags struct {
@@ -547,11 +543,7 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags, 
 	if err != nil {
 		return err
 	}
-	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaInspect{
-		Client:  client,
-		Context: ctx,
-		Realm:   s,
-	})
+	return format.Execute(cmd.OutOrStdout(), cmdlog.NewSchemaInspect(ctx, client, s))
 }
 
 // schemaFmtCmd represents the 'atlas schema fmt' subcommand.

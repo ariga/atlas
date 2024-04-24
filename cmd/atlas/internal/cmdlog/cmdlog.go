@@ -158,19 +158,18 @@ Last migration attempt had errors:
 
 // MigrateStatus contains a summary of the migration status of a database.
 type MigrateStatus struct {
-	context.Context `json:"-"`
-	Env             `json:"Env"`
-	Available       Files               `json:"Available,omitempty"`  // Available migration files
-	OutOfOrder      Files               `json:"OutOfOrder,omitempty"` // OutOfOrder migration files
-	Pending         Files               `json:"Pending,omitempty"`    // Pending migration files
-	Applied         []*migrate.Revision `json:"Applied,omitempty"`    // Applied migration files
-	Current         string              `json:"Current,omitempty"`    // Current migration version
-	Next            string              `json:"Next,omitempty"`       // Next migration version
-	Count           int                 `json:"Count,omitempty"`      // Count of applied statements of the last revision
-	Total           int                 `json:"Total,omitempty"`      // Total statements of the last migration
-	Status          string              `json:"Status,omitempty"`     // Status of migration (OK, PENDING)
-	Error           string              `json:"Error,omitempty"`      // Last Error that occurred
-	SQL             string              `json:"SQL,omitempty"`        // SQL that caused the last Error
+	Env        `json:"Env"`
+	Available  Files               `json:"Available,omitempty"`  // Available migration files
+	OutOfOrder Files               `json:"OutOfOrder,omitempty"` // OutOfOrder migration files
+	Pending    Files               `json:"Pending,omitempty"`    // Pending migration files
+	Applied    []*migrate.Revision `json:"Applied,omitempty"`    // Applied migration files
+	Current    string              `json:"Current,omitempty"`    // Current migration version
+	Next       string              `json:"Next,omitempty"`       // Next migration version
+	Count      int                 `json:"Count,omitempty"`      // Count of applied statements of the last revision
+	Total      int                 `json:"Total,omitempty"`      // Total statements of the last migration
+	Status     string              `json:"Status,omitempty"`     // Status of migration (OK, PENDING)
+	Error      string              `json:"Error,omitempty"`      // Last Error that occurred
+	SQL        string              `json:"SQL,omitempty"`        // SQL that caused the last Error
 }
 
 // Left returns the amount of statements left to apply (if any).
@@ -205,7 +204,7 @@ Current version is {{ cyan .Current.Version }} ({{ .Summary }}):
 type (
 	// MigrateSet contains a summary of the migrate set command.
 	MigrateSet struct {
-		context.Context `json:"-"`
+		ctx context.Context
 		// Revisions that were added, removed or updated.
 		Revisions []RevisionOp `json:"Revisions,omitempty"`
 		// Current version in the revisions table.
@@ -217,6 +216,11 @@ type (
 		Op string `json:"Op,omitempty"`
 	}
 )
+
+// NewMigrateSet returns a MigrateSet.
+func NewMigrateSet(ctx context.Context) *MigrateSet {
+	return &MigrateSet{ctx: ctx}
+}
 
 // ByVersion returns all revisions sorted by version.
 func (r *MigrateSet) ByVersion() []RevisionOp {
@@ -326,14 +330,14 @@ Migrating to version {{ cyan .Target }}{{ with .Current }} from {{ cyan . }}{{ e
 type (
 	// MigrateApply contains a summary of a migration applying attempt on a database.
 	MigrateApply struct {
+		ctx context.Context
 		Env
-		context.Context `json:"-"`
-		Pending         Files          `json:"Pending,omitempty"` // Pending migration files
-		Applied         []*AppliedFile `json:"Applied,omitempty"` // Applied files
-		Current         string         `json:"Current,omitempty"` // Current migration version
-		Target          string         `json:"Target,omitempty"`  // Target migration version
-		Start           time.Time
-		End             time.Time
+		Pending Files          `json:"Pending,omitempty"` // Pending migration files
+		Applied []*AppliedFile `json:"Applied,omitempty"` // Applied files
+		Current string         `json:"Current,omitempty"` // Current migration version
+		Target  string         `json:"Target,omitempty"`  // Target migration version
+		Start   time.Time
+		End     time.Time
 		// Error is set even then, if it was not caused by a statement in a migration file,
 		// but by Atlas, e.g. when committing or rolling back a transaction.
 		Error string `json:"Error,omitempty"`
@@ -354,9 +358,9 @@ type (
 // NewMigrateApply returns an MigrateApply.
 func NewMigrateApply(ctx context.Context, client *sqlclient.Client, dir migrate.Dir) *MigrateApply {
 	return &MigrateApply{
-		Context: ctx,
-		Env:     NewEnv(client, dir),
-		Start:   time.Now(),
+		ctx:   ctx,
+		Env:   NewEnv(client, dir),
+		Start: time.Now(),
 	}
 }
 
@@ -575,9 +579,9 @@ Schema is synced, no changes to be made
 type (
 	// SchemaApply contains a summary of a 'schema apply' execution on a database.
 	SchemaApply struct {
+		ctx context.Context `json:"-"`
 		Env
-		context.Context `json:"-"`
-		Changes         Changes `json:"Changes,omitempty"`
+		Changes Changes `json:"Changes,omitempty"`
 		// General error that occurred during execution.
 		// e.g., when committing or rolling back a transaction.
 		Error string `json:"Error,omitempty"`
@@ -593,8 +597,8 @@ type (
 // NewSchemaApply returns a SchemaApply.
 func NewSchemaApply(ctx context.Context, env Env, applied, pending []*migrate.Change, err *StmtError) *SchemaApply {
 	return &SchemaApply{
-		Env:     env,
-		Context: ctx,
+		ctx: ctx,
+		Env: env,
 		Changes: Changes{
 			Applied: applied,
 			Pending: pending,
@@ -627,9 +631,9 @@ func (c Changes) MarshalJSON() ([]byte, error) {
 
 // SchemaInspect contains a summary of the 'schema inspect' command.
 type SchemaInspect struct {
-	context.Context   `json:"-"`
-	*sqlclient.Client `json:"-"`
-	Realm             *schema.Realm `json:"Schema,omitempty"` // Inspected realm.
+	ctx    context.Context
+	client *sqlclient.Client
+	Realm  *schema.Realm `json:"Schema,omitempty"` // Inspected realm.
 }
 
 var (
@@ -646,10 +650,20 @@ var (
 				Parse(`{{ $.MarshalHCL }}`))
 )
 
+// NewSchemaInspect returns a SchemaInspect.
+func NewSchemaInspect(ctx context.Context, client *sqlclient.Client, realm *schema.Realm) *SchemaInspect {
+	return &SchemaInspect{ctx: ctx, client: client, Realm: realm}
+}
+
+// Client returns the client used to inspect the schema.
+func (s *SchemaInspect) Client() *sqlclient.Client {
+	return s.client
+}
+
 // MarshalHCL returns the default HCL representation of the schema.
 // Used by the template declared above.
 func (s *SchemaInspect) MarshalHCL() (string, error) {
-	spec, err := s.MarshalSpec(s.Realm)
+	spec, err := s.client.MarshalSpec(s.Realm)
 	if err != nil {
 		return "", err
 	}
@@ -792,7 +806,7 @@ func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 	}
 	for _, s := range report.Realm.Schemas {
 		// Generate commands for creating the schemas on realm-mode.
-		if report.Client.URL.Schema == "" {
+		if report.client.URL.Schema == "" {
 			changes = append(changes, &schema.AddSchema{S: s})
 		}
 		for _, o := range s.Objects {
@@ -817,15 +831,15 @@ func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 			changes = append(changes, &schema.AddProc{P: p})
 		}
 	}
-	return fmtPlan(report.Context, report.Client, changes, indent)
+	return fmtPlan(report.ctx, report.client, changes, indent)
 }
 
 // SchemaDiff contains a summary of the 'schema diff' command.
 type SchemaDiff struct {
-	context.Context   `json:"-"`
-	*sqlclient.Client `json:"-"`
-	From, To          *schema.Realm
-	Changes           []schema.Change
+	ctx      context.Context
+	client   *sqlclient.Client
+	From, To *schema.Realm
+	Changes  []schema.Change
 }
 
 var (
@@ -845,13 +859,27 @@ Schemas are synced, no changes to be made.
 `))
 )
 
+// NewSchemaDiff returns a SchemaDiff.
+func NewSchemaDiff(ctx context.Context, client *sqlclient.Client, from, to *schema.Realm, changes []schema.Change) *SchemaDiff {
+	return &SchemaDiff{
+		ctx:     ctx,
+		client:  client,
+		From:    from,
+		To:      to,
+		Changes: changes,
+	}
+}
+
+// Client returns the client used to inspect the schema.
+func (s *SchemaDiff) Client() *sqlclient.Client { return s.client }
+
 // MarshalSQL returns the default SQL representation of the schema.
 func (s *SchemaDiff) MarshalSQL(indent ...string) (string, error) {
 	return sqlDiff(s, indent...)
 }
 
 func sqlDiff(diff *SchemaDiff, indent ...string) (string, error) {
-	return fmtPlan(diff.Context, diff.Client, diff.Changes, indent)
+	return fmtPlan(diff.ctx, diff.client, diff.Changes, indent)
 }
 
 func fmtPlan(ctx context.Context, client *sqlclient.Client, changes schema.Changes, indent []string) (string, error) {
@@ -882,7 +910,7 @@ func fmtPlan(ctx context.Context, client *sqlclient.Client, changes schema.Chang
 }
 
 func mermaid(i *SchemaInspect, _ ...string) (string, error) {
-	ft, ok := i.Driver.(interface {
+	ft, ok := i.client.Driver.(interface {
 		FormatType(schema.Type) (string, error)
 	})
 	if !ok {
