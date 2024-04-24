@@ -840,38 +840,51 @@ func (m *memFile) Sys() interface{}           { return nil }
 // ArchiveDir returns a tar archive of the given directory.
 func ArchiveDir(dir Dir) ([]byte, error) {
 	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	defer tw.Close()
-	sumF, err := dir.Open(HashFileName)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+	if err := ArchiveDirTo(&buf, dir); err != nil {
 		return nil, err
-	}
-	if sumF != nil {
-		sumB, err := io.ReadAll(sumF)
-		if err != nil {
-			return nil, err
-		}
-		if err := append2Tar(tw, HashFileName, sumB); err != nil {
-			return nil, err
-		}
-	}
-	files, err := dir.Files()
-	if err != nil {
-		return nil, err
-	}
-	for _, f := range files {
-		if err := append2Tar(tw, f.Name(), f.Bytes()); err != nil {
-			return nil, err
-		}
 	}
 	return buf.Bytes(), nil
 }
 
+// ArchiveDirTo writes a tar archive of the given directory to the given writer.
+func ArchiveDirTo(w io.Writer, dir Dir) error {
+	tw := tar.NewWriter(w)
+	defer tw.Close()
+	sumF, err := dir.Open(HashFileName)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	if sumF != nil {
+		sumB, err := io.ReadAll(sumF)
+		if err != nil {
+			return err
+		}
+		if err := append2Tar(tw, HashFileName, sumB); err != nil {
+			return err
+		}
+	}
+	files, err := dir.Files()
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		if err := append2Tar(tw, f.Name(), f.Bytes()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // UnarchiveDir extracts the tar archive into the given directory.
 func UnarchiveDir(arc []byte) (Dir, error) {
+	return UnarchiveDirFrom(bytes.NewReader(arc))
+}
+
+// UnarchiveDirFrom extracts the tar archive into the given directory.
+func UnarchiveDirFrom(r io.Reader) (Dir, error) {
 	var (
 		md = &MemDir{}
-		tr = tar.NewReader(bytes.NewReader(arc))
+		tr = tar.NewReader(r)
 	)
 	for {
 		h, err := tr.Next()
