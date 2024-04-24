@@ -101,9 +101,17 @@ Connecting to a local SQLServer database named `master` (all schemas). The user 
 sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master&mode=database
 ```
 
+Azure Active Directory (AAD) authentication:
+
+Use the `fedauth` parameter to specify the AAD authentication method. For more information, see [the document on the underlying driver](https://github.com/microsoft/go-mssqldb?tab=readme-ov-file#azure-active-directory-authentication).
+```shell
+azuresql://<instance>.database.windows.net?fedauth=ActiveDirectoryDefault&database=master
+```
+
 :::note
 - The `mode` parameter is Atlas-specific and isn't used for opening the underlying connection.
 - The default `mode` is `schema`.
+- The `azuresql` schema is used for AAD authentication with Azure SQL Database and Azure SQL Managed Instance.
 :::
 </TabItem>
 <TabItem value="sqlite">
@@ -136,6 +144,17 @@ clickhouse://localhost:9000
 Connecting to a specific ClickHouse schema (database) with a username and password:
 ```shell
 clickhouse://user:pass@localhost:9000/schema
+```
+
+Connecting to a specific ClickHouse schema with SSL enabled:
+```shell
+clickhouse://user:pass@localhost:9000/schema?secure=true
+```
+
+To connect [ClickHouse Cloud](https://clickhouse.com/cloud),
+we need to use native protocol port [`9440`](https://clickhouse.com/docs/en/guides/sre/network-ports) with SSL enabled:
+```shell
+clickhouse://user:pass@CLICKHOUSE-CLOUD-HOST:9440/schema?secure=true
 ```
 
 </TabItem>
@@ -206,6 +225,7 @@ schema registry, and migrations artifactory of Atlas. For example:
 ```shell
 atlas://dir-slug
 atlas://dir-slug?version=20231201182011
+atlas://dir-slug?tag=39e7e4e35fce7409bd26d25d8140061695d4ffd5
 ```
 
 #### `env`
@@ -258,7 +278,7 @@ can read this value and escape it using the `urlescape` function:
 
 ```hcl title="atlas.hcl"
 locals {
-  db_pass = urlescape(env("DB_PASSWORD"))
+  db_pass = urlescape(getenv("DB_PASSWORD"))
 }
 
 env "local" {

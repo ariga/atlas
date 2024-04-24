@@ -174,7 +174,7 @@ WHERE
 
 Amazing! This time, Index Scan was performed using `internet_provider_idx`. As a result, the cost, planning time, and execution time for our query have reduced significantly, as we expected.
 
-The previous index (without a specified operator class) could have been helpful while executing queries with WHERE clauses with operators such as  <, <=, >, or >=. Though, the same index could not be utilized when executing queries with WHERE clauses with a `LIKE` operator.
+The previous index (without a specified operator class) could have been helpful while executing queries with WHERE clauses with operators such as  `<`, `<=`, `>`, or `>=`. Though, the same index could not be utilized when executing queries with WHERE clauses with a `LIKE` operator.
 
 :::info
 In our example, we saw that in some data types, there could be more than one meaningful index behavior, and we need to specify an operator class in the index definition to accelerate certain queries. An operator class is actually just a subset of a larger structure called an “operator family”. To learn more about Operator Classes and Operator Families, visit the official documentation [here](https://www.postgresql.org/docs/current/indexes-opclass.html).

@@ -16,11 +16,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// VarAttr is a helper method for constructing *schemahcl.Attr instances that contain a variable reference.
-func VarAttr(k, v string) *schemahcl.Attr {
-	return schemahcl.RefAttr(k, &schemahcl.Ref{V: v})
-}
-
 type (
 	// SchemaSpec is returned by driver convert functions to
 	// marshal a *schema.Schema into top-level spec objects.
@@ -271,5 +266,18 @@ func HCLBytesFunc(ev schemahcl.Evaluator) func(b []byte, v any, inp map[string]c
 			return diag
 		}
 		return ev.Eval(parser, v, inp)
+	}
+}
+
+// VarAttr is a helper method for constructing *schemahcl.Attr instances that contain a variable reference.
+func VarAttr(k, v string) *schemahcl.Attr {
+	return schemahcl.RefAttr(k, &schemahcl.Ref{V: v})
+}
+
+// TypeAttr is a helper method for constructing *schemahcl.Attr instances that contain a type reference.
+func TypeAttr(k string, t *schemahcl.Type) *schemahcl.Attr {
+	return &schemahcl.Attr{
+		K: k,
+		V: schemahcl.TypeValue(t),
 	}
 }

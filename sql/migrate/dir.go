@@ -654,10 +654,10 @@ type (
 )
 
 // Error implements the error interface.
-func (err ChecksumError) Error() string { return ErrChecksumMismatch.Error() }
+func (err *ChecksumError) Error() string { return ErrChecksumMismatch.Error() }
 
 // Is exists for backwards compatability reasons.
-func (err ChecksumError) Is(target error) bool {
+func (err *ChecksumError) Is(target error) bool {
 	return errors.Is(ErrChecksumMismatch, target)
 }
 
@@ -707,7 +707,7 @@ func Validate(dir Dir) error {
 				continue
 			}
 			// Index is now pointing at the file with the mismatch.
-			err.Line = i + 1
+			err.Line = i + 2 // first line is global hash
 			err.Pos = pos
 			err.File = h.N
 			switch idx := slices.IndexFunc(ex, func(e struct{ N, H string }) bool { return e.N == h.N }); {
@@ -725,7 +725,7 @@ func Validate(dir Dir) error {
 		}
 		// If we land here, all migrations in the sum file are present unchanged in the computed sum.
 		// But there is a mismatch, meaning the next file in the computed sum was added.
-		err.Line = err.Total + 1
+		err.Line = err.Total + 2 // first line is global hash
 		err.File = ex[err.Total].N
 		err.Pos = pos
 		err.Reason = ReasonAdded
@@ -840,38 +840,51 @@ func (m *memFile) Sys() interface{}           { return nil }
 // ArchiveDir returns a tar archive of the given directory.
 func ArchiveDir(dir Dir) ([]byte, error) {
 	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	defer tw.Close()
-	sumF, err := dir.Open(HashFileName)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+	if err := ArchiveDirTo(&buf, dir); err != nil {
 		return nil, err
-	}
-	if sumF != nil {
-		sumB, err := io.ReadAll(sumF)
-		if err != nil {
-			return nil, err
-		}
-		if err := append2Tar(tw, HashFileName, sumB); err != nil {
-			return nil, err
-		}
-	}
-	files, err := dir.Files()
-	if err != nil {
-		return nil, err
-	}
-	for _, f := range files {
-		if err := append2Tar(tw, f.Name(), f.Bytes()); err != nil {
-			return nil, err
-		}
 	}
 	return buf.Bytes(), nil
 }
 
+// ArchiveDirTo writes a tar archive of the given directory to the given writer.
+func ArchiveDirTo(w io.Writer, dir Dir) error {
+	tw := tar.NewWriter(w)
+	defer tw.Close()
+	sumF, err := dir.Open(HashFileName)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	if sumF != nil {
+		sumB, err := io.ReadAll(sumF)
+		if err != nil {
+			return err
+		}
+		if err := append2Tar(tw, HashFileName, sumB); err != nil {
+			return err
+		}
+	}
+	files, err := dir.Files()
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		if err := append2Tar(tw, f.Name(), f.Bytes()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // UnarchiveDir extracts the tar archive into the given directory.
 func UnarchiveDir(arc []byte) (Dir, error) {
+	return UnarchiveDirFrom(bytes.NewReader(arc))
+}
+
+// UnarchiveDirFrom extracts the tar archive into the given directory.
+func UnarchiveDirFrom(r io.Reader) (Dir, error) {
 	var (
 		md = &MemDir{}
-		tr = tar.NewReader(bytes.NewReader(arc))
+		tr = tar.NewReader(r)
 	)
 	for {
 		h, err := tr.Next()

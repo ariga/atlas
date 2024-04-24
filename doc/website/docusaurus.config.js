@@ -96,7 +96,7 @@ module.exports = {
           "title": "Docs",
           "items": [
             {"label": "Getting Started", "to": "getting-started"},
-            {"label": "Data Definition Language ", "to": "guides/ddl"},
+            {"label": "Atlas vs Others ", "to": "atlas-vs-others"},
             {"label": "CLI Reference", "to": "cli-reference"},
             {"label": "Blog", "to": "blog"},
             {"label": "Guides", "to": "guides"},
@@ -147,11 +147,9 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-10', // Increment on change
-      content: `<strong>Upcoming Pricing Changes to Atlas Cloud. </strong><a class="cta" href="https://atlasgo.io/blog/2024/03/03/pricing-change">Read all about it here.</a>`,
+      id: 'announcementBar-12', // Increment on change
+      content: `<strong>Atlas v0.21: Introducing Atlas Migrate Down </strong><a class="cta" href="https://atlasgo.io/blog/2024/04/01/migrate-down">Read it here</a>`,
       isCloseable: true,
-      backgroundColor: '#0084ec',
-      textColor: '#fff',
     },
   },
   plugins: [

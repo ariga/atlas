@@ -228,7 +228,7 @@ func convertDomains(_ []*sqlspec.Table, domains []*domain, _ *schema.Realm) erro
 	return nil
 }
 
-func convertSequences(_ []*sqlspec.Table, seqs []*sequence, _ *schema.Realm) error {
+func convertSequences(_ []*sqlspec.Table, seqs []*sqlspec.Sequence, _ *schema.Realm) error {
 	if len(seqs) > 0 {
 		return fmt.Errorf("postgres: sequences are not supported by this version. Use: https://atlasgo.io/getting-started")
 	}
@@ -246,7 +246,7 @@ func normalizeRealm(*schema.Realm) error {
 	return nil
 }
 
-func qualifySeqRefs([]*sequence, []*sqlspec.Table, *schema.Realm) error {
+func qualifySeqRefs([]*sqlspec.Sequence, []*sqlspec.Table, *schema.Realm) error {
 	return nil // unimplemented.
 }
 
@@ -334,4 +334,14 @@ func convertTypes(d *doc, r *schema.Realm) error {
 		}
 	}
 	return nil
+}
+
+func indexToUnique(*schema.ModifyIndex) (*AddUniqueConstraint, bool) {
+	return nil, false // unimplemented.
+}
+
+func uniqueConstChanged(_, _ []schema.Attr) bool {
+	// Unsupported change in package mode (ariga.io/sql/postgres)
+	// to keep BC with old versions.
+	return false
 }

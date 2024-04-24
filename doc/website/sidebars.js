@@ -19,7 +19,11 @@ module.exports = {
                 'getting-started/getting-started',
             ]
         },
-
+        {
+            type: 'doc',
+            id: 'atlas-vs-others',
+            label: 'Atlas vs Others'
+        },
         {
             type: "category",
             label: "Declarative Workflows",
@@ -48,6 +52,7 @@ module.exports = {
                     ]
                 },
                 {type: 'doc', id: 'versioned/apply', label: 'Applying Migrations'},
+                {type: 'doc', id: 'versioned/down', label: 'Down Migrations'},
                 {type: 'doc', id: 'versioned/checks', label: 'Pre-migration Checks'},
                 {type: 'doc', id: 'versioned/new', label: 'Manual Migrations'},
                 {type: 'doc', id: 'versioned/troubleshoot', label: 'Migration Troubleshooting'},
@@ -108,6 +113,7 @@ module.exports = {
                         {type: 'doc', id: 'cloud/features/pre-migration-checks', label: 'Pre-migration Checks'},
                     ],
                 },
+                {type: 'doc', id: 'cloud/pricing', label: 'Pricing'},
             ],
         },
         {
@@ -187,26 +193,6 @@ module.exports = {
                 },
                 {
                     type: 'doc',
-                    id: 'guides/deploying/image',
-                    label: 'Creating container images'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/deploying/aws-ecs-fargate',
-                    label: 'AWS ECS (Fargate)'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/deploying/helm',
-                    label: 'Kubernetes (Helm)'
-                },
-                {
-                    type: 'doc',
-                    id: 'guides/deploying/k8s-init-containers',
-                    label: 'Kubernetes (Init Container)'
-                },
-                {
-                    type: 'doc',
                     id: 'guides/deploying/k8s-argo',
                     label: 'Kubernetes (Argo CD)'
                 },
@@ -214,6 +200,16 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/deploying/k8s-flux',
                     label: 'Kubernetes (Flux CD)'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/image',
+                    label: 'Creating container images'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/aws-ecs-fargate',
+                    label: 'AWS ECS (Fargate)'
                 },
                 {
                     type: 'doc',
@@ -504,5 +500,22 @@ module.exports = {
             type: 'doc',
             id: 'guides/ddl'
         },
+        {
+            type: 'category',
+            label: 'Archive',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/helm',
+                    label: 'Kubernetes (Helm)'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/k8s-init-containers',
+                    label: 'Kubernetes (Init Container)'
+                },
+            ]
+        }
     ]
 };

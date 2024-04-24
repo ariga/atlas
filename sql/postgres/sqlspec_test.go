@@ -65,6 +65,13 @@ table "table" {
 		where = "active"
 		comment = "index comment"
 	}
+	index "index_hnsw" {
+		type = "HNSW"
+		columns = [
+			table.table.column.col,
+			table.table.column.age,
+		]
+	}
 	foreign_key "accounts" {
 		columns = [
 			table.table.column.account_name,
@@ -238,6 +245,17 @@ enum "account_type" {
 				&schema.Comment{Text: "index comment"},
 				&IndexType{T: IndexTypeHash},
 				&IndexPredicate{P: "active"},
+			},
+		},
+		{
+			Name:  "index_hnsw",
+			Table: exp.Tables[0],
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
+			},
+			Attrs: []schema.Attr{
+				&IndexType{T: "HNSW"},
 			},
 		},
 	}
@@ -540,7 +558,49 @@ table "t" {
 		require.NoError(t, EvalHCLBytes([]byte(r), &s, nil))
 		idx = s.Tables[0].Indexes[0]
 		require.Equal(t, IndexTypeGiST, idx.Attrs[0].(*IndexType).T)
+
+		s = schema.Schema{}
+		r = fmt.Sprintf(f, `"HNSW"`)
+		require.NoError(t, EvalHCLBytes([]byte(r), &s, nil))
+		idx = s.Tables[0].Indexes[0]
+		require.Equal(t, "HNSW", idx.Attrs[0].(*IndexType).T)
 	})
+}
+
+func TestMarshalSpec_IndexType(t *testing.T) {
+	s := schema.New("public").
+		AddTables(
+			schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("id", "int"),
+				).
+				AddIndexes(
+					schema.NewIndex("i1").AddAttrs(&IndexType{T: IndexTypeHash}),
+					schema.NewIndex("i2").AddAttrs(&IndexType{T: "HNSW"}),
+					schema.NewIndex("i2").AddAttrs(&IndexType{T: IndexTypeBTree}), // Default.
+				),
+		)
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	require.Equal(t, `table "t1" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = int
+  }
+  index "i1" {
+    type = HASH
+  }
+  index "i2" {
+    type = "HNSW"
+  }
+  index "i2" {
+  }
+}
+schema "public" {
+}
+`,
+		string(buf))
 }
 
 func TestUnmarshalSpec_BRINIndex(t *testing.T) {
@@ -610,6 +670,13 @@ func TestUnmarshalSpec_IndexOpClass(t *testing.T) {
       ops    = sql("tsvector_ops(siglen=1)")
     }
   }
+  index "idx5" {
+    unique = true
+    on {
+      column = column.a
+      ops    = "vector_cosine_ops"
+    }
+  }
 }
 schema "test" {
 }
@@ -653,6 +720,12 @@ schema "test" {
 	require.Len(t, opc.Params, 1)
 	require.Equal(t, "siglen", opc.Params[0].N)
 	require.Equal(t, "1", opc.Params[0].V)
+	// idx5
+	idx = s.Tables[0].Indexes[5]
+	require.Len(t, idx.Parts, 1)
+	require.Equal(t, "a", idx.Parts[0].C.Name)
+	require.Len(t, idx.Parts[0].Attrs, 1)
+	require.Equal(t, "vector_cosine_ops", idx.Parts[0].Attrs[0].(*IndexOpClass).Name)
 }
 
 func TestUnmarshalSpec_Partitioned(t *testing.T) {
@@ -1036,6 +1109,14 @@ func TestMarshalSpec_IndexOpClass(t *testing.T) {
 				&IndexType{T: IndexTypeGiST},
 			},
 		},
+		{
+			Name:   "idx5",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0], Attrs: []schema.Attr{&IndexOpClass{Name: "vector_cosine_ops"}}},
+			},
+		},
 	}
 	buf, err := MarshalSpec(s, hclState)
 	require.NoError(t, err)
@@ -1080,6 +1161,13 @@ func TestMarshalSpec_IndexOpClass(t *testing.T) {
     on {
       column = column.b
       ops    = sql("tsvector_ops(siglen=1)")
+    }
+  }
+  index "idx5" {
+    unique = true
+    on {
+      column = column.a
+      ops    = "vector_cosine_ops"
     }
   }
 }
@@ -1520,6 +1608,10 @@ func TestTypes(t *testing.T) {
 		{
 			typeExpr: "text",
 			expected: &schema.StringType{T: TypeText},
+		},
+		{
+			typeExpr: "bpchar",
+			expected: &schema.StringType{T: TypeBPChar},
 		},
 		{
 			typeExpr: "smallint",
@@ -2237,4 +2329,93 @@ schema "s2" {
 schema "s3" {
 }
 `, string(buf))
+}
+
+func TestMarshalSpec_UniqueConstraint(t *testing.T) {
+	s := schema.New("public").
+		AddTables(
+			schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("id", "int"),
+					schema.NewIntColumn("uid", "int"),
+				).
+				AddIndexes(
+					schema.NewUniqueIndex("u1").AddColumns(schema.NewColumn("id")).AddAttrs(UniqueConstraint("u1")),
+					schema.NewUniqueIndex("u2").AddColumns(schema.NewColumn("id")).AddAttrs(UniqueConstraint("u2"), &IndexNullsDistinct{}),
+					schema.NewUniqueIndex("u3").AddColumns(schema.NewColumn("id")).AddAttrs(UniqueConstraint("u3"), &IndexInclude{Columns: []*schema.Column{schema.NewColumn("uid")}}),
+				),
+		)
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	require.Equal(t, `table "t1" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = int
+  }
+  column "uid" {
+    null = false
+    type = int
+  }
+  unique "u1" {
+    columns = [column.id]
+  }
+  unique "u2" {
+    columns        = [column.id]
+    nulls_distinct = false
+  }
+  unique "u3" {
+    columns = [column.id]
+    include = [column.uid]
+  }
+}
+schema "public" {
+}
+`,
+		string(buf))
+}
+
+func TestUnmarshalSpec_UniqueConstraint(t *testing.T) {
+	var s schema.Schema
+	require.NoError(t, EvalHCLBytes([]byte(`table "t1" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = int
+  }
+  column "uid" {
+    null = false
+    type = int
+  }
+  unique "u1" {
+    columns = [column.id]
+  }
+  unique "u2" {
+    columns        = [column.id]
+    nulls_distinct = false
+  }
+  unique "u3" {
+    columns = [column.id]
+    include = [column.uid]
+  }
+}
+schema "public" {
+}
+`), &s, nil))
+	require.Len(t, s.Tables, 1)
+	require.Len(t, s.Tables[0].Indexes, 3)
+	// u1
+	u1 := s.Tables[0].Indexes[0]
+	require.Equal(t, "u1", u1.Name)
+	require.Equal(t, UniqueConstraint("u1"), u1.Attrs[0].(*Constraint))
+	// u2
+	u2 := s.Tables[0].Indexes[1]
+	require.Equal(t, "u2", u2.Name)
+	require.Equal(t, &IndexNullsDistinct{}, u2.Attrs[0])
+	require.Equal(t, UniqueConstraint("u2"), u2.Attrs[1].(*Constraint))
+	// u3
+	u3 := s.Tables[0].Indexes[2]
+	require.Equal(t, "u3", u3.Name)
+	require.Equal(t, &IndexInclude{Columns: []*schema.Column{s.Tables[0].Columns[1]}}, u3.Attrs[0])
+	require.Equal(t, UniqueConstraint("u3"), u3.Attrs[1].(*Constraint))
 }

@@ -687,7 +687,8 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 
 // addChecks scans the rows and adds the checks to the table.
 func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
-	names := make(map[string]*schema.Check)
+	type tc struct{ t, n string }
+	names := make(map[tc]*schema.Check)
 	for rows.Next() {
 		var (
 			noInherit                            bool
@@ -700,20 +701,22 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 		if !ok {
 			return fmt.Errorf("table %q was not found in schema", table)
 		}
-		if _, ok := t.Column(column); !ok {
+		c, ok := t.Column(column)
+		if !ok {
 			return fmt.Errorf("postgres: column %q was not found for check %q", column, name)
 		}
-		check, ok := names[name]
+		ck, ok := names[tc{t: table, n: name}]
 		if !ok {
-			check = &schema.Check{Name: name, Expr: clause, Attrs: []schema.Attr{&CheckColumns{}}}
+			ck = &schema.Check{Name: name, Expr: clause, Attrs: []schema.Attr{&CheckColumns{}}}
 			if noInherit {
-				check.Attrs = append(check.Attrs, &NoInherit{})
+				ck.AddAttrs(&NoInherit{})
 			}
-			names[name] = check
-			t.Attrs = append(t.Attrs, check)
+			names[tc{t: table, n: name}] = ck
+			t.AddAttrs(ck)
 		}
-		c := check.Attrs[0].(*CheckColumns)
-		c.Columns = append(c.Columns, column)
+		c.AddAttrs(ck)
+		attr := ck.Attrs[0].(*CheckColumns)
+		attr.Columns = append(attr.Columns, column)
 	}
 	return nil
 }
@@ -959,6 +962,13 @@ type (
 		T string
 	}
 
+	// ConvertUsing describes the USING clause to convert
+	// one type to another.
+	ConvertUsing struct {
+		schema.Clause
+		X string // Conversion expression.
+	}
+
 	// Constraint describes a postgres constraint.
 	// https://postgresql.org/docs/current/catalog-pg-constraint.html
 	Constraint struct {
@@ -1065,6 +1075,12 @@ type (
 		schema.Clause
 	}
 
+	// NotValid describes the NOT VALID clause for the creation
+	// of check and foreign-key constraints.
+	NotValid struct {
+		schema.Clause
+	}
+
 	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.
 	// https://postgresql.org/docs/current/catalog-pg-constraint.html
 	NoInherit struct {
@@ -1168,6 +1184,11 @@ func (o *ReferenceOption) Scan(v any) error {
 
 // IsUnique reports if the type is unique constraint.
 func (c Constraint) IsUnique() bool { return strings.ToLower(c.T) == "u" }
+
+// UniqueConstraint returns constraint with type "u".
+func UniqueConstraint(name string) *Constraint {
+	return &Constraint{T: "u", N: name}
+}
 
 // IntegerType returns the underlying integer type this serial type represents.
 func (s *SerialType) IntegerType() *schema.IntegerType {
@@ -1402,7 +1423,7 @@ FROM
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
 	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
 	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
-	LEFT JOIN pg_depend AS t5 ON t5.objid = t3.oid AND t5.deptype = 'e'
+	LEFT JOIN pg_depend AS t5 ON t5.classid = 'pg_catalog.pg_class'::regclass::oid AND t5.objid = t3.oid AND t5.deptype = 'e'
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND NOT COALESCE(t3.relispartition, false)
@@ -1425,7 +1446,7 @@ FROM
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
 	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
 	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
-	LEFT JOIN pg_depend AS t5 ON t5.objid = t3.oid AND t5.deptype = 'e'
+	LEFT JOIN pg_depend AS t5 ON t5.classid = 'pg_catalog.pg_class'::regclass::oid AND t5.objid = t3.oid AND t5.deptype = 'e'
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND NOT COALESCE(t3.relispartition, false)

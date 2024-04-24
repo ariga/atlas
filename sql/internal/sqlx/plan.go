@@ -369,7 +369,7 @@ func byKeys[T any](m map[string]T) []struct {
 	vs := make([]struct {
 		K string
 		V T
-	}, len(m))
+	}, 0, len(m))
 	for k, v := range m {
 		vs = append(vs, struct {
 			K string

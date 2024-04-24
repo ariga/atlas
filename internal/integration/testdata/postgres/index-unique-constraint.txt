@@ -9,6 +9,10 @@ cmpshow users 2.sql
 apply 3.hcl
 cmpshow users 3.sql
 
+atlas schema clean -u URL --auto-approve
+atlas schema inspect -u file://4.sql --dev-url URL > got
+cmp got 4.inspect.hcl
+
 -- 1.inspect.hcl --
 table "users" {
   schema = schema.script_index_unique_constraint
@@ -24,12 +28,10 @@ table "users" {
     null = true
     type = text
   }
-  index "users_name_last_key" {
-    unique  = true
+  unique "users_name_last_key" {
     columns = [column.name, column.last]
   }
-  index "users_nickname_key" {
-    unique  = true
+  unique "users_nickname_key" {
     columns = [column.nickname]
   }
 }
@@ -51,8 +53,7 @@ table "users" {
     null = true
     type = text
   }
-  index "users_name_last_key" {
-    unique  = true
+  unique "users_name_last_key" {
     columns = [column.name, column.last]
   }
 }
@@ -95,3 +96,77 @@ schema "script_index_unique_constraint" {
  name     | text |           |          |
  last     | text |           |          |
  nickname | text |           |          |
+-- 4.sql --
+create table t1(a int primary key, b int unique);
+create table t0(b int primary key references t1(b));
+create table t2(c int primary key references t1(b));
+create table d(c int unique references t1(b));
+
+-- 4.inspect.hcl --
+table "d" {
+  schema = schema.script_index_unique_constraint
+  column "c" {
+    null = true
+    type = integer
+  }
+  foreign_key "d_c_fkey" {
+    columns     = [column.c]
+    ref_columns = [table.t1.column.b]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+  unique "d_c_key" {
+    columns = [column.c]
+  }
+}
+table "t0" {
+  schema = schema.script_index_unique_constraint
+  column "b" {
+    null = false
+    type = integer
+  }
+  primary_key {
+    columns = [column.b]
+  }
+  foreign_key "t0_b_fkey" {
+    columns     = [column.b]
+    ref_columns = [table.t1.column.b]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+}
+table "t1" {
+  schema = schema.script_index_unique_constraint
+  column "a" {
+    null = false
+    type = integer
+  }
+  column "b" {
+    null = true
+    type = integer
+  }
+  primary_key {
+    columns = [column.a]
+  }
+  unique "t1_b_key" {
+    columns = [column.b]
+  }
+}
+table "t2" {
+  schema = schema.script_index_unique_constraint
+  column "c" {
+    null = false
+    type = integer
+  }
+  primary_key {
+    columns = [column.c]
+  }
+  foreign_key "t2_c_fkey" {
+    columns     = [column.c]
+    ref_columns = [table.t1.column.b]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+}
+schema "script_index_unique_constraint" {
+}

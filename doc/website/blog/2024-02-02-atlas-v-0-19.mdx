@@ -187,7 +187,7 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
 
 4. Next, let's define and apply the base table for our application:
 
-   ```hcl title=schema.hcl
+  ```hcl title=schema.hcl
   schema "dbo" {
   }
   table "grades" {
@@ -212,7 +212,7 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
       columns = [column.student_id, column.course_id]
     }
   }
-    ```
+  ```
     The `grades` table represents a student's grade for a specific course. The column `grade_status` will remain null
     at first, and we will use a trigger to update whether it the grade is pass or fail.
 
@@ -233,7 +233,7 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
 5. Now, let's define the logic to assign a `grade_status` using a `TRIGGER`. Append
    this definition to `schema.hcl`:
 
-   ```hcl title=schema.hcl (continued)
+  ```hcl title=schema.hcl (continued)
     trigger "after_grade_insert" {
       on = table.grades
       after {
@@ -251,9 +251,9 @@ Let's use Atlas to build a small chunk of a simple e-commerce application:
             FROM grades
         INNER JOIN inserted ON grades.student_id = inserted.student_id and grades.course_id = inserted.course_id;
         END
-       SQL
-      }
-    ```
+      SQL
+    }
+  ```
 
     We defined a `TRIGGER` called `after_grade_insert`. This trigger is
     executed after new rows are inserted or existing rows are updated into the `grades` table. The trigger

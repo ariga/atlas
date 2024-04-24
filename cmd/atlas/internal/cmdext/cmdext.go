@@ -127,6 +127,7 @@ func RuntimeVar(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 //		endpoint = "db.hostname.io:3306"
 //		region   = "us-east-1"
 //		username = "admin"
+//		profile  = "prod-ext"
 //	}
 func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
@@ -134,6 +135,7 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 			Endpoint string `hcl:"endpoint"`
 			Region   string `hcl:"region,optional"`
 			Username string `hcl:"username"`
+			Profile  string `hcl:"profile,optional"`
 		}
 		errorf = blockError("data.aws_rds_token", block)
 	)
@@ -141,7 +143,10 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 		return cty.NilVal, errorf("decoding body: %v", diags)
 	}
 	bgctx := context.Background()
-	cfg, err := config.LoadDefaultConfig(bgctx)
+	cfg, err := config.LoadDefaultConfig(
+		bgctx,
+		config.WithSharedConfigProfile(args.Profile), // Ignored if empty.
+	)
 	if err != nil {
 		return cty.NilVal, errorf("loading aws config: %v", err)
 	}
@@ -529,40 +534,6 @@ func (c *AtlasConfig) InitBlock() schemahcl.Option {
 }
 
 var clientType = cty.Capsule("client", reflect.TypeOf(cloudapi.Client{}))
-
-// RemoteDir is a data source that reads a remote migration directory.
-func RemoteDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
-	var (
-		args struct {
-			Name string `hcl:"name"`
-			Tag  string `hcl:"tag,optional"`
-		}
-		errorf = blockError("data.remote_dir", block)
-	)
-	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
-		return cty.NilVal, errorf("decoding body: %v", diags)
-	}
-	cv, diags := (&hclsyntax.ScopeTraversalExpr{
-		Traversal: hcl.Traversal{
-			hcl.TraverseRoot{Name: "atlas", SrcRange: block.Range()},
-			hcl.TraverseAttr{Name: "cloud", SrcRange: block.Range()},
-			hcl.TraverseAttr{Name: "client", SrcRange: block.Range()},
-		},
-	}).Value(ctx)
-	if len(diags) == 1 && diags[0].Summary == "Unknown variable" {
-		return cty.NilVal, errorf("missing atlas cloud config")
-	} else if diags.HasErrors() {
-		return cty.NilVal, errorf("getting atlas client: %v", diags)
-	}
-	client := cv.EncapsulatedValue().(*cloudapi.Client)
-	u, err := memdir(client, args.Name, args.Tag)
-	if err != nil {
-		return cty.NilVal, errorf("reading remote dir: %v", err)
-	}
-	return cty.ObjectVal(map[string]cty.Value{
-		"url": cty.StringVal(u),
-	}), nil
-}
 
 // SchemaHCL is a data source that reads an Atlas HCL schema file(s), evaluates it
 // with the given variables and exposes its resulting schema as in-memory HCL file.

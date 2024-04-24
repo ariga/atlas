@@ -122,6 +122,16 @@ type (
 		// Attributes and blocks are different for each driver.
 		schemahcl.DefaultExtension
 	}
+
+	// Sequence holds a specification for a Sequence.
+	Sequence struct {
+		Name      string         `spec:",name"`
+		Qualifier string         `spec:",qualifier"`
+		Schema    *schemahcl.Ref `spec:"schema"`
+		// Type, Start, Increment, Min, Max, Cache, Cycle
+		// are optionally added to the sequence definition.
+		schemahcl.DefaultExtension
+	}
 )
 
 // Label returns the defaults label used for the table resource.
@@ -160,6 +170,18 @@ func (f *Func) SetQualifier(q string) { f.Qualifier = q }
 // SchemaRef returns the schema reference for the function.
 func (f *Func) SchemaRef() *schemahcl.Ref { return f.Schema }
 
+// Label returns the defaults label used for the sequence resource.
+func (s *Sequence) Label() string { return s.Name }
+
+// QualifierLabel returns the qualifier label used for the sequence resource, if any.
+func (s *Sequence) QualifierLabel() string { return s.Qualifier }
+
+// SetQualifier sets the qualifier label used for the sequence resource.
+func (s *Sequence) SetQualifier(q string) { s.Qualifier = q }
+
+// SchemaRef returns the schema reference for the sequence.
+func (s *Sequence) SchemaRef() *schemahcl.Ref { return s.Schema }
+
 func init() {
 	schemahcl.Register("view", &View{})
 	schemahcl.Register("materialized", &View{})
@@ -167,5 +189,6 @@ func init() {
 	schemahcl.Register("function", &Func{})
 	schemahcl.Register("procedure", &Func{})
 	schemahcl.Register("trigger", &Trigger{})
+	schemahcl.Register("sequence", &Sequence{})
 	schemahcl.Register("schema", &Schema{})
 }

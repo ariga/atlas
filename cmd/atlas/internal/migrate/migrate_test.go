@@ -7,7 +7,9 @@ package migrate
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -69,6 +71,62 @@ func TestNewEntRevisions(t *testing.T) {
 	r, err := NewEntRevisions(ctx, c)
 	require.NoError(t, err)
 	runRevisionsTests(ctx, t, c.Driver, r)
+}
+
+func TestDirURL(t *testing.T) {
+	localDir := t.TempDir()
+	tests := []struct {
+		name        string
+		url         string
+		create      bool
+		expected    func() migrate.Dir
+		expectedErr error
+	}{
+		{
+			name:   "Valid file URL",
+			url:    "file://" + localDir,
+			create: false,
+			expected: func() migrate.Dir {
+				d, err := migrate.NewLocalDir(localDir)
+				require.NoError(t, err)
+				return d
+			},
+		},
+		{
+			name:   "Create local dir",
+			url:    "file://" + filepath.Join(localDir, "new/dir"),
+			create: true,
+			expected: func() migrate.Dir {
+				d, err := migrate.NewLocalDir(filepath.Join(localDir, "new/dir"))
+				require.NoError(t, err)
+				return d
+			},
+		},
+		{
+			name:        "Dont create local dir",
+			url:         "file://" + filepath.Join(localDir, "new/dir/2"),
+			create:      false,
+			expectedErr: fmt.Errorf("sql/migrate: stat %s: no such file or directory", filepath.Join(localDir, "new/dir/2")),
+		},
+		{
+			name:        "No scheme",
+			url:         localDir,
+			create:      false,
+			expectedErr: fmt.Errorf("missing scheme for dir url. Did you mean %q? ", "file://"+localDir),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir, err := Dir(context.Background(), tt.url, tt.create)
+			if tt.expectedErr != nil {
+				require.EqualError(t, err, tt.expectedErr.Error())
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected(), dir)
+			}
+		})
+	}
 }
 
 func runRevisionsTests(ctx context.Context, t *testing.T, drv migrate.Driver, r RevisionReadWriter) {

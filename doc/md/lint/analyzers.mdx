@@ -5,6 +5,7 @@ slug: /lint/analyzers
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import LoginRequired from '../components/login-required.mdx'
 
 The database is often the most critical component in software architectures. Being a stateful component, it cannot be
 easily rebuilt, scaled-out or fixed by a restart. Outages that involve damage to data or simply unavailability of the database
@@ -230,48 +231,57 @@ lint {
 
 The following schema change checks are provided by Atlas:
 
-| **Check**                                 | **Short Description**                                                                        |
-|-------------------------------------------|----------------------------------------------------------------------------------------------|
-| **BC**                                    | **[Backward incompatible changes](#backward-incompatible-changes)**                          |
-| [BC101](#BC101)                           | Renaming a table                                                                             |
-| [BC102](#BC102)                           | Renaming a column                                                                            |
-| **CD**                                    | Constraint deletion changes                                                                  |
-| [CD101](#CD101)                           | Foreign-key constraint was dropped                                                           |
-| **DS**                                    | **[Destructive changes](#destructive-changes)**                                              |
-| [DS101](#DS101)                           | Schema was dropped                                                                           |
-| [DS102](#DS102)                           | Table was dropped                                                                            |
-| [DS103](#DS103)                           | Non-virtual column was dropped                                                               |
-| **LT**                                    | SQLite specific checks                                                                       |
-| [LT101](#LT101)                           | Modifying a nullable column to non-nullable without a `DEFAULT` value                        |
-| **MF**                                    | **[Data-dependent changes](#data-dependent-changes)** (changes that might fail)              |
-| [MF101](#MF101)                           | Add unique index to existing column                                                          |
-| [MF102](#MF102)                           | Modifying non-unique index to unique                                                         |
-| [MF103](#MF103)                           | Adding a non-nullable column to an existing table                                            |
-| [MF104](#MF104)                           | Modifying a nullable column to non-nullable                                                  |
-| **MY**                                    | MySQL and MariaDB specific checks                                                            |
-| [MY101](#MY101)                           | Adding a non-nullable column without a `DEFAULT` value to an existing table                  |
-| [MY102](#MY102)                           | Adding a column with an inline `REFERENCES` clause has no actual effect                      |
-| [MY110](#MY110)                           | Removing enum values from a column requires a table copy                                     |
-| [MY111](#MY111)                           | Reordering enum values of a colum requires a table copy                                      |
-| [MY112](#MY112)                           | Inserting new enum values not at the end requires a table copy                               |
-| [MY113](#MY113)                           | Exceeding 256 enum values changes storage size and requires a table copy                     |
-| [MY120](#MY120)                           | Removing set values from a column requires a table copy                                      |
-| [MY121](#MY121)                           | Reordering set values of a colum requires a table copy                                       |
-| [MY122](#MY122)                           | Inserting new set values not at the end requires a table copy                                |
-| [MY123](#MY123)                           | Exceeding 8, 16, 24, 32 or 64 set values changes the storage size and requires a table copy  |
-| **NM**                                    | **[Naming Conventions](#naming-conventions-policy)**                                         |
-| [NM101](#NM101)                           | Schema name violates the naming convention                                                   |
-| [NM102](#NM102)                           | Table name violates the naming convention                                                    |
-| [NM103](#NM103)                           | Column name violates the naming convention                                                   |
-| [NM104](#NM104)                           | Index name violates the naming convention                                                    |
-| [NM105](#NM105)                           | Foreign-key constraint name violates the naming convention                                   |
-| [NM106](#NM106)                           | Check constraint name violates the naming convention                                         |
-| **PG**                                    | PostgreSQL specific checks                                                                   |
-| [PG110](#PG110)                           | Creating table with non-optimal data alignment                                               |
-| **PG1**                                   | **[Concurrent Indexes](#concurrent-index-policy-postgresql)**                                |
-| [PG101](#PG101)                           | Missing the `CONCURRENTLY` in index creation                                                 |
-| [PG102](#PG102)                           | Missing the `CONCURRENTLY` in index deletion                                                 |
-| [PG103](#PG103)                           | Missing `atlas:txmode none` directive in file header                                         |
+| **Check**       | **Short Description**                                                                                   |
+|-----------------|---------------------------------------------------------------------------------------------------------|
+| **BC**          | **[Backward incompatible changes](#backward-incompatible-changes)**                                     |
+| [BC101](#BC101) | Renaming a table                                                                                        |
+| [BC102](#BC102) | Renaming a column                                                                                       |
+| **CD**          | Constraint deletion changes                                                                             |
+| [CD101](#CD101) | Foreign-key constraint was dropped                                                                      |
+| **DS**          | **[Destructive changes](#destructive-changes)**                                                         |
+| [DS101](#DS101) | Schema was dropped                                                                                      |
+| [DS102](#DS102) | Table was dropped                                                                                       |
+| [DS103](#DS103) | Non-virtual column was dropped                                                                          |
+| **MF**          | **[Data-dependent changes](#data-dependent-changes)** (changes that might fail)                         |
+| [MF101](#MF101) | Add unique index to existing column                                                                     |
+| [MF102](#MF102) | Modifying non-unique index to unique                                                                    |
+| [MF103](#MF103) | Adding a non-nullable column to an existing table                                                       |
+| [MF104](#MF104) | Modifying a nullable column to non-nullable                                                             |
+| **PG**          | PostgreSQL specific checks                                                                              |
+| [PG110](#PG110) | Creating table with non-optimal data alignment                                                          |
+| **PG1**         | **[Concurrent Indexes](#concurrent-index-policy-postgresql)** &nbsp <LoginRequired/>                    |
+| [PG101](#PG101) | Missing the `CONCURRENTLY` in index creation                                                            |
+| [PG102](#PG102) | Missing the `CONCURRENTLY` in index deletion                                                            |
+| [PG103](#PG103) | Missing `atlas:txmode none` directive in file header                                                    |
+| [PG104](#PG104) | `PRIMARY KEY` constraint creation that acquires an `ACCESS EXCLUSIVE` lock on the table                 |
+| [PG105](#PG105) | `UNIQUE` constraint creation that acquires an `ACCESS EXCLUSIVE` lock on the table                      |
+| **PG3**         | PostgreSQL-specific blocking table changes &nbsp <LoginRequired/>                                       |
+| [PG301](#PG301) | Column type change that requires table and indexes rewrite                                              |
+| [PG302](#PG302) | Adding a column with a volatile `DEFAULT` value requires a rewrite of the table                         |
+| [PG303](#PG303) | Modifying a nullable column to non-nullable requires a full table scan                                  |
+| [PG304](#PG304) | Adding a `PRIMARY KEY` on nullable columns implicitly set them to `NOT NULL` requires a full table scan |
+| [PG305](#PG305) | Adding a `CHECK` constraint that requires a full table scan                                             |
+| [PG306](#PG306) | Adding a `FOREIGN KEY` constraint that requires a full table scan and blocks write operations           |
+| **MY**          | MySQL and MariaDB specific checks                                                                       |
+| [MY101](#MY101) | Adding a non-nullable column without a `DEFAULT` value to an existing table                             |
+| [MY102](#MY102) | Adding a column with an inline `REFERENCES` clause has no actual effect                                 |
+| [MY110](#MY110) | Removing enum values from a column requires a table copy                                                |
+| [MY111](#MY111) | Reordering enum values of a colum requires a table copy                                                 |
+| [MY112](#MY112) | Inserting new enum values not at the end requires a table copy                                          |
+| [MY113](#MY113) | Exceeding 256 enum values changes storage size and requires a table copy                                |
+| [MY120](#MY120) | Removing set values from a column requires a table copy                                                 |
+| [MY121](#MY121) | Reordering set values of a colum requires a table copy                                                  |
+| [MY122](#MY122) | Inserting new set values not at the end requires a table copy                                           |
+| [MY123](#MY123) | Exceeding 8, 16, 24, 32 or 64 set values changes the storage size and requires a table copy             |
+| **NM**          | **[Naming Conventions](#naming-conventions-policy)**                                                    |
+| [NM101](#NM101) | Schema name violates the naming convention                                                              |
+| [NM102](#NM102) | Table name violates the naming convention                                                               |
+| [NM103](#NM103) | Column name violates the naming convention                                                              |
+| [NM104](#NM104) | Index name violates the naming convention                                                               |
+| [NM105](#NM105) | Foreign-key constraint name violates the naming convention                                              |
+| [NM106](#NM106) | Check constraint name violates the naming convention                                                    |
+| **LT**          | SQLite specific checks                                                                                  |
+| [LT101](#LT101) | Modifying a nullable column to non-nullable without a `DEFAULT` value                                   |
 
 #### DS101 {#DS101}
 
@@ -556,6 +566,24 @@ ALTER TABLE `new_users` RENAME TO `users`;
 PRAGMA foreign_keys = on;
 ```
 
+#### NM101 {#NM101}
+A schema has been given a name that violates the naming convention.
+
+#### NM102 {#NM102}
+A table has been given a name that violates the naming convention.
+
+#### NM103 {#NM103}
+A column has been given a name that violates the naming convention.
+
+#### NM104 {#NM104}
+An index has been given a name that violates the naming convention.
+
+#### NM105 {#NM105}
+A foreign-key constraint has been given a name that violates the naming convention.
+
+#### NM106 {#NM106}
+A check constraint has been given a name that violates the naming convention.
+
 #### PG110 {#PG110}
 
 Creating a table with optimal data alignment may help minimize the amount of required disk space.
@@ -585,30 +613,98 @@ CREATE TABLE accounts (
 );
 ```
 
-#### NM101 {#NM101}
-A schema has been given a name that violates the naming convention.
+#### PG101 <LoginRequired /> {#PG101}
+Creating an index non-concurrently acquires a `SHARE` lock on the table blocking writes but allowing reads during the
+operation.
 
-#### NM102 {#NM102}
-A table has been given a name that violates the naming convention.
+#### PG102 <LoginRequired />  {#PG102}
+Dropping an index non-concurrently acquires an `ACCESS EXCLUSIVE` lock on the table blocking both reads and writes
+during the operation.
 
-#### NM103 {#NM103}
-A column has been given a name that violates the naming convention.
-
-#### NM104 {#NM104}
-An index has been given a name that violates the naming convention.
-
-#### NM105 {#NM105}
-A foreign-key constraint has been given a name that violates the naming convention.
-
-#### NM106 {#NM106}
-A check constraint has been given a name that violates the naming convention.
-
-#### PG101 {#PG101}
-Creating an index non-concurrently locks the table against write operations.
-
-#### PG102 {#PG102}
-Dropping an index non-concurrently locks the table against write operations.
-
-#### PG103 {#PG103}
+#### PG103 <LoginRequired />  {#PG103}
 Indexes cannot be created or deleted concurrently within a transaction. Add the `atlas:txmode none` directive to the
 header to prevent this file from running in a transaction.
+
+#### PG104 <LoginRequired />  {#PG104}
+Adding a `PRIMARY KEY` constraint (with its index) acquires an `ACCESS EXCLUSIVE` lock on the table, blocking all access
+during the operation. The solution is to add as follows:
+
+1. Create the `UNIQUE INDEX` concurrently:
+
+  ```sql title=20240101000001_add_unique_index.sql
+  CREATE UNIQUE INDEX CONCURRENTLY users_pkey ON users(id);
+  ```
+
+2. Validate the index creation and ensure it is in `VALID` state. Otherwise, the constraint creation will
+   fail with the following error:
+   ```sql
+   // highlight-next-line-error-message
+   ERROR:  index "users_pkey" is not a valid
+   ```
+   Note, this step can be automated using a [pre-migration check](/versioned/checks) on the migration file below.
+
+3. After validating the index state, add the `PRIMARY KEY` constraint using the created index:
+
+  ```sql title=20240101000002_add_primary_key.sql
+  ALTER TABLE users ADD PRIMARY KEY USING INDEX users_pkey;
+  ```
+
+
+#### PG105 <LoginRequired />  {#PG105}
+Adding a `UNIQUE` constraint (with its index) acquires an `ACCESS EXCLUSIVE` lock on the table, blocking all access
+during the operation. The solution is to add as follows:
+
+1. Create the `UNIQUE INDEX` concurrently:
+
+  ```sql title=20240101000001_add_unique_index.sql
+  CREATE UNIQUE INDEX CONCURRENTLY users_id_key ON users(id);
+  ```
+
+2. Validate the index creation and ensure it is in `VALID` state. Otherwise, the constraint creation will
+  fail with the following error:
+
+  ```sql
+  // highlight-next-line-error-message
+  ERROR:  index "users_id_key" is not a valid
+   ```
+  Note, this step can be automated using a [pre-migration check](/versioned/checks) on the migration file below.
+
+3. After validating the index state, add the `UNIQUE` constraint using the created index:
+
+  ```sql title=20240101000002_add_unique_const.sql
+  ALTER TABLE users ADD UNIQUE USING INDEX users_id_key;
+  ```
+
+#### PG301 <LoginRequired /> {#PG301}
+A change to the column type that requires adjusting the actual stored data and triggers a rewrite of the table and potentially
+indexes. During this operation, an [`ACCESS EXCLUSIVE`](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)
+lock is acquired on the table, preventing any level of access, including `SELECT`.
+
+#### PG302 <LoginRequired /> {#PG302}
+Adding a column with a volatile `DEFAULT` value requires a rewrite of the table. During this operation, an
+[`ACCESS EXCLUSIVE`](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES) lock is acquired on the
+table, preventing any level of access, including `SELECT`.
+
+#### PG303 <LoginRequired /> {#PG303}
+Modifying a column from `NULL` to `NOT NULL` requires a full table scan. During this operation, an
+[`ACCESS EXCLUSIVE`](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES) lock is acquired on the
+table, preventing any level of access, including `SELECT`.
+
+:::note Columns with CHECK constraints
+If the table has a `CHECK` constraint that ensures `NULL` cannot exist, such as `CHECK (c > 10 AND c IS NOT NULL)`,
+the table scan is skipped, and therefore this check is not reported.
+:::
+
+#### PG304 <LoginRequired /> {#PG304}
+Adding a `PRIMARY KEY` on a nullable columns implicitly sets them to `NOT NULL`, resulting a full table scan unless
+there is a `CHECK` constraint that ensures `NULL` cannot exist.
+
+#### PG305 <LoginRequired /> {#PG305}
+Adding a `CHECK` constraint without the `NOT VALID` clause requires scanning the table to verify that all rows satisfy
+the constraint. During this operation, an [`ACCESS EXCLUSIVE`](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)
+lock is acquired on the table, preventing any level of access, including `SELECT`.
+
+#### PG306 <LoginRequired /> {#PG306}
+Adding a `FOREIGN KEY` constraint without the `NOT VALID` clause requires a full table scan to verify that all rows
+satisfy the constraint. During this process, a `SHARE ROW EXCLUSIVE` lock is acquired on both tables blocking write
+operations.

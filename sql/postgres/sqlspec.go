@@ -23,17 +23,17 @@ import (
 
 type (
 	doc struct {
-		Tables       []*sqlspec.Table   `spec:"table"`
-		Views        []*sqlspec.View    `spec:"view"`
-		Materialized []*sqlspec.View    `spec:"materialized"`
-		Enums        []*enum            `spec:"enum"`
-		Domains      []*domain          `spec:"domain"`
-		Sequences    []*sequence        `spec:"sequence"`
-		Funcs        []*sqlspec.Func    `spec:"function"`
-		Procs        []*sqlspec.Func    `spec:"procedure"`
-		Triggers     []*sqlspec.Trigger `spec:"trigger"`
-		Extensions   []*extension       `spec:"extension"`
-		Schemas      []*sqlspec.Schema  `spec:"schema"`
+		Tables       []*sqlspec.Table    `spec:"table"`
+		Views        []*sqlspec.View     `spec:"view"`
+		Materialized []*sqlspec.View     `spec:"materialized"`
+		Enums        []*enum             `spec:"enum"`
+		Domains      []*domain           `spec:"domain"`
+		Sequences    []*sqlspec.Sequence `spec:"sequence"`
+		Funcs        []*sqlspec.Func     `spec:"function"`
+		Procs        []*sqlspec.Func     `spec:"procedure"`
+		Triggers     []*sqlspec.Trigger  `spec:"trigger"`
+		Extensions   []*extension        `spec:"extension"`
+		Schemas      []*sqlspec.Schema   `spec:"schema"`
 	}
 
 	// Enum holds a specification for an enum type.
@@ -45,7 +45,7 @@ type (
 		schemahcl.DefaultExtension
 	}
 
-	// Domain holds a specification for a domain type.
+	// domain holds a specification for a domain type.
 	domain struct {
 		Name      string           `spec:",name"`
 		Qualifier string           `spec:",qualifier"`
@@ -54,16 +54,6 @@ type (
 		Null      bool             `spec:"null"`
 		Default   cty.Value        `spec:"default"`
 		Checks    []*sqlspec.Check `spec:"check"`
-		schemahcl.DefaultExtension
-	}
-
-	// sequence holds a specification for a sequence.
-	sequence struct {
-		Name      string         `spec:",name"`
-		Qualifier string         `spec:",qualifier"`
-		Schema    *schemahcl.Ref `spec:"schema"`
-		// Type, Start, Increment, Min, Max, Cache, Cycle
-		// are optionally added to the sequence definition.
 		schemahcl.DefaultExtension
 	}
 
@@ -128,23 +118,10 @@ func (d *domain) SetQualifier(q string) { d.Qualifier = q }
 // SchemaRef returns the schema reference for the domain.
 func (d *domain) SchemaRef() *schemahcl.Ref { return d.Schema }
 
-// Label returns the defaults label used for the sequence resource.
-func (s *sequence) Label() string { return s.Name }
-
-// QualifierLabel returns the qualifier label used for the sequence resource, if any.
-func (s *sequence) QualifierLabel() string { return s.Qualifier }
-
-// SetQualifier sets the qualifier label used for the sequence resource.
-func (s *sequence) SetQualifier(q string) { s.Qualifier = q }
-
-// SchemaRef returns the schema reference for the sequence.
-func (s *sequence) SchemaRef() *schemahcl.Ref { return s.Schema }
-
 func init() {
 	schemahcl.Register("enum", &enum{})
 	schemahcl.Register("domain", &domain{})
-	schemahcl.Register("sequence", &sequence{})
-	schemahcl.Register("extension", &sequence{})
+	schemahcl.Register("extension", &extension{})
 }
 
 // evalSpec evaluates an Atlas DDL document into v using the input.
@@ -305,6 +282,9 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 	if err != nil {
 		return nil, err
 	}
+	if err := convertUniques(spec.Extra, t); err != nil {
+		return nil, err
+	}
 	if err := convertPartition(spec.Extra, t); err != nil {
 		return nil, err
 	}
@@ -331,6 +311,24 @@ func convertView(spec *sqlspec.View, parent *schema.Schema) (*schema.View, error
 		return nil, err
 	}
 	return v, nil
+}
+
+// convertUniques converts the unique constraints into indexes.
+func convertUniques(spec schemahcl.Resource, t *schema.Table) error {
+	rs := spec.Resources("unique")
+	for _, r := range rs {
+		var sx sqlspec.Index
+		if err := r.As(&sx); err != nil {
+			return fmt.Errorf("parse %s.unique constraint: %w", t.Name, err)
+		}
+		idx, err := convertIndex(&sx, t)
+		if err != nil {
+			return err
+		}
+		idx.SetUnique(true).AddAttrs(UniqueConstraint(sx.Name))
+		t.AddIndexes(idx)
+	}
+	return nil
 }
 
 // convertPartition converts and appends the partition block into the table attributes if exists.
@@ -636,9 +634,9 @@ func schemaSpec(s *schema.Schema) (*doc, []*schema.Trigger, error) {
 }
 
 // tableSpec converts from a concrete Postgres sqlspec.Table to a schema.Table.
-func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
+func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	spec, err := specutil.FromTable(
-		table,
+		t,
 		tableColumnSpec,
 		pkSpec,
 		indexSpec,
@@ -648,7 +646,26 @@ func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p := (Partition{}); sqlx.Has(table.Attrs, &p) {
+	idxs := make([]*sqlspec.Index, 0, len(spec.Indexes))
+	for i, idx1 := range spec.Indexes {
+		if len(t.Indexes) <= i || t.Indexes[i].Name != idx1.Name {
+			return nil, fmt.Errorf("unexpected spec index %q was not found in table %q", idx1.Name, t.Name)
+		}
+		if c, ok := uniqueConst(t.Indexes[i].Attrs); ok && c.N != "" {
+			spec.Extra.Children = append(spec.Extra.Children, &schemahcl.Resource{
+				Type: "unique",
+				Name: c.N,
+				Attrs: append(
+					[]*schemahcl.Attr{schemahcl.RefsAttr("columns", idx1.Columns...)},
+					idx1.Extra.Attrs...,
+				),
+			})
+		} else {
+			idxs = append(idxs, idx1)
+		}
+	}
+	spec.Indexes = idxs
+	if p := (Partition{}); sqlx.Has(t.Attrs, &p) {
 		spec.Extra.Children = append(spec.Extra.Children, fromPartition(p))
 	}
 	return spec, nil
@@ -685,7 +702,14 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	}
 	// Avoid printing the index type if it is the default.
 	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && strings.ToUpper(i.T) != IndexTypeBTree {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
+		var attr *schemahcl.Attr
+		switch strings.ToUpper(i.T) {
+		case IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, IndexTypeSPGiST:
+			attr = specutil.VarAttr("type", strings.ToUpper(i.T))
+		default:
+			attr = schemahcl.StringAttr("type", i.T)
+		}
+		spec.Extra.Attrs = append(spec.Extra.Attrs, attr)
 	}
 	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
@@ -722,8 +746,10 @@ func partAttr(idx *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart
 	case d:
 	case len(op.Params) > 0:
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.RawAttr("ops", op.String()))
-	default:
+	case postgresop.HasClass(op.String()):
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("ops", op.String()))
+	default:
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.StringAttr("ops", op.String()))
 	}
 	return nil
 }
@@ -797,6 +823,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.AliasTypeSpec("character_varying", TypeCharVar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec(TypeChar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec(TypeCharacter, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeBPChar),
 		schemahcl.NewTypeSpec(TypeInt2),
 		schemahcl.NewTypeSpec(TypeInt4),
 		schemahcl.NewTypeSpec(TypeInt8),

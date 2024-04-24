@@ -18,15 +18,31 @@ import (
 	"text/template"
 )
 
-// Job defines an integration job to run.
-type Job struct {
-	Version string   // version to test (passed to go test as flag which database dialect/version)
-	Image   string   // name of service
-	Regex   string   // run regex
-	Env     []string // env of service
-	Ports   []string // port mappings
-	Options []string // other options
-}
+type (
+	// Step defines a step to run.
+	Step struct {
+		Name   string
+		Action string
+		With   []string
+	}
+	// Credentials is used to pull images from a private registry.
+	Credentials struct {
+		Username string
+		Password string
+	}
+	// Job defines an integration job to run.
+	Job struct {
+		Version     string       // version to test (passed to go test as flag which database dialect/version)
+		Image       string       // name of service
+		Credentials *Credentials // credentials to pull the image
+		Regex       string       // run regex
+		Env         []string     // env of service
+		Ports       []string     // port mappings
+		Volumes     []string     // volume mappings
+		Options     []string     // other options
+		Steps       []Step       // extra steps to run
+	}
+)
 
 var (
 	//go:embed *.tmpl

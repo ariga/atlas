@@ -14,8 +14,9 @@ schema changes to databases is as follows: **Develop** ⇨ **Check (CI)** ⇨ **
 2. **Check (CI)** - Use [`atlas migrate lint`](/versioned/lint) to validate migrations, ensuring they don't conflict with other team members' changes
    and align with best practices. Add Atlas to your CI pipeline in [GitHub Actions](/cloud/setup-ci) or [GitLab](/guides/ci-platforms/gitlab)
    to review migrations files before they get merged into the main branch.
-3. **Push (Delivery)** - Use `atlas migrate push`, or set up a CI pipeline to push the latest migrations state to [Atlas Cloud](https://auth.atlasgo.cloud/signup).
-   Alternatively, you can package the migrations directory into a custom Docker image and push it to an artifactory.
+3. **Push (Delivery)** - Use `atlas migrate push`, or set up a CI pipeline to push the latest migrations state to the
+   [Atlas Schema Registry](/cloud/features/registry). Alternatively, you can package the migrations directory into
+   a custom Docker image and push it to an artifactory.
 4. **Deploy** - Use `atlas migrate apply` to apply the pending migrations to your database(s).
 
 ### Flags and Arguments
@@ -29,9 +30,9 @@ The following flags are required:
 * `--dir` the URL to the migration directory. It defaults to `file://migrations`.
 
 :::info Reading remote directories
-Users who have connected or pushed their migration directories to Atlas Cloud can read the migrations state directly from
-there without needing to have them locally. For example, `atlas migrate apply --dir "atlas://app"` will apply the pending
-migrations of the `app` project based on the most recent pushed state. To see it in action, run the following:
+Users who have connected or pushed their migration directory to the Atlas Schema Registry can read the migrations' state
+directly from there without needing to have them locally. For example, `atlas migrate apply --dir "atlas://app"` will
+apply the pending migrations of the `app` project based on the most recent pushed state. To see it in action, run the following:
 
 **Login** or signup:
 ```shell
@@ -403,9 +404,18 @@ atlas migrate apply \
 
 ### Dry Run
 
-If you want to check what exactly Atlas would do when attempting a migration execution, you can provide the `--dry-run`
-flag:
-* `--dry-run` to not execute any SQL but print it on the screen.
+Atlas allows users to review and verify the safety of migration plans before applying them to the database.
+
+By using the `dry-run` option, Atlas prints the migration files and their SQL statements that are pending to be applied
+without executing them. However, if the migration plan contains [pre-migration checks](/versioned/checks), Atlas executes
+them on the database and report the results.
+
+```shell
+atlas migrate apply \
+  --url "mysql://root:pass@localhost:3306/example" \
+  --dir "file://migrations" \
+  --dry-run
+```
 
 ### Down migrations
 

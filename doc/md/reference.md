@@ -100,11 +100,11 @@ atlas migrate apply [flags] [amount]
 
 #### Details
 'atlas migrate apply' reads the migration state of the connected database and computes what migrations are pending.
-It then attempts to apply the pending migration files in the correct order onto the database.
+It then attempts to apply the pending migration files in the correct order onto the database. 
 The first argument denotes the maximum number of migration files to apply.
 As a safety measure 'atlas migrate apply' will abort with an error, if:
-- the migration directory is not in sync with the 'atlas.sum' file
-- the migration and database history do not match each other
+  - the migration directory is not in sync with the 'atlas.sum' file
+  - the migration and database history do not match each other
 
 If run with the "--dry-run" flag, atlas will not execute any SQL.
 
@@ -202,6 +202,37 @@ an HCL, SQL, or ORM schema. See: https://atlasgo.io/versioned/diff
       --format string           Go template to use to format the output
       --qualifier string        qualify tables with custom qualifier when working on a single schema
       --edit                    edit the generated migration file(s)
+
+```
+
+
+### atlas migrate down
+
+Reverting applied migration files from the database
+
+#### Usage
+```
+atlas migrate down [flags] [amount]
+```
+
+#### Example
+
+```
+  atlas migrate down -u "mysql://user:pass@localhost:3306/dbname"
+  atlas migrate down --env prod --to-version 20230102150405
+  atlas migrate down --env prod --to-tag e29be4e
+```
+#### Flags
+```
+  -u, --url string                [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --to-version string         desired version to revert to
+      --to-tag string             desired tag to revert to
+      --dir string                select migration directory using URL format (default "file://migrations")
+      --dev-url string            [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --format string             Go template to use to format the output
+      --dry-run                   print SQL without executing it
+      --revisions-schema string   name of the schema the revisions table resides in
+      --lock-timeout duration     set how long to wait for the database lock (default 10s)
 
 ```
 
@@ -385,6 +416,30 @@ atlas migrate rebase [flags] {name | version}...
 ```
 
 
+### atlas migrate rm
+
+Remove a migration file from the migration directory. Does not work for remote directories.
+
+#### Usage
+```
+atlas migrate rm [flags] [amount]
+```
+
+#### Example
+
+```
+  atlas migrate rm
+  atlas migrate rm --env local 20060102150405
+  atlas migrate rm --env local 20060102150405_name.sql
+```
+#### Flags
+```
+      --dir string          select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
+
+```
+
+
 ### atlas migrate set
 
 Set the current version of the migration history table.
@@ -510,10 +565,10 @@ atlas schema apply [flags]
 database to the state described in the provided Atlas schema. Before running the
 migration, Atlas will print the migration plan and prompt the user for approval.
 
-The schema is provided by one or more URLs (to a HCL file or
+The schema is provided by one or more URLs (to a HCL file or 
 directory, database or migration directory) using the "--to, -t" flag:
-atlas schema apply -u URL --to "file://file1.hcl" --to "file://file2.hcl"
-atlas schema apply -u URL --to "file://schema/" --to "file://override.hcl"
+  atlas schema apply -u URL --to "file://file1.hcl" --to "file://file2.hcl"
+  atlas schema apply -u URL --to "file://schema/" --to "file://override.hcl"
 
 As a convenience, schema URLs may also be provided via an environment definition in
 the project file (see: https://atlasgo.io/cli/projects).
@@ -581,7 +636,7 @@ atlas schema diff [flags]
 ```
 
 #### Details
-'atlas schema diff' reads the state of two given schema definitions,
+'atlas schema diff' reads the state of two given schema definitions, 
 calculates the difference in their schemas, and prints a plan of
 SQL statements to migrate the "from" database to the schema of the "to" database.
 The database states can be read from a connected database, an HCL project or a migration directory.
@@ -639,7 +694,7 @@ atlas schema inspect [flags]
 It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be
 saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
 
-atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > schema.hcl
+  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > schema.hcl
 
 This file can then be edited and used with the `atlas schema apply` command to plan
 and execute schema migrations against the given database. In cases where users wish to inspect
@@ -647,7 +702,7 @@ all multiple schemas in a given database (for instance a MySQL server may contai
 databases), omit the relevant part from the url, e.g. "mysql://user:pass@localhost:3306/".
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
-
+	
 
 #### Example
 

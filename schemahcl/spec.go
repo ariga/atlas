@@ -137,6 +137,16 @@ func (a *Attr) Int() (int, error) {
 	return int(i), nil
 }
 
+// BigFloat returns a big.Float from the Value of the Attr. If The value is not a LiteralValue or the value
+// cannot be converted to a big.Float an error is returned.
+func (a *Attr) BigFloat() (*big.Float, error) {
+	var f big.Float
+	if err := gocty.FromCtyValue(a.V, &f); err != nil {
+		return nil, err
+	}
+	return &f, nil
+}
+
 // Int64 returns an int64 from the Value of the Attr. If The value is not a LiteralValue or the value
 // cannot be converted to an integer an error is returned.
 func (a *Attr) Int64() (i int64, err error) {
@@ -147,7 +157,7 @@ func (a *Attr) Int64() (i int64, err error) {
 }
 
 // String returns a string from the Value of the Attr. If The value is not a LiteralValue
-// an error is returned.  String values are expected to be quoted. If the value is not
+// an error is returned. String values are expected to be quoted. If the value is not
 // properly quoted an error is returned.
 func (a *Attr) String() (s string, err error) {
 	if err = gocty.FromCtyValue(a.V, &s); err != nil {
@@ -380,6 +390,20 @@ func (r *Resource) Resource(t string) (*Resource, bool) {
 		}
 	}
 	return nil, false
+}
+
+// Resources returns all child Resources by its type.
+func (r *Resource) Resources(t string) []*Resource {
+	if r == nil {
+		return nil
+	}
+	var rs []*Resource
+	for i := range r.Children {
+		if r.Children[i].Type == t {
+			rs = append(rs, r.Children[i])
+		}
+	}
+	return rs
 }
 
 // Attr returns the Attr by the provided name and reports whether it was found.

@@ -269,6 +269,43 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "int")),
+					Changes: []schema.Change{
+						&schema.RenameTable{From: schema.NewTable("users"), To: schema.NewTable("accounts")},
+					}},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` RENAME TO `accounts`",
+						Reverse: "ALTER TABLE `accounts` RENAME TO `users`",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "int"), schema.NewStringColumn("name", "varchar(255)")),
+					Changes: []schema.Change{
+						&schema.RenameTable{From: schema.NewTable("users"), To: schema.NewTable("accounts")},
+						&schema.AddColumn{C: schema.NewStringColumn("name", "varchar(255)")},
+					}},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` RENAME TO `accounts`, ADD COLUMN `name` varchar(255) NOT NULL",
+						Reverse: "ALTER TABLE `accounts` DROP COLUMN `name`, RENAME TO `users`",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
 				func() schema.Change {
 					users := schema.NewTable("users").
 						AddColumns(

@@ -2,8 +2,6 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-//go:build !windows
-
 package pgparse
 
 import (
@@ -15,7 +13,7 @@ import (
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 
-	pgquery "github.com/pganalyze/pg_query_go/v4"
+	pgquery "github.com/pganalyze/pg_query_go/v5"
 )
 
 // Parser implements the sqlparse.Parser
@@ -171,6 +169,10 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 				}) {
 					drop.Extra = append(drop.Extra, &postgres.Concurrently{})
 				}
+			}
+		case stmt.GetAlterTableStmt() != nil:
+			if fixed, err := FixAlterTable(s, stmt.GetAlterTableStmt(), changes); err == nil {
+				changes = fixed // Make ALTER fixes optional.
 			}
 		}
 	}

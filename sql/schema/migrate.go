@@ -225,6 +225,7 @@ type (
 	ModifyColumn struct {
 		From, To *Column
 		Change   ChangeKind
+		Extra    []Clause // Extra clauses and options.
 	}
 
 	// RenameColumn describes a column rename change.
@@ -273,7 +274,8 @@ type (
 
 	// AddForeignKey describes a foreign-key creation change.
 	AddForeignKey struct {
-		F *ForeignKey
+		F     *ForeignKey
+		Extra []Clause // Extra clauses and options.
 	}
 
 	// DropForeignKey describes a foreign-key removal change.
@@ -289,7 +291,8 @@ type (
 
 	// AddCheck describes a CHECK constraint creation change.
 	AddCheck struct {
-		C *Check
+		C     *Check
+		Extra []Clause // Extra clauses and options.
 	}
 
 	// DropCheck describes a CHECK constraint removal change.
@@ -418,6 +421,10 @@ type (
 		// Extra defines per-driver configuration. If not
 		// nil, should be set to schemahcl.Extension.
 		Extra any // avoid circular dependency with schemahcl.
+
+		// AskFunc can be implemented by the caller to
+		// make diff process interactive.
+		AskFunc func(string, []string) (string, error)
 	}
 
 	// DiffOption allows configuring the DiffOptions using functional options.

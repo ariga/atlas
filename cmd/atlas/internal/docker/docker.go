@@ -140,8 +140,17 @@ func FromURL(u *url.URL) (*Config, error) {
 		cfg, err = MariaDB(tag, opts...)
 	case "postgis":
 		opts = append(opts, Image("postgis/postgis:"+tag))
+		if dbName != "" && dbName != "postgres" {
+			// Create manually the PostgreSQL database instead of using the POSTGRES_DB because
+			// PostGIS automatically creates and install the following extensions and schemas:
+			// Schemas: tiger, tiger_data, topology.
+			// Extensions: postgis, postgis_topology, postgis_tiger_geocoder.
+			opts = append(
+				opts, Database(dbName), Setup(fmt.Sprintf("CREATE DATABASE %q", dbName)),
+			)
+		}
 		driver = DriverPostgres
-		fallthrough
+		cfg, err = PostgreSQL(tag, opts...)
 	case DriverPostgres:
 		if dbName != "" {
 			opts = append(opts, Database(dbName), Env("POSTGRES_DB="+dbName))

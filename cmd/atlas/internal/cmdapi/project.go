@@ -146,6 +146,8 @@ type (
 		Migrate struct {
 			// Apply configures the formatting for 'migrate apply'.
 			Apply string `spec:"apply"`
+			// Down configures the formatting for 'migrate down'.
+			Down string `spec:"down"`
 			// Lint configures the formatting for 'migrate lint'.
 			Lint string `spec:"lint"`
 			// Status configures the formatting for 'migrate status'.
@@ -154,6 +156,8 @@ type (
 			Diff string `spec:"diff"`
 		} `spec:"migrate"`
 		Schema struct {
+			// Inspect configures the formatting for 'schema inspect'.
+			Inspect string `spec:"inspect"`
 			// Apply configures the formatting for 'schema apply'.
 			Apply string `spec:"apply"`
 			// Apply configures the formatting for 'schema diff'.
@@ -390,7 +394,7 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 		setEnvs(cmd.Context(), envs[name])
 	}()
 	if p, e, ok := envsCache.load(GlobalFlags.ConfigURL, name, vars); ok {
-		return p, e, nil
+		return p, e, maySetTokenContext(cmd, p)
 	}
 	u, err := url.Parse(GlobalFlags.ConfigURL)
 	if err != nil {
@@ -412,12 +416,8 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 	}
 	// The project token predates 'atlas login' command. If exists,
 	// attach it to the context to indicate the user is authenticated.
-	if project.cfg.Token != "" && project.cfg.Client != nil {
-		ctx, err := withTokenContext(cmd.Context(), project.cfg.Token, project.cfg.Client)
-		if err != nil {
-			return nil, nil, err
-		}
-		cmd.SetContext(ctx)
+	if err := maySetTokenContext(cmd, project); err != nil {
+		return nil, nil, err
 	}
 	if err := project.Lint.remainedLog(); err != nil {
 		return nil, nil, err
@@ -449,10 +449,23 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 		// return only the project.
 		return project, nil, nil
 	case len(envs[name]) == 0:
-		return nil, nil, fmt.Errorf("env %q not defined in project file", name)
+		return nil, nil, fmt.Errorf("env %q not defined in config file", name)
 	default:
 		return project, envs[name], nil
 	}
+}
+
+// maySetTokenContext sets the token context and cloud client if
+// defined in the project file.
+func maySetTokenContext(cmd *cobra.Command, p *Project) error {
+	if p.cfg.Token != "" && p.cfg.Client != nil {
+		ctx, err := withTokenContext(cmd.Context(), p.cfg.Token, p.cfg.Client)
+		if err != nil {
+			return err
+		}
+		cmd.SetContext(ctx)
+	}
+	return nil
 }
 
 type (
@@ -553,7 +566,7 @@ func partialParse(path, env string) (*hclparse.Parser, error) {
 	if err != nil {
 		return nil, err
 	}
-	var used []*hclsyntax.Block
+	var labeled, nonlabeled, used []*hclsyntax.Block
 	for _, b := range fi.Body.(*hclsyntax.Body).Blocks {
 		switch b.Type {
 		case blockEnv:
@@ -562,17 +575,25 @@ func partialParse(path, env string) (*hclparse.Parser, error) {
 			case env == "" && n == 0:
 			// Exact env was selected.
 			case n == 1 && b.Labels[0] == env:
-				used = append(used, b)
+				labeled = append(labeled, b)
 			// Dynamic env selection.
 			case n == 0 && b.Body != nil && b.Body.Attributes[schemahcl.AttrName] != nil:
 				t, ok := b.Body.Attributes[schemahcl.AttrName].Expr.(*hclsyntax.ScopeTraversalExpr)
 				if ok && len(t.Traversal) == 2 && t.Traversal.RootName() == refAtlas && t.Traversal[1].(hcl.TraverseAttr).Name == blockEnv {
-					used = append(used, b)
+					nonlabeled = append(nonlabeled, b)
 				}
 			}
 		default:
 			used = append(used, b)
 		}
+	}
+	// Labeled blocks take precedence
+	// over non-labeled env blocks.
+	switch {
+	case len(labeled) > 0:
+		used = append(used, labeled...)
+	case len(nonlabeled) > 0:
+		used = append(used, nonlabeled...)
 	}
 	fi.Body = &hclsyntax.Body{
 		Blocks:     used,

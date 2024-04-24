@@ -4,6 +4,8 @@
 
 package postgresop
 
+import "sync"
+
 // Class describes an index operator class.
 type Class struct {
 	Name    string // operator class name
@@ -208,4 +210,21 @@ var Classes = []*Class{
 	{Name: "spgist_geometry_ops_2d", Method: "SPGIST", Type: "geometry", Default: true},
 	{Name: "spgist_geometry_ops_3d", Method: "SPGIST", Type: "geometry", Default: false},
 	{Name: "spgist_geometry_ops_nd", Method: "SPGIST", Type: "geometry", Default: false},
+}
+
+var (
+	mapOnce sync.Once
+	byName map[string]struct{}
+)
+
+// HasClass reports if the given operator class name exists.
+func HasClass(name string) bool {
+	mapOnce.Do(func() {
+		byName = make(map[string]struct{}, len(Classes))
+		for _, c := range Classes {
+			byName[c.Name] = struct{}{}
+		}
+	})
+	_, ok := byName[name]
+	return ok
 }

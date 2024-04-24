@@ -44,7 +44,7 @@ func TestRunner_Run(t *testing.T) {
 		require.ErrorAs(t, r.Run(ctx), &err)
 		require.Regexp(t, `Analyzing changes \(1 migration in total\):
 
-  Error: checksum mismatch \(atlas.sum\): L1: 1\.sql was added
+  Error: checksum mismatch \(atlas.sum\): L2: 1\.sql was added
 
   -------------------------
   -- .*
@@ -57,7 +57,7 @@ func TestRunner_Run(t *testing.T) {
 		require.ErrorAs(t, r.Run(ctx), &err)
 		require.Regexp(t, `Analyzing changes \(1 migration in total\):
 
-  Error: checksum mismatch \(atlas.sum\): L1: 1\.sql was edited
+  Error: checksum mismatch \(atlas.sum\): L2: 1\.sql was edited
 
   -------------------------
   -- .*
@@ -71,7 +71,7 @@ func TestRunner_Run(t *testing.T) {
 		require.ErrorAs(t, r.Run(ctx), &err)
 		require.Regexp(t, `Analyzing changes \(1 migration in total\):
 
-  Error: checksum mismatch \(atlas.sum\): L1: 1\.sql was removed
+  Error: checksum mismatch \(atlas.sum\): L2: 1\.sql was removed
 
   -------------------------
   -- .*
@@ -86,7 +86,7 @@ func TestRunner_Run(t *testing.T) {
 		require.ErrorAs(t, r.Run(ctx), &err)
 		require.Regexp(t, `Analyzing changes \(1 migration in total\):
 
-  Error: checksum mismatch \(atlas.sum\): L2: 2\.sql was added
+  Error: checksum mismatch \(atlas.sum\): L3: 2\.sql was added
 
   -------------------------
   -- .*

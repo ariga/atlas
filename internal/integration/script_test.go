@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -403,25 +404,30 @@ func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 }
 
 func (t *myTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
-	cmdCLI(ts, neg, args, t.url(ts.Getenv("db")), ts.Getenv(atlasPathKey))
+	cmdCLI(ts, neg, args, t.url(ts.Getenv("db")), t.url(ts.Getenv("dev")), ts.Getenv(atlasPathKey))
 }
 
 func (t *pgTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
-	cmdCLI(ts, neg, args, t.url(ts.Getenv("db")), ts.Getenv(atlasPathKey))
+	cmdCLI(ts, neg, args, t.url(ts.Getenv("db")), t.url(ts.Getenv("dev")), ts.Getenv(atlasPathKey))
 }
 
 func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
 	dbURL := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", ts.Getenv("WORK"))
-	cmdCLI(ts, neg, args, dbURL, ts.Getenv(atlasPathKey))
+	cmdCLI(ts, neg, args, dbURL, "sqlite://dev?mode=memory", ts.Getenv(atlasPathKey))
 }
 
-func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, cliPath string) {
+func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, devURL, cliPath string) {
 	var (
 		workDir = ts.Getenv("WORK")
-		r       = strings.NewReplacer("URL", dbURL, "$db", ts.Getenv("db"))
+		r       = strings.NewReplacer("URL", dbURL, "DEV_URL", devURL, "$db", ts.Getenv("db"))
 	)
 	for i, arg := range args {
 		args[i] = r.Replace(arg)
+	}
+	// Whenever a migrate diff/apply command is executed, increase the default lock
+	// timeout to 30s, as the default (10s) for synchronizing all our tests.
+	if len(args) > 1 && args[0] == "migrate" && (args[1] == "diff" || args[1] == "apply") && !slices.Contains(args, "--lock-timeout") {
+		args = append(args, "--lock-timeout", "30s")
 	}
 	switch l := len(args); {
 	// If command was run with a unix redirect-like suffix.

@@ -68,6 +68,12 @@ Let's start off by spinning up a database using Docker:
 docker run --rm -d --name atlas-demo -e CLICKHOUSE_DB=demo -p 9000:9000 clickhouse/clickhouse-server:latest
 ```
 
+If you are already using ClickHouse Cloud and want to inspect it, 
+you can work with Atlas through [Url](../concepts/url) and utilize it throughout the guide.
+```
+clickhouse://user:pass@CLICKHOUSE-CLOUD-HOST:9440/schema?secure=true
+```
+
 For this example we will begin with a minimal database with a `users` table and an `id` as the primary key.
 
 ```sql

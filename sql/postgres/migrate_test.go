@@ -486,6 +486,132 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Add a named unique constraint using index.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						SetSchema(schema.New("test")).
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+						)
+					users.SetPrimaryKey(schema.NewPrimaryKey(users.Columns...))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&AddUniqueConstraint{
+								Name:  "users_unique",
+								Using: schema.NewUniqueIndex("boring"),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "test"."users" ADD CONSTRAINT "users_unique" UNIQUE USING INDEX "boring"`,
+						Reverse: `ALTER TABLE "test"."users" DROP CONSTRAINT "users_unique"`,
+					},
+				},
+			},
+		},
+		// Add an unnamed unique constraint using index.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						SetSchema(schema.New("test")).
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+						)
+					users.SetPrimaryKey(schema.NewPrimaryKey(users.Columns...))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&AddUniqueConstraint{
+								Using: schema.NewUniqueIndex("boring"),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "test"."users" ADD UNIQUE USING INDEX "boring"`,
+						Reverse: `ALTER TABLE "test"."users" DROP CONSTRAINT "boring"`,
+					},
+				},
+			},
+		},
+		// Add a named primary key constraint using index.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						SetSchema(schema.New("test")).
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+						)
+					users.SetPrimaryKey(schema.NewPrimaryKey(users.Columns...))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&AddPKConstraint{
+								Name:  "users_pkey",
+								Using: schema.NewUniqueIndex("users_pkey"),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "test"."users" ADD CONSTRAINT "users_pkey" PRIMARY KEY USING INDEX "users_pkey"`,
+						Reverse: `ALTER TABLE "test"."users" DROP CONSTRAINT "users_pkey"`,
+					},
+				},
+			},
+		},
+		// Add an unnamed primary key constraint using index.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						SetSchema(schema.New("test")).
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+						)
+					users.SetPrimaryKey(schema.NewPrimaryKey(users.Columns...))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&AddPKConstraint{
+								Using: schema.NewUniqueIndex("users_pkey"),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "test"."users" ADD PRIMARY KEY USING INDEX "users_pkey"`,
+						Reverse: `ALTER TABLE "test"."users" DROP CONSTRAINT "users_pkey"`,
+					},
+				},
+			},
+		},
 		// Modify a primary key.
 		{
 			changes: []schema.Change{
@@ -563,6 +689,10 @@ func TestPlanChanges(t *testing.T) {
 							},
 							&schema.AddCheck{
 								C: &schema.Check{Name: "name_not_empty", Expr: `("name" <> '')`},
+							},
+							&schema.AddCheck{
+								C:     &schema.Check{Name: "positive_id", Expr: `("id" > 0)`},
+								Extra: []schema.Clause{&NotValid{}},
 							},
 							&schema.DropCheck{
 								C: &schema.Check{Name: "id_nonzero", Expr: `("id" <> 0)`},
@@ -654,8 +784,8 @@ func TestPlanChanges(t *testing.T) {
 						Reverse: `CREATE INDEX CONCURRENTLY "drop_con" ON "users" ("id")`,
 					},
 					{
-						Cmd:     `ALTER TABLE "users" DROP CONSTRAINT "id_nonzero", ADD COLUMN "name" character varying(255) NOT NULL DEFAULT 'logged_in', ADD COLUMN "last" character varying(255) NOT NULL DEFAULT 'logged_in', ADD CONSTRAINT "name_not_empty" CHECK ("name" <> ''), DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK (("id") % 2 = 0)`,
-						Reverse: `ALTER TABLE "users" DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK ("id" % 2 = 0), DROP CONSTRAINT "name_not_empty", DROP COLUMN "last", DROP COLUMN "name", ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0)`,
+						Cmd:     `ALTER TABLE "users" DROP CONSTRAINT "id_nonzero", ADD COLUMN "name" character varying(255) NOT NULL DEFAULT 'logged_in', ADD COLUMN "last" character varying(255) NOT NULL DEFAULT 'logged_in', ADD CONSTRAINT "name_not_empty" CHECK ("name" <> ''), ADD CONSTRAINT "positive_id" CHECK ("id" > 0) NOT VALID, DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK (("id") % 2 = 0)`,
+						Reverse: `ALTER TABLE "users" DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK ("id" % 2 = 0), DROP CONSTRAINT "positive_id", DROP CONSTRAINT "name_not_empty", DROP COLUMN "last", DROP COLUMN "name", ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0)`,
 					},
 					{
 						Cmd:     `CREATE INDEX "id_key" ON "users" ("id" DESC) WHERE success`,
@@ -1359,6 +1489,9 @@ func TestPlanChanges(t *testing.T) {
 							From:   schema.NewColumn("c1").SetType(&SerialType{T: "smallserial"}),
 							To:     schema.NewIntColumn("c1", "integer"),
 							Change: schema.ChangeType,
+							Extra: []schema.Clause{
+								&ConvertUsing{X: "c1::int"},
+							},
 						},
 						&schema.ModifyColumn{
 							From:   schema.NewColumn("c2").SetType(&SerialType{T: "serial", SequenceName: "previous_name"}),
@@ -1373,7 +1506,7 @@ func TestPlanChanges(t *testing.T) {
 				Transactional: true,
 				Changes: []*migrate.Change{
 					{
-						Cmd:     `ALTER TABLE "public"."posts" ALTER COLUMN "c1" DROP DEFAULT, ALTER COLUMN "c1" TYPE integer, ALTER COLUMN "c2" DROP DEFAULT`,
+						Cmd:     `ALTER TABLE "public"."posts" ALTER COLUMN "c1" DROP DEFAULT, ALTER COLUMN "c1" TYPE integer USING c1::int, ALTER COLUMN "c2" DROP DEFAULT`,
 						Reverse: `ALTER TABLE "public"."posts" ALTER COLUMN "c2" SET DEFAULT nextval('"public"."previous_name"'), ALTER COLUMN "c1" SET DEFAULT nextval('"public"."posts_c1_seq"'), ALTER COLUMN "c1" TYPE smallint`,
 					},
 					{

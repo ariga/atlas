@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -376,6 +377,7 @@ func (s *MigrateReportSet) ReportFor(flags migrateApplyFlags, e *Env) *MigrateRe
 		env: e,
 		done: func(r *cloudapi.ReportMigrationInput) {
 			s.done++
+			r.DryRun = flags.dryRun
 			s.Log[len(s.Log)-1].EndTime = time.Now()
 			if r.Error != nil && *r.Error != "" {
 				s.StepLogError(*r.Error)
@@ -480,7 +482,7 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 		dirName = cloudapi.DefaultDirName
 	// Directory slug.
 	default:
-		dirName = filepath.Join(u.Host, u.Path)
+		dirName = path.Join(u.Host, u.Path)
 	}
 	r.done(&cloudapi.ReportMigrationInput{
 		ProjectName:  r.env.cfg.Project,
@@ -677,7 +679,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 			Indent:  indent,
 			Dir:     dir,
 			Dev:     dev,
-			Options: env.DiffOptions(),
+			Options: diffOptions(cmd, env),
 		})
 		return maskNoPlan(cmd, err)
 	}
@@ -696,7 +698,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	opts := []migrate.PlannerOption{
 		migrate.PlanFormat(f),
 		migrate.PlanWithIndent(indent),
-		migrate.PlanWithDiffOptions(env.DiffOptions()...),
+		migrate.PlanWithDiffOptions(diffOptions(cmd, env)...),
 	}
 	if dev.URL.Schema != "" {
 		// Disable tables qualifier in schema-mode.
@@ -943,7 +945,7 @@ type migrateLintFlags struct {
 	latest            uint   // --latest 1
 	gitBase, gitDir   string // --git-base master --git-dir /path/to/git/repo
 	// Not enabled by default.
-	dirBase string // --base atlas://graph
+	dirBase string // --base atlas://myapp
 	web     bool   // Open the web browser
 	context string // Run context. See cloudapi.ContextInput.
 }
@@ -1613,7 +1615,7 @@ func printChecksumError(cmd *cobra.Command, err error) {
 	out := cmd.OutOrStderr()
 	fmt.Fprintln(out, "You have a checksum error in your migration directory.")
 	if csErr := (&migrate.ChecksumError{}); errors.As(err, &csErr) {
-		fmt.Fprintf(out, "\n\tL %d: %s was %s\n\n", csErr.Line, csErr.File, csErr.Reason)
+		fmt.Fprintf(out, "\n\tL%d: %s was %s\n\n", csErr.Line, csErr.File, csErr.Reason)
 	}
 	fmt.Fprintf(
 		out,
@@ -1691,6 +1693,13 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 			return err
 		}
 		if err := maySetFlag(cmd, flagExecOrder, strings.ReplaceAll(strings.ToLower(env.Migration.ExecOrder), "_", "-")); err != nil {
+			return err
+		}
+	case "down":
+		if err := maySetFlag(cmd, flagFormat, env.Format.Migrate.Down); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, flagLockTimeout, env.Migration.LockTimeout); err != nil {
 			return err
 		}
 	case "diff", "checkpoint":
@@ -1798,23 +1807,23 @@ func (d *editDir) WriteFile(name string, b []byte) (err error) {
 
 // edit allows editing the file content using editor.
 func edit(name string, src []byte) ([]byte, error) {
-	path := filepath.Join(os.TempDir(), name)
-	if err := os.WriteFile(path, src, 0644); err != nil {
+	p := filepath.Join(os.TempDir(), name)
+	if err := os.WriteFile(p, src, 0644); err != nil {
 		return nil, fmt.Errorf("write source content to temp file: %w", err)
 	}
-	defer os.Remove(path)
+	defer os.Remove(p)
 	editor := "vi"
 	if e := os.Getenv("EDITOR"); e != "" {
 		editor = e
 	}
-	cmd := exec.Command("sh", "-c", editor+" "+path)
+	cmd := exec.Command("sh", "-c", editor+" "+p)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("exec edit: %w", err)
 	}
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return nil, fmt.Errorf("read edited temp file: %w", err)
 	}
@@ -1828,11 +1837,6 @@ type (
 	// dryRunRevisions wraps a migrate.RevisionReadWriter without executing any SQL statements.
 	dryRunRevisions struct{ migrate.RevisionReadWriter }
 )
-
-// QueryContext overrides the wrapped schema.ExecQuerier to not execute any SQL.
-func (dryRunDriver) QueryContext(context.Context, string, ...any) (*sql.Rows, error) {
-	return nil, nil
-}
 
 // ExecContext overrides the wrapped schema.ExecQuerier to not execute any SQL.
 func (dryRunDriver) ExecContext(context.Context, string, ...any) (sql.Result, error) {

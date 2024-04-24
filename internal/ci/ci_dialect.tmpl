@@ -9,27 +9,58 @@ jobs:
 {{- range $.Jobs }}
   integration-{{ .Version }}:
     runs-on: {{ $.Runner }}
-    {{ if .Image }}services:
+    {{- if .Image }}
+    services:
       {{ .Version }}:
         image: {{ .Image }}
-        {{ with .Env }}env:{{ range . }}
+        {{- with .Credentials }}
+        credentials:
+          username: {{ print `${{ ` .Username ` }}` }}
+          password: {{ print `${{ ` .Password ` }}` }}
+        {{- end }}
+        {{- with .Env }}
+        env:
+          {{- range . }}
           {{ . }}{{ end }}
         {{- end }}
-        {{ with .Ports }}ports:{{ range . }}
+        {{- with .Ports }}
+        ports:
+          {{- range . }}
           - {{ . }}{{ end }}
         {{- end }}
-        {{ with .Options }}options: >-{{ range . }}
+        {{- with .Volumes }}
+        volumes:
+          {{- range . }}
+          - {{ . }}{{ end }}
+        {{- end }}
+        {{- with .Options }}
+        options: >-
+          {{- range . }}
           {{ . }}{{ end }}
-        {{- end }}{{ end }}
+        {{- end }}
+    {{- end }}
     steps:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
+      {{- with .Steps }}
+      {{- range . }}
+      - name: {{ .Name }}
+        uses: {{ .Action }}
+        {{- with .With }}
+        with:
+          {{- range . }}
+          {{ . }}{{ end }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
       - name: Run integration tests for {{ .Version }}
         working-directory: internal/integration
         run: go test {{ with $.Tags }}-tags={{ . }} {{ end }}-race -count=2 -v -run="{{ .Regex }}" -version="{{ .Version }}" -timeout 15m ./...
-        {{ with .Env }}env:{{ range . }}
+        {{- with .Env }}
+        env:
+          {{- range . }}
           {{ . }}{{ end }}
         {{- end }}
-{{ end }}
+{{- end }}

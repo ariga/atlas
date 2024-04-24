@@ -17,6 +17,7 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/migratelint"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 
@@ -135,3 +136,8 @@ func setEnvs(context.Context, []*Env) {}
 
 // specOptions are the options for the schema spec.
 var specOptions []schemahcl.Option
+
+// diffOptions returns environment-aware diff options.
+func diffOptions(_ *cobra.Command, env *Env) []schema.DiffOption {
+	return env.DiffOptions()
+}

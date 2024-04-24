@@ -6,13 +6,9 @@ package cmdapi
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
@@ -195,7 +191,7 @@ env "multi" {
 	})
 	t.Run("wrong env", func(t *testing.T) {
 		_, _, err = EnvByName(&cobra.Command{}, "home", nil)
-		require.EqualError(t, err, `env "home" not defined in project file`)
+		require.EqualError(t, err, `env "home" not defined in config file`)
 	})
 	t.Run("wrong dir", func(t *testing.T) {
 		GlobalFlags.ConfigURL = defaultConfigPath
@@ -227,25 +223,18 @@ env {
 
 func TestEnvCache(t *testing.T) {
 	h := `
-variable "cloud_url" {
+variable "path" {
   type = string
 }
 
-atlas {
-  cloud {
-    token = "token"
-    url   = var.cloud_url
-  }
-}
-
-data "remote_dir" "migrations" {
-  name = "migrations/v1/mysql"
+data "template_dir" "name" {
+  path = var.path
 }
 
 env {
   name = atlas.env
   migration {
-    dir = data.remote_dir.migrations.url
+    dir = data.template_dir.name.url
   }
 }
 `
@@ -253,39 +242,23 @@ env {
 	err := os.WriteFile(path, []byte(h), 0600)
 	require.NoError(t, err)
 	GlobalFlags.ConfigURL = "file://" + path
-	var calls int
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var v struct {
-			Query string `json:"query"`
-		}
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&v))
-		require.NoError(t, r.Body.Close())
-		// Count calls that query the remote_dir data source.
-		if strings.Contains(v.Query, "dirState") {
-			calls++
-		}
-	}))
-	t.Cleanup(srv.Close)
-	vars := map[string]cty.Value{"cloud_url": cty.StringVal(srv.URL)}
+
+	dir := filepath.Join(t.TempDir(), "migrations")
+	require.NoError(t, os.Mkdir(dir, 0700))
+	vars := map[string]cty.Value{"path": cty.StringVal(dir)}
 
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
 	_, envs1, err := EnvByName(cmd, "local", vars)
 	require.NoError(t, err)
 	require.Len(t, envs1, 1)
-	require.Equal(t, 1, calls)
+	require.Contains(t, envs1[0].Migration.Dir, dir)
 
-	_, envs2, err := EnvByName(cmd, "local", vars)
+	require.NoError(t, os.Remove(dir))
+	_, envs1, err = EnvByName(cmd, "local", vars)
 	require.NoError(t, err)
-	require.Len(t, envs2, 1)
-	require.Equal(t, 1, calls)
-	require.Equal(t, envs1[0], envs2[0])
-
-	_, envs3, err := EnvByName(cmd, "dev", vars)
-	require.NoError(t, err)
-	require.Len(t, envs3, 1)
-	require.Equal(t, 2, calls)
-	require.NotEqual(t, envs1[0], envs3[0])
+	require.Len(t, envs1, 1)
+	require.Contains(t, envs1[0].Migration.Dir, dir, "should return the same dir, even if it doesn't exist anymore")
 }
 
 func TestNoEnv(t *testing.T) {
@@ -367,14 +340,40 @@ env "dev" {
 	require.Equal(t, "env: unnamed", envs[0].Format.Schema.Apply)
 	_, envs, err = EnvByName(&cobra.Command{}, "dev", nil)
 	require.NoError(t, err)
-	require.Len(t, envs, 2)
-	for _, e := range envs {
-		attr, ok := e.Extra.Attr("a")
-		require.True(t, ok)
-		v, err := attr.String()
-		require.NoError(t, err)
-		require.Equal(t, "b", v)
-	}
+	require.Len(t, envs, 1)
+	attr, ok := envs[0].Extra.Attr("a")
+	require.True(t, ok)
+	v, err := attr.String()
+	require.NoError(t, err)
+	require.Equal(t, "b", v)
+
+	h = `
+data "template_dir" "unknown" {
+  path = "unknown"
+}
+
+env {
+  name = atlas.env
+  a = data.template_dir.unknown.url
+}
+
+env "dev" {
+  a = "b"
+}`
+	require.NoError(t, os.WriteFile(path, []byte(h), 0600))
+	_, envs, err = EnvByName(&cobra.Command{}, "dev", nil)
+	require.NoError(t, err)
+	require.Len(t, envs, 1)
+	attr, ok = envs[0].Extra.Attr("a")
+	require.True(t, ok)
+	v, err = attr.String()
+	require.NoError(t, err)
+	require.Equal(t, "b", v)
+
+	// Loading template directory should fail.
+	_, envs, err = EnvByName(&cobra.Command{}, "other", nil)
+	require.Error(t, err)
+	require.Empty(t, envs)
 }
 
 func TestDiff_Options(t *testing.T) {

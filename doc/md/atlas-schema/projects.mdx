@@ -539,9 +539,17 @@ The data source provides two ways to work with AWS Parameter Store:
   SharedConfigEnable option enabled; if you have authenticated with the AWS CLI, it will use those credentials.
 - If the `awssdk` query parameter is set to `v2`, the data source will create an AWS Config based on the AWS SDK V2.
 
+Using local AWS Profiles:
+* Using a local AWS Credentials profile is supported in the `v2` mode. The `profile` query parameter is used
+  to specify the profile name. To use profiles set `awssdk=v2` and `profile=<profile>` in the URL.
+
 ```hcl title="atlas.hcl"
 data "runtimevar" "db" {
   url = "awsparamstore://<name>?region=<region>&decoder=string"
+}
+
+data "runtimevar" "from_profile" {
+    url = "awsparamstore://<name>?region=<region>&decoder=string&awssdk=v2&profile=<profile>"
 }
 
 env "dev" {
@@ -575,9 +583,17 @@ The data source provides two ways to work with AWS Secrets Manager:
   SharedConfigEnable option enabled; if you have authenticated with the AWS CLI, it will use those credentials.
 - If the `awssdk` query parameter is set to `v2`, the data source will create an AWS Config based on the AWS SDK V2.
 
+Using local AWS Profiles:
+* Using a local AWS Credentials profile is supported in the `v2` mode. The `profile` query parameter is used
+  to specify the profile name. To use profiles set `awssdk=v2` and `profile=<profile>` in the URL.
+
 ```hcl title="atlas.hcl"
 data "runtimevar" "pass" {
   url = "awssecretsmanager://<secret>?region=<region>"
+}
+
+data "runtimevar" "pass_from_profile" {
+    url = "awssecretsmanager://<secret>?region=<region>&awssdk=v2&profile=<profile>"
 }
 
 env "dev" {
@@ -733,7 +749,8 @@ the Atlas commands, such as `migrate diff`, `schema apply`, or `schema inspect`.
 
 - `schema` - one or more **named** blocks containing the [URL](../concepts/url.mdx) to read the schema from.
 
-<details><summary>Usage Details</summary>
+<details>
+<summary>Usage Details</summary>
 
 ##### Mapping to Database Schemas
 
@@ -832,7 +849,7 @@ instructions on how to connect a migration directory to Atlas Cloud, please refe
 
 ##### Arguments {#data-source-remote_dir-arguments}
 
-- `name` - The name of the migration directory, as defined in Atlas Cloud.
+- `name` - The slug of the migration directory, as defined in Atlas Cloud.
 - `tag` (optional) - The tag of the migration directory, such as Git commit. If not specified, the latest
 tag (e.g., `master` branch) will be used.
 
@@ -840,27 +857,21 @@ tag (e.g., `master` branch) will be used.
 
 - `url` - A [URL](../concepts/url.mdx) to the loaded migration directory.
 
-```hcl title="atlas.hcl" {6-21}
+:::note
+The `remote_dir` data source predates the `atlas://` URL scheme. The example below is equivalent to executing Atlas with
+`--dir "atlas://myapp"`.
+:::
+
+```hcl title="atlas.hcl" {6-10}
 variable "database_url" {
   type    = string
   default = getenv("DATABASE_URL")
 }
 
-variable "cloud_token" {
-  type    = string
-  default = getenv("ATLAS_TOKEN")
-}
-
-atlas {
-  cloud {
-    token = var.cloud_token
-  }
-}
-
 data "remote_dir" "migrations" {
-  // The name of the migration directory in Atlas Cloud.
-  // In this example, the directory is named "graph".
-  name = "graph"
+  // The slug of the migration directory in Atlas Cloud.
+  // In this example, the directory is named "myapp".
+  name = "myapp"
 }
 
 env {
@@ -876,11 +887,11 @@ env {
 #### Usage example
 
 ```shell
-atlas migrate apply \
+ATLAS_TOKEN="<ATLAS_TOKEN>" \
+  atlas migrate apply \
   --url "<DATABASE_URL>" \
   -c file://path/to/atlas.hcl \
-  --env prod \
-  --var cloud_token="<ATLAS_TOKEN>"
+  --env prod
 ```
 
 ```shell
@@ -895,7 +906,8 @@ In case the `cloud` block was activated with a valid token, Atlas logs migration
 to facilitate the monitoring and troubleshooting of executed migrations. The following is a demonstration of how it
 appears in action:
 
-<details><summary>Screenshot example</summary>
+<details>
+<summary>Screenshot example</summary>
 
 ![](https://atlasgo.io/uploads/cloud/images/full-deployment-example.png)
 
@@ -999,6 +1011,7 @@ To use this data source:
 - `region` - The AWS region of the database (Optional).
 - `endpoint` - The endpoint of the database (hostname:port).
 - `username` - The database user to authenticate as.
+- `profile` - The AWS profile to use for authentication (Optional).
 
 ##### Attributes {#data-source-aws_rds_token-attributes}
 
@@ -1068,6 +1081,23 @@ The `env` block defines an environment block that can be selected by using the `
 - `for_each` - A meta-argument that accepts a map or a set of strings and is used to compute an `env` instance for each
 set or map item. See the example [below](#multi-environment-example).
 
+- `src` - The [URL](../concepts/url.mdx) of or reference to for the desired schema of this environment. For example:
+  - `file://schema.hcl`
+  - `file://schema.sql`
+  - `file://relative/path/to/file.hcl`
+  - Directories are also accepted: `file://schema/`
+  - Lists are accepted as well:
+    ```
+    env "local" {
+        src = [
+            "file://a.hcl",
+            "file://b.hcl"
+        ]
+    }
+    ```
+  - As mentioned, references to data sources such as [`external_schema`](#data-source-external_schema)
+    or [`composite_schema`](#data-source-composite_schema) are a valid value for the `src` attribute.
+
 - `url` - The [URL](../concepts/url.mdx) of the target database.
 
 - `dev` - The [URL](../concepts/url.mdx) of the [Dev Database](../concepts/dev.mdx).
@@ -1090,6 +1120,7 @@ set or map item. See the example [below](#multi-environment-example).
     - `lint` - Set custom formatting for `migrate lint`.
     - `status` - Set custom formatting for `migrate status`.
   - `schema`
+    - `inspect` - Set custom formatting for `schema inspect`.
     - `apply` - Set custom formatting for `schema apply`.
     - `diff` - Set custom formatting for `schema diff`.
 

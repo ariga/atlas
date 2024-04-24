@@ -131,11 +131,13 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 	}
 	// If the old -f flag is given convert them to the URL format. If both are given,
 	// cobra would throw an error since they are marked as mutually exclusive.
-	for _, p := range flags.paths {
-		if !isURL(p) {
-			p = "file://" + p
+	if len(flags.toURLs) == 0 {
+		for _, p := range flags.paths {
+			if !isURL(p) {
+				p = "file://" + p
+			}
+			flags.toURLs = append(flags.toURLs, p)
 		}
-		flags.toURLs = append(flags.toURLs, p)
 	}
 	var (
 		err    error
@@ -179,7 +181,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		return err
 	}
 	defer to.Close()
-	diff, err := computeDiff(ctx, client, from, to, env.DiffOptions()...)
+	diff, err := computeDiff(ctx, client, from, to, diffOptions(cmd, env)...)
 	if err != nil {
 		return err
 	}
@@ -431,7 +433,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	diff, err := computeDiff(ctx, c, from, to, env.DiffOptions()...)
+	diff, err := computeDiff(ctx, c, from, to, diffOptions(cmd, env)...)
 	if err != nil {
 		return err
 	}
@@ -661,6 +663,10 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 		return err
 	}
 	switch cmd.Name() {
+	case "inspect":
+		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Inspect); err != nil {
+			return err
+		}
 	case "apply":
 		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Apply); err != nil {
 			return err
