@@ -187,6 +187,24 @@ env "doctrine" {
 }
 ```
 
+:::note
+The provider does not support loading entities via [entity listeners](https://symfony.com/bundles/DoctrineBundle/current/entity-listeners.html).
+To load Symfony schema with entity listeners, use the [Doctrine Bundle](https://symfony.com/doc/current/reference/configuration/doctrine.html) directly:
+
+```diff
+data "external_schema" "doctrine" {
+  program = [
+    "php",
+    "bin/console",
+-   "atlas:schema"
++   "doctrine:schema:create",
++   "--dump-sql"
+  ]
+}
+```
+:::
+
+
 ### As a PHP Script
 
 Create a new file named `atlas.php` with the following contents:
