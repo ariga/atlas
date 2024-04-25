@@ -28,6 +28,7 @@ type (
 		Materialized []*sqlspec.View     `spec:"materialized"`
 		Enums        []*enum             `spec:"enum"`
 		Domains      []*domain           `spec:"domain"`
+		Composites   []*composite        `spec:"composite"`
 		Sequences    []*sqlspec.Sequence `spec:"sequence"`
 		Funcs        []*sqlspec.Func     `spec:"function"`
 		Procs        []*sqlspec.Func     `spec:"procedure"`
@@ -57,6 +58,23 @@ type (
 		schemahcl.DefaultExtension
 	}
 
+	// composite holds a specification for a composite type.
+	composite struct {
+		Name      string            `spec:",name"`
+		Qualifier string            `spec:",qualifier"`
+		Schema    *schemahcl.Ref    `spec:"schema"`
+		Fields    []*compositeField `spec:"field"`
+		schemahcl.DefaultExtension
+	}
+
+	// compositeField holds a specification for a field in a composite type.
+	// The extension might hold optional attributes such as collation.
+	compositeField struct {
+		Name string          `spec:",name"`
+		Type *schemahcl.Type `spec:"type"`
+		schemahcl.DefaultExtension
+	}
+
 	// extension holds a specification for a postgres extension.
 	// Note, extension names are unique within a realm (database).
 	extension struct {
@@ -75,6 +93,7 @@ func (d *doc) merge(d1 *doc) {
 	d.Views = append(d.Views, d1.Views...)
 	d.Tables = append(d.Tables, d1.Tables...)
 	d.Domains = append(d.Domains, d1.Domains...)
+	d.Composites = append(d.Composites, d1.Composites...)
 	d.Schemas = append(d.Schemas, d1.Schemas...)
 	d.Sequences = append(d.Sequences, d1.Sequences...)
 	d.Extensions = append(d.Extensions, d1.Extensions...)
@@ -118,9 +137,22 @@ func (d *domain) SetQualifier(q string) { d.Qualifier = q }
 // SchemaRef returns the schema reference for the domain.
 func (d *domain) SchemaRef() *schemahcl.Ref { return d.Schema }
 
+// Label returns the defaults label used for the composite resource.
+func (c *composite) Label() string { return c.Name }
+
+// QualifierLabel returns the qualifier label used for the composite resource, if any.
+func (c *composite) QualifierLabel() string { return c.Qualifier }
+
+// SetQualifier sets the qualifier label used for the composite resource.
+func (c *composite) SetQualifier(q string) { c.Qualifier = q }
+
+// SchemaRef returns the schema reference for the composite.
+func (c *composite) SchemaRef() *schemahcl.Ref { return c.Schema }
+
 func init() {
 	schemahcl.Register("enum", &enum{})
 	schemahcl.Register("domain", &domain{})
+	schemahcl.Register("composite", &composite{})
 	schemahcl.Register("extension", &extension{})
 }
 
@@ -217,6 +249,9 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Domains); err != nil {
+			return nil, err
+		}
+		if err := specutil.QualifyObjects(d.Composites); err != nil {
 			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Sequences); err != nil {
@@ -626,6 +661,7 @@ func schemaSpec(s *schema.Schema) (*doc, []*schema.Trigger, error) {
 		Schemas:      []*sqlspec.Schema{spec.Schema},
 		Enums:        make([]*enum, 0, len(s.Objects)),
 		Domains:      make([]*domain, 0, len(s.Objects)),
+		Composites:   make([]*composite, 0, len(s.Objects)),
 	}
 	if err := objectSpec(d, spec, s); err != nil {
 		return nil, nil, err
@@ -792,6 +828,12 @@ func fromIdentity(i *Identity) *schemahcl.Resource {
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	switch o := t.(type) {
 	case *schema.EnumType:
+		return &sqlspec.Column{
+			Type: &schemahcl.Type{
+				IsRef: true,
+				T:     specutil.ObjectRef(o.Schema, o).V},
+		}, nil
+	case *CompositeType:
 		return &sqlspec.Column{
 			Type: &schemahcl.Type{
 				IsRef: true,
