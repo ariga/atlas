@@ -959,12 +959,20 @@ func TestPlanChanges(t *testing.T) {
 			changes: []schema.Change{
 				&schema.ModifyTable{
 					T: schema.NewTable("users").
-						AddColumns(schema.NewIntColumn("c", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"})),
+						AddColumns(
+							schema.NewIntColumn("c", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+							schema.NewIntColumn("c1", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+						),
 					Changes: []schema.Change{
 						&schema.ModifyColumn{
 							Change: schema.ChangeGenerated,
 							From:   schema.NewIntColumn("c", "int"),
 							To:     schema.NewIntColumn("c", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+						},
+						&schema.ModifyColumn{
+							Change: schema.ChangeGenerated,
+							From:   schema.NewIntColumn("c0", "int"),
+							To:     schema.NewIntColumn("c1", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
 						},
 					},
 				},
@@ -973,8 +981,8 @@ func TestPlanChanges(t *testing.T) {
 				Reversible: true,
 				Changes: []*migrate.Change{
 					{
-						Cmd:     "ALTER TABLE `users` MODIFY COLUMN `c` int AS (1) STORED NOT NULL",
-						Reverse: "ALTER TABLE `users` MODIFY COLUMN `c` int NOT NULL",
+						Cmd:     "ALTER TABLE `users` MODIFY COLUMN `c` int AS (1) STORED NOT NULL, CHANGE COLUMN `c0` `c1` int AS (1) STORED NOT NULL",
+						Reverse: "ALTER TABLE `users` CHANGE COLUMN `c1` `c0` int NOT NULL, MODIFY COLUMN `c` int NOT NULL",
 					},
 				},
 			},

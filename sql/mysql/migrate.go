@@ -398,7 +398,12 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				if err := checkChangeGenerated(change.From, change.To); err != nil {
 					return err
 				}
-				b.P("MODIFY COLUMN")
+				// In case the column was both modified and renamed.
+				if change.To.Name != change.From.Name {
+					b.P("CHANGE COLUMN").Ident(change.From.Name)
+				} else {
+					b.P("MODIFY COLUMN")
+				}
 				if err := s.column(b, t, change.To); err != nil {
 					return err
 				}

@@ -60,13 +60,23 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 				}
 			case *schema.ModifyTable:
 				for j := range c.Changes {
-					r, ok := c.Changes[j].(*schema.RenameColumn)
-					if ok && p.File.TableSpan(c.T)&sqlcheck.SpanAdded == 0 && !wasAddedBack(p.File.Changes[i:], r.From) {
-						diags = append(diags, sqlcheck.Diagnostic{
-							Code: codeRenameC,
-							Pos:  sc.Stmt.Pos,
-							Text: fmt.Sprintf("Renaming column %q to %q", r.From.Name, r.To.Name),
-						})
+					switch mc := c.Changes[j].(type) {
+					case *schema.RenameColumn:
+						if p.File.TableSpan(c.T)&sqlcheck.SpanAdded == 0 && !wasAddedBack(p.File.Changes[i:], mc.From) {
+							diags = append(diags, sqlcheck.Diagnostic{
+								Code: codeRenameC,
+								Pos:  sc.Stmt.Pos,
+								Text: fmt.Sprintf("Renaming column %q to %q", mc.From.Name, mc.To.Name),
+							})
+						}
+					case *schema.ModifyColumn:
+						if p.File.TableSpan(c.T)&sqlcheck.SpanAdded == 0 && mc.From.Name != mc.To.Name && !wasAddedBack(p.File.Changes[i:], mc.From) {
+							diags = append(diags, sqlcheck.Diagnostic{
+								Code: codeRenameC,
+								Pos:  sc.Stmt.Pos,
+								Text: fmt.Sprintf("Renaming column %q to %q", mc.From.Name, mc.To.Name),
+							})
+						}
 					}
 				}
 			}
