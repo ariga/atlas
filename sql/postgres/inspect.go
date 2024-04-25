@@ -383,6 +383,8 @@ func (i *inspect) underlyingType(s *schema.Schema, u *UserDefinedType) schema.Ty
 				return e
 			} else if d, ok := o.(*DomainType); ok && d.T == name {
 				return d
+			} else if c, ok := o.(*CompositeType); ok && c.T == name {
+				return c
 			}
 		}
 	}
@@ -897,6 +899,18 @@ type (
 		Deps    []schema.Object // Objects this domain depends on.
 	}
 
+	// CompositeType defines a composite type.
+	// https://www.postgresql.org/docs/current/rowtypes.html
+	CompositeType struct {
+		schema.Type
+		schema.Object
+		T      string           // Type name.
+		Schema *schema.Schema   // Optional schema.
+		Fields []*schema.Column // Type fields, also known as attributes/columns.
+		Attrs  []schema.Attr    // Extra attributes, such as OID.
+		Deps   []schema.Object  // Objects this domain depends on.
+	}
+
 	// IntervalType defines an interval type.
 	// https://postgresql.org/docs/current/datatype-datetime.html
 	IntervalType struct {
@@ -1147,6 +1161,16 @@ func (d *DomainType) SpecName() string {
 // Underlying returns the underlying type of the domain.
 func (d *DomainType) Underlying() schema.Type {
 	return d.Type
+}
+
+// SpecType returns the type of the composite type.
+func (c *CompositeType) SpecType() string {
+	return "composite"
+}
+
+// SpecName returns the name of the composite type.
+func (c *CompositeType) SpecName() string {
+	return c.T
 }
 
 // Underlying returns the underlying type of the array.

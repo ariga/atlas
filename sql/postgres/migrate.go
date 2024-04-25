@@ -1283,6 +1283,10 @@ func (s *state) domainIdent(d *DomainType) string {
 	return s.typeIdent(d.Schema, d.T)
 }
 
+func (s *state) compositeIdent(c *CompositeType) string {
+	return s.typeIdent(c.Schema, c.T)
+}
+
 func (s *state) typeIdent(ns *schema.Schema, name string) string {
 	switch {
 	// In case the plan uses a specific schema qualifier.
@@ -1317,12 +1321,16 @@ func (s *state) formatType(t schema.Type) (string, error) {
 		return s.enumIdent(t), nil
 	case *DomainType:
 		return s.domainIdent(t), nil
+	case *CompositeType:
+		return s.compositeIdent(t), nil
 	case *ArrayType:
 		switch t := t.Type.(type) {
 		case *schema.EnumType:
 			return s.enumIdent(t) + "[]", nil
 		case *DomainType:
 			return s.domainIdent(t) + "[]", nil
+		case *CompositeType:
+			return s.compositeIdent(t) + "[]", nil
 		}
 	}
 	return FormatType(t)

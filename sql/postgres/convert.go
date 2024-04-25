@@ -37,6 +37,11 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *CurrencyType:
 		f = strings.ToLower(t.T)
+	case *CompositeType:
+		if t.T == "" {
+			return "", errors.New("postgres: missing composite type name")
+		}
+		f = t.T
 	case *DomainType:
 		if t.T == "" {
 			return "", errors.New("postgres: missing domain type name")
