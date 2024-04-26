@@ -345,3 +345,7 @@ func uniqueConstChanged(_, _ []schema.Attr) bool {
 	// to keep BC with old versions.
 	return false
 }
+
+func detachCycles(changes []schema.Change) ([]schema.Change, error) {
+	return sqlx.DetachCycles(changes)
+}

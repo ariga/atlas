@@ -281,6 +281,7 @@ type (
 	// DropForeignKey describes a foreign-key removal change.
 	DropForeignKey struct {
 		F *ForeignKey
+		Extra []Clause // Extra clauses and options.
 	}
 
 	// ModifyForeignKey describes a change that modifies a foreign-key.

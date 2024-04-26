@@ -452,13 +452,21 @@ func dependsOn(c1, c2 schema.Change) bool {
 	case *schema.DropSchema:
 		switch c2 := c2.(type) {
 		case *schema.DropFunc:
-			return c1.S.Name == c2.F.Schema.Name
+			return sameSchema(c1.S, c2.F.Schema)
 		case *schema.DropProc:
-			return c1.S.Name == c2.P.Schema.Name
+			return sameSchema(c1.S, c2.P.Schema)
 		case *schema.DropTable:
-			return c1.S.Name == c2.T.Schema.Name
+			// Schema must be dropped after all its tables and references to them.
+			return sameSchema(c1.S, c2.T.Schema) || slices.ContainsFunc(c2.T.ForeignKeys, func(fk *schema.ForeignKey) bool {
+				return sameSchema(c1.S, fk.RefTable.Schema)
+			})
+		case *schema.ModifyTable:
+			return sameSchema(c1.S, c2.T.Schema) || slices.ContainsFunc(c2.Changes, func(c schema.Change) bool {
+				fk, ok := c.(*schema.DropForeignKey)
+				return ok && sameSchema(c1.S, fk.F.RefTable.Schema)
+			})
 		case *schema.DropView:
-			return c1.S.Name == c2.V.Schema.Name
+			return sameSchema(c1.S, c2.V.Schema)
 		}
 	case *schema.AddTable:
 		switch c2 := c2.(type) {
@@ -495,7 +503,7 @@ func dependsOn(c1, c2 schema.Change) bool {
 		case *schema.ModifyTable:
 			return slices.ContainsFunc(c2.Changes, func(c schema.Change) bool {
 				fk, ok := c.(*schema.DropForeignKey)
-				return ok && fk.F.RefTable == c2.T
+				return ok && refTo([]*schema.ForeignKey{fk.F}, c1.T)
 			})
 		case *schema.DropTrigger:
 			if c2.T.Table == c1.T {
@@ -513,7 +521,7 @@ func dependsOn(c1, c2 schema.Change) bool {
 			// Tables need to be created before referencing them.
 			return slices.ContainsFunc(c1.Changes, func(c schema.Change) bool {
 				fk, ok := c.(*schema.AddForeignKey)
-				return ok && fk.F.RefTable == c2.T
+				return ok && refTo([]*schema.ForeignKey{fk.F}, c2.T)
 			})
 		case *schema.ModifyTable:
 			if c1.T != c2.T {
@@ -525,7 +533,7 @@ func dependsOn(c1, c2 schema.Change) bool {
 				}
 				return slices.ContainsFunc(c1.Changes, func(c schema.Change) bool {
 					fk, ok := c.(*schema.AddForeignKey)
-					return ok && fk.F.RefTable == c2.T && slices.ContainsFunc(fk.F.RefColumns, func(c *schema.Column) bool { return addC[c] })
+					return ok && refTo([]*schema.ForeignKey{fk.F}, c2.T) && slices.ContainsFunc(fk.F.Columns, func(c *schema.Column) bool { return addC[c] })
 				})
 			}
 		case *schema.AddObject:
@@ -810,7 +818,9 @@ func depOfAdd(refs []schema.Object, c schema.Change) bool {
 
 // refTo reports if the given foreign keys reference the given table.
 func refTo(fks []*schema.ForeignKey, to *schema.Table) bool {
-	return slices.ContainsFunc(fks, func(fk *schema.ForeignKey) bool { return fk.RefTable == to })
+	return slices.ContainsFunc(fks, func(fk *schema.ForeignKey) bool {
+		return SameTable(fk.RefTable, to)
+	})
 }
 
 // dependsOnT reports if t1 depends on t2.
@@ -818,6 +828,14 @@ func dependsOnT(t1, t2 schema.Type) bool {
 	// Comparing might panic due to mismatch types.
 	defer func() { recover() }()
 	return t1 == t2 || schema.UnderlyingType(t1) == t2
+}
+
+// SameTable reports if the two objects represent the same table.
+func SameTable(t1, t2 *schema.Table) bool {
+	if t1 == nil || t2 == nil {
+		return t1 == t2
+	}
+	return t1.Name == t2.Name && sameSchema(t1.Schema, t2.Schema)
 }
 
 // sameSchema reports if the given schemas are the same.

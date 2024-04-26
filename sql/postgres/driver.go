@@ -7,6 +7,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"math/rand"
@@ -237,7 +238,20 @@ func (d *Driver) SchemaRestoreFunc(desired *schema.Schema) migrate.RestoreFunc {
 
 // RealmRestoreFunc returns a function that restores the given realm to its desired state.
 func (d *Driver) RealmRestoreFunc(desired *schema.Realm) migrate.RestoreFunc {
-	return func(ctx context.Context) error {
+	return func(ctx context.Context) (err error) {
+		// Default behavior for Postgres is to have a single "public" schema.
+		// In that case, all other schemas are dropped, but this one is cleared
+		// object by object. To keep process faster, we drop the schema and recreate it.
+		if !d.crdb && len(desired.Schemas) == 1 && desired.Schemas[0].Name == "public" {
+			if pb := desired.Schemas[0]; len(pb.Tables)+len(pb.Views)+len(pb.Funcs)+len(pb.Procs)+len(pb.Objects) == 0 {
+				desired = &schema.Realm{Attrs: desired.Attrs, Objects: desired.Objects}
+				defer func() {
+					err = errors.Join(err, d.ApplyChanges(ctx, []schema.Change{
+						&schema.AddSchema{S: pb, Extra: []schema.Clause{&schema.IfExists{}}},
+					}))
+				}()
+			}
+		}
 		current, err := d.InspectRealm(ctx, nil)
 		if err != nil {
 			return err

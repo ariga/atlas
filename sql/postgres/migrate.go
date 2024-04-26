@@ -63,7 +63,6 @@ type state struct {
 	*conn
 	migrate.Plan
 	migrate.PlanOptions
-	droppedT []*schema.Table
 }
 
 // Exec executes the changes on the database. An error is returned
@@ -78,7 +77,7 @@ func (s *state) plan(changes []schema.Change) error {
 	if err != nil {
 		return err
 	}
-	if planned, err = sqlx.DetachCycles(planned); err != nil {
+	if planned, err = detachCycles(planned); err != nil {
 		return err
 	}
 	for _, c := range sqlx.SortChanges(planned) {
@@ -287,7 +286,6 @@ func (s *state) addTable(add *schema.AddTable) error {
 // dropTable builds and executes the query for dropping a table from a schema.
 func (s *state) dropTable(drop *schema.DropTable) error {
 	cmd := &changeGroup{}
-	s.droppedT = append(s.droppedT, drop.T)
 	rs := &state{
 		conn:        s.conn,
 		PlanOptions: s.PlanOptions,
@@ -561,7 +559,11 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				}
 				reverse = append(reverse, &schema.DropForeignKey{F: change.F})
 			case *schema.DropForeignKey:
-				b.P("DROP CONSTRAINT").Ident(change.F.Symbol)
+				b.P("DROP CONSTRAINT")
+				if sqlx.Has(change.Extra, &schema.IfExists{}) {
+					b.P("IF EXISTS")
+				}
+				b.Ident(change.F.Symbol)
 				reverse = append(reverse, &schema.AddForeignKey{F: change.F})
 			case *schema.AddCheck:
 				check(b.P("ADD"), change.C)
