@@ -1351,6 +1351,41 @@ schema "public" {
 }
 ```
 
+
+## Composite Type
+
+:::info LOGIN REQUIRED
+Composite types are currently available to logged-in users only. To use this feature, run:
+```
+atlas login
+```
+:::
+
+The `composite` type is a user-defined data type that represents the structure of a row or record. Supported by PostgreSQL.
+
+```hcl
+composite "address" {
+  schema = schema.public
+  field "street" {
+    type = text
+  }
+  field "city" {
+    type = text
+  }
+}
+
+table "users" {
+  schema = schema.public
+  column "address" {
+    type = composite.address
+  }
+}
+
+schema "public" {
+  comment = "standard public schema"
+}
+```
+
 ## Sequence
 
 :::info LOGIN REQUIRED
