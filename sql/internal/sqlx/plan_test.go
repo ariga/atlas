@@ -238,3 +238,16 @@ func TestSortChanges(t *testing.T) {
 	})
 	require.Equal(t, []schema.Change{&schema.DropFunc{F: f2}, &schema.AddFunc{F: f1}}, planned)
 }
+
+func TestSameTable(t *testing.T) {
+	t1 := schema.NewTable("t1")
+	require.True(t, SameTable(t1, t1))
+	require.True(t, SameTable(t1, schema.NewTable("t1")), "same copy")
+	require.False(t, SameTable(t1, schema.NewTable("t2")))
+
+	t1.SetSchema(schema.New("public"))
+	require.True(t, SameTable(t1, t1))
+	require.True(t, SameTable(t1, schema.NewTable("t1").SetSchema(schema.New("public"))), "same copy")
+	require.False(t, SameTable(t1, schema.NewTable("t1")))
+	require.False(t, SameTable(t1, schema.NewTable("t1").SetSchema(schema.New("private"))))
+}

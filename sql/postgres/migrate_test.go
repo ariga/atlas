@@ -96,12 +96,20 @@ func TestPlanChanges(t *testing.T) {
 						Columns:    []*schema.Column{pets.Columns[1]},
 						RefColumns: []*schema.Column{users.Columns[0]},
 					}
+					fk1 := *fk
+					fk1.Symbol += "1"
 					pets.ForeignKeys = []*schema.ForeignKey{fk}
 					return &schema.ModifyTable{
 						T: pets,
 						Changes: []schema.Change{
 							&schema.DropForeignKey{
 								F: fk,
+							},
+							&schema.DropForeignKey{
+								F: &fk1,
+								Extra: []schema.Clause{
+									&schema.IfExists{},
+								},
 							},
 						},
 					}
@@ -112,8 +120,8 @@ func TestPlanChanges(t *testing.T) {
 				Transactional: true,
 				Changes: []*migrate.Change{
 					{
-						Cmd:     `ALTER TABLE "pets" DROP CONSTRAINT "pets_user_id_fkey"`,
-						Reverse: `ALTER TABLE "pets" ADD CONSTRAINT "pets_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE CASCADE`,
+						Cmd:     `ALTER TABLE "pets" DROP CONSTRAINT "pets_user_id_fkey", DROP CONSTRAINT IF EXISTS "pets_user_id_fkey1"`,
+						Reverse: `ALTER TABLE "pets" ADD CONSTRAINT "pets_user_id_fkey1" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE CASCADE, ADD CONSTRAINT "pets_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE CASCADE`,
 					},
 				},
 			},
