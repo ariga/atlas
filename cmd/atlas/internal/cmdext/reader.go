@@ -233,6 +233,59 @@ func stateReaderHCL(_ context.Context, config *StateReaderConfig, paths []string
 	}, nil
 }
 
+// FilesExt returns the file extension of the given URLs.
+// Note, all URL must have the same extension.
+func FilesExt(urls []*url.URL) (string, error) {
+	var path, ext string
+	set := func(curr string) error {
+		switch e := filepath.Ext(curr); {
+		case e != FileTypeHCL && e != FileTypeSQL:
+			return fmt.Errorf("unknown schema file: %q", curr)
+		case ext != "" && ext != e:
+			return fmt.Errorf("ambiguous schema: both SQL and HCL files found: %q, %q", path, curr)
+		default:
+			path, ext = curr, e
+			return nil
+		}
+	}
+	for _, u := range urls {
+		path := filepath.Join(u.Host, u.Path)
+		switch fi, err := os.Stat(path); {
+		case err != nil:
+			return "", err
+		case fi.IsDir():
+			files, err := os.ReadDir(path)
+			if err != nil {
+				return "", err
+			}
+			for _, f := range files {
+				switch filepath.Ext(f.Name()) {
+				// Ignore unknown extensions in case we read directories.
+				case FileTypeHCL, FileTypeSQL:
+					if err := set(f.Name()); err != nil {
+						return "", err
+					}
+				}
+			}
+		default:
+			if err := set(fi.Name()); err != nil {
+				return "", err
+			}
+		}
+	}
+	switch {
+	case ext != "":
+	case len(urls) == 1 && (urls[0].Host != "" || urls[0].Path != ""):
+		return "", fmt.Errorf(
+			"%q contains neither SQL nor HCL files",
+			filepath.Base(filepath.Join(urls[0].Host, urls[0].Path)),
+		)
+	default:
+		return "", errors.New("schema contains neither SQL nor HCL files")
+	}
+	return ext, nil
+}
+
 // parseHCLPaths parses the HCL files in the given paths. If a path represents a directory,
 // its direct descendants will be considered, skipping any subdirectories. If a project file
 // is present in the input paths, an error is returned.
