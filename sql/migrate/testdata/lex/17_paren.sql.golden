@@ -1,0 +1,8 @@
+ALTER TABLE ONLY t ADD CONSTRAINT name1 EXCLUDE USING gist (id WITH =, cid WITH -|-);
+-- end --
+ALTER TABLE ONLY t
+    ADD CONSTRAINT name2 EXCLUDE USING gist (id WITH =, cid WITH -|-);
+-- end --
+ALTER TABLE ONLY t
+    ADD CONSTRAINT name3 EXCLUDE USING gist (id WITH =, cid WITH -|-),
+    ADD CONSTRAINT name4 EXCLUDE USING gist (id WITH =, cid WITH -|-);

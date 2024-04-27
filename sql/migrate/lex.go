@@ -214,9 +214,11 @@ Scan:
 		// expressions until we make the lexer driver-aware.
 		case depth == 0 && r == '#':
 			s.comment("#", "\n")
-		case r == '-' && s.next() == '-':
+		case r == '-' && s.pick() == '-':
+			s.next()
 			s.comment("--", "\n")
-		case r == '/' && s.next() == '*':
+		case r == '/' && s.pick() == '*':
+			s.next()
 			s.comment("/*", "*/")
 		case s.delim == delimiter && s.MatchBeginAtomic && reBeginAtomic.MatchString(s.input[s.pos-1:]):
 			if err := s.skipBeginAtomic(); err == nil {
@@ -248,9 +250,9 @@ func (s *Scanner) next() rune {
 }
 
 func (s *Scanner) pick() rune {
-	p, w := s.pos, s.width
+	p, w, t := s.pos, s.width, s.total
 	r := s.next()
-	s.pos, s.width = p, w
+	s.pos, s.width, s.total = p, w, t
 	return r
 }
 
