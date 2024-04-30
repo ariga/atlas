@@ -1,3 +1,3 @@
 import { pageViewPlugin } from "@ariga/atlas-website";
 
-export default pageViewPlugin("content.atlasgo.io/");
+export default pageViewPlugin("https://content.atlasgo.io");
