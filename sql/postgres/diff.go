@@ -189,7 +189,7 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 	if indexNullsDistinct(to) != indexNullsDistinct(from) {
 		return true
 	}
-	if uniqueConstChanged(from, to) {
+	if uniqueConstChanged(from, to) || excludeConstChanged(from, to) {
 		return true
 	}
 	var p1, p2 IndexPredicate
@@ -214,6 +214,14 @@ func (*diff) IndexPartAttrChanged(fromI, toI *schema.Index, i int) bool {
 	if p1.NullsFirst != p2.NullsFirst || p1.NullsLast != p2.NullsLast {
 		return true
 	}
+	_, ok1 := excludeConst(from.Attrs)
+	_, ok2 := excludeConst(to.Attrs)
+	if ok1 && ok2 {
+		// In case the index(es) are EXCLUDE constraint, we compare its operator
+		// (and not its class) because the class is derived from the operator.
+		return sqlx.AttrOr(from.Attrs, &Operator{}).Name != sqlx.AttrOr(to.Attrs, &Operator{}).Name
+	}
+	// Op class for non-exclude.
 	var fromOp, toOp IndexOpClass
 	switch fromHas, toHas := sqlx.Has(from.Attrs, &fromOp), sqlx.Has(to.Attrs, &toOp); {
 	case fromHas && toHas:
@@ -503,6 +511,16 @@ func indexNullsDistinct(attrs []schema.Attr) bool {
 func uniqueConst(attrs []schema.Attr) (*Constraint, bool) {
 	for _, a := range attrs {
 		if c, ok := a.(*Constraint); ok && c.IsUnique() {
+			return c, true
+		}
+	}
+	return nil, false
+}
+
+// excludeConst returns the first exclude constraint from the given attributes.
+func excludeConst(attrs []schema.Attr) (*Constraint, bool) {
+	for _, a := range attrs {
+		if c, ok := a.(*Constraint); ok && c.IsExclude() {
 			return c, true
 		}
 	}

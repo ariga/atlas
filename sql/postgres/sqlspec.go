@@ -317,7 +317,10 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 	if err != nil {
 		return nil, err
 	}
-	if err := convertUniques(spec.Extra, t); err != nil {
+	if err := convertUnique(spec.Extra, t); err != nil {
+		return nil, err
+	}
+	if err := convertExclude(spec.Extra, t); err != nil {
 		return nil, err
 	}
 	if err := convertPartition(spec.Extra, t); err != nil {
@@ -348,8 +351,8 @@ func convertView(spec *sqlspec.View, parent *schema.Schema) (*schema.View, error
 	return v, nil
 }
 
-// convertUniques converts the unique constraints into indexes.
-func convertUniques(spec schemahcl.Resource, t *schema.Table) error {
+// convertUnique converts the unique constraints into indexes.
+func convertUnique(spec schemahcl.Resource, t *schema.Table) error {
 	rs := spec.Resources("unique")
 	for _, r := range rs {
 		var sx sqlspec.Index
@@ -696,8 +699,10 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 					idx1.Extra.Attrs...,
 				),
 			})
-		} else {
+		} else if ex, ok := excludeConst(t.Indexes[i].Attrs); !ok {
 			idxs = append(idxs, idx1)
+		} else if err := excludeSpec(spec, idx1, t.Indexes[i], ex); err != nil {
+			return nil, err
 		}
 	}
 	spec.Indexes = idxs
