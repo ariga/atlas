@@ -237,9 +237,11 @@ func (s *state) addTable(add *schema.AddTable) error {
 			}
 		}
 		for _, idx := range add.T.Indexes {
-			if _, ok := uniqueConst(idx.Attrs); ok {
+			_, okU := uniqueConst(idx.Attrs)
+			_, okE := excludeConst(idx.Attrs)
+			if okU || okE {
 				b.Comma().NL()
-				if err := s.unique(b, idx); err != nil {
+				if err := s.constraint(b, idx); err != nil {
 					errs = append(errs, err.Error())
 				}
 			}
@@ -272,7 +274,9 @@ func (s *state) addTable(add *schema.AddTable) error {
 		Reverse: s.Build("DROP TABLE").Table(add.T).String(),
 	})
 	for _, idx := range add.T.Indexes {
-		if _, ok := uniqueConst(idx.Attrs); !ok {
+		_, okU := uniqueConst(idx.Attrs)
+		_, okE := excludeConst(idx.Attrs)
+		if !okU && !okE {
 			// Indexes do not need to be created concurrently on new tables.
 			if err := s.addIndexes(add, add.T, &schema.AddIndex{I: idx}); err != nil {
 				return err
@@ -344,15 +348,21 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 			if c := (schema.Comment{}); sqlx.Has(change.I.Attrs, &c) {
 				changes = append(changes, s.indexComment(modify, modify.T, change.I, c.Text, ""))
 			}
-			if _, ok := uniqueConst(change.I.Attrs); ok {
+			_, okU := uniqueConst(change.I.Attrs)
+			_, okE := excludeConst(change.I.Attrs)
+			// Unlike ADD INDEX statements that are executed separately,
+			// ADD CONSTRAINT are added to the ALTER TABLE statement below.
+			if okU || okE {
 				alter = append(alter, change)
 			} else {
 				addI = append(addI, change)
 			}
 		case *schema.DropIndex:
+			_, okU := uniqueConst(change.I.Attrs)
+			_, okE := excludeConst(change.I.Attrs)
 			// Unlike DROP INDEX statements that are executed separately,
 			// DROP CONSTRAINT are added to the ALTER TABLE statement below.
-			if _, ok := uniqueConst(change.I.Attrs); ok {
+			if okU || okE {
 				alter = append(alter, change)
 			} else {
 				dropI = append(dropI, change)
@@ -382,13 +392,17 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 				alter = append(alter, addU)
 				continue
 			}
-			// Index modification requires rebuilding the index.
-			if _, ok := uniqueConst(change.From.Attrs); ok {
+			// Index (or constraint) modification requires rebuilding the index.
+			_, fromU := uniqueConst(change.From.Attrs)
+			_, fromE := excludeConst(change.From.Attrs)
+			if fromU || fromE {
 				alter = append(alter, &schema.DropIndex{I: change.From})
 			} else {
 				dropI = append(dropI, &schema.DropIndex{I: change.From})
 			}
-			if _, ok := uniqueConst(change.To.Attrs); ok {
+			_, toU := uniqueConst(change.To.Attrs)
+			_, toE := excludeConst(change.To.Attrs)
+			if toU || toE {
 				alter = append(alter, &schema.AddIndex{I: change.To})
 			} else {
 				addI = append(addI, &schema.AddIndex{I: change.To})
@@ -536,7 +550,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				reverse = append(reverse, &schema.DropPrimaryKey{P: drop})
 			case *schema.AddIndex:
 				b.P("ADD")
-				if err := s.unique(b, change.I); err != nil {
+				if err := s.constraint(b, change.I); err != nil {
 					return err
 				}
 				reverse = append(reverse, &schema.DropIndex{I: change.I})
@@ -1081,8 +1095,20 @@ func (s *state) partAttrs(b *sqlx.Builder, idx *schema.Index, p *schema.IndexPar
 			}
 		// Handled above.
 		case *IndexOpClass, *schema.Collation:
+		// Handled below.
+		case *Operator:
 		default:
 			return fmt.Errorf("postgres: unexpected index part attribute: %T", attr)
+		}
+	}
+	if _, isE := excludeConst(idx.Attrs); isE {
+		switch op := (&Operator{}); {
+		case !sqlx.Has(p.Attrs, op):
+			return fmt.Errorf("missing operator for exclude constraint %q", idx.Name)
+		case op.Name == "":
+			return fmt.Errorf("empty operator for exclude constraint %q", idx.Name)
+		default:
+			b.P("WITH", op.Name)
 		}
 	}
 	return nil
@@ -1161,6 +1187,16 @@ func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 	})
 }
 
+func (s *state) constraint(b *sqlx.Builder, idx *schema.Index) error {
+	if _, isU := uniqueConst(idx.Attrs); isU {
+		return s.unique(b, idx)
+	}
+	if _, isE := excludeConst(idx.Attrs); isE {
+		return s.exclude(b, idx)
+	}
+	return fmt.Errorf("unexpected constraint type for index %q", idx.Name)
+}
+
 func (s *state) unique(b *sqlx.Builder, idx *schema.Index) error {
 	c, ok := uniqueConst(idx.Attrs)
 	if !ok {
@@ -1171,6 +1207,19 @@ func (s *state) unique(b *sqlx.Builder, idx *schema.Index) error {
 		name = idx.Name
 	}
 	b.P("CONSTRAINT").Ident(name).P("UNIQUE")
+	return s.index(b, idx)
+}
+
+func (s *state) exclude(b *sqlx.Builder, idx *schema.Index) error {
+	c, ok := excludeConst(idx.Attrs)
+	if !ok {
+		return fmt.Errorf("index %q is not an exclude constraint", idx.Name)
+	}
+	name := c.N
+	if name == "" {
+		name = idx.Name
+	}
+	b.P("CONSTRAINT").Ident(name).P("EXCLUDE")
 	return s.index(b, idx)
 }
 

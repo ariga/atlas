@@ -346,6 +346,20 @@ func uniqueConstChanged(_, _ []schema.Attr) bool {
 	return false
 }
 
+func excludeConstChanged(_, _ []schema.Attr) bool {
+	// Unsupported change in package mode (ariga.io/sql/postgres)
+	// to keep BC with old versions.
+	return false
+}
+
+func convertExclude(schemahcl.Resource, *schema.Table) error {
+	return nil // unimplemented.
+}
+
 func detachCycles(changes []schema.Change) ([]schema.Change, error) {
 	return sqlx.DetachCycles(changes)
+}
+
+func excludeSpec(*sqlspec.Table, *sqlspec.Index, *schema.Index, *Constraint) error {
+	return nil // unimplemented.
 }

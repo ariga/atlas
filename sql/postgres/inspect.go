@@ -500,13 +500,13 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows, scope queryScope)
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			table, name, typ                                                      string
-			uniq, primary, included, nullsnotdistinct                             bool
-			desc, nullsfirst, nullslast, opcdefault                               sql.NullBool
-			column, constraints, pred, expr, comment, options, opcname, opcparams sql.NullString
+			table, name, typ                                                              string
+			uniq, primary, included, nullsnotdistinct                                     bool
+			desc, nullsfirst, nullslast, opcdefault                                       sql.NullBool
+			column, constraints, pred, expr, comment, options, opcname, opcparams, exoper sql.NullString
 		)
 		if err := rows.Scan(
-			&table, &name, &typ, &column, &included, &primary, &uniq, &constraints, &pred, &expr, &desc,
+			&table, &name, &typ, &column, &included, &primary, &uniq, &exoper, &constraints, &pred, &expr, &desc,
 			&nullsfirst, &nullslast, &comment, &options, &opcname, &opcdefault, &opcparams, &nullsnotdistinct,
 		); err != nil {
 			return fmt.Errorf("postgres: scanning indexes for schema %q: %w", s.Name, err)
@@ -565,6 +565,9 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows, scope queryScope)
 				NullsFirst: nullsfirst.Bool,
 				NullsLast:  nullslast.Bool,
 			})
+		}
+		if sqlx.ValidString(exoper) {
+			part.AddAttrs(NewOperator(i.schema, exoper.String))
 		}
 		switch {
 		case included:
@@ -991,6 +994,21 @@ type (
 		T string // c, f, p, u, t, x.
 	}
 
+	// Operator describes an operator.
+	// https://www.postgresql.org/docs/current/sql-createoperator.html
+	Operator struct {
+		schema.Attr
+		schema.Object
+		// Schema where the operator is defined. If nil, the operator
+		// is not managed by the current scope.
+		Schema *schema.Schema
+		// Operator name. Might include the schema name if the schema
+		// is not managed by the current scope or extension based.
+		// e.g., "public.&&".
+		Name  string
+		Attrs []schema.Attr
+	}
+
 	// Sequence defines (the supported) sequence options.
 	// https://postgresql.org/docs/current/sql-createsequence.html
 	Sequence struct {
@@ -1206,12 +1224,33 @@ func (o *ReferenceOption) Scan(v any) error {
 	return nil
 }
 
-// IsUnique reports if the type is unique constraint.
+// IsUnique reports if the type is a unique constraint.
 func (c Constraint) IsUnique() bool { return strings.ToLower(c.T) == "u" }
+
+// IsExclude reports if the type is an exclude constraint.
+func (c Constraint) IsExclude() bool { return strings.ToLower(c.T) == "x" }
 
 // UniqueConstraint returns constraint with type "u".
 func UniqueConstraint(name string) *Constraint {
 	return &Constraint{T: "u", N: name}
+}
+
+// ExcludeConstraint returns constraint with type "x".
+func ExcludeConstraint(name string) *Constraint {
+	return &Constraint{T: "x", N: name}
+}
+
+// NewOperator returns the string representation of the operator.
+func NewOperator(scope string, name string) *Operator {
+	// When scanned from the database, the operator is returned as: "<schema>.<operator>".
+	// The common case is that operators are the default and defined in pg_catalog, or are
+	// installed by extensions.
+	if parts := strings.FieldsFunc(name, func(r rune) bool {
+		return r == '.'
+	}); len(parts) == 2 && scope == "" || parts[0] == "pg_catalog" || parts[0] == scope {
+		return &Operator{Name: parts[1]}
+	}
+	return &Operator{Name: name}
 }
 
 // IntegerType returns the underlying integer type this serial type represents.
@@ -1615,6 +1654,7 @@ SELECT
 	%s AS included,
 	idx.indisprimary AS primary,
 	idx.indisunique AS unique,
+	(CASE WHEN idx.indisexclusion THEN (SELECT conexclop[idx.ord]::regoper FROM pg_constraint WHERE conindid = idx.indexrelid) END) AS excoper,
 	con.nametypes AS constraints,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
 	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
