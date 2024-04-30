@@ -777,6 +777,39 @@ concurrently first and then converted to a unique constraint. To achieve this, f
 4. Replace the `index` block with a `unique` block to create a new unique constraint using the existing index.
 :::
 
+### Exclude Constraints
+
+The `exclude` block allows defining a [exclusion constraint](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-EXCLUSION)
+supported by PostgreSQL:
+
+```hcl
+exclude "excl_speaker_during" {
+  type = GIST
+  on {
+    column = column.speaker
+    op     = "="
+  }
+  on {
+    column = column.during
+    op     = "&&"
+  }
+}
+
+# Include non-key columns.
+exclude "excl_speaker_during" {
+  type = GIST
+  on {
+    column = column.speaker
+    op     = "="
+  }
+  on {
+    column = column.during
+    op     = "&&"
+  }
+  include = [column.another]
+}
+```
+
 ## Trigger
 
 :::info LOGIN REQUIRED
