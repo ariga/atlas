@@ -1247,7 +1247,7 @@ func NewOperator(scope string, name string) *Operator {
 	// installed by extensions.
 	if parts := strings.FieldsFunc(name, func(r rune) bool {
 		return r == '.'
-	}); len(parts) == 2 && scope == "" || parts[0] == "pg_catalog" || parts[0] == scope {
+	}); len(parts) == 2 && (scope == "" || parts[0] == "pg_catalog" || parts[0] == scope) {
 		return &Operator{Name: parts[1]}
 	}
 	return &Operator{Name: name}
