@@ -117,6 +117,7 @@ module.exports = {
           "title": "Integrations",
           "items": [
             {"label": "GitHub Actions", "to": "/integrations/github-actions"},
+            {"label": "Kubernetes Operator", "to": "/integrations/kubernetes/operator"},
             {"label": "Terraform", "to": "/integrations/terraform-provider"},
             {"label": "Go API", "to": "/integrations/go-api"}
           ]
