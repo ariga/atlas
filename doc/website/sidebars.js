@@ -152,6 +152,11 @@ module.exports = {
                     type: 'doc',
                     id: 'community-edition'
                 },
+                {
+                    type: 'doc',
+                    id: 'cli-data-privacy',
+                    label: 'Data Privacy'
+                }
             ]
         },
         {

@@ -1,0 +1,78 @@
+---
+title: Data Privacy and the CLI
+slug: /cli/data-privacy
+id: cli-data-privacy
+---
+As mentioned on the [Feature Compatability](/features) page, users can unlock advanced features by logging in with the
+Atlas CLI. This can be done by running the following command:
+
+```bash
+atlas login
+```
+
+After running this command, follow the instructions on the screen to log in. If needed, you will be prompted
+to create an account.
+
+## What data does the Atlas CLI collect?
+
+As a database management tool, Atlas has access to a lot of sensitive data. We take privacy and security very seriously,
+and we want to be transparent about what data we collect and how we use it.
+
+If you want the full details in formal and legal language you can read our [Privacy Policy](https://ariga.io/legal/privacy)
+and [SaaS Agreement](https://ariga.io/legal/saas) which you sign when you create an account, but here is a summary of
+the data we collect in layman's terms.
+
+### Data we DON'T collect
+
+* **Your Data**: We don't collect any data from your databases. We don't know what data you have in your databases,
+  and we don't have access to it.
+* **Your Database Passwords**: We don't collect, transmit or store your database passwords.
+* **Your database schema or migrations**: Unless you explicitly use a command or flag that sends us your schema or
+  migrations (as described below), we don't collect, transmit or store your database schema, migrations or execution logs
+
+### Data we DO collect
+
+* **Errors and Crashes** - We collect error and crash reports to help us improve the CLI. This includes things like the
+  stack trace of the error, the command you were running, and the version of the CLI you were using. We are very careful
+  not to collect and transmit any sensitive data in these reports.
+* **Data you choose to report** - Some Atlas commands, such as `migrate push` (which is used to upload your migration
+  directory to the Atlas Schema Registry) or flags (like running `schema inspect` with the `--web` or `-w` flag), naturally
+  involve sending us data. See below for more details on these commands and flags.
+* **Basic Telemetry** - We collect basic telemetry data to help us understand how users are using the CLI and to enforce
+  license restrictions.
+
+  This includes things like the commands you run, general information about the runtime environment (like OS version
+  or if you're running on GitHub Actions), your local hostname, the type of database you're using, and the version
+  of the  CLI you're using. We are very careful not to collect and transmit any sensitive data in these reports.
+
+### We only collect what you send us
+
+In principle, aside from basic telemetry and error reporting (with no sensitive data), we only collect data that you
+explicitly choose to send us. Consider the following list of commands and flags that send us data:
+
+* `schema inspect` when used with the `--web` or `-w` flag: This flag opens a web browser to view the schema of your
+  database. This the schema of your database.
+* `migrate push`: This command uploads your migration directory to the Atlas Schema Registry. This includes your schema
+  and migrations.
+* `migrate apply` when used with a directory that is stored in the schema registry (e.g the url has a `atlas://` prefix)
+  AND the `--env` flag is used: This flag applies a migration from the Atlas Schema Registry to your database and uploads
+  the execution logs to the Atlas Cloud, updating the status of the target database in your account. We also store the
+  hostname of the target database to help you identify to which database the logs belong.
+* `schema apply` when used with the interactive `Lint and Edit` mode: This mode allows you to edit your schema in a
+  visual editor and then apply the changes to your database. This sends your schema to the Atlas Cloud for processing.
+* `migrate lint` when used with the `--web` or `-w` flag: This flag opens a web browser to view the linting results of
+  your migrations. This sends your migrations to the Atlas Cloud for processing.
+
+## How do we use the data we collect?
+
+We use the data we collect to improve the CLI and provide better support to our users. This includes things like:
+
+* Fixing bugs and crashes
+* Improving the performance of the CLI
+* Understanding how users are using the CLI
+* Providing better experience to users
+
+We don't sell your data to third parties, and use it strictly in compliance with our [Privacy Policy](https://ariga.io/legal/privacy)
+as well as applicable laws and regulations.  We take data privacy and security very seriously and hold ourselves accountable
+to the highest standards.  To ensure this commitment is upheld we perform an annual SOC 2 audit which you can read more
+[about here](https://ariga.io/announcing-soc2-compliance-for-atlas-cloud/).
