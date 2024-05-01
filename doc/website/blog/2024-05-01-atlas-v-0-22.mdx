@@ -6,8 +6,8 @@ tags: [release, postgresql, sql-server, ]
 
 Hi everyone,
 
-It’s been a few weeks since our [last release](https://github.com/ariga/atlas/releases/tag/v0.21.0), and we’re happy to be back with a version packed with brand new and exciting
-features. Here’s what’s inside:
+It's been a few weeks since our [last release](https://github.com/ariga/atlas/releases/tag/v0.21.0), and we're happy to be back with a version packed with brand new and exciting
+features. Here's what's inside:
 
 * [**`RENAME` Detection**](#rename-detection) - Prior to this version, Atlas interpreted schema renames as `DROP` and `ADD` commands. This version includes a `RENAME` detector that identifies such operations and interactively asks the user for feedback before generating the changes.
 * [**PostgreSQL Features**](#postgresql-features)
@@ -16,19 +16,19 @@ features. Here’s what’s inside:
     * [**Table lock checks**](#table-locking-checks) - Eight new checks that review migration plans and alert in cases of a potential table locks in different modes.
 * [**SQL Server Sequence Support**](#sql-server-sequence-support) -  Atlas now supports managing sequences in SQL Server.
 
-Let’s dive in!
+Let's dive in!
 
 ## `RENAME` Detection
 
-One of the first things we were asked when we introduced Atlas’s declarative approach to schema management was,
+One of the first things we were asked when we introduced Atlas's declarative approach to schema management was,
 “How are you going to deal with renames?” While column and table renames are a fairly rare event in the lifecycle of a project,
-the question arises from the fact that it’s impossible to completely disambiguate between `RENAME` and `DROP` and `ADD` operations.
+the question arises from the fact that it's impossible to completely disambiguate between `RENAME` and `DROP` and `ADD` operations.
 While the end schema will be the same in both cases, the actual impact of an undesired `DROP` operation can be disastrous.
 
 To avoid this, Atlas now detects potential `RENAME` scenarios during the migration planning phase and prompts the user
 about their intent.
 
-Let’s see this in action.
+Let's see this in action.
 
 Assume we have a `users` table with the column `first_name`, which we changed to `name`.
 
@@ -83,7 +83,7 @@ exclude "excl_speaker_during" {
 [Composite Types](https://www.postgresql.org/docs/current/rowtypes.html#ROWTYPES) are user-defined data types that represent a structure of a row or record.
 Once defined, composite types can be used to declare columns in tables or used in functions and stored procedures.
 
-For example, let’s say we have a `users` table where each user has an `address`. We can create a composite type `address`
+For example, let's say we have a `users` table where each user has an `address`. We can create a composite type `address`
 and add it as a column to the `users` table:
 
 ```hcl title="schema.hcl"
@@ -117,14 +117,14 @@ immediately causing read or write operations to fail. If you are dealing with sm
 short time which will not be noticeable. However, if you are managing a large and busy database, these situations can lead to a full-blown system outage.
 
 Many developers are not aware of these pitfalls only to discover them in the middle of a crisis, which is made even worse by the fact
-that once they happen, there’s nothing you can do except quietly wait for the migration to complete.
+that once they happen, there's nothing you can do except quietly wait for the migration to complete.
 
 Teams looking to improve the reliability and stability of their systems, reach out to automation
-to prevent human errors like these. Atlas’s [automatic analysis](/versioned/lint) capabilities can be utilized to detect such risky
+to prevent human errors like these. Atlas's [automatic analysis](/versioned/lint) capabilities can be utilized to detect such risky
 changes during the CI phase of the software development lifecycle.
 
 In this version, we have added eight new [analyzers](lint/analyzers#analyzers) to our PostgreSQL integration that check for cases where planned migrations
-can lead to locking a table. Here’s a short rundown of these analyzers and what they detect:
+can lead to locking a table. Here's a short rundown of these analyzers and what they detect:
 
 * [PG104](/lint/analyzers#PG104) - Adding a `PRIMARY KEY` constraint (with its index) acquires an `ACCESS EXCLUSIVE` lock on the table,
 blocking all access during the operation.
