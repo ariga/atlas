@@ -266,6 +266,7 @@ module.exports = {
     ],
     "./plugins/utm-plugin",
     "./plugins/intercom",
+    "./plugins/page-view",
   ],
   presets: [
     [
