@@ -164,7 +164,7 @@ func TestBadTypeComparison(t *testing.T) {
 	SortChanges([]schema.Change{
 		&schema.DropObject{O: o1},
 		&schema.DropTable{T: schema.NewTable("t1").AddColumns(schema.NewColumn("c1").SetType(o1))},
-	})
+	}, nil)
 }
 
 func TestSortChanges(t *testing.T) {
@@ -186,7 +186,7 @@ func TestSortChanges(t *testing.T) {
 		&schema.AddTable{T: t1},
 		&schema.AddFunc{F: f1},
 	}
-	planned := SortChanges(changes)
+	planned := SortChanges(changes, nil)
 	require.Equal(t, []schema.Change{changes[2], changes[0], changes[3], changes[1]}, planned)
 
 	changes = []schema.Change{
@@ -194,14 +194,14 @@ func TestSortChanges(t *testing.T) {
 		&schema.DropFunc{F: f1},
 		&schema.DropTrigger{T: tr1},
 	}
-	planned = SortChanges(changes)
+	planned = SortChanges(changes, nil)
 	require.Equal(t, []schema.Change{changes[2], changes[1], changes[0]}, planned)
 
 	// No changes.
 	planned = SortChanges([]schema.Change{
 		&schema.DropFunc{F: f1},
 		&schema.DropTable{T: t1},
-	})
+	}, nil)
 	require.Equal(t, []schema.Change{&schema.DropFunc{F: f1}, &schema.DropTable{T: t1}}, planned)
 
 	// The table must be dropped before the enum type if one of its triggers depends on the enum type.
@@ -210,7 +210,7 @@ func TestSortChanges(t *testing.T) {
 		&schema.DropObject{O: e1},
 		&schema.DropTable{T: t1},
 	}
-	planned = SortChanges(changes)
+	planned = SortChanges(changes, nil)
 	require.Equal(t, []schema.Change{changes[1], changes[0]}, planned)
 
 	// The table must be dropped before the function if one of its triggers depends on the function.
@@ -218,7 +218,7 @@ func TestSortChanges(t *testing.T) {
 	planned = SortChanges([]schema.Change{
 		&schema.DropFunc{F: f1},
 		&schema.DropTable{T: t1},
-	})
+	}, nil)
 	require.Equal(t, []schema.Change{&schema.DropTable{T: t1}, &schema.DropFunc{F: f1}}, planned)
 
 	// Ignore functions that do not reside on the same schema.
@@ -227,7 +227,7 @@ func TestSortChanges(t *testing.T) {
 	planned = SortChanges([]schema.Change{
 		&schema.AddFunc{F: f1},
 		&schema.DropFunc{F: f2},
-	})
+	}, nil)
 	require.Equal(t, []schema.Change{&schema.AddFunc{F: f1}, &schema.DropFunc{F: f2}}, planned)
 
 	// Order functions that reside on the same schema.
@@ -235,7 +235,7 @@ func TestSortChanges(t *testing.T) {
 	planned = SortChanges([]schema.Change{
 		&schema.AddFunc{F: f1},
 		&schema.DropFunc{F: f2},
-	})
+	}, nil)
 	require.Equal(t, []schema.Change{&schema.DropFunc{F: f2}, &schema.AddFunc{F: f1}}, planned)
 }
 

@@ -356,6 +356,10 @@ func convertExclude(schemahcl.Resource, *schema.Table) error {
 	return nil // unimplemented.
 }
 
+func (*state) sortChanges(changes []schema.Change) []schema.Change {
+	return sqlx.SortChanges(changes, nil)
+}
+
 func detachCycles(changes []schema.Change) ([]schema.Change, error) {
 	return sqlx.DetachCycles(changes)
 }

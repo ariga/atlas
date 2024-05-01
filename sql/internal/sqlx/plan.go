@@ -382,8 +382,16 @@ func byKeys[T any](m map[string]T) []struct {
 	return vs
 }
 
+// SortOptions allows drivers to customize the behavior of the SortChanges function.
+type SortOptions struct {
+	// FuncDepT reports if a function depends on the given table.
+	FuncDepT func(*schema.Func, *schema.Table) bool
+	// FuncDepO reports if a function depends on the given object.
+	FuncDepO func(*schema.Func, schema.Object) bool
+}
+
 // SortChanges is a helper function to sort to level changes based on their priority.
-func SortChanges(changes []schema.Change) []schema.Change {
+func SortChanges(changes []schema.Change, opts *SortOptions) []schema.Change {
 	var views, drop, other []schema.Change
 	for _, c := range changes {
 		switch c.(type) {
@@ -404,7 +412,7 @@ func SortChanges(changes []schema.Change) []schema.Change {
 	edges := make(map[schema.Change][]schema.Change)
 	for _, c := range changes {
 		for _, c2 := range changes {
-			if c != c2 && dependsOn(c, c2) {
+			if c != c2 && dependsOn(c, c2, V(opts)) {
 				edges[c] = append(edges[c], c2)
 			}
 		}
@@ -444,7 +452,7 @@ type Depender interface {
 }
 
 // dependsOn reports if the given change depends on the other change.
-func dependsOn(c1, c2 schema.Change) bool {
+func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 	if dependOnOf(c1, c2) {
 		return true
 	}
@@ -585,6 +593,10 @@ func dependsOn(c1, c2 schema.Change) bool {
 		case *schema.ModifyFunc:
 			if funcDep(c1.F, c2.To) {
 				return true // Relies on the new definition.
+			}
+		case *schema.AddTable:
+			if opts.FuncDepT != nil && opts.FuncDepT(c1.F, c2.T) {
+				return true
 			}
 		case *schema.AddObject:
 			t, ok := c2.O.(schema.Type)

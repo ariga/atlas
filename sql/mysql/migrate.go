@@ -85,7 +85,7 @@ func (s *state) plan(changes []schema.Change) error {
 	if err != nil {
 		return err
 	}
-	for _, c := range sqlx.SortChanges(planned) {
+	for _, c := range sqlx.SortChanges(planned, nil) {
 		switch c := c.(type) {
 		case *schema.AddTable:
 			err = s.addTable(c)
