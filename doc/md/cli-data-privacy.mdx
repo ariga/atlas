@@ -35,7 +35,7 @@ the data we collect in layman's terms.
   and we don't have access to it.
 * **Your Database Passwords**: We don't collect, transmit or store your database passwords.
 * **Your database schema or migrations**: Unless you explicitly use a command or flag that sends us your schema or
-  migrations (as described below), we don't collect, transmit or store your database schema, migrations or execution logs
+  migrations (as described below), we don't collect, transmit or store your database schema, migrations or execution logs.
 
 ### Data we DO collect
 
@@ -63,12 +63,12 @@ explicitly choose to send us. Consider the following list of commands and flags 
   and migrations.
 * `migrate apply` when used with a directory that is stored in the schema registry (e.g the url has a `atlas://` prefix)
   AND the `--env` flag is used: This flag applies a migration from the Atlas Schema Registry to your database and uploads
-  the execution logs to the Atlas Cloud, updating the status of the target database in your account. We also store the
-  hostname of the target database to help you identify to which database the logs belong.
+  the execution logs to Atlas Cloud, updating the status of the target database in your account. We also store the
+  hostname of the target database to help you identify which database the logs belong to.
 * `schema apply` when used with the interactive `Lint and Edit` mode: This mode allows you to edit your schema in a
-  visual editor and then apply the changes to your database. This sends your schema to the Atlas Cloud for processing.
+  visual editor and then apply the changes to your database. This sends your schema to Atlas Cloud for processing.
 * `migrate lint` when used with the `--web` or `-w` flag: This flag opens a web browser to view the linting results of
-  your migrations. This sends your migrations to the Atlas Cloud for processing.
+  your migrations. This sends your migrations to Atlas Cloud for processing.
 
 ## How do we use the data we collect?
 
