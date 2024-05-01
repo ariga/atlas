@@ -120,10 +120,10 @@ Many developers are not aware of these pitfalls only to discover them in the mid
 that once they happen, there’s nothing you can do except quietly wait for the migration to complete.
 
 Teams looking to improve the reliability and stability of their systems, reach out to automation
-to prevent human errors like these. Atlas’s automatic analysis capabilities can be utilized to detect such risky
+to prevent human errors like these. Atlas’s [automatic analysis](/versioned/lint) capabilities can be utilized to detect such risky
 changes during the CI phase of the software development lifecycle.
 
-In this version, we have added eight new analyzers to our PostgreSQL integration that check for cases where planned migrations
+In this version, we have added eight new [analyzers](lint/analyzers#analyzers) to our PostgreSQL integration that check for cases where planned migrations
 can lead to locking a table. Here’s a short rundown of these analyzers and what they detect:
 
 * [PG104](/lint/analyzers#PG104) - Adding a `PRIMARY KEY` constraint (with its index) acquires an `ACCESS EXCLUSIVE` lock on the table,
