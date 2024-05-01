@@ -80,7 +80,7 @@ func (s *state) plan(changes []schema.Change) error {
 	if planned, err = detachCycles(planned); err != nil {
 		return err
 	}
-	for _, c := range sqlx.SortChanges(planned) {
+	for _, c := range s.sortChanges(planned) {
 		switch c := c.(type) {
 		case *schema.AddTable:
 			err = s.addTable(c)
