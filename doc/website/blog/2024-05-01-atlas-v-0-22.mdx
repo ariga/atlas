@@ -9,7 +9,7 @@ Hi everyone,
 It's been a few weeks since our [last release](https://github.com/ariga/atlas/releases/tag/v0.21.0), and we're happy to be back with a version packed with brand new and exciting
 features. Here's what's inside:
 
-* [**`RENAME` Detection**](#rename-detection) - Prior to this version, Atlas interpreted schema renames as `DROP` and `ADD` commands. This version includes a `RENAME` detector that identifies such operations and interactively asks the user for feedback before generating the changes.
+* [**`RENAME` Detection**](#rename-detection) - This version includes a `RENAME` detector that identifies ambiguous situations of potential resource renames  and interactively asks the user for feedback before generating the changes.
 * [**PostgreSQL Features**](#postgresql-features)
     * [**UNIQUE and EXCLUDE**](#unique-and-exclude-constraints) - Unique constraints and exclusion constraints were added.
     * [**Composite Types**](#composite-types) - Added support for composite types, which are user-defined types that represent the structure of a row.
