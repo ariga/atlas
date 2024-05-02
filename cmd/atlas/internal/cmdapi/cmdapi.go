@@ -53,22 +53,22 @@ var (
 	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.version=v0.1.2'"
 	version string
 
-	// schemaCmd represents the subcommand 'atlas version'.
+	// versionCmd represents the subcommand 'atlas version'.
 	versionCmd = &cobra.Command{
 		Use:   "version",
 		Short: "Prints this Atlas CLI version information.",
 		Run: func(cmd *cobra.Command, _ []string) {
 			var (
-				f    = "atlas "
+				f    = versionFmt
 				args []any
 			)
 			if flavor != "" {
 				f += "%s "
 				args = append(args, flavor)
 			}
-			f += "version %s\n%s\n"
+			f += "version %s\n%s\n%s"
 			v, u := parseV(version)
-			args = append(args, v, u)
+			args = append(args, v, u, versionInfo)
 			cmd.Printf(f, args...)
 		},
 	}
