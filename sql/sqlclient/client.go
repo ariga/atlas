@@ -45,6 +45,7 @@ type (
 		// Functions registered by the drivers and used for opening transactions and their clients.
 		openDriver func(schema.ExecQuerier) (migrate.Driver, error)
 		openTx     TxOpener
+		hooks      []*Hook
 	}
 
 	// TxClient is returned by calling Client.Tx. It behaves the same as Client,
@@ -53,7 +54,8 @@ type (
 		*Client
 
 		// The transaction this Client wraps.
-		Tx *Tx
+		Tx    *Tx
+		hooks []*Hook
 	}
 
 	// URL extends the standard url.URL with additional
@@ -66,6 +68,20 @@ type (
 
 		// The Schema this client is connected to.
 		Schema string
+	}
+
+	// Hook groups all possible hooks in
+	// connection and transaction lifecycle.
+	Hook struct {
+		Conn struct {
+			AfterOpen   func(context.Context, *Client) error
+			BeforeClose func(*Client) error
+		}
+		Tx struct {
+			AfterBegin func(context.Context, *TxClient) error
+			BeforeCommit,
+			BeforeRollback func(*TxClient) error
+		}
 	}
 )
 
@@ -95,17 +111,23 @@ func (c *Client) Tx(ctx context.Context, opts *sql.TxOptions) (*TxClient, error)
 	}
 	ic := *c
 	ic.Driver = drv
-	return &TxClient{Client: &ic, Tx: tx}, nil
+	tc := &TxClient{Client: &ic, Tx: tx, hooks: c.hooks}
+	if len(tc.hooks) > 0 {
+		if err := tc.afterBegin(ctx); err != nil {
+			return nil, errors.Join(err, tx.Rollback())
+		}
+	}
+	return tc, nil
 }
 
 // Commit the transaction.
 func (c *TxClient) Commit() error {
-	return c.Tx.Commit()
+	return errors.Join(c.beforeCommit(), c.Tx.Commit())
 }
 
 // Rollback the transaction.
 func (c *TxClient) Rollback() error {
-	return c.Tx.Rollback()
+	return errors.Join(c.beforeRollback(), c.Tx.Rollback())
 }
 
 // AddClosers adds list of closers to close at the end of the client lifetime.
@@ -115,16 +137,88 @@ func (c *Client) AddClosers(closers ...io.Closer) {
 
 // Close closes the underlying database connection and the migration
 // driver in case it implements the io.Closer interface.
-func (c *Client) Close() (err error) {
+func (c *Client) Close() error {
+	err := c.beforeClose()
 	for _, closer := range append(c.closers, c.DB) {
-		if cerr := closer.Close(); cerr != nil {
-			if err != nil {
-				cerr = fmt.Errorf("%v: %v", err, cerr)
-			}
-			err = cerr
-		}
+		err = errors.Join(err, closer.Close())
 	}
 	return err
+}
+
+type hookCtxKey struct{}
+
+// hookCtx marks the context as being in a hook.
+func hookCtx(ctx context.Context) context.Context {
+	if ctx.Value(hookCtxKey{}) == nil {
+		return context.WithValue(ctx, hookCtxKey{}, true)
+	}
+	return ctx
+}
+
+// afterOpen calls the AfterOpen hooks.
+func (c *Client) afterOpen(ctx context.Context) error {
+	if ctx.Value(hookCtxKey{}) != nil {
+		return errors.New("sql/sqlclient: cannot open a connection inside a hook")
+	}
+	for _, h := range c.hooks {
+		if f := h.Conn.AfterOpen; f != nil {
+			if err := f(hookCtx(ctx), c); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// beforeClose calls the BeforeClose hooks.
+func (c *Client) beforeClose() error {
+	for _, h := range c.hooks {
+		if f := h.Conn.BeforeClose; f != nil {
+			if err := f(c); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// afterBegin calls the AfterBegin hooks.
+func (c *TxClient) afterBegin(ctx context.Context) error {
+	if ctx.Value(hookCtxKey{}) != nil {
+		return errors.New("sql/sqlclient: cannot begin a transaction inside a hook")
+	}
+	for _, h := range c.hooks {
+		if f := h.Tx.AfterBegin; f != nil {
+			if err := f(hookCtx(ctx), c); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// beforeCommit calls the BeforeCommit hooks.
+func (c *TxClient) beforeCommit() error {
+	for _, h := range c.hooks {
+		if f := h.Tx.BeforeCommit; f != nil {
+			if err := f(c); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// beforeRollback calls the BeforeRollback hooks.
+func (c *TxClient) beforeRollback() error {
+	for _, h := range c.hooks {
+		if f := h.Tx.BeforeRollback; f != nil {
+			if err := f(c); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 type (
@@ -186,8 +280,8 @@ type (
 	// openOptions holds additional configuration values for opening a Client.
 	openOptions struct {
 		schema *string
+		hooks  []*Hook
 	}
-
 	// OpenOption allows to configure a openOptions using functional arguments.
 	OpenOption func(*openOptions) error
 )
@@ -238,6 +332,12 @@ func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, erro
 	if client.openTx == nil && drv.txOpener != nil {
 		client.openTx = drv.txOpener
 	}
+	if len(cfg.hooks) > 0 {
+		client.hooks = cfg.hooks
+		if err := client.afterOpen(ctx); err != nil {
+			return nil, errors.Join(err, client.DB.Close())
+		}
+	}
 	return client, nil
 }
 
@@ -246,6 +346,15 @@ func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, erro
 func OpenSchema(s string) OpenOption {
 	return func(c *openOptions) error {
 		c.schema = &s
+		return nil
+	}
+}
+
+// OpenWithHooks returns an OpenOption that sets
+// the hooks for the client after opening.
+func OpenWithHooks(hks ...*Hook) OpenOption {
+	return func(c *openOptions) error {
+		c.hooks = append(c.hooks, hks...)
 		return nil
 	}
 }
