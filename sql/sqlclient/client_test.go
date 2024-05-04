@@ -7,6 +7,7 @@ package sqlclient_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"net/url"
 	"testing"
 
@@ -167,4 +168,110 @@ type mockDriver struct {
 
 func (m *mockDriver) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	return m.db.ExecContext(ctx, query, args...)
+}
+
+func TestClientHooks(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	sqlclient.Register(
+		"hook",
+		sqlclient.OpenerFunc(func(context.Context, *url.URL) (*sqlclient.Client, error) {
+			return &sqlclient.Client{Name: "tx", DB: db, Driver: &mockDriver{db: db}}, nil
+		}),
+		sqlclient.RegisterDriverOpener(func(db schema.ExecQuerier) (migrate.Driver, error) {
+			return &mockDriver{db: db}, nil
+		}),
+	)
+	var (
+		calls [5]int
+		hk    = &sqlclient.Hook{}
+	)
+	hk.Conn.AfterOpen = func(context.Context, *sqlclient.Client) error {
+		calls[0]++
+		return nil
+	}
+	hk.Conn.BeforeClose = func(*sqlclient.Client) error {
+		calls[1]++
+		return nil
+	}
+	hk.Tx.AfterBegin = func(context.Context, *sqlclient.TxClient) error {
+		calls[2]++
+		return nil
+	}
+	hk.Tx.BeforeCommit = func(*sqlclient.TxClient) error {
+		calls[3]++
+		return nil
+	}
+	hk.Tx.BeforeRollback = func(*sqlclient.TxClient) error {
+		calls[4]++
+		return nil
+	}
+	mock.ExpectClose()
+	oc, err := sqlclient.Open(context.Background(), "hook://", sqlclient.OpenWithHooks(hk))
+	require.NoError(t, err)
+	require.NoError(t, oc.Close())
+	require.Equal(t, [5]int{1, 1, 0, 0, 0}, calls)
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	db, mock, err = sqlmock.New()
+	require.NoError(t, err)
+	mock.ExpectBegin()
+	mock.ExpectCommit()
+	mock.ExpectClose()
+	oc, err = sqlclient.Open(context.Background(), "hook://", sqlclient.OpenWithHooks(hk))
+	require.NoError(t, err)
+	tc, err := oc.Tx(context.Background(), nil)
+	require.NoError(t, err)
+	require.NoError(t, tc.Commit())
+	require.NoError(t, oc.Close())
+	require.Equal(t, [5]int{2, 2, 1, 1, 0}, calls)
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	db, mock, err = sqlmock.New()
+	require.NoError(t, err)
+	mock.ExpectBegin()
+	mock.ExpectRollback()
+	mock.ExpectClose()
+	oc, err = sqlclient.Open(context.Background(), "hook://", sqlclient.OpenWithHooks(hk))
+	require.NoError(t, err)
+	tc, err = oc.Tx(context.Background(), nil)
+	require.NoError(t, err)
+	require.NoError(t, tc.Rollback())
+	require.NoError(t, oc.Close())
+	require.Equal(t, [5]int{3, 3, 2, 1, 1}, calls)
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	// Open hook failed.
+	hk.Conn.AfterOpen = func(context.Context, *sqlclient.Client) error {
+		calls[0]++
+		return errors.New("open failed")
+	}
+	db, mock, err = sqlmock.New()
+	require.NoError(t, err)
+	mock.ExpectClose()
+	oc, err = sqlclient.Open(context.Background(), "hook://", sqlclient.OpenWithHooks(hk))
+	require.EqualError(t, err, "open failed")
+	require.Equal(t, [5]int{4, 3, 2, 1, 1}, calls, "close hooks should not be called")
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	// After begin hook failed.
+	hk.Conn.AfterOpen = func(context.Context, *sqlclient.Client) error {
+		calls[0]++
+		return nil
+	}
+	hk.Tx.AfterBegin = func(context.Context, *sqlclient.TxClient) error {
+		calls[2]++
+		return errors.New("after begin failed")
+	}
+	db, mock, err = sqlmock.New()
+	require.NoError(t, err)
+	mock.ExpectBegin()
+	mock.ExpectRollback()
+	mock.ExpectClose()
+	oc, err = sqlclient.Open(context.Background(), "hook://", sqlclient.OpenWithHooks(hk))
+	require.NoError(t, err)
+	tc, err = oc.Tx(context.Background(), nil)
+	require.EqualError(t, err, "after begin failed")
+	require.NoError(t, oc.Close())
+	require.Equal(t, [5]int{5, 4, 3, 1, 1}, calls, "rollback hooks should not be called")
 }
