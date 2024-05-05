@@ -63,8 +63,7 @@ with the changes landed by Team B.
 
 Because of the merge conflict on the `atlas.sum` file, in order to land
 their changes, Team B would need to:
-1. Merge the latest changes into their branch
-2. Resolve any conflicts on the database schema (and application) level
-3. Re-compute the `atlas.sum` file (using the [`atlas migrate hash`](/cli-reference#atlas-migrate-hash))
- command.
-4. Merge their changes to the mainline branch. 
+1. Merge the latest changes from the master branch into their branch.
+2. If their migration file it not the latest one, they can use `atlas migrate rebase` to rebase their changes on top of all migrations.
+3. In case there are any conflicts on the database schema (and application) level, resolve them and run [`atlas migrate hash`](/cli-reference#atlas-migrate-hash).
+4. Update the PR, wait for Atlas CI to pass, and merge the changes.
