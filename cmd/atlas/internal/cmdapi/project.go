@@ -28,14 +28,6 @@ import (
 )
 
 type (
-	// Project represents an atlas.hcl project config file.
-	Project struct {
-		Envs []*Env `spec:"env"`  // List of environments
-		Lint *Lint  `spec:"lint"` // Optional global lint policy
-		Diff *Diff  `spec:"diff"` // Optional global diff policy
-		cfg  *cmdext.AtlasConfig
-	}
-
 	// Env represents an Atlas environment.
 	Env struct {
 		// Name for this environment.
@@ -68,7 +60,8 @@ type (
 		Format Format `spec:"format"`
 
 		schemahcl.DefaultExtension
-		cfg *cmdext.AtlasConfig
+		cloud  *cmdext.AtlasConfig
+		config *Project
 	}
 
 	// Migration represents the migration directory for the Env.
@@ -458,8 +451,8 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 // maySetTokenContext sets the token context and cloud client if
 // defined in the project file.
 func maySetTokenContext(cmd *cobra.Command, p *Project) error {
-	if p.cfg.Token != "" && p.cfg.Client != nil {
-		ctx, err := withTokenContext(cmd.Context(), p.cfg.Token, p.cfg.Client)
+	if p.cloud.Token != "" && p.cloud.Client != nil {
+		ctx, err := withTokenContext(cmd.Context(), p.cloud.Token, p.cloud.Client)
 		if err != nil {
 			return err
 		}
@@ -512,13 +505,13 @@ func parseConfig(path, env string, vars map[string]cty.Value) (*Project, error) 
 	if err != nil {
 		return nil, err
 	}
-	cfg := &cmdext.AtlasConfig{
+	cloud := &cmdext.AtlasConfig{
 		Project: cloudapi.DefaultProjectName,
 	}
 	state := schemahcl.New(
 		append(
 			append(cmdext.SpecOptions, specOptions...),
-			cfg.InitBlock(),
+			cloud.InitBlock(),
 			schemahcl.WithScopedEnums("env.migration.format", cmdmigrate.Formats...),
 			schemahcl.WithScopedEnums("env.migration.exec_order", "LINEAR", "LINEAR_SKIP", "NON_LINEAR"),
 			schemahcl.WithScopedEnums("env.lint.review", ReviewModes...),
@@ -545,12 +538,12 @@ func parseConfig(path, env string, vars map[string]cty.Value) (*Project, error) 
 			}),
 		)...,
 	)
-	p := &Project{Lint: &Lint{}, Diff: &Diff{}, cfg: cfg}
+	p := &Project{Lint: &Lint{}, Diff: &Diff{}, cloud: cloud}
 	if err := state.Eval(pr, p, vars); err != nil {
 		return nil, err
 	}
 	for _, e := range p.Envs {
-		e.cfg = cfg
+		e.config, e.cloud = p, cloud
 	}
 	return p, nil
 }

@@ -819,7 +819,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	// Make sure to store the Revision information.
 	defer func(ctx context.Context, e *Executor, r *Revision) {
 		if err2 := e.writeRevision(ctx, r); err2 != nil {
-			err = wrap(err2, err)
+			err = errors.Join(err, err2)
 		}
 	}(ctx, e, r)
 	if r.Applied > 0 {
@@ -975,7 +975,7 @@ func (e *Executor) Replay(ctx context.Context, r StateReader, opts ...ReplayOpti
 	}
 	defer func() {
 		if err2 := restore(ctx); err2 != nil {
-			err = wrap(err2, err)
+			err = errors.Join(err, err2)
 		}
 	}()
 	// Replay the migration directory on the database.
@@ -1168,11 +1168,4 @@ func LogIntro(l Logger, revs []*Revision, files []File) {
 func LogNoPendingFiles(l Logger, revs []*Revision) {
 	LogIntro(l, revs, nil)
 	l.Log(LogDone{})
-}
-
-func wrap(err1, err2 error) error {
-	if err2 != nil {
-		return fmt.Errorf("sql/migrate: %w: %v", err2, err1)
-	}
-	return err1
 }

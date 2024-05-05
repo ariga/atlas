@@ -13,6 +13,7 @@ import (
 	"text/template"
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
+	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migratelint"
 	"ariga.io/atlas/schemahcl"
@@ -47,6 +48,14 @@ func init() {
 		migrateValidateCmd(),
 	)
 	Root.AddCommand(migrateCmd)
+}
+
+// Project represents an atlas.hcl project config file.
+type Project struct {
+	Envs  []*Env `spec:"env"`  // List of environments
+	Lint  *Lint  `spec:"lint"` // Optional global lint policy
+	Diff  *Diff  `spec:"diff"` // Optional global diff policy
+	cloud *cmdext.AtlasConfig
 }
 
 // migrateLintSetFlags allows setting extra flags for the 'migrate lint' command.
@@ -140,4 +149,9 @@ var specOptions []schemahcl.Option
 // diffOptions returns environment-aware diff options.
 func diffOptions(_ *cobra.Command, env *Env) []schema.DiffOption {
 	return env.DiffOptions()
+}
+
+// openClient allows opening environment-aware clients.
+func (*Env) openClient(ctx context.Context, u string) (*sqlclient.Client, error) {
+	return sqlclient.Open(ctx, u)
 }
