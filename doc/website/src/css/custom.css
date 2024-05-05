@@ -276,13 +276,17 @@ div[class^='announcementBar_']  a.cta {
 }
 
 @media only screen and (min-width: 1000px) {
-  h4 {
+  h3, h4 {
     position: relative;
   }
-  h4 > .login {
+  h3 > .login, h4 > .login {
     right: 0;
     position: absolute;
   }
+}
+
+h3 > .login {
+  vertical-align: middle;
 }
 
 .language-applylog .version, .language-applylog .action2, .language-applylog .action3 {
