@@ -76,7 +76,6 @@ func TestResource(t *testing.T) {
 				Value string `spec:"value"`
 			} `spec:"tag"`
 		}
-
 		Endpoint struct {
 			Name        string   `spec:",name"`
 			Description string   `spec:"description"`

@@ -601,7 +601,7 @@ func selectEnv(cmd *cobra.Command) (*Env, error) {
 		if len(envs) != 0 {
 			return nil, fmt.Errorf("unexpected number of envs found: %d", len(envs))
 		}
-		return &Env{Lint: p.Lint, Diff: p.Diff, cfg: p.cfg, Migration: &Migration{}}, nil
+		return &Env{Lint: p.Lint, Diff: p.Diff, Migration: &Migration{}, config: p}, nil
 	// No config nor env was passed.
 	case name == "":
 		return &Env{Lint: &Lint{}, Migration: &Migration{}}, nil

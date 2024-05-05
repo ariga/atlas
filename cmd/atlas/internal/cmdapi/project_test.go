@@ -114,6 +114,8 @@ env "multi" {
 		sort.Slice(env.Extra.Attrs, func(i, j int) bool {
 			return env.Extra.Attrs[i].K < env.Extra.Attrs[j].K
 		})
+		require.NotNil(t, env.config)
+		env.config = nil
 		require.EqualValues(t, &Env{
 			Name:    "local",
 			URL:     "mysql://root:pass@localhost:3306/",
@@ -160,7 +162,7 @@ env "multi" {
 					},
 				},
 			},
-			cfg: &cmdext.AtlasConfig{
+			cloud: &cmdext.AtlasConfig{
 				Project: cloudapi.DefaultProjectName,
 			},
 		}, env)

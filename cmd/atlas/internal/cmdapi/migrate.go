@@ -105,10 +105,16 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 			RunE: RunE(func(cmd *cobra.Command, args []string) (cmdErr error) {
 				switch {
 				case GlobalFlags.SelectedEnv == "":
-					if err := migrateFlagsFromConfig(cmd); err != nil {
+					// Env not selected, but the
+					// -c flag might be set.
+					env, err := selectEnv(cmd)
+					if err != nil {
 						return err
 					}
-					return migrateApplyRun(cmd, args, flags, &MigrateReport{}) // nop reporter
+					if err := setMigrateEnvFlags(cmd, env); err != nil {
+						return err
+					}
+					return migrateApplyRun(cmd, args, flags, env, &MigrateReport{}) // nop reporter
 				default:
 					project, envs, err := EnvByName(cmd, GlobalFlags.SelectedEnv, GlobalFlags.Vars)
 					if err != nil {
@@ -129,7 +135,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 						if u, err := url.Parse(flags.dirURL); err == nil && u.Scheme != cmdmigrate.DirTypeFile {
 							hasRemote = true
 						}
-						return migrateApplyRun(cmd, args, flags, set.ReportFor(flags, env))
+						return migrateApplyRun(cmd, args, flags, env, set.ReportFor(flags, env))
 					})
 				}
 			}),
@@ -153,8 +159,8 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	return cmd
 }
 
-// migrateApplyCmd represents the 'atlas migrate apply' subcommand.
-func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags, mr *MigrateReport) (err error) {
+// migrateApplyRun represents the 'atlas migrate apply' subcommand.
+func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags, env *Env, mr *MigrateReport) (err error) {
 	var (
 		count int
 		ctx   = cmd.Context()
@@ -180,7 +186,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 	if flags.url == "" {
 		return errors.New(`required flag "url" not set`)
 	}
-	client, err := sqlclient.Open(ctx, flags.url)
+	client, err := env.openClient(ctx, flags.url)
 	if err != nil {
 		return err
 	}
@@ -305,8 +311,8 @@ type (
 // NewReportProvider returns a new ReporterProvider.
 func NewReportProvider(ctx context.Context, p *Project, envs []*Env, flags *migrateApplyFlags) (*MigrateReportSet, error) {
 	c := cloudapi.FromContext(ctx)
-	if p.cfg.Client != nil {
-		c = p.cfg.Client
+	if p.cloud.Client != nil {
+		c = p.cloud.Client
 	}
 	s := &MigrateReportSet{
 		client: c,
@@ -485,7 +491,7 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 		dirName = path.Join(u.Host, u.Path)
 	}
 	r.done(&cloudapi.ReportMigrationInput{
-		ProjectName:  r.env.cfg.Project,
+		ProjectName:  r.env.config.cloud.Project,
 		EnvName:      r.env.Name,
 		DirName:      dirName,
 		AtlasVersion: operatorVersion(),
@@ -545,7 +551,12 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 
 // CloudEnabled reports if cloud reporting is enabled.
 func (r *MigrateReport) CloudEnabled(ctx context.Context) bool {
-	return r.env != nil && r.env.cfg != nil && r.env.cfg.Project != "" && (r.env.cfg.Client != nil || cloudapi.FromContext(ctx) != nil)
+	if r.env == nil || r.env.cloud == nil {
+		return false // The --env was not set.
+	}
+	cloud := r.env.cloud
+	// Cloud reporting is enabled only if there is a cloud connection.
+	return cloud.Project != "" && (cloud.Client != nil || cloudapi.FromContext(ctx) != nil)
 }
 
 func logApply(cmd *cobra.Command, w io.Writer, flags migrateApplyFlags, r *cmdlog.MigrateApply) error {
