@@ -27,17 +27,28 @@ var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{&conn{ExecQuerier: 
 type diff struct{ *conn }
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
-func (*diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
-	var changes []schema.Change
-	if change := sqlx.CommentDiff(skipDefaultComment(from), skipDefaultComment(to)); change != nil {
+func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
+	var (
+		changes    []schema.Change
+		fromA, toA []schema.Attr
+	)
+	// In schema scope, users might compare a "public" schema with a "non-public" schema.
+	// However, since the public standard comment is auto created and not set by the users
+	// this is unintentional in most cases, and this change will be rejected by the plan stage.
+	if d.schema != "" {
+		fromA, toA = skipDefaultComment(from, from.Name), skipDefaultComment(to, to.Name)
+	} else {
+		fromA, toA = skipDefaultComment(from, "public"), skipDefaultComment(to, "public")
+	}
+	if change := sqlx.CommentDiff(fromA, toA); change != nil {
 		changes = append(changes, change)
 	}
 	return changes
 }
 
-func skipDefaultComment(s *schema.Schema) []schema.Attr {
+func skipDefaultComment(s *schema.Schema, public string) []schema.Attr {
 	attrs := s.Attrs
-	if c := (schema.Comment{}); sqlx.Has(attrs, &c) && c.Text == "standard public schema" && (s.Name == "" || s.Name == "public") {
+	if c := (schema.Comment{}); sqlx.Has(attrs, &c) && c.Text == "standard public schema" && (s.Name == "" || s.Name == public) {
 		attrs = schema.RemoveAttr[*schema.Comment](attrs)
 	}
 	return attrs
