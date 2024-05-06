@@ -587,6 +587,38 @@ func TestDiff_SchemaDiff(t *testing.T) {
 				},
 			}},
 		}, changes)
+
+		// In schema scope, auto created
+		// public comment should be ignored.
+		drv.(*Driver).schema = "public"
+		from.Name, to.Name = "other", "other"
+		from.SetComment("standard public schema")
+		to.SetComment("standard public schema")
+		changes, err = drv.SchemaDiff(from, to)
+		require.NoError(t, err)
+		require.Empty(t, changes)
+
+		to.SetComment("")
+		changes, err = drv.SchemaDiff(from, to)
+		require.NoError(t, err)
+		require.Empty(t, changes)
+
+		from.Name, to.Name = "public", "public"
+		changes, err = drv.SchemaDiff(from, to)
+		require.NoError(t, err)
+		require.Empty(t, changes)
+
+		from.SetComment("custom public schema")
+		changes, err = drv.SchemaDiff(from, to)
+		require.NoError(t, err)
+		require.EqualValues(t, []schema.Change{
+			&schema.ModifySchema{S: to, Changes: schema.Changes{
+				&schema.ModifyAttr{
+					From: &schema.Comment{Text: "custom public schema"},
+					To:   &schema.Comment{Text: ""},
+				},
+			}},
+		}, changes)
 	})
 }
 
