@@ -5,6 +5,7 @@
 package schemahcl
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -439,12 +440,12 @@ env "dev" {
 `)
 	)
 	require.NoError(t, New(
-		WithDataSource("sql", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+		WithDataSource("sql", func(_ context.Context, ectx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
 			attrs, diags := b.Body.JustAttributes()
 			if diags.HasErrors() {
 				return cty.NilVal, diags
 			}
-			v, diags := attrs["query"].Expr.Value(ctx)
+			v, diags := attrs["query"].Expr.Value(ectx)
 			if diags.HasErrors() {
 				return cty.NilVal, diags
 			}
@@ -552,30 +553,30 @@ table "s2" {
 func TestDataLocalsRefs(t *testing.T) {
 	var (
 		opts = []Option{
-			WithDataSource("sql", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+			WithDataSource("sql", func(_ context.Context, ectx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
 				attrs, diags := b.Body.JustAttributes()
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
-				v, diags := attrs["result"].Expr.Value(ctx)
+				v, diags := attrs["result"].Expr.Value(ectx)
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
 				return cty.ObjectVal(map[string]cty.Value{"output": v}), nil
 			}),
-			WithDataSource("text", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+			WithDataSource("text", func(_ context.Context, ectx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
 				attrs, diags := b.Body.JustAttributes()
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
-				v, diags := attrs["value"].Expr.Value(ctx)
+				v, diags := attrs["value"].Expr.Value(ectx)
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
 				return cty.ObjectVal(map[string]cty.Value{"output": v}), nil
 			}),
-			WithInitBlock("atlas", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
-				org, diags := b.Body.Attributes["org"].Expr.Value(ctx)
+			WithInitBlock("atlas", func(_ context.Context, ectx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+				org, diags := b.Body.Attributes["org"].Expr.Value(ectx)
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
@@ -586,7 +587,7 @@ func TestDataLocalsRefs(t *testing.T) {
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
-				host, diags := attrs["host"].Expr.Value(ctx)
+				host, diags := attrs["host"].Expr.Value(ectx)
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
@@ -597,12 +598,12 @@ func TestDataLocalsRefs(t *testing.T) {
 					}),
 				}), nil
 			}),
-			WithDataSource("remote_dir", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+			WithDataSource("remote_dir", func(_ context.Context, ectx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
 				attrs, diags := b.Body.JustAttributes()
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
-				host, diags := attrs["host"].Expr.Value(ctx)
+				host, diags := attrs["host"].Expr.Value(ectx)
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
@@ -611,7 +612,7 @@ func TestDataLocalsRefs(t *testing.T) {
 						hcl.TraverseRoot{Name: "atlas", SrcRange: b.Range()},
 						hcl.TraverseAttr{Name: "org", SrcRange: b.Range()},
 					},
-				}).Value(ctx)
+				}).Value(ectx)
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
@@ -734,19 +735,19 @@ out = data.unknown.a.output
 func TestSkippedDataSrc(t *testing.T) {
 	var (
 		opts = []Option{
-			WithDataSource("dynamic", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+			WithDataSource("dynamic", func(_ context.Context, ectx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
 				attrs, diags := b.Body.JustAttributes()
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
-				s, diags := attrs["skip"].Expr.Value(ctx)
+				s, diags := attrs["skip"].Expr.Value(ectx)
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
 				if s.True() {
 					return cty.NilVal, fmt.Errorf("data source should be skipped, but was called with %q", b.Labels)
 				}
-				v, diags := attrs["v"].Expr.Value(ctx)
+				v, diags := attrs["v"].Expr.Value(ectx)
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
@@ -867,28 +868,28 @@ func TestTypeLabelBlock(t *testing.T) {
 	var (
 		callD, callT int
 		opts         = []Option{
-			WithTypeLabelBlock("driver", "remote", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+			WithTypeLabelBlock("driver", "remote", func(_ context.Context, ectx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
 				attrs, diags := b.Body.JustAttributes()
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
-				v, diags := attrs["name"].Expr.Value(ctx)
+				v, diags := attrs["name"].Expr.Value(ectx)
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
 				callT++
 				return cty.ObjectVal(map[string]cty.Value{"url": cty.StringVal("driver://" + v.AsString())}), nil
 			}),
-			WithTypeLabelBlock("driver", "not_called", func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
+			WithTypeLabelBlock("driver", "not_called", func(context.Context, *hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
 				t.Fatal("should not be called")
 				return cty.NilVal, nil
 			}),
-			WithDataSource("text", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+			WithDataSource("text", func(_ context.Context, ectx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
 				attrs, diags := b.Body.JustAttributes()
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}
-				v, diags := attrs["value"].Expr.Value(ctx)
+				v, diags := attrs["value"].Expr.Value(ectx)
 				if diags.HasErrors() {
 					return cty.NilVal, diags
 				}

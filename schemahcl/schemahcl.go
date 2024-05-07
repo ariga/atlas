@@ -6,6 +6,7 @@ package schemahcl
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -29,8 +30,11 @@ type (
 		pathVars         map[string]map[string]cty.Value
 		pathFuncs        map[string]map[string]function.Function
 		validator        func() SchemaValidator
-		datasrc, initblk map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
-		typedblk         map[string]map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
+		datasrc, initblk map[string]BlockFunc
+		typedblk         map[string]map[string]BlockFunc
+		// Optional context to pass to dynamic block handlers,
+		// such as data-sources, type-blocks, etc.
+		ctx context.Context
 	}
 	// Option configures a Config.
 	Option func(*Config)
@@ -58,6 +62,15 @@ func New(opts ...Option) *State {
 				Functions: cfg.funcs,
 			})
 		},
+	}
+}
+
+// WithContext allows passing a context to Eval stage.
+// If provided, data source and type-block handlers will
+// have access to this context.
+func WithContext(ctx context.Context) Option {
+	return func(c *Config) {
+		c.ctx = ctx
 	}
 }
 
@@ -109,6 +122,9 @@ func WithFunctions(funcs map[string]function.Function) Option {
 	}
 }
 
+// BlockFunc is the function signature for evaluating a dynamic block.
+type BlockFunc func(context.Context, *hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
+
 // WithDataSource registers a data source name and its corresponding handler.
 // e.g., the example below registers a data source named "text" that returns
 // the string defined in the data source block.
@@ -128,10 +144,10 @@ func WithFunctions(funcs map[string]function.Function) Option {
 //	data "text" "hello" {
 //	  value = "hello world"
 //	}
-func WithDataSource(name string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)) Option {
+func WithDataSource(name string, h BlockFunc) Option {
 	return func(c *Config) {
 		if c.datasrc == nil {
-			c.datasrc = make(map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error))
+			c.datasrc = make(map[string]BlockFunc)
 		}
 		c.datasrc[name] = h
 	}
@@ -156,13 +172,13 @@ func WithDataSource(name string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty
 //	driver "remote" "hello" {
 //	  token = "hello world"
 //	}
-func WithTypeLabelBlock(name, label string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)) Option {
+func WithTypeLabelBlock(name, label string, h BlockFunc) Option {
 	return func(c *Config) {
 		if c.typedblk == nil {
-			c.typedblk = make(map[string]map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error))
+			c.typedblk = make(map[string]map[string]BlockFunc)
 		}
 		if c.typedblk[name] == nil {
-			c.typedblk[name] = make(map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error))
+			c.typedblk[name] = make(map[string]BlockFunc)
 		}
 		c.typedblk[name][label] = h
 	}
@@ -182,10 +198,10 @@ func WithTypeLabelBlock(name, label string, h func(*hcl.EvalContext, *hclsyntax.
 //		}
 //		return cty.ObjectVal(map[string]cty.Value{"modules": v}), nil
 //	})
-func WithInitBlock(name string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)) Option {
+func WithInitBlock(name string, h BlockFunc) Option {
 	return func(c *Config) {
 		if c.initblk == nil {
-			c.initblk = make(map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error))
+			c.initblk = make(map[string]BlockFunc)
 		}
 		c.initblk[name] = h
 	}

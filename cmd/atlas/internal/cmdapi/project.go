@@ -5,6 +5,7 @@
 package cmdapi
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -403,7 +404,7 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 		}
 		return nil, nil, err
 	}
-	project, err := parseConfig(path, name, vars)
+	project, err := parseConfig(cmd.Context(), path, name, vars)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -496,7 +497,7 @@ const (
 	defaultConfigPath = "file://atlas.hcl"
 )
 
-func parseConfig(path, env string, vars map[string]cty.Value) (*Project, error) {
+func parseConfig(ctx context.Context, path, env string, vars map[string]cty.Value) (*Project, error) {
 	pr, err := partialParse(path, env)
 	if err != nil {
 		return nil, err
@@ -512,6 +513,7 @@ func parseConfig(path, env string, vars map[string]cty.Value) (*Project, error) 
 		append(
 			append(cmdext.SpecOptions, specOptions...),
 			cloud.InitBlock(),
+			schemahcl.WithContext(ctx),
 			schemahcl.WithScopedEnums("env.migration.format", cmdmigrate.Formats...),
 			schemahcl.WithScopedEnums("env.migration.exec_order", "LINEAR", "LINEAR_SKIP", "NON_LINEAR"),
 			schemahcl.WithScopedEnums("env.lint.review", ReviewModes...),
