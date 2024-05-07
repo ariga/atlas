@@ -971,6 +971,34 @@ trigger "audit_log_trigger" {
 }
 ```
 
+
+## Event Trigger
+
+:::info LOGIN REQUIRED
+Event Triggers are currently available to logged-in users only. To use this feature, run:
+```
+atlas login
+```
+:::
+
+The `event_trigger` block allows defining [PostgreSQL event trigger](https://www.postgresql.org/docs/current/event-trigger-definition.html) functions
+that automatically execute in response to specific events within the database system, like table creation or schema modifications.
+
+```hcl
+# Block table rewrites.
+event_trigger "block_table_rewrite" {
+  on      = table_rewrite
+  execute = function.no_rewrite_allowed
+}
+
+# Filter specific events.
+event_trigger "record_table_creation" {
+  on      = ddl_command_start
+  tags    = ["CREATE TABLE"]
+  execute = function.record_table_creation
+}
+```
+
 ## Function
 
 :::info LOGIN REQUIRED
