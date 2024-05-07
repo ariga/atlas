@@ -62,7 +62,7 @@ func (*inspect) inspectDeps(context.Context, *schema.Realm, *schema.InspectOptio
 	return nil // unimplemented.
 }
 
-func (*inspect) inspectExtensions(context.Context, *schema.Realm, *schema.InspectOptions) error {
+func (*inspect) inspectRealmObjects(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
 }
 
@@ -238,6 +238,13 @@ func convertSequences(_ []*sqlspec.Table, seqs []*sqlspec.Sequence, _ *schema.Re
 func convertExtensions(exs []*extension, _ *schema.Realm) error {
 	if len(exs) > 0 {
 		return fmt.Errorf("postgres: extensions are not supported by this version. Use: https://atlasgo.io/getting-started")
+	}
+	return nil
+}
+
+func convertEventTriggers(evs []*eventTrigger, _ *schema.Realm) error {
+	if len(evs) > 0 {
+		return fmt.Errorf("postgres: event triggers are not supported by this version. Use: https://atlasgo.io/getting-started")
 	}
 	return nil
 }
