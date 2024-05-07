@@ -23,18 +23,19 @@ import (
 
 type (
 	doc struct {
-		Tables       []*sqlspec.Table    `spec:"table"`
-		Views        []*sqlspec.View     `spec:"view"`
-		Materialized []*sqlspec.View     `spec:"materialized"`
-		Enums        []*enum             `spec:"enum"`
-		Domains      []*domain           `spec:"domain"`
-		Composites   []*composite        `spec:"composite"`
-		Sequences    []*sqlspec.Sequence `spec:"sequence"`
-		Funcs        []*sqlspec.Func     `spec:"function"`
-		Procs        []*sqlspec.Func     `spec:"procedure"`
-		Triggers     []*sqlspec.Trigger  `spec:"trigger"`
-		Extensions   []*extension        `spec:"extension"`
-		Schemas      []*sqlspec.Schema   `spec:"schema"`
+		Tables        []*sqlspec.Table    `spec:"table"`
+		Views         []*sqlspec.View     `spec:"view"`
+		Materialized  []*sqlspec.View     `spec:"materialized"`
+		Enums         []*enum             `spec:"enum"`
+		Domains       []*domain           `spec:"domain"`
+		Composites    []*composite        `spec:"composite"`
+		Sequences     []*sqlspec.Sequence `spec:"sequence"`
+		Funcs         []*sqlspec.Func     `spec:"function"`
+		Procs         []*sqlspec.Func     `spec:"procedure"`
+		Triggers      []*sqlspec.Trigger  `spec:"trigger"`
+		EventTriggers []*eventTrigger     `spec:"event_trigger"`
+		Extensions    []*extension        `spec:"extension"`
+		Schemas       []*sqlspec.Schema   `spec:"schema"`
 	}
 
 	// Enum holds a specification for an enum type.
@@ -83,6 +84,15 @@ type (
 		// added to the extension definition.
 		schemahcl.DefaultExtension
 	}
+
+	// eventTrigger holds a specification for a postgres event trigger.
+	// Note, event trigger names are unique within a realm (database).
+	eventTrigger struct {
+		Name string `spec:",name"`
+		// Schema, version and comment are conditionally
+		// added to the extension definition.
+		schemahcl.DefaultExtension
+	}
 )
 
 // merge merges the doc d1 into d.
@@ -98,6 +108,7 @@ func (d *doc) merge(d1 *doc) {
 	d.Sequences = append(d.Sequences, d1.Sequences...)
 	d.Extensions = append(d.Extensions, d1.Extensions...)
 	d.Triggers = append(d.Triggers, d1.Triggers...)
+	d.EventTriggers = append(d.EventTriggers, d1.EventTriggers...)
 	d.Materialized = append(d.Materialized, d1.Materialized...)
 }
 
@@ -154,6 +165,7 @@ func init() {
 	schemahcl.Register("domain", &domain{})
 	schemahcl.Register("composite", &composite{})
 	schemahcl.Register("extension", &extension{})
+	schemahcl.Register("event_trigger", &eventTrigger{})
 }
 
 // evalSpec evaluates an Atlas DDL document into v using the input.
@@ -174,6 +186,9 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return err
 		}
 		if err := convertExtensions(d.Extensions, v); err != nil {
+			return err
+		}
+		if err := convertEventTriggers(d.EventTriggers, v); err != nil {
 			return err
 		}
 		if err := normalizeRealm(v); err != nil {
@@ -938,7 +953,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 			typeOID, typeRegClass, typeRegCollation, typeRegConfig, typeRegDictionary, typeRegNamespace,
 			typeName, typeRegOper, typeRegOperator, typeRegProc, typeRegProcedure, typeRegRole, typeRegType,
 			typeAny, typeAnyElement, typeAnyArray, typeAnyNonArray, typeAnyEnum, typeInternal, typeRecord,
-			typeTrigger, typeVoid, typeUnknown,
+			typeTrigger, typeEventTrigger, typeVoid, typeUnknown,
 		} {
 			specs = append(specs, schemahcl.NewTypeSpec(t))
 		}
