@@ -281,39 +281,19 @@ func mergeCtxVar(ctx *hcl.EvalContext, values map[string]cty.Value) {
 	ctx.Variables[RefVar] = cty.ObjectVal(values)
 }
 
-func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, error) {
-	defs := defRegistry(b)
-	vars, err := blockVars(b.Blocks, "", defs)
-	if err != nil {
-		return nil, err
-	}
-	switch {
-	case ctx.Variables == nil:
-		ctx.Variables = vars
-	case len(ctx.Variables) >= len(vars):
-		for k, v := range vars {
-			ctx.Variables[k] = v
-		}
-	default:
-		for k, v := range ctx.Variables {
-			vars[k] = v
-		}
-		ctx.Variables = vars
-	}
-	return ctx, nil
-}
-
 func blockVars(blocks hclsyntax.Blocks, parentAddr string, defs *blockDef) (map[string]cty.Value, error) {
 	vars := make(map[string]cty.Value)
 	for name, def := range defs.children {
-		v := make(map[string]cty.Value)
-		qv := make(map[string]map[string]cty.Value)
 		blocks := blocksOfType(blocks, name)
 		if len(blocks) == 0 {
 			vars[name] = cty.NullVal(def.asCty())
 			continue
 		}
-		var unlabeled int
+		var (
+			unlabeled int
+			v         = make(map[string]cty.Value)
+			qv        = make(map[string]map[string]cty.Value)
+		)
 		for _, blk := range blocks {
 			qualifier, blkName := blockName(blk)
 			if blkName == "" {
@@ -321,12 +301,6 @@ func blockVars(blocks hclsyntax.Blocks, parentAddr string, defs *blockDef) (map[
 				unlabeled++
 			}
 			attrs := attrMap(blk.Body.Attributes)
-			// Fill missing attributes with zero values.
-			for n := range def.fields {
-				if _, ok := attrs[n]; !ok {
-					attrs[n] = cty.NullVal(ctyNilType)
-				}
-			}
 			self := addr(parentAddr, name, blkName, qualifier)
 			attrs["__ref"] = cty.StringVal(self)
 			// Skip naming blocks with "name" attribute.
@@ -449,78 +423,54 @@ type Variables struct {
 	Data       map[string]map[string]bool
 }
 
-// defRegistry returns a tree of blockDef structs representing the schema of the
-// blocks in the *hclsyntax.Body. The returned fields and children of each type
-// are an intersection of all existing blocks of the same type.
-func defRegistry(b *hclsyntax.Body) *blockDef {
-	reg := &blockDef{
-		fields:   make(map[string]struct{}),
-		children: make(map[string]*blockDef),
-	}
-	for _, blk := range b.Blocks {
-		// variable definition blocks are available in the HCL source but not reachable by reference.
-		if blk.Type == BlockVariable {
-			continue
-		}
-		reg.child(extractDef(blk, reg))
-	}
-	return reg
-}
-
 // blockDef describes a type of block in the HCL document.
 type blockDef struct {
 	name     string
-	fields   map[string]struct{}
 	parent   *blockDef
 	children map[string]*blockDef
+	// Cached cty.Type.
+	cty *cty.Type
 }
 
-// child updates the definition for the child type of the blockDef.
-func (t *blockDef) child(c *blockDef) {
-	ex, ok := t.children[c.name]
-	if !ok {
-		t.children[c.name] = c
-		return
+func (t *blockDef) child(typ string) *blockDef {
+	if t.children[typ] == nil {
+		return &blockDef{}
 	}
-	for f := range c.fields {
-		ex.fields[f] = struct{}{}
+	return t.children[typ]
+}
+
+func (t *blockDef) addChild(blk *hclsyntax.Block, depth int) {
+	if t.children == nil {
+		t.children = make(map[string]*blockDef)
 	}
-	for _, c := range c.children {
-		ex.child(c)
+	c := &blockDef{
+		name:   blk.Type,
+		parent: t,
+	}
+	t.children[blk.Type] = c
+	// Limit depth of children to two as we do not have any
+	// case for more than this atm. e.g., table.column.
+	if depth < 2 {
+		for _, bc := range blk.Body.Blocks {
+			c.addChild(bc, depth+1)
+		}
 	}
 }
 
 // asCty returns a cty.Type representing the blockDef.
 func (t *blockDef) asCty() cty.Type {
-	f := make(map[string]cty.Type)
-	for attr := range t.fields {
-		f[attr] = ctyNilType
+	if t.cty != nil {
+		return *t.cty
 	}
+	f := make(map[string]cty.Type)
 	f["name"] = cty.String
 	f["__ref"] = cty.String
 	for _, c := range t.children {
 		f[c.name] = c.asCty()
 	}
-	return cty.Object(f)
-}
-
-func extractDef(blk *hclsyntax.Block, parent *blockDef) *blockDef {
-	cur := &blockDef{
-		name:     blk.Type,
-		parent:   parent,
-		fields:   make(map[string]struct{}),
-		children: make(map[string]*blockDef),
-	}
-	for _, a := range blk.Body.Attributes {
-		// Skip meta arguments.
-		if a.Name != forEachAttr {
-			cur.fields[a.Name] = struct{}{}
-		}
-	}
-	for _, c := range blk.Body.Blocks {
-		cur.child(extractDef(c, cur))
-	}
-	return cur
+	v := cty.Object(f)
+	t.cty = &v
+	return v
 }
 
 func bodyVars(b *hclsyntax.Body) (vars []hcl.Traversal) {
