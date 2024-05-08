@@ -634,6 +634,29 @@ func convertPart(spec *sqlspec.IndexPart, part *schema.IndexPart) error {
 		}
 		part.Attrs = append(part.Attrs, &IndexOpClass{Name: name})
 	}
+	// The following attributes are mutually exclusive.
+	if nulls, ok := spec.Attr("nulls_last"); ok {
+		b, err := nulls.Bool()
+		if err != nil {
+			return err
+		}
+		if b {
+			at := sqlx.AttrOr(part.Attrs, &IndexColumnProperty{})
+			at.NullsLast = true
+			schema.ReplaceOrAppend(&part.Attrs, at)
+		}
+	}
+	if nulls, ok := spec.Attr("nulls_first"); ok {
+		b, err := nulls.Bool()
+		if err != nil {
+			return err
+		}
+		if b {
+			at := sqlx.AttrOr(part.Attrs, &IndexColumnProperty{})
+			at.NullsFirst = true
+			schema.ReplaceOrAppend(&part.Attrs, at)
+		}
+	}
 	return nil
 }
 
@@ -792,20 +815,26 @@ func indexPKSpec(idx *schema.Index, attrs []*schemahcl.Attr) []*schemahcl.Attr {
 }
 
 func partAttr(idx *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart) error {
-	var op IndexOpClass
-	if !sqlx.Has(part.Attrs, &op) {
-		return nil
+	if op := (IndexOpClass{}); sqlx.Has(part.Attrs, &op) {
+		switch d, err := op.DefaultFor(idx, part); {
+		case err != nil:
+			return err
+		case d:
+		case len(op.Params) > 0:
+			spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.RawAttr("ops", op.String()))
+		case postgresop.HasClass(op.String()):
+			spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("ops", op.String()))
+		default:
+			spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.StringAttr("ops", op.String()))
+		}
 	}
-	switch d, err := op.DefaultFor(idx, part); {
-	case err != nil:
-		return err
-	case d:
-	case len(op.Params) > 0:
-		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.RawAttr("ops", op.String()))
-	case postgresop.HasClass(op.String()):
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("ops", op.String()))
-	default:
-		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.StringAttr("ops", op.String()))
+	if nulls := (IndexColumnProperty{}); sqlx.Has(part.Attrs, &nulls) {
+		switch {
+		case part.Desc && nulls.NullsLast:
+			spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("nulls_last", true))
+		case !part.Desc && nulls.NullsFirst:
+			spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("nulls_first", true))
+		}
 	}
 	return nil
 }
