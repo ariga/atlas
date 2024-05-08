@@ -11,7 +11,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"net/url"
 	"os"
@@ -27,7 +26,6 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
-	"ariga.io/atlas/sql/sqltool"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	"golang.org/x/oauth2/google"
@@ -74,15 +72,14 @@ var SpecOptions = append(
 //	locals {
 //	  url = "mysql://root:${data.runtimevar.pass}@:3306/"
 //	}
-func RuntimeVar(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+func RuntimeVar(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
 			URL string `hcl:"url"`
 		}
-		ctx    = context.Background()
 		errorf = blockError("data.runtimevar", block)
 	)
-	if diags := gohcl.DecodeBody(block.Body, c, &args); diags.HasErrors() {
+	if diags := gohcl.DecodeBody(block.Body, ectx, &args); diags.HasErrors() {
 		return cty.NilVal, errorf("decoding body: %v", diags)
 	}
 	u, err := sqlclient.ParseURL(args.URL)
@@ -129,7 +126,7 @@ func RuntimeVar(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 //		username = "admin"
 //		profile  = "prod-ext"
 //	}
-func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+func AWSRDSToken(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
 			Endpoint string `hcl:"endpoint"`
@@ -139,12 +136,11 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 		}
 		errorf = blockError("data.aws_rds_token", block)
 	)
-	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+	if diags := gohcl.DecodeBody(block.Body, ectx, &args); diags.HasErrors() {
 		return cty.NilVal, errorf("decoding body: %v", diags)
 	}
-	bgctx := context.Background()
 	cfg, err := config.LoadDefaultConfig(
-		bgctx,
+		ctx,
 		config.WithSharedConfigProfile(args.Profile), // Ignored if empty.
 	)
 	if err != nil {
@@ -153,7 +149,7 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	if args.Region == "" {
 		args.Region = cfg.Region
 	}
-	token, err := auth.BuildAuthToken(bgctx, args.Endpoint, args.Region, args.Username, cfg.Credentials)
+	token, err := auth.BuildAuthToken(ctx, args.Endpoint, args.Region, args.Username, cfg.Credentials)
 	if err != nil {
 		return cty.NilVal, errorf("building auth token: %v", err)
 	}
@@ -163,10 +159,9 @@ func AWSRDSToken(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 // GCPCloudSQLToken exposes a CloudSQL token as a schemahcl datasource.
 //
 //	data "gcp_cloudsql_token" "hello" {}
-func GCPCloudSQLToken(_ *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+func GCPCloudSQLToken(ctx context.Context, _ *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	errorf := blockError("data.gcp_cloudsql_token", block)
-	bgctx := context.Background()
-	ts, err := google.DefaultTokenSource(bgctx, sqladmin.SqlserviceAdminScope)
+	ts, err := google.DefaultTokenSource(ctx, sqladmin.SqlserviceAdminScope)
 	if err != nil {
 		return cty.NilVal, errorf("finding default credentials: %v", err)
 	}
@@ -189,7 +184,7 @@ func GCPCloudSQLToken(_ *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, er
 //	  for_each = toset(data.sql.tenants.values)
 //	  url      = urlsetpath(var.url, each.value)
 //	}
-func Query(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+func Query(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
 			URL    string   `hcl:"url"`
@@ -200,7 +195,7 @@ func Query(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 		values []cty.Value
 		errorf = blockError("data.sql", block)
 	)
-	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+	if diags := gohcl.DecodeBody(block.Body, ectx, &args); diags.HasErrors() {
 		return cty.NilVal, errorf("decoding body: %v", diags)
 	}
 	attrs, diags := args.Remain.JustAttributes()
@@ -208,7 +203,7 @@ func Query(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 		return cty.NilVal, errorf("getting attributes: %v", diags)
 	}
 	if at, ok := attrs["args"]; ok {
-		switch v, diags := at.Expr.Value(ctx); {
+		switch v, diags := at.Expr.Value(ectx); {
 		case diags.HasErrors():
 			return cty.NilVal, errorf(`evaluating "args": %w`, diags)
 		case !v.CanIterateElements():
@@ -233,12 +228,12 @@ func Query(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	if len(attrs) > 0 {
 		return cty.NilVal, errorf("unexpected attributes: %v", attrs)
 	}
-	c, err := sqlclient.Open(context.Background(), args.URL)
+	c, err := sqlclient.Open(ctx, args.URL)
 	if err != nil {
 		return cty.NilVal, errorf("opening connection: %w", err)
 	}
 	defer c.Close()
-	rows, err := c.QueryContext(context.Background(), args.Query, args.Args...)
+	rows, err := c.QueryContext(ctx, args.Query, args.Args...)
 	if err != nil {
 		return cty.NilVal, errorf("executing query: %w", err)
 	}
@@ -291,7 +286,7 @@ func Query(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 //	    "env_to_json --file=${var.envfile} | jq '...' ",
 //	  ]
 //	}
-func External(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+func External(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
 			Program []string `hcl:"program"`
@@ -300,7 +295,7 @@ func External(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 		}
 		errorf = blockError("data.external", block)
 	)
-	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+	if diags := gohcl.DecodeBody(block.Body, ectx, &args); diags.HasErrors() {
 		return cty.NilVal, errorf("decoding body: %v", diags)
 	}
 	attrs, diags := args.Remain.JustAttributes()
@@ -344,7 +339,7 @@ func External(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 //	    dir = data.template_dir.name.url
 //	  }
 //	}
-func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+func TemplateDir(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
 			Path   string   `hcl:"path"`
@@ -353,7 +348,7 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 		vars   = make(map[string]any)
 		errorf = blockError("data.template_dir", block)
 	)
-	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+	if diags := gohcl.DecodeBody(block.Body, ectx, &args); diags.HasErrors() {
 		return cty.NilVal, errorf("decoding body: %v", diags)
 	}
 	attrs, diags := args.Remain.JustAttributes()
@@ -361,7 +356,7 @@ func TemplateDir(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 		return cty.NilVal, errorf("getting attributes: %v", diags)
 	}
 	if vs, ok := attrs["vars"]; ok {
-		switch vs, diags := vs.Expr.Value(ctx); {
+		switch vs, diags := vs.Expr.Value(ectx); {
 		case diags.HasErrors():
 			return cty.NilVal, errorf(`evaluating "vars": %w`, diags)
 		case !vs.CanIterateElements():
@@ -496,7 +491,7 @@ type AtlasConfig struct {
 //	  }
 //	}
 func (c *AtlasConfig) InitBlock() schemahcl.Option {
-	return schemahcl.WithInitBlock("atlas", func(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+	return schemahcl.WithInitBlock("atlas", func(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 		var args struct {
 			Cloud struct {
 				Token   string `hcl:"token"`
@@ -504,7 +499,7 @@ func (c *AtlasConfig) InitBlock() schemahcl.Option {
 				Project string `hcl:"project,optional"`
 			} `hcl:"cloud,block"`
 		}
-		if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+		if diags := gohcl.DecodeBody(block.Body, ectx, &args); diags.HasErrors() {
 			return cty.NilVal, fmt.Errorf("atlas.cloud: decoding body: %v", diags)
 		}
 		if args.Cloud.Project == "" {
@@ -519,7 +514,7 @@ func (c *AtlasConfig) InitBlock() schemahcl.Option {
 		})
 		av, diags := (&hclsyntax.ScopeTraversalExpr{
 			Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "atlas", SrcRange: block.Range()}},
-		}).Value(ctx)
+		}).Value(ectx)
 		switch {
 		case !diags.HasErrors():
 			m := av.AsValueMap()
@@ -537,7 +532,7 @@ var clientType = cty.Capsule("client", reflect.TypeOf(cloudapi.Client{}))
 
 // SchemaHCL is a data source that reads an Atlas HCL schema file(s), evaluates it
 // with the given variables and exposes its resulting schema as in-memory HCL file.
-func SchemaHCL(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+func SchemaHCL(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
 			Path   string               `hcl:"path"`
@@ -546,7 +541,7 @@ func SchemaHCL(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) 
 		}
 		errorf = blockError("data.hcl_schema", block)
 	)
-	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+	if diags := gohcl.DecodeBody(block.Body, ectx, &args); diags.HasErrors() {
 		return cty.NilVal, errorf("decoding body: %v", diags)
 	}
 	attrs, diags := args.Remain.JustAttributes()
@@ -574,7 +569,7 @@ func SchemaHCL(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) 
 }
 
 // SchemaExternal is a data source that reads a SQL schema state from external program.
-func SchemaExternal(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+func SchemaExternal(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
 			Program []string `hcl:"program"`
@@ -583,7 +578,7 @@ func SchemaExternal(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, er
 		}
 		errorf = blockError("data.external_schema", block)
 	)
-	if diags := gohcl.DecodeBody(block.Body, ctx, &args); diags.HasErrors() {
+	if diags := gohcl.DecodeBody(block.Body, ectx, &args); diags.HasErrors() {
 		return cty.NilVal, errorf("decoding body: %v", diags)
 	}
 	attrs, diags := args.Remain.JustAttributes()
@@ -625,37 +620,6 @@ func SchemaExternal(ctx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, er
 	return cty.ObjectVal(map[string]cty.Value{
 		"url": cty.StringVal(u),
 	}), nil
-}
-
-// memdir converts the given (cloud) migrate.Dir to a memory migrate.Dir.
-func memdir(client *cloudapi.Client, name, tag string) (string, error) {
-	dir, err := client.Dir(context.Background(), cloudapi.DirInput{
-		Name: name,
-		Tag:  tag,
-	})
-	if err != nil {
-		return "", err
-	}
-	md := migrate.OpenMemDir(name)
-	files, err := dir.Files()
-	if err != nil {
-		return "", err
-	}
-	for _, f := range files {
-		if err := md.WriteFile(f.Name(), f.Bytes()); err != nil {
-			return "", err
-		}
-	}
-	if hf, err := dir.Open(migrate.HashFileName); err == nil {
-		b, err := io.ReadAll(hf)
-		if err != nil {
-			return "", err
-		}
-		if err := md.WriteFile(migrate.HashFileName, b); err != nil {
-			return "", err
-		}
-	}
-	return "mem://" + name, nil
 }
 
 func blockError(name string, b *hclsyntax.Block) func(string, ...any) error {
@@ -744,21 +708,4 @@ func (l MemLoader) LoadState(ctx context.Context, config *StateReaderConfig) (*S
 		return nil, fmt.Errorf("data-source state %q not found in memory", u)
 	}
 	return l.states[u].LoadState(ctx, config)
-}
-
-func dirFormatter(dir migrate.Dir) migrate.Formatter {
-	switch dir.(type) {
-	case *sqltool.DBMateDir:
-		return sqltool.DBMateFormatter
-	case *sqltool.GolangMigrateDir:
-		return sqltool.GolangMigrateFormatter
-	case *sqltool.GooseDir:
-		return sqltool.GooseFormatter
-	case *sqltool.FlywayDir:
-		return sqltool.FlywayFormatter
-	case *sqltool.LiquibaseDir:
-		return sqltool.LiquibaseFormatter
-	default:
-		return migrate.DefaultFormatter
-	}
 }

@@ -5,6 +5,7 @@
 package schemahcl
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -81,10 +82,14 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 	}
 	var (
 		initblk []*node
+		goctx   = s.config.ctx
 		typeblk = make(map[string]bool)
 		nodes   = make(map[[3]string]*node)
 		blocks  = make(hclsyntax.Blocks, 0, len(body.Blocks))
 	)
+	if goctx == nil {
+		goctx = context.Background()
+	}
 	for _, b := range body.Blocks {
 		switch b := b; {
 		case b.Type == BlockData:
@@ -100,7 +105,7 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 			addr := [3]string{RefData, b.Labels[0], b.Labels[1]}
 			nodes[addr] = &node{
 				addr:  addr,
-				value: func() (cty.Value, error) { return h(ctx, b) },
+				value: func() (cty.Value, error) { return h(goctx, ctx, b) },
 				edges: func() []hcl.Traversal { return bodyVars(b.Body) },
 			}
 		case b.Type == BlockLocals:
@@ -132,7 +137,7 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 			h := s.config.initblk[b.Type]
 			n := &node{
 				addr:  addr,
-				value: func() (cty.Value, error) { return h(ctx, b) },
+				value: func() (cty.Value, error) { return h(goctx, ctx, b) },
 				edges: func() []hcl.Traversal { return bodyVars(b.Body) },
 			}
 			nodes[addr] = n
@@ -152,7 +157,7 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 			addr := [3]string{b.Type, b.Labels[0], b.Labels[1]}
 			nodes[addr] = &node{
 				addr:  addr,
-				value: func() (cty.Value, error) { return h(ctx, b) },
+				value: func() (cty.Value, error) { return h(goctx, ctx, b) },
 				edges: func() []hcl.Traversal { return bodyVars(b.Body) },
 			}
 		default:
