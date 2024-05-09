@@ -978,6 +978,71 @@ schema "public" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestMarshalSpec_IndexNullsLastFirst(t *testing.T) {
+	s := schema.New("public").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("c", "int"),
+				).
+				AddIndexes(
+					// Default behavior.
+					schema.NewIndex("i1").
+						AddParts(schema.NewColumnPart(schema.NewColumn("c")).SetDesc(true).AddAttrs(&IndexColumnProperty{NullsFirst: true})),
+					schema.NewIndex("i2").
+						AddParts(schema.NewColumnPart(schema.NewColumn("c")).SetDesc(false).AddAttrs(&IndexColumnProperty{NullsLast: true})),
+					// Require emitting the NULLS FIRST/LAST attributes.
+					schema.NewIndex("i3").
+						AddParts(schema.NewColumnPart(schema.NewColumn("c")).SetDesc(true).AddAttrs(&IndexColumnProperty{NullsLast: true})),
+					schema.NewIndex("i4").
+						AddParts(schema.NewColumnPart(schema.NewColumn("c")).SetDesc(false).AddAttrs(&IndexColumnProperty{NullsFirst: true})),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.public
+  column "c" {
+    null = false
+    type = int
+  }
+  index "i1" {
+    on {
+      desc   = true
+      column = column.c
+    }
+  }
+  index "i2" {
+    columns = [column.c]
+  }
+  index "i3" {
+    on {
+      desc       = true
+      column     = column.c
+      nulls_last = true
+    }
+  }
+  index "i4" {
+    on {
+      column      = column.c
+      nulls_first = true
+    }
+  }
+}
+schema "public" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+
+	var got schema.Schema
+	err = EvalHCLBytes([]byte(expected), &got, nil)
+	require.NoError(t, err)
+
+	buf, err = MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	require.EqualValues(t, expected, string(buf))
+}
+
 func TestMarshalSpec_BRINIndex(t *testing.T) {
 	s := &schema.Schema{
 		Name: "test",
