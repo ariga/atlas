@@ -17,6 +17,6 @@ func vercheckEndpoint(context.Context) string {
 }
 
 // initialize is a no-op for the OSS version.
-func initialize(ctx context.Context) (context.Context, func()) {
+func initialize(ctx context.Context) (context.Context, func(error)) {
 	return ctx, func(error) {}
 }
