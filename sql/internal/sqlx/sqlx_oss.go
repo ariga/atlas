@@ -38,3 +38,7 @@ func (*Diff) askForColumns(_ *schema.Table, changes []schema.Change, _ *schema.D
 func (*Diff) askForIndexes(_ string, changes []schema.Change, _ *schema.DiffOptions) ([]schema.Change, error) {
 	return changes, nil // unimplemented.
 }
+
+func (*Diff) fixRenames(changes schema.Changes) schema.Changes {
+	return changes // unimplemented.
+}
