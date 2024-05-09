@@ -54,7 +54,7 @@ func main() {
 	if u := update(); u != "" {
 		fmt.Println(u)
 	}
-	done()
+	done(err)
 	if err != nil {
 		os.Exit(1)
 	}
