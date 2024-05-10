@@ -720,27 +720,34 @@ func normalizeCRLF(s string) string {
 // dependsOn returns the depends_on attribute for the given objects.
 func dependsOn(realm *schema.Realm, objects []schema.Object) (*schemahcl.Attr, bool) {
 	var (
-		deps  = make([]*schemahcl.Ref, 0, len(objects))
-		names = make(map[string]int)
-		name  = func(t schema.Object, n string) string { return typeName(t) + "/" + n }
+		n2s  = make(map[string][]*schema.Schema)
+		name = func(t schema.Object, n string) string { return typeName(t) + "/" + n }
 	)
 	// Qualify references if there are objects with the same name.
 	if realm != nil {
 		for _, s := range realm.Schemas {
 			for _, t := range s.Tables {
-				names[name(t, t.Name)]++
+				n2s[name(t, t.Name)] = append(n2s[name(t, t.Name)], s)
 			}
 			for _, v := range s.Views {
-				names[name(v, v.Name)]++
+				n2s[name(v, v.Name)] = append(n2s[name(v, v.Name)], s)
 			}
 			for _, f := range s.Funcs {
-				names[name(f, f.Name)]++
+				if n := name(f, f.Name); !slices.Contains(n2s[n], s) {
+					n2s[n] = append(n2s[n], s) // Count overload once.
+				}
 			}
 			for _, p := range s.Procs {
-				names[name(p, p.Name)]++
+				if n := name(p, p.Name); !slices.Contains(n2s[n], s) {
+					n2s[n] = append(n2s[n], s) // Count overload once.
+				}
 			}
 		}
 	}
+	var (
+		refs = make(map[string]bool, len(objects))
+		deps = make([]*schemahcl.Ref, 0, len(objects))
+	)
 	for _, o := range objects {
 		path := make([]string, 0, 2)
 		var n, s string
@@ -758,12 +765,15 @@ func dependsOn(realm *schema.Realm, objects []schema.Object) (*schemahcl.Attr, b
 			deps = append(deps, d.Ref())
 			continue
 		}
-		if names[name(o, n)] > 1 {
+		if len(n2s[name(o, n)]) > 1 {
 			path = append(path, s)
 		}
-		deps = append(deps, schemahcl.BuildRef([]schemahcl.PathIndex{
+		if r := schemahcl.BuildRef([]schemahcl.PathIndex{
 			{T: typeName(o), V: append(path, n)},
-		}))
+		}); !refs[r.V] {
+			refs[r.V] = true
+			deps = append(deps, r)
+		}
 	}
 	if len(deps) > 0 {
 		slices.SortFunc(deps, func(l, r *schemahcl.Ref) int {
