@@ -45,6 +45,9 @@ func analyzers(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
 	dd, err := datadepend.New(r, datadepend.Handler{
 		AddNotNull: addNotNull,
 	})
+	if err != nil {
+		return nil, err
+	}
 	bc, err := incompatible.New(r)
 	if err != nil {
 		return nil, err
