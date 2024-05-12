@@ -813,7 +813,7 @@ table "users" {
   schema = schema.public
   column "id" { type = serial }
   column "e"  { type = enum.status }
-  column "ae" { type = sql("status[]") }
+  column "ae" { type = sql("public.status[]") }
 }
 
 schema "other" {}
@@ -865,7 +865,7 @@ table "users" {
   }
   column "ae" {
     null = false
-    type = sql("status[]")
+    type = sql("public.status[]")
   }
 }
 enum "status" {
@@ -1420,9 +1420,9 @@ create table atlas_types_sanity
 				},
 				{
 					Name: "tUserDefined",
-					Type: &schema.ColumnType{Type: &postgres.UserDefinedType{T: "address"}, Raw: "USER-DEFINED", Null: true},
+					Type: &schema.ColumnType{Type: &postgres.UserDefinedType{T: "public.address"}, Raw: "USER-DEFINED", Null: true},
 					Default: &schema.RawExpr{
-						X: "'(ab,cd)'::address",
+						X: "'(ab,cd)'::public.address",
 					},
 				},
 			},

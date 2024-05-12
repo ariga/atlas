@@ -29,7 +29,12 @@ type inspect struct{ *conn }
 var _ schema.Inspector = (*inspect)(nil)
 
 // InspectRealm returns schema descriptions of all resources in the given realm.
-func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
+func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (_ *schema.Realm, rerr error) {
+	undo, err := i.noSearchPath(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { rerr = errors.Join(rerr, undo()) }()
 	schemas, err := i.schemas(ctx, opts)
 	if err != nil {
 		return nil, err
@@ -84,6 +89,34 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		}
 	}
 	return schema.ExcludeRealm(r, opts.Exclude)
+}
+
+// noSearchPath ensures the session search_path is clean when inspecting realms to ensures all
+// referenced objects in the public schema (or any other default search_path) are returned
+// qualified in the inspection.
+func (i *inspect) noSearchPath(ctx context.Context) (func() error, error) {
+	if i.crdb {
+		// Skip logic for CockroachDB.
+		return func() error { return nil }, nil
+	}
+	rows, err := i.QueryContext(ctx, "SELECT current_setting('search_path'), set_config('search_path', '', false)")
+	if err != nil {
+		return nil, err
+	}
+	var prev sql.NullString
+	if err := sqlx.ScanOne(rows, &prev, &sql.NullString{}); err != nil {
+		return nil, err
+	}
+	return func() error {
+		if sqlx.ValidString(prev) {
+			rows, err := i.QueryContext(ctx, "SELECT set_config('search_path', $1, false)", prev.String)
+			if err != nil {
+				return err
+			}
+			return rows.Close()
+		}
+		return nil
+	}, nil
 }
 
 // InspectSchema returns schema descriptions of the tables in the given schema.

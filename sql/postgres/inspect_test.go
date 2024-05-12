@@ -543,6 +543,13 @@ func TestDriver_Realm(t *testing.T) {
 	mk.version("130000")
 	drv, err := Open(db)
 	require.NoError(t, err)
+	// Set search_path to ''.
+	mk.ExpectQuery(sqltest.Escape("SELECT current_setting('search_path'), set_config('search_path', '', false)")).
+		WillReturnRows(sqltest.Rows(`
+ current_setting | set_config
+-----------------+------------
+       public    |
+`))
 	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
 		WillReturnRows(sqltest.Rows(`
  schema_name | comment 
@@ -555,6 +562,10 @@ func TestDriver_Realm(t *testing.T) {
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
 		WithArgs("test", "public").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
+	// Reset search_path to 'public'.
+	mk.ExpectQuery(sqltest.Escape("SELECT set_config('search_path', $1, false)")).
+		WithArgs("public").
+		WillReturnRows(sqlmock.NewRows(nil))
 	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Mode: schema.InspectSchemas | schema.InspectTables,
 	})
@@ -575,6 +586,13 @@ func TestDriver_Realm(t *testing.T) {
 		return r
 	}(), realm)
 
+	// No need to reset, if the search_path was not set.
+	mk.ExpectQuery(sqltest.Escape("SELECT current_setting('search_path'), set_config('search_path', '', false)")).
+		WillReturnRows(sqltest.Rows(`
+ current_setting | set_config
+-----------------+------------
+                 |
+`))
 	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "IN ($1, $2)"))).
 		WithArgs("test", "public").
 		WillReturnRows(sqltest.Rows(`
@@ -609,6 +627,13 @@ func TestDriver_Realm(t *testing.T) {
 		return r
 	}(), realm)
 
+	// No need to reset, if the search_path was not set.
+	mk.ExpectQuery(sqltest.Escape("SELECT current_setting('search_path'), set_config('search_path', '', false)")).
+		WillReturnRows(sqltest.Rows(`
+ current_setting | set_config
+-----------------+------------
+                 |
+`))
 	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
 		WithArgs("test").
 		WillReturnRows(sqltest.Rows(`
@@ -643,6 +668,12 @@ func TestInspectMode_InspectRealm(t *testing.T) {
 	require.NoError(t, err)
 	mk := mock{m}
 	mk.version("130000")
+	mk.ExpectQuery(sqltest.Escape("SELECT current_setting('search_path'), set_config('search_path', '', false)")).
+		WillReturnRows(sqltest.Rows(`
+ current_setting | set_config
+-----------------+------------
+                 |
+`))
 	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
 		WillReturnRows(sqltest.Rows(`
  schema_name | comment 
