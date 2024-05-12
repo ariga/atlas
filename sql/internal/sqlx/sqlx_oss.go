@@ -31,6 +31,10 @@ func procDep(_, _ *schema.Proc) bool {
 	return false // unimplemented.
 }
 
+func tableDepFunc(_ *schema.Table, _ *schema.Func) bool {
+	return false // unimplemented.
+}
+
 func (*Diff) askForColumns(_ *schema.Table, changes []schema.Change, _ *schema.DiffOptions) ([]schema.Change, error) {
 	return changes, nil // unimplemented.
 }

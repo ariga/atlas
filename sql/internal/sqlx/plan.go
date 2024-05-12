@@ -498,6 +498,8 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 			}) {
 				return true
 			}
+		case *schema.AddFunc:
+			return tableDepFunc(c1.T, c2.F)
 		}
 		return depOfAdd(c1.T.Deps, c2)
 	case *schema.DropTable:
