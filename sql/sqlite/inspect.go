@@ -510,6 +510,11 @@ type (
 		schema.Attr
 		O string
 	}
+
+	// A UUIDType defines a UUID type.
+	//
+	// Deprecated: Use schema.UUIDType instead.
+	UUIDType = schema.UUIDType
 )
 
 func columnParts(t string) []string {
