@@ -22,16 +22,16 @@ func (*Diff) triggerDiff(_, _ interface {
 }
 
 // funcDep returns true if f1 depends on f2.
-func funcDep(_, _ *schema.Func) bool {
+func funcDep(_, _ *schema.Func, _ SortOptions) bool {
 	return false // unimplemented.
 }
 
 // procDep returns true if p1 depends on p2.
-func procDep(_, _ *schema.Proc) bool {
+func procDep(_, _ *schema.Proc, _ SortOptions) bool {
 	return false // unimplemented.
 }
 
-func tableDepFunc(_ *schema.Table, _ *schema.Func) bool {
+func tableDepFunc(*schema.Table, *schema.Func, SortOptions) bool {
 	return false // unimplemented.
 }
 
