@@ -512,10 +512,9 @@ type (
 	}
 
 	// A UUIDType defines a UUID type.
-	UUIDType struct {
-		schema.Type
-		T string
-	}
+	//
+	// Deprecated: Use schema.UUIDType instead.
+	UUIDType = schema.UUIDType
 )
 
 func columnParts(t string) []string {
