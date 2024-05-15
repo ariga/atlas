@@ -860,7 +860,7 @@ func (s *state) columnComment(src schema.Change, t *schema.Table, c *schema.Colu
 }
 
 func (s *state) indexComment(src schema.Change, t *schema.Table, idx *schema.Index, to, from string) *migrate.Change {
-	b := s.Build("COMMENT ON INDEX").Ident(idx.Name).P("IS")
+	b := s.Build("COMMENT ON INDEX").SchemaResource(t.Schema, idx.Name).P("IS")
 	return &migrate.Change{
 		Cmd:     b.Clone().P(quote(to)).String(),
 		Source:  src,

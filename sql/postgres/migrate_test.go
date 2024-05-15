@@ -433,6 +433,38 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Qualified DROP TABLE plan.
+		{
+			changes: []schema.Change{
+				&schema.DropTable{
+					T: func() *schema.Table {
+						id := schema.NewIntColumn("id", "int")
+						return schema.NewTable("posts").
+							SetSchema(schema.New("private")).
+							SetComment("a8m's posts").
+							AddColumns(id).
+							AddIndexes(
+								schema.NewIndex("idx").AddColumns(id).SetComment("a8m's index"),
+							)
+					}(),
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd: `DROP TABLE "private"."posts"`,
+						Reverse: []string{
+							`CREATE TABLE "private"."posts" ("id" integer NOT NULL)`,
+							`CREATE INDEX "idx" ON "private"."posts" ("id")`,
+							`COMMENT ON TABLE "private"."posts" IS 'a8m''s posts'`,
+							`COMMENT ON INDEX "private"."idx" IS 'a8m''s index'`,
+						},
+					},
+				},
+			},
+		},
 		// Drop a primary key.
 		{
 			changes: []schema.Change{
