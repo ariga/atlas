@@ -15,6 +15,10 @@ module.exports = {
             type: 'category',
             label: 'Getting Started',
             collapsed: false,
+            link: {
+                type: 'doc',
+                id: 'docs',
+            },
             items: [
                 'getting-started/getting-started',
             ]

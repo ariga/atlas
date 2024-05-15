@@ -63,7 +63,7 @@ module.exports = {
           position: 'right',
         },
         {
-          to: 'getting-started',
+          to: 'docs',
           label: 'Docs',
           position: 'left',
         },
@@ -265,6 +265,7 @@ module.exports = {
         disableInDev: false,
       },
     ],
+    "docusaurus-plugin-sass",
     "./plugins/utm-plugin",
     "./plugins/intercom",
     "./plugins/page-view",

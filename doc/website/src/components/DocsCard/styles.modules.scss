@@ -1,0 +1,534 @@
+// FROM IONIC CODEBASE: https://github.com/ionic-team/ionic-docs/blob/main/src/components/global/DocsCard/styles.module.scss
+:global {
+  html[data-theme='light'] {
+    --docs-card-border-c: #D2D8FF;
+    --docs-card-shadow: 0px 1px 2px rgba(2, 8, 20, 0.06), 0px 2px 8px rgba(2, 8, 20, 0.08);
+  }
+
+  html[data-theme='dark'] {
+    --docs-card-border-c: rgba(255, 255, 255, 0.02);
+    --docs-card-shadow: 0px 1px 2px rgba(255, 255, 255, 0.05), 0px 2px 8px rgba(255, 255, 255, 0.1),
+      0px -1px 2px rgba(255, 255, 255, 0.05),∂ 0px -2px 8px rgba(255, 255, 255, 0.1);
+  }
+
+  :root {
+    --docs-card-bg-c: var(--token-secondary-bg-c);
+  }
+}
+
+docs-card {
+  display: block;
+  font-size: 12px;
+  max-width: 30em;
+
+  // FROM IONIC CODEBASE: https://github.com/ionic-team/ionic-docs/blob/main/src/components/global/DocsCard/styles.module.scss
+    :global {
+      html[data-theme='light'] {
+        --docs-card-border-c: #D2D8FF;
+        --docs-card-shadow: 0px 1px 2px rgba(2, 8, 20, 0.06), 0px 2px 8px rgba(2, 8, 20, 0.08);
+      }
+
+      html[data-theme='dark'] {
+        --docs-card-border-c: rgba(255, 255, 255, 0.02);
+        --docs-card-shadow: 0px 1px 2px rgba(255, 255, 255, 0.05), 0px 2px 8px rgba(255, 255, 255, 0.1),
+        0px -1px 2px rgba(255, 255, 255, 0.05),∂ 0px -2px 8px rgba(255, 255, 255, 0.1);
+      }
+
+      :root {
+        --docs-card-bg-c: var(--token-secondary-bg-c);
+      }
+    }
+
+    docs-card.disabled,
+    docs-card[disabled] {
+      position: relative;
+    }
+
+    docs-card.disabled::after,
+    docs-card[disabled]::after {
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      bottom: 0;
+      background: rgba(232, 232, 232, 0.5);
+      pointer-events: none;
+      content: '';
+    }
+
+  .card {
+      color: inherit;
+      background-color: var(--docs-card-bg-c);
+      border: 1px solid var(--docs-card-border-c);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
+      font-weight: normal;
+      height: 100%;
+      justify-content: flex-start;
+      transition: box-shadow 150ms ease-out, transform 150ms ease-out, opacity 150ms ease-out;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    @media (hover: hover) {
+      .card[href]:hover {
+        box-shadow: var(--docs-card-shadow);
+        text-decoration: none;
+
+        :global(.Card-icon-hover) {
+          opacity: 1;
+        }
+      }
+    }
+
+    .card:hover,
+    .card:active,
+    .card:focus {
+      color: inherit;
+    }
+
+    :global {
+      .Card-with-image {
+        grid-row: span 2;
+      }
+
+      .Card-without-image {
+        font-size: 12px;
+      }
+
+      .Card-container {
+        padding: 1.5rem;
+        display: grid; /* Use grid layout */
+        grid-template-columns: min-content 1fr; /* Define two columns: one for the icon and one for the content */
+        grid-gap: 1em; /* Adjust the gap between the icon and content as needed */
+        align-items: start; /* Align children at the start */
+        &.has-icon-center {
+          display: flex;
+          flex-wrap: wrap;
+          flex-direction: column;
+          align-items: center;
+          .Card-icon-row {
+            .icon-center {
+              text-align: center;
+              align-items: center;
+              display: inline-table;
+              margin: auto;
+            }
+          }
+        }
+      }
+
+      .Card-image {
+        width: 100%;
+        height: auto;
+      }
+
+      .Card-icon,
+      .Card-iconset__container {
+        align-items: center; // Align icon and header vertically
+      }
+
+      .icon-left {
+        margin-right: 8px; // Adjust margin for left-aligned icon
+        align-self: center;
+      }
+
+      .icon-right {
+        margin-left: 8px; // Adjust margin for right-aligned icon
+        align-self: center;
+      }
+
+      .icon-center {
+        position: relative;
+      }
+
+      .Card-container .icon-center {
+        width: 10%;
+      }
+
+      .Card-icon-default {
+        transition: opacity 150ms ease-out;
+      }
+
+      .Card-icon-hover {
+        top: 0;
+        position: absolute;
+        opacity: 0;
+        transition: opacity 150ms ease-out;
+      }
+
+      .Card-icon-row {
+        display: inline-flex; // Make the child elements display inline
+      }
+
+      .Card-iconset__container {
+        position: relative;
+      }
+
+      .Card-iconset__container .Card-icon {
+        flex-direction: row;
+        opacity: 0;
+        transition: 0.8s opacity;
+      }
+
+      .Card-iconset__container .Card-icon--active {
+        opacity: 1;
+      }
+
+      .Card-content {
+        grid-column: 1 / -1; /* Make the content span across both columns */
+      }
+
+      .Card-content > *:first-child {
+        margin-top: 0;
+      }
+
+      .Card-content > *:last-child {
+        margin-bottom: 0;
+      }
+
+      .Card-content > * {
+        margin: 0 0 0.65em;
+      }
+
+      .Card-content p {
+        font-size: 0.75rem;
+      }
+
+      .Card-header {
+        font-size: 1rem;
+        line-height: 1.4;
+        font-weight: 600;
+        color: var(--token-heading-color-dark);
+        white-space: nowrap;
+      }
+
+      .Card-without-image .Card-header {
+        margin-bottom: 0.3em;
+      }
+
+      .Card-header > svg {
+        fill: currentColor;
+        height: 1em;
+        width: auto;
+      }
+
+      .Card-size-lg {
+        font-size: 14px;
+      }
+
+      .Card-size-lg .Card-icon,
+      .Card-size-lg .Card-iconset__container {
+        width: 80px;
+        height: 80px;
+      }
+
+      .Card-size-lg.Card-without-image .Card-header {
+        font-size: 20px;
+      }
+
+      aside docs-card {
+        max-width: 240px;
+      }
+
+      aside .Card-container {
+        display: grid;
+        grid-template-columns: minmax(0, max-content) 1fr;
+        grid-template-rows: minmax(0, min-content);
+        grid-template-areas:
+      'icon title'
+      'icon body';
+      }
+
+      aside .Card-icon {
+        width: 32px;
+        height: 32px;
+        margin-right: 16px;
+        margin-bottom: 0;
+        grid-area: icon;
+      }
+
+      aside .Card-header {
+        grid-area: title;
+      }
+
+      aside .Card-header::after {
+        //     background-image: url('/img/new-tab.svg');
+        display: inline-block;
+        height: 13px;
+        width: 13px;
+        background-size: 13px 13px;
+        margin-left: 4px;
+        content: '';
+      }
+
+      aside .Card-content {
+        grid-area: body;
+        /* https://stackoverflow.com/questions/5269713/css-ellipsis-on-second-line */
+        max-height: 42px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+
+      aside .Card-icon + .Card-content {
+        margin-top: -6px;
+      }
+
+      .markdown-content p docs-card {
+        margin-top: 1em;
+      }
+    }
+}
+
+
+docs-card.disabled,
+docs-card[disabled] {
+  position: relative;
+}
+
+docs-card.disabled::after,
+docs-card[disabled]::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  background: rgba(232, 232, 232, 0.5);
+  pointer-events: none;
+  content: '';
+}
+
+.card {
+  color: inherit;
+  background-color: var(--docs-card-bg-c);
+  border: 1px solid var(--docs-card-border-c);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  font-weight: normal;
+  height: 100%;
+  justify-content: flex-start;
+  transition: box-shadow 150ms ease-out, transform 150ms ease-out, opacity 150ms ease-out;
+  width: 100%;
+  overflow: hidden;
+}
+
+@media (hover: hover) {
+  .card[href]:hover {
+    box-shadow: var(--docs-card-shadow);
+    text-decoration: none;
+
+    :global(.Card-icon-hover) {
+      opacity: 1;
+    }
+  }
+}
+
+.card:hover,
+.card:active,
+.card:focus {
+  color: inherit;
+}
+
+:global {
+  .Card-with-image {
+    grid-row: span 2;
+  }
+
+  .Card-without-image {
+    font-size: 12px;
+  }
+
+  .Card-container {
+    padding: 1.5rem;
+    display: grid; /* Use grid layout */
+    grid-template-columns: min-content 1fr; /* Define two columns: one for the icon and one for the content */
+    grid-gap: 1em; /* Adjust the gap between the icon and content as needed */
+    align-items: start; /* Align children at the start */
+      &.has-icon-center {
+        display: flex;
+        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: center;
+        .Card-icon-row {
+            .icon-center {
+              text-align: center;
+              align-items: center;
+              display: inline-table;
+              margin: auto;
+            }
+        }
+      }
+  }
+
+
+  .Card-image {
+    width: 100%;
+    height: auto;
+  }
+
+  .Card-icon,
+  .Card-iconset__container {
+       align-items: center; // Align icon and header vertically
+  }
+
+  .icon-left {
+      margin-right: 8px; // Adjust margin for left-aligned icon
+      align-self: center;
+  }
+
+  .icon-right {
+      margin-left: 8px; // Adjust margin for right-aligned icon
+      align-self: center;
+  }
+
+  .icon-center {
+      position: relative;
+
+  }
+
+  .Card-container .icon-center {
+    width: 10%;
+  }
+
+  .Card-icon-default {
+    transition: opacity 150ms ease-out;
+  }
+
+  .Card-icon-hover {
+    top: 0;
+    position: absolute;
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+  }
+
+  .Card-icon-row {
+    display: inline-flex; // Make the child elements display inline
+  }
+
+  .Card-iconset__container {
+    position: relative;
+  }
+
+  .Card-iconset__container .Card-icon {
+    flex-direction: row;
+    opacity: 0;
+    transition: 0.8s opacity;
+  }
+
+  .Card-iconset__container .Card-icon--active {
+    opacity: 1;
+  }
+
+  .Card-content {
+    grid-column: 1 / -1; /* Make the content span across both columns */
+  }
+
+  .Card-content > *:first-child {
+    margin-top: 0;
+  }
+
+  .Card-content > *:last-child {
+    margin-bottom: 0;
+  }
+
+  .Card-content > * {
+    margin: 0 0 0.65em;
+  }
+
+  .Card-content p {
+    font-size: 0.75rem;
+  }
+
+  .Card-header {
+    font-size: 1rem;
+    line-height: 1.4;
+    font-weight: 600;
+    color: var(--token-heading-color-dark);
+    white-space: nowrap;
+  }
+
+  .Card-without-image .Card-header {
+    margin-bottom: 0.3em;
+  }
+
+  .Card-header > svg {
+    fill: currentColor;
+    height: 1em;
+    width: auto;
+  }
+
+  .Card-size-lg {
+    font-size: 14px;
+  }
+
+  .Card-size-lg .Card-icon,
+  .Card-size-lg .Card-iconset__container {
+    width: 80px;
+    height: 80px;
+  }
+
+  .Card-size-lg.Card-without-image .Card-header {
+    font-size: 20px;
+  }
+
+  aside docs-card {
+    max-width: 240px;
+  }
+
+  aside .Card-container {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) 1fr;
+    grid-template-rows: minmax(0, min-content);
+    grid-template-areas:
+      'icon title'
+      'icon body';
+  }
+
+  aside .Card-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: 16px;
+    margin-bottom: 0;
+    grid-area: icon;
+  }
+
+  aside .Card-header {
+    grid-area: title;
+  }
+
+  aside .Card-header::after {
+//     background-image: url('/img/new-tab.svg');
+    display: inline-block;
+    height: 13px;
+    width: 13px;
+    background-size: 13px 13px;
+    margin-left: 4px;
+    content: '';
+  }
+
+  aside .Card-content {
+    grid-area: body;
+    /* https://stackoverflow.com/questions/5269713/css-ellipsis-on-second-line */
+    max-height: 42px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  aside .Card-icon + .Card-content {
+    margin-top: -6px;
+  }
+
+  .markdown-content p docs-card {
+    margin-top: 1em;
+  }
+}
