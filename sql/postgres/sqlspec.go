@@ -32,6 +32,7 @@ type (
 		Sequences     []*sqlspec.Sequence `spec:"sequence"`
 		Funcs         []*sqlspec.Func     `spec:"function"`
 		Procs         []*sqlspec.Func     `spec:"procedure"`
+		Aggregates    []*aggregate        `spec:"aggregate"`
 		Triggers      []*sqlspec.Trigger  `spec:"trigger"`
 		EventTriggers []*eventTrigger     `spec:"event_trigger"`
 		Extensions    []*extension        `spec:"extension"`
@@ -93,6 +94,17 @@ type (
 		// added to the extension definition.
 		schemahcl.DefaultExtension
 	}
+
+	// aggregate holds the specification for an aggregation function.
+	aggregate struct {
+		Name      string             `spec:",name"`
+		Qualifier string             `spec:",qualifier"`
+		Schema    *schemahcl.Ref     `spec:"schema"`
+		Args      []*sqlspec.FuncArg `spec:"arg"`
+		// state_type, state_func and rest of the attributes
+		// are appended after the function arguments.
+		schemahcl.DefaultExtension
+	}
 )
 
 // merge merges the doc d1 into d.
@@ -105,6 +117,7 @@ func (d *doc) merge(d1 *doc) {
 	d.Domains = append(d.Domains, d1.Domains...)
 	d.Composites = append(d.Composites, d1.Composites...)
 	d.Schemas = append(d.Schemas, d1.Schemas...)
+	d.Aggregates = append(d.Aggregates, d1.Aggregates...)
 	d.Sequences = append(d.Sequences, d1.Sequences...)
 	d.Extensions = append(d.Extensions, d1.Extensions...)
 	d.Triggers = append(d.Triggers, d1.Triggers...)
@@ -160,10 +173,23 @@ func (c *composite) SetQualifier(q string) { c.Qualifier = q }
 // SchemaRef returns the schema reference for the composite.
 func (c *composite) SchemaRef() *schemahcl.Ref { return c.Schema }
 
+// Label returns the defaults label used for the aggregate resource.
+func (a *aggregate) Label() string { return a.Name }
+
+// QualifierLabel returns the qualifier label used for the aggregate resource, if any.
+func (a *aggregate) QualifierLabel() string { return a.Qualifier }
+
+// SetQualifier sets the qualifier label used for the aggregate resource.
+func (a *aggregate) SetQualifier(q string) { a.Qualifier = q }
+
+// SchemaRef returns the schema reference for the aggregate.
+func (a *aggregate) SchemaRef() *schemahcl.Ref { return a.Schema }
+
 func init() {
 	schemahcl.Register("enum", &enum{})
 	schemahcl.Register("domain", &domain{})
 	schemahcl.Register("composite", &composite{})
+	schemahcl.Register("aggregate", &aggregate{})
 	schemahcl.Register("extension", &extension{})
 	schemahcl.Register("event_trigger", &eventTrigger{})
 }
@@ -180,6 +206,9 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
 		if err := convertTypes(&d, v); err != nil {
+			return err
+		}
+		if err := convertAggregate(&d, v); err != nil {
 			return err
 		}
 		if err := convertSequences(d.Tables, d.Sequences, v); err != nil {
@@ -207,6 +236,9 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			return err
 		}
 		if err := convertTypes(&d, r); err != nil {
+			return err
+		}
+		if err := convertAggregate(&d, r); err != nil {
 			return err
 		}
 		if err := convertSequences(d.Tables, d.Sequences, r); err != nil {
@@ -258,6 +290,9 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Materialized); err != nil {
+			return nil, err
+		}
+		if err := specutil.QualifyObjects(d.Aggregates); err != nil {
 			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Enums); err != nil {

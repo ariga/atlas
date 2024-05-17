@@ -228,6 +228,13 @@ func convertDomains(_ []*sqlspec.Table, domains []*domain, _ *schema.Realm) erro
 	return nil
 }
 
+func convertAggregate(d *doc, _ *schema.Realm) error {
+	if len(d.Aggregates) > 0 {
+		return fmt.Errorf("postgres: aggregates are not supported by this version. Use: https://atlasgo.io/getting-started")
+	}
+	return nil
+}
+
 func convertSequences(_ []*sqlspec.Table, seqs []*sqlspec.Sequence, _ *schema.Realm) error {
 	if len(seqs) > 0 {
 		return fmt.Errorf("postgres: sequences are not supported by this version. Use: https://atlasgo.io/getting-started")
