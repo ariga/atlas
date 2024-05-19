@@ -54,7 +54,7 @@ module.exports = {
           className: 'header-discord-link',
           position: 'right',
         },{
-          href: 'https://twitter.com/ariga_io',
+          href: 'https://twitter.com/atlasgo_io',
           className: 'header-twitter-link',
           position: 'right',
         },{
