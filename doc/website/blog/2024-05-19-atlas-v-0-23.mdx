@@ -1,0 +1,111 @@
+---
+title: "Announcing v0.23: Redshift Support, CircleCI and More"
+authors: rotemtam
+tags: [release, redshift, ]
+---
+
+import InstallationInstructions from '../../md/components/_installation_instructions.mdx'
+
+Hi everyone,
+
+It's been a few weeks since the release of [v0.22](https://github.com/ariga/atlas/releases/tag/v0.22.0), and we're
+excited to be back with the next version of Atlas, with some long awaited features and improvements.
+
+* [Redshift](#redshift-support) Support - [Amazon Redshift](https://aws.amazon.com/redshift/), a fully managed, petabyte-scale data
+  warehouse service in the cloud.  Starting today, you can use Atlas to manage your Redshift Schema-as-Code.
+* [CircleCI Integration](#circleci-integration) - Following some recent requests from our Enterprise customers, we have
+  added a CircleCI orb to make it easier to integrate Atlas into your CI/CD pipeline.
+* [ERD v2](#erd-v2) - One of the most common use-cases for Atlas Cloud today is to generate ERDs to easily visualize your schema.
+  We have made some improvements to the ERD generation process to make it even better.
+
+Let's dive in!
+
+### Redshift Beta Support
+
+Atlas's "Database Schema-as-Code" is useful even for managing small schemas with a few tables, but it really shines when
+you have a large schema with many tables, views, and other objects.  This is the common case instead of the exception
+when you are dealing with Data Warehouses like Redshift that aggregate data from multiple sources.
+
+Data warehouses typically store complex and diverse datasets consisting of hundreds of tables with thousands of columns
+and relationships.  Managing these schemas manually can be a nightmare, and that's where Atlas comes in.
+
+Today we are happy to announce the beta support for Amazon Redshift in Atlas.  You can now use Atlas to manage your
+Redshift schema, generate ERDs, plan and apply changes, and more.
+
+To get started, first install the latest version of the Atlas CLI:
+
+<InstallationInstructions/>
+
+Next, login to your Atlas account to activate the Redshift beta feature:
+
+```bash
+atlas login
+```
+
+To verify Atlas is able to connect to your Redshift database, run the following command:
+
+```bash
+atlas schema inspect --url "redshift://<username>:<password>@<host>:<port>/<database>?search_path=<schema>"
+```
+
+If everything is working correctly, you should see the [Atlas DDL](/atlas-schema/hcl) representation of your Redshift schema.
+
+To learn more about the Redshift support in Atlas, check out the [documentation](/docs/redshift).
+
+### CircleCI Integration
+
+CircleCI is a popular CI/CD platform that allows you to automate your software development process.  With this version
+we have added a [CircleCI orb](https://circleci.com/developer/orbs/orb/ariga/atlas-orb) to make it easier to integrate
+Atlas into your CircleCI pipeline.  [CircleCI orbs](https://circleci.com/orbs/) are reusable packages of
+YAML configuration that condense repeated pieces of config into a single line of code.
+
+As an example, suppose you wanted to create a CircleCI pipeline that pushes your migration directory to your Atlas Cloud
+Schema Registry.  You can use the `atlas-orb` to simplify the configuration:
+
+```yaml
+version: '2.1'
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.3
+workflows:
+  postgres-example:
+    jobs:
+      - push-dir:
+          context: the-context-has-ATLAS_TOKEN
+          docker:
+            - image: cimg/base:current
+            - environment:
+                POSTGRES_DB: postgres
+                POSTGRES_PASSWORD: pass
+                POSTGRES_USER: postgres
+              image: cimg/postgres:16.2
+          steps:
+            - checkout
+            - atlas-orb/setup:
+                cloud_token_env: ATLAS_TOKEN
+                version: latest
+            - atlas-orb/migrate_push:
+                dev_url: >-
+                  postgres://postgres:pass@localhost:5432/postgres?sslmode=disable
+                dir_name: my-cool-project
+```
+
+Let's break down the configuration:
+* The `push-dir` job uses the `cimg/postgres:16.2` Docker image to run a PostgreSQL database.
+  This database will be used as the [Dev Database](/concepts/dev-database) for different operations
+  performed by Atlas.
+* The `atlas-orb/setup` step initializes the Atlas CLI with the provided `ATLAS_TOKEN` environment variable.
+* The `atlas-orb/migrate_push` step pushes the migration directory `my-cool-project` to the Atlas Cloud Schema Registry.
+
+To learn more about the CircleCI integration, check out the [documentation](/docs/circleci).
+
+### ERD v2
+
+One of the most common use-cases for Atlas Cloud today is to generate ERDs to easily visualize your schema.  We have made
+some improvements to the ERD generation process to make it even better.
+
+
+
+## Wrapping Up
+
+That's all for this release! We hope you try out (and enjoy) all of these new features and find them useful.
+As always, we would love to hear your feedback and suggestions on our [Discord server](https://discord.com/invite/zZ6sWVg6NT).
