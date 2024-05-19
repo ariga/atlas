@@ -52,7 +52,7 @@ func main() {
 	update := checkForUpdate(ctx)
 	err := cmdapi.Root.ExecuteContext(ctx)
 	if u := update(); u != "" {
-		fmt.Println(u)
+		fmt.Fprintln(os.Stderr, u)
 	}
 	done(err)
 	if err != nil {
