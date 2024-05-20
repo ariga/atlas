@@ -1539,6 +1539,14 @@ func TestTypes(t *testing.T) {
 			typeExpr: "boolean",
 			expected: &schema.BoolType{T: TypeBool},
 		},
+		{
+			typeExpr: "inet4",
+			expected: &NetworkType{T: TypeInet4},
+		},
+		{
+			typeExpr: "inet6",
+			expected: &NetworkType{T: TypeInet6},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.typeExpr, func(t *testing.T) {

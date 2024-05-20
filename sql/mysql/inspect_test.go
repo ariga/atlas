@@ -172,6 +172,8 @@ func TestDriver_InspectTable(t *testing.T) {
 | users      |  dt0           | datetime /* mariadb-5.3 */    |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
 | users      |  dt1           | datetime(6) /* mariadb-5.3 */ |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
 | users      |  dt2           | time(1) /* mariadb-5.3 */     |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
+| users      |  inet4         | inet4                         |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
+| users      |  inet6         | inet6                         |                      | NO          |            | NULL           |                | NULL               | NULL           | NULL                      |
 +------------+----------------+-------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+---------------------------+
 `))
 				m.ExpectQuery(queryIndexes).
@@ -199,6 +201,8 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "dt0", Type: &schema.ColumnType{Raw: "datetime /* mariadb-5.3 */", Type: &schema.TimeType{T: "datetime"}}},
 					{Name: "dt1", Type: &schema.ColumnType{Raw: "datetime(6) /* mariadb-5.3 */", Type: &schema.TimeType{T: "datetime", Precision: sqlx.P(6)}}},
 					{Name: "dt2", Type: &schema.ColumnType{Raw: "time(1) /* mariadb-5.3 */", Type: &schema.TimeType{T: "time", Precision: sqlx.P(1)}}},
+					{Name: "inet4", Type: &schema.ColumnType{Raw: "inet4", Type: &NetworkType{T: "inet4"}}},
+					{Name: "inet6", Type: &schema.ColumnType{Raw: "inet6", Type: &NetworkType{T: "inet6"}}},
 				}, t.Columns)
 				require.EqualValues([]schema.Attr{
 					&schema.Check{Name: "users_chk_1", Expr: `longtext <> '\'\'""'`},
