@@ -431,6 +431,9 @@ const (
 	TypeGeometryCollection = "geometrycollection" // Geometry_type::kGeometrycollection
 
 	TypeUUID = "uuid" // MariaDB supported uuid type from 10.7.0+
+
+	TypeInet4 = "inet4" // MariaDB type for storage of IPv4 addresses, from 10.10.0+.
+	TypeInet6 = "inet6" // MariaDB type for storage of IPv6 addresses, from 10.10.0+.
 )
 
 // Additional common constants in MySQL.

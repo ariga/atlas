@@ -911,6 +911,12 @@ type (
 		Values []string
 	}
 
+	// NetworkType stores an IPv4 or IPv6 address.
+	NetworkType struct {
+		schema.Type
+		T string
+	}
+
 	// putShow is an intermediate table attribute used
 	// on inspection to indicate if the 'SHOW TABLE' is
 	// required and for what.

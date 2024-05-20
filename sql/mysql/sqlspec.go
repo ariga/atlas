@@ -546,6 +546,8 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec(TypePolygon),
 		schemahcl.NewTypeSpec(TypeMultiPolygon),
 		schemahcl.NewTypeSpec(TypeGeometryCollection),
+		schemahcl.NewTypeSpec(TypeInet4),
+		schemahcl.NewTypeSpec(TypeInet6),
 	),
 )
 
