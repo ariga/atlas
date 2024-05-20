@@ -101,6 +101,8 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.UUIDType:
 		f = strings.ToLower(t.T)
+	case *NetworkType:
+		f = strings.ToLower(t.T)
 	case *schema.UnsupportedType:
 		// Do not accept unsupported types as we should cover all cases.
 		return "", fmt.Errorf("unsupported type %q", t.T)
@@ -242,6 +244,10 @@ func ParseType(raw string) (schema.Type, error) {
 		}, nil
 	case TypeUUID:
 		return &schema.UUIDType{
+			T: t,
+		}, nil
+	case TypeInet4, TypeInet6:
+		return &NetworkType{
 			T: t,
 		}, nil
 	default:

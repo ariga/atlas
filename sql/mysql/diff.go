@@ -458,7 +458,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	var changed bool
 	switch fromT := fromT.(type) {
 	case *BitType, *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType,
-		*schema.JSONType, *schema.StringType, *schema.SpatialType, *schema.TimeType, *schema.UUIDType:
+		*schema.JSONType, *schema.StringType, *schema.SpatialType, *schema.TimeType, *schema.UUIDType, *NetworkType:
 		ft, err := FormatType(fromT)
 		if err != nil {
 			return false, err
