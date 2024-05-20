@@ -1008,7 +1008,8 @@ atlas login
 ```
 :::
 
-The `function` block allows defining SQL functions in HCL format.
+The `function` block allows defining functions in HCL format. The `lang` attribute specifies the language of the
+function. For example, `PLpgSQL`, `SQL`, `CRL`, etc.
 
 <Tabs>
 <TabItem label="PostgreSQL" value="postgres">
@@ -1049,6 +1050,7 @@ function "sql_body2" {
   volatility = IMMUTABLE // STABLE | VOLATILE
   leakproof  = true      // NOT LEAKPROOF | LEAKPROOF
   strict     = true      // (CALLED | RETURNS NULL) ON NULL INPUT
+  security   = INVOKER   // DEFINER | INVOKER
 }
 ```
 
@@ -1066,8 +1068,9 @@ function "add2" {
   }
   return        = int
   as            = "return a + b"
-  deterministic = true   // NOT DETERMINISTIC | DETERMINISTIC
-  data_access   = NO_SQL // CONTAINS_SQL | NO_SQL | READS_SQL_DATA | MODIFIES_SQL_DATA
+  deterministic = true     // NOT DETERMINISTIC | DETERMINISTIC
+  data_access   = NO_SQL   // CONTAINS_SQL | NO_SQL | READS_SQL_DATA | MODIFIES_SQL_DATA
+  security      = INVOKER  // DEFINER | INVOKER
 }
 
 function "f1" {
@@ -1196,6 +1199,39 @@ function "fn_return_table" {
 ```
 </TabItem>
 </Tabs>
+
+#### Aggregate Functions
+
+The `aggregate` block defines a function that computes a single result from a set of values. Supported by
+[PostgreSQL](https://www.postgresql.org/docs/current/sql-createaggregate.html).
+
+```hcl {1-8}
+aggregate "sum_of_squares" {
+  schema = schema.public
+  arg {
+    type = double_precision
+  }
+  state_type = double_precision
+  state_func = function.sum_squares_sfunc
+}
+
+function "sum_squares_sfunc" {
+  schema = schema.public
+  lang   = PLpgSQL
+  arg "state" {
+    type = double_precision
+  }
+  arg "value" {
+    type = double_precision
+  }
+  return = double_precision
+  as     = <<-SQL
+  BEGIN
+      RETURN state + value * value;
+  END;
+  SQL
+}
+```
 
 ## Procedure
 
