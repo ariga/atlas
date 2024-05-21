@@ -497,6 +497,18 @@ func (b *Builder) WrapIndent(f func(b *Builder)) *Builder {
 	})
 }
 
+// WrapIndentErr is like WrapErr but with extra level of indentation.
+func (b *Builder) WrapIndentErr(f func(b *Builder) error) error {
+	var err error
+	b.Wrap(func(b *Builder) {
+		b.IndentIn()
+		err = f(b)
+		b.IndentOut()
+		b.NL()
+	})
+	return err
+}
+
 // Clone returns a duplicate of the builder.
 func (b *Builder) Clone() *Builder {
 	return &Builder{
