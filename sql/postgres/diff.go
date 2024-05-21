@@ -5,7 +5,6 @@
 package postgres
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -106,24 +105,7 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 	if ok1 != ok2 {
 		return true, nil
 	}
-	if !ok1 && !ok2 || trimCast(d1) == trimCast(d2) || quote(d1) == quote(d2) {
-		return false, nil
-	}
-	var (
-		_, fromX = from.Default.(*schema.RawExpr)
-		_, toX   = to.Default.(*schema.RawExpr)
-	)
-	// In case one of the DEFAULT values is an expression, and a database connection is
-	// available (not DefaultDiff), we use the database to compare in case of mismatch.
-	//
-	//	SELECT ARRAY[1] = '{1}'::int[]
-	//	SELECT lower('X'::text) = lower('X')
-	//
-	if (fromX || toX) && d.conn.ExecQuerier != nil {
-		equals, err := d.defaultEqual(from.Default, to.Default)
-		return !equals, err
-	}
-	return true, nil
+	return ok1 && (trimCast(d1) != trimCast(d2) && quote(d1) != quote(d2)), nil
 }
 
 // generatedChanged reports if the generated expression of a column was changed.
@@ -385,37 +367,6 @@ func trimSchema(t string, ns string) string {
 	return strings.TrimPrefix(t, fmt.Sprintf("%s.", ns))
 }
 
-// defaultEqual reports if the DEFAULT values x and y
-// equal according to the database engine.
-func (d *diff) defaultEqual(from, to schema.Expr) (bool, error) {
-	var (
-		b      bool
-		d1, d2 string
-	)
-	switch from := from.(type) {
-	case *schema.Literal:
-		d1 = quote(from.V)
-	case *schema.RawExpr:
-		d1 = from.X
-	}
-	switch to := to.(type) {
-	case *schema.Literal:
-		d2 = quote(to.V)
-	case *schema.RawExpr:
-		d2 = to.X
-	}
-	// The DEFAULT expressions are safe to be inlined in the SELECT
-	// statement same as we inline them in the CREATE TABLE statement.
-	rows, err := d.QueryContext(context.Background(), fmt.Sprintf("SELECT %s = %s", d1, d2))
-	if err != nil {
-		return false, err
-	}
-	if err := sqlx.ScanOne(rows, &b); err != nil {
-		return false, err
-	}
-	return b, nil
-}
-
 // Default IDENTITY attributes.
 const (
 	defaultIdentityGen  = "BY DEFAULT"
@@ -539,12 +490,16 @@ func excludeConst(attrs []schema.Attr) (*Constraint, bool) {
 }
 
 func trimCast(s string) string {
-	i := strings.LastIndex(s, "::")
-	if i == -1 {
+	var i, k int
+	if j := strings.LastIndex(s, ":::"); j != -1 {
+		i, k = j, 3 // Cockroach cast.
+	} else if j := strings.LastIndex(s, "::"); j != -1 {
+		i, k = j, 2 // Postgres cast.
+	} else {
 		return s
 	}
-	for _, r := range s[i+2:] {
-		if r != ' ' && !unicode.IsLetter(r) {
+	for _, r := range s[i+k:] {
+		if r != ' ' && !unicode.IsLetter(r) && !unicode.IsDigit(r) {
 			return s
 		}
 	}

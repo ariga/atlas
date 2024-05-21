@@ -195,12 +195,12 @@ func TestPostgres_AddColumns(t *testing.T) {
 			&schema.Column{Name: "h", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 30}}, Default: &schema.Literal{V: "'1'"}},
 			&schema.Column{Name: "i", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 53}}, Default: &schema.Literal{V: "1"}},
 			&schema.Column{Name: "j", Type: &schema.ColumnType{Type: &postgres.SerialType{T: "serial"}}},
-			&schema.Column{Name: "k", Type: &schema.ColumnType{Type: &postgres.CurrencyType{T: "money"}}, Default: &schema.Literal{V: "'100'"}},
-			&schema.Column{Name: "l", Type: &schema.ColumnType{Type: &postgres.CurrencyType{T: "money"}, Null: true}, Default: &schema.RawExpr{X: "'52093.89'::money"}},
+			&schema.Column{Name: "k", Type: &schema.ColumnType{Type: &postgres.CurrencyType{T: "money"}}, Default: &schema.RawExpr{X: "'$100.00'::money"}},
+			&schema.Column{Name: "l", Type: &schema.ColumnType{Type: &postgres.CurrencyType{T: "money"}, Null: true}, Default: &schema.RawExpr{X: "'$52,093.89'::money"}},
 			&schema.Column{Name: "m", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Null: true}, Default: &schema.Literal{V: "false"}},
 			&schema.Column{Name: "n", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}, Null: true}, Default: &schema.Literal{V: "'(1,2)'"}},
 			&schema.Column{Name: "o", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}, Null: true}, Default: &schema.Literal{V: "'{1,2,3}'"}},
-			&schema.Column{Name: "p", Type: &schema.ColumnType{Type: &postgres.UserDefinedType{T: "hstore"}, Null: true}, Default: &schema.RawExpr{X: "'a => 1'"}},
+			&schema.Column{Name: "p", Type: &schema.ColumnType{Type: &postgres.UserDefinedType{T: "hstore"}, Null: true}, Default: &schema.RawExpr{X: `'"a"=>"1"'::public.hstore`}},
 			&schema.Column{Name: "q", Type: &schema.ColumnType{Type: &postgres.ArrayType{Type: &schema.StringType{T: "text"}, T: "text[]"}, Null: true}, Default: &schema.Literal{V: "'{}'"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
@@ -264,12 +264,8 @@ func TestPostgres_ColumnArray(t *testing.T) {
 		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 		ensureNoChange(t, usersT)
 
-		// Check default.
-		usersT.Columns[2].Default = &schema.RawExpr{X: "ARRAY[1]"}
-		ensureNoChange(t, usersT)
-
 		// Change default.
-		usersT.Columns[2].Default = &schema.RawExpr{X: "ARRAY[1,2]"}
+		usersT.Columns[2].Default = &schema.Literal{V: "'{1,2}'"}
 		changes = t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
 		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})

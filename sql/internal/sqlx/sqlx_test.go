@@ -63,6 +63,7 @@ func TestBuilder(t *testing.T) {
 
 	// WrapErr.
 	require.EqualError(t, b.WrapErr(func(*Builder) error { return errors.New("oops") }), "oops")
+	require.EqualError(t, b.WrapIndentErr(func(*Builder) error { return errors.New("oops") }), "oops")
 }
 
 func TestBuilder_Qualifier(t *testing.T) {
