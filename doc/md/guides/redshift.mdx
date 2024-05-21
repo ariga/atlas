@@ -9,24 +9,30 @@ import InstallationInstructions from '../components/_installation_instructions.m
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-[Redshift](https://aws.amazon.com/redshift/) is a powerful data warehousing solution that can handle large amounts of data and complex queries.
-Atlas can help you manage your Redshift database by automatically generating and applying migrations for you.
+[Amazon Redshift](https://aws.amazon.com/redshift/) is a powerful, managed data warehouse solution from AWS.
+
+One of the top challenges developers face when working with large data sets on Redshift is managing the database schema.
+As your organization grows, data from more and more applications end up being represented in the data warehouse. This makes
+schemas complex and highly interconnected, and managing them becomes a daunting task.
 
 #### Enter: Atlas
 
-Atlas helps developers manage their database schema as code - abstracting away the intricacies of database schema management. With Atlas, users provide the desired state of the database schema and Atlas automatically plans the required migrations.
+Atlas helps developers manage their database schema as code - abstracting away the intricacies of database schema
+management. With Atlas, users provide the desired state of the database schema and Atlas automatically plans the
+required migrations.
 
 In this guide, we will dive into setting up Atlas for Redshift, and introduce the different workflows available.
 
 ## Prerequisites
 
-1. Docker
-2. Atlas installed on your machine:
+1. An AWS account with the necessary permissions to create a Redshift cluster.
+2. The [AWS CLI](https://aws.amazon.com/cli/) installed on your machine.
+3. Atlas installed on your machine:
 <InstallationInstructions />
 
 ## Logging in to Atlas
 
-To use SQL Server with Atlas, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time,
+To use Redshift with Atlas, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time,
 you will be prompted to create both an account and a workspace (organization):
 
 <Tabs>
@@ -53,42 +59,24 @@ ATLAS_TOKEN="ATLAS_TOKEN" atlas login
 </TabItem>
 </Tabs>
 
-## Logging in to Atlas
+## Creating the Cluster
 
-To use SQL Server with Atlas, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time,
-you will be prompted to create both an account and a workspace (organization):
+:::info
 
-<Tabs>
-<TabItem value="web" label="Via Web">
+If you want to use an existing Redshift cluster, you can skip this step.
 
-```shell
-atlas login
-```
+:::
 
-</TabItem>
-<TabItem value="token" label="Via Token">
-
-```shell
-atlas login --token "ATLAS_TOKEN"
-```
-
-</TabItem>
-<TabItem value="env-var" label="Via Environment Variable">
-
-```shell
-ATLAS_TOKEN="ATLAS_TOKEN" atlas login
-```
-
-</TabItem>
-</Tabs>
-
-## Inspecting our Database
-
-Let's start off by spinning up a database using AWS CLI:
+Let's start off by spinning up a new Redshift cluster using AWS CLI:
 
 ```bash
-aws redshift create-cluster --cluster-identifier "atlas-demo" --master-username "root" --master-user-password "Password123" --number-of-nodes 2 --node-type dc2.large
+aws redshift create-cluster --cluster-identifier "atlas-demo" \
+  --master-username "root" --master-user-password "Password123" \
+  --number-of-nodes 2 --node-type dc2.large
 ```
+
+The `master-username` and `master-user-password` are the credentials for the master user of the Redshift cluster.
+Make sure to replace them with your own values and make a note of them for future use.
 
 For this example we will begin with a minimal database with a users table and an id as distributed key.
 
@@ -102,12 +90,92 @@ CREATE TABLE "users" (
 To create the table, run the following command:
 
 ```bash
-aws redshift-data execute-statement --cluster-identifier "atlas-demo" --database "dev" --sql "CREATE TABLE users (id int NOT NULL, name varchar(255)) DISTKEY(id) SORTKEY("id");"
+aws redshift-data execute-statement --cluster-identifier "atlas-demo" --database "dev" \
+  --sql "CREATE TABLE users (id int NOT NULL, name varchar(255)) DISTKEY(id) SORTKEY("id");"
 ```
 
-:::info
 Redshift instances can take a few minutes to spin up. Make sure to wait for the instance to be in the `available` state before proceeding.
-:::
+
+To check the status of the cluster, run the following command:
+
+```bash
+aws redshift describe-clusters --cluster-identifier "atlas-demo" \
+  --query "Clusters[0].ClusterStatus" --output text --no-cli-pager
+```
+
+## Find out the Connection URL
+
+To use Atlas with Redshift, we need to provide a connection [URL](/concepts/url) to the database. In this section, we will see the
+different ways you can use Atlas to connect to your Redshift instance.
+
+Atlas provides two ways to connect to a Redshift instance:
+
+* **Direct Network Connection** to the Redshift instance.  This method provides a faster connection to the database,
+  but requires you to have direct network access to the database. Typically, this means that either the database is
+  exposed to the internet or you are connected to the database VPC via some sort of VPN connection.
+* **Using the Redshift Data API** - This method uses the [Redshift Data API](https://docs.aws.amazon.com/redshift/latest/mgmt/data-api.html)
+  to communicate with the database. This method is slower than the direct network connection, but can be used anywhere
+  you have access to the internet and an IAM role that can access the Redshift Data API.
+
+### Direct Network Connection
+
+To connect to the Redshift instance using a direct network connection, you need to provide the connection URL in the
+following format:
+
+```
+redshift://<user>:<pass>@<address>:<port>/<database>?search_path=<schema>
+```
+
+To find out the endpoint of your Redshift Cluster, run the following command:
+
+```bash
+aws redshift describe-clusters --cluster-identifier "atlas-demo" --query "Clusters[0].Endpoint" --output json --no-cli-pager
+````
+
+Observe the output and note down the `Address` and `Port` values. The connection URL will look like this:
+
+```json
+{
+    "Address": "atlas-demo.cjxjxjxjxjxj.us-west-2.redshift.amazonaws.com",
+    "Port": 5439
+}
+```
+
+The connection URL will look something like this:
+
+```
+redshift://root:Password123@atlas-demo.cjxjxjxjxjxj.us-west-2.redshift.amazonaws.com:5439/dev
+```
+
+Be sure to replace `root`, `Password123`, `atlas-demo.cjxjxjxjxj.us-west-2.redshift.amazonaws.com`, `5439`, and `dev`
+with your own values.
+
+### Using the Redshift Data API
+
+To connect to the Redshift instance using the Redshift Data API, you need to provide the connection URL in the
+following format:
+
+```
+redshift+http://cluster([cluster-name])/[database]
+```
+
+If you used `atlas-demo` as the name of your cluster from the previous step, the connection URL will look like this:
+
+```
+redshift+http://cluster(atlas-demo)/dev
+```
+
+Be sure to replace `atlas-demo` and `dev` with your own values.
+
+### Advanced Connection Options
+
+To learn about more advanced URL options such as using SSL, setting the search path, or using a different schema, connecting
+to Serverless Redshift, and more, refer to our [URL documentation](/concepts/url).
+
+## Inspecting the Schema
+
+With your Redshift instance URL determined, we are now ready to start interacting with the database. In this sections and
+all that follow, replace the example URL with the one you determined in the previous section.
 
 The `atlas schema inspect` command supports reading the database description provided by a [URL](/concepts/url) and outputting it in
 different formats, including [Atlas DDL](/atlas-schema/hcl.mdx) (default), SQL, and JSON. In this guide, we will
@@ -292,8 +360,8 @@ by running the `atlas schema apply` command:
 
 ```shell
 atlas schema apply \
--u "redshift+http://cluster(atlas-demo)/dev?mode=database" \
---to file://schema.hcl
+  -u "redshift+http://cluster(atlas-demo)/dev?mode=database" \
+  --to file://schema.hcl
 ```
 
 </TabItem>
@@ -310,8 +378,8 @@ Then we can run the `atlas schema apply` command:
 
 ```shell
 atlas schema apply \
--u "redshift+http://cluster(atlas-demo)/dev?mode=database" \
---to file://schema.sql \
+  -u "redshift+http://cluster(atlas-demo)/dev?mode=database" \
+  --to file://schema.sql \
 --dev-url "redshift+http://root@cluster(atlas-demo)/devdb?mode=database"
 ```
 
