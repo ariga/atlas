@@ -8,6 +8,7 @@ export enum CardImage {
     Action = "action",
     CI = "ci",
     ClickHouse = "clickhouse",
+    Redshift = "redshift",
     Cloud = "cloud",
     Config = "config",
     DataSource = "datasource",

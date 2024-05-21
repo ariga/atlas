@@ -1656,3 +1656,219 @@ table "t" {
 
 :::info 
 The `AggregateFunction` and `SimpleAggregateFunction` are complex data types. Therefore, we recommend using a [Dev Database](../../md/concepts//dev.mdx) to normalize these types.
+:::
+
+## Redshift
+
+### Boolean
+The `boolean` and `bool` types allow creating standard SQL boolean columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = boolean
+  }
+  column "c2" {
+    # Alias to boolean.
+    type = bool
+  }
+}
+```
+
+### Binary
+The `binary_varying`, `varbinary` and `varbyte` types allow creating binary string columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = binary_varying(255)
+  }
+  column "c2" {
+    # Alias to binary_varying
+    type = varbinary(255)
+  }
+  column "c3" {
+    # Alias to binary_varying
+    type = varbyte(255)
+  }
+}
+```
+
+### Date, Time and Interval
+Atlas supports the standard Redshift types for creating date, time and interval columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = date
+  }
+  column "c2" {
+    # Equals to "time without time zone".
+    type = time
+  }
+  column "c3" {
+    # Equals to "time with time zone".
+    type = timetz
+  }
+  column "c4" {
+    # Equals "timestamp without time zone".
+    type = timestamp
+  }
+  column "c5" {
+    # Equals "timestamp with time zone".
+    type = timestamptz
+  }
+  column "c6" {
+    type = sql("interval year to month")
+  }
+}
+```
+
+### Fixed Point (Decimal)
+The `decimal` and `numeric` types are supported for storing exact numeric values. Note that in Redshift the two types are identical.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    # Equals to numeric.
+    type = decimal
+  }
+  column "c2" {
+    # Equals to numeric(5).
+    type = decimal(5)
+  }
+  column "c3" {
+    # Equals to numeric(5,2).
+    type = decimal(5,2)
+  }
+}
+```
+
+### Floating Point (Float)
+The `real` and `double_precision` types are supported for storing approximate numeric values.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = real
+  }
+  column "c2" {
+    type = double_precision
+  }
+  column "c3" {
+    type = float(10)
+  }
+  column "c4" {
+    type = float(30)
+  }
+  column "c5" {
+    # Alias to real.
+    type = float4
+  }
+  column "c6" {
+    # Alias to double_precision.
+    type = float8
+  }
+}
+```
+
+### Integer
+The `smallint`, `integer` / `int`, `bigint` types allow creating integer types.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = smallint
+  }
+  column "c2" {
+    type = integer
+  }
+  column "c3" {
+    type = int
+  }
+  column "c4" {
+    type = bigint
+  }
+  column "c5" {
+    # Alias to smallint.
+    type = int2
+  }
+  column "c6" {
+    # Alias to integer.
+    type = int4
+  }
+  column "c7" {
+    # Alias to bigint.
+    type = int8
+  }
+}
+```
+
+### String
+The `varchar`, `nvarchar`, `char`, `nchar`, `bpchar`, `character_varying`, `character` and `text` types allow creating string columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    # Equals character_varying(256).
+    type = varchar
+  }
+  column "c2" {
+    # Alias to character_varying(255).
+    type = varchar(255)
+  }
+  column "c3" {
+    # Equals to character_varying(255).
+    type = nvarchar(255)
+  }
+  column "c4" {
+    # Equals to char(1).
+    type = char
+  }
+  column "c5" {
+    # Equals to char(5).
+    type = nchar(5)
+  }
+  column "c6" {
+    # Alias to character(5).
+    type = char(5)
+  }
+  column "c7" {
+    # Alias to character(5).
+    type = bpchar(5)
+  }
+  column "c8" {
+    # Equals to character_varying(256).
+    type = text
+  }
+}
+```
+
+### Other Types
+
+The `hllsketch`, `super`, `geometry` and `geography` types are supported by Atlas.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = hllsketch
+  }
+  column "c2" {
+    type = super
+  }
+  column "c3" {
+    type = geometry
+  }
+  column "c4" {
+    type = geography
+  }
+}
+```

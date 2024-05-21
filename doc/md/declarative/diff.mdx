@@ -152,6 +152,15 @@ atlas schema diff \
 ```
 
 </TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema diff \
+  --from "redshift://user:pass@redshift-cluster:5439/database?search_path=public&sslmode=disable" \
+  --to "redshift://user:pass@redshift-cluster-2:5439/database?search_path=public&sslmode=disable"
+```
+
+</TabItem>
 </Tabs>
 
 ### Compare database schemas
@@ -212,6 +221,18 @@ Compare two ClickHouse schemas/named-databases:
 atlas schema diff \
   --from "clickhouse://user:pass@localhost:9000/example" \
   --to "clickhouse://user:pass@remote:9000/example"
+```
+
+</TabItem>
+<TabItem label="Redshift" value="redshift">
+
+Compare two Redshift clusters with a schema named `public` under the
+`example` database:
+
+```shell
+atlas schema diff \
+  --from "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable" \
+  --to "redshift://user:pass@redshift-cluster-2:5439/example?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
@@ -277,6 +298,16 @@ atlas schema diff \
   --from "file://schema1.hcl" \
   --to "file://schema2.hcl" \
   --dev-url "docker://clickhouse/23.11"
+```
+
+</TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.hcl" \
+  --to "file://schema2.hcl" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
@@ -362,6 +393,16 @@ atlas schema diff \
   --from "file://schema1.sql" \
   --to "file://schema2.sql" \
   --dev-url "docker://clickhouse/23.11"
+```
+
+</TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.sql" \
+  --to "file://schema2.sql" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
@@ -451,6 +492,16 @@ atlas schema diff \
 ```
 
 </TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema diff \
+  --from "file://migrations1" \
+  --to "file://migrations2" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
+```
+
+</TabItem>
 </Tabs>
 
 ### Compare SQL to HCL
@@ -513,6 +564,16 @@ atlas schema diff \
   --from "file://schema.hcl" \
   --to "file://schema.sql" \
   --dev-url "docker://clickhouse/23.11"
+```
+
+</TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema diff \
+  --from "file://schema.hcl" \
+  --to "file://schema.sql" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
@@ -579,6 +640,16 @@ atlas schema diff \
   --from "file://migrations" \
   --to "clickhouse://user:pass@remote:9000/example" \
   --dev-url "docker://clickhouse/23.11"
+```
+
+</TabItem>
+<TabItem label="Redshift" value="redshift">
+
+```shell
+atlas schema diff \
+  --from "file://migrations" \
+  --to "redshift://user:pass@redshift-cluster:5439/example?search_path=public&sslmode=disable" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
 ```
 
 </TabItem>

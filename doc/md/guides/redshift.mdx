@@ -1,0 +1,745 @@
+---
+id: getting-started-redshift
+title: Automatic Migrations for Redshift with Atlas
+slug: /guides/redshift
+tags: [redshift]
+---
+
+import InstallationInstructions from '../components/_installation_instructions.mdx';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+[Amazon Redshift](https://aws.amazon.com/redshift/) is a powerful, managed data warehouse solution from AWS.
+
+One of the top challenges developers face when working with large data sets on Redshift is managing the database schema.
+As your organization grows, data from more and more applications end up being represented in the data warehouse. This makes
+schemas complex and highly interconnected, and managing them becomes a daunting task.
+
+#### Enter: Atlas
+
+Atlas helps developers manage their database schema as code - abstracting away the intricacies of database schema
+management. With Atlas, users provide the desired state of the database schema and Atlas automatically plans the
+required migrations.
+
+In this guide, we will dive into setting up Atlas for Redshift, and introduce the different workflows available.
+
+## Prerequisites
+
+1. An AWS account with the necessary permissions to create a Redshift cluster.
+2. The [AWS CLI](https://aws.amazon.com/cli/) installed on your machine.
+3. Atlas installed on your machine:
+<InstallationInstructions />
+
+## Logging in to Atlas
+
+To use Redshift with Atlas, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time,
+you will be prompted to create both an account and a workspace (organization):
+
+<Tabs>
+<TabItem value="web" label="Via Web">
+
+```shell
+atlas login
+```
+
+</TabItem>
+<TabItem value="token" label="Via Token">
+
+```shell
+atlas login --token "ATLAS_TOKEN"
+```
+
+</TabItem>
+<TabItem value="env-var" label="Via Environment Variable">
+
+```shell
+ATLAS_TOKEN="ATLAS_TOKEN" atlas login
+```
+
+</TabItem>
+</Tabs>
+
+## Creating the Cluster
+
+:::info
+
+If you want to use an existing Redshift cluster, you can skip this step.
+
+:::
+
+Let's start off by spinning up a new Redshift cluster using AWS CLI:
+
+```bash
+aws redshift create-cluster --cluster-identifier "atlas-demo" \
+  --master-username "root" --master-user-password "Password123" \
+  --number-of-nodes 2 --node-type dc2.large
+```
+
+The `master-username` and `master-user-password` are the credentials for the master user of the Redshift cluster.
+Make sure to replace them with your own values and make a note of them for future use.
+
+For this example we will begin with a minimal database with a users table and an id as distributed key.
+
+```sql
+CREATE TABLE "users" (
+    "id" int NOT NULL
+    "name" varchar(255)
+) DISTKEY("id") SORTKEY("id");
+```
+
+To create the table, run the following command:
+
+```bash
+aws redshift-data execute-statement --cluster-identifier "atlas-demo" --database "dev" \
+  --sql "CREATE TABLE users (id int NOT NULL, name varchar(255)) DISTKEY(id) SORTKEY("id");"
+```
+
+Redshift instances can take a few minutes to spin up. Make sure to wait for the instance to be in the `available` state before proceeding.
+
+To check the status of the cluster, run the following command:
+
+```bash
+aws redshift describe-clusters --cluster-identifier "atlas-demo" \
+  --query "Clusters[0].ClusterStatus" --output text --no-cli-pager
+```
+
+## Find out the Connection URL
+
+To use Atlas with Redshift, we need to provide a connection [URL](/concepts/url) to the database. In this section, we will see the
+different ways you can use Atlas to connect to your Redshift instance.
+
+Atlas provides two ways to connect to a Redshift instance:
+
+* **Direct Network Connection** to the Redshift instance.  This method provides a faster connection to the database,
+  but requires you to have direct network access to the database. Typically, this means that either the database is
+  exposed to the internet or you are connected to the database VPC via some sort of VPN connection.
+* **Using the Redshift Data API** - This method uses the [Redshift Data API](https://docs.aws.amazon.com/redshift/latest/mgmt/data-api.html)
+  to communicate with the database. This method is slower than the direct network connection, but can be used anywhere
+  you have access to the internet and an IAM role that can access the Redshift Data API.
+
+### Direct Network Connection
+
+To connect to the Redshift instance using a direct network connection, you need to provide the connection URL in the
+following format:
+
+```
+redshift://<user>:<pass>@<address>:<port>/<database>?search_path=<schema>
+```
+
+To find out the endpoint of your Redshift Cluster, run the following command:
+
+```bash
+aws redshift describe-clusters --cluster-identifier "atlas-demo" --query "Clusters[0].Endpoint" --output json --no-cli-pager
+````
+
+Observe the output and note down the `Address` and `Port` values. The connection URL will look like this:
+
+```json
+{
+    "Address": "atlas-demo.cjxjxjxjxjxj.us-west-2.redshift.amazonaws.com",
+    "Port": 5439
+}
+```
+
+The connection URL will look something like this:
+
+```
+redshift://root:Password123@atlas-demo.cjxjxjxjxjxj.us-west-2.redshift.amazonaws.com:5439/dev
+```
+
+Be sure to replace `root`, `Password123`, `atlas-demo.cjxjxjxjxj.us-west-2.redshift.amazonaws.com`, `5439`, and `dev`
+with your own values.
+
+### Using the Redshift Data API
+
+To connect to the Redshift instance using the Redshift Data API, you need to provide the connection URL in the
+following format:
+
+```
+redshift+http://cluster([cluster-name])/[database]
+```
+
+If you used `atlas-demo` as the name of your cluster from the previous step, the connection URL will look like this:
+
+```
+redshift+http://cluster(atlas-demo)/dev
+```
+
+Be sure to replace `atlas-demo` and `dev` with your own values.
+
+### Advanced Connection Options
+
+To learn about more advanced URL options such as using SSL, setting the search path, or using a different schema, connecting
+to Serverless Redshift, and more, refer to our [URL documentation](/concepts/url).
+
+## Inspecting the Schema
+
+With your Redshift instance URL determined, we are now ready to start interacting with the database. In this sections and
+all that follow, replace the example URL with the one you determined in the previous section.
+
+The `atlas schema inspect` command supports reading the database description provided by a [URL](/concepts/url) and outputting it in
+different formats, including [Atlas DDL](/atlas-schema/hcl.mdx) (default), SQL, and JSON. In this guide, we will
+demonstrate the flow using both the Atlas DDL and SQL formats, as the JSON format is often used for processing the
+output using `jq`.
+
+<Tabs>
+<TabItem value="hcl" label="Atlas DDL (HCL)" default>
+
+To inspect our Redshift instance, use the `-u` flag and write the output to a file named `schema.hcl`:
+
+```shell
+atlas schema inspect -u "redshift+http://cluster(atlas-demo)/dev?mode=database" > schema.hcl
+```
+
+Open the `schema.hcl` file to view the Atlas schema that describes our database.
+
+```hcl title="schema.hcl"
+schema "public" {
+  comment = "Standard public schema"
+}
+table "users" {
+  schema = schema.public
+  column "id" {
+    null   = false
+    type   = integer
+    encode = RAW
+  }
+  column "name" {
+    null   = true
+    type   = character_varying(255)
+    encode = LZO
+  }
+  distribution {
+    style  = KEY
+    column = column.id
+  }
+  sort {
+    style   = COMPOUND
+    columns = [column.id]
+  }
+}
+```
+
+</TabItem>
+<TabItem value="sql" label="SQL">
+
+To inspect our locally-running SQL Server instance, use the `-u` flag and write the output to a file named `schema.sql`:
+
+```shell
+atlas schema inspect -u "redshift+http://cluster(atlas-demo)/dev?mode=database" --format '{{ sql . }}' > schema.sql
+```
+
+Open the `schema.sql` file to view the inspected SQL schema that describes our database.
+
+```sql title="schema.sql"
+-- Add new schema named "public"
+CREATE SCHEMA IF NOT EXISTS "public";
+-- Set comment to schema: "public"
+COMMENT ON SCHEMA "public" IS 'Standard public schema';
+-- Create "users" table
+CREATE TABLE "public"."users" (
+  "id" integer NOT NULL ENCODE RAW,
+  "name" character varying(255) NULL ENCODE LZO
+) DISTSTYLE KEY DISTKEY ("id") SORTKEY ("id");
+```
+
+</TabItem>
+</Tabs>
+
+:::info
+For in-depth details on the `atlas schema inspect` command, covering aspects like inspecting specific schemas,
+handling multiple schemas concurrently, excluding tables, and more, refer to our documentation
+[here](/declarative/inspect).
+:::
+
+To generate an Entity Relationship Diagram (ERD), or a visual representation of our schema, we can add the -w flag to the inspect command:
+
+```shell
+atlas schema inspect -u "redshift+http://cluster(atlas-demo)/dev?mode=database" -w
+```
+
+![redshift-inspect](https://atlasgo.io/uploads/redshift/images/schema-inspect-hcl.png)
+
+## Declarative Migrations
+
+The declarative approach lets users manage schemas by defining the desired state of the database as code.
+Atlas then inspects the target database and calculates an execution plan to reconcile the difference between the desired and actual states.  Let's see this in action.
+
+We will start off by making a change to our schema file, such as adding a `repos` table:
+
+<Tabs>
+<TabItem value="hcl" label="Atlas DDL (HCL)" default>
+
+```hcl title=schema.hcl
+schema "public" {
+  comment = "Standard public schema"
+}
+table "users" {
+  schema = schema.public
+  column "id" {
+    null   = false
+    type   = integer
+    encode = RAW
+  }
+  column "name" {
+    null   = true
+    type   = character_varying(255)
+    encode = LZO
+  }
+  distribution {
+    style  = KEY
+    column = column.id
+  }
+  sort {
+    style   = COMPOUND
+    columns = [column.id]
+  }
+}
+
+// highlight-start
+table "repos" {
+  schema = schema.public
+  column "id" {
+    null   = false
+    type   = integer
+    encode = RAW
+  }
+  column "name" {
+    null   = false
+    type   = varchar(255)
+  }
+  column "owner_id" {
+    null = false
+    type = integer
+    encode = RAW
+  }
+  distribution {
+    style  = KEY
+    column = column.id
+  }
+  sort {
+    style   = COMPOUND
+    columns = [column.id, column.owner_id]
+  }
+}
+// highlight-end
+```
+
+</TabItem>
+<TabItem value="sql" label="SQL">
+
+```sql title="schema.sql"
+-- Add new schema named "public"
+CREATE SCHEMA IF NOT EXISTS "public";
+-- Set comment to schema: "public"
+COMMENT ON SCHEMA "public" IS 'Standard public schema';
+-- Create "users" table
+CREATE TABLE "public"."users" (
+  "id" integer NOT NULL ENCODE RAW,
+  "name" character varying(255) NULL ENCODE LZO
+) DISTSTYLE KEY DISTKEY ("id") SORTKEY ("id");
+
+// highlight-start
+-- Create "repos" table
+CREATE TABLE "public"."repos" (
+  "id" integer NOT NULL ENCODE RAW,
+  "name" character varying(255) NULL ENCODE LZ,
+  "owner_id" integer NOT NULL ENCODE RAW
+) DISTSTYLE KEY DISTKEY ("id") SORTKEY ("id", "owner_id");
+// highlight-end
+```
+
+</TabItem>
+</Tabs>
+
+Now that our _desired state_ has changed, to apply these changes to our database, Atlas will plan a migration for us
+by running the `atlas schema apply` command:
+
+<Tabs>
+<TabItem value="hcl" label="Atlas DDL (HCL)" default>
+
+```shell
+atlas schema apply \
+  -u "redshift+http://cluster(atlas-demo)/dev?mode=database" \
+  --to file://schema.hcl
+```
+
+</TabItem>
+<TabItem value="sql" label="SQL">
+
+Redshift does not support docker images, so we need another remote database to apply the changes. 
+Let's create a new database in the same instance to use as dev database:
+
+```shell
+aws redshift-data execute-statement --cluster-identifier "atlas-demo" --database "dev" --db-user root --sql "CREATE DATABASE devdb;"
+```
+
+Then we can run the `atlas schema apply` command:
+
+```shell
+atlas schema apply \
+  -u "redshift+http://cluster(atlas-demo)/dev?mode=database" \
+  --to file://schema.sql \
+--dev-url "redshift+http://root@cluster(atlas-demo)/devdb?mode=database"
+```
+
+</TabItem>
+</Tabs>
+
+Apply the changes, and that's it! You have successfully run a declarative migration.
+
+:::info
+For a more detailed description of the `atlas schema apply` command refer to our documentation
+[here](/declarative/apply).
+:::
+
+To ensure that the changes have been made to the schema, let's run the `inspect` command with the `-w` flag once more
+and view the ERD:
+
+![atlas-schema](https://atlasgo.io/uploads/redshift/images/schema-inspect-repos.png)
+
+## Versioned Migrations
+
+Alternatively, the versioned migration workflow, sometimes called "change-based migrations", allows each change to the
+database schema to be checked-in to source control and reviewed during code-review. Users can still benefit from Atlas
+intelligently planning migrations for them, however they are not automatically applied.
+
+### Creating the first migration
+
+In the versioned migration workflow, our database state is managed by a _migration directory_. The migration directory
+holds all of the migration files created by Atlas, and the sum of all files in lexicographical order represents the current
+state of the database.
+
+To create our first migration file, we will run the `atlas migrate diff` command, and we will provide the necessary parameters:
+
+* `--dir` the URL to the migration directory, by default it is file://migrations.
+* `--to` the URL of the desired state. A state can be specified using a database URL, HCL or SQL schema, or another migration directory.
+* `--dev-url` a URL to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
+
+Redshift does not support docker images, so we need another remote database to apply the changes. 
+Let's create a new database in the same instance to use as dev database:
+
+```shell
+aws redshift-data execute-statement --cluster-identifier "atlas-demo" --database "dev" --db-user root --sql "CREATE DATABASE devdb;"
+```
+
+After creating the dev database, we can now run the `atlas migrate diff` command:
+
+<Tabs>
+<TabItem value="hcl" label="Atlas DDL (HCL)" default>
+
+```shell
+atlas migrate diff initial \
+  --to file://schema.hcl \
+  --dev-url "redshift+http://root@cluster(atlas-demo)/devdb?mode=database"
+```
+
+</TabItem>
+<TabItem value="sql" label="SQL">
+
+```shell
+atlas migrate diff initial \
+  --to file://schema.sql \
+  --dev-url "redshift+http://root@cluster(atlas-demo)/devdb?mode=database"
+```
+
+</TabItem>
+</Tabs>
+
+Run `ls migrations`, and you'll notice that Atlas has automatically created a migration directory for us, as well as
+two files:
+
+<Tabs>
+<TabItem value="file" label="20240208092238_initial.sql" default>
+
+```sql
+-- Create "repos" table
+CREATE TABLE "public"."repos" (
+  "id" integer NOT NULL ENCODE RAW,
+  "name" character varying(255) NOT NULL ENCODE LZO,
+  "owner_id" integer NOT NULL ENCODE RAW
+) DISTSTYLE KEY DISTKEY ("id") SORTKEY ("id", "owner_id");
+
+-- Create "users" table
+CREATE TABLE "public"."users" (
+  "id" integer NOT NULL ENCODE RAW,
+  "name" character varying(255) NULL ENCODE LZO
+) DISTSTYLE KEY DISTKEY ("id") SORTKEY ("id");
+```
+
+</TabItem>
+<TabItem value="atlas.sum" label="atlas.sum">
+
+```shell
+h1:TDwxoEtPh0o8BdPOQIlk5e7zwIrSNEW5H5nuxoseZEI=
+20240521041234_initial.sql h1:YrlXxrZJOBS1GLtVxghGmNlBOTWEQvhi4F514urBkYk=
+```
+</TabItem>
+</Tabs>
+
+### Pushing migration directories to Atlas
+
+Now that we have our first migration, we can apply it to a database. There are multiple ways to accomplish this, with
+most methods covered in the [guides](/guides) section. In this example, we'll demonstrate how to push migrations to
+[Atlas Cloud](https://atlasgo.cloud), much like how Docker images are pushed to Docker Hub.
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/redshift/images/first-dir-push.png" alt="redshift migrate push" width="100%"/>
+    <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
+</div>
+
+Let's name our new migration project `app` and run `atlas migrate push`:
+
+```shell
+atlas migrate push app \
+  --dev-url "redshift+http://root@cluster(atlas-demo)/devdb?mode=database"
+```
+
+Once the migration directory is pushed, Atlas prints a URL to the created directory, similar to the once shown in the
+image above.
+
+### Applying migrations
+
+Once our `app` migration directory has been pushed, we can apply it to a database from any CD platform without
+necessarily having our directory there.
+
+Let's create a new database that represents our local environment:
+
+```shell
+aws redshift-data execute-statement --cluster-identifier "atlas-demo" --database "dev" --db-user root --sql "CREATE DATABASE local;"
+```
+
+Then, We'll create a simple Atlas configuration file (`atlas.hcl`) to store the settings for our local environment:
+
+```hcl title="atlas.hcl" {1}
+# The "dev" environment represents our local testings.
+env "local" {
+  url = "redshift+http://root@cluster(atlas-demo)/local?mode=database"
+  migration {
+    dir = "atlas://app"
+  }
+}
+```
+
+The final step is to apply the migrations to the database. Let's run `atlas migrate apply` with the `--env` flag
+to instruct Atlas to select the environment configuration from the `atlas.hcl` file:
+
+```shell
+atlas migrate apply --env local
+```
+
+Boom! After applying the migration, you should receive a link to the deployment and the database where the migration
+was applied. Here's an example of what it should look like:
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/redshift/images/redshift-deployment.png" alt="first deployment" width="100%"/>
+    <p style={{fontSize: 12}}>Migration deployment reported created with <code>atlas migrate apply</code></p>
+</div>
+
+### Generating another migration
+
+After applying the first migration, it's time to update our schema defined in the schema file and tell Atlas to generate
+another migration. This will bring the migration directory (and the database) in line with the new state defined by the
+desired schema (schema file).
+
+Let's make two changes to our schema:
+
+* Add a new `description` column to our repos table
+* Add a new `commits` table
+
+<Tabs>
+<TabItem value="hcl" label="Atlas DDL (HCL)" default>
+
+```hcl title="schema.hcl"
+schema "public" {
+  comment = "Standard public schema"
+}
+table "users" {
+  schema = schema.public
+  column "id" {
+    null   = false
+    type   = integer
+    encode = RAW
+  }
+  column "name" {
+    null   = true
+    type   = character_varying(255)
+    encode = LZO
+  }
+  distribution {
+    style  = KEY
+    column = column.id
+  }
+  sort {
+    style   = COMPOUND
+    columns = [column.id]
+  }
+}
+table "repos" {
+  schema = schema.public
+  column "id" {
+    null   = false
+    type   = integer
+    encode = RAW
+  }
+  column "name" {
+    null   = false
+    type   = character_varying(255)
+  }
+  // highlight-start
+  column "description" {
+    null = true
+    type = character_varying(255)
+  }
+  // highlight-end
+  column "owner_id" {
+    null = false
+    type = integer
+    encode = RAW
+  }
+  distribution {
+    style  = KEY
+    column = column.id
+  }
+  sort {
+    style   = COMPOUND
+    columns = [column.id, column.owner_id]
+  }
+}
+// highlight-start
+table "commits" {
+  schema = schema.public
+  column "id" {
+    null   = false
+    type   = integer
+    encode = RAW
+  }
+  column "message" {
+    null   = false
+    type   = character_varying(255)
+  }
+  column "repo_id" {
+    null = false
+    type = integer
+    encode = RAW
+  }
+  column "author_id" {
+    null = false
+    type = integer
+    encode = RAW
+  }
+  distribution {
+    style  = KEY
+    column = column.id
+  }
+  sort {
+    style   = COMPOUND
+    columns = [column.id, column.repo_id]
+  }
+}
+// highlight-end
+```
+
+</TabItem>
+<TabItem value="sql" label="SQL">
+
+```sql title = "schema.sql"
+-- Add new schema named "public"
+CREATE SCHEMA IF NOT EXISTS "public";
+
+-- Set comment to schema: "public"
+COMMENT ON SCHEMA "public" IS 'Standard public schema';
+
+-- Create "users" table
+CREATE TABLE "public"."users" (
+  "id" integer NOT NULL ENCODE RAW, 
+  "name" character varying(255) NULL ENCODE LZO
+) DISTSTYLE KEY DISTKEY ("id") SORTKEY ("id");
+
+-- Create "repos" table
+CREATE TABLE "public"."repos" (
+  "id" integer NOT NULL ENCODE RAW, 
+  "name" character varying(255) NOT NULL ENCODE LZO, 
+  // highlight-next-line
+  "description" character varying(255) NULL ENCODE LZO,
+  "owner_id" integer NOT NULL ENCODE RAW
+) DISTSTYLE KEY DISTKEY ("id") SORTKEY ("id", "owner_id");
+
+// highlight-start
+-- Create "commits" table
+CREATE TABLE "public"."commits" (
+  "id" integer NOT NULL ENCODE RAW, 
+  "message" character varying(255) NOT NULL ENCODE LZO, 
+  "repo_id" integer NOT NULL ENCODE RAW, 
+  "author_id" integer NOT NULL ENCODE RAW
+) DISTSTYLE KEY DISTKEY ("id") SORTKEY ("id", "repo_id");
+// highlight-end
+
+```
+</TabItem>
+</Tabs>
+
+Next, let's run the `atlas migrate diff` command once more:
+
+<Tabs>
+<TabItem value="hcl" label="Atlas DDL (HCL)" default>
+
+```shell
+atlas migrate diff add_commits \
+  --to file://schema.hcl \
+  --dev-url "redshift+http://root@cluster(atlas-demo)/devdb?mode=database"
+```
+
+</TabItem>
+<TabItem value="sql" label="SQL">
+
+```shell
+atlas migrate diff add_commits \
+  --to file://schema.sql \
+  --dev-url "redshift+http://root@cluster(atlas-demo)/devdb?mode=database"
+```
+
+</TabItem>
+</Tabs>
+
+Run `ls migrations`, and you'll notice that a new migration file has been generated.
+
+```sql title="20240130141055.sql"
+-- Modify "repos" table
+ALTER TABLE "public"."repos" ADD COLUMN "description" character varying(255) NULL ENCODE LZO;
+-- Create "commits" table
+CREATE TABLE "public"."commits" (
+  "id" integer NOT NULL ENCODE RAW,
+  "message" character varying(255) NOT NULL ENCODE LZO,
+  "repo_id" integer NOT NULL ENCODE RAW,
+  "author_id" integer NOT NULL ENCODE RAW
+) DISTSTYLE KEY DISTKEY ("id") SORTKEY ("id", "repo_id");
+```
+
+Let's run `atlas migrate push` again and
+observe the new file on the migration directory page.
+
+```shell
+atlas migrate push app \
+  --dev-url "redshift+http://root@cluster(atlas-demo)/devdb?mode=database"
+```
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/redshift/images/second-push.png" alt="redshift migrate push" width="100%"/>
+    <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
+</div>
+
+## Next Steps
+
+In this guide we learned about the declarative and versioned workflows, and how to use Atlas to generate migrations,
+push them to an Atlas workspace and apply them to databases.
+
+Next steps:
+* Read the [full docs](/atlas-schema/hcl) to learn HCL schema syntax or about specific Redshift [column types](/atlas-schema/hcl-types#redshift)
+* Learn how to [set up CI](/cloud/setup-ci) for your migration directory
+* Deploy schema changes with [Terraform](/integrations/terraform-provider) or [Kubernetes](/integrations/kubernetes/operator)
+* Learn about [modern CI/CD principles](/guides/modern-database-ci-cd) for databases
+
+For more in-depth guides, check out the other pages in [this section](/guides) or visit our [Docs](/getting-started) section.
+
+Have questions? Feedback? Find our team on our [Discord server](https://discord.com/invite/zZ6sWVg6NT).

@@ -25,6 +25,7 @@ values={[
 {label: 'SQLServer', value: 'sqlserver'},
 {label: 'SQLite', value: 'sqlite'},
 {label: 'ClickHouse', value: 'clickhouse'},
+{label: 'Redshift', value: 'redshift'},
 {label: 'Docker', value: 'docker'},
 ]}>
 <TabItem value="mysql">
@@ -156,6 +157,62 @@ we need to use native protocol port [`9440`](https://clickhouse.com/docs/en/guid
 ```shell
 clickhouse://user:pass@CLICKHOUSE-CLOUD-HOST:9440/schema?secure=true
 ```
+
+</TabItem>
+<TabItem value="redshift">
+
+Connecting to a specific Redshift cluster with a schema named `public`:
+```shell
+redshift://user:pass@redshift-cluster:5439/database?search_path=public
+```
+
+Connecting to a specific Redshift cluster with a schema named `public` with SSL disabled:
+```shell
+redshift://user:pass@redshift-cluster:5439/database?search_path=public&sslmode=disable
+```
+
+If you want to connect Redshift though Data API you can use the following URL:
+:::info 
+AWS credentials are required to connect to Redshift via Data API. In this protocol,
+atlas doesn't support changing the schema on URL, the schema is based on default schema of the user.
+If you want to bind the connection to a specific schema, you can use the following SQL command:
+
+```
+ALTER USER [username] SET search_path = [schema];
+```
+:::
+
+Connecting to Serverless via IAM Identity:
+```shell
+redshift+http://workgroup([workgroup-name])/[database]
+```
+
+Connecting to Serverless via Secret ARN:
+```shell
+redshift+http://[arn]@workgroup([workgroup-name])/[database]
+```
+
+Connecting to provisioned Redshift cluster via IAM Identity:
+```shell
+redshift+http://cluster([cluster-name])/[database]
+```
+
+Connecting to provisioned Redshift cluster with database username
+```shell
+redshift+http://[dbuser]@cluster([cluster-name])/[database]
+```
+
+Connecting to provided Redshift cluster via Secret ARN:
+```shell
+redshift+http://[arn]@cluster([cluster-name])/[database]
+```
+
+:::note
+- The default `mode` is `schema`.
+- To change the connection to realm mode, use `mode=database`.
+- Use `timeout=5m` to set the timeout for the http client. Default is 5 minutes.
+- Use `polling=50ms` to set the polling interval when fetching the query results. Default is 50ms.
+:::
 
 </TabItem>
 <TabItem value="docker">
