@@ -503,6 +503,11 @@ module.exports = {
         },
         {
             type: 'doc',
+            id: 'guides/getting-started-redshift',
+            label: 'Redshift'
+        },
+        {
+            type: 'doc',
             id: 'guides/ddl'
         },
         {
