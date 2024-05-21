@@ -52,7 +52,7 @@ git clone git@github.com:go-admin-team/go-admin.git
 ## Using the Atlas GORM Provider 
 
 In this guide, we will use the [GORM Atlas Provider](https://github.com/ariga/atlas-provider-gorm)
-to automatically plan schema migrations for a GORM project.
+to automatically plan schema migrations for tables and views in a GORM project.
 
 ### Installation
 
@@ -70,14 +70,14 @@ go get -u ariga.io/atlas-provider-gorm
 ### Standalone vs Go Program mode
 
 The Atlas GORM Provider can be used in two modes:
-* **Standalone** - If all of your GORM models exist in a single package, and either embed `gorm.Model` or contain `gorm` struct tags, 
+* **Standalone** - If all of your GORM models and views exist in a single package, and the models either embed `gorm.Model` or contain `gorm` struct tags, 
   you can use the provider directly to load your GORM schema into Atlas.
-* **Go Program** - If your GORM models are spread across multiple packages, or do not embed `gorm.Model` or contain `gorm` struct tags, 
+* **Go Program** - If your GORM models or views are spread across multiple packages, or the models do not embed `gorm.Model` or contain `gorm` struct tags, 
   you can use the provider as a library in your Go program to load your GORM schema into Atlas.
 
 ### Standalone mode
 
-If all of your GORM models exist in a single package, and either embed `gorm.Model` or contain `gorm` struct tags,
+If all of your GORM models and [view definition](https://github.com/ariga/atlas-provider-gorm?tab=readme-ov-file#views) exist in a single package, and the models either embed `gorm.Model` or contain `gorm` struct tags,
 you can use the provider directly to load your GORM schema into Atlas.
 
 In your project directory, create a new file named `atlas.hcl` with the following contents:
@@ -290,7 +290,46 @@ Observe a new migration file is generated:
 -- Modify "pets" table
 ALTER TABLE `pets` ADD COLUMN `nickname` longtext NULL;
 ```
+#### View
+This is a unique API for the Atlas GORM Provider that allows you to define database views in the form of GORM models and automatically generates migration files for you.
+> The view feature is only available for logged-in users; run `atlas login` if you haven't already.
 
+To define a Go struct as a database `VIEW`, implement the `ViewDef` method as follows:
+```go
+// User is a regular gorm.Model stored in the "users" table.
+type User struct {
+  gorm.Model
+  Name string
+  Age  int
+}
+
+// WorkingAgedUsers is mapped to the VIEW definition below.
+type WorkingAgedUsers struct {
+  Name string
+  Age  int
+}
+
+func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
+  return []gormschema.ViewOption{
+    gormschema.BuildStmt(func(db *gorm.DB) *gorm.DB {
+      return db.Model(&User{}).Where("age BETWEEN 18 AND 65").Select("name, age")
+    }),
+  }
+}
+```
+The View feature works in both **Standalone** and **Go Program** mode. 
+
+For **Standalone** mode, if you place the view definition in the same package as your models, the provider will automatically detect and create migration files for them.
+
+For **Go Program** mode, you can load the `VIEW` definition in the same way as a model:
+```go
+gormschema.New("mysql").Load(
+	&models.User{},             // Table-based model.
+	&models.WorkingAgedUsers{}, // View-based model.
+)
+```
+With the atlas.hcl configuration file set up as before, you now can run `atlas migrate diff --env gorm` to generate the migration file.
+For more information and usage of `VIEW`, please refer to the documentation [Atlas GORM Provider#View](https://github.com/ariga/atlas-provider-gorm?tab=readme-ov-file#views)
 ## Conclusion
 
 In this guide we demonstrated how projects using GORM can use Atlas to automatically
