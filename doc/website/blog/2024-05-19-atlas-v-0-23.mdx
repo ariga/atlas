@@ -56,7 +56,7 @@ atlas schema inspect --url "redshift://<username>:<password>@<host>:<port>/<data
 
 If everything is working correctly, you should see the [Atlas DDL](/atlas-schema/hcl) representation of your Redshift schema.
 
-To learn more about the Redshift support in Atlas, check out the [documentation](/docs/redshift).
+To learn more about the Redshift support in Atlas, check out the [documentation](/guides/redshift).
 
 ### CircleCI Integration
 
@@ -102,7 +102,7 @@ Let's break down the configuration:
 * The `atlas-orb/setup` step initializes the Atlas CLI with the provided `ATLAS_TOKEN` environment variable.
 * The `atlas-orb/migrate_push` step pushes the migration directory `my-cool-project` to the Atlas Cloud Schema Registry.
 
-To learn more about the CircleCI integration, check out the [documentation](/docs/circleci).
+To learn more about the CircleCI integration, check out the [documentation](https://circleci.com/developer/orbs/orb/ariga/atlas-orb).
 
 ### Kubernetes Operator Down Migrations
 
