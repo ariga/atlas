@@ -15,6 +15,8 @@ excited to be back with the next version of Atlas, with some long awaited featur
   warehouse service in the cloud.  Starting today, you can use Atlas to manage your Redshift Schema-as-Code.
 * [CircleCI Integration](#circleci-integration) - Following some recent requests from our Enterprise customers, we have
   added a CircleCI orb to make it easier to integrate Atlas into your CI/CD pipeline.
+* [Kubernetes Operator Down Migrations](#kubernetes-operator-down-migrations) - We have added support for down migrations
+  in the Kubernetes Operator.  This allows you to rollback changes made by the operator.
 * [ERD v2](#erd-v2) - One of the most common use-cases for Atlas Cloud today is to generate ERDs to easily visualize your schema.
   We have made some improvements to the ERD generation process to make it even better.
 
@@ -98,12 +100,48 @@ Let's break down the configuration:
 
 To learn more about the CircleCI integration, check out the [documentation](/docs/circleci).
 
+### Kubernetes Operator Down Migrations
+
+The [Atlas Operator](/integration/kubernetes/operator) is a Kubernetes operator that enables you to manage your database
+schemas using Kubernetes Custom Resources.  In one of our [recent releases](/blog/2024/04/01/migrate-down), we added
+support for the `migrate down` command to the CLI. Using this command, you can roll back applied migrations
+in a safe and controlled way, without using pre-planned down migration scripts or manual intervention.
+
+Starting with [v0.5.0](https://github.com/ariga/atlas-operator/releases/tag/v0.5.0), the Atlas Operator supports
+down migrations as well. When you change the desired version of your database for a given `AtlasMigration` resource, the operator
+will detect whether you are moving to a previous version and will attempt to apply a down migration if you configured it
+to do so.
+
+Down migrations are controlled via the new `protectedFlows` field in the `AtlasMigration` resource.  This field allows you
+to specify the policy for down migrations. The following policy, for example, allows down migrations and auto-approves them:
+
+```yaml
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasMigration
+metadata:
+  name: atlasmig-mysql
+spec:
+  protectedFlows:
+    migrateDown:
+      allow: true
+      autoApprove: true
+# ... redacted for brevity
+```
+
+Alternatively, Atlas Cloud users may set the `autoApprove` field to `false` to require manual approval for down migrations.
+In this case, the operator will pause the migration and wait for the user to approve the down migration before proceeding:
+
+![](https://atlasgo.io/uploads/versioned/require-approval.png)
+
 ### ERD v2
 
-One of the most common use-cases for Atlas Cloud today is to generate ERDs to easily visualize your schema.  We have made
-some improvements to the ERD generation process to make it even better.
+When you push your migration directory to the Atlas Cloud Schema Registry, Atlas generates an ERD for your schema.
+The ERD is a visual representation of your schema that shows the different database objects in your schema and the
+relationships between them.
 
+To make it easier to navigate within large schemas we have recently added a fresh new navigation sidebar to the ERD:
 
+![](https://atlasgo.io/uploads/blog/v0.23/erd-sidebar.png)
 
 ## Wrapping Up
 
