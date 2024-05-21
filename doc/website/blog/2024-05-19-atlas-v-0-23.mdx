@@ -1,7 +1,7 @@
 ---
 title: "Announcing v0.23: Redshift Support, CircleCI and More"
 authors: rotemtam
-tags: [release, redshift, ]
+tags: [release, redshift, circleci, gorm, sqlalchemy, erd]
 ---
 
 import InstallationInstructions from '../../md/components/_installation_instructions.mdx'
@@ -9,16 +9,20 @@ import InstallationInstructions from '../../md/components/_installation_instruct
 Hi everyone,
 
 It's been a few weeks since the release of [v0.22](https://github.com/ariga/atlas/releases/tag/v0.22.0), and we're
-excited to be back with the next version of Atlas, with some long awaited features and improvements.
+excited to be back with the next version of Atlas, packed with some long awaited features and improvements.
 
 * [Redshift](#redshift-support) Support - [Amazon Redshift](https://aws.amazon.com/redshift/), a fully managed, petabyte-scale data
   warehouse service in the cloud.  Starting today, you can use Atlas to manage your Redshift Schema-as-Code.
 * [CircleCI Integration](#circleci-integration) - Following some recent requests from our Enterprise customers, we have
-  added a CircleCI orb to make it easier to integrate Atlas into your CI/CD pipeline.
-* [Kubernetes Operator Down Migrations](#kubernetes-operator-down-migrations) - We have added support for down migrations
-  in the Kubernetes Operator.  This allows you to rollback changes made by the operator.
-* [ERD v2](#erd-v2) - One of the most common use-cases for Atlas Cloud today is to generate ERDs to easily visualize your schema.
-  We have made some improvements to the ERD generation process to make it even better.
+  added a CircleCI orb to make it easier to integrate Atlas into your CircleCI pipelines.
+* [Kubernetes Operator Down Migrations](#kubernetes-operator-down-migrations) - The Kubernetes Operator now detects when
+  you are moving to a previous version and will attempt to apply a down migration if configured to do so.
+* [GORM View Support](#gorm-view-support) - We have added support for defining SQL Views in your GORM models.
+* [SQLAlchemy Provider Improvements](#sqlalchemy-provider-improvements) - We have added support for defining models using
+  SQLAlchemy Core Tables in the SQLAlchemy provider.
+* [ERD v2](#erd-v2) - We have added a new navigation sidebar to the ERD to make it easier to navigate within large schemas.
+* [PostgreSQL Improvements](#other-improvements) - We have added support for PostgreSQL Event Triggers, Aggregate Functions,
+  and Function Security.
 
 Let's dive in!
 
@@ -142,6 +146,154 @@ relationships between them.
 To make it easier to navigate within large schemas we have recently added a fresh new navigation sidebar to the ERD:
 
 ![](https://atlasgo.io/uploads/blog/v0.23/erd-sidebar.png)
+
+### GORM View Support
+
+GORM is a popular ORM library for Go that provides a simple way to interact with databases.
+The [Atlas GORM provider](/guides/orms/gorm) provides a seamless integration between Atlas and GORM, allowing you to
+generate migrations from your GORM models and apply them to your database.
+
+SQL Views are a powerful feature in relational databases that allow you to create virtual tables based on the result of
+a query.  Managing views with GORM (and ORMs in general) is a notoriously clunky process, as they are normally not first-class
+citizens in the ORM world.
+
+With [v0.4.0](https://github.com/ariga/atlas-provider-gorm/releases/tag/v0.4.0), we have added a new API to the GORM
+provider that allows you to define views in your GORM models.
+
+Here's a glimpse of how you can define a view in GORM:
+
+```go
+// User is a regular gorm.Model stored in the "users" table.
+type User struct {
+  gorm.Model
+  Name string
+  Age  int
+}
+
+// WorkingAgedUsers is mapped to the VIEW definition below.
+type WorkingAgedUsers struct {
+  Name string
+  Age  int
+}
+
+func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
+  return []gormschema.ViewOption{
+    gormschema.BuildStmt(func(db *gorm.DB) *gorm.DB {
+      return db.Model(&User{}).Where("age BETWEEN 18 AND 65").Select("name, age")
+    }),
+  }
+}
+```
+
+By implementing the `ViewDefiner` interface, GORM users can now include views in their GORM models and have Atlas
+automatically generate the necessary SQL to create the view in the database.
+
+To learn more about the GORM view support, check out the [documentation](https://github.com/ariga/atlas-provider-gorm?tab=readme-ov-file#views).
+
+Thanks to [luantranminh](https://github.com/luantranminh) for contributing this feature!
+
+### SQLAlchemy Provider Improvements
+
+The [Atlas SQLAlchemy provider](/guides/orms/sqlalchemy) allows you to generate migrations from your SQLAlchemy models
+and apply them to your database.
+
+With [v0.2.1](https://github.com/ariga/atlas-provider-sqlalchemy/releases/tag/v0.2.1), we have added support for defining
+models using [SQLAlchemy Core Tables](https://docs.sqlalchemy.org/en/20/core/metadata.html#module-sqlalchemy.schema) in
+addition to the existing support for ORM Models.
+
+In addition, we have decoupled the provider from using a specific SQLAlchemy release, allowing users to use any version
+of SQLAlchemy they prefer.  This should provide more flexibility and make it easier to integrate the provider into your
+existing projects.
+
+Huge thanks to [vshender](https://github.com/vshender) for contributing these improvements!
+
+### Other Improvements
+
+On our quest to support the long tail of lesser known database features we have recently added support for the following:
+
+#### PostgreSQL Event Triggers
+
+PostgreSQL [Event Triggers](https://www.postgresql.org/docs/current/event-triggers.html) are a special kind of
+trigger. Unlike regular triggers, which are attached to a single table and capture only DML events, event
+triggers are global to a particular database and are capable of capturing DDL events.
+
+Here are some examples of how you can use event triggers in Atlas:
+```hcl
+# Block table rewrites.
+event_trigger "block_table_rewrite" {
+  on      = table_rewrite
+  execute = function.no_rewrite_allowed
+}
+
+# Filter specific events.
+event_trigger "record_table_creation" {
+  on      = ddl_command_start
+  tags    = ["CREATE TABLE"]
+  execute = function.record_table_creation
+}
+```
+
+#### Aggregate Functions
+
+Aggregate functions are functions that operate on a set of values and return a single value.  They are commonly used
+in SQL queries to perform calculations on groups of rows.  PostgreSQL allows users to define custom aggregate functions
+using the `CREATE AGGREGATE` statement.
+
+Atlas now supports defining custom aggregate functions in your schema.  Here's an example of how you can define an
+aggregate function in Atlas:
+
+```hcl {1-8}
+aggregate "sum_of_squares" {
+  schema = schema.public
+  arg {
+    type = double_precision
+  }
+  state_type = double_precision
+  state_func = function.sum_squares_sfunc
+}
+
+function "sum_squares_sfunc" {
+  schema = schema.public
+  lang   = PLpgSQL
+  arg "state" {
+    type = double_precision
+  }
+  arg "value" {
+    type = double_precision
+  }
+  return = double_precision
+  as     = <<-SQL
+  BEGIN
+      RETURN state + value * value;
+  END;
+  SQL
+}
+```
+
+#### Function Security
+
+PostgreSQL allows you to define the security level of a function using the `SECURITY` clause.  The `SECURITY` clause
+can be set to `DEFINER` or `INVOKER`.  When set to `DEFINER`, the function is executed with the privileges of the
+user that defined the function.  When set to `INVOKER`, the function is executed with the privileges of the user that
+invoked the function.  This is useful when you want to create functions that execute with elevated privileges.
+
+Atlas now supports defining the security level of functions in your schema.  Here's an example of how you can define
+a function with `SECURITY DEFINER` in Atlas:
+
+```hcl
+function "positive" {
+  schema = schema.public
+  lang   = SQL
+  arg "v" {
+    type = integer
+  }
+  return = boolean
+  as     = "SELECT v > 0"
+ // highlight-next-line
+  security = DEFINER
+}
+```
+
 
 ## Wrapping Up
 
