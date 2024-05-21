@@ -148,8 +148,8 @@ module.exports = {
       `,
     },
     announcementBar: {
-      id: 'announcementBar-12', // Increment on change
-      content: `<strong>Atlas v0.22: Rename Detection, Table Locking Checks, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/05/01/atlas-v-0-22">Read it here</a>`,
+      id: 'announcementBar-13', // Increment on change
+      content: `<strong>Atlas v0.23: Redshift, CircleCI, GORM Views, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/05/21/atlas-v-0-23">Read it here</a>`,
       isCloseable: true,
     },
   },
