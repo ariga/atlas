@@ -77,10 +77,13 @@ func (s *state) plan(changes []schema.Change) error {
 	if err != nil {
 		return err
 	}
-	if planned, err = detachCycles(planned); err != nil {
-		return err
+	if s.PlanOptions.Mode != migrate.PlanModeUnsortedDump {
+		if planned, err = detachCycles(planned); err != nil {
+			return err
+		}
+		planned = s.sortChanges(planned)
 	}
-	for _, c := range s.sortChanges(planned) {
+	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
 			err = s.addTable(c)
