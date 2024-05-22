@@ -331,19 +331,7 @@ func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
 
 ##### CreateStmt
 
-The `CreateStmt` function allows you to define a query using raw SQL. This is useful when you need to use SQL features that GORM does not support:
-
-```go
-func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
-  return []gormschema.ViewOption{
-    gormschema.CreateStmt("CREATE VIEW working_aged_users AS SELECT name, age FROM users WHERE age BETWEEN 18 AND 65"),
-  }
-}
-```
-
-###### Dialect 
-The `dialect` parameter in the `ViewDef` method is the database dialect that the view will be created for. This is useful 
-when you need to define different views for different database dialects.
+The `CreateStmt` function allows you to define a query using raw SQL. This is useful when you need to use SQL features that GORM does not support.
 
 ```go
 func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
@@ -351,6 +339,8 @@ func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
   switch dialect {
   case "mysql":
     stmt = "CREATE VIEW working_aged_users AS SELECT name, age FROM users WHERE age BETWEEN 18 AND 65"
+  case "sqlserver":
+    stmt = "CREATE VIEW working_aged_users AS SELECT name, age FROM users WHERE age >= 18 AND age <= 65"
   }
   return []gormschema.ViewOption{
     gormschema.CreateStmt(stmt),
