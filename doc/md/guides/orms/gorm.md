@@ -291,6 +291,7 @@ Observe a new migration file is generated:
 ALTER TABLE `pets` ADD COLUMN `nickname` longtext NULL;
 ```
 ### View
+
 A database view is a virtual table based on the result of a query. Views are helpful when you want to simplify complex queries, strengthen security by selecting only the necessary data, or encapsulate the details of your table structures.
 
 > Making liberal use of views is a key aspect of good SQL database design. Views allow you to encapsulate the details of your table structures, which might change as your application evolves, behind consistent interfaces.
@@ -300,11 +301,13 @@ A database view is a virtual table based on the result of a query. Views are hel
 From a querying perspective, views and tables are identical. For this reason, GORM can natively query any views that exist on the database.
 However, defining and managing views has previously had [partial support](https://github.com/go-gorm/gorm/issues/4966).
 The Atlas GORM Provider provides an API that allows you to define database views in the form of GORM models and with the help of [Atlas](https://atlasgo.io/getting-started), migration files can be automatically generated for them.
+
 > The view feature is only available for logged-in users; run `atlas login` if you haven't already.
 
 To define a Go struct as a database `VIEW`, implement the [`ViewDefiner`](https://pkg.go.dev/ariga.io/atlas-provider-gorm/gormschema#ViewDefiner) interface. The `gormschema` package provide two styles for defining a view's base query:
 
 ##### BuildStmt
+
 The `BuildStmt` function allows you to define a query using the GORM API. This is useful when you need to use GORM's query building capabilities.
 ```go
 package models
@@ -326,6 +329,7 @@ func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
 }
 ```
 ##### CreateStmt
+
 The `CreateStmt` function allows you to define a query using raw SQL. This is useful when you need to use SQL features that GORM does not support.
 ```go
 func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
