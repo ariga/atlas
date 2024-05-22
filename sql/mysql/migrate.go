@@ -81,11 +81,14 @@ func (s *state) plan(changes []schema.Change) error {
 	if err != nil {
 		return err
 	}
-	planned, err = sqlx.DetachCycles(planned)
-	if err != nil {
-		return err
+	if s.PlanOptions.Mode != migrate.PlanModeUnsortedDump {
+		planned, err = sqlx.DetachCycles(planned)
+		if err != nil {
+			return err
+		}
+		planned = sqlx.SortChanges(planned, nil)
 	}
-	for _, c := range sqlx.SortChanges(planned, nil) {
+	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
 			err = s.addTable(c)

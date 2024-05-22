@@ -134,10 +134,11 @@ func (f StateReaderFunc) ReadState(ctx context.Context) (*schema.Realm, error) {
 
 // List of migration planning modes.
 const (
-	PlanModeUnset    PlanMode = iota // Driver default.
-	PlanModeInPlace                  // Changes are applied inplace (e.g., 'schema diff').
-	PlanModeDeferred                 // Changes are planned for future applying (e.g., 'migrate diff').
-	PlanModeDump                     // Schema creation dump (e.g., 'schema inspect').
+	PlanModeUnset        PlanMode = iota // Driver default.
+	PlanModeInPlace                      // Changes are applied inplace (e.g., 'schema diff').
+	PlanModeDeferred                     // Changes are planned for future applying (e.g., 'migrate diff').
+	PlanModeDump                         // Schema creation dump (e.g., 'schema inspect').
+	PlanModeUnsortedDump                 // Schema creation demo without sorting dependencies.
 )
 
 // Is reports whether m is match the given mode.
