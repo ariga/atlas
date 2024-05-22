@@ -77,7 +77,7 @@ The Atlas GORM Provider can be used in two modes:
 
 ### Standalone mode
 
-If all of your GORM models exist in a single package, and the models either embed `gorm.Model` or contain `gorm` struct tags,
+If all of your GORM models exist in a single package, and either embed `gorm.Model` or contain `gorm` struct tags,
 you can use the provider directly to load your GORM schema into Atlas.
 
 In your project directory, create a new file named `atlas.hcl` with the following contents:
@@ -307,6 +307,10 @@ To define a Go struct as a database `VIEW`, implement the [`ViewDefiner`](https:
 ##### BuildStmt
 The `BuildStmt` function allows you to define a query using the GORM API. This is useful when you need to use GORM's query building capabilities.
 ```go
+package models
+
+import "ariga.io/atlas-provider-gorm/gormschema"
+
 // WorkingAgedUsers is mapped to the VIEW definition below.
 type WorkingAgedUsers struct {
   Name string
