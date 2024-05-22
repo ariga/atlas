@@ -536,9 +536,11 @@ All inputs are optional as they may be specified in the Atlas configuration file
   named `atlas.hcl` in the current directory. For example, `file://config/atlas.hcl`.
   Learn more about [Atlas configuration files](https://atlasgo.io/atlas-schema/projects).
 * `env` - The environment to use from the Atlas configuration file.  For example, `dev`.
-* `github_token_env` (required) - The GitHub token to use for authentication. Defaults to `GITHUB_TOKEN` environment variable.
-* `github_repository_env` (required) - The GitHub repository to use for authentication. Defaults to `GITHUB_REPOSITORY` environment variable.
+* `github_token_env` (required) - The GitHub token to use for authentication.
+  Defaults to `GITHUB_TOKEN` environment variable.
+* `github_repository_env` (required) - The GitHub repository name that will be used for reporting lint results.
+  Defaults to `GITHUB_REPOSITORY` environment variable.
 
-:::warning
+:::info
 The `GITHUB_TOKEN` and `GITHUB_REPOSITORY` environment variables are required for the `atlas-orb/migrate_lint` action to work.
 :::
