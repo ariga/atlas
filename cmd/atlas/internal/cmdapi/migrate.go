@@ -1410,7 +1410,7 @@ func checkRevisionSchemaClarity(cmd *cobra.Command, c *sqlclient.Client, revisio
 	if c.URL.Schema != "" && revisionSchemaFlag == "" {
 		// If the schema does not contain a revision table, but we can find a table in the previous default schema,
 		// abort and tell the user to specify the intention.
-		opts := &schema.InspectOptions{Tables: []string{revision.Table}}
+		opts := &schema.InspectOptions{Tables: []string{revision.Table}, Mode: schema.InspectTables}
 		s, err := c.InspectSchema(cmd.Context(), "", opts)
 		var ok bool
 		switch {

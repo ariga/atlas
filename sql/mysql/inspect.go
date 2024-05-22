@@ -97,7 +97,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		}
 	}
 	if mode.Is(schema.InspectTriggers) {
-		if err := i.inspectTriggers(ctx, r, nil); err != nil {
+		if err := i.inspectTriggers(ctx, r, opts); err != nil {
 			return nil, err
 		}
 	}
