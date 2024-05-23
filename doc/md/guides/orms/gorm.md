@@ -340,7 +340,7 @@ func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
   case "mysql":
     stmt = "CREATE VIEW working_aged_users AS SELECT name, age FROM users WHERE age BETWEEN 18 AND 65"
   case "sqlserver":
-    stmt = "CREATE VIEW working_aged_users AS SELECT name, age FROM users WHERE age >= 18 AND age <= 65"
+    stmt = "CREATE VIEW [working_aged_users] ( [name], [age] ) AS SELECT [name], [age] FROM [users] WHERE [age] >= 18 AND [age] <= 65 WITH CHECK OPTION"
   }
   return []gormschema.ViewOption{
     gormschema.CreateStmt(stmt),
