@@ -22,6 +22,17 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
+      {{- with .SharedSteps }}
+      {{- range . }}
+      - name: {{ .Name }}
+        uses: {{ .Action }}
+        {{- with .With }}
+        with:
+          {{- range . }}
+          {{ . }}{{ end }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
       - name: Checkout origin/master
         run: git checkout origin/master
       - name: Create revisions from master
