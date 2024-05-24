@@ -195,6 +195,7 @@ var data = struct {
 	Flavor, Tags, Runner, Suffix string
 	GoVersions                   goVersions
 	Concurrency                  concurrency
+	SharedSteps                  []Step
 }{
 	Concurrency: concurrency{
 		group:  "${{ github.workflow }}-${{ github.head_ref || github.run_id }}",
