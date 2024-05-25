@@ -1,0 +1,277 @@
+---
+title: "Supercharge your GORM migration with Atlas: Views Support"
+authors: luantranminh
+tags: [gorm, views, migration]
+---
+
+:::info TL;DR
+
+Lack of full support for views in GORM migration? Atlas is here to help! With the new release of 
+Atlas GORM Provider, you can now not only define and manage migrations for tables but also views with ease.
+
+[See an example](#demo-time)
+
+:::
+
+## Introduction
+ 
+Views are a powerful database feature: they are virtual table representing the result of a query. 
+Many teams use them to simplify complex queries, encapsulate logic, and present
+ a consistent interface to users, abstracting the underlying data structures.
+
+> Making liberal use of views is a key aspect of good SQL database design.
+>
+> — <cite>**Postgres documentation**</cite>
+
+## The current landscape
+
+Despite the benefits, views are often underutilized in many projects. Defining and managing database views can be tedious
+ and error-prone, especially when it comes to migration. 
+
+GORM is a fantastic ORM library that supports auto creation for database schema 
+with the [AutoMigrate](https://gorm.io/docs/migration.html#Auto-Migration) feature. AutoMigrate does 
+its job, but it's only sufficient in simple cases. When you need to 
+fully control and adapt [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations), but 
+still want to use your favorite GORM, Atlas is the answer.
+
+## Introducing Atlas + GORM
+
+Atlas can automatically plan database schema migrations for developers using GORM, 
+with the help of the [GORM Atlas Provider](https://github.com/ariga/atlas-provider-gorm). Moreover, not only tables but 
+also views are now fully supported. Unlike GORM itself, with Atlas, views can be managed and versioned in the same way as tables, as they should be.
+
+## Demo Time!
+
+Let's walk through a step-by-step example of using GORM Atlas Provider
+to automatically plan schema migrations for tables and views in a GORM project.
+
+### Installation
+
+If you haven't already, install Atlas from macOS or Linux by running:
+```bash
+curl -sSf https://atlasgo.sh | sh
+```
+See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more installation options.
+
+In addition, the view feature is only available for logged-in users, run the following command to login:
+
+```bash
+atlas login
+```
+
+Install the provider by running:
+```bash
+go get -u ariga.io/atlas-provider-gorm
+```
+
+#### Step 1: Create a GORM Application
+
+Let's create a file that will contain our database models. We will call it `models/models.go`:
+
+```go title="models/models.go"
+package models
+
+import (
+  "ariga.io/atlas-provider-gorm/gormschema"
+  "gorm.io/gorm"
+)
+
+// User is a regular gorm.Model stored in the "users" table.
+type User struct {
+  gorm.Model
+  Name   string
+  Age    int
+  Gender string
+}  
+
+// WorkingAgedUser is mapped to the VIEW definition below.
+type WorkingAgedUser struct {
+  Name string
+  Age  int
+}
+
+func (WorkingAgedUser) ViewDef(dialect string) []gormschema.ViewOption {
+    return []gormschema.ViewOption{
+        gormschema.CreateStmt(`
+            CREATE VIEW working_aged_users AS 
+            SELECT 
+                name, 
+                age 
+            FROM 
+                users 
+            WHERE 
+                age BETWEEN 18 AND 60
+        `),
+    }
+}
+```
+
+#### Step 2: Setup Atlas
+
+##### Standalone vs Go Program mode
+
+This feature works in both **Standalone** and **Go Program** modes:
+* **Standalone**: If your views and models are in the same package, you can use the provider directly to load your GORM schema into Atlas.
+* **Go Program**: If you have them defined in different packages, you can use the provider as a library in your Go program to load your GORM schema into Atlas.
+
+Since all of our models are in the same package, it's pretty handy to use 
+the **Standalone** mode. But if you're curious, you can also try the **Go Program** mode with more detail in the [GORM Guide](https://atlasgo.io/guides/orms/gorm).
+
+In your project directory, create a new file named `atlas.hcl` with the following contents:
+
+```hcl title="atlas.hcl"
+data "external_schema" "gorm" {
+  program = [
+    "go",
+    "run",
+    "-mod=mod",
+    "ariga.io/atlas-provider-gorm",
+    "load",
+    "--path", "./models" // path to your models
+    "--dialect", "mysql", // | postgres | sqlite | sqlserver
+  ]
+}
+
+env "gorm" {
+  src = data.external_schema.gorm.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+```
+
+:::info Running with dialects
+
+To run Atlas with the `mysql`, `postgres`, and `sqlserver` dialects, make sure your Docker is up and running.
+
+:::
+
+Next, to prevent the Go Modules system from dropping this dependency from our `go.mod` file, let's
+follow the Go Module's [official recommendation](https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module)
+for tracking dependencies of tools and add a file named `tools.go` with the following contents:
+
+```go title="tools.go"
+//go:build tools
+package main
+
+import _ "ariga.io/atlas-provider-gorm/gormschema"
+```
+
+Alternatively, you can simply add a blank import to the `models.go` file we created above.
+
+Finally, to tidy things up, run:
+
+```bash
+go mod tidy
+```
+
+#### Step 3: Generate Migrations
+
+We can now generate a migration file by running this command:
+
+```bash
+atlas migrate diff --env gorm 
+```
+
+Observe that files similar to this were created in the `migrations` directory:
+
+```bash
+migrations
+├── 20240525153051.sql
+└── atlas.sum
+
+1 directory, 2 files
+```
+
+Examining the contents of `20240525153051.sql`:
+
+```sql title="migrations/20240525153051.sql"
+-- Create "users" table
+CREATE TABLE `users` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) NULL,
+  `updated_at` datetime(3) NULL,
+  `deleted_at` datetime(3) NULL,
+  `name` longtext NULL,
+  `age` bigint NULL,
+  `gender` longtext NULL,
+  PRIMARY KEY (`id`),
+  INDEX `idx_users_deleted_at` (`deleted_at`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- Create "working_aged_users" view
+CREATE VIEW `working_aged_users` (
+  `name`,
+  `age`
+) AS select `users`.`name` AS `name`,`users`.`age` AS `age` from `users` where (`users`.`age` between 18 and 60);
+```
+
+Amazing! Atlas automatically generated a migration file that will create the `users` table and `working_aged_users` view in our database!
+
+#### Step 4: Update the View
+
+Next, as business requirements change, the age range is now different for each gender. Let's update the `WorkingAgedUser` struct and its view definition.
+
+```diff title="models/models.go"
+type WorkingAgedUser struct {
+  Name   string
+  Age    int
++ Gender string
+}
+
+func (WorkingAgedUser) ViewDef(dialect string) []gormschema.ViewOption {
+    return []gormschema.ViewOption{
+        gormschema.CreateStmt(`
+            CREATE VIEW working_aged_users AS 
+            SELECT 
+                name, 
+                age,
++               gender
+            FROM 
+                users 
+            WHERE
+-               age BETWEEN 18 AND 60             
++               (gender = 'male' AND age BETWEEN 18 AND 65) OR
++               (gender = 'female' AND age BETWEEN 18 AND 60)
+        `),
+    }
+}
+```
+
+Re-run this command:
+
+```bash
+atlas migrate diff --env gorm 
+```
+
+Observe a new migration file is generated:
+
+```bash
+migrations
+├── 20240525153051.sql
+├── 20240525153152.sql
+└── atlas.sum
+
+1 directory, 3 files
+```
+
+```sql title="migrations/20240525153152.sql"
+-- Modify "working_aged_users" view
+CREATE OR REPLACE VIEW `working_aged_users` (
+  `name`,
+  `age`,
+  `gender`
+) AS select `users`.`name` AS `name`,`users`.`age` AS `age`,`users`.`gender` AS `gender` from `users` where (((`users`.`gender` = 'male') and (`users`.`age` between 18 and 65)) or ((`users`.`gender` = 'female') and (`users`.`age` between 18 and 60)));
+```
+
+### Wrapping up​
+
+In this post, we have shown how to use Atlas to manage database schema migrations for tables and views in a GORM project. This is just one
+ of the many features that Atlas provides for working with your database schema. Checkout the [Atlas documentation](https://atlasgo.io/getting-started/) for more information.
+
+Have questions? Feedback? Find our team on our [Discord server](https://discord.com/invite/zZ6sWVg6NT).
