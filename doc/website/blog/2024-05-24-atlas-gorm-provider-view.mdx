@@ -69,7 +69,11 @@ go get -u ariga.io/atlas-provider-gorm
 
 #### Step 1: Create a GORM Application
 
-Let's create a file that will contain our database models. We will call it `models/models.go`:
+Models are defined using normal structs. For views, we define a struct and 
+implement the [ViewDefiner]([https://pkg.go.dev/ariga.io/atlas-provider-gorm/gormschema#ViewDefiner]) interface. The `ViewDef(dialect string)` method receives the 
+`dialect` argument to determine the SQL dialect to generate the view. It is helpful for generating the view definition for different SQL dialects if needed.
+
+Let's create a file that will contain our database models. We will call it `models/models.go`
 
 ```go title="models/models.go"
 package models
