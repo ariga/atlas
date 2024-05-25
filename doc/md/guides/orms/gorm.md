@@ -52,7 +52,7 @@ git clone git@github.com:go-admin-team/go-admin.git
 ## Using the Atlas GORM Provider 
 
 In this guide, we will use the [GORM Atlas Provider](https://github.com/ariga/atlas-provider-gorm)
-to automatically plan schema migrations for a GORM project.
+to automatically plan schema migrations for tables and [views](https://github.com/ariga/atlas-provider-gorm?tab=readme-ov-file#views) in a GORM project.
 
 ### Installation
 
@@ -290,6 +290,80 @@ Observe a new migration file is generated:
 -- Modify "pets" table
 ALTER TABLE `pets` ADD COLUMN `nickname` longtext NULL;
 ```
+
+### View
+
+A database view is a virtual table based on the result of a query. Views are helpful when you want to simplify complex queries, strengthen 
+security by selecting only the necessary data, or encapsulate the details of your table structures.
+
+From a querying perspective, views and tables are identical. For this reason, GORM can natively query any views that exist on the database.
+However, defining and managing views has previously had [partial support](https://github.com/go-gorm/gorm/issues/4966).
+The Atlas GORM Provider provides an API that allows you to define database views in the form of GORM models and with the help of [Atlas](https://atlasgo.io/getting-started), migration files can be automatically generated for them.
+
+> The view feature is only available for logged-in users; run `atlas login` if you haven't already.
+
+To define a Go struct as a database `VIEW`, implement the [`ViewDefiner`](https://pkg.go.dev/ariga.io/atlas-provider-gorm/gormschema#ViewDefiner) interface. 
+The `ViewDef()` method receives the dialect argument to determine the SQL dialect to generate the view. It is helpful for generating the view definition for different SQL dialects. The `gormschema` package provide two styles for defining a view's base query:
+
+##### BuildStmt
+
+The `BuildStmt` function allows you to define a query using the GORM API. This is useful when you need to use GORM's query building capabilities.
+
+```go
+package models
+
+import "ariga.io/atlas-provider-gorm/gormschema"
+
+// WorkingAgedUsers is mapped to the VIEW definition below.
+type WorkingAgedUsers struct {
+  Name string
+  Age  int
+}
+
+func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
+  return []gormschema.ViewOption{
+    gormschema.BuildStmt(func(db *gorm.DB) *gorm.DB {
+      return db.Model(&User{}).Where("age BETWEEN 18 AND 65").Select("name, age")
+    }),
+  }
+}
+```
+
+##### CreateStmt
+
+The `CreateStmt` function allows you to define a query using raw SQL. This is useful when you need to use SQL features that GORM does not support.
+
+```go
+func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
+  var stmt string
+  switch dialect {
+  case "mysql":
+    stmt = "CREATE VIEW working_aged_users AS SELECT name, age FROM users WHERE age BETWEEN 18 AND 65"
+  case "sqlserver":
+    stmt = "CREATE VIEW [working_aged_users] ([name], [age]) AS SELECT [name], [age] FROM [users] WHERE [age] >= 18 AND [age] <= 65 WITH CHECK OPTION"
+  }
+  return []gormschema.ViewOption{
+    gormschema.CreateStmt(stmt),
+  }
+}
+```
+
+The View feature works in both **Standalone** and **Go Program** mode. 
+
+For **Standalone** mode, if you place the view definition in the same package as your models, the provider will 
+automatically detect and create migration files for them.
+
+For **Go Program** mode, you can load the `VIEW` definition in the same way as a model:
+
+```go
+gormschema.New("mysql").Load(
+  &models.User{},             // Table-based model.
+  &models.WorkingAgedUsers{}, // View-based model.
+)
+```
+
+With the atlas.hcl configuration file set up as before, you now can run `atlas migrate diff --env gorm` to generate the migration file. 
+For more information and usage of `VIEW`, please refer to the documentation [Atlas GORM Provider#View](https://github.com/ariga/atlas-provider-gorm?tab=readme-ov-file#views)
 
 ## Conclusion
 
