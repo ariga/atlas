@@ -141,7 +141,7 @@ data "external_schema" "gorm" {
 
 env "gorm" {
   src = data.external_schema.gorm.url
-  dev = "docker://mysql/8/dev"
+  dev = "docker://mysql/8/dev" // the dev-database needs to be mapped to the same dialect above
   migration {
     dir = "file://migrations"
   }
@@ -155,7 +155,7 @@ env "gorm" {
 
 :::info Running with dialects
 
-To run Atlas with the `mysql`, `postgres`, and `sqlserver` dialects, make sure your Docker is up and running.
+To run Atlas with the `mysql`, `postgres`, or `sqlserver` dialects, make sure your Docker is up and running.
 
 :::
 
