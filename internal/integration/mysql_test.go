@@ -697,26 +697,26 @@ func TestMySQL_CLI_MultiSchema(t *testing.T) {
 				charset   = "%s"
 				collation = "%s"
 			}
-			table "users" {
+			table "test" "users" {
 				schema = schema.test
 				column "id" {
 					type = int
 				}
 				primary_key {
-					columns = [table.users.column.id]
+					columns = [column.id]
 				}
 			}
 			schema "test2" {
 				charset   = "%s"
 				collation = "%s"
 			}
-			table "users" {
+			table "test2" "users" {
 				schema = schema.test2
 				column "id" {
 					type = int
 				}
 				primary_key {
-					columns = [table.users.column.id]
+					columns = [column.id]
 				}
 			}`
 	t.Run("SchemaInspect", func(t *testing.T) {
