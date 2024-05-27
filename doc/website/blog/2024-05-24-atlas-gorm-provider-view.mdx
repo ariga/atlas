@@ -4,10 +4,14 @@ authors: luantranminh
 tags: [gorm, views, migration]
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 :::info TL;DR
 
-Lack of full support for views in GORM migration? Atlas is here to help! With the new release of 
-Atlas GORM Provider, you can now not only define and manage migrations for tables but also views with ease.
+[GORM](https://gorm.io), a popular ORM for Go can easily query SQL views, but managing them has traditionally
+been [an issue](https://github.com/go-gorm/gorm/issues/4966). With the [latest release](https://github.com/ariga/atlas-provider-gorm/releases/tag/v0.4.0) of 
+[Atlas GORM Provider](https://atlasgo.io/guides/orms/gorm), you can now easily manage views for your GORM application. 
 
 [See an example](#demo-time)
 
@@ -15,23 +19,35 @@ Atlas GORM Provider, you can now not only define and manage migrations for table
 
 ## Introduction
  
-Views are a powerful database feature: they are virtual table representing the result of a query. 
-Many teams use them to simplify complex queries, encapsulate logic, and present
- a consistent interface to users, abstracting the underlying data structures.
-
 > Making liberal use of views is a key aspect of good SQL database design.
 >
 > — <cite>**Postgres documentation**</cite>
+
+Views are a powerful database feature: they are virtual table representing the result of a query. 
+Many teams use them to simplify complex queries, encapsulate logic, and present
+ a consistent interface to users, abstracting the underlying data structures.
 
 ## The current landscape
 
 Despite the benefits, views are often underutilized in many projects. Defining and managing database views can be tedious
  and error-prone, especially when it comes to migration. 
 
-GORM is a fantastic ORM library that supports auto creation for database schema 
-with the [AutoMigrate](https://gorm.io/docs/migration.html#Auto-Migration) feature. AutoMigrate does 
-its job, but it's only sufficient in simple cases. When you need to 
-fully control and adapt [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations), but 
+GORM is a fantastic ORM library that supports auto creation for database tables 
+with the [AutoMigrate](https://gorm.io/docs/migration.html#Auto-Migration) feature. Regarding views, however, GORM does not provide 
+a developer-friendly way to [manage them](https://gorm.io/docs/migration.html#Views).
+
+```go title="GORM documentation"
+query := db.Model(&User{}).Where("age > ?", 20)
+
+// Create View
+db.Migrator().CreateView("users_pets", gorm.ViewOption{Query: query})
+// CREATE VIEW `users_view` AS SELECT * FROM `users` WHERE age > 20
+```
+
+We've seen many developers complain about this. Since views are just virtual tables, they should be managed in the same way as tables.
+
+GORM migration does its job, but it's only sufficient for simple cases. When 
+you need to fully control and adapt [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) but 
 still want to use your favorite GORM, Atlas is the answer.
 
 ## Introducing Atlas + GORM
@@ -70,7 +86,7 @@ go get -u ariga.io/atlas-provider-gorm
 #### Step 1: Create a GORM Application
 
 Models are defined using normal structs. For views, we define a struct and 
-implement the [ViewDefiner]([https://pkg.go.dev/ariga.io/atlas-provider-gorm/gormschema#ViewDefiner]) interface. The `ViewDef(dialect string)` method receives the 
+implement the [ViewDefiner](https://pkg.go.dev/ariga.io/atlas-provider-gorm/gormschema#ViewDefiner) interface. The `ViewDef(dialect string)` method receives the 
 `dialect` argument to determine the SQL dialect to generate the view. It is helpful for generating the view definition for different SQL dialects if needed.
 
 Let's create a file that will contain our database models. We will call it `models/models.go`
@@ -89,29 +105,84 @@ type User struct {
   Name   string
   Age    int
   Gender string
-}  
+} 
 
 // WorkingAgedUser is mapped to the VIEW definition below.
 type WorkingAgedUser struct {
   Name string
   Age  int
 }
+```
 
+For views, our provider provides two options for defining the view:
+* [**BuildStmt**](https://pkg.go.dev/ariga.io/atlas-provider-gorm/gormschema#BuildStmt): allows you to define a
+ query using the GORM API. This is useful when you need to use GORM's query building capabilities.
+* [**CreateStmt**](https://pkg.go.dev/ariga.io/atlas-provider-gorm/gormschema#CreateStmt): allows you to define a
+ query using raw SQL. This is useful when you need to define a complex query that GORM cannot handle.
+
+##### BuildStmt
+
+This option allows you to define the view using the GORM API. The dialect is handled automatically by GORM.
+
+```go title="models/models.go"
 func (WorkingAgedUser) ViewDef(dialect string) []gormschema.ViewOption {
     return []gormschema.ViewOption{
-        gormschema.CreateStmt(`
-            CREATE VIEW working_aged_users AS 
-            SELECT 
-                name, 
-                age 
-            FROM 
-                users 
-            WHERE 
-                age BETWEEN 18 AND 60
-        `),
+        // view name will adhere to GORM's convention for table name
+        // which is "working_aged_users" in this case
+        gormschema.BuildStmt(func(db *gorm.DB) *gorm.DB {
+            return db.Table("users").Select("name, age").Where("age BETWEEN 18 AND 60")
+        }),
     }
 }
 ```
+
+##### CreateStmt
+
+This option gives you more flexibility to define the view using raw SQL. However, it also involves a trade-off, as you 
+need to handle the SQL dialects yourself if you want it to work across multiple databases (e.g. switching databases, writing integration tests, etc.).
+
+<Tabs>
+<TabItem value="Default dialect" label="Default dialect" default> 
+
+```go title="models/models.go"
+func (WorkingAgedUser) ViewDef(dialect string) []gormschema.ViewOption {
+  return []gormschema.ViewOption{
+    gormschema.CreateStmt(`
+      CREATE VIEW working_aged_users AS 
+      SELECT 
+          name, 
+          age 
+      FROM 
+          users 
+      WHERE 
+          age BETWEEN 18 AND 60
+    `),
+  }
+}
+```
+
+</TabItem>
+<TabItem value="Multiple dialects" label="Multiple dialects" default>
+
+```go title="models/models.go"
+func (WorkingAgedUser) ViewDef(dialect string) []gormschema.ViewOption {
+  var stmt string
+  switch dialect {
+  case "mysql":
+    stmt = "CREATE VIEW working_aged_users AS SELECT name, age FROM users WHERE age BETWEEN 18 AND 60"
+  case "sqlserver":
+    stmt = "CREATE VIEW [working_aged_users] ([name], [age]) AS SELECT [name], [age] FROM [users] WHERE [age] >= 18 AND [age] <= 60 WITH CHECK OPTION"
+  }
+  return []gormschema.ViewOption{
+    gormschema.CreateStmt(stmt),
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+For demonstration purposes, we will use the `CreateStmt` option with the default dialect.
 
 #### Step 2: Setup Atlas GORM Provider
 
@@ -153,9 +224,10 @@ env "gorm" {
 }
 ```
 
-:::info Running with dialects
+:::info Using docker://
 
-To run Atlas with the `mysql`, `postgres`, or `sqlserver` dialects, make sure your Docker is up and running.
+If you use the `docker://` driver for spinning up your [Dev Database](https://atlasgo.io/concepts/dev-database) 
+be sure that Docker is running locally on your machine first. 
 
 :::
 
