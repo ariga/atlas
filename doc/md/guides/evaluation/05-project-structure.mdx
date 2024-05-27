@@ -1,0 +1,30 @@
+---
+id: project-structure
+title: Project Structure
+---
+After successfully verifying Atlas can connect to your database and understand its schema, let's proceed
+to setting up your project.
+
+
+A typical project layout may look something similar to this:
+
+```text
+.
+├── atlas.hcl
+├── migrations
+│   ├── 20240520182315.sql
+│   ├── 20240520182336.sql
+│   └── atlas.sum
+└── schema.hcl
+```
+
+A typical Atlas project comprises 3 important parts:
+
+* Desired State - Atlas's approach to database schema management is based on a concept we call "Database Schema-as-Code".
+  The desired state of your database should be present "as code" in the source control repository of your project.
+* Project Configuration File - this file is typically named `atlas.hcl` and is located in the root directory
+  of your project. If you are using a "Monorepo" architecture, you will have one of these files per Atlas project.
+* Migrations - While Atlas supports both purely [Versioned and Declarative](/declarative-vs-versioned) workflows, currently most teams
+  that use Atlas in production use the mixed approach where the source of truth for the desired state of the schema
+  is stored "as code", but migrations are still explicitly managed in a dedicated directory, typically named `migrations/`.
+

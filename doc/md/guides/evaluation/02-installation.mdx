@@ -1,0 +1,36 @@
+---
+id: install
+title: Installing Atlas
+slug: /guides/evaluation/install
+sidebar_label: Installing Atlas
+---
+
+import Installation from '../../components/_installation_instructions.mdx';
+
+### Install Atlas Locally
+
+To get started with your Atlas evaluation, install the Atlas CLI on your local machine.
+
+<Installation />
+
+### Create an Atlas Account
+
+To get the most of your Atlas evaluation, create an Atlas account and use the CLI to log in.
+
+It is possible to use Atlas without logging in, but you will only be able to use a subset of its full
+feature set. For a more detailed comparison of the features available to logged-in and anonymous users,
+see the [Atlas Feature Comparison](/features) guide.
+
+To log in to your account or create a new one, run the following command and follow the instructions:
+
+:::info Data Privacy
+
+We do not collect your schemas or any data from your database unless you explicitly decide send it to us
+To learn more about how the CLI handles your data head over to the [CLI Data Privacy](/cli/data-privacy)
+section.
+
+:::
+
+```bash
+atlas login
+```
