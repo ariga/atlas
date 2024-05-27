@@ -542,7 +542,8 @@ func (s *state) tableSeq(ctx context.Context, add *schema.AddTable) error {
 		})
 	}
 	if rows != nil {
-		return rows.Close()
+		rows.Close()
+		return rows.Err()
 	}
 	return nil
 }

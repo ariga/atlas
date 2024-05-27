@@ -68,7 +68,7 @@ func ScanOne(rows *sql.Rows, dest ...any) error {
 	if err := rows.Scan(dest...); err != nil {
 		return err
 	}
-	return rows.Close()
+	return rows.Err()
 }
 
 // ScanNullBool scans one sql.NullBool record and closes the rows at the end.
