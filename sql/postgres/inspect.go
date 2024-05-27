@@ -261,7 +261,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 			})
 		}
 	}
-	return rows.Close()
+	return rows.Err()
 }
 
 // columns queries and appends the columns of the given table.
@@ -280,7 +280,7 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 			return fmt.Errorf("postgres: %w", err)
 		}
 	}
-	return rows.Close()
+	return rows.Err()
 }
 
 // addColumn scans the current row and adds a new column from it to the scope (table or view).

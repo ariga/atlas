@@ -246,7 +246,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 			})
 		}
 	}
-	return rows.Close()
+	return rows.Err()
 }
 
 // columns queries and appends the columns of the given table.
