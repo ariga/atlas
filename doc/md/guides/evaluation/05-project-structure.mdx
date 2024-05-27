@@ -24,7 +24,7 @@ A typical Atlas project comprises 3 important parts:
   The desired state of your database should be present "as code" in the source control repository of your project.
 * Project Configuration File - this file is typically named `atlas.hcl` and is located in the root directory
   of your project. If you are using a "Monorepo" architecture, you will have one of these files per Atlas project.
-* Migrations - While Atlas supports both purely [Versioned and Declarative](/declarative-vs-versioned) workflows, currently most teams
+* Migrations - While Atlas supports both purely [Versioned and Declarative](/concepts/declarative-vs-versioned) workflows, currently most teams
   that use Atlas in production use the mixed approach where the source of truth for the desired state of the schema
   is stored "as code", but migrations are still explicitly managed in a dedicated directory, typically named `migrations/`.
 
