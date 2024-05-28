@@ -12,6 +12,11 @@
 module.exports = {
     documentation: [
         {
+            type: 'doc',
+            id: 'home/docs',
+            label: 'Home',
+        },
+        {
             type: 'category',
             label: 'Getting Started',
             collapsed: false,

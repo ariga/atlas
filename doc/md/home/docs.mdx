@@ -1,0 +1,363 @@
+---
+title: Welcome to Atlas
+slug: /docs
+sidebar_label: Home
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+import { DocCard } from "./components/doc-card";
+import { Icon } from "./components/icon";
+import { DBCard } from "./components/db-card";
+import { GuideCard } from "./components/guide-card";
+import { Layout } from "./components/layout";
+import { QuickStart } from "./components/quick-start";
+import { Card } from "./components/card";
+import { DocLink } from "./components/doc-link";
+
+<Layout>
+
+Atlas is a language-independent tool for managing and migrating database schemas using modern DevOps principles. It offers two workflows:
+
+- **Declarative**: Similar to Terraform, Atlas compares the current state of the database to the desired state, as defined in an [HCL](/atlas-schema/hcl), [SQL](/atlas-schema/sql), or [ORM](/atlas-schema/external) schema. Based on this comparison, it generates and executes a migration plan to transition the database to its desired state.
+
+- **Versioned**: Unlike other tools, Atlas automatically plans schema migrations for you. Users can describe their desired database schema in [HCL](/atlas-schema/hcl), [SQL](/atlas-schema/sql), or their chosen [ORM](/atlas-schema/external), and by utilizing Atlas, they can plan, lint, and apply the necessary migrations to the database.
+
+<QuickStart />
+
+### Installation <div className="order-3 justify-self-end col-end-3 lg:col-end-12"/>
+
+<Tabs
+    defaultValue="apple-intel-plain+linux"
+    values={[
+        {label: 'macOS + Linux', value: 'apple-intel-plain+linux'},
+        {label: 'Homebrew', value: 'homebrew'},
+        {label: 'Docker', value: 'docker'},
+        {label: 'Windows', value: 'windows'},
+        {label: 'Manual Installation', value: 'manual'},
+    ]}>
+
+<TabItem value="apple-intel-plain+linux">
+
+To download and install the latest release of the Atlas CLI, simply run the following in your terminal:
+
+```shell
+curl -sSf https://atlasgo.sh | sh
+```
+
+</TabItem>
+<TabItem value="homebrew">
+
+Get the latest release with [Homebrew](https://brew.sh/):
+
+```shell
+brew install ariga/tap/atlas
+```
+
+</TabItem>
+<TabItem value="docker">
+
+To pull the Atlas image and run it as a Docker container:
+
+```shell
+docker pull arigaio/atlas
+docker run --rm arigaio/atlas --help
+```
+
+If the container needs access to the host network or a local directory, use the `--net=host` flag and mount the desired directory:
+
+```shell
+docker run --rm --net=host \
+  -v $(pwd)/migrations:/migrations \
+  arigaio/atlas migrate apply
+  --url "mysql://root:pass@:3306/test"
+```
+
+</TabItem>
+<TabItem value="windows">
+Download the <a href="https://release.ariga.io/atlas/atlas-windows-amd64-latest.exe">latest release</a> and move the atlas binary to a file location on your system PATH.
+
+</TabItem>
+<TabItem value="manual">
+If you want to manually install the Atlas CLI, pick one of the below builds suitable for your system.
+
+<div className="grid grid-cols-1 lg:grid-cols-3 auto-cols-fr gap-4 mt-4">
+<div className="flex flex-col gap-4">
+<h3>MacOS</h3>
+<Card >
+    <div className="flex gap-4 items-center">
+        <Icon icon="download.svg" />
+        <span className="!text-darkBlue">
+        <a href="https://release.ariga.io/atlas/atlas-darwin-amd64-latest" className="!font-mono">AMD 64 </a>
+        (<a href="https://release.ariga.io/atlas/atlas-darwin-amd64-latest.md5" className="!font-mono">md5</a>/<a href="https://release.ariga.io/atlas/atlas-darwin-amd64-latest.sha256" className="!font-mono">sha256</a>)
+        </span>
+    </div>
+</Card>
+<Card >
+    <div className="flex gap-4 items-center">
+        <Icon icon="download.svg" />
+        <span className="!text-darkBlue">
+        <a href="https://release.ariga.io/atlas/atlas-darwin-arm64-latest" className="!font-mono">ARM 64 </a>
+        (<a href="https://release.ariga.io/atlas/atlas-darwin-arm64-latest.md5" className="!font-mono">md5</a>/<a href="https://release.ariga.io/atlas/atlas-darwin-arm64-latest.sha256" className="!font-mono">sha256</a>)
+        </span>
+    </div>
+</Card>
+</div>
+<div className="flex flex-col gap-4">
+<h3>Linux</h3>
+<Card>
+  <div className="flex gap-4 items-center">
+    <Icon icon="download.svg" />
+        <span className="!text-darkBlue !font-mono">
+          <a href="https://release.ariga.io/atlas/atlas-linux-amd64-latest" className="!font-mono">AMD 64 </a>
+          (<a href="https://release.ariga.io/atlas/atlas-linux-amd64-latest.md5" className="!font-mono">md5</a>/<a href="https://release.ariga.io/atlas/atlas-linux-amd64-latest.sha256" className="!font-mono">sha256</a>)
+        </span>
+  </div>
+</Card>
+<Card >
+    <div className="flex gap-4 items-center">
+        <Icon icon="download.svg" />
+        <span className="!text-darkBlue !font-mono">
+          <a href="https://release.ariga.io/atlas/atlas-linux-arm64-latest" className="!font-mono">ARM 64 </a>
+          (<a href="https://release.ariga.io/atlas/atlas-linux-arm64-latest.md5" className="!font-mono">md5</a>/<a href="https://release.ariga.io/atlas/atlas-linux-arm64-latest.sha256" className="!font-mono">sha256</a>)
+        </span>
+    </div>
+</Card>
+</div>
+
+<div className="flex flex-col gap-4">
+<h3>Windows</h3>
+
+<Card >
+    <div className="flex gap-4 items-center">
+        <Icon icon="download.svg" />
+          <span className="!text-darkBlue !font-mono">
+            <a href="https://release.ariga.io/atlas/atlas-windows-amd64-latest.exe" className="!font-mono">AMD 64 </a>
+            (<a href="https://release.ariga.io/atlas/atlas-windows-amd64-latest.exe.md5" className="!font-mono">md5</a>/<a href="https://release.ariga.io/atlas/atlas-windows-amd64-latest.exe.sha256" className="!font-mono">sha256</a>)
+          </span>
+    </div>
+</Card>
+</div>
+</div>
+
+</TabItem>
+</Tabs>
+
+The default binaries distributed in official releases are released under the [Atlas EULA](https://ariga.io/legal/atlas/eula). If you would like obtain a copy of Atlas Community Edition (under an Apache 2 license) follow the instructions [here](/community-edition).
+
+### Schema-as-Code
+
+<span>Choose your preferred way to represent the desired state of your database.</span>
+
+<div className="grid gap-6 grid-cols-1 lg:grid-cols-3 auto-cols-fr lg:auto-rows-fr mb-12 mt-6">
+  <DocCard
+    name="SQL"
+    icon="docs-sql.svg"
+    description="Describe your database schema with native SQL."
+    url="/atlas-schema/sql"
+  />
+  <DocCard
+    name="Atlas HCL"
+    description="The HCL-based language allows developers to describe database schemas in a declarative manner."
+    icon="docs-hcl.svg"
+    url="/atlas-schema/hcl"
+  />
+  <DocCard
+    name="ORM"
+    description="Represent your database with your ORM."
+    icon="docs-orm.svg"
+    url="/atlas-schema/external"
+  />
+</div>
+
+### Generating Migration
+
+<span>
+  Atlas offers two workflows to generate and plan migration changes, choose which one works best for
+  you. In both workflows, Atlas automatically plans schema migrations based on your desired schema.
+</span>
+
+<div className="grid gap-6 grid-cols-1 lg:grid-cols-2 auto-cols-fr lg:auto-rows-fr mb-12 mt-6">
+  <DocCard
+    name="Declarative Migrations"
+    description="Set up a Terraform-like workflow where each migration is calculated as the diff between your desired state and the current state of the database. "
+    icon="migration-declarative.svg"
+    url="/declarative/apply"
+  />
+  <DocCard
+    name="Versioned Migration"
+    description="Set up a migration directory for your project, creating a version-controlled source of truth of your database schema."
+    icon="migration-versioned.svg"
+    url="/versioned/intro"
+  />
+</div>
+
+### Verifying Migration Safety
+
+<span>
+  Atlas verifies your migrations by running them against{" "}
+  <a href="/lint/analyzers">various checks</a> to ensure their safety and validity. Verify these
+  changes locally, or as part of your CI process.
+</span>
+
+<div className="grid gap-6 grid-cols-1 lg:grid-cols-3 auto-cols-fr lg:auto-rows-fr mb-12 mt-6">
+  <DocCard
+    name={
+      <>
+        <Icon icon="sql-icon.svg" className="mr-2" /> CLI
+      </>
+    }
+    url="/versioned/lint"
+    description="Verify your migration files in your CLI."
+/>
+
+<DocCard
+  name={
+    <>
+      <Icon icon="github-icon.svg" className="mr-2" /> GitHub
+    </>
+  }
+  url="/integrations/github-actions#arigaatlas-actionmigratelint-ci"
+  description="Setup automatic migration linting with GitHub Actions."
+/>
+
+<DocCard
+  name={
+    <>
+      <Icon icon="gitlab-icon.svg" className="mr-2" /> Gitlab
+    </>
+  }
+  description="Setup automatic migration linting with GitLab CI."
+  url="/guides/ci-platforms/gitlab"
+/>
+</div>
+
+### Deploying Migrations
+
+<span>
+  Deploy migrations to target databases in production by integrating natively with the rest of your
+  infrastructure management.
+</span>
+
+<div className="grid gap-6 grid-cols-1 lg:grid-cols-3 auto-cols-fr auto-rows-fr items-stretch mb-12 mt-6">
+  <DocCard
+    name={
+      <>
+        <Icon icon={"sql-icon.svg"} className="mr-2" /> CLI
+      </>
+    }
+    description="Deploy migrations from your CLI."
+    url="/versioned/apply"
+  />
+  <DocCard
+    name={
+      <>
+        <Icon icon={"github-icon.svg"} className="mr-2" /> GitHub
+      </>
+    }
+    description="Setup deployments with GitHub Actions."
+    url="/integrations/github-actions#arigaatlas-actionmigrateapply"
+  />
+  <DocCard
+    name={
+      <>
+        <Icon icon={"gitlab-icon.svg"} className="mr-2" /> Gitlab
+      </>
+    }
+    description="Setup deployments with GitLab CI."
+    url="/guides/ci-platforms/gitlab"
+  />
+  <DocCard
+    name={
+      <>
+        <Icon icon={"terraform-icon.svg"} className="mr-2" /> Terraform Provider
+      </>
+    }
+    description="Use Atlas with Terraform to manage database schema changes."
+    url="/integrations/terraform-provider"
+  />
+  <DocCard
+    name={
+      <>
+        <Icon icon={"kubernetes-icon.svg"} className="mr-2" /> Kubernetes Operator
+      </>
+    }
+    description="Use the Atlas Kubernetes Operator to manage database schema changes."
+    url="/integrations/kubernetes/operator"
+  />
+</div>
+
+### Atlas Cloud
+
+<span>
+  Gain full visibility into the databases in your development and production environments with
+  visualizations, detailed logs and troubleshooting capabilities.
+</span>
+
+<div className="grid gap-6 grid-cols-1 lg:grid-cols-3 auto-cols-fr lg:auto-rows-fr mb-12 mt-6">
+  <DocCard
+    name="Getting Started"
+    icon="atlas-cloud.svg"
+    description="Push your database schema to the Cloud to maintain a single source of truth for database schemas with auto-generated documentation."
+    url="/cloud/getting-started"
+  />
+  <DocCard
+    name="Setup CI"
+    description="Simulate and analyze changes to catch destructive changes, backward-incompatibility issues, accidental table locks, and constraint violations way before they reach production."
+    icon="setup-ci-icon.svg"
+    url="/cloud/setup-ci"
+  />
+  <DocCard
+    name="Deployments"
+    description="Gain full visibility into the database schema in your production environments with detailed logs and troubleshooting capabilities."
+    icon="deployments-icon.svg"
+    url="/cloud/deployment"
+  />
+</div>
+
+<div className="flex justify-between gap-2 items-center">
+  <h3 className="!mb-0">Supported Databases</h3>
+  <DocLink className="order-3 justify-self-end col-end-3 lg:col-end-12" url="/guides">
+    All Databases
+  </DocLink>
+</div>
+
+<div className="grid grid-cols-3 xl:grid-cols-7 auto-cols-fr auto-rows-fr gap-2 mb-16 xl:mb-12 mt-10">
+  <DBCard name="PostgreSQL" icon="postgresql.svg" />
+  <DBCard name="MySQL" icon="mysql.svg" />
+  <DBCard name="SQLite" icon="sqlite.svg" />
+  <DBCard name="MariaDB" icon="mariadb.svg" />
+  <DBCard name="SQL Server" icon="sql-server.svg" url="/guides/mssql" />
+  <DBCard name="ClickHouse" icon="clickhouse.svg" url="/guides/clickhouse" />
+  <DBCard name="Redshift" icon="redshift.svg" isDark={true} url="/guides/redshift">
+    <Icon icon="comming-soon-icon.svg" />
+  </DBCard>
+</div>
+
+<div className="flex justify-between gap-2 items-center">
+  <h3 className="!mb-0">Latest Guides</h3>
+  <DocLink className="order-3 justify-self-end col-end-3 lg:col-end-12" url="/guides">
+    View all guides
+  </DocLink>
+</div>
+
+<div className="grid grid-cols-1 lg:grid-cols-3 auto-cols-fr auto-rows-fr gap-2 mt-6">
+  <GuideCard
+    name="Modern Database CI/CD"
+    description="Learn about Atlas's modern approach to Database CI/CD"
+    url="/guides/modern-database-ci-cd"
+  />
+  <GuideCard
+    name="Migration for SQLAlchemy"
+    description="Automatic migration planning for SQLAlchemy applications"
+    url="/guides/orms/sqlalchemy"
+  />
+  <GuideCard
+    name="Working with secrets"
+    description="Working with sensitive info like database passwords"
+    url="/guides/deploying/secrets"
+  />
+</div>
+
+</Layout>

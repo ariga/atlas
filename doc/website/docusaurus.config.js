@@ -63,7 +63,7 @@ module.exports = {
           position: 'right',
         },
         {
-          to: 'getting-started',
+          to: 'docs',
           label: 'Docs',
           position: 'left',
         },
@@ -95,7 +95,7 @@ module.exports = {
         {
           "title": "Docs",
           "items": [
-            {"label": "Getting Started", "to": "getting-started"},
+            {"label": "Home", "to": "docs"},
             {"label": "Atlas vs Others ", "to": "atlas-vs-others"},
             {"label": "CLI Reference", "to": "cli-reference"},
             {"label": "Blog", "to": "blog"},
@@ -268,6 +268,7 @@ module.exports = {
     "./plugins/utm-plugin",
     "./plugins/intercom",
     "./plugins/page-view",
+    "./plugins/tailwind"
   ],
   presets: [
     [
