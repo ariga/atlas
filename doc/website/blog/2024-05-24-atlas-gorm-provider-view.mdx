@@ -32,29 +32,34 @@ Many teams use them to simplify complex queries, encapsulate logic, and present
 Despite the benefits, views are often underutilized in many projects. Defining and managing database views can be tedious
  and error-prone, especially when it comes to migration. 
 
-GORM is a fantastic ORM library that supports auto creation for database tables 
-with the [AutoMigrate](https://gorm.io/docs/migration.html#Auto-Migration) feature. Regarding views, however, GORM does not provide 
-a developer-friendly way to [manage them](https://gorm.io/docs/migration.html#Views).
+GORM is a fantastic ORM library that supports wide range of features 
+and [migration](https://gorm.io/docs/migration.html#Auto-Migration) is one of them.
 
 ```go title="GORM documentation"
+// AutoMigrate will create tables, missing foreign keys, constraints, columns and indexes.
+db.AutoMigrate(&User{})
+
 query := db.Model(&User{}).Where("age > ?", 20)
 
 // Create View
 db.Migrator().CreateView("users_pets", gorm.ViewOption{Query: query})
-// CREATE VIEW `users_view` AS SELECT * FROM `users` WHERE age > 20
 ```
+ 
+The migration does the job, but there are some limitations:
 
-We've seen many developers complain about this. Since views are just virtual tables, they should be managed in the same way as tables.
+* Views are essentially virtual tables, but they are handled differently from tables in GORM.
+* There is a knowledge gap when using the views for queries since they run through a migrator, not a physical model struct.
+* Both tables and views are seamlessly created, but there is no way to keep track of the changes.
 
-GORM migration does its job, but it's only sufficient for simple cases. When 
-you need to fully control and adapt [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) but 
-still want to use your favorite GORM, Atlas is the answer.
+Therefore, if you need full control, consistent APIs, and want to 
+adapt [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) while still using
+ your favorite GORM, Atlas is the answer.
 
 ## Introducing Atlas + GORM
 
 Atlas can automatically plan database schema migrations for developers using GORM, 
 with the help of the [GORM Atlas Provider](https://github.com/ariga/atlas-provider-gorm). Moreover, not only tables but 
-also views are now fully supported. Unlike GORM itself, with Atlas, views can be managed and versioned in the same way as tables, as they should be.
+also views are now fully supported. With Atlas, views can be managed and versioned in the same way as tables, as they should be.
 
 ## Demo Time!
 
