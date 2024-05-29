@@ -26,6 +26,17 @@ func TestModeInspectRealm(t *testing.T) {
 	m = ModeInspectRealm(&schema.InspectRealmOption{Mode: schema.InspectSchemas})
 	require.True(t, m.Is(schema.InspectSchemas))
 	require.False(t, m.Is(schema.InspectTables))
+
+	m = ModeInspectRealm(&schema.InspectRealmOption{Exclude: []string{"*.*"}})
+	require.Equal(t, schema.InspectSchemas, m)
+	m = ModeInspectRealm(&schema.InspectRealmOption{Exclude: []string{"*"}})
+	require.NotEqual(t, schema.InspectSchemas, m)
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.True(t, m.Is(schema.InspectTables))
+	m = ModeInspectRealm(&schema.InspectRealmOption{Mode: schema.InspectFuncs, Exclude: []string{"*.*"}})
+	require.NotEqual(t, schema.InspectSchemas, m)
+	require.True(t, m.Is(schema.InspectFuncs))
+	require.False(t, m.Is(schema.InspectTables))
 }
 
 func TestModeInspectSchema(t *testing.T) {
@@ -39,6 +50,17 @@ func TestModeInspectSchema(t *testing.T) {
 
 	m = ModeInspectSchema(&schema.InspectOptions{Mode: schema.InspectSchemas})
 	require.True(t, m.Is(schema.InspectSchemas))
+	require.False(t, m.Is(schema.InspectTables))
+
+	m = ModeInspectSchema(&schema.InspectOptions{Exclude: []string{"*"}})
+	require.Equal(t, schema.InspectSchemas, m)
+	m = ModeInspectSchema(&schema.InspectOptions{Exclude: []string{"*.*"}})
+	require.NotEqual(t, schema.InspectSchemas, m)
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.True(t, m.Is(schema.InspectTables))
+	m = ModeInspectSchema(&schema.InspectOptions{Mode: schema.InspectFuncs, Exclude: []string{"*"}})
+	require.NotEqual(t, schema.InspectSchemas, m)
+	require.True(t, m.Is(schema.InspectFuncs))
 	require.False(t, m.Is(schema.InspectTables))
 }
 
