@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -223,20 +224,27 @@ func ValuesEqual(v1, v2 []string) bool {
 
 // ModeInspectSchema returns the InspectMode or its default.
 func ModeInspectSchema(o *schema.InspectOptions) schema.InspectMode {
-	if o == nil || o.Mode == 0 {
-		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews | schema.InspectFuncs |
-			schema.InspectTypes | schema.InspectObjects | schema.InspectTriggers
+	if o != nil && o.Mode != 0 {
+		return o.Mode
 	}
-	return o.Mode
+	return modeSchemaOrAll(V(o).Exclude, "*")
 }
 
 // ModeInspectRealm returns the InspectMode or its default.
 func ModeInspectRealm(o *schema.InspectRealmOption) schema.InspectMode {
-	if o == nil || o.Mode == 0 {
-		return schema.InspectSchemas | schema.InspectTables | schema.InspectViews | schema.InspectFuncs |
-			schema.InspectTypes | schema.InspectObjects | schema.InspectTriggers
+	if o != nil && o.Mode != 0 {
+		return o.Mode
 	}
-	return o.Mode
+	return modeSchemaOrAll(V(o).Exclude, "*.*")
+}
+
+// modeSchemaOrAll returns the inspect mode based on the exclude patterns.
+func modeSchemaOrAll(exclude []string, match string) schema.InspectMode {
+	if slices.Contains(exclude, match) {
+		return schema.InspectSchemas
+	}
+	return schema.InspectSchemas | schema.InspectTables | schema.InspectViews | schema.InspectFuncs |
+		schema.InspectTypes | schema.InspectObjects | schema.InspectTriggers
 }
 
 // A Builder provides a syntactic sugar API for writing SQL statements.
