@@ -568,6 +568,10 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/evaluation/project-structure'
                 },
+                {
+                    type: 'doc',
+                    id: 'guides/evaluation/schema-as-code'
+                },
             ]
         }
     ]
