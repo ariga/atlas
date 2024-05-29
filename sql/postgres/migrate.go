@@ -851,9 +851,8 @@ func (s *state) tableComment(src schema.Change, t *schema.Table, to, from string
 }
 
 func (s *state) columnComment(src schema.Change, t *schema.Table, c *schema.Column, to, from string) *migrate.Change {
-	b := s.Build("COMMENT ON COLUMN").Table(t)
-	b.WriteByte('.')
-	b.Ident(c.Name).P("IS")
+	b := s.Build("COMMENT ON COLUMN").TableResource(t, c)
+	b.P("IS")
 	return &migrate.Change{
 		Cmd:     b.Clone().P(quote(to)).String(),
 		Source:  src,
