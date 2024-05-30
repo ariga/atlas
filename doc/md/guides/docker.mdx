@@ -1,0 +1,62 @@
+---
+title: Running Atlas in Docker
+id: atlas-in-docker
+slug: atlas-in-docker
+---
+Atlas ships as a set of official [Docker Images](https://hub.docker.com/r/arigaio/atlas) for you to use.
+
+To run Atlas in Docker, execute:
+
+```shell
+docker run --rm arigaio/atlas
+```
+
+Depending on your use case, you may want to use a different image type:
+
+| Base Image | Image Tags                    | Purpose                                        |
+|------------|-------------------------------|------------------------------------------------|
+| Distroless | `latest`, `latest-distroless` | Bare bone image containing only Atlas          |
+| Alpine     | `latest-alpine`               | Alpine based image, with basic shell (/bin/sh) |
+
+## Common Issues
+
+### `"docker": executable file not found in $PATH`
+
+Atlas heavily relies on the presence of a [Dev Database](/concepts/dev-database) for various calculations
+and schema normalization.  To use a Dev Database, users provide Atlas with the URL to connect to an empty
+database of the type they wish to operate on.
+
+To streamline work with Dev Databases, Atlas provides a convenience driver named `docker://`, in which Atlas
+depends on the Docker CLI command `docker` to be present in the runtime environment.  Running Docker-in-Docker
+is a notoriously nuanced topic and so we do not ship `docker` in the distributed Atlas images.
+
+For this reason, Atlas users who wish to run Atlas in Docker, cannot, by default use the `docker://` driver.
+
+#### Workaround 1: Spin up a local database container and use it
+
+A common workaround is to spin up a local, empty database container and connect to it.
+
+1. Create a Docker Network to establish network connectivity between your local DB and Atlas:
+  ```
+  docker network create db-network
+  ```
+2. Run the database:
+  ```
+  docker run --name pg-dev-db --network db-network -e POSTGRES_PASSWORD=mysecretpassword -d postgres:16
+  ```
+3. Use the new dev db:
+  ```
+  docker run --rm --network db-network \
+    -v $PWD:/data \
+    arigaio/atlas migrate diff \
+    --to file:///data/schema.hcl \
+    --dir file:///data/migrations \
+    --dev-url "postgres://postgres:mysecretpassword@pg-dev:5432/postgres?sslmode=disable"
+  ```
+  Note a few things about this command:
+  * We use the `--network` flag to use the network we created for our dev database on step 1.
+  * We mount our local dir as `/data`
+  * We use the URL for our dev database as the `--dev-url` flag, note that the hostname `pg-dev` was specified in step
+    2 as the container name.
+
+#### Workaround 2: Create an image with Docker

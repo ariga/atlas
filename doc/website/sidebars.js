@@ -256,6 +256,10 @@ module.exports = {
             ]
         },
         {
+            type: 'doc',
+            id: 'guides/atlas-in-docker',
+        },
+        {
             type: 'category',
             label: 'Testing',
             collapsed: false,
