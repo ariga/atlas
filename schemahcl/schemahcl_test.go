@@ -1072,3 +1072,30 @@ bar "b1" {
 		Ref:  &Ref{V: "$foo.f1"},
 	}, doc.Bar[0])
 }
+
+func Test_WithPos(t *testing.T) {
+	var (
+		doc struct {
+			DefaultExtension
+		}
+		b = []byte(`
+foo {}
+foo {
+  bar {
+    baz = 1
+  }
+}
+baz = 1
+`)
+	)
+	require.NoError(t, New(WithPos()).EvalBytes(b, &doc, nil))
+	at, ok := doc.Extra.Attr("baz")
+	require.True(t, ok)
+	require.Equal(t, 8, at.Pos().Line)
+	rs := doc.Extra.Resources("foo")
+	require.Len(t, rs, 2)
+	require.Equal(t, 2, rs[0].Pos().Line)
+	require.Equal(t, 3, rs[1].Pos().Line)
+	require.Equal(t, 4, rs[1].Children[0].Pos().Line)
+	require.Equal(t, 5, rs[1].Children[0].Attrs[0].Pos().Line)
+}
