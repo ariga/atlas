@@ -316,6 +316,7 @@ schema = data.hcl_schema.a8m.url
 		// as they are defined on the data source.
 	})
 	require.NoError(t, err)
+	require.Equal(t, "a8m", sr.Schema)
 	realm, err := sr.ReadState(ctx)
 	require.NoError(t, err)
 	buf, err := drv.MarshalSpec(realm)
@@ -341,6 +342,7 @@ schema "a8m" {
 		// as they are defined on the data source.
 	})
 	require.NoError(t, err)
+	require.Empty(t, sr.Schema)
 	realm, err = sr.ReadState(ctx)
 	require.NoError(t, err)
 	buf, err = drv.MarshalSpec(realm)

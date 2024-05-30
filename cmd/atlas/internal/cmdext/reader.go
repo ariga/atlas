@@ -206,9 +206,18 @@ func stateReaderHCL(_ context.Context, config *StateReaderConfig, paths []string
 			config.Dev.URL.Schema,
 		)
 	}
-	var normalized bool
+	var (
+		normalized  bool
+		schemaScope string
+	)
+	// The "Schema" below indicates the HCL represents a single
+	// database schema, and the work is scoped to this schema.
+	if len(realm.Schemas) == 1 && (config.Dev != nil && config.Dev.URL.Schema != "" || config.Client != nil && config.Client.URL.Schema != "") {
+		schemaScope = realm.Schemas[0].Name
+	}
 	return &StateReadCloser{
-		HCL: true,
+		HCL:    true,
+		Schema: schemaScope,
 		// Defer normalization until the first call to ReadState. This is required because the same
 		// dev-database is used for both migration replaying and schema normalization. As a result,
 		// objects created by the migrations, which are not yet supported by Atlas, such as functions,
