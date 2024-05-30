@@ -34,7 +34,8 @@ type (
 		typedblk         map[string]map[string]BlockFunc
 		// Optional context to pass to dynamic block handlers,
 		// such as data-sources, type-blocks, etc.
-		ctx context.Context
+		ctx     context.Context
+		withPos bool
 	}
 	// Option configures a Config.
 	Option func(*Config)
@@ -95,6 +96,13 @@ func WithScopedEnums[T interface{ ~string }](path string, enums ...T) Option {
 			vars[string(enums[i])] = cty.StringVal(string(enums[i]))
 		}
 		c.pathVars[path] = vars
+	}
+}
+
+// WithPos attaches parse positions to returned Resources and Attrs.
+func WithPos() Option {
+	return func(c *Config) {
+		c.withPos = true
 	}
 }
 
@@ -583,6 +591,9 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, vr SchemaValidator, hclAttrs hclsy
 			return nil, err
 		}
 		at := &Attr{K: hclAttr.Name}
+		if s.config.withPos {
+			at.SetPos(&hclAttr.SrcRange.Start)
+		}
 		switch t := value.Type(); {
 		case isRef(value):
 			if !value.Type().HasAttribute("__ref") {
@@ -694,6 +705,9 @@ func (s *State) toResource(ctx *hcl.EvalContext, vr SchemaValidator, block *hcls
 		return nil, err
 	}
 	spec = &Resource{Type: block.Type}
+	if s.config.withPos {
+		spec.SetPos(&block.TypeRange.Start)
+	}
 	switch len(block.Labels) {
 	case 0:
 	case 1:

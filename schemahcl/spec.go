@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql/schema"
+
+	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
 )
@@ -23,12 +25,14 @@ type (
 		Type      string
 		Attrs     []*Attr
 		Children  []*Resource
+		pos       *hcl.Pos
 	}
 
 	// Attr is an attribute of a Resource.
 	Attr struct {
-		K string
-		V cty.Value
+		K   string
+		V   cty.Value
+		pos *hcl.Pos
 	}
 
 	// Ref implements Value and represents a reference to another Resource.
@@ -377,6 +381,28 @@ func (a *Attr) Bools() (vs []bool, err error) {
 		return nil, err
 	}
 	return vs, nil
+}
+
+// SetPos sets the position of this attribute.
+func (a *Attr) SetPos(p *hcl.Pos) {
+	a.pos = p
+}
+
+// Pos returns the attribute position on the
+// file, or nil if it is not set.
+func (a *Attr) Pos() *hcl.Pos {
+	return a.pos
+}
+
+// SetPos sets the position of this resource.
+func (r *Resource) SetPos(p *hcl.Pos) {
+	r.pos = p
+}
+
+// Pos returns the resource position on the
+// file, or nil if it is not set.
+func (r *Resource) Pos() *hcl.Pos {
+	return r.pos
 }
 
 // Resource returns the first child Resource by its type and reports whether it was found.
