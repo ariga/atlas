@@ -371,6 +371,10 @@ schema "account_b" {
 table "t2" {
 	schema = schema.account_b
 }
+table "t3" {
+	schema = schema.account_b
+	name = "foo"
+}
 `
 
 	for _, tt := range dialects {
@@ -392,12 +396,14 @@ table "t2" {
 						Realm: &r,
 						Tables: []*schema.Table{
 							{Name: "t2"},
+							{Name: "foo"},
 						},
 					},
 				},
 			}
 			exp.Schemas[0].Tables[0].Schema = exp.Schemas[0]
 			exp.Schemas[1].Tables[0].Schema = exp.Schemas[1]
+			exp.Schemas[1].Tables[1].Schema = exp.Schemas[1]
 			require.EqualValues(t, exp, &r)
 			hcl, err := tt.MarshalSpec(&r)
 			require.NoError(t, err)
