@@ -268,7 +268,9 @@ func (s *Scanner) skipQuote(quote rune) error {
 		case r == eos:
 			return s.error(pos, "unclosed quote %q", quote)
 		case r == '\\':
-			s.next()
+			if s.next() == quote {
+				return nil
+			}
 		case r == quote:
 			return nil
 		}

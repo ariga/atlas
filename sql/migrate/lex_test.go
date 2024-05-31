@@ -88,10 +88,12 @@ cmd6;
 
 -- atlas:nolint
 cmd7;
+
+create table t1 (c1 varchar(5) default '\');
 `
 	stmts, err := NewLocalFile("f", []byte(f)).StmtDecls()
 	require.NoError(t, err)
-	require.Len(t, stmts, 8)
+	require.Len(t, stmts, 9)
 
 	require.Equal(t, "cmd0;", stmts[0].Text)
 	require.Equal(t, 0, stmts[0].Pos, "start of the file")
@@ -125,6 +127,8 @@ cmd7;
 
 	require.Equal(t, "cmd7;", stmts[7].Text)
 	require.Equal(t, []string{""}, stmts[7].Directive("nolint"))
+
+	require.Equal(t, "create table t1 (c1 varchar(5) default '\\');", stmts[8].Text)
 }
 
 func TestLex_Errors(t *testing.T) {
