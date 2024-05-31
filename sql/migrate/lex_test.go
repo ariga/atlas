@@ -49,6 +49,42 @@ func TestScanner_StmtsGroup(t *testing.T) {
 	}
 }
 
+func TestScanner_EscapedStrings(t *testing.T) {
+	path := filepath.Join("testdata", "lexescaped")
+	dir, err := NewLocalDir(path)
+	require.NoError(t, err)
+	files, err := dir.Files()
+	require.NoError(t, err)
+	require.Len(t, files, 2, "tests should be updated")
+	scan := &Scanner{}
+	scan.BackslashEscapes = true
+	stmts, err := scan.Scan(string(files[0].Bytes()))
+	require.NoError(t, err)
+	buf, err := os.ReadFile(filepath.Join(path, files[0].Name()+".golden"))
+	require.NoError(t, err)
+	got := make([]string, len(stmts))
+	for i, s := range stmts {
+		got[i] = s.Text
+	}
+	require.Equalf(t, string(buf), strings.Join(got, "\n-- end --\n"), "mismatched statements in file %q", files[0].Name())
+	_, err = scan.Scan(string(files[1].Bytes()))
+	require.EqualError(t, err, `4:40: unclosed quote '\''`, "escaped strings conflicts with standard strings")
+
+	scan.BackslashEscapes = false
+	scan.EscapedStringExt = true
+	stmts, err = scan.Scan(string(files[0].Bytes()))
+	require.EqualError(t, err, `4:42: unclosed quote '\''`, "disabled escaped strings should fail parse of escaped strings without the extension")
+	stmts, err = scan.Scan(string(files[1].Bytes()))
+	require.NoError(t, err)
+	buf, err = os.ReadFile(filepath.Join(path, files[1].Name()+".golden"))
+	require.NoError(t, err)
+	got = make([]string, len(stmts))
+	for i, s := range stmts {
+		got[i] = s.Text
+	}
+	require.Equalf(t, string(buf), strings.Join(got, "\n-- end --\n"), "mismatched statements in file %q", files[1].Name())
+}
+
 func TestLocalFile_StmtDecls(t *testing.T) {
 	f := `cmd0;
 -- test

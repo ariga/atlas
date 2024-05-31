@@ -347,6 +347,7 @@ func (*Driver) ScanStmts(input string) ([]*migrate.Stmt, error) {
 			MatchBegin:       true,
 			MatchBeginAtomic: true,
 			MatchDollarQuote: true,
+			EscapedStringExt: true,
 		},
 	}).Scan(input)
 }

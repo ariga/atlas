@@ -106,6 +106,12 @@ type (
 		MatchBeginAtomic bool
 		// MatchDollarQuote enables the PostgreSQL dollar-quoted string syntax.
 		MatchDollarQuote bool
+		// BackslashEscapes enables backslash-escaped strings. By default, only MySQL/MariaDB uses backslash as
+		// an escape character.  https://dev.mysql.com/doc/refman/8.4/en/sql-mode.html#sqlmode_no_backslash_escapes
+		BackslashEscapes bool
+		// EscapedStringExt enables the supported for PG extension for escaped strings and adopted by its flavors.
+		// See: https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE.
+		EscapedStringExt bool
 	}
 )
 
@@ -262,12 +268,15 @@ func (s *Scanner) addPos(p int) {
 }
 
 func (s *Scanner) skipQuote(quote rune) error {
-	pos := s.pos
+	var (
+		pos     = s.pos
+		escaped = s.BackslashEscapes || s.EscapedStringExt && s.pos > 0 && (s.input[s.pos-1] == 'E' || s.input[s.pos-1] == 'e')
+	)
 	for {
 		switch r := s.next(); {
 		case r == eos:
 			return s.error(pos, "unclosed quote %q", quote)
-		case r == '\\':
+		case r == '\\' && escaped:
 			s.next()
 		case r == quote:
 			return nil
