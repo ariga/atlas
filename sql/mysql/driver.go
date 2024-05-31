@@ -269,7 +269,8 @@ func (*Driver) StmtBuilder(opts migrate.PlanOptions) *sqlx.Builder {
 func (*Driver) ScanStmts(input string) ([]*migrate.Stmt, error) {
 	return (&migrate.Scanner{
 		ScannerOptions: migrate.ScannerOptions{
-			MatchBegin: true,
+			MatchBegin:       true,
+			BackslashEscapes: true,
 			// The following are not support by MySQL/MariaDB.
 			MatchBeginAtomic: false,
 			MatchDollarQuote: false,

@@ -1,0 +1,7 @@
+create table t1 (c text default '\');
+-- end --
+create table t1 (c text default E'\\');
+-- end --
+create table t1 (c text default '\A\');
+-- end --
+create table t1 (c text default e'\\A\\');
