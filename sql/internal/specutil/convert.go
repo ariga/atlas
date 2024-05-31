@@ -1141,7 +1141,7 @@ func findT[T schema.Object](sch *schema.Schema, qualifier, name string, findT fu
 	case 0:
 		err = fmt.Errorf("referenced %s %q not found", typeName(t), name)
 	default:
-		err = fmt.Errorf("multiple refrences %ss found for %q", typeName(t), name)
+		err = fmt.Errorf("multiple reference %ss found for %q", typeName(t), name)
 	}
 	return
 }
