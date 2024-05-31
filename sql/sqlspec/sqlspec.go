@@ -19,7 +19,7 @@ type (
 
 	// Table holds a specification for an SQL table.
 	Table struct {
-		Name        string         `spec:",name"`
+		Name        string         `spec:"name,name"`
 		Qualifier   string         `spec:",qualifier"`
 		Schema      *schemahcl.Ref `spec:"schema"`
 		Columns     []*Column      `spec:"column"`
