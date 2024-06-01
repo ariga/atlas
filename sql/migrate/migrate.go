@@ -783,7 +783,9 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	}
 	stmts, err := e.fileStmts(m)
 	if err != nil {
-		return fmt.Errorf("sql/migrate: scanning statements from %q: %w", m.Name(), err)
+		err = fmt.Errorf("sql/migrate: scanning statements from %q: %w", m.Name(), err)
+		e.log.Log(LogError{Error: err})
+		return err
 	}
 	// Create checksums for the statements.
 	var (

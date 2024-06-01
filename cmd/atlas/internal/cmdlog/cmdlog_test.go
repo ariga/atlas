@@ -617,4 +617,17 @@ func TestMigrateApply(t *testing.T) {
   -- 3 checks ok, 1 failure
   -- 2 sql statements
 `, b.String())
+
+	// Error during plan stage.
+	b.Reset()
+	log.Applied = nil
+	log.Error = `sql/migrate: scanning statements from "20240116000003.sql": 5:115: unclosed quote '\''`
+	require.NoError(t, cmdlog.MigrateApplyTemplate.Execute(&b, log))
+	require.Equal(t, `Migrating to version 20240116000003 from 20240116000001 (2 migrations in total):
+
+    sql/migrate: scanning statements from "20240116000003.sql": 5:115: unclosed quote '\''
+
+  -------------------------
+  -- 10ms
+`, b.String())
 }
