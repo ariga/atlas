@@ -319,6 +319,11 @@ Migrating to version {{ cyan .Target }}{{ with .Current }} from {{ cyan . }}{{ e
 	{{- else }}
 		{{- printf "  %s ok (%s)\n" (yellow "--") (yellow (.End.Sub .Start).String) }}
 	{{- end }}
+{{- else }}
+	{{- println }}
+	{{- with .Error }}
+		{{- println "   " (redBgWhiteFg .) }}
+	{{- end }}
 {{- end }}
 {{- println }}
 {{- println " " (cyan "-------------------------") }}
@@ -418,6 +423,7 @@ func (a *MigrateApply) Log(e migrate.LogEntry) {
 		f := a.Applied[len(a.Applied)-1]
 		f.Applied = append(f.Applied, e.SQL)
 	case migrate.LogError:
+		// Error during migration.
 		if l := len(a.Applied); l > 0 {
 			f := a.Applied[len(a.Applied)-1]
 			f.End = time.Now()
@@ -426,6 +432,11 @@ func (a *MigrateApply) Log(e migrate.LogEntry) {
 				Stmt: e.SQL,
 				Text: e.Error.Error(),
 			}
+			// Error during pre stages, such as
+			// scanning migration statements.
+		} else {
+			a.End = time.Now()
+			a.Error = e.Error.Error()
 		}
 	case migrate.LogDone:
 		n := time.Now()
