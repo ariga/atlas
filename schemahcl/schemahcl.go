@@ -592,7 +592,7 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, vr SchemaValidator, hclAttrs hclsy
 		}
 		at := &Attr{K: hclAttr.Name}
 		if s.config.withPos {
-			at.SetPos(&hclAttr.SrcRange.Start)
+			at.SetRange(&hclAttr.SrcRange)
 		}
 		switch t := value.Type(); {
 		case isRef(value):
@@ -706,7 +706,7 @@ func (s *State) toResource(ctx *hcl.EvalContext, vr SchemaValidator, block *hcls
 	}
 	spec = &Resource{Type: block.Type}
 	if s.config.withPos {
-		spec.SetPos(&block.TypeRange.Start)
+		spec.SetRange(&block.TypeRange)
 	}
 	switch len(block.Labels) {
 	case 0:
