@@ -25,14 +25,14 @@ type (
 		Type      string
 		Attrs     []*Attr
 		Children  []*Resource
-		pos       *hcl.Pos
+		rang      *hcl.Range
 	}
 
 	// Attr is an attribute of a Resource.
 	Attr struct {
-		K   string
-		V   cty.Value
-		pos *hcl.Pos
+		K    string
+		V    cty.Value
+		rang *hcl.Range
 	}
 
 	// Ref implements Value and represents a reference to another Resource.
@@ -383,26 +383,26 @@ func (a *Attr) Bools() (vs []bool, err error) {
 	return vs, nil
 }
 
-// SetPos sets the position of this attribute.
-func (a *Attr) SetPos(p *hcl.Pos) {
-	a.pos = p
+// SetRange sets the range of this attribute.
+func (a *Attr) SetRange(p *hcl.Range) {
+	a.rang = p
 }
 
-// Pos returns the attribute position on the
+// Range returns the attribute range on the
 // file, or nil if it is not set.
-func (a *Attr) Pos() *hcl.Pos {
-	return a.pos
+func (a *Attr) Range() *hcl.Range {
+	return a.rang
 }
 
-// SetPos sets the position of this resource.
-func (r *Resource) SetPos(p *hcl.Pos) {
-	r.pos = p
+// SetRange sets the range of this resource.
+func (r *Resource) SetRange(p *hcl.Range) {
+	r.rang = p
 }
 
-// Pos returns the resource position on the
+// Range returns the resource range on the
 // file, or nil if it is not set.
-func (r *Resource) Pos() *hcl.Pos {
-	return r.pos
+func (r *Resource) Range() *hcl.Range {
+	return r.rang
 }
 
 // Resource returns the first child Resource by its type and reports whether it was found.
