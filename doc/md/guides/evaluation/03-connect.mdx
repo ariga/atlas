@@ -23,12 +23,13 @@ driver://[username[:password]@]address/[schema|database][?param1=value1&...&para
 
 Here are some popular examples you can use:
 
-| Engine        |                                                                 |
-|---------------|-----------------------------------------------------------------|
-| PostgreSQL    | postgres://root:pass@localhost:5432/database?search_path=public |
-| MySQL         | mysql://root:pass@localhost:3306/app_schema                     |
-| ClickHouse    | clickhouse://user:pass@localhost:9000/schema?secure=true        |
-| More examples | In the [URL Docs](/concepts/url)                                |
+| Engine        |                                                                          |
+|---------------|--------------------------------------------------------------------------|
+| PostgreSQL    | `postgres://root:pass@localhost:5432/database?search_path=public`        |
+| MySQL         | `mysql://root:pass@localhost:3306/app_schema`                            |
+| SQL Server    | `sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master&mode=schema` |
+| ClickHouse    | `clickhouse://user:pass@localhost:9000/schema?secure=true`               |
+| More examples | In the [URL Docs](/concepts/url)                                                   |
 
 ## Step 2: Choose connection scope
 
@@ -67,7 +68,7 @@ some of these cases.
 |----------------------------------------------------------|----------------|
 | All of my tables are in one schema                       | Schema-scope   |
 | I want to use qualified identifiers (e.g `auth`.`users`) | Database-scope |
-| I want to use database `EXTENSIONS` (Postgres) [Why](/atlas-schema/hcl#extension)          | Database-scope |
+| I want to use database `EXTENSIONS` (Postgres) [Why?](/atlas-schema/hcl#extension)          | Database-scope |
 | I want to see the entire database                        | Database-scope |
 
 ### Scoped connections
@@ -77,9 +78,10 @@ the connection by providing it within the connection URL. For example:
 
   | Engine        | Schema-scope                                          | Database-scope              |
   |---------------|-------------------------------------------------------|-----------------------------|
-  | PostgreSQL    | postgres://localhost:5432/database**?search_path=public** | postgres://:5432/database   |
-  | MySQL         | mysql://localhost:3306/**app_schema**                     | mysql://localhost:3306/     |
-  | ClickHouse    | clickhouse://localhost:9000/**schema**                    | clickhouse://localhost:9000 |
+  | PostgreSQL    | `postgres://localhost:5432/database?search_path=public` | `postgres://:5432/database`   |
+  | MySQL         | `mysql://localhost:3306/app_schema`                     | `mysql://localhost:3306/`     |
+  | ClickHouse    | `clickhouse://localhost:9000/schema`                    | `clickhouse://localhost:9000` |
+  | SQL Server    | `sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master&mode=schema` | `sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master&mode=database` |
   | More examples | In the [URL Docs](/concepts/url)                          |                             |
 
 ## Test your connection
@@ -154,3 +156,18 @@ workstation. This might involve:
 * Connecting to your company's VPN which has access to the database
 * Connecting through a bastion server
 * Changing firewall rules for the database to allow a connection from your machine.
+
+:::info Other Issues
+
+If you encounter any issues during this step, don't hesitate to reach out to us.
+
+#### Commercial PoC
+
+Please reach out to us via our shared Slack Connect channel.
+
+#### Independent PoC
+
+Please use our [Community Support](/support) channels to contact our team. If possible,
+please supply us with a minimal example schema to reproduce the issue.
+
+:::

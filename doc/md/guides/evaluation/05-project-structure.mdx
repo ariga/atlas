@@ -56,8 +56,11 @@ our Dev Database URL explicitly:
 atlas schema diff --env local --from file://schema.hcl --to "$DB_URL"
 ```
 
-If everything worked correctly, you should see the same output you got in the verification step of the previous
-section:
+This command will calculate the diff between the schema which we saved from your live database to `schema.hcl` in
+a previous step and the current schema of the database in `$DB_URL`.
+
+Unless your database schema changed in the interim, you should see the same output you got in the verification step
+of the previous section:
 
 ```
 Schemas are synced, no changes to be made.

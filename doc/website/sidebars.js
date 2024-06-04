@@ -563,6 +563,7 @@ module.exports = {
         {
             type: 'category',
             label: 'Setting Up',
+            collapsed: false,
             items: [
                 {
                     type: 'doc',
@@ -572,7 +573,12 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/evaluation/schema-as-code'
                 },
+                {
+                    type: 'doc',
+                    id: 'guides/evaluation/setup-migrations',
+                    label: 'Migration Directory'
+                }
             ]
-        }
+        },
     ]
 };

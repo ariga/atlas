@@ -44,13 +44,13 @@ CREATE TABLE `users` (
 
 ### What should you choose?
 
-As with any important engineering decision, there are pros and cons to every decision, which you should weigh against
+As with any important engineering decision, there are pros and cons to every alternative, which you should weigh against
 your use case. Let's try to enumerate some benefits and potential issues with each alternative:
 
-|                | SQL                                                                                                                  | Atlas DDL                                                                                              | ORM                                                                                           |
-|----------------|----------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
-| Familiarity    | Teams likely already know how to define SQL tables.                                                                  | New syntax specific to Atlas, familiar to teams using Terraform.                                       | Developers are used to defining data models in their favorite framework's API.                |
-| Order          | Schema order matters; foreign keys require careful planning or multiple statements.                                  | Resources can be defined in any order, providing flexibility.                                           | Models can be defined in different files; dependencies are resolved by the ORM engine.        |
+|                | SQL                                                                                                                  | Atlas DDL                                                                                              | ORM                                                                                             |
+|----------------|----------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| Familiarity    | Teams likely already know how to define SQL tables.                                                                  | New syntax specific to Atlas, familiar to teams using Terraform.                                       | Developers are used to defining data models in their favorite framework's API.                  |
+| Order          | Schema order matters; dependencies between resources  require careful attention.                                     | Resources can be defined in any order, providing flexibility.  Dependencies resolved by Atlas.         | Models can be defined in different files; dependencies are resolved by the ORM engine.          |
 | Editor Support | Imperative syntax limits IDE features like "Jump to Definition" and code completion.                                 | VSCode and JetBrains support with features like syntax highlighting and auto-completion.               | Editor support varies; some frameworks offer type-safe APIs while others use string annotations.|
 
 #### Familiarity
@@ -66,7 +66,8 @@ your use case. Let's try to enumerate some benefits and potential issues with ea
 - **SQL:** Schemas must be replayable on a target database, meaning the order in which statements are written matters.
   For example, you cannot define a table that references another table via a foreign key before the dependent table is defined. This requires either disabling foreign key checks or splitting the table definition into a `CREATE` statement followed by an `ALTER` statement, complicating schema management and requiring careful planning.
 - **Atlas DDL:** Atlas DDL is based on HCL, the same configuration language used by Terraform. Resources can be defined
-  in any order, helping with logically splitting resources into different domains and offering more flexibility. This simplifies schema management and reduces dependencies between resources.
+  in any order, helping with logically splitting resources into different domains and offering more flexibility.
+  This reduces mental overhead and simplifies operations for end developers.
 - **ORM:** This depends on the ORM specifics, but in general, ORM Models can be defined in different files where their
   dependencies are resolved by the ORM engine. This modularity simplifies development and maintenance of data models.
 
@@ -90,7 +91,20 @@ In cases like these, we advise using the `composite_schema` data source which ca
 definitions one on top of the other. This way you can have your base models defined as _Django Models_, but additional
 views and triggers layered on top in Atlas DDL.
 
-See more on how to do this below.
+Here's a basic example of how a `composite_schema` might look like:
+
+```
+data "composite_schema" "project" {
+  schema "inventory" {
+    url = data.external_schema.django.url
+  }
+  schema "triggers" {
+    url = "file://path/to/triggers.hcl"
+  }
+}
+```
+
+To learn more about `composite_schema`, head over to the [documentation](/atlas-schema/projects#data-source-composite_schema)
 
 ## Step 2: Add your schema files
 
@@ -103,7 +117,7 @@ Use the following command to inspect your target database schema to create an in
 with Atlas DDL:
 
 ```shell
-atlas schema inspect --url "$DB_URL" --env local  > schema.sql
+atlas schema inspect --url "$DB_URL" --env local  > schema.hcl
 ```
 
 This command tells Atlas to connect to the database at `$DB_URL`, inspect it, use the
@@ -203,7 +217,7 @@ while private links can only be accessed from within your account.
 After choosing the option you prefer, if everything worked correctly you should see a diagram similar to
 this:
 
--- DIAGRAM --
+![](https://atlasgo.io/uploads/erd-example.png)
 
 :::info Alternative: Text-based Inspection
 

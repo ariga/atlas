@@ -30,6 +30,13 @@ directory which contains the [Atlas DDL](/atlas-schema/hcl) representation of yo
 
 ### Step 3: Determine your Dev Database URL
 
+:::info A dev database isn't
+
+Notice that when we discuss a **Dev Database** in the Atlas documentation we **DO NOT** refer to the
+local database you use for development, but to a different concept explained below.
+
+:::
+
 To operate correctly, Atlas utilizes a [Dev Database](/concepts/dev-database) to normalize and verify
 schemas. Essentially, a dev-database is an *empty* database of the same type and version that you use
 in production. When Atlas runs, it may run some operations against this database and is responsible
@@ -52,6 +59,8 @@ some commonly used URLs.
 |            | Database-scope | `docker://postgres/16/dev`                    |
 | ClickHouse | Schema-scope   | `docker://clickhouse/23.11/dev`               |
 |            | Database-scope | `docker://clickhouse/23.11`                   |
+| SQL Server | Schema-scope   | `docker://sqlserver/2022-latest/dev?mode=schema` |
+|            | Database-scope | `docker://sqlserver/2022-latest/dev?mode=database` |
 | Others | | Find more examples in the [Dev Database](/concepts/dev-database) guide. |
 
 ### Step 4: Verify Zero Diff
@@ -82,7 +91,7 @@ If you prefer to review this in plain SQL DDL commands instead of the Atlas's HC
 atlas schema inspect --url "$DB_URL" --format "{{ sql . }}"
 ```
 
-### Troubleshooting
+:::info Other Issues
 
 If you encounter any issues during this step, don't hesitate to reach out to us.
 
@@ -94,3 +103,5 @@ Please reach out to us via our shared Slack Connect channel.
 
 Please use our [Community Support](/support) channels to contact our team. If possible,
 please supply us with a minimal example schema to reproduce the issue.
+
+::: minimal example schema to reproduce the issue.
