@@ -1,0 +1,18 @@
+import React from "react";
+import { Icon } from "./icon";
+import Link from "@docusaurus/Link";
+
+export function QuickStart() {
+  return (
+    <Link
+      to="/getting-started"
+      className="hover:no-underline p-4 flex mb-12 flex-col gap-2 max-w-[300px] border border-[#A7B5FF] rounded-lg bg-[#E9ECFF] transition-all hover:border-lightBlue"
+    >
+      <div className="flex justify-between items-center">
+        <p className="text-xl font-bold mb-0 text-black">Quick Start</p>
+        <Icon icon="arrow-right.svg" />
+      </div>
+      <p className="mb-0 inline-block text-black">Get started with Atlas in 5 minutes.</p>
+    </Link>
+  );
+}
