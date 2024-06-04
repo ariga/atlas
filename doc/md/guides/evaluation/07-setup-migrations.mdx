@@ -1,0 +1,96 @@
+---
+id: setup-migrations
+title: Setup Versioned Migrations
+---
+
+## Intro
+
+Similarly to other migration tools, in its _Versioned Migrations flow_ Atlas keeps track of schema changes in a
+_Migration Directory_.  This is a directory containing SQL migration scripts, which are named following this convention
+
+```
+<version>_<label>.sql
+```
+For example:
+
+```
+20240520182336_add_users_table.sql
+```
+The label is optional, so this filename is also valid:
+```
+20240520182336.sql
+```
+By default, Atlas generates migration files with the `YYYYMMDDHHMMSS.sql` naming convention, where `YYYY` is the year,
+`MM` is the month, `DD` is the day, `HH` is the hour, `MM` is the minute, and `SS` is the second when the file was created.
+However, you may choose to name your files in another way, as long as versions are numeric and ordered lexicographically.
+
+In this section, we generate the baseline migration directory for your project from your "schema-as-code".
+
+## Step 1: Configuration
+
+Let's further evolve our `atlas.hcl` configuration file to describe how versioned migrations should be handled.
+
+By default, migrations will be stored in the `migrations` directory relative to the current working directory, however
+it is good practice to explicitly define the location for your migration directory in the project configuration file.
+Add the following line to your `local` env block:
+
+```hcl {3-10}
+env "local" {
+  // .. redacted for brevity
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+```
+
+The `format` block configures migrations to be created with indentation for improved readability.
+
+## Step 2: Create the Baseline Migration
+
+The next step is to create a baseline migration which contains our project schema up until this point.
+
+To plan this initial migration run the following command:
+
+```shell
+atlas migrate diff --env local baseline
+```
+
+Observe two new files are created under the `migrations/` directory:
+
+```
+.
+├── 20240604131146_baseline.sql
+└── atlas.sum
+```
+
+The first file is the baseline migration, and the second, `atlas.sum`, is the migration directory
+[integrity file](/concepts//migration-directory-integrity) which protects your project from conflicts
+between developers working in parallel.
+
+### How does this work?
+
+Here's what Atlas does when you run `atlas migrate diff`:
+
+1. It reads the desired schema as defined in the environment `src` attribute.
+2. It replays all migrations on the Dev Database and takes a snapshot of the schema.
+3. Atlas calculates a diff between the desired state (step 1) and the current state (step 2)
+4. Atlas writes a new migration file to the `migrations/` directory and updates the `atlas.sum` file.
+
+## Step 3: Verify the generated migration
+
+To verify the migration was calculated correctly you can compare it to your live database:
+
+```
+atlas schema diff --env local --from "$DB_URL" --to file://migrations
+```
+
+If all went well, you should see a message similar to:
+
+```
+Schemas are synced, no changes to be made.
+```

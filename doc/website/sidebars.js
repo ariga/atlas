@@ -141,8 +141,8 @@ module.exports = {
             label: 'CLI Reference',
             collapsed: false,
             link: {
-              type: 'doc',
-              id: 'cli-reference'
+                type: 'doc',
+                id: 'cli-reference'
             },
             items: [
                 {
@@ -171,9 +171,9 @@ module.exports = {
             id: 'guides/guides'
         },
         {
-          type: 'category',
-          label: 'For Platform Teams',
-          collapsed: false,
+            type: 'category',
+            label: 'For Platform Teams',
+            collapsed: false,
             items: [
                 {
                     type: 'doc',
@@ -528,5 +528,58 @@ module.exports = {
                 },
             ]
         }
+    ],
+    eval: [
+        {
+            type: 'category',
+            label: 'Evaluating Atlas',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/evaluation/intro'
+                },
+            ]
+        },
+        {
+            type: 'category',
+            label: 'Installation',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/evaluation/install'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/evaluation/connect'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/evaluation/verify-atlas',
+                    label: 'Verify Atlas'
+                }
+            ]
+        },
+        {
+            type: 'category',
+            label: 'Setting Up',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/evaluation/project-structure'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/evaluation/schema-as-code'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/evaluation/setup-migrations',
+                    label: 'Migration Directory'
+                }
+            ]
+        },
     ]
 };

@@ -1,0 +1,227 @@
+---
+id: schema-as-code
+title: Your Schema-as-Code
+---
+Atlas is built on the concept of "Database Schema-as-Code", where teams define the desired state of their database
+as part of their code, and use an automated tool (such as Atlas) to plan, verify and apply schema changes (migrations)
+automatically.
+
+Naturally, the first part of setting up your project is to determine how your "schema as code" project is going to be
+structured. Atlas provides a lot of flexibility around how to define this state as we will show below.
+
+## Step 1: Choose your language
+
+Atlas offers three main ways to define the desired state of your database schema:
+
+1. [Atlas DDL](/atlas-schema/hcl) - is an HCL-based syntax (similar to Terraform) for defining database schemas.
+For example:
+```hcl
+schema "default" {
+}
+
+table "users" {
+  schema = schema.default
+  column "name" {
+    type = varchar(100)
+  }
+  // ... more
+}
+   ```
+2. [Plain SQL](/atlas-schema/sql) - alternatively, you can use plain SQL DDL commands to define your database
+schema. For example:
+```sql
+CREATE TABLE `users` (
+    name varchar(100)
+);
+   ```
+3. [ORMs](/guides#orms) - Atlas can extract the desired database schema from ORM data models, for example:
+  ```python
+  from django.db import models
+
+  class User(models.Model):
+      name = models.CharField(max_length=100)
+  ```
+
+### What should you choose?
+
+As with any important engineering decision, there are pros and cons to every alternative, which you should weigh against
+your use case. Let's try to enumerate some benefits and potential issues with each alternative:
+
+|                | SQL                                                                                                                  | Atlas DDL                                                                                              | ORM                                                                                             |
+|----------------|----------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| Familiarity    | Teams likely already know how to define SQL tables.                                                                  | New syntax specific to Atlas, familiar to teams using Terraform.                                       | Developers are used to defining data models in their favorite framework's API.                  |
+| Order          | Schema order matters; dependencies between resources  require careful attention.                                     | Resources can be defined in any order, providing flexibility.  Dependencies resolved by Atlas.         | Models can be defined in different files; dependencies are resolved by the ORM engine.          |
+| Editor Support | Imperative syntax limits IDE features like "Jump to Definition" and code completion.                                 | VSCode and JetBrains support with features like syntax highlighting and auto-completion.               | Editor support varies; some frameworks offer type-safe APIs while others use string annotations.|
+
+#### Familiarity
+- **SQL:** Your team probably already knows how to define SQL tables, making SQL a familiar choice for many teams,
+  leveraging existing knowledge and skills.
+- **Atlas DDL:** The syntax is new and specific to Atlas but will feel familiar to teams used to working with Terraform,
+  balancing the introduction of new concepts with leveraging Terraform's HCL familiarity.
+- **ORM:** Your developers are already used to defining data models in their favorite framework's API, which can speed
+  up development and reduce the learning curve for new team members.
+
+#### Order
+
+- **SQL:** Schemas must be replayable on a target database, meaning the order in which statements are written matters.
+  For example, you cannot define a table that references another table via a foreign key before the dependent table is defined. This requires either disabling foreign key checks or splitting the table definition into a `CREATE` statement followed by an `ALTER` statement, complicating schema management and requiring careful planning.
+- **Atlas DDL:** Atlas DDL is based on HCL, the same configuration language used by Terraform. Resources can be defined
+  in any order, helping with logically splitting resources into different domains and offering more flexibility.
+  This reduces mental overhead and simplifies operations for end developers.
+- **ORM:** This depends on the ORM specifics, but in general, ORM Models can be defined in different files where their
+  dependencies are resolved by the ORM engine. This modularity simplifies development and maintenance of data models.
+
+#### Editor Support
+- **SQL:** Because SQL DDL is an imperative syntax, important IDE features (such as "Jump to Definition" and
+  code completion) do not work great. This can hinder development efficiency and increase the potential for errors.
+- **Atlas DDL:** Editor support for both VSCode and JetBrains includes syntax highlighting, auto-completion, syntax
+  checking, jump to definition, multi-file support, and more. This comprehensive support enhances developer productivity and reduces the likelihood of errors.
+- **ORM:** Editor support greatly varies. Some frameworks provide a 100% type-safe API which the editor understands,
+  while others heavily rely on string-based annotations. Depending on the framework, developer efficiency and code
+  robustness may vary.
+
+
+### Must you choose only one?
+
+In some cases, no alternative checks all the boxes and you need to find a way to build schemas that are
+built from multiple building blocks. For example, you may want to use your favorite ORM to describe your schema
+only to discover that it lacks support for some needed database functionality (e.g `VIEW` or `TRIGGER` resources).
+
+In cases like these, we advise using the `composite_schema` data source which can be used to layer multiple schema
+definitions one on top of the other. This way you can have your base models defined as _Django Models_, but additional
+views and triggers layered on top in Atlas DDL.
+
+Here's a basic example of how a `composite_schema` might look like:
+
+```
+data "composite_schema" "project" {
+  schema "inventory" {
+    url = data.external_schema.django.url
+  }
+  schema "triggers" {
+    url = "file://path/to/triggers.hcl"
+  }
+}
+```
+
+To learn more about `composite_schema`, head over to the [documentation](/atlas-schema/projects#data-source-composite_schema)
+
+## Step 2: Add your schema files
+
+After you have determined what you would like to use as the desired state for your Database Schema-as-Code
+setup with Atlas, let's add the relevant files to our project.
+
+### Option A: Atlas DDL
+
+Use the following command to inspect your target database schema to create an initial baseline for your project
+with Atlas DDL:
+
+```shell
+atlas schema inspect --url "$DB_URL" --env local  > schema.hcl
+```
+
+This command tells Atlas to connect to the database at `$DB_URL`, inspect it, use the
+Dev Database defined in the `local` env.  By default, Atlas DDL is used as the output format.
+We then redirect the output from Atlas into a new file, `schema.hcl` which we will use the the
+source schema for our project.
+
+Next, update your project configuration file, `atlas.hcl`, to add the `src` attribute which tells
+Atlas it can find the desired state of the database in the given path:
+
+```hcl
+env "local" {
+  //highlight-next-line
+  src = "file://schema.hcl"
+  dev = "docker://postgres/16/dev" // <-- Replace your with your dev database URL.
+}
+```
+
+### Option B: Plain SQL
+
+Use the following command to inspect your target database schema to create an initial baseline for your project
+with plain SQL:
+
+```shell
+atlas schema inspect --url "$DB_URL" --env local --format "{{ sql . \" \"}}" > schema.sql
+```
+
+This command tells Atlas to connect to the database at `$DB_URL`, inspect it, use the
+Dev Database defined in the `local` env and format it as plain SQL.  We then redirect the output
+from Atlas into a new file, `schema.sql` which we will use the the source schema for our project.
+
+Next, update your project configuration file, `atlas.hcl`, to add the `src` attribute which tells
+Atlas it can find the desired state of the database in the given path:
+
+```hcl
+env "local" {
+  //highlight-next-line
+  src = "file://schema.sql"
+  dev = "docker://postgres/16/dev" // <-- Replace your with your dev database URL.
+}
+```
+
+### Option C: ORMs
+
+ORMs require a bit more involvement in setting up our project, so refer to the relevant ORM guide:
+
+#### Go
+
+* [GORM](/guides/orms/gorm)
+* [Ent](#)
+* [Beego](/guides/orms/beego)
+
+#### Python
+
+* [SQLAlchemy](/guides/orms/sqlalchemy)
+* [Django](/guides/orms/django)
+
+#### Java
+
+* [Hibernate](/guides/orms/hibernate)
+
+#### Node.js
+
+* [TypeORM](/guides/orms/typeorm)
+* [Sequelize](/guides/orms/sequelize)
+
+All of the examples above are a result of our team's work with our users and customers.
+If you are missing something on this list, please don't hesitate to reach out to someone
+from our team!
+
+## Step 3: Verify our setup
+
+Next, let's verify Atlas is able to read our desired schema, by introducing a new flag for
+the `schema inspect` command, `--web`. After running a normal inspection of our database schema,
+when provided with this flag, Atlas will offer to visualize our database schema in an online
+ER Diagram on Atlas Cloud:
+
+```shell
+atlas schema inspect --env local --url "env://src" --web
+```
+
+Notice that this command uses `env://src` as the target URL for inspection, meaning "the schema represented by the
+`src` attribute of the `local` environment block.
+
+When you use the `--web` flag you can choose if you want to upload it a public link or privately
+to your Atlas Cloud account:
+
+```
+? Where would you like to share your schema visualization?:
+  ▸ Publicly (gh.atlasgo.cloud)
+    Privately (your-account.atlasgo.cloud)
+```
+
+Public links can be shared with your colleagues without requiring them to have an Atlas Cloud account
+while private links can only be accessed from within your account.
+
+After choosing the option you prefer, if everything worked correctly you should see a diagram similar to
+this:
+
+![](https://atlasgo.io/uploads/erd-example.png)
+
+:::info Alternative: Text-based Inspection
+
+If you do not wish to visualize your schema on Atlas Cloud at this point, you can omit the `--web` option
+to get a textual representation of your schema.
+
+:::

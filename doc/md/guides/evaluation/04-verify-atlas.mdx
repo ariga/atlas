@@ -1,0 +1,107 @@
+---
+id: verify-atlas
+title: Verify Atlas understands your Schema
+---
+
+After successfully connecting to your database using Atlas,  our next step will be to verify that Atlas
+is able to inspect your database schema and that it correctly normalizes it such that if re-applied to the
+database no diff will be detected.
+
+### Step 1: Export your database URL as an env var
+
+To make the examples in this section brief, start by setting a local environment variable
+containing the URL you determined for your database:
+
+```
+export DB_URL="<url>"
+```
+
+### Step 2: Store the schema in a local file
+
+Use the Atlas `schema inspect` command to connect to your database, calculate its schema graph
+and store it in a local file:
+
+```
+atlas schema inspect --url "$DB_URL" > schema.hcl
+```
+
+If everything worked correctly, you should find a file named `schema.hcl` in your current working
+directory which contains the [Atlas DDL](/atlas-schema/hcl) representation of your schema.
+
+### Step 3: Determine your Dev Database URL
+
+:::info
+
+Notice that when we discuss a **Dev Database** in the Atlas documentation we **DO NOT** refer to the
+local database you use for development, but to a different concept explained below.
+
+:::
+
+To operate correctly, Atlas utilizes a [Dev Database](/concepts/dev-database) to normalize and verify
+schemas. Essentially, a dev-database is an *empty* database of the same type and version that you use
+in production. When Atlas runs, it may run some operations against this database and is responsible
+for cleaning up after and leaving the database in an empty state.
+
+When working with Atlas, you can bring your own dev database, but most Atlas users prefer to use
+Atlas's built-in `docker://` driver which will spin up a local, ephemeral Docker container and dispose
+of it after for you.
+
+As we mentioned in the [previous section](03-connect.mdx#schema-vs-database-scope), Atlas operates
+differently if configured to use a database-scope vs a schema-scope. Be sure to use the same kind of
+scope for your dev-database to avoid miscalculations and other trouble. The following table summarizes
+some commonly used URLs.
+
+| Engine     | Scope          | URL Example                                 |
+|------------|----------------|---------------------------------------------|
+| MySQL      | Schema-scope   | `docker://mysql/8/dev`                        |
+|            | Database-scope | `docker://mysql/8`                            |
+| PostgreSQL | Schema-scope   | `docker://postgres/16/dev?search_path=public` |
+|            | Database-scope | `docker://postgres/16/dev`                    |
+| ClickHouse | Schema-scope   | `docker://clickhouse/23.11/dev`               |
+|            | Database-scope | `docker://clickhouse/23.11`                   |
+| SQL Server | Schema-scope   | `docker://sqlserver/2022-latest/dev?mode=schema` |
+|            | Database-scope | `docker://sqlserver/2022-latest/dev?mode=database` |
+| Others | | Find more examples in the [Dev Database](/concepts/dev-database) guide. |
+
+### Step 4: Verify Zero Diff
+
+Next, use Atlas's `schema diff` command to check that Atlas sees no difference between your inspected schema
+as it is represented in the `schema.hcl` file and the actual database schema:
+
+```shell
+atlas schema diff --dev-url <dev db url> --from file://schema.hcl --to "$DB_URL"
+```
+
+Be sure to replace `<dev db url>` with the Dev Database URL you determined in step 3.
+
+If everything works correctly, Atlas should print out a message similar to:
+
+```
+Schemas are synced, no changes to be made.
+```
+
+### Step 5 (Optional): Manual Verification
+
+If your database schema contains resources with esoteric or uncommon database features, you may want to manually review
+the inspected schema to make sure that it is inspected correctly.
+
+If you prefer to review this in plain SQL DDL commands instead of the Atlas's HCL syntax, run the following command:
+
+```shell
+atlas schema inspect --url "$DB_URL" --format "{{ sql . }}"
+```
+
+:::info Other Issues
+
+If you encounter any issues during this step, don't hesitate to reach out to us.
+
+#### Commercial PoC
+
+Please reach out to us via our shared Slack Connect channel.
+
+#### Independent PoC
+
+Please use our [Community Support](/support) channels to contact our team. If possible,
+please supply us with a minimal example schema to reproduce the issue.
+
+::: minimal example schema to reproduce the issue.
