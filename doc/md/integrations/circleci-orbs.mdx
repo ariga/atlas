@@ -1,0 +1,1030 @@
+---
+title: CircleCI Orbs
+id: circleci-orbs
+slug: /integrations/circleci-orbs
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+[CircleCI Orbs](https://circleci.com/orbs) are reusable packages of CircleCI configuration that can be shared across projects. 
+They provide a way to simplify your CircleCI configuration by encapsulating common tasks into a single line of code.
+
+Atlas provides a number of Orbs to help you integrate Atlas into your CircleCI workflows.
+
+| Action                                                | Use Case                                            |
+|-------------------------------------------------------|-----------------------------------------------------|
+| [atlas-orb/setup](https://github.com/ariga/atlas-orb/blob/master/src/commands/setup.yaml) | Install Atlas and authenticate with Atlas Cloud      |
+| [atlas-orb/migrate_push](https://github.com/ariga/atlas-orb/blob/master/src/commands/migrate_push.yml)   | Push your migration directory to Atlas Cloud (atlasgo.cloud) |
+| [atlas-orb/migrate_lint](https://github.com/ariga/atlas-orb/blob/master/src/commands/migrate_lint.yml)        | Lint migration changes with Atlas (Required `atlas login`)  |
+| [atlas-orb/migrate_apply](https://github.com/ariga/atlas-orb/blob/master/src/commands/migrate_apply.yml)   | Apply migrations to a database |
+| [atlas-orb/migrate_down](https://github.com/ariga/atlas-orb/blob/master/src/commands/migrate_down.yml)   | Revert migrations to a database. |
+
+## `atlas-orb/setup`
+
+The [atlas-orb/setup](https://github.com/ariga/atlas-orb/blob/master/src/commands/setup.yaml) action can be used to install the Atlas CLI and authenticate with Atlas Cloud.
+
+### Usage
+
+```yaml title=".circleci/config.yml"
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - atlas-orb/setup:
+          version: "latest"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+### Inputs
+
+* `cloud_token_env` - (Optional) The Atlas Cloud token to use for authentication. To create
+  a cloud token see the [docs](https://atlasgo.io/cloud/bots). Defaults to `ATLAS_TOKEN` environment variable.
+* `version` - (Optional) The version of the Atlas CLI to install.  Defaults to the latest
+  version.
+
+## `atlas-orb/migrate_push`
+
+Push the current version of your migration directory to Atlas Cloud.
+
+### Usage
+
+<Tabs
+defaultValue="mysql"
+values={[
+    {label: 'MySQL', value: 'mysql'},
+    {label: 'MariaDB', value: 'maria'},
+    {label: 'PostgreSQL', value: 'postgres'},
+    {label: 'SQLite', value: 'sqlite'},
+    {label: 'SQL Server', value: 'sqlserver'},
+    {label: 'Clickhouse', value: 'clickhouse'},
+]}>
+<TabItem value="mysql">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/mysql:8
+        environment:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for MySQL
+          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_push:
+          dir_name: my-project
+          dev_url: "mysql://root:pass@localhost:3306/dev"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/mariadb:10.6
+        environment:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for MariaDB
+          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_push:
+          dir_name: my-project
+          dev_url: "maria://root:pass@localhost:3306/dev"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/postgres:15.0
+        environment:
+          POSTGRES_DB: dev
+          POSTGRES_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for Postgres
+          command: dockerize -wait tcp://127.0.0.1:5432 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_push:
+          dir_name: my-project
+          dev_url: "postgres://postgres:pass@localhost:5432/dev?sslmode=disable"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+    environment:
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_push:
+          dir_name: my-project
+          dev_url: "sqlite://file?mode=memory&_fk=1"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+</TabItem>
+<TabItem value="sqlserver">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: mcr.microsoft.com/mssql/server:2022-latest
+        environment:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: P@ssw0rd0995
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for SQL Server
+          command: dockerize -wait tcp://127.0.0.1:1433 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_push:
+          dir_name: my-project
+          dev_url: "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: clickhouse/clickhouse-server:23.10
+        environment:
+          CLICKHOUSE_DB: test
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+          CLICKHOUSE_PASSWORD: pass
+          CLICKHOUSE_USER: root
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for Clickhouse
+          command: dockerize -wait tcp://127.0.0.1:9000 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_push:
+          dir_name: my-project
+          dev_url: "clickhouse://root:pass@localhost:9000/test"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+</Tabs>
+
+### Inputs
+
+All inputs are optional as they may be specified in the Atlas configuration file.
+
+* `dir` - The URL of the migration directory to push.  For example: `file://migrations`.
+Read more about [Atlas URLs](https://atlasgo.io/concepts/url).
+* `dir_name` - The name (slug) of the project in Atlas Cloud.
+* `dev_url` - The URL of the dev-database to use for analysis.  For example: `mysql://root:pass@localhost:3306/dev`.
+Read more about [dev-databases](https://atlasgo.io/concepts/dev-database).
+* `tag` - The tag to apply to the pushed migration directory.  By default the current git commit hash is used.
+* `config` - The path to the Atlas configuration file. By default, Atlas will look for a file.
+named `atlas.hcl` in the current directory. For example, `file://config/atlas.hcl`.
+Learn more about [Atlas configuration files](https://atlasgo.io/atlas-schema/projects).
+* `env` - The environment to use from the Atlas configuration file.  For example, `dev`.
+* `vars` - Extra variables to pass to the Atlas configuration file. For example, `key=value key2=values`.
+* `working_directory` - The working directory to run from. Defaults to project root.
+
+## `atlas-orb/migrate_lint` (Required `atlas login`)
+
+Teams using CircleCI that wish to ensure all changes to their database schema are safe
+can use the [`atlas-orb/migrate_lint`](https://github.com/ariga/atlas-orb/blob/master/src/commands/migrate_lint.yml) CircleCI Orb.
+
+This action is used for [linting migration directories](/versioned/lint)
+using the `atlas migrate lint` command. This command  validates and analyzes the contents
+of migration directories and generates insights and diagnostics on the selected changes:
+
+* Ensure the migration history can be replayed from any point at time.
+* Protect from unexpected history changes when concurrent migrations are written to the migration directory by
+  multiple team members. Read more about the consistency checks in the section below.
+* Detect whether destructive or irreversible changes have been made or whether they are dependent on tables'  
+  contents and can cause a migration failure.
+
+### Usage
+
+Add `.circleci/config.yml` to your repo with the following contents:
+
+<Tabs
+defaultValue="mysql"
+values={[
+    {label: 'MySQL', value: 'mysql'},
+    {label: 'MariaDB', value: 'maria'},
+    {label: 'PostgreSQL', value: 'postgres'},
+    {label: 'SQLite', value: 'sqlite'},
+    {label: 'SQL Server', value: 'sqlserver'},
+    {label: 'Clickhouse', value: 'clickhouse'},
+]}>
+<TabItem value="mysql">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/mysql:8
+        environment:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+      GITHUB_TOKEN: "your-github-token"
+      GITHUB_REPOSITORY: "your-repo-name" # for example, "ariga/atlas-orb"
+    steps:
+      - checkout
+      - run:
+          name: Wait for MySQL
+          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_lint:
+          dir_name: my-project
+          dev_url: "mysql://root:pass@localhost:3306/dev"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/mariadb:10.6
+        environment:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+      GITHUB_TOKEN: "your-github-token"
+      GITHUB_REPOSITORY: "your-repo-name" # for example, "ariga/atlas-orb"
+    steps:
+      - checkout
+      - run:
+          name: Wait for MariaDB
+          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_lint:
+          dir_name: my-project
+          dev_url: "maria://root:pass@localhost:3306/dev"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/postgres:15.0
+        environment:
+          POSTGRES_DB: dev
+          POSTGRES_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+      GITHUB_TOKEN: "your-github-token"
+      GITHUB_REPOSITORY: "your-repo-name" # for example, "ariga/atlas-orb"
+    steps:
+      - checkout
+      - run:
+          name: Wait for Postgres
+          command: dockerize -wait tcp://127.0.0.1:5432 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_lint:
+          dir_name: my-project
+          dev_url: "postgres://postgres:pass@localhost:5432/dev?sslmode=disable"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+      GITHUB_TOKEN: "your-github-token"
+      GITHUB_REPOSITORY: "your-repo-name" # for example, "ariga/atlas-orb"
+    steps:
+      - checkout
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_lint:
+          dir_name: my-project
+          dev_url: "sqlite://file?mode=memory&_fk=1"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+</TabItem>
+<TabItem value="sqlserver">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: mcr.microsoft.com/mssql/server:2022-latest
+        environment:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: P@ssw0rd0995
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+      GITHUB_TOKEN: "your-github-token"
+      GITHUB_REPOSITORY: "your-repo-name" # for example, "ariga/atlas-orb"
+    steps:
+      - checkout
+      - run:
+          name: Wait for SQL Server
+          command: dockerize -wait tcp://127.0.0.1:1433 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_lint:
+          dir_name: my-project
+          dev_url: "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: clickhouse/clickhouse-server:23.10
+        environment:
+          CLICKHOUSE_DB: test
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+          CLICKHOUSE_PASSWORD: pass
+          CLICKHOUSE_USER: root
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+      GITHUB_TOKEN: "your-github-token"
+      GITHUB_REPOSITORY: "your-repo-name" # for example, "ariga/atlas-orb"
+    steps:
+      - checkout
+      - run:
+          name: Wait for Clickhouse
+          command: dockerize -wait tcp://127.0.0.1:9000 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_lint:
+          dir_name: my-project
+          dev_url: "clickhouse://root:pass@localhost:9000/test"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+</Tabs>
+
+### Inputs
+
+All inputs are optional as they may be specified in the Atlas configuration file.
+
+* `dir` - The URL of the migration directory to lint.  For example: `file://migrations`.
+  Read more about [Atlas URLs](https://atlasgo.io/concepts/url).
+* `dir_name` - The name (slug) of the project in Atlas Cloud.
+* `dev_url` - The URL of the dev-database to use for analysis.  For example: `mysql://root:pass@localhost:3306/dev`.
+  Read more about [dev-databases](https://atlasgo.io/concepts/dev-database).
+* `config` - The path to the Atlas configuration file.  By default, Atlas will look for a file
+  named `atlas.hcl` in the current directory. For example, `file://config/atlas.hcl`.
+  Learn more about [Atlas configuration files](https://atlasgo.io/atlas-schema/projects).
+* `env` - The environment to use from the Atlas configuration file.  For example, `dev`.
+* `vars` - Extra variables to pass to the Atlas configuration file. For example, `key=value key2=values`.
+* `working_directory` - The working directory to run from. Defaults to project root.
+* `github_token_env` - Specify the environment variable name that contains the GitHub token.
+  Defaults to `GITHUB_TOKEN` environment variable.
+* `github_repository_env` - Specify the environment variable name that contains the GitHub repository name in the format `owner/repo`.
+  Defaults to `GITHUB_REPOSITORY` environment variable.
+
+:::note
+The `GITHUB_TOKEN` and `GITHUB_REPOSITORY` environment variables are required for the `atlas-orb/migrate_lint` action to work.
+These variables are used to post lint results to the GitHub Pull Request as comments.
+If you want to use a different environment variable name, you can specify it using the `github_token_env` and `github_repository_env` inputs
+:::
+
+## `atlas-orb/migrate_apply`
+
+Push the current version of your migration directory to Atlas Cloud.
+
+### Usage
+
+<Tabs
+defaultValue="mysql"
+values={[
+    {label: 'MySQL', value: 'mysql'},
+    {label: 'MariaDB', value: 'maria'},
+    {label: 'PostgreSQL', value: 'postgres'},
+    {label: 'SQLite', value: 'sqlite'},
+    {label: 'SQL Server', value: 'sqlserver'},
+    {label: 'Clickhouse', value: 'clickhouse'},
+]}>
+<TabItem value="mysql">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/mysql:8
+        environment:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for MySQL
+          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_apply:
+          dir: my-project
+          url: "mysql://root:pass@localhost:3306/dev"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/mariadb:10.6
+        environment:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for MariaDB
+          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_apply:
+          dir: atlas://my-project
+          url: "maria://root:pass@localhost:3306/dev"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/postgres:15.0
+        environment:
+          POSTGRES_DB: dev
+          POSTGRES_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for Postgres
+          command: dockerize -wait tcp://127.0.0.1:5432 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_apply:
+          dir: atlas://my-project
+          url: "postgres://postgres:pass@localhost:5432/dev?sslmode=disable"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+    environment:
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_apply:
+          dir: atlas://my-project
+          url: "sqlite://file?mode=memory&_fk=1"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+</TabItem>
+<TabItem value="sqlserver">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: mcr.microsoft.com/mssql/server:2022-latest
+        environment:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: P@ssw0rd0995
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for SQL Server
+          command: dockerize -wait tcp://127.0.0.1:1433 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_apply:
+          dir: atlas://my-project
+          url: "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: clickhouse/clickhouse-server:23.10
+        environment:
+          CLICKHOUSE_DB: test
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+          CLICKHOUSE_PASSWORD: pass
+          CLICKHOUSE_USER: root
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for Clickhouse
+          command: dockerize -wait tcp://127.0.0.1:9000 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_apply:
+          dir: atlas://my-project
+          url: "clickhouse://root:pass@localhost:9000/test"
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+</Tabs>
+
+### Inputs
+
+All inputs are optional as they may be specified in the Atlas configuration file.
+
+* `url` - The URL of the target database. For example: `mysql://root:pass@localhost:3306/dev`.
+* `dir` - The URL of the migration directory to apply. For example: `atlas://dir-name` for cloud based directories or `file://migrations` for local ones.
+* `config` - The path to the Atlas configuration file. By default, Atlas will look for a file
+named `atlas.hcl` in the current directory. For example, `file://config/atlas.hcl`.
+Learn more about [Atlas configuration files](https://atlasgo.io/atlas-schema/projects).
+* `env` - The environment to use from the Atlas configuration file.  For example, `dev`.
+* `dry_run` - Print SQL without executing it. Defaults to `false`.
+* `vars` - Extra variables to pass to the Atlas configuration file. For example, `key=value key2=values`.
+* `working_directory` - The working directory to run from. Defaults to project root.
+
+## `atlas-orb/migrate_down`
+
+Revert migrations to a database.
+
+### Usage
+
+<Tabs
+defaultValue="mysql"
+values={[
+    {label: 'MySQL', value: 'mysql'},
+    {label: 'MariaDB', value: 'maria'},
+    {label: 'PostgreSQL', value: 'postgres'},
+    {label: 'SQLite', value: 'sqlite'},
+    {label: 'SQL Server', value: 'sqlserver'},
+    {label: 'Clickhouse', value: 'clickhouse'},
+]}>
+<TabItem value="mysql">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/mysql:8
+        environment:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for MySQL
+          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_down:
+          dir: my-project
+          url: "mysql://root:pass@localhost:3306/example"
+          dev_url: "mysql://root:pass@localhost:3306/dev"
+          amount: 1
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/mariadb:10.6
+        environment:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for MariaDB
+          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_down:
+          dir: atlas://my-project
+          url: "maria://root:pass@localhost:3306/example"
+          dev_url: "maria://root:pass@localhost:3306/dev"
+          amount: 1
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: cimg/postgres:15.0
+        environment:
+          POSTGRES_DB: dev
+          POSTGRES_PASSWORD: pass
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for Postgres
+          command: dockerize -wait tcp://127.0.0.1:5432 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_down:
+          dir: atlas://my-project
+          url: "postgres://postgres:pass@localhost:5432/example?sslmode=disable"
+          dev_url: "postgres://postgres:pass@localhost:5432/dev"
+          amount: 1
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+    environment:
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_down:
+          dir: atlas://my-project
+          url: "sqlite://file?mode=memory&_fk=1"
+          dev_url: "sqlite://file2?mode=memory&_fk=1"
+          amount: 1
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+</TabItem>
+<TabItem value="sqlserver">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: mcr.microsoft.com/mssql/server:2022-latest
+        environment:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: P@ssw0rd0995
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for SQL Server
+          command: dockerize -wait tcp://127.0.0.1:1433 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_down:
+          dir: atlas://my-project
+          url: "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master"
+          dev_url: "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=dev"
+          amount: 1
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```yaml
+version: 2.1
+orbs:
+  atlas-orb: ariga/atlas-orb@0.0.6
+jobs:
+  push-dir:
+    docker:
+      - image: cimg/base:current
+      - image: clickhouse/clickhouse-server:23.10
+        environment:
+          CLICKHOUSE_DB: test
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+          CLICKHOUSE_PASSWORD: pass
+          CLICKHOUSE_USER: root
+    environment:
+      # Define those envs in CircleCI context to keep them secure
+      ATLAS_TOKEN: "your-atlas-token"
+    steps:
+      - checkout
+      - run:
+          name: Wait for Clickhouse
+          command: dockerize -wait tcp://127.0.0.1:9000 -timeout 60s
+      - atlas-orb/setup:
+          version: "latest"
+      - atlas-orb/migrate_down:
+          dir: atlas://my-project
+          url: "clickhouse://root:pass@localhost:9000/test"
+          dev_url: "clickhouse://root:pass@localhost:9000/dev"
+          amount: 1
+workflows:
+  use-atlas:
+    jobs:
+      - push-dir
+```
+
+</TabItem>
+</Tabs>
+
+### Inputs
+
+All inputs are optional as they may be specified in the Atlas configuration file.
+
+* `url` - The URL of the target database. For example: `mysql://root:pass@localhost:3306/dev`.
+* `dir` - The URL of the migration directory to apply. For example: `atlas://dir-name` for cloud based directories or `file://migrations` for local ones.
+* `config` - The path to the Atlas configuration file. By default, Atlas will look for a file
+named `atlas.hcl` in the current directory. For example, `file://config/atlas.hcl`.
+Learn more about [Atlas configuration files](https://atlasgo.io/atlas-schema/projects).
+* `env` - The environment to use from the Atlas configuration file.  For example, `dev`.
+* `amount` - The number of migrations to revert. Defaults to 1.
+* `to_version` - To which version to revert.
+* `to_tag` - To which tag to revert.
+* `wait_timeout` -  Time after which no other retry attempt is made and the action exits. If not set, only one attempt is made.
+* `wait-interval` - Time in seconds between different migrate down attempts, useful when waiting for plan approval, defaults to 1s.
+* `vars` - Extra variables to pass to the Atlas configuration file. For example, `key=value key2=values`.
+* `working_directory` - The working directory to run from. Defaults to project root.
