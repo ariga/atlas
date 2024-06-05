@@ -25,14 +25,15 @@ been [an issue](https://github.com/go-gorm/gorm/issues/4966). With the [latest r
 
 Views are a powerful database feature: they are virtual table representing the result of a query. 
 Many teams use them to simplify complex queries, encapsulate logic, and present
- a consistent interface to users, abstracting the underlying data structures.
+a consistent interface to users, abstracting the underlying data structures.
 
 ## Using Views with ORMs
 
 Despite their numerous benefits, views are often underutilized in many applications. Specifically,
 many ORMs provide partial support for views.
 
-This is also the case with GORM, one of the most popular ORMs in Go.Let's see how GORM users can integrate views into their applications today: 
+This is also the case with GORM, one of the most popular ORMs in Go. Let's see how GORM users can
+integrate views into their applications today: 
 
 First, we need to define the query that will back our view, and then use 
 the GORM [Migrator](https://pkg.go.dev/gorm.io/gorm/migrator#Migrator) interface to create the view:
@@ -44,7 +45,7 @@ db.Migrator().CreateView("working_aged_users", gorm.ViewOption{Query: query})
 // CREATE VIEW working_aged_users AS SELECT id, name, age FROM users WHERE age BETWEEN 18 AND 60
 ```
 
-Next, to represent our view, we need to define a corresponding struct:
+In order to be able to use GORM to query our view, we need to define an _additional_ struct:
 
 ```go
 type WorkingAgedUser struct {
