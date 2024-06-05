@@ -1,5 +1,5 @@
 ---
-title: "Supercharge your GORM migration with Atlas: Views Support"
+title: "Manage and Query SQL Views with GORM and Atlas"
 authors: luantranminh
 tags: [gorm, views, migration]
 ---
@@ -21,22 +21,21 @@ been [an issue](https://github.com/go-gorm/gorm/issues/4966). With the [latest r
  
 > Making liberal use of views is a key aspect of good SQL database design.
 >
-> — <cite>**Postgres documentation**</cite>
+> — <cite>[**Postgres documentation**](https://www.postgresql.org/docs/current/tutorial-views.html#TUTORIAL-VIEWS)</cite>
 
 Views are a powerful database feature: they are virtual table representing the result of a query. 
 Many teams use them to simplify complex queries, encapsulate logic, and present
  a consistent interface to users, abstracting the underlying data structures.
 
-## The current landscape
+## Using Views with ORMs
 
-Despite their numerous benefits, views are often underutilized in many applications. Softwares like ORMs play a key role 
-in educating developers and increasing the adoption of views. However, many ORMs only provide partial support for views.
+Despite their numerous benefits, views are often underutilized in many applications. Specifically,
+many ORMs provide partial support for views.
 
-Let's explore how GORM, one of the most popular ORMs in Go, enables users to create and utilize views in 
-their applications. 
+This is also the case with GORM, one of the most popular ORMs in Go.Let's see how GORM users can integrate views into their applications today: 
 
 First, we need to define the query that will back our view, and then use 
-the GORM [Migrator](https://pkg.go.dev/gorm.io/gorm/migrator#Migrator) interface to create the view.
+the GORM [Migrator](https://pkg.go.dev/gorm.io/gorm/migrator#Migrator) interface to create the view:
 
 ```go
 query := db.Model(&User{}).Select("id, name, age").Where("age BETWEEN 18 AND 60")
@@ -55,7 +54,7 @@ type WorkingAgedUser struct {
 }
 ```
 
-Finally, apply a query to select the desired records from the view:
+Finally, we can use GORM to query records from our view:
 
 ```go
 var johnFamilies []WorkingAgedUser
@@ -63,14 +62,18 @@ db.Where("name LIKE ?", "John%").Find(&johnFamilies)
 // SELECT * FROM `working_aged_users` WHERE name LIKE "John%"
 ```
 
-Interacting with database views in GORM can initially feel a bit tricky. Here's why:
-* GORM is centered around structs, which serve as the foundation for structuring and querying data. 
-Structs are the source of truth for the data - this is the core principle of ORMs.
-* However, the GORM API for views doesn't quite align with this principle, leading to a
- slightly cumbersome workflow. We wish migrations, querying, everything would work from the same struct definition. 
+Notice that this works by convention, GORM uses reflection and transforms the struct type name `WorkingAgedUser` to `working_aged_users`.
+
+I have always felt that working with views in GORM isn't the smoothest experience. Here's why:
+
+The "GORM way" of doing things is defining struct types and using them for everything. They serve as the foundation 
+for modeling, querying data, and migrations. However, in my eyes, the current way of using views in GORM doesn't align with this principle.
+Views are defined in multiple places: the backing query, the migration step, and finally the runtime query struct.
+
+As a GORM user, I have always wished that everything would just work from the same struct definition.
  
 To address this challenge, our team working on the [Atlas GORM provider](https://github.com/ariga/atlas-provider-gorm) (an Atlas plugin that enhances GORM's migration 
-and capabilities) came up with a neat solution. Here's what we did:
+and capabilities) came up with a neat solution. Here's what it looks like:
 
 ```go title="models/models.go"
 // WorkingAgedUsers is mapped to the VIEW definition below.
@@ -88,11 +91,21 @@ func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
 }
 ```
 
+The migration step is now as simple as:
+
 ```go title="main.go"
 gormschema.New("mysql").Load(
   &models.User{},			    // Table-based model.
   &models.WorkingAgedUsers{},	// View-based model.
 )
+```
+
+It is also worth mentioning that querying the view is still the same:
+
+```go
+var johnFamilies []WorkingAgedUser
+db.Where("name LIKE ?", "John%").Find(&johnFamilies)
+// SELECT * FROM `working_aged_users` WHERE name LIKE "John%"
 ```
 
 The key benefits of this approach are:
