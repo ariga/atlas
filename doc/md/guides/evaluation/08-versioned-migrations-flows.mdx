@@ -1,4 +1,19 @@
 ---
-id: dev-flow-versioned
-title: Dev Flows for Versioned Migrations
+id: local-dev
+title: Local Development
 ---
+
+With our setup complete, let's now turn to focusing on what it's like to work with Atlas in a local development environment.
+
+This section assumes that you have been following along with the previous sections and have already set
+up your project configuration file and schema.
+
+## Applying migrations locally
+
+During development, developers often need to provision a local database with the latest schema.
+
+For the purpose of this guide we will assume that you have created a local database using docker and have stored
+the connection URL to it in an environment variable named `$LOCAL_DB_URL`.
+
+
+
