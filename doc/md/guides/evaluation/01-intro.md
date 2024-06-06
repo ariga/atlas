@@ -20,9 +20,9 @@ This guide is divided into the following sections:
 1. **Installation** - How to install Atlas and verify that it is able to understand your database.
 2. **Setting Up** - Setting up your project's structure for local work. 
 3. **Developer Workflow** - Review working with Atlas from the end-user perspective.
-4. **Setting Up CI Pipelines** - How to integrate Atlas into your CI/CD pipelines.
-5. **Security Checklist** - Things you should consider for when designing deployment pipelines.
-6. **Migrating  Existing Projects** - How to migrate existing projects to Atlas.
+4. **Migrating  Existing Projects** - How to migrate existing projects to Atlas.
+5. **Setting Up CI Pipelines** - How to integrate Atlas into your CI/CD pipelines.
+6. **Security Checklist** - Things you should consider for when designing deployment pipelines.
 
 ### Need help? 
 
