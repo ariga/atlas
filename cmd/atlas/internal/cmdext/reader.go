@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
@@ -338,14 +339,15 @@ const (
 
 // File extensions supported by the file driver.
 const (
-	FileTypeHCL = ".hcl"
-	FileTypeSQL = ".sql"
+	FileTypeHCL  = ".hcl"
+	FileTypeSQL  = ".sql"
+	FileTypeTest = ".test.hcl"
 )
 
 // mayParse will parse the file in path if it is an HCL file. If the file is an Atlas
 // project file an error is returned.
 func mayParse(p *hclparse.Parser, path string) error {
-	if n := filepath.Base(path); filepath.Ext(n) != FileTypeHCL {
+	if n := filepath.Base(path); filepath.Ext(n) != FileTypeHCL && !strings.HasSuffix(path, FileTypeTest) {
 		return nil
 	}
 	switch f, diag := p.ParseHCLFile(path); {
