@@ -2,6 +2,8 @@ module ariga.io/atlas
 
 go 1.22.3
 
+toolchain go1.22.4
+
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/go-openapi/inflect v0.19.0
