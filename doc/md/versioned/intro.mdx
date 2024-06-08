@@ -322,7 +322,7 @@ env "local" {
 <TabItem value="mysql" label="MySQL">
 
 ```hcl title="atlas.hcl" {1}
-# The "dev" environment represents our local testings.
+# The "local" environment represents our local testings.
 env "local" {
   url = "mysql://root:pass@:3306/example"
   migration {
@@ -335,7 +335,7 @@ env "local" {
 <TabItem value="sqlserver" label="SQL Server">
 
 ```hcl title="atlas.hcl" {1}
-# The "dev" environment represents our local testings.
+# The "local" environment represents our local testings.
 env "local" {
   url = "sqlserver://sa:P@ssw0rd0995@:1433?database=master"
   migration {
@@ -348,7 +348,7 @@ env "local" {
 <TabItem value="clickhouse" label="ClickHouse">
 
 ```hcl title="atlas.hcl" {1}
-# The "dev" environment represents our local testings.
+# The "local" environment represents our local testings.
 env "local" {
   url = "clickhouse://localhost:9000/example"
   migration {
@@ -643,7 +643,7 @@ atlas migrate push app \
 
 ```bash
 atlas migrate push app \
-  --dev-url "docker://mysql/8/dev" \
+  --dev-url "docker://mysql/8/dev"
 ```
 
 </TabItem>
@@ -651,7 +651,7 @@ atlas migrate push app \
 
 ```bash
 atlas migrate push app \
-  --dev-url "docker://sqlserver/2022-latest/dev?mode=schema" \
+  --dev-url "docker://sqlserver/2022-latest/dev?mode=schema"
 ```
 
 </TabItem>
@@ -659,7 +659,7 @@ atlas migrate push app \
 
 ```bash
 atlas migrate push app \
-  --dev-url "docker://clickhouse/23.11/dev" \
+  --dev-url "docker://clickhouse/23.11/dev"
 ```
 
 </TabItem>
@@ -667,7 +667,7 @@ atlas migrate push app \
 
 ```bash
 atlas migrate push app \
-  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable" \
+  --dev-url "redshift://user:pass@redshift-cluster:5439/dev?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
