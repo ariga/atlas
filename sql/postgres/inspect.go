@@ -533,14 +533,14 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows, scope queryScope)
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			table, name, typ                                                              string
-			uniq, primary, included, nullsnotdistinct                                     bool
-			desc, nullsfirst, nullslast, opcdefault                                       sql.NullBool
-			column, constraints, pred, expr, comment, options, opcname, opcparams, exoper sql.NullString
+			table, name, typ                                                                         string
+			uniq, primary, included, nullsnotdistinct                                                bool
+			desc, nullsfirst, nullslast, opcdefault                                                  sql.NullBool
+			column, constraints, pred, expr, comment, options, opcname, opcschema, opcparams, exoper sql.NullString
 		)
 		if err := rows.Scan(
 			&table, &name, &typ, &column, &included, &primary, &uniq, &exoper, &constraints, &pred, &expr, &desc,
-			&nullsfirst, &nullslast, &comment, &options, &opcname, &opcdefault, &opcparams, &nullsnotdistinct,
+			&nullsfirst, &nullslast, &comment, &options, &opcname, &opcschema, &opcdefault, &opcparams, &nullsnotdistinct,
 		); err != nil {
 			return fmt.Errorf("postgres: scanning indexes for schema %q: %w", s.Name, err)
 		}
@@ -627,7 +627,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows, scope queryScope)
 		default:
 			return fmt.Errorf("postgres: invalid part for index %q", idx.Name)
 		}
-		if err := mayAppendOps(part, opcname.String, opcparams.String, opcdefault.Bool); err != nil {
+		if err := i.mayAppendOps(part, opcschema.String, opcname.String, opcparams.String, opcdefault.Bool); err != nil {
 			return err
 		}
 	}
@@ -635,7 +635,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows, scope queryScope)
 }
 
 // mayAppendOps appends an operator_class attribute to the part in case it is not the default.
-func mayAppendOps(part *schema.IndexPart, name string, params string, defaults bool) error {
+func (i *inspect) mayAppendOps(part *schema.IndexPart, ns, name, params string, defaults bool) error {
 	if name == "" || defaults && params == "" {
 		return nil
 	}
@@ -644,6 +644,19 @@ func mayAppendOps(part *schema.IndexPart, name string, params string, defaults b
 		return err
 	}
 	part.Attrs = append(part.Attrs, op)
+	// Detect if the operator class reside in an external schema
+	// and should be handled accordingly in other stages.
+	switch {
+	case
+		// Schema is not defined.
+		ns == "",
+		// Operator class is defined in current scope.
+		ns == i.schema,
+		// Operator class is defined in the default search_path.
+		ns == "pg_catalog", ns == "public":
+	default:
+		op.Name = fmt.Sprintf("%s.%s", ns, name)
+	}
 	return nil
 }
 
@@ -1122,7 +1135,7 @@ type (
 	// https://www.postgresql.org/docs/current/indexes-opclass.html.
 	IndexOpClass struct {
 		schema.Attr
-		Name    string                  // Name of the operator class.
+		Name    string                  // Name of the operator class. Qualified if schema is not the default, and required.
 		Default bool                    // If it is the default operator class.
 		Params  []struct{ N, V string } // Optional parameters.
 	}
@@ -1697,6 +1710,7 @@ SELECT
 	obj_description(i.oid, 'pg_class') AS comment,
 	i.reloptions AS options,
 	op.opcname AS opclass_name,
+	op.opcnamespace::regnamespace::text AS opclass_schema,
 	op.opcdefault AS opclass_default,
 	a2.attoptions AS opclass_params,
     %s AS indnullsnotdistinct
