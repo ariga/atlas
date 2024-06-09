@@ -1036,8 +1036,9 @@ func forEachBlocks(ctx *hcl.EvalContext, b *hclsyntax.Block) ([]*hclsyntax.Block
 
 func copyBlock(ctx *hcl.EvalContext, b *hclsyntax.Block) (*hclsyntax.Block, error) {
 	nb := &hclsyntax.Block{
-		Type:   b.Type,
-		Labels: b.Labels,
+		Type:      b.Type,
+		Labels:    b.Labels,
+		TypeRange: b.TypeRange,
 		Body: &hclsyntax.Body{
 			Attributes: make(map[string]*hclsyntax.Attribute),
 			Blocks:     make([]*hclsyntax.Block, 0, len(b.Body.Blocks)),
