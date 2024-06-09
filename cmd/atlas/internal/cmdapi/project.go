@@ -238,7 +238,9 @@ func (l *Lint) Extend(global *Lint) *Lint {
 	if l.Format == "" {
 		l.Format = global.Format
 	}
-	l.Extra = global.Extra
+	if len(l.Extra.Children) == 0 && len(l.Extra.Attrs) == 0 {
+		l.Extra = global.Extra
+	}
 	switch {
 	// Changes detector was configured on the env.
 	case l.Git.Dir != "" && l.Git.Base != "" || l.Latest != 0:
