@@ -95,6 +95,9 @@ env "multi" {
       dir  = "./path"
       base = "master"
     }
+    naming {
+      match = "^[A-Z]+$"
+    }
   }
 }
 `
@@ -178,6 +181,8 @@ env "multi" {
 		require.NoError(t, err)
 		require.EqualValues(t, []string{"./a.hcl", "./b.hcl"}, srcs)
 		require.EqualValues(t, ReviewError, envs[0].Lint.Review)
+		require.Len(t, envs[0].Lint.Extra.Children, 1)
+		require.Equal(t, "naming", envs[0].Lint.Extra.Children[0].Type)
 	})
 	t.Run("with input", func(t *testing.T) {
 		_, envs, err := EnvByName(&cobra.Command{}, "local", map[string]cty.Value{
