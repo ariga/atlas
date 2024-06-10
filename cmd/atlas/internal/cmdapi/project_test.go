@@ -56,6 +56,21 @@ diff {
   }
 }
 
+test {
+  schema {
+    src = ["schema.test.hcl"]
+    vars = {
+      a = "1"
+    }
+  }
+  migrate {
+    src = ["migrate.test.hcl"]
+    vars = {
+      b = "2"
+    }
+  }
+}
+
 env "local" {
   url = "mysql://root:pass@localhost:3306/"
   dev = "docker://mysql/8"
@@ -75,6 +90,20 @@ env "local" {
   diff {
     skip {
       drop_column = true
+    }
+  }
+  test {
+    schema {
+      src = ["env.schema.test.hcl"]
+      vars = {
+        a = "a"
+      }
+    }
+    migrate {
+      src = ["env.migrate.test.hcl"]
+      vars = {
+        b = "b"
+      }
     }
   }
   bool = true
@@ -153,6 +182,26 @@ env "multi" {
 					},
 				},
 			},
+			Test: &Test{
+				Schema: struct {
+					Src  []string `spec:"src"`
+					Vars Vars     `spec:"vars"`
+				}{
+					Src: []string{"env.schema.test.hcl"},
+					Vars: Vars{
+						"a": cty.StringVal("a"),
+					},
+				},
+				Migrate: struct {
+					Src  []string `spec:"src"`
+					Vars Vars     `spec:"vars"`
+				}{
+					Src: []string{"env.migrate.test.hcl"},
+					Vars: Vars{
+						"b": cty.StringVal("b"),
+					},
+				},
+			},
 			DefaultExtension: schemahcl.DefaultExtension{
 				Extra: schemahcl.Resource{
 					Attrs: []*schemahcl.Attr{
@@ -183,6 +232,8 @@ env "multi" {
 		require.EqualValues(t, ReviewError, envs[0].Lint.Review)
 		require.Len(t, envs[0].Lint.Extra.Children, 1)
 		require.Equal(t, "naming", envs[0].Lint.Extra.Children[0].Type)
+		require.Equal(t, "1", envs[0].Test.Schema.Vars["a"].AsString())
+		require.Equal(t, "2", envs[0].Test.Migrate.Vars["b"].AsString())
 	})
 	t.Run("with input", func(t *testing.T) {
 		_, envs, err := EnvByName(&cobra.Command{}, "local", map[string]cty.Value{

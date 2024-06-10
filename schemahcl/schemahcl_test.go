@@ -30,14 +30,18 @@ hd = <<-EOT
   hello
   world
 EOT
+vars = {
+  a = "a"
+}
 `
 	var test struct {
-		Int        int      `spec:"i"`
-		Bool       bool     `spec:"b"`
-		Str        string   `spec:"s"`
-		StringList []string `spec:"sl"`
-		BoolList   []bool   `spec:"bl"`
-		Heredoc    string   `spec:"hd"`
+		Int        int                  `spec:"i"`
+		Bool       bool                 `spec:"b"`
+		Str        string               `spec:"s"`
+		StringList []string             `spec:"sl"`
+		BoolList   []bool               `spec:"bl"`
+		Heredoc    string               `spec:"hd"`
+		Vars       map[string]cty.Value `spec:"vars"`
 	}
 	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
@@ -47,6 +51,7 @@ EOT
 	require.EqualValues(t, []string{"hello", "world"}, test.StringList)
 	require.EqualValues(t, []bool{true, false}, test.BoolList)
 	require.EqualValues(t, "hello\nworld\n", test.Heredoc)
+	require.EqualValues(t, "a", test.Vars["a"].AsString())
 	// Heredoc needs to be explicitly formatted this way.
 	test.Heredoc = "<<-EOT\n  hello\n  world\nEOT"
 	marshal, err := Marshal(&test)
