@@ -319,6 +319,12 @@ func setField(field reflect.Value, attr *Attr) error {
 		}
 	case reflect.Interface:
 		field.Set(reflect.ValueOf(attr.V))
+	case reflect.Map:
+		if attr.V.CanIterateElements() {
+			field.Set(reflect.ValueOf(attr.V.AsValueMap()))
+			return nil
+		}
+		fallthrough
 	default:
 		if err := gocty.FromCtyValue(attr.V, field.Addr().Interface()); err != nil {
 			return fmt.Errorf("set field %q of type %T: %w", attr.K, field, err)

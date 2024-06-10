@@ -60,6 +60,9 @@ type (
 		// Format of the environment.
 		Format Format `spec:"format"`
 
+		// Test configuration of the environment.
+		Test *Test `spec:"test"`
+
 		schemahcl.DefaultExtension
 		cloud  *cmdext.AtlasConfig
 		config *Project
@@ -97,6 +100,20 @@ type (
 		// SkipChanges configures the skip changes policy.
 		SkipChanges *SkipChanges `spec:"skip"`
 		schemahcl.DefaultExtension
+	}
+
+	// Test represents the test configuration of a project or environment.
+	Test struct {
+		// Schema represents the 'schema test' configuration.
+		Schema struct {
+			Src  []string `spec:"src"`
+			Vars Vars     `spec:"vars"`
+		} `spec:"schema"`
+		// Migrate represents the 'migrate test' configuration.
+		Migrate struct {
+			Src  []string `spec:"src"`
+			Vars Vars     `spec:"vars"`
+		} `spec:"migrate"`
 	}
 
 	// SkipChanges represents the skip changes policy.
@@ -383,6 +400,30 @@ func (e *Env) asMap() (map[string]string, error) {
 	return m, nil
 }
 
+// Extend allows extending environment blocks with
+// a global one. For example:
+//
+//	test {
+//	  schema {
+//	    src = [...]
+//	  }
+//	}
+//
+//	env "local" {
+//	  ...
+//	  test {
+//	    schema {
+//	      src = [...]
+//	    }
+//	  }
+//	}
+func (t *Test) Extend(global *Test) *Test {
+	if t == nil {
+		return global
+	}
+	return t
+}
+
 // EnvByName parses and returns the project configuration with selected environments.
 func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Project, []*Env, error) {
 	envs := make(map[string][]*Env)
@@ -436,6 +477,7 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 		if err := e.Lint.remainedLog(); err != nil {
 			return nil, nil, err
 		}
+		e.Test = e.Test.Extend(project.Test)
 		envs[e.Name] = append(envs[e.Name], e)
 	}
 	envsCache.store(GlobalFlags.ConfigURL, name, vars, project, envs[name])

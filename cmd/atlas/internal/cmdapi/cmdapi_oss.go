@@ -55,6 +55,7 @@ type Project struct {
 	Envs  []*Env `spec:"env"`  // List of environments
 	Lint  *Lint  `spec:"lint"` // Optional global lint policy
 	Diff  *Diff  `spec:"diff"` // Optional global diff policy
+	Test  *Test  `spec:"test"` // Optional test configuration
 	cloud *cmdext.AtlasConfig
 }
 
