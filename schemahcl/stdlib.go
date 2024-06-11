@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -141,6 +142,7 @@ func stdFuncs() map[string]function.Function {
 		"range":           stdlib.RangeFunc,
 		"regex":           stdlib.RegexFunc,
 		"regexall":        stdlib.RegexAllFunc,
+		"regexpescape":    regexpEscape,
 		"regexreplace":    stdlib.RegexReplaceFunc,
 		"reverse":         stdlib.ReverseListFunc,
 		"setintersection": stdlib.SetIntersectionFunc,
@@ -440,6 +442,20 @@ var (
 				return cty.True, nil
 			}
 			return cty.False, nil
+		},
+	})
+
+	regexpEscape = function.New(&function.Spec{
+		Description: `Return a string that escapes all regular expression metacharacters in the provided text.`,
+		Params: []function.Parameter{
+			{
+				Name: "str",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+			return cty.StringVal(regexp.QuoteMeta(args[0].AsString())), nil
 		},
 	})
 )

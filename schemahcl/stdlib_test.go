@@ -156,6 +156,15 @@ func TestEndsWithFunc(t *testing.T) {
 	require.Equal(t, cty.True, got)
 }
 
+func TestRegexpEscapeFunc(t *testing.T) {
+	got, err := regexpEscape.Call([]cty.Value{cty.StringVal("a|b|c")})
+	require.NoError(t, err)
+	require.Equal(t, "a\\|b\\|c", got.AsString())
+	got, err = regexpEscape.Call([]cty.Value{cty.StringVal("abc")})
+	require.NoError(t, err)
+	require.Equal(t, "abc", got.AsString())
+}
+
 func TestMakeFileFunc(t *testing.T) {
 	fn := MakeFileFunc("testdata")
 	_, err := fn.Call([]cty.Value{cty.StringVal("foo")})
@@ -166,6 +175,36 @@ func TestMakeFileFunc(t *testing.T) {
 	v, err := fn.Call([]cty.Value{cty.StringVal("a.hcl")})
 	require.NoError(t, err)
 	require.Equal(t, "person \"rotemtam\" {\n  hobby = var.hobby\n}", v.AsString())
+}
+
+func Example_RegexpEscapeFunc() {
+	for _, f := range []string{
+		`v  = regexpescape("a|b|c")`,
+		`v  = regexpescape("abc")`,
+		`v = regexpescape(<<TAB
+id | name
+---+-----
+1  | foo
+TAB
+)`,
+	} {
+		var d struct {
+			V string `spec:"v"`
+		}
+		if err := New().EvalBytes([]byte(f), &d, nil); err != nil {
+			fmt.Println("failed to evaluate:", err)
+			return
+		}
+		fmt.Printf("%s\n\n", d.V)
+	}
+	// Output:
+	// a\|b\|c
+	//
+	// abc
+	//
+	// id \| name
+	// ---\+-----
+	// 1  \| foo
 }
 
 func Example_PrintFunc() {
