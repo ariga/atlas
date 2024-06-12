@@ -1781,6 +1781,160 @@ func TestPlanChanges(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		// Row level security
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("enable_rls"),
+					Changes: []schema.Change{
+						&schema.AddAttr{
+							A: &Rls{
+								RowLevelSecurity: true,
+							},
+						},
+					},
+				},
+				&schema.ModifyTable{
+					T: schema.NewTable("disable_rls"),
+					Changes: []schema.Change{
+						&schema.AddAttr{
+							A: &Rls{
+								RowLevelSecurity: false,
+							},
+						},
+					},
+				},
+				&schema.ModifyTable{
+					T: schema.NewTable("force_rls"),
+					Changes: []schema.Change{
+						&schema.AddAttr{
+							A: &ForceRls{
+								ForceRowLevelSecurity: true,
+							},
+						},
+					},
+				},
+				&schema.ModifyTable{
+					T: schema.NewTable("no_force_rls"),
+					Changes: []schema.Change{
+						&schema.AddAttr{
+							A: &ForceRls{
+								ForceRowLevelSecurity: false,
+							},
+						},
+					},
+				},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "enable_rls" ENABLE ROW LEVEL SECURITY`,
+						Reverse: `ALTER TABLE "enable_rls" DISABLE ROW LEVEL SECURITY`,
+					},
+					{
+						Cmd:     `ALTER TABLE "disable_rls" DISABLE ROW LEVEL SECURITY`,
+						Reverse: `ALTER TABLE "disable_rls" ENABLE ROW LEVEL SECURITY`,
+					},
+					{
+						Cmd:     `ALTER TABLE "force_rls" FORCE ROW LEVEL SECURITY`,
+						Reverse: `ALTER TABLE "force_rls" NO FORCE ROW LEVEL SECURITY`,
+					},
+					{
+						Cmd:     `ALTER TABLE "no_force_rls" NO FORCE ROW LEVEL SECURITY`,
+						Reverse: `ALTER TABLE "no_force_rls" FORCE ROW LEVEL SECURITY`,
+					},
+				},
+			},
+		},
+		// Policies
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("create_policy_defaults"),
+					Changes: []schema.Change{
+						&schema.AddAttr{
+							A: &Policy{
+								Name: "defaults",
+							},
+						},
+					},
+				},
+				&schema.ModifyTable{
+					T: schema.NewTable("create_policy_all_settings"),
+					Changes: []schema.Change{
+						&schema.AddAttr{
+							A: &Policy{
+								Name:      "all_settings",
+								Type:      "PERMISSIVE",
+								Cmd:       "Update",
+								Roles:     []string{"public"},
+								Using:     "id = 1",
+								WithCheck: "id = 1",
+							},
+						},
+					},
+				},
+				&schema.ModifyTable{
+					T: schema.NewTable("modify_policy"),
+					Changes: []schema.Change{
+						&schema.ModifyAttr{
+							From: &Policy{
+								Name:      "mod",
+								Roles:     []string{"public"},
+								Using:     "id = 1",
+								WithCheck: "id = 1",
+							},
+							To: &Policy{
+								Name:      "mod",
+								Roles:     []string{"public", "other_user"},
+								Using:     "id = 2",
+								WithCheck: "id = 2",
+							},
+						},
+					},
+				},
+				&schema.ModifyTable{
+					T: schema.NewTable("remove_policy"),
+					Changes: []schema.Change{
+						&schema.DropAttr{
+							A: &Policy{
+								Name: "remove",
+							},
+						},
+					},
+				},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `CREATE POLICY defaults ON "create_policy_defaults"`,
+						Reverse: `DROP POLICY defaults ON "create_policy_defaults"`,
+					},
+					{
+						Cmd:     `CREATE POLICY all_settings ON "create_policy_all_settings" AS PERMISSIVE FOR Update TO public USING id = 1 WITH CHECK id = 1`,
+						Reverse: `DROP POLICY all_settings ON "create_policy_all_settings"`,
+					},
+					{
+						Cmd:     `ALTER POLICY mod ON "modify_policy" TO public, other_user USING id = 2 WITH CHECK id = 2`,
+						Reverse: `ALTER POLICY mod ON "modify_policy" TO public USING id = 1 WITH CHECK id = 1`,
+					},
+					{
+						Cmd:     `DROP POLICY remove ON "remove_policy"`,
+						Reverse: `CREATE POLICY remove ON "remove_policy"`,
+					},
+				},
+			},
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {

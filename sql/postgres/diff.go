@@ -63,9 +63,149 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	if err := d.partitionChanged(from, to); err != nil {
 		return nil, err
 	}
+	rlsChanges, err := d.rlsDiff(from.Attrs, to.Attrs)
+	if err != nil {
+		return nil, err
+	}
+	changes = append(changes, rlsChanges...)
+	policyChanges, err := d.policiesDiff(from.Attrs, to.Attrs)
+	if err != nil {
+		return nil, err
+	}
+	changes = append(changes, policyChanges...)
 	return append(changes, sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
 		return sqlx.Has(c1.Attrs, &NoInherit{}) == sqlx.Has(c2.Attrs, &NoInherit{})
 	})...), nil
+}
+
+// rlsDiff returns the change sets for migrating table row level security settings from one state to the other.
+func (d *diff) rlsDiff(from, to []schema.Attr) ([]schema.Change, error) {
+	var changes []schema.Change
+
+	var fromRls, toRls Rls
+	sqlx.Has(from, &fromRls)
+	sqlx.Has(to, &toRls)
+
+	if fromRls.RowLevelSecurity != toRls.RowLevelSecurity {
+		changes = append(changes, &schema.AddAttr{
+			A: &toRls,
+		})
+	}
+
+	var fromForceRls, toForceRls ForceRls
+	sqlx.Has(from, &fromForceRls)
+	sqlx.Has(to, &toForceRls)
+
+	if fromForceRls.ForceRowLevelSecurity != toForceRls.ForceRowLevelSecurity {
+		changes = append(changes, &schema.AddAttr{
+			A: &toForceRls,
+		})
+	}
+
+	return changes, nil
+}
+
+// policiesDiff returns the change sets for migrating table policies from one state to the other.
+func (d *diff) policiesDiff(from, to []schema.Attr) ([]schema.Change, error) {
+	var changes []schema.Change
+
+	// filter policies from attributes
+	var fromPolicies, toPolicies []*Policy
+	for _, attr := range from {
+		if policy, ok := attr.(*Policy); ok {
+			fromPolicies = append(fromPolicies, policy)
+		}
+	}
+	for _, element := range to {
+		if policy, ok := element.(*Policy); ok {
+			toPolicies = append(toPolicies, policy)
+		}
+	}
+
+	for _, policy := range toPolicies {
+		isNew := true
+
+		for _, current := range fromPolicies {
+			if policy.Name == current.Name {
+				// the policy already exists
+
+				// check if there are role changes ignoring ordering.
+				matchingRoles := len(current.Roles) == len(policy.Roles)
+				for _, role := range current.Roles {
+					found := false
+					for _, r := range policy.Roles {
+						if role == r {
+							found = true
+						}
+					}
+					if !found {
+						matchingRoles = false
+					}
+				}
+				for _, role := range policy.Roles {
+					found := false
+					for _, r := range current.Roles {
+						if role == r {
+							found = true
+						}
+					}
+					if !found {
+						matchingRoles = false
+					}
+				}
+
+				if policy.Cmd != current.Cmd ||
+					policy.Type != current.Type ||
+					(current.Using != "" && policy.Using == "") ||
+					(current.WithCheck != "" && policy.WithCheck == "") {
+					// policy command and type are immutable
+					// we also can't remove using or with check
+					changes = append(
+						changes,
+						&schema.DropAttr{
+							A: current,
+						},
+						&schema.AddAttr{
+							A: policy,
+						},
+					)
+				} else if !matchingRoles || policy.Using != current.Using || policy.WithCheck != current.WithCheck {
+					// roles, using, and with_check are mutable
+					changes = append(changes, &schema.ModifyAttr{
+						From: current,
+						To:   policy,
+					})
+				}
+
+				isNew = false
+				break
+			}
+		}
+		if isNew {
+			// the policy is new, create it
+			changes = append(changes, &schema.AddAttr{
+				A: policy,
+			})
+		}
+	}
+
+	// check for old policies that should be dropped
+	for _, current := range fromPolicies {
+		old := true
+		for _, policy := range toPolicies {
+			if policy.Name == current.Name {
+				old = false
+				break
+			}
+		}
+		if old {
+			changes = append(changes, &schema.DropAttr{
+				A: current,
+			})
+		}
+	}
+
+	return changes, nil
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.

@@ -552,3 +552,18 @@ const (
 	PartitionTypeList  = "LIST"
 	PartitionTypeHash  = "HASH"
 )
+
+// List of supported policy types.
+const (
+	PolicyTypePermissive  = "PERMISSIVE"
+	PolicyTypeRestrictive = "RESTRICTIVE"
+)
+
+// List of supported policy for types.
+const (
+	PolicyForTypeAll    = "ALL"
+	PolicyForTypeSelect = "SELECT"
+	PolicyForTypeInsert = "INSERT"
+	PolicyForTypeUpdate = "UPDATE"
+	PolicyForTypeDelete = "DELETE"
+)

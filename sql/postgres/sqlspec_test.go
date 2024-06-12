@@ -880,6 +880,112 @@ schema "test" {
 	})
 }
 
+func TestMarshalSpec_RowLevelSecurity(t *testing.T) {
+	t.Run("RLS", func(t *testing.T) {
+		c := schema.NewStringColumn("name", "text")
+		s := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(
+				&Rls{RowLevelSecurity: true},
+				&ForceRls{ForceRowLevelSecurity: true},
+			))
+		buf, err := MarshalHCL(s)
+		require.NoError(t, err)
+		require.Equal(t, `table "logs" {
+  schema                   = schema.test
+  row_level_security       = true
+  force_row_level_security = true
+  column "name" {
+    null = false
+    type = text
+  }
+}
+schema "test" {
+}
+`, string(buf))
+	})
+
+	t.Run("No RLS", func(t *testing.T) {
+		c := schema.NewStringColumn("name", "text")
+		s := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(
+				&Rls{RowLevelSecurity: false},
+				&ForceRls{ForceRowLevelSecurity: false},
+			))
+		buf, err := MarshalHCL(s)
+		require.NoError(t, err)
+		require.Equal(t, `table "logs" {
+  schema = schema.test
+  column "name" {
+    null = false
+    type = text
+  }
+}
+schema "test" {
+}
+`, string(buf))
+	})
+}
+
+func TestMarshalSpec_Policy(t *testing.T) {
+	t.Run("Policy Defaults", func(t *testing.T) {
+		c := schema.NewStringColumn("name", "text")
+		s := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(
+				&Policy{
+					Name: "policy",
+				},
+			))
+		buf, err := MarshalHCL(s)
+		require.NoError(t, err)
+		require.Equal(t, `table "logs" {
+  schema = schema.test
+  column "name" {
+    null = false
+    type = text
+  }
+  policy "policy" {
+  }
+}
+schema "test" {
+}
+`, string(buf))
+	})
+
+	t.Run("Policy All", func(t *testing.T) {
+		c := schema.NewStringColumn("name", "text")
+		s := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(
+				&Policy{
+					Name:      "policy",
+					Type:      "PERMISSIVE",
+					Cmd:       "UPDATE",
+					Roles:     []string{"user"},
+					Using:     "name != \"Voldemort\"",
+					WithCheck: "name != \"Voldemort\"",
+				},
+			))
+		buf, err := MarshalHCL(s)
+		require.NoError(t, err)
+		require.Equal(t, `table "logs" {
+  schema = schema.test
+  column "name" {
+    null = false
+    type = text
+  }
+  policy "policy" {
+    as         = PERMISSIVE
+    for        = UPDATE
+    to         = ["user"]
+    using      = "name != \"Voldemort\""
+    with_check = "name != \"Voldemort\""
+  }
+}
+schema "test" {
+}
+`, string(buf))
+	})
+}
+
 func TestMarshalSpec_IndexPredicate(t *testing.T) {
 	s := &schema.Schema{
 		Name: "test",

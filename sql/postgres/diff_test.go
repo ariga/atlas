@@ -158,6 +158,102 @@ func TestDiff_TableDiff(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "enable row level security",
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Rls{RowLevelSecurity: true}}},
+			wantChanges: []schema.Change{
+				&schema.AddAttr{
+					A: &Rls{RowLevelSecurity: true},
+				},
+			},
+		},
+		{
+			name: "disable row level security",
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Rls{RowLevelSecurity: true}}},
+			to:   &schema.Table{Name: "t1"},
+			wantChanges: []schema.Change{
+				&schema.AddAttr{
+					A: &Rls{RowLevelSecurity: false},
+				},
+			},
+		},
+		{
+			name:        "keep row level security",
+			from:        &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Rls{RowLevelSecurity: true}}},
+			to:          &schema.Table{Name: "t1", Attrs: []schema.Attr{&Rls{RowLevelSecurity: true}}},
+			wantChanges: nil,
+		},
+		{
+			name: "force row level security",
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&ForceRls{ForceRowLevelSecurity: true}}},
+			wantChanges: []schema.Change{
+				&schema.AddAttr{
+					A: &ForceRls{ForceRowLevelSecurity: true},
+				},
+			},
+		},
+		{
+			name: "no force row level security",
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&ForceRls{ForceRowLevelSecurity: true}}},
+			to:   &schema.Table{Name: "t1"},
+			wantChanges: []schema.Change{
+				&schema.AddAttr{
+					A: &ForceRls{ForceRowLevelSecurity: false},
+				},
+			},
+		},
+		{
+			name:        "keep force row level security",
+			from:        &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&ForceRls{ForceRowLevelSecurity: true}}},
+			to:          &schema.Table{Name: "t1", Attrs: []schema.Attr{&ForceRls{ForceRowLevelSecurity: true}}},
+			wantChanges: nil,
+		},
+		{
+			name: "create policy",
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Policy{Name: "policy"}}},
+			wantChanges: []schema.Change{
+				&schema.AddAttr{
+					A: &Policy{Name: "policy"},
+				},
+			},
+		},
+		{
+			name: "create additional policy",
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Policy{Name: "policy"}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Policy{Name: "policy"}, &Policy{Name: "additional"}}},
+			wantChanges: []schema.Change{
+				&schema.AddAttr{
+					A: &Policy{Name: "additional"},
+				},
+			},
+		},
+		{
+			name: "modify policy command",
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Policy{Name: "policy", Cmd: "SELECT"}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Policy{Name: "policy", Cmd: "ALL"}}},
+			wantChanges: []schema.Change{
+				&schema.DropAttr{
+					A: &Policy{Name: "policy", Cmd: "SELECT"},
+				},
+				&schema.AddAttr{
+					A: &Policy{Name: "policy", Cmd: "ALL"},
+				},
+			},
+		},
+		{
+			name: "modify policy roles",
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Policy{Name: "policy", Roles: []string{"public"}}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Policy{Name: "policy", Roles: []string{"postgres"}}}},
+			wantChanges: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Policy{Name: "policy", Roles: []string{"public"}},
+					To:   &Policy{Name: "policy", Roles: []string{"postgres"}},
+				},
+			},
+		},
 		func() testcase {
 			var (
 				s    = schema.New("public")

@@ -37,7 +37,7 @@ go generate ./...
 #### Linting
 
 Your code will be linted using `golangci-lint` during CI. To install in locally,
-[follow this guide](https://golangci-lint.run/usage/install/#local-installation). 
+[follow this guide](https://golangci-lint.run/welcome/install/#local-installation). 
 
 To run it locally:
 ```shell
@@ -101,7 +101,7 @@ Follow this short guide to contribute documentation improvements and additions:
 * Documentation files are located in `doc/md`, they are [Markdown-formatted](https://en.wikipedia.org/wiki/Markdown)
   with "front-matter" style annotations at the top. [Read more](https://docusaurus.io/docs/docs-introduction) about
   Docusaurus's document format.
-* Atlas uses [Golang CommitMessage](https://github.com/golang/go/wiki/CommitMessage) formats to keep the repository's
+* Atlas uses [Golang CommitMessage](https://go.dev/wiki/CommitMessage) formats to keep the repository's
   history nice and readable. As such, please use a commit message such as:
 ```text
 doc/md: adding a guide on contribution of docs to atlas
