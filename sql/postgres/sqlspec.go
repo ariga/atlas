@@ -752,7 +752,7 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 		tableColumnSpec,
 		pkSpec,
 		indexSpec,
-		specutil.FromForeignKey,
+		fkSpec,
 		specutil.FromCheck,
 	)
 	if err != nil {
@@ -847,6 +847,20 @@ func indexPKSpec(idx *schema.Index, attrs []*schemahcl.Attr) []*schemahcl.Attr {
 		attrs = append(attrs, schemahcl.Int64Attr("page_per_range", p.PagesPerRange))
 	}
 	return attrs
+}
+
+func fkSpec(fk *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
+	spec, err := specutil.FromForeignKey(fk)
+	if err != nil {
+		return nil, err
+	}
+	if d := (Deferrable{}); sqlx.Has(fk.Attrs, &d) && d.V {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("deferrable", d.V))
+		if d.Default {
+			spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("initially_deferred", d.Default))
+		}
+	}
+	return spec, nil
 }
 
 func partAttr(idx *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart) error {

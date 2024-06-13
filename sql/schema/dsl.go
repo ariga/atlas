@@ -846,6 +846,12 @@ func (f *ForeignKey) SetOnDelete(o ReferenceOption) *ForeignKey {
 	return f
 }
 
+// AddAttrs adds additional attributes to the foreign key.
+func (f *ForeignKey) AddAttrs(attrs ...Attr) *ForeignKey {
+	f.Attrs = append(f.Attrs, attrs...)
+	return f
+}
+
 // AddDeps adds the given objects as dependencies to the function.
 func (f *Func) AddDeps(objs ...Object) *Func {
 	f.Deps = append(f.Deps, objs...)

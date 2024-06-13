@@ -54,6 +54,10 @@ type (
 		// For example, an index type or predicate (for partial indexes).
 		IndexAttrChanged(from, to []schema.Attr) bool
 
+		// ForeignKeyAttrChanged reports if the foreign key attributes were changed.
+		// For example, the deferrable flag.
+		ForeignKeyAttrChanged(from, to []schema.Attr) bool
+
 		// IndexPartAttrChanged reports if the part's attributes at position "i"
 		// were changed. For example, an index-part collation.
 		IndexPartAttrChanged(from, to *schema.Index, i int) bool
@@ -577,6 +581,9 @@ func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 				change |= schema.ChangeRefColumn
 			}
 		}
+	}
+	if d.ForeignKeyAttrChanged(from.Attrs, to.Attrs) {
+		change |= schema.ChangeAttr
 	}
 	switch {
 	case len(from.Columns) != len(to.Columns):
