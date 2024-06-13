@@ -24,8 +24,8 @@ require (
 	github.com/pganalyze/pg_query_go/v5 v5.1.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.4
-	github.com/vektah/gqlparser/v2 v2.5.1
+	github.com/stretchr/testify v1.9.0
+	github.com/vektah/gqlparser/v2 v2.5.14
 	github.com/zclconf/go-cty v1.14.4
 	gocloud.dev v0.36.0
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
