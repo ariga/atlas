@@ -93,8 +93,8 @@ module.exports = {
     },
     footer,
     announcementBar: {
-      id: 'announcementBar-13', // Increment on change
-      content: `<strong>Atlas v0.23: Redshift, CircleCI, GORM Views, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/05/21/atlas-v-0-23">Read it here</a>`,
+      id: 'announcementBar-14', // Increment on change
+      content: `<strong>Atlas v0.24: Testing schemas, migrations, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/06/13/atlas-v-0-24">Read it here</a>`,
       isCloseable: true,
     },
   },

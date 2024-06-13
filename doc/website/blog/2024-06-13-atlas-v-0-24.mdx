@@ -1,0 +1,497 @@
+---
+title: "Announcing v0.24: Testing Schemas, Migrations, and Enhanced Editor Support"
+authors: rotemtam
+tags: [release, test, schema, migration, vscode, jetbrains]
+---
+
+import InstallationInstructions from '../../md/components/_installation_instructions.mdx'
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Hi everyone,
+
+We are back again with a new release of Atlas, [v0.24](https://github.com/ariga/atlas/releases/tag/v0.22.0). In this release
+we double down on the core principle that has been guiding us from the start: enabling developers to manage their
+database schema as code. The features we announce today may appear like an _yet another cool addition_ to Atlas, but
+I am fairly confident, that in a few years' time, they will be recognized as something foundational.
+
+In this release we introduce:
+
+* `schema test` - a new command (and framework) for testing your database schema using familiar software testing
+  paradigms.
+* `migrate test` - a new command for testing writing tests for you schema migrations.
+* Enhanced editor support - we have added support for some long awaited features in our VSCode and JetBrains plugins:
+  multi-file schemas, jump to definition, and support for much larger schemas.
+
+### Doubling Down on Database Schema-as-Code
+
+The core idea behind Atlas is to enable developers to manage their Database Schema-as-Code. Before we jump into the
+recent additions to Atlas, I would like to take a moment to reflect on why our industry seems to think that "X-as-Code"
+is a great idea.
+
+In a nutshell, the "X-as-Code" movement is about being able to describe the desired state of a system (whether it's
+infrastructure, configuration, or schema) in a declarative way and then have that state enforced by a tool.
+
+So why is having things described _as code_ so great? Here are a few reasons:
+
+* Code can be versioned. This means that you can track changes to your system over time, easily compare states,
+  and rollback as needed.
+* Code is understood by machines. As formal languages, code can be parsed, analyzed, and executed by machines.
+* Code can be tested and validated. By using software testing paradigms, you can ensure that your system behaves as
+  expected in an automated way.
+* Code can be shared and reused. Code allows us to transfer successful ideas and implementations between projects
+  and teams.
+* Code has a vast ecosystem of productivity tools. By using code, you can leverage the vast ecosystem of tools and
+  practices that have been developed by software engineers over the years.
+
+Our core goal with Atlas is to bring these benefits to the world of database schema management. We believe that by
+enabling developers to manage their database schema as code, we can help them build better, more reliable systems.
+
+Today we bring one of the most important tenets of modern software development to the world of database schema management:
+testing.
+
+## Why test your database schema and migrations?
+
+Testing is a fundamental part of modern software development. By writing tests, you can ensure that your code behaves
+as expected, catch bugs early, and prevent regressions.
+
+When it comes to database schemas, testing is just as important. Databases are much more than just a
+storage layer, they can be programmed, enforce logic and constraints, and have complex relationships between tables.
+For example, _table triggers_ allow you to run custom code when certain events occur, and you should be able to test
+that this code behaves as expected and that later changes to the schema do not break it.  In a similar vein, developers
+can provide complex expressions in _check constraints_ that should be tested to ensure they are working as expected.
+
+When it comes to migrations, testing is equally important. Atlas already provides the `migrate lint` command to help you catch
+invalid migrations and common mistakes. However, `migrate test` takes validating your migrations a step further.
+
+Many teams use migrations as a mechanism to apply _data migrations_ in tandem with schema changes. As they involve data,
+these changes are super risky, yet it is notoriously hard to test them. By providing a way to test your migrations,
+we hope to make this process easier and more reliable.
+
+## Introducing `schema test`
+
+The `schema test` command allows you to write tests for your database schema using familiar software testing paradigms.
+
+To get started, first install the latest version of the Atlas CLI:
+
+<InstallationInstructions/>
+
+Next, login to your Atlas account to activate the new schema testing features:
+
+```bash
+atlas login
+```
+
+Let's see a brief example.  We will begin our project by defining a basic Atlas project file named `atlas.hcl`:
+
+<Tabs
+  defaultValue="hcl"
+  values={[
+      { label: 'HCL', value: 'hcl' },
+      { label: 'SQL', value: 'sql' },
+  ]
+}>
+<TabItem value="hcl">
+
+```hcl title="atlas.hcl"
+env "local" {
+    src = "file://schema.hcl"
+    dev = "docker://postgres/16/dev?search_path=public"
+}
+```
+
+</TabItem>
+<TabItem value="sql">
+
+```hcl title="atlas.hcl"
+env "local" {
+    src = "file://schema.sql"
+    dev = "docker://postgres/16/dev?search_path=public"
+}
+```
+</TabItem>
+</Tabs>
+
+Next, let's define a PostgreSQL [Domain](/https://www.postgresql.org/docs/current/sql-createdomain.html)
+to model a data type for a `us_postal_code`:
+
+<Tabs
+  defaultValue="sql"
+  values={[
+      { label: 'HCL', value: 'hcl' },
+      { label: 'SQL', value: 'sql' },
+  ]
+}>
+
+<TabItem value="hcl">
+
+```hcl title="schema.hcl"
+schema "public" {
+}
+
+domain "us_postal_code" {
+  schema = schema.public
+  type = text
+  check {
+    expr = "VALUE ~ '^\d{5}$' OR VALUE ~ '^\d{5}-\d{4}$'"
+  }
+}
+```
+
+</TabItem>
+<TabItem value="sql">
+
+```sql title="schema.sql"
+CREATE DOMAIN "us_postal_code" AS text
+CONSTRAINT "us_postal_code_check"
+    CHECK (
+        (VALUE ~ '^\d{5}$'::text) OR
+        (VALUE ~ '^\d{5}-\d{4}$'::text)
+    );
+```
+</TabItem>
+</Tabs>
+
+Next, let's create a file named "schema.test.hcl" with the following content:
+
+```hcl title="schema.test.hcl"
+test "schema" "postal" {
+  exec {
+    sql = "select 'hello'::us_postal_code"
+  }
+}
+```
+
+Per testing best practices, we start with a test that is going to fail, since the string "hello" is not a valid US postal code.
+
+Now, we can run the test using the `schema test` command:
+
+```bash
+atlas schema test --env local
+```
+
+The output will be:
+
+```text
+-- FAIL: postal (319µs)
+    schema.test.hcl:2:
+      //highlight-next-line-error-message
+      Error: pq: value for domain us_postal_code violates check constraint "us_postal_code_check"
+FAIL
+```
+
+As expected, the test failed, and we can now fix the test by catching that error and verifying its message:
+
+```hcl title="schema.test.hcl"
+test "schema" "postal" {
+  //highlight-next-line
+  catch {
+    sql = "select 'hello'::us_postal_code"
+    //highlight-next-line
+    error = "value for domain us_postal_code violates check constraint"
+  }
+}
+```
+
+Re-running the test:
+
+```bash
+atlas schema test --env local
+```
+
+The output will be:
+
+```text
+-- PASS: postal (565µs)
+PASS
+```
+
+Now we can expand the test to cover more cases, such as valid postal codes and more invalid cases:
+
+```hcl title="schema.test.hcl"
+test "schema" "postal" {
+  exec {
+    sql = "select '12345'::us_postal_code"
+    output = "12345" // Assert the returned value is "12345"
+  }
+  exec {
+    sql = "select '12345-1234'::us_postal_code"
+    output = "12345-1234" // Assert the returned value is "12345-1234"
+  }
+  catch {
+    sql = "select 'hello'::us_postal_code"
+    error = "value for domain us_postal_code violates check constraint"
+  }
+  catch {
+    sql = "select '1234'::us_postal_code"
+    error = "value for domain us_postal_code violates check constraint"
+  }
+  assert {
+    sql = "select '12345'::us_postal_code::text='12345'" // Assert the query returns true.
+  }
+  log {
+    message = "Hooray, testing!"
+  }
+}
+```
+
+Re-running the test:
+
+```bash
+atlas schema test --env local
+```
+
+The output will be:
+
+```text
+-- PASS: postal (1ms)
+    schema.test.hcl:21: Hooray, testing!
+PASS
+```
+
+Let's review what happens when we run `atlas schema test`:
+
+* Atlas will apply the schema for the `local` environment on the dev database.
+* Atlas will search the current directory for files matching the pattern `*.test.hcl`.
+* For each test file found, Atlas will execute a test for each `test "schema" "<name>"` block.
+* Here are the possible test blocks:
+  * `exec` - Executes a SQL statement and verifies the output.
+  * `catch` - Executes a SQL statement and verifies that an error is thrown.
+  * `assert` - Executes a SQL statement and verifies that the output is true.
+  * `log` - Logs a message to the test output.
+
+Using this modest framework, you can now write tests for your database schema, ensuring that it behaves as expected.
+This command can be integrated into your local development workflow or even as part of your CI pipeline further
+ensuring the quality of your database schema changes.
+
+## Introducing `migrate test`
+
+The `migrate test` command allows you to write tests for your schema migrations. This is a powerful feature that
+enables you to test logic in your migrations in a minimal and straightforward way.  The command is similar to `schema test`
+but is focused on testing migrations.
+
+Suppose we are refactoring an existing table `users` which has a `name` column that we want to split into
+`first_name` and `last_name` columns. The recommended way to do this kind of refactoring in a backward-compatible
+way. Initially, we will be adding the new columns In Atlas DDL, the schema change would look roughly like this:
+
+```diff title="schema.hcl"
+table "users " {
+   // .. redacted
++  column "first_name" {
++    type = text
++    null = true
++  }
++  column "last_name" {
++    type = text
++    null = true
++  }
+}
+```
+
+Next, we will use Atlas to generate a migration for this change:
+
+```bash
+atlas migrate diff --env local
+```
+
+A new file will be created in our `migrations` directory:
+
+```sql title="20240613061102.sql"
+-- Modify "users" table
+ALTER TABLE "users" ADD COLUMN "first_name" text NULL, ADD COLUMN "last_name" text NULL;
+```
+
+Next, let's add the backfill logic to populate the new columns with the data from the `name` column:
+
+```sql title="20240613061102.sql"
+-- Modify "users" table
+ALTER TABLE "users" ADD COLUMN "first_name" text NOT NULL, ADD COLUMN "last_name" text NOT NULL;
+
+//highlight-start
+-- Backfill data
+UPDATE "users" SET "first_name" = split_part("name", ' ', 1), "last_name" = split_part("name", ' ', 2);
+//highlight-end
+```
+
+After changing the contents of our migration file, we must update our `atlas.sum` file to reflect the changes:
+
+```bash
+atlas migrate hash --env local
+```
+
+Next, we will create a test case to verify that our migration works correctly in different cases. Let's add the
+following block to a new file named `migrations.test.hcl`:
+
+```hcl title="migrations.test.hcl"
+test "migrate" "name_split" {
+    migrate {
+        // Replace with the migration version before the one we just added.
+        to = "20240613061046"
+    }
+    exec {
+      sql = "insert into users (name) values ('Ada Lovelace')"
+    }
+    migrate {
+        to = "20240613061102"
+    }
+    exec {
+      sql = "select first_name,last_name from users"
+      output = "Ada, Lovelace"
+    }
+}
+```
+Let's explain what this test does:
+* We start by defining a new test case named `name_split`.
+* The `migrate` block runs migrations up to a specific version. In this case, we are running all migrations up to the
+  version before the one we just added.
+* The `exec` block runs a SQL statement. In this case, we are inserting a new user with the name "Ada Lovelace".
+* Next, we run our new migration, `20240613061102`.
+* Finally, we run a SQL statement to verify that the `first_name` and `last_name` columns were populated correctly.
+
+Let's run the test:
+
+```bash
+atlas migrate test --env local
+```
+
+The output will be:
+
+```text
+-- PASS: name_split (33ms)
+PASS
+```
+
+Great, our test passed! We can now be confident that our migration works as expected.
+
+#### Testing Edge Cases
+
+With our test infra all set up, it's now easy to add more test cases to cover edge cases. For example, we can add a test
+to verify that our splitting logic works correctly for names that include a middle name, for example, `John Fitzgerald Kennedy`:
+
+```hcl title="migrations.test.hcl"
+test "migrate" "name_split_middle_name" {
+    migrate {
+        to = "20240613061046"
+    }
+    exec {
+      sql = "insert into users (name) values ('John Fitzgerald Kennedy')"
+    }
+    migrate {
+        to = "20240613061102"
+    }
+    exec {
+      sql = "select first_name,last_name from users"
+      output = "John Fitzgerald, Kennedy"
+    }
+}
+```
+
+We expect to see only the family name in the `last_name` column, and the rest of the name in the `first_name` column.
+
+Will it work? Let's run the test:
+
+```bash
+atlas migrate test --env local --run name_split_middle_name
+```
+
+Our test fails:
+
+```text
+-- FAIL: name_split_middle_name (32ms)
+    migrations.test.hcl:27:
+                Error:          no match for `John Fitzgerald, Kennedy` found in "John, Fitzgerald"
+FAIL
+```
+
+Let's improve our splitting logic to be more robust:
+
+```sql title="20240613061102.sql"
+-- Modify "users" table
+ALTER TABLE "users" ADD COLUMN "first_name" text NULL, ADD COLUMN "last_name" text NULL;
+
+//highlight-start
+-- Backfill data
+UPDATE "users"
+SET "first_name" = regexp_replace("name", ' ([^ ]+)$', ''),
+    "last_name" = regexp_replace("name", '^.* ', '');
+//highlight-end
+```
+
+We changed our splitting logic to be more robust by using regular expressions:
+* The `first_name` column will now contain everything before the last space in the `name` column.
+* The `last_name` column will contain everything after the last space in the `name` column.
+
+Before testing our new logic, we need to update our migration hash:
+
+```bash
+atlas migrate hash --env local
+```
+
+Now, let's run the test again:
+
+```bash
+atlas migrate test --env local --run name_split_middle_name
+```
+
+The output will be:
+
+```text
+-- PASS: name_split_middle_name (31ms)
+PASS
+```
+
+Great! Our test passed, and we can now be confident that our migration works as expected for names with middle names.
+
+As a final check, let's also verify that our migration works correctly for names with only one word, such as `Prince`:
+
+```hcl title="migrations.test.hcl"
+test "migrate" "name_split_one_word" {
+    migrate {
+        to = "20240613061046"
+    }
+    exec {
+      sql = "insert into users (name) values ('Prince')"
+    }
+    migrate {
+        to = "20240613061102"
+    }
+    exec {
+      sql = "select first_name,last_name from users"
+      output = "Prince, "
+    }
+}
+```
+
+Let's run the test:
+
+```bash
+atlas migrate test --env local --run name_split_one_word
+```
+
+The output will be:
+
+```text
+-- PASS: name_split_one_word (34ms)
+PASS
+```
+
+Amazing! Our test passed, and we can move forward with confidence.
+
+## Enhanced Editor Support
+
+In this release, we have added support for some long-awaited features in our VSCode and JetBrains plugins:
+
+* Multi-file schemas - Our editor plugins will now automatically detect and load all schema files in your project, allowing
+  you to reference tables and columns across files.
+* Jump to definition - Source code can be modeled as a graph of entities where one entity can reference another. For example
+  a Java class method invokes a method in another class, or a table's foreign key references another table's primary key.
+  Jump to definition allows you to navigate this graph by jumping to the definition of the entity you are interested in.
+* Support for much larger schemas - We have improved the performance of our editor plugins to support much larger schemas.
+
+To try the latest versions, head over to the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=Ariga.atlas-hcl)
+or the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/22307-atlas-hcl).
+
+## Wrapping Up
+
+That's all for this release! We hope you try out (and enjoy) all of these new features and find them useful.
+As always, we would love to hear your feedback and suggestions on our [Discord server](https://discord.com/invite/zZ6sWVg6NT).
