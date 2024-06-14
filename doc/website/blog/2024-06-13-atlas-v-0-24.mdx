@@ -95,8 +95,8 @@ Let's see a brief example.  We will begin our project by defining a basic Atlas 
 
 ```hcl title="atlas.hcl"
 env "local" {
-    src = "file://schema.hcl"
-    dev = "docker://postgres/16/dev?search_path=public"
+  src = "file://schema.hcl"
+  dev = "docker://postgres/16/dev?search_path=public"
 }
 ```
 
@@ -105,8 +105,8 @@ env "local" {
 
 ```hcl title="atlas.hcl"
 env "local" {
-    src = "file://schema.sql"
-    dev = "docker://postgres/16/dev?search_path=public"
+  src = "file://schema.sql"
+  dev = "docker://postgres/16/dev?search_path=public"
 }
 ```
 </TabItem>
@@ -324,20 +324,20 @@ following block to a new file named `migrations.test.hcl`:
 
 ```hcl title="migrations.test.hcl"
 test "migrate" "name_split" {
-    migrate {
-        // Replace with the migration version before the one we just added.
-        to = "20240613061046"
-    }
-    exec {
-      sql = "insert into users (name) values ('Ada Lovelace')"
-    }
-    migrate {
-        to = "20240613061102"
-    }
-    exec {
-      sql = "select first_name,last_name from users"
-      output = "Ada, Lovelace"
-    }
+  migrate {
+    // Replace with the migration version before the one we just added.
+    to = "20240613061046"
+  }
+  exec {
+    sql = "insert into users (name) values ('Ada Lovelace')"
+  }
+  migrate {
+    to = "20240613061102"
+  }
+  exec {
+    sql = "select first_name,last_name from users"
+    output = "Ada, Lovelace"
+  }
 }
 ```
 Let's explain what this test does:
@@ -356,7 +356,7 @@ atlas migrate test --env local
 
 The output will be:
 
-```text
+```testoutput
 -- PASS: name_split (33ms)
 PASS
 ```
@@ -370,19 +370,19 @@ to verify that our splitting logic works correctly for names that include a midd
 
 ```hcl title="migrations.test.hcl"
 test "migrate" "name_split_middle_name" {
-    migrate {
-        to = "20240613061046"
-    }
-    exec {
-      sql = "insert into users (name) values ('John Fitzgerald Kennedy')"
-    }
-    migrate {
-        to = "20240613061102"
-    }
-    exec {
-      sql = "select first_name,last_name from users"
-      output = "John Fitzgerald, Kennedy"
-    }
+  migrate {
+    to = "20240613061046"
+  }
+  exec {
+    sql = "insert into users (name) values ('John Fitzgerald Kennedy')"
+  }
+  migrate {
+    to = "20240613061102"
+  }
+  exec {
+    sql = "select first_name,last_name from users"
+    output = "John Fitzgerald, Kennedy"
+  }
 }
 ```
 
@@ -396,7 +396,7 @@ atlas migrate test --env local --run name_split_middle_name
 
 Our test fails:
 
-```text
+```testoutput
 -- FAIL: name_split_middle_name (32ms)
     migrations.test.hcl:27:
                 Error:          no match for `John Fitzgerald, Kennedy` found in "John, Fitzgerald"
@@ -446,19 +446,19 @@ As a final check, let's also verify that our migration works correctly for names
 
 ```hcl title="migrations.test.hcl"
 test "migrate" "name_split_one_word" {
-    migrate {
-        to = "20240613061046"
-    }
-    exec {
-      sql = "insert into users (name) values ('Prince')"
-    }
-    migrate {
-        to = "20240613061102"
-    }
-    exec {
-      sql = "select first_name,last_name from users"
-      output = "Prince, "
-    }
+  migrate {
+    to = "20240613061046"
+  }
+  exec {
+    sql = "insert into users (name) values ('Prince')"
+  }
+  migrate {
+    to = "20240613061102"
+  }
+  exec {
+    sql = "select first_name,last_name from users"
+    output = "Prince, "
+  }
 }
 ```
 
@@ -470,7 +470,7 @@ atlas migrate test --env local --run name_split_one_word
 
 The output will be:
 
-```text
+```testoutput
 -- PASS: name_split_one_word (34ms)
 PASS
 ```

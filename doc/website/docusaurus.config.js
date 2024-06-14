@@ -94,7 +94,7 @@ module.exports = {
     footer,
     announcementBar: {
       id: 'announcementBar-14', // Increment on change
-      content: `<strong>Atlas v0.24: Testing schemas, migrations, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/06/13/atlas-v-0-24">Read it here</a>`,
+      content: `<strong>Atlas v0.24: Testing framework, Editor Support, and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/06/13/atlas-v-0-24">Read it here</a>`,
       isCloseable: true,
     },
   },

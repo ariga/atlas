@@ -16,6 +16,11 @@ const prismIncludeLanguages = (Prism) => {
     'action3': /\s\s+->\s/,
     'error': /(Error:\s.+|\s+.+(assertions failed:|check assertion)\s.+)/i,
   };
+  Prism.languages.testoutput = {
+    'dash2': /--/,
+    'pass': / PASS/,
+    'fail': / FAIL/,
+  };
   if (ExecutionEnvironment.canUseDOM) {
     const {
       themeConfig: {prism: {additionalLanguages = []} = {}},
