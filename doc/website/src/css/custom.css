@@ -310,6 +310,14 @@ h3 > .login {
   color: white;
 }
 
+.language-testoutput .pass {
+  color: #c4e88d;
+}
+
+.language-testoutput .fail {
+  color: #db4b4b;
+}
+
 .sticky-anchor {
   scroll-margin-top:calc(var(--ifm-navbar-height) + 0.5rem);
 }

@@ -87,6 +87,15 @@ module.exports = {
             ],
         },
         {
+            type: "category",
+            label: "Testing Framework",
+            collapsed: false,
+            items: [
+                {type: 'doc', id: 'testing/schema', label: 'Testing Schemas'},
+                {type: 'doc', id: 'testing/migrate', label: 'Testing Migrations'},
+            ]
+        },
+        {
             type: 'category',
             label: 'Concepts',
             collapsed: false,
