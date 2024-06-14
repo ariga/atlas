@@ -13,7 +13,7 @@ export function Card({ children, className, url }: React.ReactWithChildren<ICard
     <Link
       to={url}
       className={twMerge(
-        "flex flex-col items-center p-4 hover:no-underline rounded-lg border-lightGrey border hover:shadow-md transition-all",
+        "flex flex-col items-center p-4 hover:no-underline dark:bg-[#fff] rounded-lg border-lightGrey border hover:shadow-md dark:hover:bg-lightGrey transition-all",
         className
       )}
     >
@@ -22,7 +22,7 @@ export function Card({ children, className, url }: React.ReactWithChildren<ICard
   ) : (
     <div
       className={twMerge(
-        "flex flex-col items-center p-4 rounded-lg border-lightGrey border",
+        "flex flex-col items-center p-4 rounded-lg dark:bg-[#fff] border-lightGrey border",
         className
       )}
     >
