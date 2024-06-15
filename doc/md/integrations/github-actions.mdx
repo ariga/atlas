@@ -20,12 +20,13 @@ that can later be re-used by many projects.
 Atlas provides a number of GitHub Actions that can be used to automate
 database schema management tasks.
 
-| Action                                                | Use Case                                            |
-|-------------------------------------------------------|-----------------------------------------------------|
-| [ariga/setup-atlas](https://github.com/ariga/setup-atlas) | Install Atlas from a GitHub Actions workflow    |
-| [ariga/atlas-action/migrate/lint](https://github.com/ariga/atlas-action/tree/master/migrate/lint/action.yml)        | CI for schema changes                               |
+| Action                                                                                                         | Use Case                                                     |
+|----------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|
+| [ariga/setup-atlas](https://github.com/ariga/setup-atlas)                                                      | Install Atlas from a GitHub Actions workflow                 |
+| [ariga/atlas-action/migrate/lint](https://github.com/ariga/atlas-action/tree/master/migrate/lint/action.yml)   | CI for schema changes                                        |
 | [ariga/atlas-action/migrate/push](https://github.com/ariga/atlas-action/tree/master/migrate/push/action.yml)   | Push your migration directory to Atlas Cloud (atlasgo.cloud) |
-| [ariga/atlas-action/migrate/apply](https://github.com/ariga/atlas-action/tree/master/migrate/apply/action.yml) | Deploy versioned migrations from GitHub Actions    |
+| [ariga/atlas-action/migrate/apply](https://github.com/ariga/atlas-action/tree/master/migrate/apply/action.yml) | Deploy versioned migrations from GitHub Actions              |
+| [ariga/atlas-action/migrate/down](https://github.com/ariga/atlas-action/tree/master/migrate/down/action.yml)   | Revert versioned migrations from GitHub Actions              |
 
 ## `ariga/setup-atlas`
 
@@ -715,3 +716,101 @@ All inputs are optional as they may be specified in the Atlas configuration file
 * `target` - The target version of the database.
 * `pending_count` - The number of migrations that will be applied.
 * `applied_count` - The number of migrations that were applied.
+
+## `ariga/atlas-action/migrate/down`
+
+The [ariga/atlas-action/migrate/down](https://github.com/ariga/atlas-action/tree/master/migrate/down/action.yml) 
+action can be used to revert versioned migrations from GitHub Actions.
+
+:::info
+
+Atlas needs network access to your database to deploy migrations, so make sure your database is either 
+publicly accessible or that you have otherwise enabled network access to it from your GitHub Actions runners.
+
+:::
+
+This action supports two workflows:
+
+- *Local* - the migration directory is checked in to the repository.
+- *Cloud* - the migration directory is [connected to Atlas Cloud](https://atlasgo.io/cloud/directories).
+Runs are reported to your Atlas Cloud account.
+
+### Usage
+
+Notice that the following examples rely on a `DATABASE_URL` secret being set in your repository.
+
+To learn how to set secrets, read [GitHub's documentation](https://docs.github.com/en/actions/reference/encrypted-secrets).
+
+The `DATABASE_URL` secret should be set to the URL of your database, for examples please see [Atlas URL formats](/concepts/url).
+
+#### Local
+
+```yaml
+name: Revert Database Migrations
+on:
+  push:
+    branches:
+      - master
+jobs:
+  down:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+      - name: Revert Atlas Migrations
+        uses: ariga/atlas-action/migrate/down@v1
+        with:
+          url: ${{ secrets.DATABASE_URL }}
+          dir: path/to/migrations
+          to-version: <version>
+```
+
+#### Deploy from Cloud
+
+```yaml
+name: Revert Database Migrations
+on:
+  push:
+    branches:
+      - master
+jobs:
+  down:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+      - name: Revert Atlas Migrations
+        uses: ariga/atlas-action/migrate/down@v1
+        with:
+          url: ${{ secrets.DATABASE_URL }}
+          dir: atlas://my-project # name (slug) of your project in Atlas Cloud. Add `?tag=<tag>` to revert a specific tag.
+          amount: <amount>
+```
+
+### Inputs
+
+All inputs are optional as they may be specified in the Atlas configuration file.
+
+* `url` - The URL of the target database.  For example: `mysql://root:pass@localhost:3306/dev`.
+* `dir` - The URL of the migration directory to apply.  For example: `atlas://dir-name` for cloud
+   based directories or `file://migrations` for local ones.
+* `config` - The URL of the Atlas configuration file.  By default, Atlas will look for a file
+  named `atlas.hcl` in the current directory. For example, `file://config/atlas.hcl`.
+  Learn more about [Atlas configuration files](https://atlasgo.io/atlas-schema/projects). 
+* `env` - The environment to use from the Atlas configuration file.  For example, `dev`.
+* `amount` - The amount of applied migrations to revert, defaults to 1.
+* `to-version` - To which version to revert.
+* `to-tag` - To which tag to revert.
+* `wait-timeout` - Time after which no other retry attempt is made and the action exits. If not set, only one attempt is made.
+* `wait-interval` - Time in seconds between different migrate down attempts, useful when waiting for plan approval, defaults to 1s. 
+* `vars` - Stringify JSON object containing variables to be used inside the Atlas configuration file.
+   For example: `'{"var1": "value1", "var2": "value2"}'`.
+* `working-directory` - The working directory to run from.  Defaults to project root.
+
+### Outputs
+
+* `current` - The current version of the database. (before applying migrations)
+* `target` - The target version of the database.
+* `pending_count` - The number of migrations that will be applied.
+* `reverted_count` - The number of migrations that were reverted.
+* `url` - The URL of the plan to review and approve / reject.
