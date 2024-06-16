@@ -15,7 +15,7 @@ export function DBCard({ name, url, icon, isDark, children }: IDBCard) {
     <Card
       url={url}
       className={`relative justify-center border-lightGrey border px-2 
-      ${isDark ? "bg-lightBlue col-end-3 top-10 xl:top-0 xl:col-end-auto" : ""}`}
+      ${isDark ? "bg-lightBlue col-end-3 top-10 xl:top-0 xl:col-end-auto dark:bg-lightBlue" : ""}`}
     >
       <div className="flex flex-col gap-2 items-center relative">
         <div className="absolute -top-14">

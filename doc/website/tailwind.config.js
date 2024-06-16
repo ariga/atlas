@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: ['class', '[data-theme="dark"]'],
   corePlugins: {
     preflight: false,
     container: false,
@@ -11,7 +12,7 @@ module.exports = {
       mono: ["Space Mono", "monospace"],
     },
     colors: {
-      black: '#1c1e21',
+      black: "#1c1e21",
       darkBlue: "#263066",
       lightBlue: "#727BA8",
       lightGrey: "#E1E4F5",
