@@ -443,11 +443,14 @@ func (t *blockDef) addChild(blk *hclsyntax.Block, depth int) {
 	if t.children == nil {
 		t.children = make(map[string]*blockDef)
 	}
-	c := &blockDef{
-		name:   blk.Type,
-		parent: t,
+	c, ok := t.children[blk.Type]
+	if !ok {
+		c = &blockDef{
+			name:   blk.Type,
+			parent: t,
+		}
+		t.children[blk.Type] = c
 	}
-	t.children[blk.Type] = c
 	// Limit depth of children to two as we do not have any
 	// case for more than this atm. e.g., table.column.
 	if depth < 2 {
