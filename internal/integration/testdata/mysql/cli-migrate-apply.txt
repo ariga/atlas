@@ -49,7 +49,7 @@ atlas migrate apply --url URL --revisions-schema $db --log '{{ json . }}'
 validJSON stdout
 stdout '"Driver":"mysql"'
 stdout '"Scheme":"mysql"'
-stdout '"Dir":"migrations"'
+stdout '"Dir":"file://migrations"'
 stdout '"Target":"3"'
 stdout '"Pending":\[{"Name":"1_first.sql","Version":"1","Description":"first"},{"Name":"2_second.sql","Version":"2","Description":"second"},{"Name":"3_third.sql","Version":"3","Description":"third"}\]'
 stdout '"Applied":\["CREATE TABLE `users` \(`id` bigint NOT NULL AUTO_INCREMENT, `age` bigint NOT NULL, `name` varchar\(255\) NOT NULL, PRIMARY KEY \(`id`\)\) CHARSET utf8mb4 COLLATE utf8mb4_bin;"\]'

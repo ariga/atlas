@@ -121,7 +121,7 @@ func stateSchemaSQL(ctx context.Context, cfg *StateReaderConfig, dir migrate.Dir
 	if cfg.Dev == nil {
 		return nil, errNoDevURL
 	}
-	log := cmdlog.NewMigrateApply(ctx, cfg.Dev, dir)
+	log := cmdlog.NewMigrateApply(ctx, cfg.Dev, nil)
 	r, err := stateReaderSQL(ctx, cfg, dir, []migrate.ExecutorOption{migrate.WithLogger(log)}, nil)
 	if n := len(log.Applied); err != nil && n > 0 {
 		if serr := log.Applied[n-1].Error; serr != nil && serr.Stmt != "" && serr.Text != "" {

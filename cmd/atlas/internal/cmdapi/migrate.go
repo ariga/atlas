@@ -173,8 +173,12 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 			return fmt.Errorf("cannot apply '%d' migration files", count)
 		}
 	}
+	dirURL, err := url.Parse(flags.dirURL)
+	if err != nil {
+		return fmt.Errorf("parse dir-url: %w", err)
+	}
 	// Open and validate the migration directory.
-	dir, err := cmdmigrate.Dir(ctx, flags.dirURL, false)
+	dir, err := cmdmigrate.DirURL(ctx, dirURL, false)
 	if err != nil {
 		return err
 	}
@@ -217,7 +221,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 		return err
 	}
 	// Setup reporting info.
-	report := cmdlog.NewMigrateApply(ctx, client, dir)
+	report := cmdlog.NewMigrateApply(ctx, client, dirURL)
 	mr.Init(client, report, mrrw)
 	// If cloud reporting is enabled, and we cannot obtain the current
 	// target identifier, abort and report it to the user.
@@ -1298,7 +1302,11 @@ func migrateStatusCmd() *cobra.Command {
 
 func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) error {
 	ctx := cmd.Context()
-	dir, err := cmdmigrate.Dir(ctx, flags.dirURL, false)
+	dirURL, err := url.Parse(flags.dirURL)
+	if err != nil {
+		return fmt.Errorf("parse dir-url: %w", err)
+	}
+	dir, err := cmdmigrate.DirURL(ctx, dirURL, false)
 	if err != nil {
 		return err
 	}
@@ -1313,6 +1321,7 @@ func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) 
 	report, err := (&cmdmigrate.StatusReporter{
 		Client: client,
 		Dir:    dir,
+		DirURL: dirURL,
 		Schema: revisionSchemaName(client, flags.revisionSchema),
 	}).Report(ctx)
 	if err != nil {

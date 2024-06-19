@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"slices"
 	"sort"
 	"strings"
@@ -102,13 +103,13 @@ func (f Files) MarshalJSON() ([]byte, error) {
 }
 
 // NewEnv returns an initialized Env.
-func NewEnv(c *sqlclient.Client, dir migrate.Dir) Env {
+func NewEnv(c *sqlclient.Client, dirURL *url.URL) Env {
 	e := Env{
 		Driver: c.Name,
 		URL:    c.URL,
 	}
-	if p, ok := dir.(interface{ Path() string }); ok {
-		e.Dir = p.Path()
+	if dirURL != nil {
+		e.Dir = dirURL.Redacted()
 	}
 	return e
 }
@@ -361,10 +362,10 @@ type (
 )
 
 // NewMigrateApply returns an MigrateApply.
-func NewMigrateApply(ctx context.Context, client *sqlclient.Client, dir migrate.Dir) *MigrateApply {
+func NewMigrateApply(ctx context.Context, client *sqlclient.Client, dirURL *url.URL) *MigrateApply {
 	return &MigrateApply{
 		ctx:   ctx,
-		Env:   NewEnv(client, dir),
+		Env:   NewEnv(client, dirURL),
 		Start: time.Now(),
 	}
 }
