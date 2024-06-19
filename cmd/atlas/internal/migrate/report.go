@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
@@ -21,6 +22,8 @@ import (
 type StatusReporter struct {
 	// Client configures the connection to the database to file a MigrateStatus for.
 	Client *sqlclient.Client
+	// DirURL of the migration directory.
+	DirURL *url.URL
 	// Dir is used for scanning and validating the migration directory.
 	Dir migrate.Dir
 	// Schema name the revision table resides in.
@@ -29,7 +32,7 @@ type StatusReporter struct {
 
 // Report creates and writes a MigrateStatus.
 func (r *StatusReporter) Report(ctx context.Context) (*cmdlog.MigrateStatus, error) {
-	rep := &cmdlog.MigrateStatus{Env: cmdlog.NewEnv(r.Client, r.Dir)}
+	rep := &cmdlog.MigrateStatus{Env: cmdlog.NewEnv(r.Client, r.DirURL)}
 	// Check if there already is a revision table in the defined schema.
 	// Inspect schema and check if the table does already exist.
 	sch, err := r.Client.InspectSchema(ctx, r.Schema, &schema.InspectOptions{Tables: []string{revision.Table}})

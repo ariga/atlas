@@ -391,8 +391,8 @@ entity while still pointing to its previous table name. e.g., here is how you ca
 
 2. If renaming is desired but the previous version of the application uses the old table name, a temporary `VIEW`
 can be created to mimic the previous schema version in the deployment phase. However, the downside of this solution is
-that mutations using the old table name will fail. Yet, if Atlas detects a consecutive statement with a
-`CREATE VIEW <old_name>`, it will ignore this check.
+that mutations using the old table name might fail (e.g., if the VIEW is not [Updatable/Insertable](https://dev.mysql.com/doc/refman/8.4/en/view-updatability.html)).
+Yet, if Atlas detects a consecutive statement with a `CREATE VIEW <old_name>`, it will ignore this check.
   ```sql
   ALTER TABLE `users` RENAME TO `Users`;
   CREATE VIEW `users` AS SELECT * FROM `Users`;
