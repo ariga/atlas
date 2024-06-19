@@ -1341,6 +1341,56 @@ function "fn_return_table" {
 </TabItem>
 </Tabs>
 
+:::info <a class="sticky-anchor" id={"scope"} href={"#testing-functions"}>Testing Functions</a>
+
+Atlas testing framework allows you to write unit tests for your functions. The following example demonstrates how
+to write tests for the `positive` function defined above. For more detail, read the [schema testing docs](/testing/schema).
+
+
+<Tabs>
+<TabItem label="Simple Test" value="simple">
+
+```hcl title="schema.test.hcl"
+test "schema" "simple_test" {
+  parallel = true
+  assert {
+    sql = "SELECT positive(1)"
+  }
+  log {
+    message = "First assertion passed"
+  }
+  assert {
+    sql = <<SQL
+SELECT NOT positive(0);
+SELECT NOT positive(-1);
+SQL
+  }
+}
+```
+
+</TabItem>
+<TabItem label="Table-driven Test" value="table-driven">
+
+```hcl title="schema.test.hcl"
+test "schema" "simple_test" {
+  parallel = true
+  for_each = [
+    {input: 1, expected: "t"},
+    {input: 0, expected: "f"},
+    {input: -1, expected: "f"},
+  ]
+  exec {
+    sql = "SELECT positive(${each.value.input})"
+    output = each.value.expected
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+:::
+
 #### Aggregate Functions
 
 The `aggregate` block defines a function that computes a single result from a set of values. Supported by
