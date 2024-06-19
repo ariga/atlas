@@ -1104,3 +1104,46 @@ baz = 1
 	require.Equal(t, 4, rs[1].Children[0].Range().Start.Line)
 	require.Equal(t, 5, rs[1].Children[0].Attrs[0].Range().Start.Line)
 }
+
+func TestExtendedBlockDef(t *testing.T) {
+	var (
+		doc struct {
+			DefaultExtension
+		}
+		b = []byte(`
+schema "public" {}
+table "users" {}
+materialized "users_view2" {
+  schema = schema.public
+  as = "SELECT * FROM script_matview_inspect.users"
+  column "id" {
+    null = false
+  }
+  column "a" {
+    null = false
+  }
+  column "b" {
+    null = false
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  populate = true
+}
+materialized "users_view" {
+  schema = schema.public
+  to = table.users
+  as = "SELECT * FROM script_matview_inspect.users"
+  index "i" {
+    on {
+      expr = "a"
+    }
+  }
+  primary_key {
+    using = index.i # Not a real syntax.
+  }
+}
+`)
+	)
+	require.NoError(t, New().EvalBytes(b, &doc, nil))
+}
