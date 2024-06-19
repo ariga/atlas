@@ -622,6 +622,9 @@ primary key.
 
 #### Example
 
+<Tabs>
+<TabItem label="Columns" value="columns">
+
 ```hcl
 primary_key {
   columns = [column.id]
@@ -632,7 +635,36 @@ primary_key {
 
 | Name    | Kind      | Type                     | Description                                                    |
 |---------|-----------|--------------------------|----------------------------------------------------------------|
-| columns | resource  | reference (list)         | A list of references to columns that comprise the primary key. |
+| columns | attribute | reference (list)         | A list of references to columns that comprise the primary key. |
+
+</TabItem>
+<TabItem label="Expressions" value="expr">
+
+:::info
+Note, primary key expressions are supported by ClickHouse.
+::: 
+
+```hcl
+primary_key {
+  on {
+    column = column.id
+  }
+  on {
+    expr = "c1 + c2"
+  }
+}
+```
+
+#### Properties
+
+| Name    | Kind      | Type                     | Description                                                    |
+|---------|-----------|--------------------------|----------------------------------------------------------------|
+| on      | resource  | schema.IndexPart (list)  | The index parts that comprise the index                        |
+
+</TabItem>
+</Tabs>
+
+
 
 ## Foreign Key
 
