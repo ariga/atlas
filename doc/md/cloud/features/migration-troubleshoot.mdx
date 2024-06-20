@@ -1,0 +1,47 @@
+---
+title: Troubleshooting Migrations
+id: migration-troubleshoot
+slug: /cloud/features/migration-troubleshoot
+---
+
+Troubleshooting and triaging failures during database migrations can be especially difficult. Errors often stem from data
+and schema changes, making it hard to identify the exact problem.
+
+When an error or migration failure occurs, it is crucial to understand what went wrong and assess the current state of
+the database.
+
+## Drill Down Analysis
+
+When reporting migration runs to Atlas Cloud, the detailed logs allow you to quickly drill down and troubleshoot
+any schema migration failures.
+
+The report shows what happened in the migration, what caused the failure, and the current state of the
+database post-deployment.
+
+For example, in the image below we can see a migration that failed due to a constraint, `number_length`, which
+was violated. This caused the migration to fail and only one of the three intended migration files was executed on
+the database.
+
+[![](https://atlasgo.io/uploads/cloud/images/gh-failed-deployment.png)](https://gh.atlasgo.cloud/dirs/4294967329/deployments/51539607581)
+
+### Database-per-Tenant Migrations
+
+In a database-per-tenant architecture, the same migration is executed on multiple databases. If a migration fails,
+the root cause of the error often involves tenant-specific data and schema changes, making it even more challenging to
+pinpoint issues.
+
+In this scenario, identifying which databases were affected and which remained unaffected is crucial to assess the impact
+and plan the next steps effectively.
+
+In the image below we can see the deployment intended to run on four different databases. The migration failed once it reached
+the third tenant, stopping the deployment entirely before reaching the last tenant's database.
+
+[![](https://atlasgo.io/uploads/cloud/images/multitenant-failed-deployment.png)](https://gh.atlasgo.cloud/dirs/4294967347/deployments/sets/94489280523)
+
+When examining the specific tenant that failed (as shown in the image below), we can see that the failure was caused by
+an attempt to create a table that already existed in the database.
+
+[![](https://atlasgo.io/uploads/cloud/images/tenant-failed-deployment.png)](https://gh.atlasgo.cloud/dirs/4294967347/deployments/51539607566)
+
+The detailed deployment reports provide clarity on migration failures, allowing for efficient resolution and minimizing
+downtime.

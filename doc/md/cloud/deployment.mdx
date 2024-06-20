@@ -29,7 +29,7 @@ with a single command (or using popular CD tools such as Kubernetes and Terrafor
 
 ## Deploying migrations from Atlas Cloud
 
-To read the migrations directory from the [Schema Registry](https://atlasgo.io/cloud/features/registry),
+To read the migration directory from the [Schema Registry](https://atlasgo.io/cloud/features/registry),
 use the `atlas://` scheme in the migration URL as follows:
 
 ```hcl title="atlas.hcl"
@@ -79,29 +79,3 @@ runs in your cloud account. Here's a demonstration of how it looks in action:
 
 </TabItem>
 </Tabs>
-
-## Troubleshooting Migration Runs
-
-When running migrations on databases, especially in multi-tenant architectures, troubleshooting and triaging failures become particularly challenging.
-The root cause of errors often involves tenant-specific data and schema changes, making pinpointing issues challenging.
-
-In the event of an error or failed migration, clarity on what went wrong and the current state of the database is essential.
-For multi-tenant migrations, identifying which databases were affected and which remained unaffected is crucial to assess the impact
-and plan the next steps effectively.
-
-### Drill Down Analysis
-
-When reporting migration runs to Atlas Cloud, the detailed per-tenant logs allow you to quickly drill down and troubleshoot any schema migration failures.
-
-[![](https://atlasgo.io/uploads/cloud/images/multitenant-failed-deployment.png)](https://gh.atlasgo.cloud/dirs/4294967347/deployments/sets/94489280523)
-
-In the image above we can see the deployment intended to run on four different databases. The migration failed once it reached
-the third tenant, stopping the deployment entirely before reaching the last tenant's database.
-
-[![](https://atlasgo.io/uploads/cloud/images/tenant-failed-deployment.png)](https://gh.atlasgo.cloud/dirs/4294967347/deployments/51539607566)
-
-When looking at the specific tenant that failed, we can see that the failure was caused due to an attempt to create a table that already existed in the database.
-
-The detailed deployment reports provide clarity on migration failures, allowing for efficient resolution and minimizing
-downtime.
-
