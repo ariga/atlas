@@ -715,10 +715,19 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 		migrate.PlanWithIndent(indent),
 		migrate.PlanWithDiffOptions(diffOptions(cmd, env)...),
 	}
+
 	if dev.URL.Schema != "" {
 		// Disable tables qualifier in schema-mode.
-		opts = append(opts, migrate.PlanWithSchemaQualifier(flags.qualifier))
+		opts = append(opts,
+			migrate.PlanWithSchemaQualifier(""),
+			migrate.PlanWithDiffOptions(schema.DiffSkipChanges(
+				&schema.AddSchema{},
+				&schema.DropSchema{},
+				&schema.ModifySchema{},
+			)),
+		)
 	}
+
 	// Plan the changes and create a new migration file.
 	pl := migrate.NewPlanner(dev.Driver, dir, opts...)
 	plan, err := func() (*migrate.Plan, error) {
