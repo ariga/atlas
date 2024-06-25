@@ -119,7 +119,7 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 	//	SELECT ARRAY[1] = '{1}'::int[]
 	//	SELECT lower('X'::text) = lower('X')
 	//
-	if (fromX || toX) && d.conn.ExecQuerier != nil {
+	if (fromX || toX) && d.conn.ExecQuerier != nil && d.conn.ExecQuerier != sqlx.NoRows {
 		equals, err := d.defaultEqual(from.Default, to.Default)
 		return !equals, err
 	}
