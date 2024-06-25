@@ -342,3 +342,7 @@ h3 > .login {
 .docs-layout p code {
   @apply rounded-lg border-none p-1 font-roboto;
 }
+
+div[class^='announcementBar'] {
+  @apply border-0;
+}
