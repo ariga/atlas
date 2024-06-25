@@ -125,6 +125,7 @@ module.exports = {
                         {type: 'doc', id: 'cloud/features/registry', label: 'Schema Registry'},
                         {type: 'doc', id: 'cloud/features/schema-docs', label: 'Schema Docs'},
                         {type: 'doc', id: 'cloud/features/pre-migration-checks', label: 'Pre-migration Checks'},
+                        {type: 'doc', id: 'cloud/features/troubleshooting', label: 'Migration Troubleshooting'},
                     ],
                 },
                 {type: 'doc', id: 'cloud/pricing', label: 'Pricing'},
