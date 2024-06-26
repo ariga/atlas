@@ -24,6 +24,7 @@ func TestRunner_Run(t *testing.T) {
 	b := &bytes.Buffer{}
 	c, err := sqlclient.Open(ctx, "sqlite://run?mode=memory&cache=shared&_fk=1")
 	require.NoError(t, err)
+	t.Setenv("NO_COLOR", "1")
 
 	t.Run("checksum mismatch", func(t *testing.T) {
 		var (

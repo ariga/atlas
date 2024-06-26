@@ -968,6 +968,7 @@ type migrateLintFlags struct {
 // migrateLintCmd represents the 'atlas migrate lint' subcommand.
 func migrateLintCmd() *cobra.Command {
 	var (
+		env   *Env
 		flags migrateLintFlags
 		cmd   = &cobra.Command{
 			Use:   "lint [flags]",
@@ -976,14 +977,17 @@ func migrateLintCmd() *cobra.Command {
   atlas migrate lint --dir "file:///path/to/migrations" --dev-url "docker://mysql/8/dev" --latest 1
   atlas migrate lint --dir "file:///path/to/migrations" --dev-url "mysql://root:pass@localhost:3306" --git-base master
   atlas migrate lint --dir "file:///path/to/migrations" --dev-url "mysql://root:pass@localhost:3306" --format '{{ json .Files }}'`,
-			PreRunE: func(cmd *cobra.Command, args []string) error {
-				if err := migrateFlagsFromConfig(cmd); err != nil {
+			PreRunE: func(cmd *cobra.Command, args []string) (err error) {
+				if env, err = selectEnv(cmd); err != nil {
+					return err
+				}
+				if err := setMigrateEnvFlags(cmd, env); err != nil {
 					return err
 				}
 				return dirFormatBC(flags.dirFormat, &flags.dirURL)
 			},
 			RunE: RunE(func(cmd *cobra.Command, args []string) error {
-				return migrateLintRun(cmd, args, flags)
+				return migrateLintRun(cmd, args, flags, env)
 			}),
 		}
 	)
