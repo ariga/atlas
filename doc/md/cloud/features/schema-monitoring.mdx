@@ -1,0 +1,32 @@
+---
+title: Schema Monitoring
+slug: /cloud/features/schema-monitoring
+---
+
+## Drift Detection
+
+Schema migrations on production databases should ideally be automated within CI/CD pipelines, keeping developers from
+needing root access. However, this setup isn't always feasible, leading to **Schema Drift**, where database schemas
+drift from their intended state, causing inconsistencies and issues.
+
+### Schema Drift
+Schema drift is dangerous because it can lead to unexpected behavior in applications, data corruption, and even system outages.
+When the actual database schema deviates from the expected schema, queries may fail, data integrity constraints may be violated,
+and application logic may break. This can result in hard-to-debug issues and degraded system performance,
+ultimately affecting the reliability and trustworthiness of your application.
+
+#### Catching Drifts
+Atlas provides a solution by periodically checking if your deployed database schemas align with their desired state.
+Since direct internet access to databases is uncommon, Atlas allows the use of Atlas Agents within your database's network.
+These agents register themselves with your Atlas Cloud account and continuously poll for tasks, ensuring your
+database schemas remain consistent and up-to-date.
+
+![drift-detection](https://atlasgo.io/uploads/cloud/images/drift-detection-mockup.png)
+
+You can instruct Atlas to notify you if there is a drift. Atlas supports various channels, such as email, Slack, Workplace
+or by a plain webhook.
+
+![drift-webhook](https://atlasgo.io/uploads/cloud/images/drift-webhook.png)
+
+These notifications are particularly useful because they provide real-time alerts, ensuring that any drifts are promptly addressed.
+
