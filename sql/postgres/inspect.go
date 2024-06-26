@@ -95,7 +95,7 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 // referenced objects in the public schema (or any other default search_path) are returned
 // qualified in the inspection.
 func (i *inspect) noSearchPath(ctx context.Context) (func() error, error) {
-	if i.crdb {
+	if i.crdb || i.risingwave {
 		// Skip logic for CockroachDB.
 		return func() error { return nil }, nil
 	}
@@ -472,6 +472,9 @@ func (i *inspect) inspectEnums(ctx context.Context, r *schema.Realm) error {
 func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
 	if i.crdb {
 		return i.crdbIndexes(ctx, s)
+	}
+	if i.risingwave {
+		return i.risingwaveIndexes(ctx, s)
 	}
 	rows, err := i.querySchema(ctx, i.indexesQuery(), s)
 	if err != nil {
@@ -1500,7 +1503,7 @@ SELECT
 FROM
     pg_catalog.pg_namespace
 WHERE
-    nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast', 'crdb_internal', 'pg_extension')
+    nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast', 'crdb_internal', 'rw_catalog', 'pg_extension')
     AND nspname NOT LIKE 'pg_%temp_%'
 ORDER BY
     nspname`
@@ -1532,7 +1535,7 @@ FROM
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
 	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
 	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
-	LEFT JOIN pg_depend AS t5 ON t5.classid = 'pg_catalog.pg_class'::regclass::oid AND t5.objid = t3.oid AND t5.deptype = 'e'
+	LEFT JOIN pg_depend AS t5 ON t5.classid::text = 'pg_catalog.pg_class' AND t5.objid = t3.oid AND t5.deptype = 'e'
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND NOT COALESCE(t3.relispartition, false)
@@ -1555,7 +1558,7 @@ FROM
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
 	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
 	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
-	LEFT JOIN pg_depend AS t5 ON t5.classid = 'pg_catalog.pg_class'::regclass::oid AND t5.objid = t3.oid AND t5.deptype = 'e'
+	LEFT JOIN pg_depend AS t5 ON t5.classid::text = 'pg_catalog.pg_class' AND t5.objid = t3.oid AND t5.deptype = 'e'
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND NOT COALESCE(t3.relispartition, false)
