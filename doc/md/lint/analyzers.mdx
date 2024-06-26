@@ -46,6 +46,17 @@ Luckily, Atlas detects non-linear and non-additive changes made to a migration d
 To enable this behavior in your project, integrate Atlas into your [GitHub Actions](/cloud/setup-ci) or [GitLab](/guides/ci-platforms/gitlab)
 CI pipelines, and Atlas will automatically detect and report non-linear changes during the CI run.
 
+By default, non-linear changes are reported but not cause migration linting to fail. Users can change this by
+configuring the `non_linear` changes detector in the [`atlas.hcl`](../atlas-schema/projects#configure-migration-linting) file:
+
+```hcl title="atlas.hcl" {2-4}
+lint {
+  non_linear {
+    error = true
+  }
+}
+```
+
 ### Destructive Changes
 
 Destructive changes are changes to a database schema that result in loss of data. For instance,
