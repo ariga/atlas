@@ -499,6 +499,32 @@ atlas migrate status [flags]
 ```
 
 
+### atlas migrate test
+
+Run migration tests against the given directory
+
+#### Usage
+```
+atlas migrate test [flags] [paths]
+```
+
+#### Example
+
+```
+  atlas migrate test --dev-url docker://mysql/8/dev --dir file://migrations .
+  atlas migrate test --env dev ./tests
+```
+#### Flags
+```
+      --dev-url string            [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string                select migration directory using URL format (default "file://migrations")
+      --dir-format string         select migration file format (default "atlas")
+      --revisions-schema string   name of the schema the revisions table resides in
+      --run string                run only tests matching regexp
+
+```
+
+
 ### atlas migrate validate
 
 Validates the migration directories checksum and SQL statements.
@@ -720,6 +746,30 @@ flag.
       --exclude strings   list of glob patterns used to filter resources from applying
       --format string     Go template to use to format the output
   -w, --web               open the schema ERD in the browser
+
+```
+
+
+### atlas schema test
+
+Run schema tests against the desired schema
+
+#### Usage
+```
+atlas schema test [flags] [paths]
+```
+
+#### Example
+
+```
+  atlas schema test --dev-url docker://mysql/8/dev --url file://schema.hcl .
+  atlas schema test --env dev ./tests
+```
+#### Flags
+```
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+  -u, --url strings      desired schema URL(s) to test
+      --run string       run only tests matching regexp
 
 ```
 
