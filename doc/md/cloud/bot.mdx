@@ -3,12 +3,15 @@ title: Creating Bots
 id: bots
 slug: /cloud/bots
 ---
-### Background
 
-Bots are "headless" users that can be used to perform certain actions against the Atlas Cloud API.
-Common use cases are to report CI build statuses, or to perform automated deployments.
+Bots are "headless" users that can be used to perform certain actions against the Atlas Cloud API, such as pushing and
+reading schema changes from the Registry, or reporting CI and migration statuses. However, bots **cannot be used for local
+development** or to access the Atlas Cloud UI.
 
-In this guide, we will show how to create a new bot user, and how to create an API key for that bot.
+:::info Token Usage For Local Development
+Organizations on the Community (Free) plan cannot use bot tokens for local development, and must use their personal
+tokens instead. Personal tokens are issued by running `atlas login` and are limited to the users who created them.
+:::
 
 ### Creating a Bot User
 
@@ -18,24 +21,12 @@ Follow these steps to create a new bot user:
 1. To get to the bot management screen, click on _**Settings > Bots**_ in the left navigation.
   In this screen, click on the _**Create Bot**_ button.
 
-  <details>
-  <summary>Screenshot Example</summary>
+  ![](https://atlasgo.io/uploads/bot-list.png)
 
-  ![](https://atlasgo.io/uploads/cloud/images/bots-page.png)
-  </details>
+2. Give your bot a name and click _**Create**_.
 
-2. Give your bot a name and click _**Save**_.
-
-  <details>
-  <summary>Screenshot Example</summary>
-
-  ![](https://atlasgo.io/uploads/cloud/images/bots-form.png)
-  </details>
+  ![](https://atlasgo.io/uploads/create-bot.png)
 
 3. Copy the token and store it in a safe place. You will not be able to see it again.
 
-  <details>
-  <summary>Screenshot Example</summary>
-
-  ![](https://atlasgo.io/uploads/cloud/images/bots-token.png)
-  </details>
+  ![](https://atlasgo.io/uploads/copy-bot.png)
