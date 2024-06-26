@@ -47,18 +47,25 @@ type Runner struct {
 	sum *SummaryReport
 }
 
-// Run executes the CI job.
+// Run executes migration linting.
 func (r *Runner) Run(ctx context.Context) error {
 	switch err := r.summary(ctx); err.(type) {
 	case nil:
 		if err := r.ReportWriter.WriteReport(r.sum); err != nil {
 			return err
 		}
-		// If any of the analyzers returns
-		// an error, fail silently.
+		// If any of the analyzers or the steps
+		// returns an error, fail silently.
 		for _, f := range r.sum.Files {
 			if f.Error != "" {
 				return SilentError{error: errors.New(f.Error)}
+			}
+		}
+		for _, s := range r.sum.Steps {
+			// Currently, we piggyback step errors
+			// (such as non-linear) on FileReport.
+			if s.Result != nil && s.Error != "" {
+				return SilentError{error: errors.New(s.Error)}
 			}
 		}
 		return nil
@@ -114,19 +121,19 @@ func (r *Runner) summary(ctx context.Context) error {
 	// No error.
 	case nil:
 		r.sum.StepResult(StepDetectChanges, fmt.Sprintf("Found %d new migration files (from %d total)", len(feat), len(base)+len(feat)), nil)
-		if len(base) > 0 {
-			r.sum.FromV = base[len(base)-1].Version()
-		}
-		if len(feat) > 0 {
-			r.sum.ToV = feat[len(feat)-1].Version()
-		}
-		r.sum.TotalFiles = len(feat)
 	// Error that should be reported, but not halt the lint.
 	case interface{ StepReport() *StepReport }:
 		r.sum.Steps = append(r.sum.Steps, err.StepReport())
 	default:
 		return r.sum.StepError(StepDetectChanges, "Failed find new migration files", err)
 	}
+	if len(base) > 0 {
+		r.sum.FromV = base[len(base)-1].Version()
+	}
+	if len(feat) > 0 {
+		r.sum.ToV = feat[len(feat)-1].Version()
+	}
+	r.sum.TotalFiles = len(feat)
 
 	// Load files into changes.
 	l := &DevLoader{Dev: r.Dev}
@@ -203,6 +210,7 @@ var (
 		"underline": func(s string) string {
 			return color.New(color.Underline, color.Attribute(90)).Sprint(s)
 		},
+		"lower": strings.ToLower,
 		"maxWidth": func(s string, n int) []string {
 			var (
 				j, k  int
@@ -223,17 +231,50 @@ var (
 	DefaultTemplate = template.Must(template.New("report").
 			Funcs(TemplateFuncs).
 			Parse(`
-{{- if .Files }}
+{{- if or .Files .NonFileReports }}
   {{- $total := len .Files }}{{- with .TotalFiles }}{{- $total = . }}{{ end }}
   {{- $s := "s" }}{{ if eq $total 1 }}{{ $s = "" }}{{ end }}
   {{- if and .FromV .ToV }}
-    {{- printf "Analyzing changes from version %s to %s (%d migration%s in total):\n" (cyan .FromV) (cyan .ToV) $total $s }}
+    {{- printf "Analyzing changes from version %s to %s" (cyan .FromV) (cyan .ToV) }}
   {{- else if .ToV }}
-    {{- printf "Analyzing changes until version %s (%d migration%s in total):\n" (cyan .ToV) $total $s }}
+    {{- printf "Analyzing changes until version %s" (cyan .ToV) }}
   {{- else }}
-    {{- printf "Analyzing changes (%d migration%s in total):\n" $total $s }}
+    {{- printf "Analyzing changes" }}
+  {{- end }}
+  {{- if $total }}
+    {{- printf " (%d migration%s in total):\n" $total $s }}
+  {{- else }}
+    {{- println ":" }}
   {{- end }}
   {{- println }}
+  {{- with .NonFileReports }}
+    {{- range $i, $s := . }}
+      {{- println (yellow "  --") (lower $s.Name) }}
+      {{- range $i, $r := $s.Result.Reports }}
+        {{- if $r.Text }}
+           {{- printf "    %s %s:\n" (yellow "--") $r.Text }}
+        {{- end }}
+        {{- range $d := $r.Diagnostics }}
+          {{- $prefix := printf "    %s " (cyan "--") }}
+          {{- print $prefix }}
+          {{- $lines := maxWidth $d.Text (sub 85 (len $prefix)) }}
+          {{- range $i, $line := $lines }}{{- if $i }}{{- print "       " }}{{- end }}{{- println $line }}{{- end }}
+        {{- end }}
+        {{- $fixes := $s.Result.SuggestedFixes }}
+        {{- if $fixes }}
+          {{- $s := "es" }}{{- if eq (len $fixes) 1 }}{{ $s = "" }}{{ end }}
+          {{- printf "    %s suggested fix%s:\n" (yellow "--") $s }}
+          {{- range $f := $fixes }}
+            {{- $prefix := printf "      %s " (cyan "->") }}
+            {{- print $prefix }}
+            {{- $lines := maxWidth $f.Message (sub 85 (len $prefix)) }}
+            {{- range $i, $line := $lines }}{{- if $i }}{{- print "         " }}{{- end }}{{- println $line }}{{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- println }}
+  {{- end }}
   {{- range $i, $f := .Files }}
     {{- /* Replay or checksum errors. */ -}}
     {{- if and $f.Error (eq $f.File nil) (eq $i (sub (len $.Files) 1)) }}
@@ -486,6 +527,17 @@ func (r *SummaryReport) TotalChanges() int {
 		}
 	}
 	return n
+}
+
+// NonFileReports returns reports that are not related to a file,
+// but more general, like non-linear/additive changes.
+func (r *SummaryReport) NonFileReports() (rs []*StepReport) {
+	for _, s := range r.Steps {
+		if r1 := s.Result; r1 != nil && r1.File == nil && len(r1.Reports) > 0 {
+			rs = append(rs, s)
+		}
+	}
+	return rs
 }
 
 // NewFileReport returns a new FileReport.

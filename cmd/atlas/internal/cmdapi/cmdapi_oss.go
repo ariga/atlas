@@ -63,7 +63,7 @@ type Project struct {
 func migrateLintSetFlags(*cobra.Command, *migrateLintFlags) {}
 
 // migrateLintRun is the run command for 'migrate lint'.
-func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) error {
+func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags, env *Env) error {
 	dev, err := sqlclient.Open(cmd.Context(), flags.devURL)
 	if err != nil {
 		return err
@@ -98,10 +98,6 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 		if err != nil {
 			return fmt.Errorf("parse format: %w", err)
 		}
-	}
-	env, err := selectEnv(cmd)
-	if err != nil {
-		return err
 	}
 	az, err := sqlcheck.AnalyzerFor(dev.Name, env.Lint.Remain())
 	if err != nil {
