@@ -26,6 +26,9 @@ database schema management tasks.
 | [ariga/atlas-action/migrate/lint](https://github.com/ariga/atlas-action/tree/master/migrate/lint/action.yml)        | CI for schema changes                               |
 | [ariga/atlas-action/migrate/push](https://github.com/ariga/atlas-action/tree/master/migrate/push/action.yml)   | Push your migration directory to Atlas Cloud (atlasgo.cloud) |
 | [ariga/atlas-action/migrate/apply](https://github.com/ariga/atlas-action/tree/master/migrate/apply/action.yml) | Deploy versioned migrations from GitHub Actions    |
+| [ariga/atlas-action/migrate/down](https://github.com/ariga/atlas-action/tree/master/migrate/down/action.yml) | Revert migrations to a database    |
+| [ariga/atlas-action/migrate/test](https://github.com/ariga/atlas-action/tree/master/migrate/test/action.yml) | Test migrations on a database    |
+| [ariga/atlas-action/schema/test](https://github.com/ariga/atlas-action/tree/master/schema/test/action.yml) | Test schema on a database    |
 
 ## `ariga/setup-atlas`
 
@@ -715,3 +718,885 @@ All inputs are optional as they may be specified in the Atlas configuration file
 * `target` - The target version of the database.
 * `pending_count` - The number of migrations that will be applied.
 * `applied_count` - The number of migrations that were applied.
+
+## `ariga/atlas-action/migrate/down`
+
+Revert migrations to a database.
+
+### Usage
+
+Add `.github/workflows/atlas-ci.yaml` to your repo with the following contents:
+
+<Tabs
+defaultValue="mysql"
+values={[
+    {label: 'MySQL', value: 'mysql'},
+    {label: 'MariaDB', value: 'maria'},
+    {label: 'PostgreSQL', value: 'postgres'},
+    {label: 'SQLite', value: 'sqlite'},
+    {label: 'SQL Server', value: 'sqlserver'},
+    {label: 'Clickhouse', value: 'clickhouse'},
+]}>
+<TabItem value="mysql">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `migrations/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  down:
+    services:
+      # Spin up a mysql:8 container to be used as the dev-database for analysis.
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - "3306:3306"
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/down@v1
+        with:
+          dir: my-project
+          url: "mysql://root:pass@localhost:3306/example"
+          dev-url: "mysql://root:pass@localhost:3306/dev"
+          amount: 1
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `migrations/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  down:
+    services:
+      # Spin up a maria:11 container to be used as the dev-database for analysis.
+      mariadb:
+        image: mariadb:11
+        env:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --su-mysql --connect --innodb_initialized"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/down@v1
+        with:
+          dir: atlas://my-project
+          url: "maria://root:pass@localhost:3306/example"
+          dev-url: "maria://root:pass@localhost:3306/dev"
+          amount: 1
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  down:
+    services:
+      # Spin up a postgres:15 container to be used as the dev-database for analysis.
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: dev
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/down@v1
+        with:
+          dir: atlas://my-project
+          url: "postgres://postgres:pass@localhost:5432/example?sslmode=disable"
+          dev-url: "postgres://postgres:pass@localhost:5432/dev"
+          amount: 1
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  down:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/down@v1
+        with:
+          dir: atlas://my-project
+          url: "sqlite://file?mode=memory&_fk=1"
+          dev-url: "sqlite://file2?mode=memory&_fk=1"
+          amount: 1
+```
+</TabItem>
+<TabItem value="sqlserver">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  down:
+    services:
+      # Spin up a SQL Server container to be used as the dev-database for analysis.
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: P@ssw0rd0995
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -U sa -P P@ssw0rd0995 -Q \"SELECT 1\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/down@v1
+        with:
+          dir: atlas://my-project
+          url: "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=master"
+          dev-url: "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=dev"
+          amount: 1
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  down:
+    services:
+      # Spin up a Clickhouse container to be used as the dev-database for analysis.
+      clickhouse:
+        image: clickhouse/clickhouse-server:23.10
+        env:
+          CLICKHOUSE_DB: test
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+          CLICKHOUSE_PASSWORD: pass
+          CLICKHOUSE_USER: root
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "clickhouse-client --host localhost --query 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/down@v1
+        with:
+          dir: atlas://my-project
+          url: "clickhouse://root:pass@localhost:9000/test"
+          dev-url: "clickhouse://root:pass@localhost:9000/dev"
+          amount: 1
+```
+
+</TabItem>
+</Tabs>
+
+### Inputs
+
+All inputs are optional as they may be specified in the Atlas configuration file.
+
+* `url` - The URL of the target database. For example: `mysql://root:pass@localhost:3306/dev`.
+* `dir` - The URL of the migration directory to apply. For example: `atlas://dir-name` for cloud based directories or `file://migrations` for local ones.
+* `config` - The path to the Atlas configuration file. By default, Atlas will look for a file
+named `atlas.hcl` in the current directory. For example, `file://config/atlas.hcl`.
+Learn more about [Atlas configuration files](https://atlasgo.io/atlas-schema/projects).
+* `env` - The environment to use from the Atlas configuration file.  For example, `dev`.
+* `amount` - The number of migrations to revert. Defaults to 1.
+* `to-version` - To which version to revert.
+* `to-tag` - To which tag to revert.
+* `wait-timeout` -  Time after which no other retry attempt is made and the action exits. If not set, only one attempt is made.
+* `wait-interval` - Time in seconds between different migrate down attempts, useful when waiting for plan approval, defaults to 1s.
+* `vars` - Extra variables to pass to the Atlas configuration file. For example, `key=value key2=values`.
+
+## `ariga/atlas-action/migrate/test`
+
+Test migrations on a database.
+
+### Usage
+
+Add `.github/workflows/atlas-ci.yaml` to your repo with the following contents:
+
+<Tabs
+defaultValue="mysql"
+values={[
+    {label: 'MySQL', value: 'mysql'},
+    {label: 'MariaDB', value: 'maria'},
+    {label: 'PostgreSQL', value: 'postgres'},
+    {label: 'SQLite', value: 'sqlite'},
+    {label: 'SQL Server', value: 'sqlserver'},
+    {label: 'Clickhouse', value: 'clickhouse'},
+]}>
+<TabItem value="mysql">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `migrations/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    services:
+      # Spin up a mysql:8 container to be used as the dev-database for analysis.
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - "3306:3306"
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/test@v1
+        with:
+          dir: file://migrations
+          dev-url: mysql://root:pass@localhost:3306/dev
+          run: "example"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `migrations/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    services:
+      # Spin up a maria:11 container to be used as the dev-database for analysis.
+      mariadb:
+        image: mariadb:11
+        env:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --su-mysql --connect --innodb_initialized"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/test@v1
+        with:
+          dir: file://migrations
+          dev-url: maria://root:pass@localhost:3306/dev
+          run: "example"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    services:
+      # Spin up a postgres:15 container to be used as the dev-database for analysis.
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: dev
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/test@v1
+        with:
+          dir: file://migrations
+          dev-url: postgres://postgres:pass@localhost:5432/dev
+          run: "example"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/test@v1
+        with:
+          dir: file://migrations
+          dev-url: sqlite://file2?mode=memory&_fk=1"
+          run: "example"
+```
+</TabItem>
+<TabItem value="sqlserver">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    services:
+      # Spin up a SQL Server container to be used as the dev-database for analysis.
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: P@ssw0rd0995
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -U sa -P P@ssw0rd0995 -Q \"SELECT 1\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/test@v1
+        with:
+          dir: file://migrations
+          dev-url: "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=dev"
+          run: "example"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    services:
+      # Spin up a Clickhouse container to be used as the dev-database for analysis.
+      clickhouse:
+        image: clickhouse/clickhouse-server:23.10
+        env:
+          CLICKHOUSE_DB: test
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+          CLICKHOUSE_PASSWORD: pass
+          CLICKHOUSE_USER: root
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "clickhouse-client --host localhost --query 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/migrate/test@v1
+        with:
+          dir: file://migrations
+          dev-url: "clickhouse://root:pass@localhost:9000/dev"
+          run: "example"
+```
+
+</TabItem>
+</Tabs>
+
+### Inputs
+
+All inputs are optional as they may be specified in the Atlas configuration file.
+
+* `dev-url` - The URL of the dev-database to use for analysis. For example: `mysql://root:pass@localhost:3306/dev`.
+  Read more about [dev-databases](https://atlasgo.io/concepts/dev-database).
+* `dir` - The URL of the migration directory to apply.  For example: `atlas://dir-name` for cloud
+   based directories or `file://migrations` for local ones.
+* `run` - Filter tests to run by regexp. For example, `^test_.*` will only run tests that start with `test_`.
+  Default is to run all tests.
+* `config` - The URL of the Atlas configuration file.  By default, Atlas will look for a file
+  named `atlas.hcl` in the current directory. For example, `file://config/atlas.hcl`.
+  Learn more about [Atlas configuration files](https://atlasgo.io/atlas-schema/projects). 
+* `env` - The environment to use from the Atlas configuration file.  For example, `dev`.
+* `vars` - Stringify JSON object containing variables to be used inside the Atlas configuration file.
+   For example: `'{"var1": "value1", "var2": "value2"}'`.
+
+## `ariga/atlas-action/schema/test`
+
+Test schema on a database.
+
+### Usage
+
+Add `.github/workflows/atlas-ci.yaml` to your repo with the following contents:
+
+<Tabs
+defaultValue="mysql"
+values={[
+    {label: 'MySQL', value: 'mysql'},
+    {label: 'MariaDB', value: 'maria'},
+    {label: 'PostgreSQL', value: 'postgres'},
+    {label: 'SQLite', value: 'sqlite'},
+    {label: 'SQL Server', value: 'sqlserver'},
+    {label: 'Clickhouse', value: 'clickhouse'},
+]}>
+<TabItem value="mysql">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `migrations/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    services:
+      # Spin up a mysql:8 container to be used as the dev-database for analysis.
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - "3306:3306"
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/schema/test@v1
+        with:
+          url: file://schema.hcl
+          dev-url: mysql://root:pass@localhost:3306/dev
+          run: "example"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `migrations/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    services:
+      # Spin up a maria:11 container to be used as the dev-database for analysis.
+      mariadb:
+        image: mariadb:11
+        env:
+          MYSQL_DATABASE: dev
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --su-mysql --connect --innodb_initialized"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/schema/test@v1
+        with:
+          url: file://schema.hcl
+          dev-url: maria://root:pass@localhost:3306/dev
+          run: "example"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    services:
+      # Spin up a postgres:15 container to be used as the dev-database for analysis.
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: dev
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/schema/test@v1
+        with:
+          url: file://schema.hcl
+          dev-url: postgres://postgres:pass@localhost:5432/dev
+          run: "example"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/schema/test@v1
+        with:
+          url: file://schema.hcl
+          dev-url: sqlite://file2?mode=memory&_fk=1"
+          run: "example"
+```
+</TabItem>
+<TabItem value="sqlserver">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    services:
+      # Spin up a SQL Server container to be used as the dev-database for analysis.
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: P@ssw0rd0995
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -U sa -P P@ssw0rd0995 -Q \"SELECT 1\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/schema/test@v1
+        with:
+          url: file://schema.hcl
+          dev-url: "sqlserver://sa:P@ssw0rd0995@localhost:1433?database=dev"
+          run: "example"
+```
+
+</TabItem>
+<TabItem value="clickhouse">
+
+```yaml
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - master
+  # Run on PRs where something changed under the `path/to/migration/dir/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  test:
+    services:
+      # Spin up a Clickhouse container to be used as the dev-database for analysis.
+      clickhouse:
+        image: clickhouse/clickhouse-server:23.10
+        env:
+          CLICKHOUSE_DB: test
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+          CLICKHOUSE_PASSWORD: pass
+          CLICKHOUSE_USER: root
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "clickhouse-client --host localhost --query 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+      - uses: ariga/atlas-action/schema/test@v1
+        with:
+          url: file://schema.hcl
+          dev-url: clickhouse://root:pass@localhost:9000/dev
+          run: "example"
+```
+
+</TabItem>
+</Tabs>
+
+### Inputs
+
+All inputs are optional as they may be specified in the Atlas configuration file.
+
+* `dev-url` - The URL of the dev-database to use for analysis. For example: `mysql://root:pass@localhost:3306/dev`.
+  Read more about [dev-databases](https://atlasgo.io/concepts/dev-database).
+* `url` - The desired schema URL(s) to test. For Example: `file://schema.hcl`
+* `run` - Filter tests to run by regexp. For example, `^test_.*` will only run tests that start with `test_`.
+  Default is to run all tests.
+* `config` - The URL of the Atlas configuration file.  By default, Atlas will look for a file
+  named `atlas.hcl` in the current directory. For example, `file://config/atlas.hcl`.
+  Learn more about [Atlas configuration files](https://atlasgo.io/atlas-schema/projects). 
+* `env` - The environment to use from the Atlas configuration file.  For example, `dev`.
+* `vars` - Stringify JSON object containing variables to be used inside the Atlas configuration file.
+   For example: `'{"var1": "value1", "var2": "value2"}'`.
+
