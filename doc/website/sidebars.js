@@ -597,5 +597,16 @@ module.exports = {
                 }
             ]
         },
+        {
+            type: 'category',
+            label: 'Developer Flows',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/evaluation/local-dev'
+                }
+            ]
+        }
     ]
 };
