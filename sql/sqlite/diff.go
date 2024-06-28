@@ -167,7 +167,7 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 }
 
 // Normalize implements the sqlx.Normalizer interface.
-func (d *diff) Normalize(from, to *schema.Table) error {
+func (d *diff) Normalize(from, to *schema.Table, _ *schema.DiffOptions) error {
 	used := make([]bool, len(to.ForeignKeys))
 	// In SQLite, there is no easy way to get the foreign-key constraint
 	// name, except for parsing the CREATE statement. Therefore, we check

@@ -72,7 +72,7 @@ func (i *crdbInspect) InspectRealm(ctx context.Context, opts *schema.InspectReal
 }
 
 // Normalize implements the sqlx.Normalizer.
-func (cd *crdbDiff) Normalize(from, to *schema.Table) error {
+func (cd *crdbDiff) Normalize(from, to *schema.Table, _ *schema.DiffOptions) error {
 	cd.normalize(from)
 	cd.normalize(to)
 	return nil

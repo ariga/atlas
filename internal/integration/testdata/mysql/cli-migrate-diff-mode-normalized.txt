@@ -1,0 +1,35 @@
+only mysql
+
+atlas migrate hash
+
+# Migrate diff wants to drop the unique index.
+atlas migrate diff --dev-url URL --to file://./schema.sql
+! stdout 'no changes'
+cmpmig 1 expected.sql
+
+-- migrations/1.sql --
+CREATE TABLE `ref` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_bin;
+CREATE TABLE `tbl` (
+  `ref_id` bigint NOT NULL,
+  UNIQUE INDEX `u_ref_id` (`ref_id`), -- expected to be dropped
+  INDEX `ref_id` (`ref_id`),
+  FOREIGN KEY (`ref_id`) REFERENCES `ref` (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_bin;
+
+-- schema.sql --
+CREATE TABLE `ref` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_bin;
+CREATE TABLE `tbl` (
+  `ref_id` bigint NOT NULL,
+  INDEX `ref_id` (`ref_id`),
+  FOREIGN KEY (`ref_id`) REFERENCES `ref` (`id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_bin;
+
+-- expected.sql --
+-- Modify "tbl" table
+ALTER TABLE `tbl` DROP INDEX `u_ref_id`;
