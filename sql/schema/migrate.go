@@ -280,7 +280,7 @@ type (
 
 	// DropForeignKey describes a foreign-key removal change.
 	DropForeignKey struct {
-		F *ForeignKey
+		F     *ForeignKey
 		Extra []Clause // Extra clauses and options.
 	}
 
@@ -388,6 +388,13 @@ const (
 	ChangeDeleteAction
 )
 
+// List of diff modes.
+const (
+	DiffModeUnset         DiffMode = iota // Default, backwards compatability.
+	DiffModeNotNormalized                 // Diff objects are considered to be in not normalized state.
+	DiffModeNormalized                    // Diff objects are considered to be in normalized state.
+)
+
 // Is reports whether c is match the given change kind.
 func (k ChangeKind) Is(c ChangeKind) bool {
 	return k == c || k&c != 0
@@ -413,11 +420,17 @@ type (
 		TableDiff(from, to *Table, opts ...DiffOption) ([]Change, error)
 	}
 
+	// DiffMode defines the diffing mode, e.g. if objects are normalized or not.
+	DiffMode uint8
+
 	// DiffOptions defines the standard and per-driver configuration
 	// for the schema diffing process.
 	DiffOptions struct {
 		// SkipChanges defines a list of change types to skip.
 		SkipChanges []Change
+
+		// DiffMode defines the diffing mode.
+		Mode DiffMode
 
 		// Extra defines per-driver configuration. If not
 		// nil, should be set to schemahcl.Extension.
@@ -431,6 +444,11 @@ type (
 	// DiffOption allows configuring the DiffOptions using functional options.
 	DiffOption func(*DiffOptions)
 )
+
+// Is reports whether m is match the given mode.
+func (m DiffMode) Is(m1 DiffMode) bool {
+	return m == m1 || m&m1 != 0
+}
 
 // NewDiffOptions creates a new DiffOptions from the given configuration.
 func NewDiffOptions(opts ...DiffOption) *DiffOptions {
@@ -448,6 +466,16 @@ func NewDiffOptions(opts ...DiffOption) *DiffOptions {
 func DiffSkipChanges(changes ...Change) DiffOption {
 	return func(o *DiffOptions) {
 		o.SkipChanges = append(o.SkipChanges, changes...)
+	}
+}
+
+// DiffNormalized returns a DiffOption that sets DiffMode to DiffModeNormalized,
+// indicating the Differ should consider input objects as normalized, For example:
+//
+//	DiffNormalized()
+func DiffNormalized() DiffOption {
+	return func(o *DiffOptions) {
+		o.Mode = DiffModeNormalized
 	}
 }
 

@@ -82,7 +82,7 @@ type (
 	// If the DiffDriver implements the Normalizer interface, TableDiff normalizes its table
 	// inputs before starting the diff process.
 	Normalizer interface {
-		Normalize(from, to *schema.Table) error
+		Normalize(from, to *schema.Table, opts *schema.DiffOptions) error
 	}
 
 	// TableFinder wraps the FindTable method, providing more
@@ -297,7 +297,7 @@ func (d *Diff) tableDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]sc
 	}
 	// Normalizing tables before starting the diff process.
 	if n, ok := d.DiffDriver.(Normalizer); ok {
-		if err := n.Normalize(from, to); err != nil {
+		if err := n.Normalize(from, to, opts); err != nil {
 			return nil, err
 		}
 	}

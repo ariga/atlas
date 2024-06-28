@@ -210,7 +210,10 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 }
 
 // Normalize implements the sqlx.Normalizer interface.
-func (d *diff) Normalize(from, to *schema.Table) error {
+func (d *diff) Normalize(from, to *schema.Table, opts *schema.DiffOptions) error {
+	if opts.Mode.Is(schema.DiffModeNormalized) {
+		return nil // already normalized
+	}
 	indexes := make([]*schema.Index, 0, len(from.Indexes))
 	for _, idx := range from.Indexes {
 		// MySQL requires that foreign key columns be indexed; Therefore, if the child

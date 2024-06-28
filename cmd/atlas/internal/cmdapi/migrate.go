@@ -685,6 +685,8 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	if f, indent, err = mayIndent(u, f, flags.format); err != nil {
 		return err
 	}
+	diffOpts := diffOptions(cmd, env)
+	diffOpts = append(diffOpts, schema.DiffNormalized())
 	// If there is a state-loader that requires a custom
 	// 'migrate diff' handling, offload it the work.
 	if d, ok := cmdext.States.Differ(flags.desiredURLs); ok {
@@ -694,7 +696,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 			Indent:  indent,
 			Dir:     dir,
 			Dev:     dev,
-			Options: diffOptions(cmd, env),
+			Options: diffOpts,
 		})
 		return maskNoPlan(cmd, err)
 	}
@@ -713,7 +715,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	opts := []migrate.PlannerOption{
 		migrate.PlanFormat(f),
 		migrate.PlanWithIndent(indent),
-		migrate.PlanWithDiffOptions(diffOptions(cmd, env)...),
+		migrate.PlanWithDiffOptions(diffOpts...),
 	}
 	if dev.URL.Schema != "" {
 		// Disable tables qualifier in schema-mode.
