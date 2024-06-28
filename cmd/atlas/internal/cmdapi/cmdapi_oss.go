@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"text/template"
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
@@ -120,6 +121,99 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags, env 
 	return err
 }
 
+func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, env *Env) error {
+	ctx := cmd.Context()
+	dev, err := sqlclient.Open(ctx, flags.devURL)
+	if err != nil {
+		return err
+	}
+	defer dev.Close()
+	// Acquire a lock.
+	if l, ok := dev.Driver.(schema.Locker); ok {
+		unlock, err := l.Lock(ctx, "atlas_migrate_diff", flags.lockTimeout)
+		if err != nil {
+			return fmt.Errorf("acquiring database lock: %w", err)
+		}
+		// If unlocking fails notify the user about it.
+		defer func() { cobra.CheckErr(unlock()) }()
+	}
+	// Open the migration directory.
+	u, err := url.Parse(flags.dirURL)
+	if err != nil {
+		return err
+	}
+	dir, err := cmdmigrate.DirURL(ctx, u, false)
+	if err != nil {
+		return err
+	}
+	if flags.edit {
+		dir = &editDir{dir}
+	}
+	var name, indent string
+	if len(args) > 0 {
+		name = args[0]
+	}
+	f, err := cmdmigrate.Formatter(u)
+	if err != nil {
+		return err
+	}
+	if f, indent, err = mayIndent(u, f, flags.format); err != nil {
+		return err
+	}
+	diffOpts := append(diffOptions(cmd, env), schema.DiffNormalized())
+	// If there is a state-loader that requires a custom
+	// 'migrate diff' handling, offload it the work.
+	if d, ok := cmdext.States.Differ(flags.desiredURLs); ok {
+		err := d.MigrateDiff(ctx, &cmdext.MigrateDiffOptions{
+			To:      flags.desiredURLs,
+			Name:    name,
+			Indent:  indent,
+			Dir:     dir,
+			Dev:     dev,
+			Options: diffOpts,
+		})
+		return maskNoPlan(cmd, err)
+	}
+	// Get a state reader for the desired state.
+	desired, err := stateReader(ctx, env, &stateReaderConfig{
+		urls:    flags.desiredURLs,
+		dev:     dev,
+		client:  dev,
+		schemas: flags.schemas,
+		vars:    GlobalFlags.Vars,
+	})
+	if err != nil {
+		return err
+	}
+	defer desired.Close()
+	opts := []migrate.PlannerOption{
+		migrate.PlanFormat(f),
+		migrate.PlanWithIndent(indent),
+		migrate.PlanWithDiffOptions(diffOpts...),
+	}
+	if dev.URL.Schema != "" {
+		// Disable tables qualifier in schema-mode.
+		opts = append(opts, migrate.PlanWithSchemaQualifier(flags.qualifier))
+	}
+	// Plan the changes and create a new migration file.
+	pl := migrate.NewPlanner(dev.Driver, dir, opts...)
+	plan, err := func() (*migrate.Plan, error) {
+		if dev.URL.Schema != "" {
+			return pl.PlanSchema(ctx, name, desired.StateReader)
+		}
+		return pl.Plan(ctx, name, desired.StateReader)
+	}()
+	var cerr *migrate.NotCleanError
+	switch {
+	case errors.As(err, &cerr) && dev.URL.Schema == "" && desired.Schema != "":
+		return fmt.Errorf("dev database is not clean (%s). Add a schema to the URL to limit the scope of the connection", cerr.Reason)
+	case err != nil:
+		return maskNoPlan(cmd, err)
+	default:
+		return pl.WritePlan(plan)
+	}
+}
+
 func promptApply(cmd *cobra.Command, flags schemaApplyFlags, diff *diff, client, _ *sqlclient.Client) error {
 	if !flags.dryRun && (flags.autoApprove || promptUser(cmd)) {
 		return applyChanges(cmd.Context(), client, diff.changes, flags.txMode)
@@ -130,12 +224,6 @@ func promptApply(cmd *cobra.Command, flags schemaApplyFlags, diff *diff, client,
 // withTokenContext allows attaching token to the context.
 func withTokenContext(ctx context.Context, _ string, _ *cloudapi.Client) (context.Context, error) {
 	return ctx, nil // unimplemented.
-}
-
-// checkDirRebased checks that the local directory is up-to-date with the latest version of the directory.
-// For example, Atlas Cloud or Git.
-func checkDirRebased(context.Context, *cobra.Command, migrate.Dir) error {
-	return nil // unimplemented.
 }
 
 func setEnvs(context.Context, []*Env) {}
