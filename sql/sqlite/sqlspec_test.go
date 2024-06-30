@@ -458,6 +458,10 @@ func TestTypes(t *testing.T) {
 			typeExpr: "uuid",
 			expected: &schema.UUIDType{T: "uuid"},
 		},
+		{
+			typeExpr: "jsonb",
+			expected: &schema.JSONType{T: "jsonb"},
+		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
 			var test schema.Schema

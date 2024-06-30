@@ -95,7 +95,7 @@ func ParseType(c string) (schema.Type, error) {
 			ct.Size = int(p)
 		}
 		return ct, nil
-	case "json":
+	case "json", "jsonb":
 		return &schema.JSONType{T: t}, nil
 	case "date", "datetime", "time", "timestamp":
 		return &schema.TimeType{T: t}, nil

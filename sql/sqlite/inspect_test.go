@@ -30,6 +30,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					WillReturnRows(sqltest.Rows(`
  name |   type       | nullable | dflt_value  | primary  | hidden
 ------+--------------+----------+ ------------+----------+----------
+ id   | integer       |  0      |     0x1     |  1       |  0
  c1   | int           |  1      |     a       |  0       |  0
  c2   | integer       |  0      |     97      |  0       |  0
  c3   | varchar(100)  |  1      |    'A'      |  0       |  0
@@ -44,7 +45,7 @@ func TestDriver_InspectTable(t *testing.T) {
  w    | int           |  0      |             |  0       |  2
  x    | text          |  0      |             |  0       |  3
  y    | text          |  0      |             |  0       |  2
- id   | integer       |  0      |     0x1     |  1       |  0
+ j    | jsonb         |  0      |             |  0       |  0
 `))
 				m.noIndexes("users")
 				m.noFKs("users")
@@ -52,6 +53,7 @@ func TestDriver_InspectTable(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				columns := []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}, Attrs: []schema.Attr{&AutoIncrement{}}, Default: &schema.Literal{V: "0x1"}},
 					{Name: "c1", Type: &schema.ColumnType{Null: true, Type: &schema.IntegerType{T: "int"}, Raw: "int"}, Default: &schema.RawExpr{X: "a"}},
 					{Name: "c2", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}, Default: &schema.Literal{V: "97"}},
 					{Name: "c3", Type: &schema.ColumnType{Null: true, Type: &schema.StringType{T: "varchar", Size: 100}, Raw: "varchar(100)"}, Default: &schema.Literal{V: "'A'"}},
@@ -66,14 +68,14 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "w", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}, Raw: "int"}, Attrs: []schema.Attr{&schema.GeneratedExpr{Type: "VIRTUAL", Expr: "(a*10)"}}},
 					{Name: "x", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text"}, Attrs: []schema.Attr{&schema.GeneratedExpr{Type: "STORED", Expr: "(typeof(c))"}}},
 					{Name: "y", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text"}, Attrs: []schema.Attr{&schema.GeneratedExpr{Type: "VIRTUAL", Expr: "(substr(b,a,a+2))"}}},
-					{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}, Attrs: []schema.Attr{&AutoIncrement{}}, Default: &schema.Literal{V: "0x1"}},
+					{Name: "j", Type: &schema.ColumnType{Type: &schema.JSONType{T: "jsonb"}, Raw: "jsonb"}},
 				}
 				require.Equal(t.Columns, columns)
 				require.EqualValues(&schema.Index{
 					Name:   "PRIMARY",
 					Unique: true,
 					Table:  t,
-					Parts:  []*schema.IndexPart{{SeqNo: 1, C: columns[len(columns)-1]}},
+					Parts:  []*schema.IndexPart{{SeqNo: 1, C: columns[0]}},
 					Attrs:  []schema.Attr{&AutoIncrement{}},
 				}, t.PrimaryKey)
 			},

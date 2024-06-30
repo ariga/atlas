@@ -280,6 +280,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec("datetime"),
 		schemahcl.NewTypeSpec("json"),
 		schemahcl.NewTypeSpec("uuid"),
+		schemahcl.NewTypeSpec("jsonb"),
 	),
 )
 
