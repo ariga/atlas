@@ -43,6 +43,7 @@ type (
 		Attrs       []Attr     // Attrs, constraints and options.
 		Triggers    []*Trigger // Triggers on the table.
 		Deps        []Object   // Objects this table depends on.
+		Refs        []Object   // Objects that depends on this table.
 	}
 
 	// A View represents a view definition.
@@ -55,6 +56,7 @@ type (
 		Indexes  []*Index   // Indexes on materialized view.
 		Triggers []*Trigger // Triggers on the view.
 		Deps     []Object   // Objects this view depends on.
+		Refs     []Object   // Objects that depends on this view.
 	}
 
 	// A Column represents a column definition.
@@ -124,6 +126,7 @@ type (
 		Body       string         // Trigger body only.
 		Attrs      []Attr         // WHEN, REFERENCING, etc.
 		Deps       []Object       // Objects this trigger depends on.
+		Refs       []Object       // Objects that depend on this trigger.
 	}
 
 	// TriggerTime represents the trigger action time.
@@ -148,6 +151,7 @@ type (
 		Lang   string   // Language (e.g. SQL, PL/pgSQL, etc.).
 		Attrs  []Attr   // Extra driver specific attributes.
 		Deps   []Object // Objects this function depends on.
+		Refs   []Object // Objects that depend on this function.
 	}
 
 	// Proc represents a procedure definition.
@@ -159,6 +163,7 @@ type (
 		Lang   string   // Language (e.g. SQL, PL/pgSQL, etc.).
 		Attrs  []Attr   // Extra driver specific attributes.
 		Deps   []Object // Objects this function depends on.
+		Refs   []Object // Objects that depend on this Proc.
 	}
 
 	// A FuncArg represents a single function argument.

@@ -253,7 +253,28 @@ func (t *Table) AddAttrs(attrs ...Attr) *Table {
 // AddDeps adds the given objects as dependencies to the view.
 func (t *Table) AddDeps(objs ...Object) *Table {
 	t.Deps = append(t.Deps, objs...)
+	addRefs(t, objs)
 	return t
+}
+
+// RefsAdder wraps the AddRefs method. Objects that implemented this method
+// will get their dependent objects automatically set by their AddDeps calls.
+type RefsAdder interface {
+	AddRefs(...Object)
+}
+
+// addRefs adds the dependent objects to all objects it references.
+func addRefs(dependent Object, refs []Object) {
+	for _, o := range refs {
+		if r, ok := o.(RefsAdder); ok {
+			r.AddRefs(dependent)
+		}
+	}
+}
+
+// AddRefs adds references to the table.
+func (t *Table) AddRefs(refs ...Object) {
+	t.Refs = append(t.Refs, refs...)
 }
 
 // NewView creates a new View.
@@ -295,7 +316,13 @@ func (v *View) AddAttrs(attrs ...Attr) *View {
 // AddDeps adds the given objects as dependencies to the view.
 func (v *View) AddDeps(objs ...Object) *View {
 	v.Deps = append(v.Deps, objs...)
+	addRefs(v, objs)
 	return v
+}
+
+// AddRefs adds references to the view.
+func (v *View) AddRefs(refs ...Object) {
+	v.Refs = append(v.Refs, refs...)
 }
 
 // AddIndexes appends the given indexes to the table index list.
@@ -849,13 +876,25 @@ func (f *ForeignKey) SetOnDelete(o ReferenceOption) *ForeignKey {
 // AddDeps adds the given objects as dependencies to the function.
 func (f *Func) AddDeps(objs ...Object) *Func {
 	f.Deps = append(f.Deps, objs...)
+	addRefs(f, objs)
 	return f
+}
+
+// AddRefs adds references to the function.
+func (f *Func) AddRefs(refs ...Object) {
+	f.Refs = append(f.Refs, refs...)
 }
 
 // AddDeps adds the given objects as dependencies to the procedure.
 func (p *Proc) AddDeps(objs ...Object) *Proc {
 	p.Deps = append(p.Deps, objs...)
+	addRefs(p, objs)
 	return p
+}
+
+// AddRefs adds references to the procedure.
+func (p *Proc) AddRefs(refs ...Object) {
+	p.Refs = append(p.Refs, refs...)
 }
 
 // ReplaceOrAppend searches an attribute of the same type as v in
