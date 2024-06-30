@@ -6,6 +6,8 @@ package schema
 
 import (
 	"reflect"
+	"slices"
+	"strings"
 )
 
 // The functions and methods below provide a DSL for creating schema resources using
@@ -272,9 +274,34 @@ func addRefs(dependent Object, refs []Object) {
 	}
 }
 
+// sortRefs maintains consistent dependents list.
+func sortRefs(refs []Object) {
+	slices.SortFunc(refs, func(a, b Object) int {
+		typeA, typeB := reflect.TypeOf(a), reflect.TypeOf(b)
+		if typeA != typeB {
+			return strings.Compare(typeA.String(), typeB.String())
+		}
+		switch o1 := a.(type) {
+		case *Table:
+			return strings.Compare(o1.Name, b.(*Table).Name)
+		case *View:
+			return strings.Compare(o1.Name, b.(*View).Name)
+		case *Trigger:
+			return strings.Compare(o1.Name, b.(*Trigger).Name)
+		case *Func:
+			return strings.Compare(o1.Name, b.(*Func).Name)
+		case *Proc:
+			return strings.Compare(o1.Name, b.(*Proc).Name)
+		default:
+			return 0
+		}
+	})
+}
+
 // AddRefs adds references to the table.
 func (t *Table) AddRefs(refs ...Object) {
 	t.Refs = append(t.Refs, refs...)
+	sortRefs(t.Refs)
 }
 
 // NewView creates a new View.
@@ -323,6 +350,7 @@ func (v *View) AddDeps(objs ...Object) *View {
 // AddRefs adds references to the view.
 func (v *View) AddRefs(refs ...Object) {
 	v.Refs = append(v.Refs, refs...)
+	sortRefs(v.Refs)
 }
 
 // AddIndexes appends the given indexes to the table index list.
@@ -883,6 +911,7 @@ func (f *Func) AddDeps(objs ...Object) *Func {
 // AddRefs adds references to the function.
 func (f *Func) AddRefs(refs ...Object) {
 	f.Refs = append(f.Refs, refs...)
+	sortRefs(f.Refs)
 }
 
 // AddDeps adds the given objects as dependencies to the procedure.
@@ -895,6 +924,7 @@ func (p *Proc) AddDeps(objs ...Object) *Proc {
 // AddRefs adds references to the procedure.
 func (p *Proc) AddRefs(refs ...Object) {
 	p.Refs = append(p.Refs, refs...)
+	sortRefs(p.Refs)
 }
 
 // ReplaceOrAppend searches an attribute of the same type as v in
