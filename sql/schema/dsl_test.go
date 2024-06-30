@@ -141,6 +141,9 @@ func TestSchema_Views(t *testing.T) {
 	v1, v2 := schema.NewView("v1", "SELECT 1"), schema.NewView("v2", "SELECT 2")
 	s.AddViews(v1, v2)
 	require.Equal(t, []*schema.View{v1, v2}, s.Views)
+	v1.AddDeps(v2)
+	require.Equal(t, []schema.Object{v2}, v1.Deps)
+	require.Equal(t, []schema.Object{v1}, v2.Refs)
 }
 
 func TestSchema_SetCharset(t *testing.T) {

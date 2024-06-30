@@ -522,6 +522,18 @@ schema "other" {}
 	)
 	r.AddSchemas(public, other)
 	require.NoError(t, EvalHCLBytes([]byte(f), &got, nil))
+	// References might be added in different order. However, since
+	// they are not marshaled, we just check that they were added.
+	for i, s := range got.Schemas {
+		for j, tr := range s.Tables {
+			require.Equal(t, len(tr.Refs), len(r.Schemas[i].Tables[j].Refs))
+			tr.Refs, r.Schemas[i].Tables[j].Refs = nil, nil
+		}
+		for j, v := range s.Views {
+			require.Equal(t, len(v.Refs), len(r.Schemas[i].Views[j].Refs))
+			v.Refs, r.Schemas[i].Views[j].Refs = nil, nil
+		}
+	}
 	require.EqualValues(t, r, got)
 }
 
