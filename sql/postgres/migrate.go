@@ -78,7 +78,7 @@ func (s *state) plan(changes []schema.Change) error {
 		return err
 	}
 	if s.PlanOptions.Mode != migrate.PlanModeUnsortedDump {
-		if planned, err = detachCycles(planned); err != nil {
+		if planned, err = s.detachCycles(planned); err != nil {
 			return err
 		}
 		planned = s.sortChanges(planned)

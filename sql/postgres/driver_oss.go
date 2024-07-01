@@ -374,7 +374,7 @@ func (*state) sortChanges(changes []schema.Change) []schema.Change {
 	return sqlx.SortChanges(changes, nil)
 }
 
-func detachCycles(changes []schema.Change) ([]schema.Change, error) {
+func (*state) detachCycles(changes []schema.Change) ([]schema.Change, error) {
 	return sqlx.DetachCycles(changes)
 }
 
