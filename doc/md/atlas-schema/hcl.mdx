@@ -196,6 +196,40 @@ table "metrics" {
 }
 ```
 
+### Row Level Security
+
+Roles can be used for granular access control.
+
+:::note
+Row level security is currently supported only by the PostgreSQL driver.
+:::
+
+```hcl
+table "table" {
+  schema = schema.public
+  column "tenant_id" {
+    type = int
+  }
+  column "price" {
+    type = int
+  }
+
+  row_level_security = true
+  force_row_level_security = true
+
+  policy "tenant_access" {
+    using = "tenant_id = current_tenant_id()"
+  }
+  policy "no_stealing" {
+    as         = PERMISSIVE
+    for        = UPDATE
+    on         = ["dishonest_user"]
+    using      = "tenant_id = current_tenant_id()"
+    with_check = "price >= 0"
+  }
+}
+```
+
 ### Storage Engine
 
 The `engine` attribute allows for overriding the default storage engine of the table. Supported by MySQL and MariaDB.

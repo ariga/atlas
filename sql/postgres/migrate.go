@@ -286,6 +286,21 @@ func (s *state) addTable(add *schema.AddTable) error {
 			}
 		}
 	}
+	var rls Rls
+	sqlx.Has(add.T.Attrs, &rls)
+	if rls.RowLevelSecurity {
+		s.append(s.createRls(add, add.T, &rls))
+	}
+	var forceRls ForceRls
+	sqlx.Has(add.T.Attrs, &forceRls)
+	if forceRls.ForceRowLevelSecurity {
+		s.append(s.createForceRls(add, add.T, &forceRls))
+	}
+	for _, attr := range add.T.Attrs {
+		if policy, ok := attr.(*Policy); ok {
+			s.append(s.createTablePolicy(add, add.T, policy))
+		}
+	}
 	s.addComments(add, add.T)
 	return nil
 }
@@ -339,14 +354,43 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	)
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
-		case *schema.AddAttr, *schema.ModifyAttr:
-			from, to, err := commentChange(change)
-			if err != nil {
-				return err
+		case *schema.AddAttr:
+			switch attr := change.A.(type) {
+			case *schema.Comment:
+				from, to, err := commentChange(change)
+				if err != nil {
+					return err
+				}
+				changes = append(changes, s.tableComment(modify, modify.T, to, from))
+			case *Rls:
+				changes = append(changes, s.createRls(modify, modify.T, attr))
+			case *ForceRls:
+				changes = append(changes, s.createForceRls(modify, modify.T, attr))
+			case *Policy:
+				changes = append(changes, s.createTablePolicy(modify, modify.T, attr))
+			default:
+				return fmt.Errorf("unsupported change for %T: %T", change, attr)
 			}
-			changes = append(changes, s.tableComment(modify, modify.T, to, from))
+		case *schema.ModifyAttr:
+			switch attr := change.From.(type) {
+			case *schema.Comment:
+				from, to, err := commentChange(change)
+				if err != nil {
+					return err
+				}
+				changes = append(changes, s.tableComment(modify, modify.T, to, from))
+			case *Policy:
+				changes = append(changes, s.modifyTablePolicy(modify, modify.T, attr, change.To.(*Policy)))
+			default:
+				return fmt.Errorf("unsupported change for %T: %T", change, attr)
+			}
 		case *schema.DropAttr:
-			return fmt.Errorf("unsupported change type: %T", change)
+			switch attr := change.A.(type) {
+			case *Policy:
+				changes = append(changes, s.dropTablePolicy(modify, modify.T, attr))
+			default:
+				return fmt.Errorf("unsupported change for %T: %T", change, attr)
+			}
 		case *schema.AddIndex:
 			if c := (schema.Comment{}); sqlx.Has(change.I.Attrs, &c) {
 				changes = append(changes, s.indexComment(modify, modify.T, change.I, c.Text, ""))
@@ -868,6 +912,138 @@ func (s *state) indexComment(src schema.Change, t *schema.Table, idx *schema.Ind
 		Source:  src,
 		Comment: fmt.Sprintf("set comment to index: %q on table: %q", idx.Name, t.Name),
 		Reverse: b.Clone().P(quote(from)).String(),
+	}
+}
+
+func (s *state) createRls(src schema.Change, t *schema.Table, rls *Rls) *migrate.Change {
+	forward := s.Build("ALTER TABLE").Table(t).P("ENABLE ROW LEVEL SECURITY").String()
+	reverse := s.Build("ALTER TABLE").Table(t).P("DISABLE ROW LEVEL SECURITY").String()
+
+	if !rls.RowLevelSecurity {
+		forward, reverse = reverse, forward
+	}
+
+	return &migrate.Change{
+		Cmd:     forward,
+		Source:  src,
+		Comment: fmt.Sprintf("set row level security %t on table: %q", rls.RowLevelSecurity, t.Name),
+		Reverse: reverse,
+	}
+}
+
+func (s *state) createForceRls(src schema.Change, t *schema.Table, rls *ForceRls) *migrate.Change {
+	forward := s.Build("ALTER TABLE").Table(t).P("FORCE ROW LEVEL SECURITY").String()
+	reverse := s.Build("ALTER TABLE").Table(t).P("NO FORCE ROW LEVEL SECURITY").String()
+
+	if !rls.ForceRowLevelSecurity {
+		forward, reverse = reverse, forward
+	}
+
+	return &migrate.Change{
+		Cmd:     forward,
+		Source:  src,
+		Comment: fmt.Sprintf("set row level security %t on table: %q", rls.ForceRowLevelSecurity, t.Name),
+		Reverse: reverse,
+	}
+}
+
+func (s *state) createTablePolicy(src schema.Change, t *schema.Table, policy *Policy) *migrate.Change {
+	b := s.Build("CREATE POLICY").
+		P(policy.Name).
+		P("ON").Table(t)
+
+	if policy.Type != "" {
+		b.P("AS").P(policy.Type)
+	}
+	if policy.Cmd != "" {
+		b.P("FOR").P(policy.Cmd)
+	}
+	if len(policy.Roles) > 0 {
+		b.P("TO").P(strings.Join(policy.Roles, ", "))
+	}
+	if policy.Using != "" {
+		b.P("USING").P(policy.Using)
+	}
+	if policy.WithCheck != "" {
+		b.P("WITH CHECK").P(policy.WithCheck)
+	}
+
+	return &migrate.Change{
+		Cmd:     b.String(),
+		Source:  src,
+		Comment: fmt.Sprintf("add policy %q on table: %q", t.Name, policy.Name),
+		Reverse: s.Build("DROP POLICY").P(policy.Name).P("ON").Table(t).String(),
+	}
+}
+
+func (s *state) dropTablePolicy(src schema.Change, t *schema.Table, policy *Policy) *migrate.Change {
+	c := s.createTablePolicy(src, t, policy)
+	c.Cmd, c.Reverse = c.Reverse.(string), c.Cmd
+	c.Comment = fmt.Sprintf("drop policy %q on table: %q", t.Name, policy.Name)
+
+	return c
+}
+
+func (s *state) modifyTablePolicy(src schema.Change, t *schema.Table, from, to *Policy) *migrate.Change {
+	// We don't support renaming policies. Only the roles, using, and check expressions can be altered.
+
+	forward := s.Build("ALTER POLICY").
+		P(from.Name).
+		P("ON").Table(t)
+	reverse := forward.Clone()
+
+	rolesEq := true
+	if len(from.Roles) != len(to.Roles) {
+		rolesEq = false
+	} else {
+		for _, fromRole := range from.Roles {
+			found := false
+			for _, toRole := range to.Roles {
+				if fromRole == toRole {
+					found = true
+					break
+				}
+			}
+			if !found {
+				rolesEq = false
+				break
+			}
+		}
+		for _, toRole := range to.Roles {
+			found := false
+			for _, fromRole := range from.Roles {
+				if fromRole == toRole {
+					found = true
+					break
+				}
+			}
+			if !found {
+				rolesEq = false
+				break
+			}
+		}
+	}
+
+	if !rolesEq {
+		forward.P("TO").P(strings.Join(to.Roles, ", "))
+		reverse.P("TO").P(strings.Join(from.Roles, ", "))
+	}
+
+	if from.Using != to.Using && to.Using != "" {
+		forward.P("USING").P(to.Using)
+		reverse.P("USING").P(from.Using)
+	}
+
+	if from.WithCheck != to.WithCheck && to.WithCheck != "" {
+		forward.P("WITH CHECK").P(to.WithCheck)
+		reverse.P("WITH CHECK").P(from.WithCheck)
+	}
+
+	return &migrate.Change{
+		Cmd:     forward.String(),
+		Source:  src,
+		Comment: fmt.Sprintf("alter policy %q on table: %q", t.Name, from.Name),
+		Reverse: reverse.String(),
 	}
 }
 

@@ -28,6 +28,7 @@ var (
 	queryCRDBColumns = sqltest.Escape(fmt.Sprintf(crdbColumnsQuery, "$2"))
 	queryIndexes     = sqltest.Escape(fmt.Sprintf(indexesAbove15, "$2"))
 	queryCRDBIndexes = sqltest.Escape(fmt.Sprintf(crdbIndexesQuery, "$2"))
+	queryPolicies    = sqltest.Escape(fmt.Sprintf(policiesQuery, "$2"))
 )
 
 func TestDriver_InspectTable(t *testing.T) {
@@ -102,6 +103,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.noIndexes()
 				m.noFKs()
 				m.noChecks()
+				m.noPolicies()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -199,6 +201,7 @@ users           | tsx             | gist        | ts          | f        | f    
 `))
 				m.noFKs()
 				m.noChecks()
+				m.noPolicies()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -262,6 +265,7 @@ multi_column    | users      | oid         | public       | t1                  
 self_reference  | users      | uid         | public       | users                 | id                     | public                 | a            | c
 `))
 				m.noChecks()
+				m.noPolicies()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -313,6 +317,7 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c2          | {2,1
 users        | users_check1       | (((c2 + c1) + c3) > 10) | c1          | {2,1,3}        | f
 users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1,3}        | f
 `))
+				m.noPolicies()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -331,6 +336,88 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1
 					{Name: "c3", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{checks[4]}},
 				}, t.Columns)
 				require.EqualValues(checks, t.Attrs)
+			},
+		},
+		{
+			name: "row level security",
+			before: func(m mock) {
+				m.noEnums()
+				m.ExpectQuery(queryTables).
+					WithArgs("public").
+					WillReturnRows(sqltest.Rows(`
+ oid | table_schema | table_name | table_comment | partition_attrs | partition_strategy | partition_exprs | row_level_security | force_row_level_security
+-----+--------------+------------+---------------+-----------------+--------------------+-----------------+--------------------+--------------------------
+ 10  | public       | users      |               |                 |                    |                 | t                  |
+
+`))
+				m.noColumns()
+				m.noIndexes()
+				m.noFKs()
+				m.noChecks()
+				m.noPolicies()
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				require.Equal("public", t.Schema.Name)
+				require.Empty(t.Columns)
+				require.EqualValues([]schema.Attr{&OID{V: 10}, &Rls{RowLevelSecurity: true}}, t.Attrs)
+			},
+		},
+		{
+			name: "force row level security",
+			before: func(m mock) {
+				m.noEnums()
+				m.ExpectQuery(queryTables).
+					WithArgs("public").
+					WillReturnRows(sqltest.Rows(`
+ oid | table_schema | table_name | table_comment | partition_attrs | partition_strategy | partition_exprs | row_level_security | force_row_level_security
+-----+--------------+------------+---------------+-----------------+--------------------+-----------------+--------------------+--------------------------
+ 10  | public       | users      |               |                 |                    |                 | f                  | t
+
+`))
+				m.noColumns()
+				m.noIndexes()
+				m.noFKs()
+				m.noChecks()
+				m.noPolicies()
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				require.Equal("public", t.Schema.Name)
+				require.Empty(t.Columns)
+				require.EqualValues([]schema.Attr{&OID{V: 10}, &ForceRls{ForceRowLevelSecurity: true}}, t.Attrs)
+			},
+		},
+		{
+			name: "policy",
+			before: func(m mock) {
+				m.noEnums()
+				m.tableExists("public", "users", true)
+				m.noColumns()
+				m.noIndexes()
+				m.noFKs()
+				m.noChecks()
+				m.ExpectQuery(queryPolicies).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
+ table_name  | policy_name | policy_type | policy_roles | policy_cmd | policy_using | policy_with_check
+-------------+-------------+-------------+--------------+------------+--------------+-------------------
+ users       | p1          | PERMISSIVE  | {public}     | ALL        |              |
+ users       | p2          | RESTRICTIVE | {u1,u2}      | UPDATE     | (id = 1)     | (id = 2)
+`))
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				require.Equal("public", t.Schema.Name)
+				require.Empty(t.Columns)
+				policies := []schema.Attr{
+					&Policy{Name: "p1", Type: "PERMISSIVE", Cmd: "ALL", Roles: []string{"public"}},
+					&Policy{Name: "p2", Type: "RESTRICTIVE", Cmd: "UPDATE", Roles: []string{"u1", "u2"}, Using: "(id = 1)", WithCheck: "(id = 2)"},
+				}
+				require.EqualValues(policies, t.Attrs)
 			},
 		},
 	}
@@ -378,12 +465,11 @@ func TestDriver_InspectPartitionedTable(t *testing.T) {
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("public").
 		WillReturnRows(sqltest.Rows(`
- oid   | table_schema | table_name  | comment | partition_attrs | partition_strategy |                  partition_exprs
--------+--------------+-------------+---------+-----------------+--------------------+----------------------------------------------------
- 112  | public       | logs1       |         |                 |                     | 
- 113  | public       | logs2       |         | 1               | r                   | 
- 114  | public       | logs3       |         | 2 0 0           | l                   | (a + b), (a + (b * 2))
-
+ oid   | table_schema | table_name  | comment | partition_attrs | partition_strategy |                  partition_exprs                   | row_level_security | force_row_level_security
+-------+--------------+-------------+---------+-----------------+--------------------+----------------------------------------------------+--------------------+--------------------------
+ 112   | public       | logs1       |         |                 |                    |                                                    |                    |
+ 113   | public       | logs2       |         | 1               | r                  |                                                    |                    |
+ 114   | public       | logs3       |         | 2 0 0           | l                  | (a + b), (a + (b * 2))                             |                    |
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "$2, $3, $4"))).
 		WithArgs("public", "logs1", "logs2", "logs3").
@@ -402,6 +488,8 @@ logs3      | c5         | integer   | integer   | NO          |                |
 		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "table_name", "column_name", "referenced_table_name", "referenced_column_name", "referenced_table_schema", "update_rule", "delete_rule"}))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(checksQuery, "$2, $3, $4"))).
 		WillReturnRows(sqlmock.NewRows([]string{"table_name", "constraint_name", "expression", "column_name", "column_indexes"}))
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(policiesQuery, "$2, $3, $4"))).
+		WillReturnRows(sqlmock.NewRows([]string{"table_name", "policy_name", "policy_type", "policy_roles", "policy_cmd", "policy_using", "policy_with_check"}))
 	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
 		Mode: schema.InspectSchemas | schema.InspectTables,
 	})
@@ -479,6 +567,7 @@ users       | idx5       | c           | false   | false  |                 | CR
 `))
 	mk.noFKs()
 	mk.noChecks()
+	mk.noPolicies()
 	s, err := drv.InspectSchema(context.Background(), "public", &schema.InspectOptions{
 		Mode: schema.InspectSchemas | schema.InspectTables,
 	})
@@ -522,7 +611,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 	mk.noEnums()
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
-		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs", "row_level_security", "force_row_level_security"}))
 	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
 		Mode: schema.InspectSchemas | schema.InspectTables,
 	})
@@ -563,7 +652,7 @@ func TestDriver_Realm(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
 		WithArgs("test", "public").
-		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs", "row_level_security", "force_row_level_security"}))
 	// Reset search_path to 'public'.
 	mk.ExpectQuery(sqltest.Escape("SELECT set_config('search_path', $1, false)")).
 		WithArgs("public").
@@ -607,7 +696,7 @@ func TestDriver_Realm(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
 		WithArgs("test", "public").
-		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs", "row_level_security", "force_row_level_security"}))
 	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"test", "public"},
 		Mode:    schema.InspectSchemas | schema.InspectTables,
@@ -646,7 +735,7 @@ func TestDriver_Realm(t *testing.T) {
 	mk.noEnums()
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
-		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs", "row_level_security", "force_row_level_security"}))
 	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"test"},
 		Mode:    schema.InspectSchemas | schema.InspectTables,
@@ -732,9 +821,9 @@ func (m mock) version(version string) {
 }
 
 func (m mock) tableExists(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"oid", "table_schema", "table_name", "table_comment", "partition_attrs", "partition_strategy", "partition_exprs"})
+	rows := sqlmock.NewRows([]string{"oid", "table_schema", "table_name", "table_comment", "partition_attrs", "partition_strategy", "partition_exprs", "row_level_security", "force_row_level_security"})
 	if exists {
-		rows.AddRow(nil, schema, table, nil, nil, nil, nil)
+		rows.AddRow(nil, schema, table, nil, nil, nil, nil, nil, nil)
 	}
 	m.ExpectQuery(queryTables).
 		WithArgs(schema).
@@ -744,6 +833,11 @@ func (m mock) tableExists(schema, table string, exists bool) {
 func (m mock) noIndexes() {
 	m.ExpectQuery(queryIndexes).
 		WillReturnRows(sqlmock.NewRows([]string{"table_name", "index_name", "column_name", "primary", "unique", "constraint_type", "predicate", "expression", "options", "indnullsnotdistinct"}))
+}
+
+func (m mock) noColumns() {
+	m.ExpectQuery(queryColumns).
+		WillReturnRows(sqlmock.NewRows([]string{"table_name", "column_name", "data_type", "formatted", "is_nullable", "column_default", "character_maximum_length", "numeric_precision", "datetime_precision", "numeric_scale", "interval_type", "character_set_name", "collation_name", "is_identity", "identity_start", "identity_increment", "identity_last", "identity_generation", "generation_expression", "comment", "typtype", "typelem", "oid"}))
 }
 
 func (m mock) noFKs() {
@@ -759,4 +853,9 @@ func (m mock) noChecks() {
 func (m mock) noEnums() {
 	m.ExpectQuery(queryEnums).
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
+}
+
+func (m mock) noPolicies() {
+	m.ExpectQuery(queryPolicies).
+		WillReturnRows(sqlmock.NewRows([]string{"table_name", "policy_name", "policy_type", "policy_roles", "policy_cmd", "policy_using", "policy_with_check"}))
 }

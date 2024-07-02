@@ -340,6 +340,8 @@ var (
 		schemahcl.WithScopedEnums("table.column.as.type", "STORED"),
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+		schemahcl.WithScopedEnums("table.policy.as", PolicyTypePermissive, PolicyTypeRestrictive),
+		schemahcl.WithScopedEnums("table.policy.for", PolicyForTypeAll, PolicyForTypeSelect, PolicyForTypeInsert, PolicyForTypeUpdate, PolicyForTypeDelete),
 		schemahcl.WithScopedEnums("table.index.on.ops", func() (ops []string) {
 			for _, op := range postgresop.Classes {
 				ops = append(ops, op.Name)
@@ -374,6 +376,12 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 		return nil, err
 	}
 	if err := convertPartition(spec.Extra, t); err != nil {
+		return nil, err
+	}
+	if err := convertRls(spec.Extra, t); err != nil {
+		return nil, err
+	}
+	if err := convertPolicy(spec.Extra, t); err != nil {
 		return nil, err
 	}
 	return t, nil
@@ -508,6 +516,104 @@ func fromPartition(p Partition) *schemahcl.Resource {
 		key.Children = append(key.Children, part)
 	}
 	return key
+}
+
+// convertRls converts and appends the rls table attributes if exists.
+func convertRls(spec schemahcl.Resource, table *schema.Table) error {
+	if v, ok := spec.Attr("row_level_security"); ok {
+		rls, err := v.Bool()
+		if err != nil {
+			return err
+		}
+		table.AddAttrs(&Rls{
+			RowLevelSecurity: rls,
+		})
+	}
+
+	if v, ok := spec.Attr("force_row_level_security"); ok {
+		rls, err := v.Bool()
+		if err != nil {
+			return err
+		}
+		table.AddAttrs(&ForceRls{
+			ForceRowLevelSecurity: rls,
+		})
+	}
+
+	return nil
+}
+
+// convertPolicy converts and appends the roles blocks into the table attributes if exists.
+func convertPolicy(spec schemahcl.Resource, table *schema.Table) error {
+	for _, r := range spec.Resources("policy") {
+		var p struct {
+			Type      string   `spec:"as"`
+			Cmd       string   `spec:"for"`
+			Roles     []string `spec:"to"`
+			Using     string   `spec:"using"`
+			WithCheck string   `spec:"with_check"`
+		}
+		if err := r.As(&p); err != nil {
+			return fmt.Errorf("parsing %s.policy.%s: %w", table.Name, r.Name, err)
+		}
+
+		policy := Policy{
+			Name: r.Name,
+		}
+		if p.Type != "" {
+			switch t := strings.ToUpper(p.Type); t {
+			case PolicyTypePermissive, PolicyTypeRestrictive:
+				policy.Type = p.Type
+			default:
+				return fmt.Errorf("unknown policy type: %q", t)
+			}
+		}
+		if p.Cmd != "" {
+			switch t := strings.ToUpper(p.Cmd); t {
+			case PolicyForTypeAll, PolicyForTypeDelete, PolicyForTypeInsert, PolicyForTypeSelect, PolicyForTypeUpdate:
+				policy.Cmd = p.Cmd
+			default:
+				return fmt.Errorf("unknown policy for: %q", t)
+			}
+		}
+		if p.Using != "" {
+			policy.Using = fmt.Sprintf("(%s)", p.Using)
+		}
+		if p.WithCheck != "" {
+			policy.WithCheck = fmt.Sprintf("(%s)", p.WithCheck)
+		}
+
+		if len(p.Roles) > 0 {
+			policy.Roles = p.Roles
+		}
+
+		table.AddAttrs(&policy)
+	}
+	return nil
+}
+
+// fromPolicy returns the resource spec for representing a role block.
+func fromPolicy(p *Policy) *schemahcl.Resource {
+	policy := &schemahcl.Resource{
+		Type: "policy",
+		Name: p.Name,
+	}
+	if p.Type != "" {
+		policy.Attrs = append(policy.Attrs, specutil.VarAttr("as", strings.ToUpper(specutil.Var(p.Type))))
+	}
+	if p.Cmd != "" {
+		policy.Attrs = append(policy.Attrs, specutil.VarAttr("for", strings.ToUpper(specutil.Var(p.Cmd))))
+	}
+	if len(p.Roles) > 0 {
+		policy.Attrs = append(policy.Attrs, schemahcl.StringsAttr("to", p.Roles...))
+	}
+	if p.Using != "" {
+		policy.Attrs = append(policy.Attrs, schemahcl.StringAttr("using", strings.TrimSuffix(strings.TrimPrefix(p.Using, "("), ")")))
+	}
+	if p.WithCheck != "" {
+		policy.Attrs = append(policy.Attrs, schemahcl.StringAttr("with_check", strings.TrimSuffix(strings.TrimPrefix(p.WithCheck, "("), ")")))
+	}
+	return policy
 }
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
@@ -782,6 +888,28 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	if p := (Partition{}); sqlx.Has(t.Attrs, &p) {
 		spec.Extra.Children = append(spec.Extra.Children, fromPartition(p))
 	}
+	var rls Rls
+	sqlx.Has(t.Attrs, &rls)
+	if rls.RowLevelSecurity {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, &schemahcl.Attr{
+			K: "row_level_security",
+			V: cty.BoolVal(true),
+		})
+	}
+	var forceRls ForceRls
+	sqlx.Has(t.Attrs, &forceRls)
+	if forceRls.ForceRowLevelSecurity {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, &schemahcl.Attr{
+			K: "force_row_level_security",
+			V: cty.BoolVal(true),
+		})
+	}
+	for _, attr := range t.Attrs {
+		if policy, ok := attr.(*Policy); ok {
+			spec.Extra.Children = append(spec.Extra.Children, fromPolicy(policy))
+		}
+	}
+
 	return spec, nil
 }
 

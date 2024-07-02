@@ -21,6 +21,8 @@ import (
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/postgres/internal/postgresop"
 	"ariga.io/atlas/sql/schema"
+
+	"github.com/lib/pq"
 )
 
 // A diff provides a PostgreSQL implementation for schema.Inspector.
@@ -206,6 +208,9 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 		if err := i.checks(ctx, s); err != nil {
 			return err
 		}
+		if err := i.policies(ctx, s); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -234,8 +239,9 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		var (
 			oid                                                     sql.NullInt64
 			tSchema, name, comment, partattrs, partstart, partexprs sql.NullString
+			rowLevelSecurity, forceRowLevelSecurity                 sql.NullBool
 		)
-		if err := rows.Scan(&oid, &tSchema, &name, &comment, &partattrs, &partstart, &partexprs); err != nil {
+		if err := rows.Scan(&oid, &tSchema, &name, &comment, &partattrs, &partstart, &partexprs, &rowLevelSecurity, &forceRowLevelSecurity); err != nil {
 			return fmt.Errorf("scan table information: %w", err)
 		}
 		if !sqlx.ValidString(tSchema) || !sqlx.ValidString(name) {
@@ -258,6 +264,16 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 				start: partstart.String,
 				attrs: partattrs.String,
 				exprs: partexprs.String,
+			})
+		}
+		if rowLevelSecurity.Valid && rowLevelSecurity.Bool {
+			t.AddAttrs(&Rls{
+				RowLevelSecurity: rowLevelSecurity.Bool,
+			})
+		}
+		if forceRowLevelSecurity.Valid && forceRowLevelSecurity.Bool {
+			t.AddAttrs(&ForceRls{
+				ForceRowLevelSecurity: forceRowLevelSecurity.Bool,
 			})
 		}
 	}
@@ -772,6 +788,51 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 	return nil
 }
 
+// policies queries and appends the policies of the given table.
+func (i *inspect) policies(ctx context.Context, s *schema.Schema) error {
+	rows, err := i.querySchema(ctx, policiesQuery, s)
+	if err != nil {
+		return fmt.Errorf("postgres: querying schema %q policies: %w", s.Name, err)
+	}
+	defer rows.Close()
+	if err := i.addPolicies(s, rows); err != nil {
+		return err
+	}
+	return rows.Err()
+}
+
+// addPolicies scans the rows and adds the policies to the table.
+func (i *inspect) addPolicies(s *schema.Schema, rows *sql.Rows) error {
+	for rows.Next() {
+		var (
+			table, name, policyType, policyCmd string
+			policyUsing, policyWithCheck       sql.NullString
+			policyRoles                        []string
+		)
+		if err := rows.Scan(&table, &name, &policyType, pq.Array(&policyRoles), &policyCmd, &policyUsing, &policyWithCheck); err != nil {
+			return fmt.Errorf("postgres: scanning policy: %w", err)
+		}
+		t, ok := s.Table(table)
+		if !ok {
+			return fmt.Errorf("table %q was not found in schema", table)
+		}
+		p := Policy{
+			Name:  name,
+			Type:  policyType,
+			Cmd:   policyCmd,
+			Roles: policyRoles,
+		}
+		if sqlx.ValidString(policyUsing) {
+			p.Using = policyUsing.String
+		}
+		if sqlx.ValidString(policyWithCheck) {
+			p.WithCheck = policyWithCheck.String
+		}
+		t.AddAttrs(&p)
+	}
+	return nil
+}
+
 // schemas returns the list of the schemas in the database.
 func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
@@ -1195,6 +1256,38 @@ type (
 		Attrs []schema.Attr
 	}
 
+	// Rls contains the row level security settings of a table.
+	Rls struct {
+		schema.Attr
+		// RowLevelSecurity indicates if row level security is enabled for the table
+		RowLevelSecurity bool
+	}
+
+	// ForceRls contains the force row level security settings of a table.
+	ForceRls struct {
+		schema.Attr
+		// ForceRowLevelSecurity indicates if force row level security is enabled for the table
+		ForceRowLevelSecurity bool
+	}
+
+	// Policy defines the spec of a table policy. https://www.postgresql.org/docs/current/ddl-rowsecurity.html
+	Policy struct {
+		schema.Attr
+		// Name defines the policy name.
+		Name string
+		// Type of the policy, either PERMISSIVE or RESTRICTIVE. Defaults to PERMISSIVE.
+		Type string
+		// Cmd is the command that the policy is applicable for.
+		// One of ALL, SELECT, INSERT, UPDATE, DELETE. Defaults to ALL.
+		Cmd string
+		// Roles that the policy is applicable for. Defaults to public which affects all roles.
+		Roles []string
+		// Using is an expression which is evaulated to detemine if a row can be retrieved.
+		Using string
+		// With is an expression which is evaulated to detemine if rows can be inserted or updated.
+		WithCheck string
+	}
+
 	// Cascade describes that a CASCADE clause should be added to the DROP [TABLE|SCHEMA]
 	// operation. Note, this clause is automatically added to DROP SCHEMA by the planner.
 	Cascade struct {
@@ -1526,7 +1619,9 @@ SELECT
 	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
 	t4.partattrs AS partition_attrs,
 	t4.partstrat AS partition_strategy,
-	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs
+	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs,
+	t3.relrowsecurity AS row_level_security,
+	t3.relforcerowsecurity AS force_row_level_security
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
@@ -1549,7 +1644,9 @@ SELECT
 	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
 	t4.partattrs AS partition_attrs,
 	t4.partstrat AS partition_strategy,
-	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs
+	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs,
+	t3.relrowsecurity AS row_level_security,
+	t3.relforcerowsecurity AS force_row_level_security
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
@@ -1684,6 +1781,22 @@ WHERE
 	AND rel.relname IN (%s)
 ORDER BY
 	t1.conname, array_position(t1.conkey, t2.attnum)
+`
+
+	// Query to list table row level security.
+	policiesQuery = `
+SELECT
+	tablename AS table_name,
+	policyname AS policy_name,
+	permissive AS policy_type,
+	roles AS policy_roles,
+	cmd AS policy_cmd,
+	qual AS policy_using,
+	with_check AS policy_with_check
+FROM pg_policies
+WHERE
+	schemaname = $1
+	AND tablename IN (%s)
 `
 )
 
