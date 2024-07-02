@@ -38,7 +38,10 @@ type (
 		schema string
 		// System variables that are set on `Open`.
 		version int
-		crdb    bool
+		// Whether the connected database is a CockroachDB.
+		crdb bool
+		// Whether the connected database is a RisingWave.
+		risingwave bool
 	}
 )
 
@@ -117,6 +120,20 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 				conn:        c,
 				Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
 				Inspector:   &crdbInspect{inspect{c}},
+				PlanApplier: &planApply{c},
+			},
+		}, nil
+	}
+	c.risingwave, err = c.isRisingWaveConn()
+	if err != nil {
+		return nil, fmt.Errorf("postgres: failed checking if connected to RisingWave: %w", err)
+	}
+	if c.risingwave {
+		return noLockDriver{
+			&Driver{
+				conn:        c,
+				Differ:      &sqlx.Diff{DiffDriver: &risingwaveDiff{diff{c}}},
+				Inspector:   &risingwaveInspect{inspect{c}},
 				PlanApplier: &planApply{c},
 			},
 		}, nil
