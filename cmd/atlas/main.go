@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,12 +23,13 @@ import (
 	_ "ariga.io/atlas/sql/postgres/postgrescheck"
 	_ "ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite/sqlitecheck"
-	"golang.org/x/mod/semver"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/libsql/libsql-client-go/libsql"
+	"github.com/mattn/go-isatty"
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/mod/semver"
 )
 
 func main() {
@@ -67,9 +69,7 @@ const (
 
 func noText() string { return "" }
 
-// checkForUpdate checks for version updates and security advisories for Atlas.
 func checkForUpdate(ctx context.Context) func() string {
-	done := make(chan struct{})
 	version := cmdapi.Version()
 	// Users may skip update checking behavior.
 	if v := os.Getenv(envNoUpdate); v != "" {
@@ -79,20 +79,28 @@ func checkForUpdate(ctx context.Context) func() string {
 	if !semver.IsValid(version) {
 		return noText
 	}
+	endpoint := vercheckEndpoint(ctx)
+	vc := vercheck.New(endpoint)
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		return bgCheck(ctx, version, vc)
+	}
+	return func() string {
+		msg, _ := runCheck(ctx, vc, version)
+		return msg
+	}
+}
+
+// bgCheck checks for version updates and security advisories for Atlas in the background.
+func bgCheck(ctx context.Context, version string, vc *vercheck.VerChecker) func() string {
+	done := make(chan struct{})
 	var message string
 	go func() {
 		defer close(done)
-		endpoint := vercheckEndpoint(ctx)
-		vc := vercheck.New(endpoint)
-		payload, err := vc.Check(ctx, version)
+		msg, err := runCheck(ctx, vc, version)
 		if err != nil {
 			return
 		}
-		var b bytes.Buffer
-		if err := vercheck.Notify.Execute(&b, payload); err != nil {
-			return
-		}
-		message = b.String()
+		message = msg
 	}()
 	return func() string {
 		select {
@@ -101,4 +109,16 @@ func checkForUpdate(ctx context.Context) func() string {
 		}
 		return message
 	}
+}
+
+func runCheck(ctx context.Context, vc *vercheck.VerChecker, version string) (string, error) {
+	payload, err := vc.Check(ctx, version)
+	if err != nil {
+		return "", err
+	}
+	var b bytes.Buffer
+	if err := vercheck.Notify.Execute(&b, payload); err != nil {
+		return "", err
+	}
+	return b.String(), nil
 }
