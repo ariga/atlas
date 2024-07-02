@@ -58,7 +58,15 @@ func init() {
 		sqlclient.OpenerFunc(opener),
 		sqlclient.RegisterDriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("mysql+unix", "maria", "maria+unix", "mariadb", "mariadb+unix"),
+		sqlclient.RegisterFlavours("mysql+unix"),
+		sqlclient.RegisterURLParser(parser{}),
+	)
+	sqlclient.Register(
+		"mariadb",
+		sqlclient.OpenerFunc(opener),
+		sqlclient.RegisterDriverOpener(Open),
+		sqlclient.RegisterCodec(MarshalHCL, EvalMariaHCL),
+		sqlclient.RegisterFlavours("mariadb+unix", "maria", "maria+unix"),
 		sqlclient.RegisterURLParser(parser{}),
 	)
 }

@@ -83,6 +83,9 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	if change := d.engineChange(from.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
+	if change := d.systemVerChange(from.Attrs, to.Attrs); change != noChange {
+		changes = append(changes, change)
+	}
 	if !d.SupportsCheck() && sqlx.Has(to.Attrs, &schema.Check{}) {
 		return nil, fmt.Errorf("version %q does not support CHECK constraints", d.V)
 	}
@@ -335,6 +338,19 @@ func (*diff) engineChange(from, to []schema.Attr) schema.Change {
 		}
 	}
 	return noChange
+}
+
+// systemVerChange returns the schema change for migrating the system versioning
+// attributes if it was changed.
+func (d *diff) systemVerChange(from, to []schema.Attr) schema.Change {
+	switch fromHas, toHas := sqlx.Has(from, &SystemVersioned{}), sqlx.Has(to, &SystemVersioned{}); {
+	case fromHas && !toHas:
+		return &schema.DropAttr{A: &SystemVersioned{}}
+	case !fromHas && toHas:
+		return &schema.AddAttr{A: &SystemVersioned{}}
+	default:
+		return noChange
+	}
 }
 
 // charsetChange returns the schema change for migrating the collation if

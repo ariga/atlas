@@ -11,13 +11,14 @@ import (
 
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 )
 
 var (
-	specOptions []schemahcl.Option
-	specFuncs   = &specutil.SchemaFuncs{
+	specOptions, mariaSpecOptions []schemahcl.Option
+	specFuncs                     = &specutil.SchemaFuncs{
 		Table: tableSpec,
 		View:  viewSpec,
 	}
@@ -29,6 +30,31 @@ var (
 
 func triggersSpec([]*schema.Trigger, *specutil.Doc) ([]*sqlspec.Trigger, error) {
 	return nil, nil // unimplemented.
+}
+
+func (*inspect) tablesQuery(context.Context) string {
+	return tablesQuery
+}
+
+func (*inspect) tablesQueryArgs(context.Context) string {
+	return tablesQueryArgs
+}
+
+// newTable creates a new table with the given name and type.
+func (*inspect) newTable(name, _ string) *schema.Table {
+	return schema.NewTable(name)
+}
+
+func (s *state) tableAttr(*sqlx.Builder, schema.Change, schema.Attr) {
+	// unimplemented.
+}
+
+func convertTableAttrs(*sqlspec.Table, *schema.Table) error {
+	return nil // unimplemented.
+}
+
+func tableAttrsSpec(*schema.Table, *sqlspec.Table) {
+	// unimplemented.
 }
 
 func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOptions) error {
