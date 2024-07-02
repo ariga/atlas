@@ -21,11 +21,11 @@ import (
 )
 
 // evalSpec evaluates an Atlas DDL document into v using the input.
-func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
+func evalSpec(state *schemahcl.State, p *hclparse.Parser, v any, input map[string]cty.Value) error {
 	switch v := v.(type) {
 	case *schema.Realm:
 		var d specutil.Doc
-		if err := hclState.Eval(p, &d, input); err != nil {
+		if err := state.Eval(p, &d, input); err != nil {
 			return err
 		}
 		if err := specutil.Scan(v,
@@ -45,7 +45,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		}
 	case *schema.Schema:
 		var d specutil.Doc
-		if err := hclState.Eval(p, &d, input); err != nil {
+		if err := state.Eval(p, &d, input); err != nil {
 			return err
 		}
 		if len(d.Schemas) != 1 {
@@ -65,7 +65,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 	case schema.Schema, schema.Realm:
 		return fmt.Errorf("mysql: Eval expects a pointer: received %[1]T, expected *%[1]T", v)
 	default:
-		return hclState.Eval(p, v, input)
+		return state.Eval(p, v, input)
 	}
 	return nil
 }
@@ -79,19 +79,29 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 }
 
 var (
+	registrySpecs     = TypeRegistry.Specs()
+	sharedSpecOptions = []schemahcl.Option{
+		schemahcl.WithTypes("table.column.type", registrySpecs),
+		schemahcl.WithTypes("view.column.type", registrySpecs),
+		schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
+		schemahcl.WithScopedEnums("table.engine", EngineInnoDB, EngineMyISAM, EngineMemory, EngineCSV, EngineNDB),
+		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
+		schemahcl.WithScopedEnums("table.index.parser", IndexParserNGram, IndexParserMeCab),
+		schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
+		schemahcl.WithScopedEnums("table.column.as.type", stored, persistent, virtual),
+		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
+		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+	}
 	hclState = schemahcl.New(
 		append(
 			specOptions,
-			schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
-			schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
-			schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
-			schemahcl.WithScopedEnums("table.engine", EngineInnoDB, EngineMyISAM, EngineMemory, EngineCSV, EngineNDB),
-			schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
-			schemahcl.WithScopedEnums("table.index.parser", IndexParserNGram, IndexParserMeCab),
-			schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
-			schemahcl.WithScopedEnums("table.column.as.type", stored, persistent, virtual),
-			schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
-			schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+			sharedSpecOptions...,
+		)...,
+	)
+	mariaHCLState = schemahcl.New(
+		append(
+			mariaSpecOptions,
+			sharedSpecOptions...,
 		)...,
 	)
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
@@ -99,11 +109,17 @@ var (
 		return MarshalSpec(v, hclState)
 	})
 	// EvalHCL implements the schemahcl.Evaluator interface.
-	EvalHCL = schemahcl.EvalFunc(evalSpec)
-
-	// EvalHCLBytes is a helper that evaluates an HCL document from a byte slice instead
-	// of from an hclparse.Parser instance.
+	EvalHCL = schemahcl.EvalFunc(func(h *hclparse.Parser, v any, m map[string]cty.Value) error {
+		return evalSpec(hclState, h, v, m)
+	})
+	// EvalHCLBytes is a helper that evaluates an HCL document from a byte slice.
 	EvalHCLBytes = specutil.HCLBytesFunc(EvalHCL)
+	// EvalMariaHCL implements the schemahcl.Evaluator interface for MariaDB flavor.
+	EvalMariaHCL = schemahcl.EvalFunc(func(h *hclparse.Parser, v any, m map[string]cty.Value) error {
+		return evalSpec(mariaHCLState, h, v, m)
+	})
+	// EvalMariaHCLBytes is a helper that evaluates a MariaDB HCL document from a byte slice.
+	EvalMariaHCLBytes = specutil.HCLBytesFunc(EvalMariaHCL)
 )
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
@@ -133,7 +149,10 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 		}
 		t.AddAttrs(&Engine{V: v})
 	}
-	return t, err
+	if err := convertTableAttrs(spec, t); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 // convertView converts a sqlspec.View to a schema.View.
@@ -316,6 +335,7 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 		}
 		ts.Extra.Attrs = append(ts.Extra.Attrs, attr)
 	}
+	tableAttrsSpec(t, ts)
 	return ts, nil
 }
 

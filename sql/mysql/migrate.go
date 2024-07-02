@@ -289,7 +289,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 	if len(errs) > 0 {
 		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errs, ", "))
 	}
-	s.tableAttr(b, add, add.T.Attrs...)
+	s.tableAttrs(b, add, add.T.Attrs...)
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  add,
@@ -357,8 +357,6 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 			changes[1] = append(changes[1], &schema.AddIndex{
 				I: change.To,
 			})
-		case *schema.DropAttr:
-			return fmt.Errorf("unsupported change type: %v", change.A)
 		default:
 			changes[1] = append(changes[1], change)
 		}
@@ -459,11 +457,11 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
 				reverse = append(reverse, &schema.AddForeignKey{F: change.F})
 			case *schema.AddAttr:
-				s.tableAttr(b, change, change.A)
-				// Unsupported reverse operation.
-				reversible = false
+				s.tableAttrs(b, change, change.A)
+			case *schema.DropAttr:
+				s.tableAttrs(b, change, change.A)
 			case *schema.ModifyAttr:
-				s.tableAttr(b, change, change.To)
+				s.tableAttrs(b, change, change.To)
 				reverse = append(reverse, &schema.ModifyAttr{
 					From: change.To,
 					To:   change.From,
@@ -687,9 +685,9 @@ func (s *state) fks(commaF func(any, func(int, *sqlx.Builder) error) error, fks 
 	})
 }
 
-// tableAttr writes the given table attribute to the SQL
+// tableAttrs writes the given table attributes to the SQL
 // statement builder when a table is created or altered.
-func (s *state) tableAttr(b *sqlx.Builder, c schema.Change, attrs ...schema.Attr) {
+func (s *state) tableAttrs(b *sqlx.Builder, c schema.Change, attrs ...schema.Attr) {
 	for _, a := range attrs {
 		switch a := a.(type) {
 		case *CreateOptions:
@@ -713,6 +711,9 @@ func (s *state) tableAttr(b *sqlx.Builder, c schema.Change, attrs ...schema.Attr
 			b.P("COLLATE", a.V)
 		case *schema.Comment:
 			b.P("COMMENT", quote(a.Text))
+		default:
+			// Driver/build specific handling.
+			s.tableAttr(b, c, a)
 		}
 	}
 }
