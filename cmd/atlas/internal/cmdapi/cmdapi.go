@@ -578,7 +578,7 @@ func stateReader(ctx context.Context, env *Env, config *stateReaderConfig) (*cmd
 			return rc, nil
 		}
 		// All other schemes are database (or docker) connections.
-		c, err := sqlclient.Open(ctx, config.urls[0]) // call to selectScheme already checks for len > 0
+		c, err := env.openClient(ctx, config.urls[0]) // call to selectScheme already checks for len > 0
 		if err != nil {
 			return nil, err
 		}
