@@ -1919,6 +1919,31 @@ func TestIndentedPlan(t *testing.T) {
   CONSTRAINT "ck2" CHECK (a > 0)
 )`,
 		},
+		{
+			T: schema.NewTable("t1").
+				AddColumns(
+					schema.NewIntColumn("a", "int"),
+					schema.NewIntColumn("b", "int"),
+				).
+				AddForeignKeys(
+					schema.NewForeignKey("fk1").
+						AddColumns(schema.NewIntColumn("a", "int")).
+						SetRefTable(schema.NewTable("t2")).
+						AddRefColumns(schema.NewIntColumn("a", "int")).
+						AddAttrs(&Deferrable{V: true}),
+					schema.NewForeignKey("fk2").
+						AddColumns(schema.NewIntColumn("a", "int")).
+						SetRefTable(schema.NewTable("t2")).
+						AddRefColumns(schema.NewIntColumn("a", "int")).
+						AddAttrs(&Deferrable{V: true, Default: true}),
+				),
+			Cmd: `CREATE TABLE "t1" (
+  "a" integer NOT NULL,
+  "b" integer NOT NULL,
+  CONSTRAINT "fk1" FOREIGN KEY ("a") REFERENCES "t2" ("a") DEFERRABLE,
+  CONSTRAINT "fk2" FOREIGN KEY ("a") REFERENCES "t2" ("a") DEFERRABLE INITIALLY DEFERRED
+)`,
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {

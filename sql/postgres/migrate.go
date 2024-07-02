@@ -1186,6 +1186,12 @@ func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 		if fk.OnDelete != "" {
 			b.P("ON DELETE", string(fk.OnDelete))
 		}
+		if d := (Deferrable{}); sqlx.Has(fk.Attrs, &d) && d.V {
+			b.P("DEFERRABLE")
+			if d.Default {
+				b.P("INITIALLY DEFERRED")
+			}
+		}
 	})
 }
 

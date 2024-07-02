@@ -717,10 +717,79 @@ func (i *inspect) fks(ctx context.Context, s *schema.Schema) error {
 		return fmt.Errorf("postgres: querying schema %q foreign keys: %w", s.Name, err)
 	}
 	defer rows.Close()
-	if err := sqlx.TypedSchemaFKs[*ReferenceOption](s, rows); err != nil {
+	if err := i.addFks(s, rows); err != nil {
 		return fmt.Errorf("postgres: %w", err)
 	}
 	return rows.Err()
+}
+
+func (i *inspect) addFks(s *schema.Schema, rows *sql.Rows) error {
+	for rows.Next() {
+		var (
+			updateAction, deleteAction                                   = new(ReferenceOption), new(ReferenceOption)
+			name, table, column, tSchema, refTable, refColumn, refSchema string
+			deferrable, deferred                                         bool
+		)
+		if err := rows.Scan(&name, &table, &column, &tSchema, &refTable, &refColumn, &refSchema, &updateAction, &deleteAction, &deferrable, &deferred); err != nil {
+			return err
+		}
+		t, ok := s.Table(table)
+		if !ok {
+			return fmt.Errorf("table %q was not found in schema", table)
+		}
+		fk, ok := t.ForeignKey(name)
+		if !ok {
+			fk = &schema.ForeignKey{
+				Symbol:   name,
+				Table:    t,
+				RefTable: t,
+				OnUpdate: schema.ReferenceOption(updateAction.String()),
+				OnDelete: schema.ReferenceOption(deleteAction.String()),
+			}
+			switch {
+			// Self reference.
+			case tSchema == refSchema && refTable == table:
+			// Reference to the same schema.
+			case tSchema == refSchema && refTable != table:
+				if fk.RefTable, ok = s.Table(refTable); !ok {
+					fk.RefTable = &schema.Table{Name: refTable, Schema: s}
+				}
+			// Reference to an external schema.
+			case tSchema != refSchema:
+				fk.RefTable = &schema.Table{Name: refTable, Schema: &schema.Schema{Name: refSchema}}
+			}
+			t.ForeignKeys = append(t.ForeignKeys, fk)
+		}
+		c, ok := t.Column(column)
+		if !ok {
+			return fmt.Errorf("column %q was not found for fk %q", column, fk.Symbol)
+		}
+		// Rows are ordered by ORDINAL_POSITION that specifies
+		// the position of the column in the FK definition.
+		if _, ok := fk.Column(c.Name); !ok {
+			fk.Columns = append(fk.Columns, c)
+			c.ForeignKeys = append(c.ForeignKeys, fk)
+		}
+		// Stub referenced columns or link if it's a self-reference.
+		var rc *schema.Column
+		if fk.Table != fk.RefTable {
+			rc = &schema.Column{Name: refColumn}
+		} else if c, ok := t.Column(refColumn); ok {
+			rc = c
+		} else {
+			return fmt.Errorf("referenced column %q was not found for fk %q", refColumn, fk.Symbol)
+		}
+		if _, ok := fk.RefColumn(rc.Name); !ok {
+			fk.RefColumns = append(fk.RefColumns, rc)
+		}
+		if deferrable {
+			fk.AddAttrs(&Deferrable{
+				V:       deferrable,
+				Default: deferred,
+			})
+		}
+	}
+	return nil
 }
 
 // checks queries and appends the check constraints of the given table.
@@ -1203,6 +1272,13 @@ type (
 
 	// ReferenceOption describes the ON DELETE and ON UPDATE options for foreign keys.
 	ReferenceOption schema.ReferenceOption
+
+	// Deferrable attribute defines the DEFERRABLE flag for a constraint.
+	Deferrable struct {
+		schema.Attr
+		V       bool // V indicates whether the constraint can be deferred.
+		Default bool // Default indicates whether the constraint is initially deferred.
+	}
 )
 
 var _ specutil.RefNamer = (*DomainType)(nil)
@@ -1629,7 +1705,9 @@ SELECT
     a2.attname AS referenced_column_name,
     fk.referenced_schema_name,
     fk.confupdtype,
-    fk.confdeltype
+    fk.confdeltype,
+    fk.deferrable,
+    fk.deferred
 	FROM 
 	    (
 	    	SELECT
@@ -1644,7 +1722,9 @@ SELECT
 	      		unnest(con.conkey) AS conkey,
 	      		unnest(con.confkey) AS confkey,
 	      		con.confupdtype,
-	      		con.confdeltype
+	      		con.confdeltype,
+	      		con.condeferrable AS deferrable,
+	      		con."condeferred" AS deferred
 	    	FROM pg_constraint con
 	    	JOIN pg_class t1 ON t1.oid = con.conrelid
 	    	JOIN pg_class t2 ON t2.oid = con.confrelid
