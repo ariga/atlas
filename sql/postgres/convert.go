@@ -288,13 +288,16 @@ func columnType(c *columnDesc) (schema.Type, error) {
 	case typeOID, typeRegClass, typeRegCollation, typeRegConfig, typeRegDictionary, typeRegNamespace,
 		typeRegOper, typeRegOperator, typeRegProc, typeRegProcedure, typeRegRole, typeRegType:
 		typ = &OIDType{T: t}
-	case TypeUserDefined:
-		typ = &UserDefinedType{T: c.fmtype}
 	case typeAny, typeAnyElement, typeAnyArray, typeAnyNonArray, typeAnyEnum, typeInternal,
 		typeRecord, typeTrigger, typeEventTrigger, typeVoid, typeUnknown:
 		typ = &PseudoType{T: t}
+	// TypeUserDefined or any other base type.
 	default:
-		typ = &schema.UnsupportedType{T: t}
+		ft := c.fmtype
+		if ft == "" {
+			ft = t
+		}
+		typ = &UserDefinedType{T: ft}
 	}
 	switch c.typtype {
 	case "d", "e":
