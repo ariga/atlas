@@ -49,9 +49,14 @@ func main() {
 		<-stop // will not block if no signal received due to main routine exiting
 		os.Exit(1)
 	}()
-	ctx, done := initialize(extendContext(ctx))
+	ctx, err := extendContext(ctx)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	ctx, done := initialize(ctx)
 	update := checkForUpdate(ctx)
-	err := cmdapi.Root.ExecuteContext(ctx)
+	err = cmdapi.Root.ExecuteContext(ctx)
 	if u := update(); u != "" {
 		fmt.Fprintln(os.Stderr, u)
 	}
