@@ -10,7 +10,9 @@ import (
 	"context"
 )
 
-func extendContext(ctx context.Context) context.Context { return ctx }
+func extendContext(ctx context.Context) (context.Context, error) {
+	return ctx, nil
+}
 
 func vercheckEndpoint(context.Context) string {
 	return vercheckURL

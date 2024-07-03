@@ -246,6 +246,9 @@ func (c *Client) ReportMigration(ctx context.Context, input ReportMigrationInput
 	return payload.ReportMigration.URL, nil
 }
 
+// ErrUnauthorized is returned when the server returns a 401 status code.
+var ErrUnauthorized = errors.New(http.StatusText(http.StatusUnauthorized))
+
 func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 	body, err := json.Marshal(struct {
 		Query     string `json:"query"`
@@ -267,7 +270,10 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 		return err
 	}
 	defer req.Body.Close()
-	if res.StatusCode != http.StatusOK {
+	switch {
+	case res.StatusCode == http.StatusUnauthorized:
+		return ErrUnauthorized
+	case res.StatusCode != http.StatusOK:
 		var v struct {
 			Errors errlist `json:"errors,omitempty"`
 		}
