@@ -2,7 +2,7 @@ module ariga.io/atlas/internal/integration
 
 go 1.22.3
 
-toolchain go1.22.4
+toolchain go1.22.5
 
 replace ariga.io/atlas => ../../
 
@@ -17,7 +17,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e
 	github.com/rogpeppe/go-internal v1.9.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/zclconf/go-cty v1.14.4
 )
 
@@ -76,10 +76,9 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/pganalyze/pg_query_go/v5 v5.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.1 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.16 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect

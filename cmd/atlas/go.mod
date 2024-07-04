@@ -2,7 +2,7 @@ module ariga.io/atlas/cmd/atlas
 
 go 1.22.3
 
-toolchain go1.22.4
+toolchain go1.22.5
 
 replace ariga.io/atlas => ../..
 
@@ -19,13 +19,14 @@ require (
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/lib/pq v1.10.9
 	github.com/libsql/libsql-client-go v0.0.0-20230602133133-5905f0c4f8a5
+	github.com/mattn/go-isatty v0.0.18
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pganalyze/pg_query_go/v5 v5.1.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.4
-	github.com/vektah/gqlparser/v2 v2.5.1
+	github.com/stretchr/testify v1.9.0
+	github.com/vektah/gqlparser/v2 v2.5.16
 	github.com/zclconf/go-cty v1.14.4
 	gocloud.dev v0.36.0
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
@@ -76,7 +77,6 @@ require (
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/libsql/sqlite-antlr4-parser v0.0.0-20230512205400-b2348f0d1196 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/mattn/go-isatty v0.0.18 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
