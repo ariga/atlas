@@ -483,11 +483,16 @@ func (d *MemDir) Checksum() (HashFile, error) {
 	return NewHashFile(files)
 }
 
+// NewVersion generates a new migration version.
+func NewVersion() string {
+	return time.Now().UTC().Format("20060102150405")
+}
+
 var (
 	// templateFunc contains the template.FuncMap for the DefaultFormatter.
 	templateFuncs = template.FuncMap{
 		"upper": strings.ToUpper,
-		"now":   func() string { return time.Now().UTC().Format("20060102150405") },
+		"now":   NewVersion,
 	}
 	// DefaultFormatter is a default implementation for Formatter.
 	DefaultFormatter = TemplateFormatter{
