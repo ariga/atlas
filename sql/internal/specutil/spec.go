@@ -170,32 +170,6 @@ func QualifyObjects[T SchemaObject](specs []T) error {
 	return nil
 }
 
-// ColumnRefFinder returns a function that finds a column reference by its table and its schema.
-func ColumnRefFinder(specs []*sqlspec.Table) func(s, t, c string) (*schemahcl.Ref, error) {
-	var refs map[struct{ s, t string }]*sqlspec.Table
-	return func(s, t, c string) (*schemahcl.Ref, error) {
-		// Lazily initialize refs.
-		if refs == nil {
-			refs = make(map[struct{ s, t string }]*sqlspec.Table, len(specs))
-			for _, st := range specs {
-				ns, err := SchemaName(st.Schema)
-				if err != nil {
-					return nil, err
-				}
-				refs[struct{ s, t string }{s: ns, t: st.Name}] = st
-			}
-		}
-		r, ok := refs[struct{ s, t string }{s: s, t: t}]
-		if !ok {
-			return nil, fmt.Errorf("table %q.%q was not found", s, t)
-		}
-		if r.Qualifier != "" {
-			return QualifiedExternalColRef(c, r.Name, r.Qualifier), nil
-		}
-		return ExternalColumnRef(c, r.Name), nil
-	}
-}
-
 // QualifyReferences qualifies any reference with qualifier.
 func QualifyReferences(tableSpecs []*sqlspec.Table, realm *schema.Realm) error {
 	type cref struct{ s, t string }

@@ -271,6 +271,9 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 		}
 		ts = trs
 		d.merge(d1)
+		if err := schemasObjectSpec(&d, rv); err != nil {
+			return nil, err
+		}
 	case *schema.Realm:
 		for _, s := range rv.Schemas {
 			d1, trs, err := schemaSpec(s)
@@ -314,9 +317,6 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 			return nil, err
 		}
 		if err := specutil.QualifyReferences(d.Tables, rv); err != nil {
-			return nil, err
-		}
-		if err := qualifySeqRefs(d.Sequences, d.Tables, rv); err != nil {
 			return nil, err
 		}
 	default:
