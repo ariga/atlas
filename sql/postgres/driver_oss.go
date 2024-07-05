@@ -260,7 +260,7 @@ func normalizeRealm(*schema.Realm) error {
 	return nil
 }
 
-func qualifySeqRefs([]*sqlspec.Sequence, []*sqlspec.Table, *schema.Realm) error {
+func schemasObjectSpec(*doc, ...*schema.Schema) error {
 	return nil // unimplemented.
 }
 
