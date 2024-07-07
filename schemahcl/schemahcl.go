@@ -849,18 +849,32 @@ func (s *State) writeAttr(attr *Attr, body *hclwrite.Body) error {
 		}
 		tokens := make([]hclwrite.Tokens, 0, attr.V.LengthInt())
 		for _, v := range attr.V.AsValueSlice() {
-			if v.Type().IsCapsuleType() {
-				ref, ok := v.EncapsulatedValue().(*Ref)
-				if !ok {
-					return fmt.Errorf("unsupported capsule type: %v", v.Type())
-				}
-				ts, err := hclRefTokens(ref.V)
+			if !v.Type().IsCapsuleType() {
+				tokens = append(tokens, hclwrite.TokensForValue(v))
+				continue
+			}
+			switch ev := v.EncapsulatedValue().(type) {
+			case *Ref:
+				ts, err := hclRefTokens(ev.V)
 				if err != nil {
 					return err
 				}
 				tokens = append(tokens, ts)
-			} else {
-				tokens = append(tokens, hclwrite.TokensForValue(v))
+			case *EnumString:
+				switch {
+				case ev.S != "" && ev.E != "":
+					return fmt.Errorf("enum string cannot have both a string and an expression, got: %#v", ev)
+				case ev.S != "":
+					tokens = append(tokens, hclwrite.TokensForValue(cty.StringVal(ev.S)))
+				case ev.E != "":
+					tokens = append(tokens, hclwrite.Tokens{
+						&hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte(ev.E)},
+					})
+				default:
+					return fmt.Errorf("enum string must have either a string or an expression, got: %#v", ev)
+				}
+			default:
+				return fmt.Errorf("unsupported capsule type: %v", v.Type())
 			}
 		}
 		body.SetAttributeRaw(attr.K, hclList(tokens))
