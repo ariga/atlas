@@ -578,3 +578,25 @@ func RawAttr(k string, x string) *Attr {
 func RawExprValue(x *RawExpr) cty.Value {
 	return cty.CapsuleVal(ctyRawExpr, x)
 }
+
+// ctyEnumString is a capsule type for EnumString.
+var ctyEnumString = cty.Capsule("enum_string", reflect.TypeOf(EnumString{}))
+
+// EnumString is a helper type that represents
+// either an enum or a string value.
+type EnumString struct {
+	E, S string // Enum or string value.
+}
+
+// StringEnumsAttr is a helper method for constructing *schemahcl.Attr instances
+// that contain list of elements that their values can be either enum or string.
+func StringEnumsAttr(k string, elems ...*EnumString) *Attr {
+	vv := make([]cty.Value, len(elems))
+	for i, e := range elems {
+		vv[i] = cty.CapsuleVal(ctyEnumString, e)
+	}
+	return &Attr{
+		K: k,
+		V: cty.ListVal(vv),
+	}
+}

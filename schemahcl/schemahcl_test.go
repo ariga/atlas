@@ -1078,6 +1078,24 @@ bar "b1" {
 	}, doc.Bar[0])
 }
 
+func Test_MarshalAttr(t *testing.T) {
+	var doc struct {
+		DefaultExtension
+	}
+	doc.Extra.Attrs = append(
+		doc.Extra.Attrs,
+		StringEnumsAttr("mixed1", &EnumString{S: "string"}, &EnumString{E: "enum"}),
+		StringEnumsAttr("mixed2", &EnumString{E: "enum1"}, &EnumString{E: "enum2"}),
+		StringEnumsAttr("mixed3", &EnumString{S: "string1"}, &EnumString{S: "string1"}),
+	)
+	buf, err := Marshal(&doc)
+	require.NoError(t, err)
+	require.Equal(t, `mixed1 = ["string", enum]
+mixed2 = [enum1, enum2]
+mixed3 = ["string1", "string1"]
+`, string(buf))
+}
+
 func Test_WithPos(t *testing.T) {
 	var (
 		doc struct {
