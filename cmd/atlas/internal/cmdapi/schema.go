@@ -630,9 +630,6 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	if err := inputValuesFromEnv(cmd, env); err != nil {
 		return err
 	}
-	if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
-		return err
-	}
 	if err := maySetFlag(cmd, flagDevURL, env.DevURL); err != nil {
 		return err
 	}
@@ -656,10 +653,16 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	}
 	switch cmd.Name() {
 	case "inspect":
+		if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
+			return err
+		}
 		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Inspect); err != nil {
 			return err
 		}
 	case "apply":
+		if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
+			return err
+		}
 		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Apply); err != nil {
 			return err
 		}
@@ -672,7 +675,12 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 			return err
 		}
 	case "test":
-		if err := maySetFlag(cmd, flagURL, strings.Join(srcs, ",")); err != nil {
+		// Give the "src" precedence over the "url" argument.
+		if len(srcs) > 0 {
+			if err := maySetFlag(cmd, flagURL, strings.Join(srcs, ",")); err != nil {
+				return err
+			}
+		} else if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
 			return err
 		}
 	}
