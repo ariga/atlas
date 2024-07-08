@@ -433,6 +433,7 @@ env "prod" {
 env "staging" {
   for_each = toset(var.domains)
   url = "${each.value.name}:${each.value.port}"
+  driver = MYSQL
 }
 
 env "dev" {
@@ -445,6 +446,7 @@ env "dev" {
 `)
 	)
 	require.NoError(t, New(
+		WithScopedEnums("env.driver", "MYSQL", "POSTGRES"),
 		WithDataSource("sql", func(_ context.Context, ectx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
 			attrs, diags := b.Body.JustAttributes()
 			if diags.HasErrors() {

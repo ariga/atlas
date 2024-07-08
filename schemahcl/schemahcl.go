@@ -368,7 +368,7 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 		blocks := make([]*hclsyntax.Block, 0, len(metaBlocks))
 		for name, bs := range metaBlocks {
 			for _, b := range bs {
-				nb, err := forEachBlocks(ctx, b)
+				nb, err := s.forEachBlocks(ctx, b)
 				if err != nil {
 					return err
 				}
@@ -1020,7 +1020,7 @@ func hclList(items []hclwrite.Tokens) hclwrite.Tokens {
 	return t
 }
 
-func forEachBlocks(ctx *hcl.EvalContext, b *hclsyntax.Block) ([]*hclsyntax.Block, error) {
+func (s *State) forEachBlocks(ctx *hcl.EvalContext, b *hclsyntax.Block) ([]*hclsyntax.Block, error) {
 	forEach, diags := b.Body.Attributes[forEachAttr].Expr.Value(ctx)
 	if diags.HasErrors() {
 		return nil, diags
@@ -1039,7 +1039,7 @@ func forEachBlocks(ctx *hcl.EvalContext, b *hclsyntax.Block) ([]*hclsyntax.Block
 				"value": v,
 			}),
 		}
-		nb, err := copyBlock(nctx, b)
+		nb, err := s.copyBlock(nctx, b, []string{b.Type})
 		if err != nil {
 			return nil, fmt.Errorf("schemahcl: evaluate block for value %q: %w", v, err)
 		}
@@ -1048,7 +1048,7 @@ func forEachBlocks(ctx *hcl.EvalContext, b *hclsyntax.Block) ([]*hclsyntax.Block
 	return blocks, nil
 }
 
-func copyBlock(ctx *hcl.EvalContext, b *hclsyntax.Block) (*hclsyntax.Block, error) {
+func (s *State) copyBlock(ctx *hcl.EvalContext, b *hclsyntax.Block, scope []string) (*hclsyntax.Block, error) {
 	nb := &hclsyntax.Block{
 		Type:      b.Type,
 		Labels:    b.Labels,
@@ -1059,7 +1059,7 @@ func copyBlock(ctx *hcl.EvalContext, b *hclsyntax.Block) (*hclsyntax.Block, erro
 		},
 	}
 	for k, v := range b.Body.Attributes {
-		x, diags := v.Expr.Value(ctx)
+		x, diags := v.Expr.Value(s.mayScopeContext(ctx, append(scope, k)))
 		if diags.HasErrors() {
 			return nil, diags
 		}
@@ -1068,7 +1068,7 @@ func copyBlock(ctx *hcl.EvalContext, b *hclsyntax.Block) (*hclsyntax.Block, erro
 		nb.Body.Attributes[k] = &nv
 	}
 	for _, v := range b.Body.Blocks {
-		nv, err := copyBlock(ctx, v)
+		nv, err := s.copyBlock(ctx, v, append(scope, v.Type))
 		if err != nil {
 			return nil, err
 		}
