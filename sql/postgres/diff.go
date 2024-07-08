@@ -63,6 +63,11 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	if err := d.partitionChanged(from, to); err != nil {
 		return nil, err
 	}
+	change, err := d.tableAttrDiff(from, to)
+	if err != nil {
+		return nil, err
+	}
+	changes = append(changes, change...)
 	return append(changes, sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
 		return sqlx.Has(c1.Attrs, &NoInherit{}) == sqlx.Has(c2.Attrs, &NoInherit{})
 	})...), nil
