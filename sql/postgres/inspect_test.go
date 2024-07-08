@@ -378,11 +378,11 @@ func TestDriver_InspectPartitionedTable(t *testing.T) {
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("public").
 		WillReturnRows(sqltest.Rows(`
- oid   | table_schema | table_name  | comment | partition_attrs | partition_strategy |                  partition_exprs
--------+--------------+-------------+---------+-----------------+--------------------+----------------------------------------------------
- 112  | public       | logs1       |         |                 |                     | 
- 113  | public       | logs2       |         | 1               | r                   | 
- 114  | public       | logs3       |         | 2 0 0           | l                   | (a + b), (a + (b * 2))
+ oid   | table_schema | table_name  | comment | partition_attrs | partition_strategy |                  partition_exprs                   |                  extra                   
+-------+--------------+-------------+---------+-----------------+--------------------+----------------------------------------------------+----------------------------------------------------
+ 112  | public       | logs1       |         |                 |                     |                                                    |                                                    
+ 113  | public       | logs2       |         | 1               | r                   |                                                    |                                                    
+ 114  | public       | logs3       |         | 2 0 0           | l                   | (a + b), (a + (b * 2))                             |                              
 
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "$2, $3, $4"))).
@@ -732,9 +732,9 @@ func (m mock) version(version string) {
 }
 
 func (m mock) tableExists(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"oid", "table_schema", "table_name", "table_comment", "partition_attrs", "partition_strategy", "partition_exprs"})
+	rows := sqlmock.NewRows([]string{"oid", "table_schema", "table_name", "table_comment", "partition_attrs", "partition_strategy", "partition_exprs", "attrs"})
 	if exists {
-		rows.AddRow(nil, schema, table, nil, nil, nil, nil)
+		rows.AddRow(nil, schema, table, nil, nil, nil, nil, nil)
 	}
 	m.ExpectQuery(queryTables).
 		WithArgs(schema).

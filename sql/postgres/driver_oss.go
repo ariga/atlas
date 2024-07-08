@@ -30,6 +30,34 @@ var (
 	}
 )
 
+// newTable creates a new table.
+func (*inspect) newTable(_ context.Context, name, _ string) *schema.Table {
+	return schema.NewTable(name) // Default implementation.
+}
+
+func tableAttrsSpec(*schema.Table, *sqlspec.Table) {
+	// unimplemented.
+}
+
+func convertTableAttrs(*sqlspec.Table, *schema.Table) error {
+	return nil // unimplemented.
+}
+
+// tableAttrDiff allows extending table attributes diffing with build-specific logic.
+func (*diff) tableAttrDiff(_, _ *schema.Table) ([]schema.Change, error) {
+	return nil, nil // unimplemented.
+}
+
+// addTableAttrs allows extending table attributes creation with build-specific logic.
+func (*state) addTableAttrs(_ *schema.AddTable) {
+	// unimplemented.
+}
+
+// alterTableAttr allows extending table attributes alteration with build-specific logic.
+func (s *state) alterTableAttr(*sqlx.Builder, *schema.ModifyAttr) {
+	// unimplemented.
+}
+
 func realmObjectsSpec(*doc, *schema.Realm) error {
 	return nil // unimplemented.
 }
@@ -50,7 +78,7 @@ func (*inspect) inspectTypes(context.Context, *schema.Realm, *schema.InspectOpti
 	return nil // unimplemented.
 }
 
-func (*inspect) inspectSequences(context.Context, *schema.Realm, *schema.InspectOptions) error {
+func (*inspect) inspectObjects(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
 }
 
@@ -242,6 +270,13 @@ func convertSequences(_ []*sqlspec.Table, seqs []*sqlspec.Sequence, _ *schema.Re
 	return nil
 }
 
+func convertPolicies(_ []*sqlspec.Table, ps []*policy, _ *schema.Realm) error {
+	if len(ps) > 0 {
+		return fmt.Errorf("postgres: policies are not supported by this version. Use: https://atlasgo.io/getting-started")
+	}
+	return nil
+}
+
 func convertExtensions(exs []*extension, _ *schema.Realm) error {
 	if len(exs) > 0 {
 		return fmt.Errorf("postgres: extensions are not supported by this version. Use: https://atlasgo.io/getting-started")
@@ -381,3 +416,59 @@ func (*state) detachCycles(changes []schema.Change) ([]schema.Change, error) {
 func excludeSpec(*sqlspec.Table, *sqlspec.Index, *schema.Index, *Constraint) error {
 	return nil // unimplemented.
 }
+
+const (
+	// Query to list tables information.
+	// Note, 'attrs' are not supported in this version.
+	tablesQuery = `
+SELECT
+	t3.oid,
+	t1.table_schema,
+	t1.table_name,
+	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
+	t4.partattrs AS partition_attrs,
+	t4.partstrat AS partition_strategy,
+	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs,
+	'{}' AS attrs
+FROM
+	INFORMATION_SCHEMA.TABLES AS t1
+	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
+	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
+	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
+	LEFT JOIN pg_depend AS t5 ON t5.classid = 'pg_catalog.pg_class'::regclass::oid AND t5.objid = t3.oid AND t5.deptype = 'e'
+WHERE
+	t1.table_type = 'BASE TABLE'
+	AND NOT COALESCE(t3.relispartition, false)
+	AND t1.table_schema IN (%s)
+	AND t5.objid IS NULL
+ORDER BY
+	t1.table_schema, t1.table_name
+`
+	// Query to list tables by their names.
+	// Note, 'attrs' are not supported in this version.
+	tablesQueryArgs = `
+SELECT
+	t3.oid,
+	t1.table_schema,
+	t1.table_name,
+	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
+	t4.partattrs AS partition_attrs,
+	t4.partstrat AS partition_strategy,
+	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs,
+	'{}' AS attrs
+FROM
+	INFORMATION_SCHEMA.TABLES AS t1
+	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
+	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
+	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
+	LEFT JOIN pg_depend AS t5 ON t5.classid = 'pg_catalog.pg_class'::regclass::oid AND t5.objid = t3.oid AND t5.deptype = 'e'
+WHERE
+	t1.table_type = 'BASE TABLE'
+	AND NOT COALESCE(t3.relispartition, false)
+	AND t1.table_schema IN (%s)
+	AND t1.table_name IN (%s)
+	AND t5.objid IS NULL
+ORDER BY
+	t1.table_schema, t1.table_name
+`
+)

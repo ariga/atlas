@@ -72,7 +72,7 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 			}
 		}
 		if mode.Is(schema.InspectObjects) {
-			if err := i.inspectSequences(ctx, r, nil); err != nil {
+			if err := i.inspectObjects(ctx, r, nil); err != nil {
 				return nil, err
 			}
 			if err := i.inspectRealmObjects(ctx, r, nil); err != nil {
@@ -168,7 +168,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		}
 	}
 	if mode.Is(schema.InspectObjects) {
-		if err := i.inspectSequences(ctx, r, opts); err != nil {
+		if err := i.inspectObjects(ctx, r, opts); err != nil {
 			return nil, err
 		}
 	}
@@ -232,10 +232,10 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 	defer rows.Close()
 	for rows.Next() {
 		var (
-			oid                                                     sql.NullInt64
-			tSchema, name, comment, partattrs, partstart, partexprs sql.NullString
+			oid                                                            sql.NullInt64
+			tSchema, name, comment, partattrs, partstart, partexprs, extra sql.NullString
 		)
-		if err := rows.Scan(&oid, &tSchema, &name, &comment, &partattrs, &partstart, &partexprs); err != nil {
+		if err := rows.Scan(&oid, &tSchema, &name, &comment, &partattrs, &partstart, &partexprs, &extra); err != nil {
 			return fmt.Errorf("scan table information: %w", err)
 		}
 		if !sqlx.ValidString(tSchema) || !sqlx.ValidString(name) {
@@ -245,7 +245,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		if !ok {
 			return fmt.Errorf("schema %q was not found in realm", tSchema.String)
 		}
-		t := schema.NewTable(name.String)
+		t := i.newTable(ctx, name.String, extra.String)
 		s.AddTables(t)
 		if oid.Valid {
 			t.AddAttrs(&OID{V: oid.Int64})
@@ -1517,54 +1517,6 @@ WHERE
 ORDER BY
     nspname`
 
-	// Query to list table information.
-	tablesQuery = `
-SELECT
-	t3.oid,
-	t1.table_schema,
-	t1.table_name,
-	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
-	t4.partattrs AS partition_attrs,
-	t4.partstrat AS partition_strategy,
-	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs
-FROM
-	INFORMATION_SCHEMA.TABLES AS t1
-	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
-	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
-	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
-	LEFT JOIN pg_depend AS t5 ON t5.classid = 'pg_catalog.pg_class'::regclass::oid AND t5.objid = t3.oid AND t5.deptype = 'e'
-WHERE
-	t1.table_type = 'BASE TABLE'
-	AND NOT COALESCE(t3.relispartition, false)
-	AND t1.table_schema IN (%s)
-	AND t5.objid IS NULL
-ORDER BY
-	t1.table_schema, t1.table_name
-`
-	tablesQueryArgs = `
-SELECT
-	t3.oid,
-	t1.table_schema,
-	t1.table_name,
-	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
-	t4.partattrs AS partition_attrs,
-	t4.partstrat AS partition_strategy,
-	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs
-FROM
-	INFORMATION_SCHEMA.TABLES AS t1
-	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
-	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
-	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
-	LEFT JOIN pg_depend AS t5 ON t5.classid = 'pg_catalog.pg_class'::regclass::oid AND t5.objid = t3.oid AND t5.deptype = 'e'
-WHERE
-	t1.table_type = 'BASE TABLE'
-	AND NOT COALESCE(t3.relispartition, false)
-	AND t1.table_schema IN (%s)
-	AND t1.table_name IN (%s)
-	AND t5.objid IS NULL
-ORDER BY
-	t1.table_schema, t1.table_name
-`
 	// Query to list table columns.
 	columnsQuery = `
 SELECT

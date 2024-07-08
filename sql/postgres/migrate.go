@@ -287,6 +287,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 		}
 	}
 	s.addComments(add, add.T)
+	s.addTableAttrs(add)
 	return nil
 }
 
@@ -339,11 +340,23 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	)
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
-		case *schema.AddAttr, *schema.ModifyAttr:
+		case *schema.ModifyAttr:
+			if _, ok := change.From.(*schema.Comment); !ok {
+				alter = append(alter, change)
+				continue
+			}
 			from, to, err := commentChange(change)
 			if err != nil {
 				return err
 			}
+			// Comments are not part of the ALTER command.
+			changes = append(changes, s.tableComment(modify, modify.T, to, from))
+		case *schema.AddAttr:
+			from, to, err := commentChange(change)
+			if err != nil {
+				return err
+			}
+			// Comments are not part of the ALTER command.
 			changes = append(changes, s.tableComment(modify, modify.T, to, from))
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %T", change)
@@ -610,6 +623,12 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					return errors.New("unknown check constraint change")
 				}
 				reverse = append(reverse, &schema.ModifyCheck{
+					From: change.To,
+					To:   change.From,
+				})
+			case *schema.ModifyAttr:
+				s.alterTableAttr(b, change)
+				reverse = append(reverse, &schema.ModifyAttr{
 					From: change.To,
 					To:   change.From,
 				})
