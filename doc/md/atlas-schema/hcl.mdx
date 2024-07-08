@@ -155,11 +155,8 @@ table "products" {
 
 ### Partitions
 
-Table partitioning refers to splitting logical large tables into smaller physical ones.
-
-:::note
-Partitions are currently supported only by the PostgreSQL driver. Support for the remaining drivers will be added in future versions.
-:::
+The `partition` option is a PostgreSQL-specific option that allows defining table partitioning. Table partitioning refers
+to splitting logical large tables into smaller physical ones.
 
 ```hcl
 table "logs" {
@@ -170,10 +167,12 @@ table "logs" {
   column "text" {
     type = integer
   }
+  // highlight-start
   partition {
     type = RANGE
     columns = [column.date]
   }
+  // highlight-end
 }
 
 table "metrics" {
@@ -184,6 +183,7 @@ table "metrics" {
   column "y" {
     type = integer
   }
+  // highlight-start
   partition {
     type = RANGE
     by {
@@ -193,10 +193,55 @@ table "metrics" {
       expr = "floor(y)"
     }
   }
+  // highlight-end
 }
 ```
 
-### Storage Engine
+### Row Level Security
+
+The `row_security` option is a PostgreSQL-specific option that allows enabling row-level security policies for a table.
+
+```hcl
+table "users" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
+  // highlight-start
+  row_security {
+    enabled  = true // ENABLE ROW LEVEL SECURITY
+    enforced = true // FORCE ROW LEVEL SECURITY
+  }
+  // highlight-end
+}
+```
+
+:::note Defining Policies
+To enable define row-level security policies for a table, refer to the [policy](#row-level-security-policy) example.
+:::
+
+### Table Qualification
+
+In some cases, an Atlas DDL document may contain multiple tables of the same name. This usually happens
+when the same table name appears in two different schemas. In these cases, the table names must be
+disambiguated by using resource [qualifiers](/guides/ddl.md#qualifiers). The following document describes a
+database that contains two schemas named `a` and `b`, and both of them contain a table named `users`.
+
+```hcl
+schema "a" {}
+schema "b" {}
+
+table "a" "users" {
+  schema = schema.a
+  // .. columns
+}
+table "b" "users" {
+  schema = schema.b
+  // .. columns
+}
+```
+
+#### Storage Engine
 
 The `engine` attribute allows for overriding the default storage engine of the table. Supported by MySQL and MariaDB.
 
@@ -220,83 +265,46 @@ table "orders" {
 }
 ```
 
-### Table Qualification
+#### Distribution
 
-In some cases, an Atlas DDL document may contain multiple tables of the same name. This usually happens
-when the same table name appears in two different schemas. In these cases, the table names must be
-disambiguated by using resource [qualifiers](/guides/ddl.md#qualifiers). The following document describes a
-database that contains two schemas named `a` and `b`, and both of them contain a table named `users`.
+The `distribution` block is a Redshift-specific option that allows specifying the distribution method of the table.
 
-```hcl
-schema "a" {}
-schema "b" {}
-
-table "a" "users" {
-  schema = schema.a
-  // .. columns
-}
-table "b" "users" {
-  schema = schema.b
-  // .. columns
-}
-```
-
-### Distribution
-
-The `distribution` attribute allows for specifying the distribution method of the table.
-
-:::note
-Distribution is currently supported only by the Redshift driver. Support for the remaining drivers will be added in future versions.
-:::
-
-<Tabs>
-<TabItem label="Redshift" value="redshift">
 
 ```hcl
 table "users" {
   schema = schema.public
-  // highlight-next-line
   column "id" {
     type = int
   }
+  // highlight-start
   distribution {
-    style = KEY // EVEN | ALL | AUTO
+    style = KEY     // EVEN | ALL | AUTO
     key = column.id // only for KEY style
   }
+  // highlight-end
 }
 ```
 
-</TabItem>
-</Tabs>
 
-### Sorting
+#### Sorting
 
-The `sort` attribute allows for specifying the sorting method of the table.
-
-:::note
-Sorting is currently supported only by the Redshift driver. Support for the remaining drivers will be added in future versions.
-:::
-
-<Tabs>
-<TabItem label="Redshift" value="redshift">
+The `sort` block is a Redshift-specific option that allows specifying the sorting method of the table.
 
 ```hcl
 table "users" {
   schema = schema.public
-  // highlight-next-line
   column "id" {
     type = int
   }
+  // highlight-start
   sort {
     style = COMPOUND // INTERLEAVED | COMPOUND | AUTO
     columns = [column.id]
   }
+  // highlight-end
 }
 
 ```
-
-</TabItem>
-</Tabs>
 
 ## View
 
@@ -1112,7 +1120,6 @@ trigger "audit_log_trigger" {
 }
 ```
 
-
 ## Event Trigger
 
 :::info LOGIN REQUIRED
@@ -1671,6 +1678,54 @@ table "users" {
 
 schema "public" {
   comment = "standard public schema"
+}
+```
+
+## Policies {#row-level-security-policy}
+
+:::info LOGIN REQUIRED
+Policies are currently available to logged-in users only. To use this feature, run:
+```
+atlas login
+```
+:::
+
+The `policy` block allows defining [row-level security policies](https://www.postgresql.org/docs/current/ddl-rowsecurity.html). Supported by PostgreSQL.
+
+```hcl title="schema.pg.hcl"
+policy "sales_rep_access" {
+  on    = table.orders
+  for   = SELECT
+  to    = [PUBLIC]
+  using = "(sales_rep_id = (CURRENT_USER)::integer)"
+}
+
+policy "restrict_sales_rep_updates" {
+  on      = table.orders
+  as      = RESTRICTIVE
+  for     = UPDATE
+  to      = ["custom_role"]
+  check   = "(sales_rep_id = (CURRENT_USER)::integer)"
+  comment = "This is a restrictive policy"
+}
+```
+
+:::note Enabling Row-Level Security
+To enable and force row-level security on a table, refer to the [table row-level security](#row-level-security) example.
+:::
+
+### Computed Policies
+
+To configure the same policy for multiple tables, users can utilize the `for_each` meta-argument. By setting it
+up, a `policy` block will be computed for each item in the provided value. Note that `for_each` accepts either a `map`
+or a `set` of references.
+
+```hcl title="schema.pg.hcl" {2-3}
+policy "tenant_access_policy" {
+  for_each = [table.users, table.orders, table.payments]
+  on       = each.value
+  as       = RESTRICTIVE
+  using    = "tenant_isolation_policy()"
 }
 ```
 
