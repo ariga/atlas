@@ -221,6 +221,11 @@ func (r *Resource) as(target any) error {
 		children := childrenOfType(r, childType)
 		extras.Children = append(extras.Children, children...)
 	}
+	// In case the resource contains a remain (DefaultExtension)
+	// field, attach to it the position.
+	if r.rang != nil && rem.Remain() != nil {
+		rem.Remain().SetRange(r.rang)
+	}
 	return nil
 }
 
