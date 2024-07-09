@@ -12,14 +12,15 @@ diffing, migration planning and execution, and more. For the basic and common us
 Atlas is more than enough.
 
 In addition, Atlas also offers a number of advanced features that are only available in proprietary versions. The
-vast majority of these features are available in the Free Plan of Atlas, which you can use for free by creating
-an Atlas account. The Free Plan has some limitations, but those pertain mostly to the number of projects you can
-use in [Atlas Cloud](https://atlasgo.cloud).
+vast majority of these features are available in the Pro Plan of Atlas, which you can use for free by creating
+an Atlas account. 
 
-### Free Plan
+### Pro Plan
 
-The Free Plan is available to all Atlas users. Create your Atlas Free Plan account by running the following command
-and following the instructions on the screen:
+Users can upgrade to the Pro Plan for free, granting them up to 3 seats per company. After that limit, users can
+purchase additional seats. To learn more about our plans and pricing, visit the [Atlas Pricing Page](/pricing).
+
+Create your Atlas Pro account by running the command below and following the instructions on the screen:
 
 ```bash
 atlas login
@@ -38,15 +39,19 @@ This document compares the CLI features available to users who are logged in to 
 | Versioned Migrations   | Open           |
 | Declarative Migrations | Open           |
 | Migration Linting      | Open           |
-| Migration Checkpoints  | Requires Login |
-| Schema Visualization   | Requires Login |
-| Interactive Migrations | Requires Login |
+| Pre-migration checks   | Pro            |
+| Migration Checkpoints  | Pro            |
+| Schema Visualization   | Pro            |
+| Interactive Migrations | Pro            |
+| Testing Framework      | Pro            |
 
-Schema Visualization as well as Interactive Migrations are features that require connectivity to the cloud and hence are not available in the open-source version of Atlas.
+Schema Visualization as well as Interactive Migrations are features that require connectivity to the cloud and hence
+are not available in the open-source version of Atlas.
 
 ### Database Support
 
-All common open-source RDBMS are supported in all versions of Atlas. In addition, Atlas also supports SQL Server and ClickHouse in the Free Plan of Atlas Cloud.
+All common open-source RDBMS are supported in all versions of Atlas. In addition, Atlas also supports SQL Server, ClickHouse
+and Redshift in the Pro Plan.
 
 | Driver     | Availability          |
 |------------|-----------------------|
@@ -55,29 +60,32 @@ All common open-source RDBMS are supported in all versions of Atlas. In addition
 | MariaDB    | Open                  |
 | SQLite     | Open                  |
 | LibSQL     | Open                  |
-| SQL Server | Requires Login        |
-| ClickHouse | Requires Login (Beta) |
+| SQL Server | Pro                   |
+| ClickHouse | Pro                   |
+| Redshift   | Pro                   |
 
 ### Database Features
 
-Most common database features are supported in all versions of Atlas. More advanced features are available by running `atlas login`.
+Most common database features are supported in all versions of Atlas. More advanced features are available
+to users of the Pro Plan.
 
-| Feature                    | Availability   |
-|----------------------------|----------------|
-| Tables and Columns         | Open           |
-| Indexes                    | Open           |
-| Foreign Keys               | Open           |
-| Constraints                | Open           |
-| Partitions                 | Open           |
-| Views                      | Requires Login |
-| Materialized Views         | Requires Login |
-| Stored Procedures          | Requires Login |
-| Functions                  | Requires Login |
-| Triggers                   | Requires Login |
-| Sequences (Postgres)       | Requires Login |
-| Composite Types (Postgres) | Requires Login |
-| Domain Types (Postgres)    | Requires Login |
-| Extensions (Postgres)      | Requires Login |
+| Feature                       | Availability   |
+|-------------------------------|----------------|
+| Tables and Columns            | Open           |
+| Indexes                       | Open           |
+| Foreign Keys                  | Open           |
+| Constraints                   | Open           |
+| Partitions                    | Open           |
+| Views                         | Pro            |
+| Materialized Views            | Pro            |
+| Stored Procedures             | Pro            |
+| Functions                     | Pro            |
+| Triggers                      | Pro            |
+| Sequences (Postgres)          | Pro            |
+| Composite Types (Postgres)    | Pro            |
+| Domain Types (Postgres)       | Pro            |
+| Extensions (Postgres)         | Pro            |
+| Row-level Security (Postgres) | Pro            |
 
 ### Data Sources
 
@@ -94,5 +102,4 @@ Most common database features are supported in all versions of Atlas. More advan
 | Template Dir       | Open           |
 | AWS RDS Token      | Open           |
 | GCP CloudSQL Token | Open           |
-| Composite Schema   | Requires Login |
-
+| Composite Schema   | Pro            |
