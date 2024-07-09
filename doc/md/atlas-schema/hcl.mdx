@@ -343,7 +343,7 @@ view "comedies" {
 ```
 
 
-:::info <a class="sticky-anchor" id={"scope"} href={"#testing-views"}>Testing Views</a>
+:::info <a class="sticky-anchor" id={"#testing-views"} href={"#testing-views"}>Testing Views</a>
 
 Atlas testing framework allows you to write unit tests for your views. The following example demonstrates how
 to write tests for the `clean_users` view defined above. For more detail, read the [schema testing docs](/testing/schema).
@@ -360,7 +360,6 @@ test "schema" "view" {
   log {
     message = "Seeded the database"
   }
-
   # Expected exec to pass.
   exec {
     sql = <<SQL
@@ -371,7 +370,6 @@ test "schema" "view" {
   log {
     message = "Tested the view"
   }
-
   # Validates data.
   exec {
     sql = "SELECT id, name FROM clean_users;"
@@ -396,30 +394,18 @@ TAB
 ```hcl title="schema.test.hcl"
 test "schema" "view" {
   for_each = [
-    {
-      id = 1,
-      name = "Alice"
-    },
-    {
-      id = 2,
-      name = "Bob"
-    },
-    {
-      id = 3,
-      name = "Charlie"
-    }
+    {id = 1, name = "Alice"},
+    {id = 2, name = "Bob"},
+    {id = 3, name = "Charlie"}
   ]
-
   # Seed the `users` table.
   exec {
     sql = "INSERT INTO users (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');"
   }
-
   # Query the `clean_users` view.
   exec {
     sql = "SELECT id, name FROM clean_users WHERE id IN (1, 2, 3);"
   }
-
   # Check each ID returns the right user.
   log {
     message = "Testing ${each.value.id} -> ${each.value.name}"
