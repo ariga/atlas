@@ -80,8 +80,8 @@ module.exports = {
           position: 'left'
         },
         {
-          to: 'support',
-          label: 'Support',
+          to: 'pricing',
+          label: 'Pricing',
           position: 'left',
         },
         {

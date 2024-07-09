@@ -34,6 +34,7 @@ func init() {
 		schemaDiffCmd(),
 		schemaFmtCmd(),
 		schemaInspectCmd(),
+		unsupportedCommand("schema", "test"),
 	)
 	Root.AddCommand(schemaCmd)
 	migrateCmd := migrateCmd()
@@ -47,8 +48,44 @@ func init() {
 		migrateSetCmd(),
 		migrateStatusCmd(),
 		migrateValidateCmd(),
+		unsupportedCommand("migrate", "checkpoint"),
+		unsupportedCommand("migrate", "down"),
+		unsupportedCommand("migrate", "rebase"),
+		unsupportedCommand("migrate", "rm"),
+		unsupportedCommand("migrate", "edit"),
+		unsupportedCommand("migrate", "push"),
+		unsupportedCommand("migrate", "test"),
 	)
 	Root.AddCommand(migrateCmd)
+}
+
+// unsupportedCommand create a stub command that reports
+// the command is not supported by this build.
+func unsupportedCommand(cmd, sub string) *cobra.Command {
+	s := fmt.Sprintf(
+		`Command %s %s is not supported by the community version.
+
+To install the non-community version of Atlas, use the following command:
+
+	curl -sSf https://atlasgo.sh | sh
+
+Or, visit the website to see all installation options:
+
+	https://atlasgo.io/docs#installation
+`,
+		cmd, sub,
+	)
+	c := &cobra.Command{
+		Hidden: true,
+		Use:    fmt.Sprintf("%s is not supported by this build", sub),
+		Short:  s,
+		Long:   s,
+		RunE: RunE(func(*cobra.Command, []string) error {
+			return AbortErrorf(s)
+		}),
+	}
+	c.SetHelpTemplate(s + "\n")
+	return c
 }
 
 // Project represents an atlas.hcl project config file.
