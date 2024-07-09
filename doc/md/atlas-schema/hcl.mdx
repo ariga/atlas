@@ -265,10 +265,33 @@ table "orders" {
 }
 ```
 
+#### System-Versioned Tables
+
+The `system_versioned` attribute allows marking a table as a [system-versioned table](https://mariadb.com/kb/en/system-versioned-tables/).
+Supported by MariaDB.
+
+:::info [Atlas Pro Feature](/features#pro-plan)
+System-Versioned tables are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
+```
+atlas login
+```
+:::
+
+```hcl
+table "f" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
+  // ...
+  //highlight-next-line
+  system_versioned = true
+}
+```
+
 #### Distribution
 
 The `distribution` block is a Redshift-specific option that allows specifying the distribution method of the table.
-
 
 ```hcl
 table "users" {
@@ -311,8 +334,8 @@ table "users" {
 A `view` is a virtual table in the database, defined by a statement that queries rows from one or more existing
 tables or views.
 
-:::info LOGIN REQUIRED
-Views are currently available to logged-in users only. To use this feature, run:
+:::info [Atlas Pro Feature](/features#pro-plan)
+Views are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```
@@ -431,8 +454,8 @@ test "schema" "view" {
 A `materialized` view is a table-like structure that holds the results of a query. Unlike a regular view, the results of
 a materialized view are stored in the database and can be refreshed periodically to reflect changes in the underlying data.
 
-:::info LOGIN REQUIRED
-Materialized views are currently available to logged-in users only. To use this feature, run:
+:::info [Atlas Pro Feature](/features#pro-plan)
+Materialized views are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```
@@ -1037,8 +1060,8 @@ exclude "excl_speaker_during" {
 
 ## Trigger
 
-:::info LOGIN REQUIRED
-Triggers are currently available to logged-in users only. To use this feature, run:
+:::info [Atlas Pro Feature](/features#pro-plan)
+Triggers are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```
@@ -1198,8 +1221,8 @@ trigger "audit_log_trigger" {
 
 ## Event Trigger
 
-:::info LOGIN REQUIRED
-Event Triggers are currently available to logged-in users only. To use this feature, run:
+:::info [Atlas Pro Feature](/features#pro-plan)
+Event Triggers are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```
@@ -1225,8 +1248,8 @@ event_trigger "record_table_creation" {
 
 ## Function
 
-:::info LOGIN REQUIRED
-Functions are currently available to logged-in users only. To use this feature, run:
+:::info [Atlas Pro Feature](/features#pro-plan)
+Functions are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```
@@ -1509,8 +1532,8 @@ function "sum_squares_sfunc" {
 
 ## Procedure
 
-:::info LOGIN REQUIRED
-Procedures are currently available to logged-in users only. To use this feature, run:
+:::info [Atlas Pro Feature](/features#pro-plan)
+Procedures are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```
@@ -1677,8 +1700,8 @@ procedure "p8" {
 
 ## Domain
 
-:::info LOGIN REQUIRED
-Domains are currently available to logged-in users only. To use this feature, run:
+:::info [Atlas Pro Feature](/features#pro-plan)
+Domains are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```
@@ -1725,8 +1748,8 @@ schema "public" {
 
 ## Composite Type
 
-:::info LOGIN REQUIRED
-Composite types are currently available to logged-in users only. To use this feature, run:
+:::info [Atlas Pro Feature](/features#pro-plan)
+Composite types are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```
@@ -1759,8 +1782,8 @@ schema "public" {
 
 ## Policies {#row-level-security-policy}
 
-:::info LOGIN REQUIRED
-Policies are currently available to logged-in users only. To use this feature, run:
+:::info [Atlas Pro Feature](/features#pro-plan)
+Policies are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```
@@ -1807,8 +1830,8 @@ policy "tenant_access_policy" {
 
 ## Sequence
 
-:::info LOGIN REQUIRED
-Sequences are currently available to logged-in users only. To use this feature, run:
+:::info [Atlas Pro Feature](/features#pro-plan)
+Sequences are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```
@@ -1947,8 +1970,8 @@ table "t2" {
 
 ## Extension
 
-:::info LOGIN REQUIRED
-Extensions are currently available to logged-in users only. To use this feature, run:
+:::info [Atlas Pro Feature](/features#pro-plan)
+Extensions are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```

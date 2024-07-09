@@ -300,7 +300,7 @@ From a querying perspective, views and tables are identical. For this reason, GO
 However, defining and managing views has previously had [partial support](https://github.com/go-gorm/gorm/issues/4966).
 The Atlas GORM Provider provides an API that allows you to define database views in the form of GORM models and with the help of [Atlas](https://atlasgo.io/getting-started), migration files can be automatically generated for them.
 
-> The view feature is only available for logged-in users; run `atlas login` if you haven't already.
+> The view feature is only available for [Atlas Pro users](/features#pro-plan); run `atlas login` if you haven't already.
 
 To define a Go struct as a database `VIEW`, implement the [`ViewDefiner`](https://pkg.go.dev/ariga.io/atlas-provider-gorm/gormschema#ViewDefiner) interface. 
 The `ViewDef()` method receives the dialect argument to determine the SQL dialect to generate the view. It is helpful for generating the view definition for different SQL dialects. The `gormschema` package provide two styles for defining a view's base query:
