@@ -1101,6 +1101,10 @@ mixed3 = ["string1", "string1"]
 func Test_WithPos(t *testing.T) {
 	var (
 		doc struct {
+			Bar struct {
+				A int `spec:"a"`
+				DefaultExtension
+			} `spec:"bar"`
 			DefaultExtension
 		}
 		b = []byte(`
@@ -1111,6 +1115,9 @@ foo {
   }
 }
 baz = 1
+bar {
+  a = 1
+}
 `)
 	)
 	require.NoError(t, New(WithPos()).EvalBytes(b, &doc, nil))
@@ -1123,6 +1130,7 @@ baz = 1
 	require.Equal(t, 3, rs[1].Range().Start.Line)
 	require.Equal(t, 4, rs[1].Children[0].Range().Start.Line)
 	require.Equal(t, 5, rs[1].Children[0].Attrs[0].Range().Start.Line)
+	require.NotNil(t, doc.Bar.Extra.Range(), "position should be attached to the resource")
 }
 
 func TestExtendedBlockDef(t *testing.T) {
