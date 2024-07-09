@@ -63,7 +63,7 @@ func init() {
 // the command is not supported by this build.
 func unsupportedCommand(cmd, sub string) *cobra.Command {
 	s := fmt.Sprintf(
-		`Command %s %s is not supported by the community version.
+		`'atlas %s %s' is not supported by the community version.
 
 To install the non-community version of Atlas, use the following command:
 
