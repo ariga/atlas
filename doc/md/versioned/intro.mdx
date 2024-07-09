@@ -235,29 +235,9 @@ the [Atlas Schema Registry](/cloud/features/registry), much like how Docker imag
 First, [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time, you'll be
 prompted to create both an account and a workspace (organization):
 
-<Tabs>
-<TabItem value="web" label="Via Web">
-
 ```bash
 atlas login
 ```
-
-</TabItem>
-<TabItem value="token" label="Via Token">
-
-```bash
-atlas login --token "ATLAS_TOKEN"
-```
-
-</TabItem>
-<TabItem value="env-var" label="Via Environment Variable">
-
-```bash
-ATLAS_TOKEN="ATLAS_TOKEN" atlas login
-```
-
-</TabItem>
-</Tabs>
 
 After logging in, let's name our new migration project `app` and run `atlas migrate push`:
 
