@@ -48,7 +48,7 @@ ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 ```
 
 This command enables RLS on the employees table. With RLS enabled, PostgreSQL will check the policies defined for
-this table whenever a user attempts to access or modify its rows.
+this table whenever a user attempts to access or modify existing rows, or insert new ones.
 
 When a user executes a `SELECT` query on the employees table, PostgreSQL evaluates the `employee_policy`. If the user's
 PostgreSQL role (username) matches the employee_role column value in a row, the row is included in the query result.
@@ -142,7 +142,6 @@ Atlas now comes in three tiers:
   enough for many of our users).
 * **Pro (previously "Business")** - An enhanced version of our CLI, which includes support for advanced database
   features and drivers.
-
   It will cost $9/month/user, but users get their first 3 seats per company for free when they sign up. Pro users
   also have access to Atlas Cloud (pricing remains the same).
 * **Enterprise** - our enterprise tier, targeted mostly at larger organizations or teams in regulated industries with
@@ -154,8 +153,4 @@ To learn more about our new plans, head over to our [updated pricing page](/pric
 
 That's all for this release! We hope you try out (and enjoy) all of these new features and find them useful.
 As always, we would love to hear your feedback and suggestions on our [Discord server](https://discord.com/invite/zZ6sWVg6NT).
-
-
-
-
 
