@@ -277,7 +277,7 @@ module.exports = {
                 {
                     type: 'doc',
                     id: 'guides/testing/testing-views',
-                    label: 'Database Views'
+                    label: 'Testing Views'
                 }
             ]
         },
