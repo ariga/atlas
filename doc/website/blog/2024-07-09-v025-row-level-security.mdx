@@ -31,7 +31,7 @@ control rules on a per-row basis.
 For example, you can create a policy that allows only employees to see their own records in an employees table.
 The policy could look like this:
 
-```sql
+```postgresql
 CREATE POLICY employee_policy ON employees
   FOR SELECT
   USING (current_user = employee_role);
@@ -43,7 +43,7 @@ means that a user can only select rows where the employee_role column matches th
 
 Next, database administrators typically run:
 
-```sql
+```postgresql
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 ```
 
@@ -64,7 +64,7 @@ For instance, if the employees table contains the following data:
 
 When the user alice runs `SELECT * FROM employees`, PostgreSQL applies the policy:
 
-```sql
+```postgresql
 SELECT * FROM employees WHERE current_user = employee_role;
 ```
 
