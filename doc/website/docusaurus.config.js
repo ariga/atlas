@@ -84,11 +84,6 @@ module.exports = {
           label: 'Pricing',
           position: 'left',
         },
-        {
-          to: '/pricing',
-          label: 'Pricing',
-          position: 'left',
-        },
       ],
     },
     footer,
