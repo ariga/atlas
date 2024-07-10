@@ -17,7 +17,7 @@ slug: /guides/migration-tools/goose-import
 * [Install Goose](https://github.com/pressly/goose#install)
 * An existing project with a `goose` migrations directory.
 * Docker
-* Atlas ([installation guide](https://atlasgo.io/getting-started/#installation))
+* Atlas ([installation guide](/getting-started#installation))
 
 ## Convert the migration files
 

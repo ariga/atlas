@@ -30,7 +30,7 @@ golang-migrate users.
 ### Prerequisites
 
 * An existing project with a `golang-migrate` migrations directory.
-* Atlas ([installation guide](https://atlasgo.io/getting-started/#installation))
+* Atlas ([installation guide](/getting-started#installation))
 * Docker
 
 ### Step 1: Create a project configuration file
