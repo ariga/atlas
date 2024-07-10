@@ -273,6 +273,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/testing/testing-github-actions',
                     label: 'With GitHub Actions'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/testing/testing-views',
+                    label: 'Testing Views'
                 }
             ]
         },
