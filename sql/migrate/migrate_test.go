@@ -259,6 +259,45 @@ func TestExecutor_Replay(t *testing.T) {
 	drv.realm = schema.Realm{Schemas: []*schema.Schema{{Name: "schema"}}}
 	_, err = ex.Replay(ctx, migrate.RealmConn(drv, nil))
 	require.ErrorAs(t, err, new(*migrate.NotCleanError))
+
+	// Replay before/after checkpoint.
+	mem := &migrate.MemDir{}
+	require.NoError(t,
+		mem.CopyFiles([]migrate.File{
+			migrate.NewLocalFile("1.sql", []byte("CREATE TABLE t1(c int);")),
+			migrate.NewLocalFile("2.sql", []byte("CREATE TABLE t2(c int);")),
+			migrate.NewLocalFile("3_checkpoint.sql", []byte("-- atlas:checkpoint v1\n\nCREATE TABLE t1(c int);\nCREATE TABLE t2(c int);")),
+			migrate.NewLocalFile("4.sql", []byte("CREATE TABLE t3(c int);")),
+		}),
+	)
+	for v, stmts := range map[string][]string{
+		"1": {"CREATE TABLE t1(c int);"},
+		"2": {"CREATE TABLE t1(c int);", "CREATE TABLE t2(c int);"},
+		"3": {"CREATE TABLE t1(c int);", "CREATE TABLE t2(c int);"},
+		"4": {"CREATE TABLE t1(c int);", "CREATE TABLE t2(c int);", "CREATE TABLE t3(c int);"},
+	} {
+		*drv = mockDriver{}
+		ex, err = migrate.NewExecutor(drv, mem, migrate.NopRevisionReadWriter{})
+		require.NoError(t, err)
+		_, err = ex.Replay(ctx, migrate.RealmConn(drv, nil), migrate.ReplayToVersion(v))
+		require.NoError(t, err)
+		require.Equalf(t, stmts, drv.executed, "mismatch at version %s", v)
+	}
+
+	// ExecuteTo in steps.
+	*drv = mockDriver{}
+	ex, err = migrate.NewExecutor(drv, mem, &mockRevisionReadWriter{})
+	require.NoError(t, err)
+	require.NoError(t, ex.ExecuteTo(ctx, "1"))
+	require.Equal(t, []string{"CREATE TABLE t1(c int);"}, drv.executed)
+	require.ErrorIs(t, ex.ExecuteTo(ctx, "1"), migrate.ErrNoPendingFiles)
+	require.NoError(t, ex.ExecuteTo(ctx, "2"))
+	require.Equal(t, []string{"CREATE TABLE t1(c int);", "CREATE TABLE t2(c int);"}, drv.executed)
+	require.ErrorIs(t, ex.ExecuteTo(ctx, "1"), migrate.ErrNoPendingFiles)
+	require.ErrorIs(t, ex.ExecuteTo(ctx, "2"), migrate.ErrNoPendingFiles)
+	require.NoError(t, ex.ExecuteTo(ctx, "4"))
+	require.Equal(t, []string{"CREATE TABLE t1(c int);", "CREATE TABLE t2(c int);", "CREATE TABLE t3(c int);"}, drv.executed)
+	require.ErrorIs(t, ex.ExecuteTo(ctx, "4"), migrate.ErrNoPendingFiles)
 }
 
 func TestExecutor_Pending(t *testing.T) {
@@ -523,7 +562,7 @@ func TestExecutor(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ex)
 	require.ErrorIs(t, ex.ExecuteN(context.Background(), 0), migrate.ErrChecksumMismatch)
-	require.ErrorIs(t, ex.ExecuteTo(context.Background(), ""), migrate.ErrChecksumMismatch)
+	require.EqualError(t, ex.ExecuteTo(context.Background(), "1"), `sql/migrate: migration with version "1" not found`)
 
 	// Prerequisites.
 	var (

@@ -919,18 +919,47 @@ func (e *Executor) ExecuteN(ctx context.Context, n int) (err error) {
 
 // ExecuteTo executes all pending migration files up to and including version.
 func (e *Executor) ExecuteTo(ctx context.Context, version string) (err error) {
-	pending, err := e.Pending(ctx)
+	files, err := e.dir.Files()
 	if err != nil {
-		return err
+		return fmt.Errorf("sql/migrate: read migration directory files: %w", err)
 	}
-	// Strip pending files greater given version.
-	switch idx := FilesLastIndex(pending, func(file File) bool {
-		return file.Version() == version
-	}); idx {
-	case -1:
+	idx := FilesLastIndex(files, func(f File) bool {
+		return f.Version() == version
+	})
+	if idx == -1 {
 		return fmt.Errorf("sql/migrate: migration with version %q not found", version)
+	}
+	var pending []File
+	switch beforeCk := slices.ContainsFunc(files[idx+1:], func(f File) bool {
+		c, ok := f.(CheckpointFile)
+		return ok && c.IsCheckpoint()
+	}); {
+	// If the version we want to migrate to is before a
+	// checkpoint, it will be skipped by Pending.
+	case beforeCk:
+		dir, mem := e.dir, &MemDir{}
+		if err := mem.CopyFiles(files[:idx+1]); err != nil {
+			return fmt.Errorf("sql/migrate: copy files to memory: %w", err)
+		}
+		e.dir = mem
+		pending, err = e.Pending(ctx)
+		e.dir = dir
+		if err != nil {
+			return err
+		}
 	default:
-		pending = pending[:idx+1]
+		if pending, err = e.Pending(ctx); err != nil {
+			return err
+		}
+		// Strip pending files greater given version.
+		switch idx := FilesLastIndex(pending, func(file File) bool {
+			return file.Version() == version
+		}); idx {
+		case -1:
+			return fmt.Errorf("sql/migrate: migration with version %q not found", version)
+		default:
+			pending = pending[:idx+1]
+		}
 	}
 	return e.exec(ctx, pending)
 }
