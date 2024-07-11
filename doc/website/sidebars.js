@@ -278,6 +278,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/testing/testing-views',
                     label: 'Testing Views'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/testing/testing-functions',
+                    label: 'Testing Functions'
                 }
             ]
         },
