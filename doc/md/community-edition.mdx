@@ -70,3 +70,52 @@ If you want to manually install the Atlas CLI, pick one of the below builds suit
 
 </TabItem>
 </Tabs>
+
+## Community vs Other Editions
+
+### License
+
+The Community Edition of Atlas is licensed under the Apache 2.0 license, while the Open Edition is based on both the
+open-source codebase with some additional proprietary features.  Usage of the Open Edition is free under the terms of the
+[Atlas EULA](https://ariga.io/legal/atlas/eula).
+
+### Features Unavailable in the Community Edition
+
+Some commands are only available in the Open and Pro Editions:
+
+#### Versioned Migrations
+
+- `migrate checkpoint` - Create a checkpoint for the current state of the database.
+- `migrate down` - Roll back the last migration.
+- `migrate rebase` - Reverting applied migration files from the database.
+- `migrate edit` - Edit a migration file.
+- `migrate rm` - Remove a migration file.
+- `migrate push` - Push the migration files to the Schema Registry.
+- `migrate test` - Run tests using the Atlas Testing Framework.
+
+To use these features, please use the Open or Pro Edition of Atlas.
+
+#### Declarative Migrations
+
+- `schema test` - Run tests using the Atlas Testing Framework.
+
+#### Database Features
+
+The following database features are not supported in the Community Edition:
+
+- Views
+- Triggers
+- Functions and Procedures
+- Materialized Views
+- Row-level security (RLS)
+- Domain types
+- Extensions
+- Sequences
+
+#### Drivers
+
+The following drivers are not supported in the Community Edition:
+
+- SQL Server
+- ClickHouse
+- Redshift
