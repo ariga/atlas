@@ -14,6 +14,12 @@ on:
       - 'doc/**'
       - 'ops/**'
 {{ .Concurrency }}
+{{- if .GlobalEnv }}
+  env:
+{{- end }}
+{{- range .GlobalEnv }}
+  {{ .K }}: {{ .V }}
+{{- end }}
 jobs:
   lint:
     runs-on: {{ $.Runner }}
