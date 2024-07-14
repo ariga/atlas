@@ -15,7 +15,7 @@ on:
       - 'ops/**'
 {{ .Concurrency }}
 {{- if .GlobalEnv }}
-  env:
+env:
 {{- end }}
 {{- range .GlobalEnv }}
   {{ .K }}: {{ .V }}
