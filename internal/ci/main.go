@@ -196,6 +196,7 @@ var data = struct {
 	GoVersions                   goVersions
 	Concurrency                  concurrency
 	SharedSteps                  []Step
+	GlobalEnv                    []struct{ K, V string }
 }{
 	Concurrency: concurrency{
 		group:  "${{ github.workflow }}-${{ github.head_ref || github.run_id }}",
