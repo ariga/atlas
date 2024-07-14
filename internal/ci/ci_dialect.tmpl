@@ -5,6 +5,12 @@ name: CI - Dialect Tests{{ with $.Flavor }} - {{ . }} Edition{{ end }}
 on:
   workflow_call:
 {{ .Concurrency }}
+{{- if .GlobalEnv }}
+env:
+{{- end }}
+{{- range .GlobalEnv }}
+  {{ .K }}: {{ .V }}
+{{- end }}
 jobs:
 {{- range $.Jobs }}
   integration-{{ .Version }}:
