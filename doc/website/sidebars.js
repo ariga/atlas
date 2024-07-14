@@ -283,6 +283,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/testing/testing-functions',
                     label: 'Testing Functions'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/testing/testing-domains',
+                    label: 'Testing Domains'
                 }
             ]
         },
