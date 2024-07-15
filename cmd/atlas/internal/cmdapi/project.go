@@ -396,8 +396,13 @@ func (e *Env) DiffOptions() []schema.DiffOption {
 	return e.Diff.Options()
 }
 
-// Sources returns the paths containing the Atlas schema.
+// Sources returns the paths containing the Atlas desired schema.
+// The "src" attribute predates the "schema" block. If the "schema"
+// is defined, it takes precedence over the "src" attribute.
 func (e *Env) Sources() ([]string, error) {
+	if e.Schema != nil && e.Schema.Src != "" {
+		return []string{e.Schema.Src}, nil
+	}
 	attr, exists := e.Attr("src")
 	if !exists {
 		return nil, nil

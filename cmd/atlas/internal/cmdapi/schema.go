@@ -675,7 +675,7 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 			return err
 		}
 	case "push":
-		if err := maySetFlag(cmd, flagTo, strings.Join(srcs, ",")); err != nil {
+		if err := maySetFlag(cmd, flagURL, strings.Join(srcs, ",")); err != nil {
 			return err
 		}
 	case "test":
