@@ -142,7 +142,7 @@ check each case:
 2. And invalid US Postal Code.
 
 ```hcl title="schema.hcl"
-test "schema" "us_postal_code_validation_valid" {
+test "schema" "us_postal_code_check_valid" {
     parallel = true
     for_each = [
         {input = "12345", expected = "valid"},
@@ -156,7 +156,7 @@ test "schema" "us_postal_code_validation_valid" {
     }
 }
 
-test "schema" "us_postal_code_validation_invalid" {
+test "schema" "us_postal_code_check_invalid" {
     parallel = true
     for_each = [
         {input = "hello", expected = "invalid"},
@@ -165,12 +165,6 @@ test "schema" "us_postal_code_validation_invalid" {
     log {
         message = "Testing postal code: ${each.value.input} -> Expected: ${each.value.expected}"
     }
-    exec {
-        sql = <<-SQL
-        SELECT '${each.value.input}'::us_postal_code
-        WHERE '${each.value.expected}' = 'valid'
-        SQL
-    }
     catch {
         sql = "SELECT '${each.value.input}'::us_postal_code"
     }
@@ -178,8 +172,7 @@ test "schema" "us_postal_code_validation_invalid" {
 ```
 
 In the first test, we check postal codes that are supposed to be valid. In the second test,
-we use the [`catch`](/testing/schema#catch-command) command, so that the invalid inputs don't cause
-our test case to fail.
+we use the [`catch`](/testing/schema#catch-command) command, expecting the input to be incorrect.
 
 To run the tests, run:
 

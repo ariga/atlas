@@ -1774,7 +1774,7 @@ test "schema" "postal" {
 <TabItem label="Table-driven Test" value="table-driven">
 
 ```hcl title="schema.hcl"
-test "schema" "us_postal_code_validation_valid" {
+test "schema" "us_postal_code_check_valid" {
   parallel = true
   for_each = [
     {input = "12345", expected = "valid"},
@@ -1788,7 +1788,7 @@ test "schema" "us_postal_code_validation_valid" {
   }
 }
 
-test "schema" "us_postal_code_validation_invalid" {
+test "schema" "us_postal_code_check_invalid" {
   parallel = true
   for_each = [
     {input = "hello", expected = "invalid"},
@@ -1796,12 +1796,6 @@ test "schema" "us_postal_code_validation_invalid" {
   ]
   log {
     message = "Testing postal code: ${each.value.input} -> Expected: ${each.value.expected}"
-  }
-  exec {
-    sql = <<-SQL
-    SELECT '${each.value.input}'::us_postal_code
-    WHERE '${each.value.expected}' = 'valid'
-    SQL
   }
   catch {
     sql = "SELECT '${each.value.input}'::us_postal_code"
