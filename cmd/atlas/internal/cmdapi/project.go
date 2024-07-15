@@ -48,6 +48,9 @@ type (
 		// resources on inspection.
 		Exclude []string `spec:"exclude"`
 
+		// Schema containing the schema configuration of the env.
+		Schema *Schema `spec:"schema"`
+
 		// Migration containing the migration configuration of the env.
 		Migration *Migration `spec:"migration"`
 
@@ -76,6 +79,19 @@ type (
 		ExecOrder       string `spec:"exec_order"`
 		LockTimeout     string `spec:"lock_timeout"`
 		RevisionsSchema string `spec:"revisions_schema"`
+		Repo            *Repo  `spec:"repo"`
+	}
+
+	// Schema represents a schema in the registry.
+	Schema struct {
+		Src  string `spec:"src"` // Source of the schema. Typically, a URL to a computed one.
+		Repo *Repo  `spec:"repo"`
+	}
+
+	// Repo represents a repository in the schema registry
+	// for a schema or migrations directory.
+	Repo struct {
+		Name string `spec:"name"` // Name of the repository.
 	}
 
 	// Lint represents the configuration of migration linting.
@@ -180,6 +196,22 @@ type (
 
 // envScheme defines the scheme that can be used to reference env attributes.
 const envAttrScheme = "env"
+
+// MigrationRepo returns the migration repository name, if set.
+func (e *Env) MigrationRepo() (s string) {
+	if e != nil && e.Migration != nil && e.Migration.Repo != nil {
+		s = e.Migration.Repo.Name
+	}
+	return
+}
+
+// SchemaRepo returns the desired schema repository name, if set.
+func (e *Env) SchemaRepo() (s string) {
+	if e != nil && e.Schema != nil && e.Schema.Repo != nil {
+		s = e.Schema.Repo.Name
+	}
+	return
+}
 
 // VarFromURL returns the string variable (env attribute) from the URL.
 func (e *Env) VarFromURL(s string) (string, error) {
