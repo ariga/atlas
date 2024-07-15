@@ -157,17 +157,17 @@ test "schema" "us_postal_code_check_valid" {
 }
 
 test "schema" "us_postal_code_check_invalid" {
-    parallel = true
-    for_each = [
-        {input = "hello", expected = "invalid"},
-        {input = "123", expected = "invalid"},
-    ]
-    log {
-        message = "Testing postal code: ${each.value.input} -> Expected: ${each.value.expected}"
-    }
-    catch {
-        sql = "SELECT '${each.value.input}'::us_postal_code"
-    }
+  parallel = true
+  for_each = [
+    {input = "hello", expected = "invalid"},
+    {input = "123", expected = "invalid"},
+  ]
+  log {
+    message = "Testing postal code: ${each.value.input} -> Expected: ${each.value.expected}"
+  }
+  catch {
+    sql = "SELECT '${each.value.input}'::us_postal_code"
+  }
 }
 ```
 
