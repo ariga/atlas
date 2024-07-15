@@ -183,13 +183,13 @@ atlas schema test --env dev
 The output should be similar to:
 
 ```testoutput title="Test Output"
--- PASS: us_postal_code_validation_valid/1 (4ms)
+-- PASS: us_postal_code_check_valid/1 (4ms)
     schema.test.hcl:7: Testing postal code: 12345 -> Expected: valid
--- PASS: us_postal_code_validation_valid/2 (10ms)
+-- PASS: us_postal_code_check_valid/2 (10ms)
     schema.test.hcl:7: Testing postal code: 12345-6789 -> Expected: valid
--- PASS: us_postal_code_validation_invalid/2 (12ms)
+-- PASS: us_postal_code_check_invalid/2 (12ms)
     schema.test.hcl:25: Testing postal code: 123 -> Expected: invalid
--- PASS: us_postal_code_validation_invalid/1 (12ms)
+-- PASS: us_postal_code_check_invalid/1 (12ms)
     schema.test.hcl:25: Testing postal code: hello -> Expected: invalid
 PASS
 ```
