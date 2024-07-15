@@ -1,6 +1,6 @@
 ---
 id: testing-domains
-title: Testing Database Domains
+title: Testing Postgres Domains
 slug: /guides/testing/domains
 ---
 
@@ -11,12 +11,11 @@ so testing ensures these elements work correctly and remain intact after changes
 In this guide we will learn how to use Atlas's [`schema test`](/testing/schema) command to test [Postgres Domain Types](https://www.postgresql.org/docs/current/domains.html).
 
 
-## Database Views
-A `domain` is a user-defined data type that is based on an existing data type but with optional constraints and d
-efault values. 
+## Database Domains
+A `domain` is a user-defined data type that is based on an existing data type but with optional constraints and default values.
 
 :::info [Atlas Pro Feature](/features#pro-plan)
-Views are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
+Domains are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
 ```
 atlas login
 ```
@@ -152,7 +151,6 @@ test "schema" "us_postal_code_validation_valid" {
     log {
         message = "Testing postal code: ${each.value.input} -> Expected: ${each.value.expected}"
     }
-
     exec {
         sql = "SELECT '${each.value.input}'::us_postal_code"
     }
@@ -164,20 +162,17 @@ test "schema" "us_postal_code_validation_invalid" {
         {input = "hello", expected = "invalid"},
         {input = "123", expected = "invalid"},
     ]
-
     log {
         message = "Testing postal code: ${each.value.input} -> Expected: ${each.value.expected}"
     }
-
     exec {
         sql = <<-SQL
         SELECT '${each.value.input}'::us_postal_code
         WHERE '${each.value.expected}' = 'valid'
         SQL
     }
-
     catch {
-    sql = "SELECT '${each.value.input}'::us_postal_code"
+        sql = "SELECT '${each.value.input}'::us_postal_code"
     }
 }
 ```
