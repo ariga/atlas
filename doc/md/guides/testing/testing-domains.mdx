@@ -8,12 +8,12 @@ Testing your database schema and migrations is crucial to ensure code behaves as
 and prevent regressions. Databases enforce logic, constraints, and complex relationships,
 so testing ensures these elements work correctly and remain intact after changes.
 
-In this guide we will learn how to use Atlas's [`schema test`](/testing/schema) command to test database domains.
+In this guide we will learn how to use Atlas's [`schema test`](/testing/schema) command to test [Postgres Domain Types](https://www.postgresql.org/docs/current/domains.html).
 
 
 ## Database Views
-A `domain` is a user-defined data type that is based on an existing  data type but with optional constraints and d
-efault values. Supported by PostgreSQL.
+A `domain` is a user-defined data type that is based on an existing data type but with optional constraints and d
+efault values. 
 
 :::info [Atlas Pro Feature](/features#pro-plan)
 Views are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
@@ -27,7 +27,6 @@ atlas login
 
 ### Schema File
 For this example, let's assume we have the following schema, including a domain:
-
 
 ```hcl title="schema.hcl"
 schema "public" {}
