@@ -11,7 +11,7 @@ import TabItem from '@theme/TabItem';
 ordered set of values.
 
 This guide explains how to define a schema field that uses a native PostgreSQL enum type and configure the schema migration
-to manage both Postgres enums and the GORM schema as a single migration unit using Atlas.
+to manage both Postgres enums and the GORM model as a single migration unit using Atlas.
 
 :::info [Atlas Pro Feature](/features#pro-plan)
 Atlas support for [Composite Schema](/atlas-schema/projects#data-source-composite_schema) used in this
@@ -62,7 +62,7 @@ enum "status" {
 </TabItem>
 </Tabs>
 
-2\. In your GORM schema, define an enum field that uses the underlying Postgres `ENUM` type:
+2\. In your GORM model, define an enum field that uses the underlying Postgres `ENUM` type:
 
 ```go title="models.go"
 type Status string
@@ -81,7 +81,7 @@ type User struct {
 ```
 
 3\. In your [`atlas.hcl`](/guides/orms/gorm#standalone-mode) config file, add a `composite_schema` that includes both your custom types defined in
-`schema.sql` and your GORM schema:
+`schema.sql` and your GORM model:
 
 ```hcl title="atlas.hcl"
 data "composite_schema" "app" {
