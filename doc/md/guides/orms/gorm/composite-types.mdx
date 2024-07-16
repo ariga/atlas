@@ -142,7 +142,6 @@ CREATE INDEX "idx_users_deleted_at" ON "users" ("deleted_at");
 CREATE TABLE "addresses" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "street" text NULL, "city" text NULL, "user_id" bigint NULL, PRIMARY KEY ("id"), CONSTRAINT "fk_users_address" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
 -- Create index "idx_addresses_deleted_at" to table: "addresses"
 CREATE INDEX "idx_addresses_deleted_at" ON "addresses" ("deleted_at");
-
 ```
 
 #### Generate Migrations For the Schema
