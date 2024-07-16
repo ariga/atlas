@@ -1,0 +1,191 @@
+---
+title: Using Postgres Enum Types in GORM
+id: enum-types
+slug: enum-types
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+[Enum types](https://www.postgresql.org/docs/current/datatype-enum.html) are data structures that consist of a predefined,
+ordered set of values.
+
+This guide explains how to define a schema field that uses a native PostgreSQL enum type and configure the schema migration
+to manage both Postgres enums and the GORM schema as a single migration unit using Atlas.
+
+:::info [Atlas Pro Feature](/features#pro-plan)
+Atlas support for [Composite Schema](/atlas-schema/projects#data-source-composite_schema) used in this
+guide is available exclusively to Pro users. To use this feature, run:
+```
+atlas login
+```
+:::
+
+## Getting started with Atlas and GORM
+Before we continue to enum types, ensure you have installed the [Atlas GORM Provider](https://github.com/ariga/atlas-provider-gorm)
+on your GORM project.
+
+To set up, follow along the [getting started guide](/guides/orms/gorm) for GORM and Atlas.
+
+## Composite Schema
+
+The GORM package is mostly used for defining tables (our Go types) and interacting with the database. Enum types,
+or any other database objects do not have representation in GORM models - an enum type can be defined once,
+and may be used multiple times in different fields and models.
+
+In order to extend our PostgreSQL schema to include both custom enum types and our GORM types, we configure Atlas to
+read the state of the schema from a [Composite Schema](/atlas-schema/projects#data-source-composite_schema)
+data source. Follow the steps below to configure this for your project:
+
+1\. Create a `schema.sql` that defines the necessary enum type. In the same way, you can configure the composite type in
+[Atlas Schema HCL language](/atlas-schema/hcl-types#composite-type):
+
+<Tabs>
+<TabItem value={"sql"} label={"Using SQL"}>
+
+```sql title="schema.sql"
+CREATE TYPE status AS ENUM ('active', 'inactive', 'pending');
+```
+
+</TabItem>
+<TabItem value={"hcl"} label={"Using HCL"}>
+
+```hcl title="schema.hcl"
+schema "public" {}
+
+enum "status" {
+  schema = schema.public
+  values = ["active", "inactive", "pending"]
+}
+```
+
+</TabItem>
+</Tabs>
+
+2\. In your GORM schema, define an enum field that uses the underlying Postgres `ENUM` type:
+
+```go title="models.go"
+type Status string
+
+const (
+    active     Status = "active"
+    inactive   Status = "inactive"
+    pending    Status = "pending"
+)
+
+type User struct {
+    gorm.Model
+    ID   uint
+    Status Status `gorm:"type:enum('active', 'inactive', 'pending')"`
+}
+```
+
+3\. In your [`atlas.hcl`](/guides/orms/gorm#standalone-mode) config file, add a `composite_schema` that includes both your custom types defined in
+`schema.sql` and your GORM schema:
+
+```hcl title="atlas.hcl"
+data "composite_schema" "app" {
+  # Load first custom types first.
+  schema "public" {
+    url = "file://schema.hcl"
+  }
+  schema "public" {
+    url = data.external_schema.gorm.url
+  }
+}
+
+env "local" {
+  src = data.composite_schema.app.url
+  dev = "docker://postgres/15/dev?search_path=public"
+}
+```
+
+## Usage
+
+After setting up our composite schema, we can get its representation using the `atlas schema inspect` command, generate
+schema migrations for it, apply them to a database, and more. Below are a few commands to get you started with Atlas:
+
+#### Inspect the Schema
+
+The `atlas schema inspect` command is commonly used to inspect databases. However, we can also use it to inspect our
+`composite_schema` and print the SQL representation of it:
+
+```shell
+atlas schema inspect \
+  --env local \
+  --url env://src \
+  --format '{{ sql . }}'
+```
+
+The command above prints the following SQL. Note, the `status` enum type is defined in the schema before
+its usage in the `users.status` column:
+
+```sql
+-- Create enum type "status"
+CREATE TYPE "status" AS ENUM ('active', 'inactive', 'pending');
+-- Create "users" table
+CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, PRIMARY KEY ("id"));
+-- Create index "idx_users_deleted_at" to table: "users"
+CREATE INDEX "idx_users_deleted_at" ON "users" ("deleted_at");
+```
+
+#### Generate Migrations For the Schema
+
+To generate a migration for the schema, run the following command:
+
+```shell
+atlas migrate diff \
+  --env local
+```
+
+Note that a new migration file is created with the following content:
+
+```sql title="migrations/20240712090543.sql"
+-- Create enum type "status"
+CREATE TYPE "status" AS ENUM ('active', 'inactive', 'pending');
+-- Create "users" table
+CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, PRIMARY KEY ("id"));
+-- Create index "idx_users_deleted_at" to table: "users"
+CREATE INDEX "idx_users_deleted_at" ON "users" ("deleted_at");
+```
+
+#### Apply the Migrations
+
+To apply the migration generated above to a database, run the following command:
+
+```
+atlas migrate apply \
+  --env local \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+```
+
+:::info Apply the Schema Directly on the Database
+
+Sometimes, there is a need to apply the schema directly to the database without generating a migration file. For example,
+when experimenting with schema changes, spinning up a database for testing, etc. In such cases, you can use the command
+below to apply the schema directly to the database:
+
+```shell
+atlas schema apply \
+  --env local \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+```
+
+Or, using the [Atlas Go SDK](https://github.com/ariga/atlas-go-sdk):
+
+```go
+ac, err := atlasexec.NewClient(".", "atlas")
+if err != nil {
+    log.Fatalf("failed to initialize client: %w", err)
+}
+// Automatically update the database with the desired schema.
+// Another option, is to use 'migrate apply' or 'schema apply' manually.
+if _, err := ac.SchemaApply(ctx, &atlasexec.SchemaApplyParams{
+    Env: "local",
+    URL: "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable",
+}); err != nil {
+    log.Fatalf("failed to apply schema changes: %w", err)
+}
+```
+
+:::
