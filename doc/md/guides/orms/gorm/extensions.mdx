@@ -34,7 +34,7 @@ The GORM package is mostly used for defining tables (our Go types) and interacti
 Postgres database, and may be used multiple times in different schemas.
 
 In order to extend our PostgreSQL schema migration to include both extensions and our GORM types, we configure Atlas to
-read the state of the schema from a [Composite Schema](https://atlasgo.io/atlas-schema/projects#data-source-composite_schema)
+read the state of the schema from a [Composite Schema](/atlas-schema/projects#data-source-composite_schema)
 data source. Follow the steps below to configure this for your project:
 
 1\. Create a `schema.sql` that defines the necessary extensions used by your database. In the same way, you can define
