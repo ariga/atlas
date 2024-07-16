@@ -68,15 +68,15 @@ enum "status" {
 type Status string
 
 const (
-	active     Status = "active"
-	inactive   Status = "inactive"
-	pending    Status = "pending"
+    active     Status = "active"
+    inactive   Status = "inactive"
+    pending    Status = "pending"
 )
 
 type User struct {
-	gorm.Model
-	ID   uint
-	Status Status `gorm:"type:enum('active', 'inactive', 'pending')"`
+    gorm.Model
+    ID   uint
+    Status Status `gorm:"type:enum('active', 'inactive', 'pending')"`
 }
 ```
 
@@ -176,13 +176,13 @@ Or, using the [Atlas Go SDK](https://github.com/ariga/atlas-go-sdk):
 ```go
 ac, err := atlasexec.NewClient(".", "atlas")
 if err != nil {
-	log.Fatalf("failed to initialize client: %w", err)
+    log.Fatalf("failed to initialize client: %w", err)
 }
 // Automatically update the database with the desired schema.
 // Another option, is to use 'migrate apply' or 'schema apply' manually.
 if _, err := ac.SchemaApply(ctx, &atlasexec.SchemaApplyParams{
-	Env: "local",
-	URL: "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable",
+    Env: "local",
+    URL: "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable",
 }); err != nil {
     log.Fatalf("failed to apply schema changes: %w", err)
 }
