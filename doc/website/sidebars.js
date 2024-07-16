@@ -350,9 +350,15 @@ module.exports = {
             collapsed: false,
             items: [
                 {
-                    type: 'doc',
-                    id: 'guides/orms/gorm',
-                    label: 'GORM'
+                    type: 'category',
+                    label: 'GORM',
+                    link: {
+                        type: 'doc',
+                        id: 'guides/orms/gorm',
+                    },
+                    items: [
+                        {type: 'doc', id: 'guides/orms/gorm/composite-types', label: 'Composite Types'},
+                    ]
                 },
                 {
                     type: 'doc',
