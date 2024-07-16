@@ -33,7 +33,7 @@ or any other database native objects do not have representation in GORM models. 
 and used in multiple triggers in different tables.
 
 In order to extend our PostgreSQL schema to include both our GORM types and their triggers, we configure Atlas to
-read the state of the schema from a [Composite Schema](https://atlasgo.io/atlas-schema/projects#data-source-composite_schema)
+read the state of the schema from a [Composite Schema](/atlas-schema/projects#data-source-composite_schema)
 data source. Follow the steps below to configure this for your project:
 
 1\. Let's define a simple model with two types (tables): `users` and `user_audit_logs`:
@@ -183,7 +183,7 @@ atlas migrate diff \
   --env local
 ```
 
-Note that a new migration file is created with the following content:
+Note that a new migration file is created with the following contents:
 
 ```sql title="migrations/20240712090543.sql"
 -- Create "user_audit_logs" table
