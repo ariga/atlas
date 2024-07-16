@@ -75,9 +75,9 @@ domain "us_postal_code" {
 
 ```go title="models.go"
 type User struct {
-	gorm.Model
-	Name string
-	postal_code us_postal_code
+    gorm.Model
+    Name string
+    postal_code us_postal_code
 }
 
 type us_postal_code string
