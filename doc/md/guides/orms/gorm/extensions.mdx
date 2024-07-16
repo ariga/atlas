@@ -177,7 +177,7 @@ To apply the migration generated above to a database, run the following command:
 ```
 atlas migrate apply \
   --env local \
-  --url "postgres://postgres:pass@localhost:5432/database"
+  --url "postgres://postgres:pass@localhost:5432/database?sslmode=disable"
 ```
 
 :::info Apply the Schema Directly on the Database
