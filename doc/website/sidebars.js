@@ -358,6 +358,7 @@ module.exports = {
                     },
                     items: [
                         {type: 'doc', id: 'guides/orms/gorm/composite-types', label: 'Composite Types'},
+                        {type: 'doc', id: 'guides/orms/gorm/domain-types', label: 'Domain Types'},
                     ]
                 },
                 {
