@@ -130,6 +130,83 @@ func TestExcludeRealm_Enums(t *testing.T) {
 	require.Empty(t, r.Schemas[2].Objects)
 }
 
+type (
+	domain struct {
+		Object
+		name string
+	}
+	composite struct {
+		Object
+		name string
+	}
+)
+
+func (*domain) SpecType() string   { return "domain" }
+func (d *domain) SpecName() string { return d.name }
+
+func (*composite) SpecType() string   { return "composite" }
+func (c *composite) SpecName() string { return c.name }
+
+func TestExcludeRealm_ExternalType(t *testing.T) {
+	e1, e2, e3 := &EnumType{T: "e1"}, &EnumType{T: "e2"}, &EnumType{T: "e3"}
+	d1, d2, d3 := &domain{name: "e1"}, &domain{name: "e2"}, &domain{name: "e3"}
+	c1, c2, c3 := &composite{name: "e1"}, &composite{name: "e2"}, &composite{name: "e3"}
+	s1, s2, s3 := New("s1").AddObjects(e1, d1, c1), New("s2").AddObjects(e1, e2, d1, d2, c1, c2), New("s3").AddObjects(e1, e2, e3, d1, d2, d3, c1, c2, c3)
+
+	r, err := ExcludeRealm(NewRealm(s1, s2, s3), []string{"s1.e1"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 3)
+	require.Empty(t, r.Schemas[0].Objects)
+	require.Len(t, r.Schemas[1].Objects, 6)
+	require.Len(t, r.Schemas[2].Objects, 9)
+
+	// Wrong selector.
+	r, err = ExcludeRealm(NewRealm(s1, s2, s3), []string{"*.e1[type=table]"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 3)
+	require.Empty(t, r.Schemas[0].Objects)
+	require.Len(t, r.Schemas[1].Objects, 6)
+	require.Len(t, r.Schemas[2].Objects, 9)
+
+	// Enum selector.
+	r, err = ExcludeRealm(NewRealm(s1, s2, s3), []string{"*.e1[type=enum]"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 3)
+	require.Empty(t, r.Schemas[0].Objects)
+	require.Len(t, r.Schemas[1].Objects, 5)
+	require.Equal(t, []Object{e2, d1, d2, c1, c2}, r.Schemas[1].Objects)
+	require.Len(t, r.Schemas[2].Objects, 8)
+	require.Equal(t, []Object{e2, e3, d1, d2, d3, c1, c2, c3}, r.Schemas[2].Objects)
+
+	// Domain and Composite selectors with name.
+	r, err = ExcludeRealm(NewRealm(s1, s2, s3), []string{"*.e2[type=domain|composite]"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 3)
+	require.Empty(t, r.Schemas[0].Objects)
+	require.Len(t, r.Schemas[1].Objects, 3)
+	require.Equal(t, []Object{e2, d1, c1}, r.Schemas[1].Objects)
+	require.Len(t, r.Schemas[2].Objects, 6)
+	require.Equal(t, []Object{e2, e3, d1, d3, c1, c3}, r.Schemas[2].Objects)
+
+	// Domain and Composite selectors without name.
+	r, err = ExcludeRealm(NewRealm(s1, s2, s3), []string{"*.*[type=domain|composite]"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 3)
+	require.Empty(t, r.Schemas[0].Objects)
+	require.Len(t, r.Schemas[1].Objects, 1)
+	require.Equal(t, []Object{e2}, r.Schemas[1].Objects)
+	require.Len(t, r.Schemas[2].Objects, 2)
+	require.Equal(t, []Object{e2, e3}, r.Schemas[2].Objects)
+
+	// Exclude all.
+	r, err = ExcludeRealm(NewRealm(s1, s2, s3), []string{"*.*"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 3)
+	require.Empty(t, r.Schemas[0].Objects)
+	require.Empty(t, r.Schemas[1].Objects)
+	require.Empty(t, r.Schemas[2].Objects)
+}
+
 func TestExcludeSchema_Enums(t *testing.T) {
 	e1, e2, e3 := &EnumType{T: "e1"}, &EnumType{T: "e2"}, &EnumType{T: "e3"}
 	r := NewRealm(New("s1").AddObjects(e1, e2, e3))
