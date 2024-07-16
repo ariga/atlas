@@ -88,25 +88,41 @@ func split(patterns []string) ([][]string, error) {
 }
 
 func excludeS(s *Schema, glob []string) error {
-	if globE, exclude := excludeType(typeE, glob[0]); exclude {
-		var objects []Object
-		for _, t := range s.Objects {
-			e, ok := t.(*EnumType)
-			if !ok {
-				objects = append(objects, t)
-				continue
-			}
-			match, err := filepath.Match(globE, e.T)
+	var (
+		objects = make([]Object, 0, len(s.Objects))
+		t2glob  = make(map[string]struct {
+			glob    string
+			exclude bool
+		})
+	)
+	for _, o := range s.Objects {
+		nt, ok := o.(interface {
+			SpecType() string
+			SpecName() string
+		})
+		if !ok {
+			objects = append(objects, o)
+			continue
+		}
+		cache, ok := t2glob[nt.SpecType()]
+		if !ok {
+			cache.glob, cache.exclude = excludeType(nt.SpecType(), glob[0])
+			t2glob[nt.SpecType()] = cache
+		}
+		if cache.exclude {
+			match, err := filepath.Match(cache.glob, nt.SpecName())
 			if err != nil {
 				return err
 			}
 			// No match or glob has more than one pattern.
 			if !match || len(glob) != 1 {
-				objects = append(objects, t)
+				objects = append(objects, o)
 			}
+		} else {
+			objects = append(objects, o)
 		}
-		s.Objects = objects
 	}
+	s.Objects = objects
 	if globT, exclude := excludeType(typeT, glob[0]); exclude {
 		var tables []*Table
 		for _, t := range s.Tables {
@@ -255,10 +271,10 @@ const (
 	typePr = "procedure"
 )
 
-var reTypeVT = regexp.MustCompile(`\[type=([a-z|]+)+\]$`)
+var reType = regexp.MustCompile(`\[type=([a-z|]+)+\]$`)
 
 func excludeType(t, v string) (string, bool) {
-	matches := reTypeVT.FindStringSubmatch(v)
+	matches := reType.FindStringSubmatch(v)
 	if len(matches) != 2 {
 		return v, true
 	}
