@@ -64,18 +64,19 @@ extension "postgis" {
 </TabItem>
 </Tabs>
 
-2\. In your GORM model, define a field that uses the data type provided by the extension. In this example, we use the
-`GEOMETRY(Point, 4326)` data type provided by the `postgis` extension:
+2\. In your GORM model, define a field that uses the data type provided by the extension. 
 
 ```go title="models.go"
 type GeometryPoint struct {
+    gorm.Model
     X, Y float64
+    UserID uint
 }
 
 type User struct {
     gorm.Model
-	ID       uint
-	Location GeometryPoint
+    ID       uint
+    Location GeometryPoint
 }
 ```
 
@@ -196,13 +197,13 @@ Or, using the [Atlas Go SDK](https://github.com/ariga/atlas-go-sdk):
 ```go
 ac, err := atlasexec.NewClient(".", "atlas")
 if err != nil {
-	log.Fatalf("failed to initialize client: %w", err)
+    log.Fatalf("failed to initialize client: %w", err)
 }
 // Automatically update the database with the desired schema.
 // Another option, is to use 'migrate apply' or 'schema apply' manually.
 if _, err := ac.SchemaApply(ctx, &atlasexec.SchemaApplyParams{
-	Env: "local",
-	URL: "postgres://postgres:pass@localhost:5432/database?sslmode=disable",
+    Env: "local",
+    URL: "postgres://postgres:pass@localhost:5432/database?sslmode=disable",
 }); err != nil {
     log.Fatalf("failed to apply schema changes: %w", err)
 }
