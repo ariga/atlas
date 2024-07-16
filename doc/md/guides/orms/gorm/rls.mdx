@@ -85,7 +85,7 @@ data "composite_schema" "app" {
 
 env "local" {
   src = data.composite_schema.app.url
-  dev = "docker://postgres/15/dev"
+  dev = "docker://postgres/15/dev?search_path=public""
 }
 ```
 
@@ -110,22 +110,18 @@ The command above prints the following SQL. Note, the `tenant_isolation` policy 
 table:
 
 ```sql
--- Add new schema named "public"
-CREATE SCHEMA IF NOT EXISTS "public";
--- Set comment to schema: "public"
-COMMENT ON SCHEMA "public" IS 'standard public schema';
 -- Create "users" table
-CREATE TABLE "public"."users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "tenant_id" bigint NULL, PRIMARY KEY ("id"));
+CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "tenant_id" bigint NULL, PRIMARY KEY ("id"));
 -- Create index "idx_users_deleted_at" to table: "users"
-CREATE INDEX "idx_users_deleted_at" ON "public"."users" ("deleted_at");
+CREATE INDEX "idx_users_deleted_at" ON "users" ("deleted_at");
 -- Enable row-level security for "users" table
-ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "users" ENABLE ROW LEVEL SECURITY;
 -- Create policy "tenant_isolation"
-CREATE POLICY "tenant_isolation" ON "public"."users" AS PERMISSIVE FOR ALL TO PUBLIC USING (tenant_id = (current_setting('app.current_tenant'::text))::integer);
+CREATE POLICY "tenant_isolation" ON "users" AS PERMISSIVE FOR ALL TO PUBLIC USING (tenant_id = (current_setting('app.current_tenant'::text))::integer);
 -- Create "tenants" table
-CREATE TABLE "public"."tenants" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, "user_id" bigint NULL, PRIMARY KEY ("id"));
+CREATE TABLE "tenants" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, "user_id" bigint NULL, PRIMARY KEY ("id"));
 -- Create index "idx_tenants_deleted_at" to table: "tenants"
-CREATE INDEX "idx_tenants_deleted_at" ON "public"."tenants" ("deleted_at");
+CREATE INDEX "idx_tenants_deleted_at" ON "tenants" ("deleted_at");
 ```
 
 #### Generate Migrations For the Schema
@@ -140,17 +136,18 @@ atlas migrate diff \
 Note that a new migration file is created with the following content:
 
 ```sql title="migrations/20240712090543.sql"
-CREATE TABLE "public"."users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "tenant_id" bigint NULL, PRIMARY KEY ("id"));
+-- Create "users" table
+CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "tenant_id" bigint NULL, PRIMARY KEY ("id"));
 -- Create index "idx_users_deleted_at" to table: "users"
-CREATE INDEX "idx_users_deleted_at" ON "public"."users" ("deleted_at");
+CREATE INDEX "idx_users_deleted_at" ON "users" ("deleted_at");
 -- Enable row-level security for "users" table
-ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "users" ENABLE ROW LEVEL SECURITY;
 -- Create policy "tenant_isolation"
-CREATE POLICY "tenant_isolation" ON "public"."users" AS PERMISSIVE FOR ALL TO PUBLIC USING (tenant_id = (current_setting('app.current_tenant'::text))::integer);
+CREATE POLICY "tenant_isolation" ON "users" AS PERMISSIVE FOR ALL TO PUBLIC USING (tenant_id = (current_setting('app.current_tenant'::text))::integer);
 -- Create "tenants" table
-CREATE TABLE "public"."tenants" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, "user_id" bigint NULL, PRIMARY KEY ("id"));
+CREATE TABLE "tenants" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, "user_id" bigint NULL, PRIMARY KEY ("id"));
 -- Create index "idx_tenants_deleted_at" to table: "tenants"
-CREATE INDEX "idx_tenants_deleted_at" ON "public"."tenants" ("deleted_at");
+CREATE INDEX "idx_tenants_deleted_at" ON "tenants" ("deleted_at");
 ```
 
 #### Apply the Migrations
@@ -194,15 +191,5 @@ if _, err := ac.SchemaApply(ctx, &atlasexec.SchemaApplyParams{
 
 :::
 
-## Code Example
-
 After setting up our GORM model and the RLS policies, we can open a GORM client and pass the different mutations and
-queries the relevant tenant ID we work on. This ensures that the database upholds our RLS policy:
-
-```go
-ctx1, ctx2 := sql.WithIntVar(ctx, "app.current_tenant", a8m.ID), sql.WithIntVar(ctx, "app.current_tenant", r3m.ID)
-users1 := db.WithContext(ctx1).Find(&users1)
-// Users1 can only see users from tenant a8m.
-users2 := db.WithContext(ctx2).Find(&users2)
-// Users2 can only see users from tenant r3m.
-```
+queries the relevant tenant ID we work on. This ensures that the database upholds our RLS policy.
