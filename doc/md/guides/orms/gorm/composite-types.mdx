@@ -10,8 +10,8 @@ import TabItem from '@theme/TabItem';
 In PostgreSQL, a [composite type](https://www.postgresql.org/docs/current/rowtypes.html) is structured like a row or record, consisting of field names and their corresponding
 data types. Setting a GORM field as a composite type enables you to store complex and structured data in a single column.
 
-This guide explains how to define a schema field type as a composite type in your GORM schema and configure the schema migration
-to manage both the composite types and the GORM schema as a single migration unit using Atlas.
+This guide explains how to define a schema field type as a composite type in your GORM models and configure the schema migration
+to manage both the composite types and the GORM models as a single migration unit using Atlas.
 
 :::info [Atlas Pro Feature](/features#pro-plan)
 Atlas support for [Composite Types](/atlas-schema/hcl#composite-type) is available exclusively to Pro users.
@@ -70,7 +70,7 @@ composite "address" {
 </TabItem>
 </Tabs>
 
-2\. In your GORM schema, define a field that uses the composite type only in PostgreSQL dialect:
+2\. In your GORM models, define a field that uses the composite type only in PostgreSQL dialect:
 
 ```go title="models.go"
 type User struct {
@@ -92,7 +92,7 @@ type Address struct {
 
 
 3\. In your [`atlas.hcl`](/guides/orms/gorm#standalone-mode) config file, add a `composite_schema` that includes both your custom types defined in
-`schema.sql` and your GORM schema:
+`schema.sql` and your GORM models:
 
 ```hcl title="atlas.hcl"
 data "composite_schema" "app" {
