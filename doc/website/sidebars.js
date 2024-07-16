@@ -361,6 +361,7 @@ module.exports = {
                         {type: 'doc', id: 'guides/orms/gorm/domain-types', label: 'Domain Types'},
                         {type: 'doc', id: 'guides/orms/gorm/enum-types', label: 'Enum Types'},
                         {type: 'doc', id: 'guides/orms/gorm/extensions', label: 'Extensions'},
+                        {type: 'doc', id: 'guides/orms/gorm/rls', label: 'Row-Level Security'},
                     ]
                 },
                 {
