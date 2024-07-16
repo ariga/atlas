@@ -189,7 +189,7 @@ below to apply the schema directly to the database:
 ```shell
 atlas schema apply \
   --env local \
-  --url "postgres://postgres:pass@localhost:5432/database"
+  --url "postgres://postgres:pass@localhost:5432/database?sslmode=disable"
 ```
 
 Or, using the [Atlas Go SDK](https://github.com/ariga/atlas-go-sdk):
@@ -203,7 +203,7 @@ if err != nil {
 // Another option, is to use 'migrate apply' or 'schema apply' manually.
 if _, err := ac.SchemaApply(ctx, &atlasexec.SchemaApplyParams{
     Env: "local",
-    URL: "postgres://postgres:pass@localhost:5432/database",
+    URL: "postgres://postgres:pass@localhost:5432/database?sslmode=disable",
 }); err != nil {
     log.Fatalf("failed to apply schema changes: %w", err)
 }
