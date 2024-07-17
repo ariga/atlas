@@ -131,7 +131,6 @@ its usage in the `users.status` column:
 
 ```sql
 -- Create enum type "status"
--- Create enum type "status"
 CREATE TYPE "status" AS ENUM ('active', 'inactive', 'pending');
 -- Create "users" table
 CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "status" "status" NULL, PRIMARY KEY ("id"));
