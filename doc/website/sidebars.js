@@ -376,9 +376,15 @@ module.exports = {
                     label: 'Hibernate'
                 },
                 {
-                    type: 'doc',
-                    id: 'guides/orms/sequelize',
-                    label: 'Sequelize'
+                    type: 'category',
+                    label: 'Sequelize',
+                    link: {
+                        type: 'doc',
+                        id: 'guides/orms/sequelize',
+                    },
+                    items: [
+                        {type: 'doc', id: 'guides/orms/sequelize/composite-types', label: 'Composite Types'},
+                    ],
                 },
                 {
                     type: 'doc',
