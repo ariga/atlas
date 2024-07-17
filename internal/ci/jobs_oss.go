@@ -10,6 +10,9 @@ package main
 
 func init() {
 	data.GoVersions = goVersions{"1.22"}
+	data.GlobalEnv = []struct{ K, V string }{
+		{K: "ATLAS_NO_UPGRADE_SUGGESTIONS", V: "1"},
+	}
 	data.Jobs = append(jobs,
 		Job{
 			Version: "tidb5",
