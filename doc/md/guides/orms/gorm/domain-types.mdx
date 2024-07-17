@@ -77,10 +77,8 @@ domain "us_postal_code" {
 type User struct {
     gorm.Model
     Name string
-    postal_code us_postal_code
+    PostalCode string `gorm:"type:us_postal_code"`
 }
-
-type us_postal_code string
 ```
 
 3\. In your [`atlas.hcl`](/guides/orms/gorm#standalone-mode) config file, add a `composite_schema` that includes both your custom types defined in
@@ -127,7 +125,7 @@ its usage in the `postal_code` field:
 -- Create domain type "us_postal_code"
 CREATE DOMAIN "us_postal_code" AS text CONSTRAINT "us_postal_code_check" CHECK ((VALUE ~ '^\d{5}$'::text) OR (VALUE ~ '^\d{5}-\d{4}$'::text));
 -- Create "users" table
-CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, PRIMARY KEY ("id"));
+CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, "postal_code" "us_postal_code" NULL, PRIMARY KEY ("id"));
 -- Create index "idx_users_deleted_at" to table: "users"
 CREATE INDEX "idx_users_deleted_at" ON "users" ("deleted_at");
 ```
@@ -147,7 +145,7 @@ Note that a new migration file is created with the following content:
 -- Create domain type "us_postal_code"
 CREATE DOMAIN "us_postal_code" AS text CONSTRAINT "us_postal_code_check" CHECK ((VALUE ~ '^\d{5}$'::text) OR (VALUE ~ '^\d{5}-\d{4}$'::text));
 -- Create "users" table
-CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, PRIMARY KEY ("id"));
+CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, "postal_code" "us_postal_code" NULL, PRIMARY KEY ("id"));
 -- Create index "idx_users_deleted_at" to table: "users"
 CREATE INDEX "idx_users_deleted_at" ON "users" ("deleted_at");
 ```
