@@ -7,8 +7,6 @@
 package cmdapi
 
 import (
-	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
-	"ariga.io/atlas/cmd/atlas/internal/cmdstate"
 	"context"
 	"errors"
 	"fmt"
@@ -19,6 +17,8 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
+	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
+	"ariga.io/atlas/cmd/atlas/internal/cmdstate"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migratelint"
 	"ariga.io/atlas/schemahcl"
