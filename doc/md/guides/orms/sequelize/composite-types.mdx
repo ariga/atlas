@@ -72,134 +72,26 @@ composite "address" {
 
 2\. In your Sequelize models, define a column that uses the composite type only in PostgreSQL dialect:
 
-<Tabs>
-<TabItem value={"ts"} label ={"TypeScript"}>
-<Tabs>
-<TabItem value={"user"} label={"user.ts"}>
-
-```typescript title="user.ts"
-import { Table, Column, Model, PrimaryKey, AutoIncrement, DataType, AllowNull, HasOne } from "sequelize-typescript";
-import Address from "./address";
-
-@Table({ tableName: "Users" })
-class User extends Model {
-    @PrimaryKey
-    @AutoIncrement
-    @Column(DataType.INTEGER)
-    id!: number;
-
-    @AllowNull(false)
-    @Column
-    name!: string;
-
-    @HasOne(() => Address)
-    address!: Address;
-}
-
-export default User;
-```
-
-</TabItem>
-<TabItem value={"address"} label={"address.ts"}>
-
-```typescript title="address.ts"
-import { Table, Column, Model, PrimaryKey,ForeignKey, AutoIncrement, DataType, BelongsTo, AllowNull} from "sequelize-typescript";
-import User from "./user";
-
-@Table({ tableName: "Addresses" })
-class Address extends Model {
-    @PrimaryKey
-    @AutoIncrement
-    @Column(DataType.INTEGER)
-    id!: number;
-
-    @AllowNull(false)
-    @Column
-    street!: string;
-
-    @AllowNull(false)
-    @Column
-    city!: string;
-
-    @AllowNull(false)
-    @ForeignKey(() => User)
-    @Column(DataType.INTEGER)
-    userID!: number;
-
-    @BelongsTo(() => User)
-    user!: User;
-}
-
-export default Address;
-```
-
-</TabItem>
-</Tabs>
-
-</TabItem>
-<TabItem value={"js"} label={"JavaScript"}>
-<Tabs>
-<TabItem value={"user"} label={"user.js"}>
-
 ```javascript title="user.js"
 'use strict';
 module.exports = function(sequelize, DataTypes) {
+    const Address = {
+        type: 'public.Address', // Replace with your schema name if different
+        fields: [
+            'street',
+            'city',
+        ],
+    };
     const User = sequelize.define('User', {
         name: {
             type: DataTypes.STRING,
             allowNull: false
         },
+        address: Address
     });
-
-    User.associate = (models) => {
-        User.hasOne(models.Address, {
-            foreignKey: {
-                name: 'userID',
-                allowNull: false
-            },
-            as: 'addresses'
-        });
-    };
-
     return User;
 };
 ```
-
-</TabItem>
-<TabItem value={"address"} label={"address.js"}>
-
-```javascript title="address.js"
-'use strict';
-module.exports = (sequelize, DataTypes) => {
-    const Address = sequelize.define('Address', {
-        street: {
-            type: DataTypes.STRING,
-            defaultValue: false,
-        },
-        city: {
-            type: DataTypes.STRING,
-            defaultValue: false,
-        },
-    });
-
-    Address.associate = (models) => {
-        Address.belongsTo(models.User, {
-            foreignKey: {
-                name: 'userID',
-                allowNull: false
-            },
-            as: 'addresses'
-        });
-    };
-
-    return Address;
-};
-```
-
-</TabItem>
-</Tabs>
-</TabItem>
-</Tabs>
 
 3\. In your [`atlas.hcl`](/guides/orms/sequelize#standalone-mode) config file, add a `composite_schema` that includes both your custom types defined in
 `schema.sql` and your Sequelize models:
@@ -245,9 +137,7 @@ its usage in the `address` field:
 -- Create composite type "address"
 CREATE TYPE "address" AS ("street" text, "city" text);
 -- Create "Users" table
-CREATE TABLE "Users" ("id" serial NOT NULL, "name" character varying(255) NOT NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"));
--- Create "Addresses" table
-CREATE TABLE "Addresses" ("id" serial NOT NULL, "street" character varying(255) NOT NULL, "city" character varying(255) NOT NULL, "userID" integer NOT NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "Addresses_userID_fkey" FOREIGN KEY ("userID") REFERENCES "Users" ("id") ON UPDATE CASCADE ON DELETE NO ACTION);
+CREATE TABLE "Users" ("id" serial NOT NULL, "name" character varying(255) NOT NULL, "address" "address" NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"));
 ```
 
 #### Generate Migrations For the Schema
@@ -265,9 +155,7 @@ Note that a new migration file is created with the following content:
 -- Create composite type "address"
 CREATE TYPE "address" AS ("street" text, "city" text);
 -- Create "Users" table
-CREATE TABLE "Users" ("id" serial NOT NULL, "name" character varying(255) NOT NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"));
--- Create "Addresses" table
-CREATE TABLE "Addresses" ("id" serial NOT NULL, "street" character varying(255) NOT NULL, "city" character varying(255) NOT NULL, "userID" integer NOT NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "Addresses_userID_fkey" FOREIGN KEY ("userID") REFERENCES "Users" ("id") ON UPDATE CASCADE ON DELETE NO ACTION);
+CREATE TABLE "Users" ("id" serial NOT NULL, "name" character varying(255) NOT NULL, "address" "address" NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"));
 ```
 
 #### Apply the Migrations
