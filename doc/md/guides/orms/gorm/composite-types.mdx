@@ -114,6 +114,8 @@ func (a *Address) Scan(v interface{}) (err error) {
 func (a *Address) Value() (driver.Value, error) {
     return fmt.Sprintf("(%q,%q)", a.Street, a.City), nil
 }
+```
+
 </TabItem>
 </Tabs>
 
