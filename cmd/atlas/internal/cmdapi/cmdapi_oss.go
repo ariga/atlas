@@ -7,11 +7,15 @@
 package cmdapi
 
 import (
+	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
+	"ariga.io/atlas/cmd/atlas/internal/cmdstate"
 	"context"
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"text/template"
+	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
@@ -36,6 +40,9 @@ func init() {
 		schemaInspectCmd(),
 		unsupportedCommand("schema", "test"),
 	)
+	schemaCmd.PersistentPreRun = func(cmd *cobra.Command, _ []string) {
+		maySuggestUpgrade(cmd)
+	}
 	Root.AddCommand(schemaCmd)
 	migrateCmd := migrateCmd()
 	migrateCmd.AddCommand(
@@ -56,6 +63,9 @@ func init() {
 		unsupportedCommand("migrate", "push"),
 		unsupportedCommand("migrate", "test"),
 	)
+	migrateCmd.PersistentPreRun = func(cmd *cobra.Command, _ []string) {
+		maySuggestUpgrade(cmd)
+	}
 	Root.AddCommand(migrateCmd)
 }
 
@@ -88,13 +98,58 @@ Or, visit the website to see all installation options:
 	return c
 }
 
-// Project represents an atlas.hcl project config file.
-type Project struct {
-	Envs  []*Env `spec:"env"`  // List of environments
-	Lint  *Lint  `spec:"lint"` // Optional global lint policy
-	Diff  *Diff  `spec:"diff"` // Optional global diff policy
-	Test  *Test  `spec:"test"` // Optional test configuration
-	cloud *cmdext.AtlasConfig
+type (
+	// Project represents an atlas.hcl project config file.
+	Project struct {
+		Envs  []*Env `spec:"env"`  // List of environments
+		Lint  *Lint  `spec:"lint"` // Optional global lint policy
+		Diff  *Diff  `spec:"diff"` // Optional global diff policy
+		Test  *Test  `spec:"test"` // Optional test configuration
+		cloud *cmdext.AtlasConfig
+	}
+	// LocalState keeps track of local state to enhance developer experience.
+	LocalState struct {
+		UpgradeSuggested time.Time `json:"v1.us"`
+	}
+)
+
+const (
+	localStateFile            = "local-community.json"
+	envSkipUpgradeSuggestions = "ATLAS_NO_UPGRADE_SUGGESTIONS"
+	oneWeek                   = 7 * 24 * time.Hour
+)
+
+// maySuggestUpgrade informs the user about the limitations of the community edition to stderr
+// at most once a week. The user can disable this message by setting the ATLAS_NO_UPGRADE_SUGGESTIONS
+// environment variable.
+func maySuggestUpgrade(cmd *cobra.Command) {
+	if os.Getenv(envSkipUpgradeSuggestions) != "" {
+		return
+	}
+	state := cmdstate.File[LocalState]{Name: localStateFile}
+	prev, err := state.Read()
+	if err != nil {
+		return
+	}
+	if time.Since(prev.UpgradeSuggested) < oneWeek {
+		return
+	}
+	s := `Notice: This Atlas edition lacks support for features such as checkpoints,
+testing, down migrations, and more. Additionally, advanced database objects such as views, 
+triggers, and stored procedures are not supported. To read more: https://atlasgo.io/community-edition
+
+To install the non-community version of Atlas, use the following command:
+
+	curl -sSf https://atlasgo.sh | sh
+
+Or, visit the website to see all installation options:
+
+	https://atlasgo.io/docs#installation
+
+`
+	fmt.Fprintf(cmd.ErrOrStderr(), cmdlog.ColorCyan(s))
+	prev.UpgradeSuggested = time.Now()
+	_ = state.Write(prev)
 }
 
 // migrateLintSetFlags allows setting extra flags for the 'migrate lint' command.
