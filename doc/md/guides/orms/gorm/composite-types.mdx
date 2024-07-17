@@ -71,32 +71,60 @@ composite "address" {
 </Tabs>
 
 2\. In your GORM models, define a field that uses the composite type only in PostgreSQL dialect:
+<Tabs>
+<TabItem value={"user"} label={"User Model"}>
 
 ```go title="models.go"
 type User struct {
     gorm.Model
     Name string
 // highlight-next-line
-    Address Address
+    Address Address   `gorm:"type:address"`
 }
-
-// highlight-start
-type Address struct {
-    gorm.Model
-    Street   string
-    City  string
-    UserID uint
-}
-// highlight-end
 ```
 
+</TabItem>
+<TabItem value={"address"} label={"Address Type"}>
+
+```go title="address.go"
+package models
+
+import (
+    "database/sql/driver"
+    "fmt"
+)
+
+type Address struct {
+    Street, City string
+}
+
+// Scan implements the database/sql.Scanner interface.
+func (a *Address) Scan(v interface{}) (err error) {
+    switch v := v.(type) {
+    case nil:
+    case string:
+        _, err = fmt.Sscanf(v, "(%q,%q)", &a.Street, &a.City)
+    case []byte:
+        _, err = fmt.Sscanf(string(v), "(%q,%q)", &a.Street, &a.City)
+    }
+    return
+}
+
+// Value implements the driver.Valuer interface.
+func (a *Address) Value() (driver.Value, error) {
+    return fmt.Sprintf("(%q,%q)", a.Street, a.City), nil
+}
+```
+
+</TabItem>
+</Tabs>
 
 3\. In your [`atlas.hcl`](/guides/orms/gorm#standalone-mode) config file, add a `composite_schema` that includes both your custom types defined in
 `schema.sql` and your GORM models:
 
 ```hcl title="atlas.hcl"
 data "composite_schema" "app" {
-  # Load first custom types first.
+  # Load custom types first.
   schema "public" {
     url = "file://schema.hcl"
   }
@@ -135,13 +163,9 @@ its usage in the `address` field:
 -- Create composite type "address"
 CREATE TYPE "address" AS ("street" text, "city" text);
 -- Create "users" table
-CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, PRIMARY KEY ("id"));
+CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, "address" "address" NULL, PRIMARY KEY ("id"));
 -- Create index "idx_users_deleted_at" to table: "users"
 CREATE INDEX "idx_users_deleted_at" ON "users" ("deleted_at");
--- Create "addresses" table
-CREATE TABLE "addresses" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "street" text NULL, "city" text NULL, "user_id" bigint NULL, PRIMARY KEY ("id"), CONSTRAINT "fk_users_address" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
--- Create index "idx_addresses_deleted_at" to table: "addresses"
-CREATE INDEX "idx_addresses_deleted_at" ON "addresses" ("deleted_at");
 ```
 
 #### Generate Migrations For the Schema
@@ -159,13 +183,9 @@ Note that a new migration file is created with the following content:
 -- Create composite type "address"
 CREATE TYPE "address" AS ("street" text, "city" text);
 -- Create "users" table
-CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, PRIMARY KEY ("id"));
+CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "name" text NULL, "address" "address" NULL, PRIMARY KEY ("id"));
 -- Create index "idx_users_deleted_at" to table: "users"
 CREATE INDEX "idx_users_deleted_at" ON "users" ("deleted_at");
--- Create "addresses" table
-CREATE TABLE "addresses" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "street" text NULL, "city" text NULL, "user_id" bigint NULL, PRIMARY KEY ("id"), CONSTRAINT "fk_users_address" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
--- Create index "idx_addresses_deleted_at" to table: "addresses"
-CREATE INDEX "idx_addresses_deleted_at" ON "addresses" ("deleted_at");
 ```
 
 #### Apply the Migrations
