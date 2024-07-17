@@ -16,6 +16,8 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
+env:
+  ATLAS_NO_UPGRADE_SUGGESTIONS: 1
 jobs:
   lint:
     runs-on: ubuntu-latest
