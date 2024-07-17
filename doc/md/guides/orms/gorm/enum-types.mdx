@@ -68,15 +68,24 @@ enum "status" {
 type Status string
 
 const (
-    active     Status = "active"
-    inactive   Status = "inactive"
-    pending    Status = "pending"
+    Active   Status = "active"
+    Inactive Status = "inactive"
+    Pending Status = "pending"
 )
+
+func (p *Status) Scan(value interface{}) error {
+    *p = Status(value.([]byte))
+    return nil
+}
+
+func (p Status) Value() (driver.Value, error) {
+    return string(p), nil
+}
 
 type User struct {
     gorm.Model
     ID   uint
-    Status Status `gorm:"type:enum('active', 'inactive', 'pending')"`
+    Status Status `gorm:"type:status"`
 }
 ```
 
@@ -85,7 +94,7 @@ type User struct {
 
 ```hcl title="atlas.hcl"
 data "composite_schema" "app" {
-  # Load first custom types first.
+  # Load custom types first.
   schema "public" {
     url = "file://schema.hcl"
   }
@@ -124,7 +133,7 @@ its usage in the `users.status` column:
 -- Create enum type "status"
 CREATE TYPE "status" AS ENUM ('active', 'inactive', 'pending');
 -- Create "users" table
-CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, PRIMARY KEY ("id"));
+CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "status" "status" NULL, PRIMARY KEY ("id"));
 -- Create index "idx_users_deleted_at" to table: "users"
 CREATE INDEX "idx_users_deleted_at" ON "users" ("deleted_at");
 ```
@@ -144,7 +153,7 @@ Note that a new migration file is created with the following content:
 -- Create enum type "status"
 CREATE TYPE "status" AS ENUM ('active', 'inactive', 'pending');
 -- Create "users" table
-CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, PRIMARY KEY ("id"));
+CREATE TABLE "users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "status" "status" NULL, PRIMARY KEY ("id"));
 -- Create index "idx_users_deleted_at" to table: "users"
 CREATE INDEX "idx_users_deleted_at" ON "users" ("deleted_at");
 ```
