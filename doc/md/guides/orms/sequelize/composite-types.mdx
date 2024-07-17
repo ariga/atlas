@@ -150,7 +150,6 @@ module.exports = function(sequelize, DataTypes) {
             allowNull: false
         },
     });
-
     User.associate = (models) => {
         User.hasOne(models.Address, {
             foreignKey: {
@@ -160,7 +159,6 @@ module.exports = function(sequelize, DataTypes) {
             as: 'addresses'
         });
     };
-
     return User;
 };
 ```
@@ -181,7 +179,6 @@ module.exports = (sequelize, DataTypes) => {
             defaultValue: false,
         },
     });
-
     Address.associate = (models) => {
         Address.belongsTo(models.User, {
             foreignKey: {
@@ -191,7 +188,6 @@ module.exports = (sequelize, DataTypes) => {
             as: 'addresses'
         });
     };
-
     return Address;
 };
 ```
