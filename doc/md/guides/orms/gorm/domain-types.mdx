@@ -76,7 +76,8 @@ domain "us_postal_code" {
 ```go title="models.go"
 type User struct {
     gorm.Model
-    Name string
+    Name       string
+	// highlight-next-line
     PostalCode string `gorm:"type:us_postal_code"`
 }
 ```
@@ -86,10 +87,11 @@ type User struct {
 
 ```hcl title="atlas.hcl"
 data "composite_schema" "app" {
-  # Load first custom types first.
+  # Load custom types first.
   schema "public" {
     url = "file://schema.hcl"
   }
+  # Then, load the GORM model.
   schema "public" {
     url = data.external_schema.gorm.url
   }

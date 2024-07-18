@@ -236,7 +236,7 @@ atlas schema inspect -u "redshift://user:pass@redshift-cluster:5439/database?sea
 </TabItem>
 </Tabs>
 
-### Exclude schemas
+### Exclude Schemas
 
 The following commands show how to exclude schemas that match a glob pattern from the inspection:
 
@@ -245,6 +245,38 @@ atlas schema inspect -u "mysql://localhost" --exclude "internal"
 
 atlas schema inspect -u "mysql://localhost" --exclude "schema_*"
 ```
+
+### Exclude Schema Resources
+
+The following commands show how to exclude schema resources (objects) that match a glob pattern from the inspection:
+
+<Tabs>
+<TabItem value="database-scope" label="Database Scope">
+
+When inspecting a database (multiple schemas), the first glob pattern matches the schema name, and the second matches
+the object name:
+
+```shell
+# Exclude all policies and functions from the public schema.
+atlas schema inspect -u "postgres://localhost:5432/database" --exclude 'public.*[type=policy|function]'
+
+# Exclude all policies and functions that match the pattern from all schemas.
+atlas schema inspect -u "postgres://localhost:5432/database" --exclude '*.*[type=policy|function]'
+```
+
+</TabItem>
+<TabItem value="schema-scope" label="Schema Scope">
+
+When inspecting a specific schema, the first glob pattern matches the object name:
+
+```shell
+atlas schema inspect -u "postgres://localhost:5432/database" --exclude '*[type=policy|function]'
+
+atlas schema inspect -u "postgres://localhost:5432/database" --exclude '*[type=policy|function]'
+```
+
+</TabItem>
+</Tabs>
 
 ### Exclude Tables
 
@@ -283,7 +315,6 @@ atlas schema inspect -u "mysql://localhost" --exclude "t*[type=table]" --exclude
 ### Exclude Table Resources
 
 The following commands show how to exclude columns, indexes or foreign-keys that match a glob pattern from the inspection:
-
 
 <Tabs>
 <TabItem value="database-scope" label="Database Scope">
