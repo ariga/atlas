@@ -599,3 +599,10 @@ func stateReader(ctx context.Context, env *Env, config *stateReaderConfig) (*cmd
 		}, nil
 	}
 }
+
+const localStateFile = "local-community.json"
+
+// LocalState keeps track of local state to enhance developer experience.
+type LocalState struct {
+	UpgradeSuggested time.Time `json:"v1.us"`
+}
