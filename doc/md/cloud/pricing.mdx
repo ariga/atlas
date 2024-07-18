@@ -10,13 +10,35 @@ Atlas Cloud offers two pricing plans:
 free seats per company and full access to all the capabilities of Atlas as a CLI. The free version of the plan offers access to enough Atlas Cloud
 quota to successfully manage a single project.
 
-* For those who need additional seats or quotas (projects, databases, runs, etc.), it is possible to pay as you go. View
+* For teams who need additional seats or quotas (projects, databases, runs, etc.), it is possible to pay as you go. View
 the pricing breakdown [here](https://atlasgo.cloud/pricing).
 
 2. **Enterprise Plan** - for larger organizations looking to solve schema management at scale. This plan includes a
 dedicated support channel, solution engineering, and other features required for adoption by enterprises.
 
 For a full list of the features in each plan, click [here](https://atlasgo.cloud/pricing).
+
+## What are Seats, Projects and Target Databases?
+
+The three dimensions for billing on the Pro plan are seats, projects, and target databases.
+
+**Seats.** Every developer using Atlas Pro from the CLI or the Cloud UI counts as a seat. The Pro plan comes with 3 free
+seats per company. Additional seats can be purchased as needed. For seat pricing see [here](/pricing).
+
+**Projects.** For teams using Atlas Cloud, resources are grouped into projects. A Project is
+a set of database resources that are versioned and managed together, essentially a *migration directory*.
+Each project gets its own page in the Cloud UI under which you will find CI Runs, Deployments, ERDs, documentation
+and more. See our [live demo](https://gh.atlasgo.cloud/dirs/4294967383) for an example.
+
+The Pro plan comes with 1 free project. Additional projects can be purchased as needed. For project pricing see [here](/pricing).
+
+**Target Databases.** A project may be deployed to multiple target databases, for instance, a development, staging, and
+production database. Atlas Cloud keeps track of each target environment separately, allowing you to deploy to each
+environment independently.
+
+Each target database is essentially a unique URL to which a project is deployed.
+The Pro plan comes with 2 free target databases. Additional target databases can be purchased as needed. For target
+database pricing see [here](/pricing).
 
 ## Upgrading your Pricing Plan
 
