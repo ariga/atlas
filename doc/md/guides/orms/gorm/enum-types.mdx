@@ -65,12 +65,19 @@ enum "status" {
 2\. In your GORM model, define an enum field that uses the underlying Postgres `ENUM` type:
 
 ```go title="models.go"
+type User struct {
+    gorm.Model
+    ID   uint
+	// highlight-next-line
+    Status Status `gorm:"type:status"`
+}
+
 type Status string
 
 const (
     Active   Status = "active"
     Inactive Status = "inactive"
-    Pending Status = "pending"
+    Pending  Status = "pending"
 )
 
 func (p *Status) Scan(value interface{}) error {
@@ -81,12 +88,6 @@ func (p *Status) Scan(value interface{}) error {
 func (p Status) Value() (driver.Value, error) {
     return string(p), nil
 }
-
-type User struct {
-    gorm.Model
-    ID   uint
-    Status Status `gorm:"type:status"`
-}
 ```
 
 3\. In your [`atlas.hcl`](/guides/orms/gorm#standalone-mode) config file, add a `composite_schema` that includes both your custom types defined in
@@ -94,10 +95,11 @@ type User struct {
 
 ```hcl title="atlas.hcl"
 data "composite_schema" "app" {
-  # Load custom types first.
+  # Load enum types first.
   schema "public" {
     url = "file://schema.hcl"
   }
+  # Then, load the GORM models.
   schema "public" {
     url = data.external_schema.gorm.url
   }

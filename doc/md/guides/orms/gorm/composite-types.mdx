@@ -78,8 +78,8 @@ composite "address" {
 type User struct {
     gorm.Model
     Name string
-// highlight-next-line
-    Address Address   `gorm:"type:address"`
+    // highlight-next-line
+    Address Address `gorm:"type:address"`
 }
 ```
 
@@ -128,6 +128,7 @@ data "composite_schema" "app" {
   schema "public" {
     url = "file://schema.hcl"
   }
+  // Then, load the GORM models.
   schema "public" {
     url = data.external_schema.gorm.url
   }
