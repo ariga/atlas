@@ -107,14 +107,9 @@ type (
 		Test  *Test  `spec:"test"` // Optional test configuration
 		cloud *cmdext.AtlasConfig
 	}
-	// LocalState keeps track of local state to enhance developer experience.
-	LocalState struct {
-		UpgradeSuggested time.Time `json:"v1.us"`
-	}
 )
 
 const (
-	localStateFile            = "local-community.json"
 	envSkipUpgradeSuggestions = "ATLAS_NO_UPGRADE_SUGGESTIONS"
 	oneWeek                   = 7 * 24 * time.Hour
 )
