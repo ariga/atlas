@@ -1,20 +1,21 @@
 ---
-title: Using Composite Types in Sequelize
-id: composite-types
-slug: composite-types
+title: Using Domain Types in Sequelize
+id: domain-types
+slug: domain-types
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-In PostgreSQL, a [composite type](https://www.postgresql.org/docs/current/rowtypes.html) is structured like a row or record, consisting of field names and their corresponding
-data types. Setting a Sequelize model as a composite type enables you to store complex and structured data in a single column.
+PostgreSQL [domain types](https://www.postgresql.org/docs/current/domains.html) are user-defined data types that extend
+existing ones, allowing you to add constraints that restrict the values they can hold. Setting a field type
+as a domain type enables you to enforce data integrity and validation rules at the database level.
 
-This guide explains how to define a model type as a composite type in your Sequelize models and configure the schema migration
-to manage both the composite types and the Sequelize models as a single migration unit using Atlas.
+This guide explains how to define a model type as a domain type in your Sequelize model and configure the schema migration
+to manage both the domains and the Sequelize model as a single migration unit using Atlas.
 
 :::info [Atlas Pro Feature](/features#pro-plan)
-Atlas support for [Composite Types](/atlas-schema/hcl#composite-type) is available exclusively to Pro users.
+Atlas support for [Domain Types](/atlas-schema/hcl#domain) is available exclusively to Pro users.
 To use this feature, run:
 ```
 atlas login
@@ -22,31 +23,32 @@ atlas login
 :::
 
 ## Getting started with Atlas and Sequelize
-Before we continue to composite types, ensure you have installed the [Atlas Sequelize Provider](https://github.com/ariga/atlas-provider-sequelize)
+Before we continue to domain types, ensure you have installed the [Atlas Sequelize Provider](https://github.com/ariga/atlas-provider-sequelize)
 on your Sequelize project.
 
 To set up, follow along the [getting started guide](/guides/orms/sequelize) for Sequelize and Atlas.
 
 ## Composite Schema
 
-The Sequelize models are mostly used for defining tables and interacting with the database. Composite types,
-or any other database objects do not have representation in Sequelize models - a composite type can be defined once,
+The Sequelize models are mostly used for defining tables and interacting with the database. Domain types,
+or any other database objects do not have representation in Sequelize models - a domain type can be defined once,
 and may be used multiple times in different columns and models.
 
-In order to extend our PostgreSQL schema to include both custom composite types and our Sequelize types, we configure Atlas to
+In order to extend our PostgreSQL schema to include both custom domain types and our Sequelize types, we configure Atlas to
 read the state of the schema from a [Composite Schema](/atlas-schema/projects#data-source-composite_schema)
 data source. Follow the steps below to configure this for your project:
 
-1\. Create a `schema.sql` that defines the necessary composite type. In the same way, you can configure the composite type in
-[Atlas Schema HCL language](/atlas-schema/hcl-types#composite-type):
+1\. Create a `schema.sql` that defines the necessary domain type. In the same way, you can configure the composite type in
+[Atlas Schema HCL language](/atlas-schema/hcl-types#domain):
 
 <Tabs>
 <TabItem value={"sql"} label={"Using SQL"}>
 
 ```sql title="schema.sql"
-CREATE TYPE address AS (
-  street text,
-  city   text
+CREATE DOMAIN us_postal_code AS TEXT
+CHECK(
+    VALUE ~ '^\d{5}$'
+    OR VALUE ~ '^\d{5}-\d{4}$'
 );
 ```
 
@@ -56,13 +58,12 @@ CREATE TYPE address AS (
 ```hcl title="schema.hcl"
 schema "public" {}
 
-composite "address" {
+domain "us_postal_code" {
   schema = schema.public
-  field "street" {
-    type = text
-  }
-  field "city" {
-    type = text
+  type   = text
+  null   = true
+  check "us_postal_code_check" {
+    expr = "((VALUE ~ '^\\d{5}$'::text) OR (VALUE ~ '^\\d{5}-\\d{4}$'::text))"
   }
 }
 ```
@@ -70,24 +71,20 @@ composite "address" {
 </TabItem>
 </Tabs>
 
-2\. In your Sequelize models, define a column that uses the composite type only in PostgreSQL dialect:
+2\. In your Sequelize models, define a column that uses the domain type only in PostgreSQL dialect:
 
 ```javascript title="user.js"
 'use strict';
 module.exports = function(sequelize, DataTypes) {
-    const address = {
-        type: 'address',
-        fields: [
-            'street',
-            'city',
-        ],
+    const us_postal_code = {
+        type: 'us_postal_code',
     };
     const User = sequelize.define('User', {
         name: {
             type: DataTypes.STRING,
             allowNull: false
         },
-        address: address
+        postal_code: us_postal_code
     });
     return User;
 };
@@ -130,14 +127,14 @@ atlas schema inspect \
   --format '{{ sql . }}'
 ```
 
-The command above prints the following SQL. Note, the `address` composite type is defined in the schema before
-its usage in the `address` field:
+The command above prints the following SQL. Note, the `us_postal_code` domain type is defined in the schema before
+its usage in the `postal_code` field:
 
 ```sql
--- Create composite type "address"
-CREATE TYPE "address" AS ("street" text, "city" text);
+-- Create domain type "us_postal_code"
+CREATE DOMAIN "us_postal_code" AS text CONSTRAINT "us_postal_code_check" CHECK ((VALUE ~ '^\d{5}$'::text) OR (VALUE ~ '^\d{5}-\d{4}$'::text));
 -- Create "Users" table
-CREATE TABLE "Users" ("id" serial NOT NULL, "name" character varying(255) NOT NULL, "address" "address" NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"));
+CREATE TABLE "Users" ("id" serial NOT NULL, "name" character varying(255) NOT NULL, "postal_code" "us_postal_code" NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"));
 ```
 
 #### Generate Migrations For the Schema
@@ -151,11 +148,11 @@ atlas migrate diff \
 
 Note that a new migration file is created with the following content:
 
-```sql title="migrations/20240712090543.sql"
--- Create composite type "address"
-CREATE TYPE "address" AS ("street" text, "city" text);
+```sql
+-- Create domain type "us_postal_code"
+CREATE DOMAIN "us_postal_code" AS text CONSTRAINT "us_postal_code_check" CHECK ((VALUE ~ '^\d{5}$'::text) OR (VALUE ~ '^\d{5}-\d{4}$'::text));
 -- Create "Users" table
-CREATE TABLE "Users" ("id" serial NOT NULL, "name" character varying(255) NOT NULL, "address" "address" NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"));
+CREATE TABLE "Users" ("id" serial NOT NULL, "name" character varying(255) NOT NULL, "postal_code" "us_postal_code" NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"));
 ```
 
 #### Apply the Migrations
