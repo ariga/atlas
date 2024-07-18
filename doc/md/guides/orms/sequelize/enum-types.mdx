@@ -1,0 +1,170 @@
+---
+title: Using Enum Types in Sequelize
+id: enum-types
+slug: enum-types
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+[Enum types](https://www.postgresql.org/docs/current/datatype-enum.html) are data structures that consist of a predefined,
+ordered set of values.
+
+This guide explains how to define a model type as an enum in your Sequelize model and configure the schema migration
+to manage both the enums and the Sequelize model as a single migration unit using Atlas.
+
+:::info [Atlas Pro Feature](/features#pro-plan)
+Atlas support for [Enum Types](/atlas-schema/hcl#enum) is available exclusively to Pro users.
+To use this feature, run:
+```
+atlas login
+```
+:::
+
+## Getting started with Atlas and Sequelize
+Before we continue to enum types, ensure you have installed the [Atlas Sequelize Provider](https://github.com/ariga/atlas-provider-sequelize)
+on your Sequelize project.
+
+To set up, follow along the [getting started guide](/guides/orms/sequelize) for Sequelize and Atlas.
+
+## Composite Schema
+
+The Sequelize models are mostly used for defining tables and interacting with the database. Enum types,
+or any other database objects do not have representation in Sequelize models - an enum type can be defined once,
+and may be used multiple times in different columns and models.
+
+In order to extend our PostgreSQL schema to include both custom enum types and our Sequelize types, we configure Atlas to
+read the state of the schema from a [Composite Schema](/atlas-schema/projects#data-source-composite_schema)
+data source. Follow the steps below to configure this for your project:
+
+1\. Create a `schema.sql` that defines the necessary enum type. In the same way, you can configure the enum type in
+[Atlas Schema HCL language](/atlas-schema/hcl-types#enum):
+
+<Tabs>
+<TabItem value={"sql"} label={"Using SQL"}>
+
+```sql title="schema.sql"
+CREATE TYPE status AS ENUM ('active', 'inactive', 'pending');
+```
+
+</TabItem>
+<TabItem value={"hcl"} label={"Using HCL"}>
+
+```hcl title="schema.hcl"
+schema "public" {}
+
+enum "status" {
+  schema = schema.public
+  values = ["active", "inactive", "pending"]
+}
+```
+
+</TabItem>
+</Tabs>
+
+2\. In your Sequelize models, define a column that uses the enum type only in PostgreSQL dialect:
+
+```javascript title="user.js"
+'use strict';
+module.exports = function(sequelize, DataTypes) {
+    const status = {
+        type: 'status',
+    };
+    const User = sequelize.define('User', {
+        name: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        status: status
+    });
+    return User;
+};
+```
+
+3\. In your [`atlas.hcl`](/guides/orms/sequelize#standalone-mode) config file, add a `composite_schema` that includes both your custom types defined in
+`schema.sql` and your Sequelize models:
+
+```hcl title="atlas.hcl"
+data "composite_schema" "app" {
+  # Load custom types first.
+  schema "public" {
+    url = "file://schema.sql"
+  }
+  schema "public" {
+    url = data.external_schema.sequelize.url
+  }
+}
+
+env "local" {
+  src = data.composite_schema.app.url
+  dev = "docker://postgres/15/dev?search_path=public"
+}
+```
+
+## Usage
+
+After setting up our schema, we can get its representation using the `atlas schema inspect` command, generate migrations for
+it, apply them to a database, and more. Below are a few commands to get you started with Atlas:
+
+#### Inspect the Schema
+
+The `atlas schema inspect` command is commonly used to inspect databases. However, we can also use it to inspect our
+`composite_schema` and print the SQL representation of it:
+
+```shell
+atlas schema inspect \
+  --env local \
+  --url env://src \
+  --format '{{ sql . }}'
+```
+
+The command above prints the following SQL. Note, the `status` enum type is defined in the schema before
+its usage in the `users.status` column:
+
+```sql
+-- Create enum type "status"
+CREATE TYPE "status" AS ENUM ('active', 'inactive', 'pending');
+-- Create "Users" table
+CREATE TABLE "Users" ("id" serial NOT NULL, "name" character varying(255) NOT NULL, "status" "status" NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"));
+```
+
+#### Generate Migrations For the Schema
+
+To generate a migration for the schema, run the following command:
+
+```shell
+atlas migrate diff \
+  --env local
+```
+
+Note that a new migration file is created with the following content:
+
+```sql
+-- Create enum type "status"
+CREATE TYPE "status" AS ENUM ('active', 'inactive', 'pending');
+-- Create "Users" table
+CREATE TABLE "Users" ("id" serial NOT NULL, "name" character varying(255) NOT NULL, "status" "status" NULL, "createdAt" timestamptz NOT NULL, "updatedAt" timestamptz NOT NULL, PRIMARY KEY ("id"));
+```
+
+#### Apply the Migrations
+
+To apply the migration generated above to a database, run the following command:
+
+```
+atlas migrate apply \
+  --env local \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+```
+
+:::info Apply the Schema Directly on the Database
+
+Sometimes, there is a need to apply the schema directly to the database without generating a migration file. For example,
+when experimenting with schema changes, spinning up a database for testing, etc. In such cases, you can use the command
+below to apply the schema directly to the database:
+
+```shell
+atlas schema apply \
+  --env local \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable"
+```
+:::

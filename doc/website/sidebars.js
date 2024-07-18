@@ -385,6 +385,7 @@ module.exports = {
                     items: [
                         {type: 'doc', id: 'guides/orms/sequelize/composite-types', label: 'Composite Types'},
                         {type: 'doc', id: 'guides/orms/sequelize/domain-types', label: 'Domain Types'},
+                        {type: 'doc', id: 'guides/orms/sequelize/enum-types', label: 'Enum Types'},
                     ],
                 },
                 {
