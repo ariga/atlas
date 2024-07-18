@@ -67,16 +67,44 @@ extension "postgis" {
 2\. In your GORM model, define a field that uses the data type provided by the extension.
 
 ```go title="models.go"
+package models
+
+import (
+	"database/sql/driver"
+	"fmt"
+	"gorm.io/gorm"
+)
+
+// GeometryPoint is a custom GORM type for PostGIS point
 type GeometryPoint struct {
-    gorm.Model
-    X, Y float64
-    UserID uint
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+// Scan implements the Scanner interface for GeometryPoint
+func (g *GeometryPoint) Scan(val interface{}) error {
+	var point string
+	switch v := val.(type) {
+	case []byte:
+		point = string(v)
+	case string:
+		point = v
+	default:
+		return fmt.Errorf("cannot convert %T to GeometryPoint", val)
+	}
+
+	_, err := fmt.Sscanf(point, "POINT(%f %f)", &g.X, &g.Y)
+	return err
+}
+
+// Value implements the driver Valuer interface for GeometryPoint
+func (g GeometryPoint) Value() (driver.Value, error) {
+	return fmt.Sprintf("POINT(%f %f)", g.X, g.Y), nil
 }
 
 type User struct {
-    gorm.Model
-    ID       uint
-    Location GeometryPoint
+	gorm.Model
+	Location GeometryPoint `gorm:"type:geometry(POINT, 4326)"` // Using PostGIS geometry type
 }
 ```
 
@@ -127,13 +155,9 @@ COMMENT ON SCHEMA "public" IS 'standard public schema';
 -- Create extension "postgis"
 CREATE EXTENSION "postgis" WITH SCHEMA "public" VERSION "3.4.2";
 -- Create "users" table
-CREATE TABLE "public"."users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, PRIMARY KEY ("id"));
+CREATE TABLE "public"."users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "location" public.geometry(point,4326) NULL, PRIMARY KEY ("id"));
 -- Create index "idx_users_deleted_at" to table: "users"
 CREATE INDEX "idx_users_deleted_at" ON "public"."users" ("deleted_at");
--- Create "geometry_points" table
-CREATE TABLE "public"."geometry_points" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "x" numeric NULL, "y" numeric NULL, "user_id" bigint NULL, PRIMARY KEY ("id"), CONSTRAINT "fk_users_location" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
--- Create index "idx_geometry_points_deleted_at" to table: "geometry_points"
-CREATE INDEX "idx_geometry_points_deleted_at" ON "public"."geometry_points" ("deleted_at");
 ```
 
 :::info Extensions Are Database-Level Objects
@@ -161,13 +185,9 @@ Note that a new migration file is created with the following content:
 -- Create extension "postgis"
 CREATE EXTENSION "postgis" WITH SCHEMA "public" VERSION "3.4.2";
 -- Create "users" table
-CREATE TABLE "public"."users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, PRIMARY KEY ("id"));
+CREATE TABLE "public"."users" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "location" public.geometry(point,4326) NULL, PRIMARY KEY ("id"));
 -- Create index "idx_users_deleted_at" to table: "users"
 CREATE INDEX "idx_users_deleted_at" ON "public"."users" ("deleted_at");
--- Create "geometry_points" table
-CREATE TABLE "public"."geometry_points" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "x" numeric NULL, "y" numeric NULL, "user_id" bigint NULL, PRIMARY KEY ("id"), CONSTRAINT "fk_users_location" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
--- Create index "idx_geometry_points_deleted_at" to table: "geometry_points"
-CREATE INDEX "idx_geometry_points_deleted_at" ON "public"."geometry_points" ("deleted_at");
 ```
 
 #### Apply the Migrations
