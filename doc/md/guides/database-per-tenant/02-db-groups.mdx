@@ -1,0 +1,186 @@
+---
+title: Defining Target Groups
+id: target-groups
+slug: target-groups
+---
+In Atlas, a target group is a collection of target databases whose schema is managed together. In a database-per-tenant
+architecture, each tenant's database is a target database, and all tenant databases are grouped into a target group.
+However, you can also group databases by other criteria, such as environment (dev, staging, prod), region, or any other
+criteria that makes sense for your application.
+
+For example, you might group all databases in the same region into a target group to ensure that schema changes are
+applied consistently across all databases in that region, or to group free-tier databases separately from
+paid-tier databases.
+
+Target groups can be defined statically or to be dynamically loaded from an API endpoint or a database query.
+
+Target groups are defined in the project's `atlas.hcl` file and are later used by the Atlas CLI during the deployment
+process to determine which databases to deploy to.
+
+Let's review some examples of how to define target groups in Atlas.
+
+## `env` blocks and `for_each` meta-arguments
+
+Before we jump into various techniques to define target groups, let's first understand the `for_each` meta-argument for
+environment blocks in Atlas.
+
+Environment blocks (`env` blocks) are used in Atlas project files (`atlas.hcl`) to group configuration settings for
+a specific environment. Normally, an `env` block is used to define the URL of a single target database, like so:
+
+```hcl
+env "dev" {
+  url = "postgres://root:pass@localhost:5432/dev"
+}
+```
+
+However, using the `for_each` meta-argument, it is possible to define multiple instances of a specific environment block
+by iterating over a list of values. For example:
+
+```hcl
+locals {
+  target_db_urls = [
+    "postgres://root:pass@host-1:5432",
+    "postgres://root:pass@host-2:5432",
+  ]
+}
+
+env "targets" {
+    for_each = toset(local.target_db_urls)
+    url = each.value
+}
+```
+
+When the `for_each` meta-argument is used, the `env` block is instantiated for each value in the list, and the `each`
+object is used to access the current value. In our case, we will get two instances of the `target` block, one for each
+URL in the `target_db_urls` list.
+
+## Dynamically Compiling URLs
+
+A technique commonly used in `atlas.hcl` files is to dynamically compile URLs by combining values from various sources.
+For instance, the database instance URL might be provided as an input variable, with the database name added to it
+dynamically. Here's an example:
+
+```hcl
+variable "db_instance_url" {
+  type = string
+}
+
+locals {
+  tenants = ["acme_corp", "widget_inc", "wayne_enterprises", "stark_industries"]
+}
+
+env "tenants" {
+  for_each = toset(local.tenants)
+  url = urlsetpath(var.db_instance_url, each.value)
+}
+```
+
+Let's review the code snippet above:
+* We define a variable `db_instance_url` that will be used as the base URL for the database instances.
+  This variable is provided by the user when running the Atlas CLI by providing the `--var` flag.
+* We define a local variable `tenants` that contains a list of tenant names.
+* We define an `env` block named `tenants` that iterates over the `tenants` list. For each tenant, we set the `url`
+  attribute to the result of the `urlsetpath` function, which combines the `db_instance_url` with the tenant name.
+
+:::info The `urlsetpath` function
+
+The `urlsetpath` function is a helper function provided by Atlas that allows you to set the "path" part
+of a URL. For example:
+
+```hcl
+urlsetpath("postgres://root:pass@localhost:5432", "mydb")
+#  ↳ Evaluates to "postgres://root:pass@localhost:5432/mydb"
+
+urlsetpath("mysql://localhost:3306", "mydb") # Evaluates to "mysql://localhost:3306/mydb"
+#  ↳ Evaluates to "postgres://root:pass@localhost:5432/mydb"
+```
+
+:::
+
+## Loading data from local JSON files
+
+Suppose our list of tenants is stored in a local file named `tenants.json`:
+
+```json title="tenants.json"
+{
+  "tenants": [
+    "acme_corp",
+    "widget_inc",
+    "wayne_enterprises",
+    "stark_industries"
+  ]
+}
+```
+
+We can load this data into our `atlas.hcl` file using the `file` and `jsondecode` functions:
+
+```hcl title="atlas.hcl"
+locals {
+  f = file("tenants.json")
+  decoded = jsondecode(local.f)
+  tenants = local.decoded.tenants
+}
+
+env "tenants" {
+  for_each = toset(local.tenants)
+  url = urlsetpath("postgres://root:pass@localhost:5432", each.value)
+}
+```
+
+Next, we define an environment block for this target groups that consumes the `target_tenants` local variable
+into the `for_each` argument:
+
+```hcl title="atlas.hcl"
+env "tenants" {
+  for_each = toset(local.target_tenants)
+  url = urlsetpath("postgres://root:pass@localhost:5432", each.value)
+}
+```
+
+Let's review the code snippet above:
+* We define a local variable `f` that reads the contents of the `tenants.json` file.
+* Next, we use the `jsondecode` function to parse the JSON content into a structured object.
+* We extract the `tenants` array from the decoded JSON object and store it in the `tenants` local variable.
+* Finally, we define an `env` block named `tenants` that iterates over the `tenants` list. For each tenant, we set the `url`
+  attribute to the result of the `urlsetpath` function, which combines the base URL with the tenant name.
+
+## Loading credentials
+
+Essentially, defining target groups in Atlas is about dynamically compiling a list of URLs that represent the target
+databases. Database URLs often contain sensitive information, such as passwords, that should not be hardcoded in the
+`atlas.hcl` file, which is typically checked into version control.
+
+To address this issue, Atlas provides mechanisms for loading credentials from external sources, such as environment
+variables or secret management systems. This allows you to keep your database credentials secure while still being able
+to define target groups dynamically. Learn more about [Working with Secrets](/guides/deploying/secrets).
+
+For the purpose of this example, suppose our database password is stored in an AWS Secrets Manager, created
+using the AWS CLI as follows:
+
+```bash
+aws secretsmanager create-secret \
+  --name db-pass-demo \
+  --secret-string "p455w0rd"
+```
+
+The AWS CLI returns:
+
+```json
+{
+    "ARN": "arn:aws:secretsmanager:us-east-1:1111111111:secret:db-pass-demo-aBiM5k",
+    "Name": "db-pass-demo",
+    "VersionId": "b702431d-174f-4a8f-aee5-b80e687b8bf1"
+}
+```
+
+To retrieve the secret value we will use the `runtimevar` data source in the `atlas.hcl` file:
+
+```hcl
+data "runtimevar" "pass" {
+  url = "awssecretsmanager://db-pass-demo?region=us-east-1"
+}
+
+locals {
+  tenants = ["acme_corp", "widget_inc", "wayne_enterprises", "stark_industries"]
+}
+```

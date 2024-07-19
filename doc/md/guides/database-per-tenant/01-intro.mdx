@@ -1,0 +1,79 @@
+---
+title: Database-per-Tenant Architectures with Atlas
+id: intro
+slug: intro
+---
+
+## Intro
+
+This guide describes how to utilize Atlas to manage database schemas in "Database per Tenant" architectures,
+a common pattern for deploying multi-tenant applications.
+
+### What is a Database per Tenant Architecture?
+
+In a "Database per Tenant" architecture, each tenant has its own dedicated database. Database-per-tenant architectures are commonly
+used in situations where there are considerations around data isolation, security, and scalability. It is worth noting
+it contrary to creating a fully isolated deployment for each tenant, in this architecture compute and other resources
+are shared across tenants.
+
+### Alternative Multi-Tenant Architectures
+
+In addition to a Database per Tenant architecture, there are other common multi-tenant architectures:
+
+1. **Shared Database, Shared Schema**: In this architecture, all tenants share the same database and schema and are
+differentiated by a tenant identifier column in each table.
+2. **Full Isolation**: In this architecture, each tenant has its own isolated deployment, including its own database,
+schema, and compute resources.
+
+### Advantages
+
+Database per Tenant architectures offer several advantages over other multi-tenant architectures:
+
+1. **Data Isolation**: Each tenant has its own dedicated database, providing strong data isolation between tenants.
+By isolating data on the database level, you can ensure that data from one tenant is not accessible to another tenant,
+providing better security and privacy guarantees.
+2. **Data Compliance**: By isolating tenants on the database level, you can ensure that each tenant's data is stored in
+compliance with data regulations and privacy laws relevant to that tenant. For example, you can host the specific
+database in a region that complies with the tenant's data residency requirements or even in your customer's own
+infrastructure.
+3. **Performance**: By isolating tenants on the database level, you can ensure that the performance of one tenant's
+database operations does not impact the performance of other tenants - eliminating the "noisy neighbor" problem.
+Additionally, you can utilize different instance types or configurations for each tenant's database to meet their
+specific performance requirements.
+4. **Simplified Development** (compared to shared database architectures) Codebases for multi-tenant applications are
+notoriously complex. Every action against the database must be made "tenant-aware" to ensure that data is correctly
+isolated. By isolating tenants on the database level, applications become effectively single-tenant, simplifying
+development, reducing the mental overhead of handling multi-tenancy, and reducing the risk of data leakage between tenants.
+5. **Simplified Deployment** (compared to full isolation) In a full isolation architecture, each tenant has its own
+deployment, requiring separate infrastructure, monitoring, and maintenance. By isolating tenants on the database level,
+you can share infrastructure, monitoring, and maintenance across tenants, reducing operational overhead.
+
+### Challenges
+
+> This architecture decisions is one of my biggest regrets, and we are currently in the process of rebuilding into a single database model.
+>
+> *[HN Thread on Database per Tenant Architecture](https://news.ycombinator.com/item?id=23305111)*
+
+Despite their numerous advantages, Database per Tenant architectures present unique challenges, mostly around managing
+database schema migrations:
+
+* **Migration Duration** - As the number of tenants grows, deployment time increases linearly with the number of tenants.
+This is especially problematic when deploying schema migrations that take time, such as data migrations or index rebuilds.
+* **Schema Consistency** Ensuring that all tenant databases have consistent schema versions can be complex. Any schema
+change needs to be applied across all tenant databases, which can be time-consuming and error-prone.
+* **Detecting Drift** - Migrations can fail due to various reasons, such as network issues, database downtime,
+or data dependent issues (such as constraint violations).  Such inconsistencies can cause application downtime for
+users, as new application versions are rolled out and expect database changes to already have been applied.
+Detecting these inconsistencies (schema-drift) across a large fleet of databases can be challenging.
+* **Rollbacks** - Rolling back schema changes across a large fleet of databases can be challenging.  In a shared database
+architecture, rolling back a schema change is a single operation. In a database per tenant architecture, rolling back
+a schema change requires rolling back the change on each tenant's database, which needs to be somehow orchestrated.
+
+## Database per Tenant Architectures with Atlas
+
+Atlas was built from the ground up to handle database-per-tenant architectures. In fact, [Atlas Cloud](https://atlasgo.cloud)
+itself is a multi-tenant application that uses a database-per-tenant architecture to manage its own schema.
+
+Atlas supports database-per-tenant architectures both on the CLI and in the Cloud control plane.
+
+In the following sections, we'll describe how to use Atlas to manage database schemas in a database-per-tenant architecture.
