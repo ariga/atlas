@@ -123,8 +123,8 @@ module.exports = {
             from: '/dev-database',
           },
           {
-            to: '/guides/ddl',
-            from: ['/ddl/intro', '/concepts/ddl'],
+            to: '/atlas-schema/hcl',
+            from: ['/ddl/intro', '/concepts/ddl', '/guides/ddl'],
           },
           {
             to: '/atlas-schema/input-variables',
@@ -157,10 +157,6 @@ module.exports = {
           {
             to: '/guides/postgres/serial-columns',
             from: '/knowledge/postgres/serial-columns',
-          },
-          {
-            to: '/guides/ddl',
-            from: '/knowledge/ddl',
           },
           {
             to: '/concepts/url',

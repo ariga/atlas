@@ -7,7 +7,7 @@ slug: /atlas-schema/hcl
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Atlas schemas can be defined in SQL, external ORMs and programs, or by using the [Atlas HCL](/guides/ddl.md#hcl) language.
+Atlas schemas can be defined in SQL, external ORMs and programs, or by using the Atlas HCL language.
 The HCL-based language allows developers to describe database schemas in a declarative manner, and it supports all SQL
 features supported by Atlas. The main advantages of using HCL are that it enables developers to manage their database
 schemas like regular code, facilitates sharing and reusing files between projects, allows variable injection, and
@@ -224,7 +224,7 @@ To define row-level security policies for a table, refer to the [policy](#row-le
 
 In some cases, an Atlas DDL document may contain multiple tables of the same name. This usually happens
 when the same table name appears in two different schemas. In these cases, the table names must be
-disambiguated by using resource [qualifiers](/guides/ddl.md#qualifiers). The following document describes a
+disambiguated by using resource qualifiers. The following document describes a
 database that contains two schemas named `a` and `b`, and both of them contain a table named `users`.
 
 ```hcl
