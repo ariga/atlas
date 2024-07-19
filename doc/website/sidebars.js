@@ -562,10 +562,6 @@ module.exports = {
             label: 'Redshift'
         },
         {
-            type: 'doc',
-            id: 'guides/ddl'
-        },
-        {
             type: 'category',
             label: 'Archive',
             collapsed: false,
