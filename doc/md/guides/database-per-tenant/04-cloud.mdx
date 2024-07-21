@@ -97,7 +97,7 @@ INSERT INTO users (id, name) VALUES (1, "a8m");
 INSERT INTO users (id, name) VALUES (2, "rotemtam");
 ```
 
-Save the file and exit the editor. Let's now push the new migration to the Schema Registry:
+Save the file and exit the editor. Let's push the new migration to the Schema Registry:
 
 ```shell
 atlas migrate push --env prod db-per-tenant
@@ -172,7 +172,7 @@ Atlas Cloud UI by navigating to the "Migrations" tab:
 
 ![](https://atlasgo.io/uploads/db-per-tenant/migrations-screen.png)
 
-We easily locate the failed deployment and drill down to diagnose the issue:
+We quickly find the failed deployment and drill down to diagnose the issue:
 
 ![](https://atlasgo.io/uploads/db-per-tenant/deployment-set-error.png)
 
@@ -197,5 +197,4 @@ target databases, and gain visibility into the status of our deployments.
 
 While it is possible to manage migrations using the Atlas CLI, the Atlas Cloud Control Plane provides a centralized
 view of all your deployments, making it easier to manage and troubleshoot issues across multiple databases.
-
 
