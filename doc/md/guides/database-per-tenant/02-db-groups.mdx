@@ -144,80 +144,6 @@ Let's review the code snippet above:
 * Finally, we define an `env` block named `tenants` that iterates over the `tenants` list. For each tenant, we set the `url`
   attribute to the result of the `urlsetpath` function, which combines the base URL with the tenant name.
 
-## Incorporating Sensitive Data
-
-Essentially, defining target groups in Atlas is about dynamically compiling a list of URLs that represent the target
-databases. Database URLs often contain sensitive information, such as passwords, that should not be hardcoded in the
-`atlas.hcl` file, which is typically checked into version control.
-
-To address this issue, Atlas provides mechanisms for loading credentials from external sources, such as environment
-variables or secret management systems. This allows you to keep your database credentials secure while still being able
-to define target groups dynamically. Learn more about [Working with Secrets](/guides/deploying/secrets).
-
-For the purpose of this example, suppose our database password is stored in an AWS Secrets Manager, created
-using the AWS CLI as follows:
-
-```bash
-aws secretsmanager create-secret \
-  --name db-pass-demo \
-  --secret-string "p455w0rd"
-```
-
-The AWS CLI returns:
-
-```json
-{
-    "ARN": "arn:aws:secretsmanager:us-east-1:1111111111:secret:db-pass-demo-aBiM5k",
-    "Name": "db-pass-demo",
-    "VersionId": "b702431d-174f-4a8f-aee5-b80e687b8bf1"
-}
-```
-
-To retrieve the secret value we will use the `runtimevar` data source in the `atlas.hcl` file:
-
-```hcl
-var "db_instance_url" {
-  type = string
-}
-
-var "db_user" {
-  type = string
-}
-
-data "runtimevar" "pass" {
-  url = "awssecretsmanager://db-pass-demo?region=us-east-1"
-}
-
-locals {
-  db_with_pass = urluserinfo(var.db_instance_url, var.db_user, data.runtimevar.pass.value)
-  tenants = ["acme_corp", "widget_inc", "wayne_enterprises", "stark_industries"]
-}
-
-env "tenants" {
-  for_each = toset(local.tenants)
-  url = urlsetpath(local.db_with_pass, each.value)
-}
-```
-
-Let's review what's going on here:
-* We define two variables, `db_instance_url` and `db_user`, which are used to construct the database URL.
-* We use the `runtimevar` data source to fetch the password from AWS Secrets Manager.
-* We define a local variable `db_with_pass` that combines the database URL, the username, and the password.
-* We define an `env` block named `tenants` that iterates over the `tenants` list. For each tenant, we set the `url`
-  attribute to the result of the `urlsetpath` function, which combines the `db_with_pass` with the tenant name.
-
-:::info The `urluserinfo` function
-
-The `urluserinfo` function is a helper function provided by Atlas that allows you to set the "userinfo" part
-of a URL. For example:
-
-```hcl
-urluserinfo("postgres://localhost:5432", "root", "p455w0rd")
-#  ↳ Evaluates to "postgres://root:p455w0rd@localhost:5432"
-```
-
-:::
-
 ## Loading Data from an API Endpoint
 
 In some cases, you may want to load target groups dynamically from an API endpoint. For example, you might have a
@@ -278,3 +204,120 @@ database schema for each tenant in some instance, and would like to retrieve the
 `information_schema` tables.
 
 You can utilize the `sql` data source to fetch this data and use it to define target groups.
+
+```hcl
+var "url" {
+  type = string
+}
+
+locals {
+    pattern = "tenant_%"
+}
+
+data "sql" "tenants" {
+  url = var.url
+  query = <<EOS
+SELECT `schema_name`
+  FROM `information_schema`.`schemata`
+  WHERE `schema_name` LIKE ?
+EOS
+  args = [local.pattern]
+}
+
+env "prod" {
+  for_each = toset(data.sql.tenants.values)
+  url      = urlsetpath(var.url, each.value)
+}
+```
+
+Let's break down this example:
+* We define a variable `url` that will be used to connect to the database.
+* We define a local variable `pattern` that contains a pattern to match the tenant schemas. In this case, we're looking
+  for schemas that start with `tenant_`.
+* We use the `sql` data source to execute a query against the database. The query selects the `schema_name` from the
+  `information_schema.schemata` table where the `schema_name` matches the pattern.
+* We define an `env` block named `prod` that iterates over the results of the query. For each schema name, we set the
+  `url` attribute to the result of the `urlsetpath` function, which combines the base URL with the schema name.
+
+## Incorporating Sensitive Data
+
+Essentially, defining target groups in Atlas is about dynamically compiling a list of URLs that represent the target
+databases. Database URLs often contain sensitive information, such as passwords, that should not be hardcoded in the
+`atlas.hcl` file, which is typically checked into version control.
+
+To address this issue, Atlas provides mechanisms for loading credentials from external sources, such as environment
+variables or secret management systems. This allows you to keep your database credentials secure while still being able
+to define target groups dynamically. Learn more about [Working with Secrets](/guides/deploying/secrets).
+
+For the purpose of this example, suppose our database password is stored in an AWS Secrets Manager, created
+using the AWS CLI as follows:
+
+```bash
+aws secretsmanager create-secret \
+  --name db-pass-demo \
+  --secret-string "p455w0rd"
+```
+
+The AWS CLI returns:
+
+```json
+{
+    "ARN": "arn:aws:secretsmanager:us-east-1:1111111111:secret:db-pass-demo-aBiM5k",
+    "Name": "db-pass-demo",
+    "VersionId": "b702431d-174f-4a8f-aee5-b80e687b8bf1"
+}
+```
+
+To retrieve the secret value we will use the `runtimevar` data source in the `atlas.hcl` file:
+
+```hcl
+var "db_instance_url" {
+  type = string
+}
+
+var "db_user" {
+  type = string
+}
+
+data "runtimevar" "pass" {
+  url = "awssecretsmanager://db-pass-demo?region=us-east-1"
+}
+
+locals {
+  db_with_pass = urluserinfo(var.db_instance_url, var.db_user, data.runtimevar.pass.value)
+  tenants = ["acme_corp", "widget_inc", "wayne_enterprises", "stark_industries"]
+}
+
+env "tenants" {
+  for_each = toset(local.tenants)
+  url = urlsetpath(local.db_with_pass, each.value)
+}
+```
+
+Let's review what's going on here:
+* We define two variables, `db_instance_url` and `db_user`, which are used to construct the database URL.
+* We use the `runtimevar` data source to fetch the password from AWS Secrets Manager.
+* We define a local variable `db_with_pass` that combines the database URL, the username, and the password.
+* We define an `env` block named `tenants` that iterates over the `tenants` list. For each tenant, we set the `url`
+attribute to the result of the `urlsetpath` function, which combines the `db_with_pass` with the tenant name.
+
+:::info The `urluserinfo` function
+
+The `urluserinfo` function is a helper function provided by Atlas that allows you to set the "userinfo" part
+of a URL. For example:
+
+```hcl
+urluserinfo("postgres://localhost:5432", "root", "p455w0rd")
+#  ↳ Evaluates to "postgres://root:p455w0rd@localhost:5432"
+```
+
+:::
+
+## Next Steps
+
+In this guide, we've explored various techniques for defining target groups in Atlas. By using the `env` blocks and
+`for_each` meta-arguments, you can dynamically compile a list of target databases based on various criteria, such as
+tenant names, regions, or other factors.
+
+In the next section, we will show how to use these target groups in the deployment process to ensure that schema changes
+are applied consistently across all databases in the group.

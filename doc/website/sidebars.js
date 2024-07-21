@@ -212,6 +212,16 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/database-per-tenant/target-groups',
                     label: 'Target Groups'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/database-per-tenant/deploying',
+                    label: 'Deploying'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/database-per-tenant/control-plane',
+                    label: 'Control Plane'
                 }
             ]
         },
