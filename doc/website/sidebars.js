@@ -200,6 +200,33 @@ module.exports = {
         },
         {
             type: 'category',
+            label: 'Database-per-Tenant',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    label: 'Introduction',
+                    id: 'guides/database-per-tenant/intro',
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/database-per-tenant/target-groups',
+                    label: 'Target Groups'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/database-per-tenant/deploying',
+                    label: 'Deploying'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/database-per-tenant/control-plane',
+                    label: 'Control Plane'
+                }
+            ]
+        },
+        {
+            type: 'category',
             label: 'Deploying schema migrations',
             collapsed: false,
             items: [
