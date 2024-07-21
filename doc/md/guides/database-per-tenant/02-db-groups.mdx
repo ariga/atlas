@@ -3,7 +3,7 @@ title: Defining Target Groups
 id: target-groups
 slug: target-groups
 ---
-In Atlas, a target group is a collection of target databases whose schema is managed together. In a database-per-tenant
+In Atlas, a **target group** is a collection of target databases whose schema is managed together. In a database-per-tenant
 architecture, each tenant's database is a target database, and all tenant databases are grouped into a target group.
 However, you can also group databases by other criteria, such as environment (dev, staging, prod), region, or any other
 criteria that makes sense for your application.
@@ -12,7 +12,7 @@ For example, you might group all databases in the same region into a target grou
 applied consistently across all databases in that region, or to group free-tier databases separately from
 paid-tier databases.
 
-Target groups can be defined statically or to be dynamically loaded from an API endpoint or a database query.
+Target groups can be defined statically or dynamically loaded from an API endpoint or a database query.
 
 Target groups are defined in the project's `atlas.hcl` file and are later used by the Atlas CLI during the deployment
 process to determine which databases to deploy to.
@@ -91,7 +91,7 @@ of a URL. For example:
 urlsetpath("postgres://root:pass@localhost:5432", "mydb")
 #  ↳ Evaluates to "postgres://root:pass@localhost:5432/mydb"
 
-urlsetpath("mysql://localhost:3306", "mydb") # Evaluates to "mysql://localhost:3306/mydb"
+urlsetpath("mysql://localhost:3306", "mydb")
 #  ↳ Evaluates to "postgres://root:pass@localhost:5432/mydb"
 ```
 
@@ -127,7 +127,7 @@ env "tenants" {
 }
 ```
 
-Next, we define an environment block for this target groups that consumes the `target_tenants` local variable
+Next, we define an environment block for this target group that consumes the `target_tenants` local variable
 into the `for_each` argument:
 
 ```hcl title="atlas.hcl"
@@ -147,8 +147,8 @@ Let's review the code snippet above:
 ## Loading Data from an API Endpoint
 
 In some cases, you may want to load target groups dynamically from an API endpoint. For example, you might have a
-service `tenant-svc` that provides a list of tenant databases based on some criteria.  Let's suppose this service's
-endpoints recieve the target group id in the path, such as `https://tenant-svc/api/target-group/{id}` and return a
+service `tenant-svc` that provides a list of tenant databases based on some criteria. Let's suppose this service's
+endpoints recieve the target group ID in the path, such as `https://tenant-svc/api/target-group/{id}` and return a
 simple JSON payload:
 
 ```json
@@ -162,7 +162,7 @@ simple JSON payload:
 }
 ```
 
-You can use the `runtimevar` data source to fetch with the `http` scheme to fetch this data and use it to define
+You can use the `runtimevar` data source with the `http` scheme to fetch this data and use it to define
 target groups.
 
 Here's an example of how you might load tenant databases from an API endpoint:
@@ -247,7 +247,7 @@ databases. Database URLs often contain sensitive information, such as passwords,
 
 To address this issue, Atlas provides mechanisms for loading credentials from external sources, such as environment
 variables or secret management systems. This allows you to keep your database credentials secure while still being able
-to define target groups dynamically. Learn more about [Working with Secrets](/guides/deploying/secrets).
+to define target groups dynamically. Learn more about [working with secrets](/guides/deploying/secrets).
 
 For the purpose of this example, suppose our database password is stored in an AWS Secrets Manager, created
 using the AWS CLI as follows:

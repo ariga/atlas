@@ -40,11 +40,11 @@ infrastructure.
 database operations does not impact the performance of other tenants - eliminating the "noisy neighbor" problem.
 Additionally, you can utilize different instance types or configurations for each tenant's database to meet their
 specific performance requirements.
-4. **Simplified Development** (compared to shared database architectures) Codebases for multi-tenant applications are
+4. **Simplified Development** (compared to shared database architectures): Codebases for multi-tenant applications are
 notoriously complex. Every action against the database must be made "tenant-aware" to ensure that data is correctly
 isolated. By isolating tenants on the database level, applications become effectively single-tenant, simplifying
 development, reducing the mental overhead of handling multi-tenancy, and reducing the risk of data leakage between tenants.
-5. **Simplified Deployment** (compared to full isolation) In a full isolation architecture, each tenant has its own
+5. **Simplified Deployment** (compared to full isolation): In a full isolation architecture, each tenant has its own
 deployment, requiring separate infrastructure, monitoring, and maintenance. By isolating tenants on the database level,
 you can share infrastructure, monitoring, and maintenance across tenants, reducing operational overhead.
 
@@ -59,15 +59,15 @@ database schema migrations:
 
 * **Migration Duration** - As the number of tenants grows, deployment time increases linearly with the number of tenants.
 This is especially problematic when deploying schema migrations that take time, such as data migrations or index rebuilds.
-* **Schema Consistency** Ensuring that all tenant databases have consistent schema versions can be complex. Any schema
+* **Schema Consistency** - Ensuring that all tenant databases have consistent schema versions can be complex. Any schema
 change needs to be applied across all tenant databases, which can be time-consuming and error-prone.
 * **Detecting Drift** - Migrations can fail due to various reasons, such as network issues, database downtime,
-or data dependent issues (such as constraint violations).  Such inconsistencies can cause application downtime for
+or data dependent issues (such as constraint violations). Such inconsistencies can cause application downtime for
 users, as new application versions are rolled out and expect database changes to already have been applied.
 Detecting these inconsistencies (schema-drift) across a large fleet of databases can be challenging.
-* **Rollbacks** - Rolling back schema changes across a large fleet of databases can be challenging.  In a shared database
+* **Rollbacks** - Rolling back schema changes across multiple databases can be difficult. In a shared database
 architecture, rolling back a schema change is a single operation. In a database per tenant architecture, rolling back
-a schema change requires rolling back the change on each tenant's database, which needs to be somehow orchestrated.
+a schema change requires rolling back the change on each tenant's database, which needs to be orchestrated somehow.
 
 ## Database per Tenant Architectures with Atlas
 
