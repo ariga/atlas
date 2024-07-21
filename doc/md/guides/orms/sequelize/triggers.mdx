@@ -219,15 +219,15 @@ CREATE TABLE "Users" ("id" serial NOT NULL, "name" character varying(255) NOT NU
 CREATE FUNCTION "audit_users_changes" () RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     IF (TG_OP = 'INSERT') THEN
-        INSERT INTO UserAuditLogs(operationType, operationTime, newValue)
+        INSERT INTO "UserAuditLogs"("operationType", "operationTime", "newValue")
         VALUES (TG_OP, CURRENT_TIMESTAMP, row_to_json(NEW));
         RETURN NEW;
     ELSIF (TG_OP = 'UPDATE') THEN
-        INSERT INTO UserAuditLogs(operationType, operationTime, oldValue, newValue)
+        INSERT INTO "UserAuditLogs"("operationType", "operationTime", "oldValue", "newValue")
         VALUES (TG_OP, CURRENT_TIMESTAMP, row_to_json(OLD), row_to_json(NEW));
         RETURN NEW;
     ELSIF (TG_OP = 'DELETE') THEN
-        INSERT INTO UserAuditLogs(operationType, operationTime, oldValue)
+        INSERT INTO "UserAuditLogs"("operationType", "operationTime", "oldValue")
         VALUES (TG_OP, CURRENT_TIMESTAMP, row_to_json(OLD));
         RETURN OLD;
     END IF;
