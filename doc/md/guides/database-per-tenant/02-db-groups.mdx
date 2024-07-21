@@ -144,7 +144,7 @@ Let's review the code snippet above:
 * Finally, we define an `env` block named `tenants` that iterates over the `tenants` list. For each tenant, we set the `url`
   attribute to the result of the `urlsetpath` function, which combines the base URL with the tenant name.
 
-## Loading credentials
+## Incorporating Sensitive Data
 
 Essentially, defining target groups in Atlas is about dynamically compiling a list of URLs that represent the target
 databases. Database URLs often contain sensitive information, such as passwords, that should not be hardcoded in the
@@ -176,11 +176,105 @@ The AWS CLI returns:
 To retrieve the secret value we will use the `runtimevar` data source in the `atlas.hcl` file:
 
 ```hcl
+var "db_instance_url" {
+  type = string
+}
+
+var "db_user" {
+  type = string
+}
+
 data "runtimevar" "pass" {
   url = "awssecretsmanager://db-pass-demo?region=us-east-1"
 }
 
 locals {
+  db_with_pass = urluserinfo(var.db_instance_url, var.db_user, data.runtimevar.pass.value)
   tenants = ["acme_corp", "widget_inc", "wayne_enterprises", "stark_industries"]
 }
+
+env "tenants" {
+  for_each = toset(local.tenants)
+  url = urlsetpath(local.db_with_pass, each.value)
+}
 ```
+
+Let's review what's going on here:
+* We define two variables, `db_instance_url` and `db_user`, which are used to construct the database URL.
+* We use the `runtimevar` data source to fetch the password from AWS Secrets Manager.
+* We define a local variable `db_with_pass` that combines the database URL, the username, and the password.
+* We define an `env` block named `tenants` that iterates over the `tenants` list. For each tenant, we set the `url`
+  attribute to the result of the `urlsetpath` function, which combines the `db_with_pass` with the tenant name.
+
+:::info The `urluserinfo` function
+
+The `urluserinfo` function is a helper function provided by Atlas that allows you to set the "userinfo" part
+of a URL. For example:
+
+```hcl
+urluserinfo("postgres://localhost:5432", "root", "p455w0rd")
+#  ↳ Evaluates to "postgres://root:p455w0rd@localhost:5432"
+```
+
+:::
+
+## Loading Data from an API Endpoint
+
+In some cases, you may want to load target groups dynamically from an API endpoint. For example, you might have a
+service `tenant-svc` that provides a list of tenant databases based on some criteria.  Let's suppose this service's
+endpoints recieve the target group id in the path, such as `https://tenant-svc/api/target-group/{id}` and return a
+simple JSON payload:
+
+```json
+{
+  "databases": [
+    "acme_corp",
+    "widget_inc",
+    "wayne_enterprises",
+    "stark_industries"
+  ]
+}
+```
+
+You can use the `runtimevar` data source to fetch with the `http` scheme to fetch this data and use it to define
+target groups.
+
+Here's an example of how you might load tenant databases from an API endpoint:
+
+```hcl
+var "group_id" {
+    type = string
+}
+
+data "runtimevar" "tenants" {
+  url = "http://tenant-svc/api/target-group/${var.group_id}"
+}
+
+locals {
+  decoded = jsondecode(data.runtimevar.tenants)
+  tenants = local.decoded.databases
+}
+
+env "tenants" {
+  for_each = toset(local.tenants)
+  url = urlsetpath("postgres://root:pass@localhost:5432", each.value)
+}
+```
+
+Let's unpack this example:
+* We define a variable `group_id` that will be used to fetch the tenant databases from the API endpoint.
+* We use the `runtimevar` data source with the `http` scheme to fetch the tenant databases from the API endpoint.
+* We parse the JSON response using the `jsondecode` function and extract the `databases` array.
+* We define an `env` block named `tenants` that iterates over the `tenants` list. For each tenant, we set the `url`
+  attribute to the result of the `urlsetpath` function, which combines the base URL with the tenant name.
+
+By using the `runtimevar` data source with the `http` scheme, you can dynamically load target groups from an API
+endpoint and use them to define target groups in your Atlas project.
+
+## Loading data from a Database Query
+
+In some cases, you may want to load target groups dynamically from a database query. For example, you might have a
+database schema for each tenant in some instance, and would like to retrieve the list from the database's native
+`information_schema` tables.
+
+You can utilize the `sql` data source to fetch this data and use it to define target groups.
