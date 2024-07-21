@@ -11,7 +11,7 @@ a common pattern for deploying multi-tenant applications.
 
 ### What is a Database per Tenant Architecture?
 
-In a "Database per Tenant" architecture, each tenant has its own dedicated database. Database-per-tenant architectures are commonly
+In a "Database per Tenant" architecture, each tenant has its own dedicated database (or a schema). Database-per-tenant architectures are commonly
 used in situations where there are considerations around data isolation, security, and scalability. It is worth noting
 it contrary to creating a fully isolated deployment for each tenant, in this architecture compute and other resources
 are shared across tenants.
@@ -47,7 +47,7 @@ development, reducing the mental overhead of handling multi-tenancy, and reducin
 5. **Simplified Deployment** (compared to full isolation): In a full isolation architecture, each tenant has its own
 deployment, requiring separate infrastructure, monitoring, and maintenance. By isolating tenants on the database level,
 you can share infrastructure, monitoring, and maintenance across tenants, reducing operational overhead.
-
+6. **Simplified Maintenance**: Running tenants on different databases simplifies maintenance tasks: Deleting, exporting, and loading tenant data do not require special toolings as most databases offer these functionalities.  
 ### Challenges
 
 > This architecture decisions is one of my biggest regrets, and we are currently in the process of rebuilding into a single database model.
