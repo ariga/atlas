@@ -1226,7 +1226,7 @@ func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) 
 	if err := checkRevisionSchemaClarity(cmd, client, flags.revisionSchema); err != nil {
 		return err
 	}
-	report, err := (&cmdmigrate.StatusReporter{
+	report, err := (&cmdlog.StatusReporter{
 		Client: client,
 		Dir:    dir,
 		DirURL: dirURL,

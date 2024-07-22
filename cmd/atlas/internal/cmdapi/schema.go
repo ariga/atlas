@@ -637,11 +637,7 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	if err != nil {
 		return err
 	}
-	for i, s := range srcs {
-		if !isURL(s) {
-			srcs[i] = "file://" + s
-		}
-	}
+	srcs = fixFileURLs(srcs)
 	if err := maySetFlag(cmd, flagFile, strings.Join(srcs, ",")); err != nil {
 		return err
 	}
@@ -831,4 +827,15 @@ func fmtFile(task fmttask) (bool, error) {
 		return true, os.WriteFile(task.path, formatted, task.info.Mode())
 	}
 	return false, nil
+}
+
+// fixFileURLs converts all file paths to a URL format, if not already.
+// For example, "schema.hcl" to "file://schema.hcl".
+func fixFileURLs(src []string) []string {
+	for i, s := range src {
+		if !isURL(s) {
+			src[i] = "file://" + s
+		}
+	}
+	return src
 }

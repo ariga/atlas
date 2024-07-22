@@ -378,3 +378,39 @@ func DirURL(ctx context.Context, u *url.URL, create bool) (migrate.Dir, error) {
 	}
 	return d, err
 }
+
+// ChangesToRealm returns the schema changes for creating the given Realm.
+func ChangesToRealm(c *sqlclient.Client, r *schema.Realm) schema.Changes {
+	var changes schema.Changes
+	for _, o := range r.Objects {
+		changes = append(changes, &schema.AddObject{O: o})
+	}
+	for _, s := range r.Schemas {
+		// Generate commands for creating the schemas on realm-mode.
+		if c.URL.Schema == "" {
+			changes = append(changes, &schema.AddSchema{S: s})
+		}
+		for _, o := range s.Objects {
+			changes = append(changes, &schema.AddObject{O: o})
+		}
+		for _, t := range s.Tables {
+			changes = append(changes, &schema.AddTable{T: t})
+			for _, r := range t.Triggers {
+				changes = append(changes, &schema.AddTrigger{T: r})
+			}
+		}
+		for _, v := range s.Views {
+			changes = append(changes, &schema.AddView{V: v})
+			for _, r := range v.Triggers {
+				changes = append(changes, &schema.AddTrigger{T: r})
+			}
+		}
+		for _, f := range s.Funcs {
+			changes = append(changes, &schema.AddFunc{F: f})
+		}
+		for _, p := range s.Procs {
+			changes = append(changes, &schema.AddProc{P: p})
+		}
+	}
+	return changes
+}
