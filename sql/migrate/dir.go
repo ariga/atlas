@@ -561,6 +561,20 @@ func (t TemplateFormatter) Format(plan *Plan) ([]File, error) {
 	return files, nil
 }
 
+// FormatTo calls Format and writes the files' content to the given writer.
+func (t TemplateFormatter) FormatTo(plan *Plan, w io.Writer) error {
+	files, err := t.Format(plan)
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		if _, err := w.Write(f.Bytes()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // HashFileName of the migration directory integrity sum file.
 const HashFileName = "atlas.sum"
 
