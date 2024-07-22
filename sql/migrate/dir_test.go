@@ -531,6 +531,21 @@ func TestDirTar(t *testing.T) {
 	require.Equal(t, "create table t(c int);", string(files[0].Bytes()))
 }
 
+func TestDefaultFormatter_FormatTo(t *testing.T) {
+	var b bytes.Buffer
+	err := migrate.DefaultFormatter.FormatTo(&migrate.Plan{
+		Changes: []*migrate.Change{
+			{Cmd: "create table t1(c int)"},
+			{Cmd: "create table t2(c int)", Comment: "create table"},
+		},
+	}, &b)
+	require.NoError(t, err)
+	require.Equal(t, `create table t1(c int);
+-- Create table
+create table t2(c int);
+`, b.String())
+}
+
 func fileNames(r io.Reader) ([]string, error) {
 	var out []string
 	tr := tar.NewReader(r)
