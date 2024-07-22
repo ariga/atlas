@@ -1700,6 +1700,75 @@ procedure "p8" {
 </TabItem>
 </Tabs>
 
+
+:::info <a class="sticky-anchor" id={"#testing-procedures"} href={"#testing-procedures"}>Testing Procedures</a>
+
+Atlas testing framework allows you to write unit tests for your procedures. The following example demonstrates how
+to write tests for a stored procedure `check_user_email` that checks a user's email. For more detail, read the [schema testing docs](/testing/schema)
+or see the [full example](/guides/testing/procedures).
+
+<Tabs>
+<TabItem label="Simple Test" value="simple">
+
+```hcl title="schema.test.hcl"
+test "schema" "procedure" {
+  # Attempt to create user with invalid email (missing @)
+  catch {
+    sql = "CALL check_user_email('new_user', 'invalidemail')"
+  }
+  log {
+    message = "Invalid email passed"
+  }
+
+# Additional test case (optional)
+  exec {
+    sql = "CALL check_user_email('another_user', 'valid@email.com')"
+  }
+  log {
+    message = "Valid email passed"
+  }
+}
+```
+
+</TabItem>
+<TabItem label="Table-driven Test" value="table-driven">
+
+```hcl title="schema.test.hcl"
+test "schema" "valid_procedure" {
+  parallel = true
+  for_each = [
+    {input: "email@email.com"},
+    {input: "hey@gmail.com"},
+  ]
+  log {
+    message = "Testing email: ${each.value.input}"
+  }
+  exec {
+    sql = "CALL check_user_email('another_user', '${each.value.input}')"
+  }
+}
+
+test "schema" "invalid_procedure" {
+  parallel = true
+  for_each = [
+    {input: "email.com"},
+    {input: "hey"},
+  ]
+  log {
+    message = "Testing email: ${each.value.input}"
+  }
+  catch {
+    sql = "CALL check_user_email('another_user', '${each.value.input}')"
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+:::
+
+
 ## Domain
 
 :::info [Atlas Pro Feature](/features#pro-plan)

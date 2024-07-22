@@ -1,0 +1,195 @@
+---
+id: testing-procedures
+title: Testing Stored Procedures
+slug: /guides/testing/procedures
+---
+
+Testing your database schema and migrations is crucial to ensure code behaves as expected, catch bugs early,
+and prevent regressions. Databases enforce logic, constraints, and complex relationships,
+so testing ensures these elements work correctly and remain intact after changes.
+
+In this guide we will learn how to use Atlas's [`schema test`](/testing/schema) command to test database stored
+procedures.
+
+
+## Stored Procedures
+
+Stored procedures are sets of precompiled queries grouped together to perform specific tasks and are
+stored directly on the database.
+
+:::info [Atlas Pro Feature](/features#pro-plan)
+Stored procedures are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
+```
+atlas login
+```
+:::
+
+## Project Setup
+
+### Schema File
+For this example, let's assume we have the following schema, including a stored procedure:
+
+```hcl title="schema.hcl"
+schema "public" {
+}
+
+table "users" {
+  schema = schema.public
+  column "username" {
+    type = text
+  }
+  column "email" {
+    type = text
+  }
+}
+
+// highlight-start
+procedure "check_user_email" {
+  schema = schema.public
+  lang   = PLpgSQL
+  arg "username" {
+    type = character_varying
+  }
+  arg "email" {
+    type = character_varying
+  }
+  as = <<-SQL
+  BEGIN
+    IF NOT email LIKE '%@%' THEN
+      RAISE EXCEPTION 'Invalid email format';
+  END IF;
+
+  INSERT INTO users (username, email) VALUES ($1, $2);
+  END;
+  SQL
+}
+// highlight-end
+```
+
+In the schema above we have a simple `users` table and a `check_user_email` procedure. The procedure checks whether or not
+the `email` column in the `users` table has a valid email format.
+
+### Project File
+
+Before we begin testing, create a [project file](/atlas-schema/projects#project-files) named
+`atlas.hcl`.
+
+In this file we will create an environment, specify the source of our schema,
+and a URL for our [dev database](/concepts/dev-database).
+
+We will also create a file named `schema.test.hcl` to write our tests, and
+add it to the `atlas.hcl` file in the test block.
+
+```hcl title="atlas.hcl"
+env "dev" {
+  src = "file://schema.hcl"
+  dev = "docker://postgres/15/dev?search_path=public"
+
+  # Test configuration for local development.
+  test {
+    schema {
+      src = ["schema.test.hcl"]
+    }
+  }
+}
+```
+
+## Writing Tests
+
+### Simple Test
+
+Let's start off with a simple test that will check that the stored procedures correctly recognizes valid emails.
+
+```hcl title="schema.test.hcl"
+test "schema" "procedure" {
+  # Attempt to create user with invalid email (missing @)
+  catch {
+    sql = "CALL check_user_email('new_user', 'invalidemail')"
+  }
+  log {
+    message = "Invalid email passed"
+  }
+
+  # Additional test case (optional)
+  exec {
+    sql = "CALL check_user_email('another_user', 'valid@email.com')"
+  }
+  log {
+    message = "Valid email passed"
+  }
+}
+```
+
+The first test checks valid emails that include the '@' symbol. In the second test, we use the [`catch`](/testing/schema#catch-command)
+command, expecting the statement to fail.
+
+Run the test by running:
+
+```bash
+atlas schema test --env dev
+```
+
+The output should look similar to:
+```testoutput title="Test Output"
+-- PASS: procedure (2ms)
+    schema.test.hcl:6: Invalid email passed
+    schema.test.hcl:14: Valid email passed
+PASS
+```
+
+### Table Driven Test
+
+Another alternative is to write a [table driven test](/testing/schema#table-driven-tests). This
+test uses the `for_each` meta-argument, which accepts a map or a set of values and is used to generate
+a test case for each item in the set or map.
+
+Following similar logic to the test above, we will check the stored procedure with valid and invalid emails.
+
+```hcl title="schema.test.hcl"
+test "schema" "valid_procedure" {
+  parallel = true
+  for_each = [
+    {input: "email@email.com"},
+    {input: "hey@gmail.com"},
+  ]
+  log {
+    message = "Testing email: ${each.value.input}"
+  }
+  exec {
+    sql = "CALL check_user_email('another_user', '${each.value.input}')"
+  }
+}
+
+test "schema" "invalid_procedure" {
+  parallel = true
+  for_each = [
+    {input: "email.com"},
+    {input: "hey"},
+  ]
+  log {
+    message = "Testing email: ${each.value.input}"
+  }
+  catch {
+    sql = "CALL check_user_email('another_user', '${each.value.input}')"
+  }
+}
+```
+
+Run the test by running:
+
+```bash
+atlas schema test --env dev
+```
+
+The output should look similar to:
+```testoutput title="Test Output"
+-- PASS: valid_procedure/2 (3ms)
+    schema.test.hcl:7: Testing email: hey@gmail.com
+-- PASS: invalid_procedure/1 (14ms)
+    schema.test.hcl:21: Testing email: email.com
+-- PASS: invalid_procedure/2 (14ms)
+    schema.test.hcl:21: Testing email: hey
+-- PASS: valid_procedure/1 (15ms)
+    schema.test.hcl:7: Testing email: email@email.com
+PASS
+```
