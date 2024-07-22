@@ -413,6 +413,7 @@ module.exports = {
                         {type: 'doc', id: 'guides/orms/sequelize/composite-types', label: 'Composite Types'},
                         {type: 'doc', id: 'guides/orms/sequelize/domain-types', label: 'Domain Types'},
                         {type: 'doc', id: 'guides/orms/sequelize/rls', label: 'Row-Level Security'},
+                        {type: 'doc', id: 'guides/orms/sequelize/triggers', label: 'Triggers'},
                     ],
                 },
                 {

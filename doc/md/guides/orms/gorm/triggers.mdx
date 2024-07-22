@@ -50,7 +50,7 @@ type User struct {
 }
 
 type UserAuditLogs struct {
-    gorm.Model 
+    gorm.Model
     OperationType   string
     OperationTime   string
     OldValue        string
@@ -138,7 +138,6 @@ The command above prints the following SQL. Note, the `audit_users_changes` func
 the `users` and `user_audit_logs` tables:
 
 ```sql
--- Create "user_audit_logs" table
 -- Create "user_audit_logs" table
 CREATE TABLE "user_audit_logs" ("id" bigserial NOT NULL, "created_at" timestamptz NULL, "updated_at" timestamptz NULL, "deleted_at" timestamptz NULL, "operation_type" text NULL, "operation_time" text NULL, "old_value" text NULL, "new_value" text NULL, PRIMARY KEY ("id"));
 -- Create index "idx_user_audit_logs_deleted_at" to table: "user_audit_logs"
