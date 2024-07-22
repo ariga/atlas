@@ -23,6 +23,7 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/1lann/promptui"
+	"github.com/chzyer/readline"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/spf13/cobra"
 )
@@ -755,7 +756,7 @@ func cmdPrompt(cmd *cobra.Command) *promptui.Select {
 		Label:    "Are you sure?",
 		HideHelp: true,
 		Stdin:    io.NopCloser(cmd.InOrStdin()),
-		Stdout:   nopCloser{cmd.OutOrStdout()},
+		Stdout:   nopBellCloser{cmd.OutOrStdout()},
 	}
 }
 
@@ -770,9 +771,16 @@ func promptUser(cmd *cobra.Command) bool {
 	return result == answerApply
 }
 
-type nopCloser struct{ io.Writer }
+type nopBellCloser struct{ io.Writer }
 
-func (nopCloser) Close() error { return nil }
+func (n nopBellCloser) Write(p []byte) (int, error) {
+	if len(p) == 1 && p[0] == readline.CharBell {
+		return 0, nil // Skip bell noise.
+	}
+	return n.Writer.Write(p)
+}
+
+func (nopBellCloser) Close() error { return nil }
 
 func tasks(path string) ([]fmttask, error) {
 	var tasks []fmttask
