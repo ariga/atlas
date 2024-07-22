@@ -199,7 +199,7 @@ CREATE TRIGGER "users_insert_audit" AFTER INSERT ON "Users" FOR EACH ROW EXECUTE
 CREATE TRIGGER "users_update_audit" AFTER UPDATE ON "Users" FOR EACH ROW EXECUTE FUNCTION "audit_users_changes"();
 ```
 
-#### Generate Migrations For the Schema
+#### Generate Migrations for the Schema
 
 To generate a migration for the schema, run the following command:
 
