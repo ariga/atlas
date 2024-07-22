@@ -14,11 +14,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -121,14 +121,28 @@ func stateSchemaSQL(ctx context.Context, cfg *StateReaderConfig, dir migrate.Dir
 	if cfg.Dev == nil {
 		return nil, errNoDevURL
 	}
-	log := cmdlog.NewMigrateApply(ctx, cfg.Dev, nil)
+	log := &errorRecorder{}
 	r, err := stateReaderSQL(ctx, cfg, dir, []migrate.ExecutorOption{migrate.WithLogger(log)}, nil)
-	if n := len(log.Applied); err != nil && n > 0 {
-		if serr := log.Applied[n-1].Error; serr != nil && serr.Stmt != "" && serr.Text != "" {
-			err = fmt.Errorf("read state from %q: executing statement: %q: %s", log.Applied[n-1].Name(), serr.Stmt, serr.Text)
-		}
+	if n := len(log.applied); err != nil && n > 0 && log.stmt != "" && log.text != "" {
+		err = fmt.Errorf("read state from %q: executing statement: %q: %s", log.applied[n-1], log.stmt, log.text)
 	}
 	return r, err
+}
+
+type errorRecorder struct {
+	applied    []string // applied files.
+	stmt, text string   // error statement and text.
+}
+
+// Log implements migrate.Logger.
+func (r *errorRecorder) Log(e migrate.LogEntry) {
+	switch e := e.(type) {
+	case migrate.LogFile:
+		r.applied = append(r.applied, e.File.Name())
+	case migrate.LogError:
+		r.stmt = e.SQL
+		r.text = e.Error.Error()
+	}
 }
 
 // stateReaderSQL returns a migrate.StateReader from an SQL file or a directory of migrations.
