@@ -11,7 +11,6 @@ so testing ensures these elements work correctly and remain intact after changes
 In this guide we will learn how to use Atlas's [`schema test`](/testing/schema) command to test database stored
 procedures.
 
-
 ## Stored Procedures
 
 Stored procedures are sets of precompiled queries grouped together to perform specific tasks and are
@@ -33,45 +32,63 @@ For this example, let's assume we have the following schema, including a stored 
 schema "public" {
 }
 
-table "users" {
+table "sales" {
   schema = schema.public
-  column "username" {
-    type = text
+  column "id" {
+    type = int
   }
-  column "email" {
-    type = text
+  column "sale_amount" {
+    type =  numeric
+  }
+  column "sale_date" {
+    type = date
+  }
+}
+
+table "archive_sales" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
+  column "sale_amount" {
+    type = int
+  }
+  column "sale_date" {
+    type = date
   }
 }
 
 // highlight-start
-procedure "check_user_email" {
+procedure "archive_old_sales" {
   schema = schema.public
   lang   = PLpgSQL
-  arg "username" {
-    type = character_varying
-  }
-  arg "email" {
-    type = character_varying
+  arg "cutoff_date" {
+    type = date
   }
   as = <<-SQL
   BEGIN
-    IF NOT email LIKE '%@%' THEN
-      RAISE EXCEPTION 'Invalid email format';
-  END IF;
+      -- Insert old sales into archive_sales
+  INSERT INTO archive_sales (id, sale_amount, sale_date)
+  SELECT id, sale_amount, sale_date
+  FROM sales
+  WHERE sale_date < cutoff_date;
 
-  INSERT INTO users (username, email) VALUES ($1, $2);
+  -- Delete old sales from sales
+  DELETE FROM sales
+  WHERE sale_date < cutoff_date;
   END;
   SQL
 }
 // highlight-end
 ```
 
-In the schema above we have a simple `users` table and a `check_user_email` procedure. The procedure checks whether or not
-the `email` column in the `users` table has a valid email format.
+In the schema above we have a `sales` table, an `archive_sales` table and an `archive_old_sales` procedure. The procedure
+moves old sales from the `sales` table to the `archive_sales` table based on a cutoff date that is given
+when calling the procedure.
 
-### Project File
+### Config File
 
-Before we begin testing, create a [project file](/atlas-schema/projects#project-files) named
+Before we begin testing, create a [config file](/atlas-schema/projects#project-files) named
 `atlas.hcl`.
 
 In this file we will create an environment, specify the source of our schema,
@@ -98,30 +115,41 @@ env "dev" {
 
 ### Simple Test
 
-Let's start off with a simple test that will check that the stored procedures correctly recognizes valid emails.
+Let's start off with a simple test that will:
+1. Seed data into the `sales` table.
+2. Call the `archive_old_sales` procedure with a cutoff date "2024-07-18".
+3. Check that the `archive_sales` table is correctly populated.
+4. Check that the archived sales no longer exist in the `sales` table.
 
 ```hcl title="schema.test.hcl"
 test "schema" "procedure" {
-  # Attempt to create user with invalid email (missing @)
-  catch {
-    sql = "CALL check_user_email('new_user', 'invalidemail')"
+  # Seed data
+  exec {
+    sql = <<-SQL
+      INSERT INTO sales (id, sale_amount, sale_date) VALUES
+      (1, 150.00, '2024-07-18'),
+      (2, 200.00, '2024-06-20'),
+      (1, 350.00, '2024-07-10');
+    SQL
   }
-  log {
-    message = "Invalid email passed"
+  # Execute the procedure with a specific cutoff date
+  exec {
+    sql = "CALL archive_old_sales('2024-07-18')"  # Archive sales before this date
   }
 
-  # Additional test case (optional)
+  # Verify data in archive_sales table
   exec {
-    sql = "CALL check_user_email('another_user', 'valid@email.com')"
+    sql = "SELECT COUNT(*) FROM archive_sales WHERE sale_date < '2024-07-18'"
+    output = "2" # Expect 2 archived sales
   }
-  log {
-    message = "Valid email passed"
+
+  # Verify data in sales table
+  exec {
+    sql = "SELECT COUNT(*) FROM sales"
+    output = "1"  # Expect 1 sale remaining in the sales table after cutoff date
   }
 }
 ```
-
-The first test checks valid emails that include the '@' symbol. In the second test, we use the [`catch`](/testing/schema#catch-command)
-command, expecting the statement to fail.
 
 Run the test by running:
 
@@ -131,9 +159,7 @@ atlas schema test --env dev
 
 The output should look similar to:
 ```testoutput title="Test Output"
--- PASS: procedure (2ms)
-    schema.test.hcl:6: Invalid email passed
-    schema.test.hcl:14: Valid email passed
+-- PASS: procedure (4ms)
 PASS
 ```
 
@@ -143,34 +169,47 @@ Another alternative is to write a [table driven test](/testing/schema#table-driv
 test uses the `for_each` meta-argument, which accepts a map or a set of values and is used to generate
 a test case for each item in the set or map.
 
-Following similar logic to the test above, we will check the stored procedure with valid and invalid emails.
+Following similar logic to the test above, we will execute the following:
+1. Seed data into the `sales` table.
+2. Use a `for_each` meta-argument to iterate over two test cases.
+3. Check that the `archive_sales` table is correctly populated based on the cutoff date in the specific test case.
+4. Check that the archived sales no longer exist in the `sales` table based on the cutoff date in the specific test case.
 
 ```hcl title="schema.test.hcl"
-test "schema" "valid_procedure" {
-  parallel = true
-  for_each = [
-    {input: "email@email.com"},
-    {input: "hey@gmail.com"},
-  ]
-  log {
-    message = "Testing email: ${each.value.input}"
-  }
+test "schema" "procedure" {
+  # Seed data
   exec {
-    sql = "CALL check_user_email('another_user', '${each.value.input}')"
+    sql = <<-SQL
+      INSERT INTO sales (id, sale_amount, sale_date) VALUES
+      (1, 150.00, '2024-07-18'),
+      (2, 200.00, '2024-06-20'),
+      (1, 350.00, '2024-07-10');
+    SQL
   }
-}
-
-test "schema" "invalid_procedure" {
-  parallel = true
   for_each = [
-    {input: "email.com"},
-    {input: "hey"},
+    { cutoff_date: "2024-07-18", expected_archived: "2", expected_remaining: "1" },
+    { cutoff_date: "2024-08-01", expected_archived: "3", expected_remaining: "0" }
   ]
-  log {
-    message = "Testing email: ${each.value.input}"
+
+  # Execute the procedure with the current test case cutoff date
+  exec {
+    sql = "CALL archive_old_sales('${each.value.cutoff_date}')"
   }
-  catch {
-    sql = "CALL check_user_email('another_user', '${each.value.input}')"
+
+  # Verify data in archive_sales table
+  exec {
+    sql = "SELECT COUNT(*) FROM archive_sales WHERE sale_date < '${each.value.cutoff_date}'"
+    output = each.value.expected_archived
+  }
+
+  # Verify data in sales table
+  exec {
+    sql = "SELECT COUNT(*) FROM sales"
+    output = each.value.expected_remaining
+  }
+
+  log {
+    message = "Testing cutoff date:  ${each.value.cutoff_date} - Expected Archived: ${each.value.expected_archived}, Expected Remaining: ${each.value.expected_remaining}"
   }
 }
 ```
@@ -183,13 +222,9 @@ atlas schema test --env dev
 
 The output should look similar to:
 ```testoutput title="Test Output"
--- PASS: valid_procedure/2 (3ms)
-    schema.test.hcl:7: Testing email: hey@gmail.com
--- PASS: invalid_procedure/1 (14ms)
-    schema.test.hcl:21: Testing email: email.com
--- PASS: invalid_procedure/2 (14ms)
-    schema.test.hcl:21: Testing email: hey
--- PASS: valid_procedure/1 (15ms)
-    schema.test.hcl:7: Testing email: email@email.com
+-- PASS: procedure/1 (4ms)
+    schema.test.hcl:33: Testing cutoff date:  2024-07-15 - Expected Archived: 2, Expected Remaining: 1
+-- PASS: procedure/2 (1ms)
+    schema.test.hcl:33: Testing cutoff date:  2024-07-20 - Expected Archived: 3, Expected Remaining: 0
 PASS
 ```

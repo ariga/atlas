@@ -1,0 +1,95 @@
+---
+title: Go Program Mode
+slug: /portal/gorm/program
+---
+
+To use GORM with Atlas, we will use the [GORM Atlas Provider](https://github.com/ariga/atlas-provider-gorm)
+to automatically plan schema migrations.
+
+### Installation
+
+1. Install Atlas from macOS or Linux by running:
+
+```shell
+curl -sSf https://atlasgo.sh | sh
+```
+
+See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more installation options.
+
+2. Install the provider by running:
+```shell
+go get -u ariga.io/atlas-provider-gorm
+```
+
+### Setup
+If your GORM models are spread across multiple packages, or **do not** embed `gorm.Model` or contain `gorm` struct tags,
+you can use the provider as a library in your Go program to load your GORM schema into Atlas.
+
+1. Create a new program named `loader/main.go` with the following contents:
+
+```go title=main.go
+package main
+
+import (
+    "fmt"
+    "io"
+    "os"
+
+    "ariga.io/atlas-provider-gorm/gormschema"
+
+    "github.com/<yourorg>/<yourrepo>/path/to/models"
+)
+
+func main() {
+    stmts, err := gormschema.New("mysql").Load(&models.User{}, &models.Pet{})
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "failed to load gorm schema: %v\n", err)
+        os.Exit(1)
+    }
+    io.WriteString(os.Stdout, stmts)
+}
+```
+
+:::info
+Be sure to replace `github.com/<yourorg>/<yourrepo>/path/to/models` with the import path to your GORM models.
+In addition, replace the model types (e.g `models.User`) with the types of your GORM models.
+:::
+
+2. In your project directory, create a new file named `atlas.hcl` with the following contents:
+
+```hcl title=atlas.hcl
+data "external_schema" "gorm" {
+  program = [
+    "go",
+    "run",
+    "-mod=mod",
+    "./loader",
+  ]
+}
+
+env "gorm" {
+  src = data.external_schema.gorm.url
+  dev = "docker://mysql/8/dev"
+  migration {
+    dir = "file://migrations"
+  }
+  format {
+    migrate {
+      diff = "{{ sql . \"  \" }}"
+    }
+  }
+}
+```
+
+### Next Steps
+
+Now that your project is set up, start by choosing between the two workflows offered by Atlas for generating and
+planning migrations.
+Select the one you prefer that works best for you:
+
+* **Declarative Migrations**: Set up a Terraform-like workflow where each migration is calculated as the diff between
+your desired state and the current state of the database.
+
+* **Versioned Migrations**: Set up a migration directory for your project, creating a version-controlled source of truth
+of your database schema.
+

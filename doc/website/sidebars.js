@@ -288,7 +288,8 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/testing/testing-domains',
                     label: 'Testing Domains'
-                },                {
+                },
+                {
                     type: 'doc',
                     id: 'guides/testing/testing-procedures',
                     label: 'Testing Stored Procedures'

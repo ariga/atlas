@@ -1704,7 +1704,8 @@ procedure "p8" {
 :::info <a class="sticky-anchor" id={"#testing-procedures"} href={"#testing-procedures"}>Testing Procedures</a>
 
 Atlas testing framework allows you to write unit tests for your procedures. The following example demonstrates how
-to write tests for a stored procedure `check_user_email` that checks a user's email. For more detail, read the [schema testing docs](/testing/schema)
+to write tests for a stored procedure, `archive_old_sales`, that moves old sales from the `sales` table to the `archive_sales` table according to a specified cutoff date.
+For more detail, read the [schema testing docs](/testing/schema)
 or see the [full example](/guides/testing/procedures).
 
 <Tabs>
@@ -1712,20 +1713,28 @@ or see the [full example](/guides/testing/procedures).
 
 ```hcl title="schema.test.hcl"
 test "schema" "procedure" {
-  # Attempt to create user with invalid email (missing @)
-  catch {
-    sql = "CALL check_user_email('new_user', 'invalidemail')"
-  }
-  log {
-    message = "Invalid email passed"
-  }
-
-# Additional test case (optional)
+  # Seed data
   exec {
-    sql = "CALL check_user_email('another_user', 'valid@email.com')"
+    sql = <<-SQL
+      INSERT INTO sales (id, sale_amount, sale_date) VALUES
+      (1, 150.00, '2024-07-18'),
+      (2, 200.00, '2024-06-20'),
+      (1, 350.00, '2024-07-10');
+    SQL
   }
-  log {
-    message = "Valid email passed"
+  # Execute the procedure with a specific cutoff date
+  exec {
+    sql = "CALL archive_old_sales('2024-07-18')"  # Archive sales before this date
+  }
+  # Verify data in archive_sales table
+  exec {
+    sql = "SELECT COUNT(*) FROM archive_sales WHERE sale_date < '2024-07-18'"
+    output = "2" # Expect 2 archived sales
+  }
+  # Verify data in sales table
+  exec {
+    sql = "SELECT COUNT(*) FROM sales"
+    output = "1"  # Expect 1 sale remaining in the sales table after cutoff date
   }
 }
 ```
@@ -1734,31 +1743,36 @@ test "schema" "procedure" {
 <TabItem label="Table-driven Test" value="table-driven">
 
 ```hcl title="schema.test.hcl"
-test "schema" "valid_procedure" {
-  parallel = true
-  for_each = [
-    {input: "email@email.com"},
-    {input: "hey@gmail.com"},
-  ]
-  log {
-    message = "Testing email: ${each.value.input}"
-  }
+test "schema" "procedure" {
+  # Seed data
   exec {
-    sql = "CALL check_user_email('another_user', '${each.value.input}')"
+    sql = <<-SQL
+      INSERT INTO sales (id, sale_amount, sale_date) VALUES
+      (1, 150.00, '2024-07-18'),
+      (2, 200.00, '2024-06-20'),
+      (1, 350.00, '2024-07-10');
+    SQL
   }
-}
-
-test "schema" "invalid_procedure" {
-  parallel = true
   for_each = [
-    {input: "email.com"},
-    {input: "hey"},
+    {cutoff_date: "2024-07-18", expected_archived: "2", expected_remaining: "1"},
+    {cutoff_date: "2024-08-01", expected_archived: "3", expected_remaining: "0"}
   ]
-  log {
-    message = "Testing email: ${each.value.input}"
+  # Execute the procedure with the current test case cutoff date
+  exec {
+    sql = "CALL archive_old_sales('${each.value.cutoff_date}')"
   }
-  catch {
-    sql = "CALL check_user_email('another_user', '${each.value.input}')"
+  # Verify data in archive_sales table
+  exec {
+    sql = "SELECT COUNT(*) FROM archive_sales WHERE sale_date < '${each.value.cutoff_date}'"
+    output = each.value.expected_archived
+  }
+  # Verify data in sales table
+  exec {
+    sql = "SELECT COUNT(*) FROM sales"
+    output = each.value.expected_remaining
+  }
+  log {
+    message = "Testing cutoff date:  ${each.value.cutoff_date} - Expected Archived: ${each.value.expected_archived}, Expected Remaining: ${each.value.expected_remaining}"
   }
 }
 ```
