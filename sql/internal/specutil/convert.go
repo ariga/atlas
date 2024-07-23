@@ -5,6 +5,7 @@
 package specutil
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"slices"
@@ -680,12 +681,9 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc, idxFn IndexSpecFunc) (*s
 		}
 		spec.Indexes = append(spec.Indexes, i)
 	}
-	as := normalizeCRLF(v.Def)
 	// In case the view definition is multi-line,
 	// format it as indented heredoc with two spaces.
-	if lines := strings.Split(as, "\n"); len(lines) > 1 {
-		as = fmt.Sprintf("<<-SQL\n  %s\n  SQL", strings.Join(lines, "\n  "))
-	}
+	as := MightHeredoc(v.Def)
 	embed := &schemahcl.Resource{
 		Attrs: []*schemahcl.Attr{
 			schemahcl.StringAttr("as", as),
@@ -713,6 +711,30 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc, idxFn IndexSpecFunc) (*s
 func normalizeCRLF(s string) string {
 	if strings.Contains(s, "\r\n") {
 		return strings.ReplaceAll(s, "\r\n", "\n")
+	}
+	return s
+}
+
+// MightHeredoc returns the string as an indented heredoc if it has multiple lines.
+func MightHeredoc(s string) string {
+	s = normalizeCRLF(strings.TrimSpace(s))
+	// In case the given definition is multi-line,
+	// format it as indented heredoc with two spaces.
+	if lines := strings.Split(s, "\n"); len(lines) > 1 {
+		var b bytes.Buffer
+		b.Grow(len(s))
+		b.WriteString("<<-SQL\n")
+		for _, l := range lines {
+			// Skip spaces-only lines, as editors stripped these spaces off,
+			// and HCL parser results a different string for them.
+			if strings.TrimSpace(l) != "" {
+				b.WriteString("  ")
+				b.WriteString(l)
+			}
+			b.WriteByte('\n')
+		}
+		b.WriteString("  SQL")
+		s = b.String()
 	}
 	return s
 }
