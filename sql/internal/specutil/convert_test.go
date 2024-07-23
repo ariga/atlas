@@ -159,3 +159,49 @@ func TestFromView(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "<<-SQL\n  SELECT * FROM users\n   WHERE c NOT LIKE \"\\r\\n\"\n  SQL", s)
 }
+
+func TestMightHeredoc(t *testing.T) {
+	for _, tt := range []struct {
+		input    string
+		expected string
+	}{
+		{
+			input:    "SELECT * FROM users",
+			expected: "SELECT * FROM users",
+		},
+		{
+			input: `
+SELECT
+  *
+  FROM users
+  WHERE active`,
+			expected: `<<-SQL
+  SELECT
+    *
+    FROM users
+    WHERE active
+  SQL`,
+		},
+		{
+			input: `
+-- The line below includes spaces.
+  
+	
+SELECT
+  *
+  FROM users
+  WHERE active`,
+			expected: `<<-SQL
+  -- The line below includes spaces.
+
+
+  SELECT
+    *
+    FROM users
+    WHERE active
+  SQL`,
+		},
+	} {
+		require.Equal(t, tt.expected, MightHeredoc(tt.input))
+	}
+}
