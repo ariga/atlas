@@ -299,6 +299,18 @@ Atlas offers additional commands to assist users managing their database migrati
 ### Supported databases
 MySQL, MariaDB, PostgresSQL, SQLite, TiDB, CockroachDB, SQL Server, ClickHouse, Redshift.
 
+## Supported Version Policy
+
+To ensure the best performance, security and compatibility with the Atlas Cloud service, the Atlas team
+will only support the two most recent minor versions of the CLI. For example, if the latest version is
+`v0.25`, the supported versions will be `v0.24` and `v0.25` (in addition to any patch releases and the
+"canary" release which is built twice a day).
+
+### Old Binaries
+
+As part of the *Supported Version Policy* mentioned above, binaries for versions that were published
+more than 6 months ago will be removed from the CDN and Docker Hub.
+
 [HCL]: https://atlasgo.io/atlas-schema/hcl
 [SQL]: https://atlasgo.io/atlas-schema/sql
 [ORM]: https://atlasgo.io/atlas-schema/external
