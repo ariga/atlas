@@ -1,0 +1,226 @@
+---
+id: testing-triggers
+title: Testing Database Triggers
+slug: /guides/testing/triggers
+---
+
+Testing your database schema and migrations is crucial to ensure code behaves as expected, catch bugs early,
+and prevent regressions. Databases enforce logic, constraints, and complex relationships,
+so testing ensures these elements work correctly and remain intact after changes.
+
+In this guide we will learn how to use Atlas's [`schema test`](/testing/schema) command to test database triggers.
+
+## Triggers
+
+Database triggers are sets of automated instructions that execute in response to specific events, such as INSERT, UPDATE, or
+DELETE operations on a table, to enforce business rules or maintain data integrity.
+
+:::info [Atlas Pro Feature](/features#pro-plan)
+Triggers are currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
+```
+atlas login
+```
+:::
+
+## Project Setup
+
+### Schema File
+For this example, let's assume we have the following schema, including a trigger:
+
+```hcl title="schema.hcl"
+schema "public" {}
+table "products" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = integer
+  }
+  column "price" {
+    null = true
+    type = numeric
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+table "products_audit" {
+  schema = schema.public
+  column "product_id" {
+    null = true
+    type = integer
+  }
+  column "old_price" {
+    null = true
+    type = numeric
+  }
+  column "new_price" {
+    null = true
+    type = numeric
+  }
+  column "changed_at" {
+    null    = true
+    type    = timestamp
+    default = sql("CURRENT_TIMESTAMP")
+  }
+}
+function "log_price_changes" {
+  schema = schema.public
+  lang   = PLpgSQL
+  return = trigger
+  as     = <<-SQL
+  BEGIN
+      IF OLD.price IS DISTINCT FROM NEW.price THEN
+          INSERT INTO products_audit (product_id, old_price, new_price, changed_at)
+          VALUES (OLD.id, OLD.price, NEW.price, NOW());
+  END IF;
+  RETURN NEW;
+  END;
+  SQL
+}
+// highlight-start
+trigger "log_price_changes_trigger" {
+  on = table.products
+  after {
+    update = true
+  }
+  for  = ROW
+  when = "(old.price IS DISTINCT FROM new.price)"
+  execute {
+    function = function.log_price_changes
+  }
+}
+// highlight-end
+```
+
+In the schema above, the `products` table stores product details and prices, while the `products_audit` table logs any changes
+to product prices. The `log_price_changes_trigger` activates the `log_price_changes` function after an update to the price
+column in the products table, recording the old and new prices along with the timestamp of the change in the `products_audit` table.
+
+### Config File
+
+Before we begin testing, create a [config file](/atlas-schema/projects#project-files) named
+`atlas.hcl`.
+
+In this file we will create an environment, specify the source of our schema,
+and a URL for our [dev database](/concepts/dev-database).
+
+We will also create a file named `schema.test.hcl` to write our tests, and
+add it to the `atlas.hcl` file in the test block.
+
+```hcl title="atlas.hcl"
+env "dev" {
+  src = "file://schema.hcl"
+  dev = "docker://postgres/15/dev?search_path=public"
+
+  # Test configuration for local development.
+  test {
+    schema {
+      src = ["schema.test.hcl"]
+    }
+  }
+}
+```
+
+## Writing Tests
+
+### Simple Test
+
+Let's start off with a simple test that will:
+1. Seed data into `products`.
+2. Verify that the `products_audit` table is empty.
+3. Update the price of a product in the `products` table.
+4. Check that `producs_audit` was updated with the new data.
+
+```hcl title="schema.test.hcl"
+test "schema" "trigger" {
+  # Seed data
+  exec {
+    sql = "INSERT INTO products (id, price) VALUES (1, 15.00), (2, 22.99), (3, 13.50);"
+  }
+  # Verify products_audit table empty
+  exec {
+    sql = "SELECT COUNT(*) FROM products_audit"
+    output = "0"
+  }
+  exec {
+    sql = "UPDATE products SET price = 19.99 WHERE id = 1;"
+  }
+  exec {
+    sql = "SELECT product_id, old_price, new_price FROM products_audit"
+    format = table
+    output = <<TAB
+ product_id | old_price | new_price
+------------+-----------+-----------
+ 1          | 15        | 19.99
+TAB
+  }
+}
+```
+
+Run the test by running:
+
+```bash
+atlas schema test --env dev
+```
+
+The output should look similar to:
+```testoutput title="Test Output"
+-- PASS: trigger (4ms)
+PASS
+```
+
+### Table Driven Test
+
+Another alternative is to write a [table driven test](/testing/schema#table-driven-tests). This
+test uses the `for_each` meta-argument, which accepts a map or a set of values and is used to generate
+a test case for each item in the set or map.
+
+Following similar logic to the test above, we will execute the following:
+1. Seed data into `products`.
+2. Verify that the `products_audit` table is empty.
+3. Update the price of two products in the `products` table, using the `for_each` meta-argument.
+4. Check that `producs_audit` was updated with the new data.
+
+```hcl title="schema.test.hcl"
+test "schema" "trigger" {
+  # Seed data
+  exec {
+    sql = "INSERT INTO products (id, price) VALUES (1, 15.00), (2, 22.99), (3, 13.50);"
+  }
+  # Verify products_audit table empty
+  exec {
+    sql = "SELECT COUNT(*) FROM products_audit"
+    output = "0"
+  }
+  for_each = [
+    {product_id: "1", new_price: "19.99"},
+    {product_id: "2", new_price: "20"}
+  ]
+  exec {
+    sql = "UPDATE products SET price = ${each.value.new_price} WHERE id = ${each.value.product_id};"
+  }
+  exec {
+    sql = "SELECT new_price FROM products_audit where product_id = ${each.value.product_id}"
+    output = each.value.new_price
+  }
+  log {
+    message = "Testing for ID:  ${each.value.product_id} - New Price: ${each.value.new_price}"
+  }
+}
+```
+
+Run the test by running:
+
+```bash
+atlas schema test --env dev
+```
+
+The output should look similar to:
+```testoutput title="Test Output"
+-- PASS: trigger/1 (4ms)
+    schema.test.hcl:50: Testing for ID:  1 - New Price: 19.99
+-- PASS: trigger/2 (1ms)
+    schema.test.hcl:50: Testing for ID:  2 - New Price: 20
+PASS
+```
+

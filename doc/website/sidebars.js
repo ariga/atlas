@@ -320,6 +320,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/testing/testing-procedures',
                     label: 'Testing Stored Procedures'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/testing/testing-triggers',
+                    label: 'Testing Triggers'
                 }
             ]
         },
