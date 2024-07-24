@@ -13,7 +13,21 @@ flags.
 For a more detailed introduction to the CLI capabilities, head over to the
 [Getting Started](/getting-started/) page.
 
+## Supported Version Policy
+
+To ensure the best performance, security and compatibility with the Atlas Cloud service, the Atlas team
+will only support the two most recent minor versions of the CLI. For example, if the latest version is
+`v0.25`, the supported versions will be `v0.24` and `v0.25` (in addition to any patch releases and the
+"canary" release which is built twice a day).
+
 ## Distributed Binaries
+
+:::info Old Versions
+
+As part of our **Supported Version Policy** mentioned above, binaries for versions that were published
+more than 6 months ago will be removed from the CDN and Docker Hub.
+
+:::
 
 The binaries and Docker images distributed in official releases are released in two flavors:
 
@@ -369,7 +383,7 @@ atlas migrate new [flags] [name]
 
 ### atlas migrate push
 
-Push a migration directory with an optional tag to Atlas
+Push a migration directory with an optional tag to the Atlas registry
 
 #### Usage
 ```
@@ -388,6 +402,7 @@ atlas migrate push [flags] directory[:tag]
       --dir string              select migration directory using URL format (default "file://migrations")
       --dir-format string       select migration file format (default "atlas")
       --lock-timeout duration   set how long to wait for the database lock (default 10s)
+      --tag string              tag to push the directory with
 
 ```
 
