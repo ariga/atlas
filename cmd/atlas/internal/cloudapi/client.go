@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -347,6 +348,13 @@ func SetHeader(req *http.Request, token string) {
 }
 
 // UserAgent is the value the CLI uses in the User-Agent HTTP header.
-func UserAgent() string {
-	return fmt.Sprintf("Atlas/%s (%s/%s)", version, runtime.GOOS, runtime.GOARCH)
+func UserAgent(systems ...string) string {
+	sysInfo := runtime.GOOS + "/" + runtime.GOARCH
+	if len(systems) > 0 {
+		systems = slices.DeleteFunc(systems, func(s string) bool {
+			return strings.TrimSpace(s) == ""
+		})
+		sysInfo = strings.Join(slices.Insert(systems, 0, sysInfo), "; ")
+	}
+	return fmt.Sprintf("Atlas/%s (%s)", version, sysInfo)
 }

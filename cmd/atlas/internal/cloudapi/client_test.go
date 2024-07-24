@@ -148,3 +148,10 @@ func TestRedactedURL(t *testing.T) {
 	require.EqualError(t, err, `first path segment in URL cannot contain colon`)
 	require.Empty(t, u)
 }
+
+func TestUserAgent(t *testing.T) {
+	platform := runtime.GOOS + "/" + runtime.GOARCH
+	require.Equal(t, fmt.Sprintf("Atlas/%s (%s)", version, platform), UserAgent())
+	require.Equal(t, fmt.Sprintf("Atlas/%s (%s; foo/bar; bar/baz)", version, platform), UserAgent("foo/bar", "bar/baz"))
+	require.Equal(t, fmt.Sprintf("Atlas/%s (%s; bar/baz)", version, platform), UserAgent("  ", "", "bar/baz"))
+}
