@@ -64,8 +64,8 @@ The schema has a simple `users` table, with `id`, `name`, and `ssn` as columns.
 The view, `clean_users`, selects the `id` and `name` columns from `users`, ensuring we
 aren't selecting any sensitive data (SSNs).
 
-### Project File
-Before we begin testing, create a [project file](/atlas-schema/projects#project-files) named
+### Config File
+Before we begin testing, create a [config file](/atlas-schema/projects#project-files) named
 `atlas.hcl`.
 
 In this file we will create an environment, specify the source of our schema,

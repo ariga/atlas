@@ -376,7 +376,7 @@ view "comedies" {
 
 :::info <a class="sticky-anchor" id={"#testing-views"} href={"#testing-views"}>Testing Views</a>
 
-Atlas testing framework allows you to write unit tests for your views. The following example demonstrates how
+Atlas's testing framework allows you to write unit tests for your views. The following example demonstrates how
 to write tests for the `clean_users` view defined above. For more detail, read the [schema testing docs](/testing/schema)
 or see the [full example](/guides/testing/views).
 
@@ -1450,7 +1450,7 @@ function "fn_return_table" {
 
 :::info <a class="sticky-anchor" id={"#testing-functions"} href={"#testing-functions"}>Testing Functions</a>
 
-Atlas testing framework allows you to write unit tests for your functions. The following example demonstrates how
+Atlas's testing framework allows you to write unit tests for your functions. The following example demonstrates how
 to write tests for the `positive` function defined above. For more detail, read the [schema testing docs](/testing/schema)
 or see the [full example](/guides/testing/functions).
 
@@ -1700,6 +1700,89 @@ procedure "p8" {
 </TabItem>
 </Tabs>
 
+
+:::info <a class="sticky-anchor" id={"#testing-procedures"} href={"#testing-procedures"}>Testing Procedures</a>
+
+Atlas's testing framework allows you to write unit tests for your procedures. The following example demonstrates how
+to write tests for a stored procedure, `archive_old_sales`, that moves old sales from the `sales` table to the `archive_sales` table according to a specified cutoff date.
+For more detail, read the [schema testing docs](/testing/schema)
+or see the [full example](/guides/testing/procedures).
+
+<Tabs>
+<TabItem label="Simple Test" value="simple">
+
+```hcl title="schema.test.hcl"
+test "schema" "procedure" {
+  # Seed data
+  exec {
+    sql = <<-SQL
+      INSERT INTO sales (id, sale_amount, sale_date) VALUES
+      (1, 150.00, '2024-07-18'),
+      (2, 200.00, '2024-06-20'),
+      (1, 350.00, '2024-07-10');
+    SQL
+  }
+  # Execute the procedure with a specific cutoff date
+  exec {
+    sql = "CALL archive_old_sales('2024-07-18')"  # Archive sales before this date
+  }
+  # Verify data in archive_sales table
+  exec {
+    sql = "SELECT COUNT(*) FROM archive_sales WHERE sale_date < '2024-07-18'"
+    output = "2" # Expect 2 archived sales
+  }
+  # Verify data in sales table
+  exec {
+    sql = "SELECT COUNT(*) FROM sales"
+    output = "1"  # Expect 1 sale remaining in the sales table after cutoff date
+  }
+}
+```
+
+</TabItem>
+<TabItem label="Table-driven Test" value="table-driven">
+
+```hcl title="schema.test.hcl"
+test "schema" "procedure" {
+  # Seed data
+  exec {
+    sql = <<-SQL
+      INSERT INTO sales (id, sale_amount, sale_date) VALUES
+      (1, 150.00, '2024-07-18'),
+      (2, 200.00, '2024-06-20'),
+      (1, 350.00, '2024-07-10');
+    SQL
+  }
+  for_each = [
+    {cutoff_date: "2024-07-18", expected_archived: "2", expected_remaining: "1"},
+    {cutoff_date: "2024-08-01", expected_archived: "3", expected_remaining: "0"}
+  ]
+  # Execute the procedure with the current test case cutoff date
+  exec {
+    sql = "CALL archive_old_sales('${each.value.cutoff_date}')"
+  }
+  # Verify data in archive_sales table
+  exec {
+    sql = "SELECT COUNT(*) FROM archive_sales WHERE sale_date < '${each.value.cutoff_date}'"
+    output = each.value.expected_archived
+  }
+  # Verify data in sales table
+  exec {
+    sql = "SELECT COUNT(*) FROM sales"
+    output = each.value.expected_remaining
+  }
+  log {
+    message = "Testing cutoff date:  ${each.value.cutoff_date} - Expected Archived: ${each.value.expected_archived}, Expected Remaining: ${each.value.expected_remaining}"
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+:::
+
+
 ## Domain
 
 :::info [Atlas Pro Feature](/features#pro-plan)
@@ -1750,7 +1833,7 @@ schema "public" {
 
 :::info <a class="sticky-anchor" id={"#testing-domains"} href={"#testing-domains"}>Testing Domains</a>
 
-Atlas testing framework allows you to write unit tests for your domains. The following example demonstrates how
+Atlas's testing framework allows you to write unit tests for your domains. The following example demonstrates how
 to write tests for the `us_postal_code` domain defined above. For more detail, read the [schema testing docs](/testing/schema)
 or see the [full example](/guides/testing/domains).
 
