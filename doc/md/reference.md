@@ -50,6 +50,38 @@ atlas license
 ```
 
 
+## atlas login
+
+Log in to Atlas Cloud.
+
+#### Usage
+```
+atlas login [org] [flags]
+```
+
+#### Details
+'atlas login' authenticates the CLI against Atlas Cloud.
+
+#### Flags
+```
+      --token string   API token to authenticate to an Atlas Cloud organization
+
+```
+
+
+## atlas logout
+
+Logout from Atlas Cloud.
+
+#### Usage
+```
+atlas logout
+```
+
+#### Details
+'atlas logout' removes locally-stored credentials.
+
+
 ## atlas migrate
 
 Manage versioned migration files
@@ -114,6 +146,42 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
 ```
 
 
+### atlas migrate checkpoint
+
+Generate a checkpoint file representing the state of the migration directory.
+
+#### Usage
+```
+atlas migrate checkpoint [flags] [tag]
+```
+
+#### Details
+The 'atlas migrate checkpoint' command uses the dev-database to calculate the current state of the migration directory
+by executing its files. It then creates a checkpoint file that represents this state, enabling new environments to bypass
+previous files and immediately skip to this checkpoint when executing the 'atlas migrate apply' command.
+
+#### Example
+
+```
+  atlas migrate checkpoint --dev-url docker://mysql/8/dev
+  atlas migrate checkpoint --dev-url "docker://postgres/15/dev?search_path=public"
+  atlas migrate checkpoint --dev-url "sqlite://dev?mode=memory"
+  atlas migrate checkpoint --env dev --format '{{ sql . "  " }}'
+```
+#### Flags
+```
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string              select migration directory using URL format (default "file://migrations")
+      --dir-format string       select migration file format (default "atlas")
+  -s, --schema strings          set schema names
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+      --format string           Go template to use to format the output
+      --qualifier string        qualify tables with custom qualifier when working on a single schema
+      --edit                    edit the generated migration file(s)
+
+```
+
+
 ### atlas migrate diff
 
 Compute the diff between the migration directory and a desired state and create a new migration file.
@@ -148,6 +216,61 @@ an HCL, SQL, or ORM schema. See: https://atlasgo.io/versioned/diff
       --format string           Go template to use to format the output
       --qualifier string        qualify tables with custom qualifier when working on a single schema
       --edit                    edit the generated migration file(s)
+
+```
+
+
+### atlas migrate down
+
+Reverting applied migration files from the database
+
+#### Usage
+```
+atlas migrate down [flags] [amount]
+```
+
+#### Example
+
+```
+  atlas migrate down -u "mysql://user:pass@localhost:3306/dbname"
+  atlas migrate down --env prod --to-version 20230102150405
+  atlas migrate down --env prod --to-tag e29be4e
+```
+#### Flags
+```
+  -u, --url string                [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --to-version string         desired version to revert to
+      --to-tag string             desired tag to revert to
+      --dir string                select migration directory using URL format (default "file://migrations")
+      --dev-url string            [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --format string             Go template to use to format the output
+      --dry-run                   print SQL without executing it
+      --revisions-schema string   name of the schema the revisions table resides in
+      --lock-timeout duration     set how long to wait for the database lock (default 10s)
+
+```
+
+
+### atlas migrate edit
+
+Edit a migration file by its name or version and update the atlas.sum file.
+
+#### Usage
+```
+atlas migrate edit [flags] {name | version}
+```
+
+#### Example
+
+```
+  atlas migrate edit 20060102150405
+  atlas migrate edit 20060102150405 --env dev
+  atlas migrate edit 20060102150405_name.sql --dir file://migrations
+```
+#### Flags
+```
+      --dir string          select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
 
 ```
 
@@ -227,6 +350,7 @@ atlas migrate lint [flags]
       --latest uint         run analysis on the latest N migration files
       --git-base string     run analysis against the base Git branch
       --git-dir string      path to the repository working directory (default ".")
+  -w, --web                 open the lint report in the browser
 
 ```
 
@@ -253,6 +377,80 @@ atlas migrate new [flags] [name]
       --dir string          select migration directory using URL format (default "file://migrations")
       --dir-format string   select migration file format (default "atlas")
       --edit                edit the created migration file(s)
+
+```
+
+
+### atlas migrate push
+
+Push a migration directory with an optional tag to the Atlas registry
+
+#### Usage
+```
+atlas migrate push [flags] directory[:tag]
+```
+
+#### Example
+
+```
+  atlas migrate push --dev-url docker://mysql/8/dev app
+  atlas migrate push --env dev app:latest
+```
+#### Flags
+```
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string              select migration directory using URL format (default "file://migrations")
+      --dir-format string       select migration file format (default "atlas")
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+      --tag string              tag to push the directory with
+
+```
+
+
+### atlas migrate rebase
+
+Rebase one or more migration file on top of all other files and update the atlas.sum file.
+
+#### Usage
+```
+atlas migrate rebase [flags] {name | version}...
+```
+
+#### Example
+
+```
+  atlas migrate rebase 20060102150405
+  atlas migrate rebase 20060102150405 --env dev
+  atlas migrate rebase 20060102150405_name.sql --dir file://migrations
+```
+#### Flags
+```
+      --dir string          select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
+
+```
+
+
+### atlas migrate rm
+
+Remove a migration file from the migration directory. Does not work for remote directories.
+
+#### Usage
+```
+atlas migrate rm [flags] [amount]
+```
+
+#### Example
+
+```
+  atlas migrate rm
+  atlas migrate rm --env local 20060102150405
+  atlas migrate rm --env local 20060102150405_name.sql
+```
+#### Flags
+```
+      --dir string          select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
 
 ```
 
@@ -312,6 +510,32 @@ atlas migrate status [flags]
       --dir string                select migration directory using URL format (default "file://migrations")
       --dir-format string         select migration file format (default "atlas")
       --revisions-schema string   name of the schema the revisions table resides in
+
+```
+
+
+### atlas migrate test
+
+Run migration tests against the given directory
+
+#### Usage
+```
+atlas migrate test [flags] [paths]
+```
+
+#### Example
+
+```
+  atlas migrate test --dev-url docker://mysql/8/dev --dir file://migrations .
+  atlas migrate test --env dev ./tests
+```
+#### Flags
+```
+      --dev-url string            [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string                select migration directory using URL format (default "file://migrations")
+      --dir-format string         select migration file format (default "atlas")
+      --revisions-schema string   name of the schema the revisions table resides in
+      --run string                run only tests matching regexp
 
 ```
 
@@ -473,6 +697,7 @@ The database states can be read from a connected database, an HCL project or a m
   -s, --schema strings    set schema names
       --exclude strings   list of glob patterns used to filter resources from applying
       --format string     Go template to use to format the output
+  -w, --web               open the schema diff ERD in the browser
 
 ```
 
@@ -535,6 +760,31 @@ flag.
   -s, --schema strings    set schema names
       --exclude strings   list of glob patterns used to filter resources from applying
       --format string     Go template to use to format the output
+  -w, --web               open the schema ERD in the browser
+
+```
+
+
+### atlas schema test
+
+Run schema tests against the desired schema
+
+#### Usage
+```
+atlas schema test [flags] [paths]
+```
+
+#### Example
+
+```
+  atlas schema test --dev-url docker://mysql/8/dev --url file://schema.hcl .
+  atlas schema test --env dev ./tests
+```
+#### Flags
+```
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+  -u, --url strings      desired schema URL(s) to test
+      --run string       run only tests matching regexp
 
 ```
 
