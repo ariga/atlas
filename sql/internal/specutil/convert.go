@@ -940,6 +940,13 @@ func ConvertGenExpr(r *schemahcl.Resource, c *schema.Column, t func(string) stri
 
 // ColumnDefault converts the column default into cty.Value.
 func ColumnDefault(c *schema.Column) (cty.Value, error) {
+	var textlike bool
+	if c.Type != nil {
+		switch c.Type.Type.(type) {
+		case *schema.StringType, *schema.EnumType:
+			textlike = true
+		}
+	}
 	switch x := schema.UnderlyingExpr(c.Default).(type) {
 	case nil:
 		return cty.NilVal, nil
@@ -964,7 +971,7 @@ func ColumnDefault(c *schema.Column) (cty.Value, error) {
 				return cty.NilVal, err
 			}
 			return cty.NumberFloatVal(f), nil
-		case sqlx.IsLiteralNumber(x.V):
+		case sqlx.IsLiteralNumber(x.V) && !textlike:
 			switch i, err := strconv.ParseInt(x.V, 10, 64); {
 			case errors.Is(err, strconv.ErrRange):
 				u, err := strconv.ParseUint(x.V, 10, 64)
@@ -978,14 +985,12 @@ func ColumnDefault(c *schema.Column) (cty.Value, error) {
 				return cty.NumberIntVal(i), nil
 			}
 		default:
-			switch c.Type.Type.(type) {
 			// Literal values (non-expressions) are returned
 			// as strings for text-like types.
-			case *schema.StringType, *schema.EnumType:
+			if textlike {
 				return cty.StringVal(x.V), nil
-			default:
-				return cty.NilVal, fmt.Errorf("unsupported literal value %s for column %s", x.V, c.Name)
 			}
+			return cty.NilVal, fmt.Errorf("unsupported literal value %s for column %s", x.V, c.Name)
 		}
 	default:
 		return cty.NilVal, fmt.Errorf("converting expr %T to literal value for column %s", x, c.Name)
