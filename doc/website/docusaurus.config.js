@@ -182,6 +182,14 @@ module.exports = {
             from: '/ui/intro',
             to: '/cloud/getting-started',
           },
+          {
+            "to": "/declarative/inspect",
+            "from": "/cli/getting-started/inspection",
+          },
+          {
+            "to": "/declarative/apply",
+            "from": "/cli/getting-started/applying-schemas",
+          },
         ],
       },
     ],
