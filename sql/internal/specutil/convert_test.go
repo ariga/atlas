@@ -146,6 +146,19 @@ func TestDefault(t *testing.T) {
 	}
 }
 
+func TestColumnDefault_LiteralNumber(t *testing.T) {
+	v, err := ColumnDefault(
+		schema.NewColumn("").SetDefault(&schema.Literal{V: "0"}),
+	)
+	require.NoError(t, err)
+	require.True(t, cty.NumberIntVal(0).Equals(v).True())
+	v, err = ColumnDefault(
+		schema.NewStringColumn("", "text").SetDefault(&schema.Literal{V: "0"}),
+	)
+	require.NoError(t, err)
+	require.True(t, cty.StringVal("0").Equals(v).True())
+}
+
 func TestFromView(t *testing.T) {
 	spec, err := FromView(&schema.View{
 		Name:   "view",
