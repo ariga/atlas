@@ -965,13 +965,14 @@ func ColumnDefault(c *schema.Column) (cty.Value, error) {
 			return cty.StringVal(s), nil
 		case strings.ToLower(x.V) == "true", strings.ToLower(x.V) == "false":
 			return cty.BoolVal(strings.ToLower(x.V) == "true"), nil
-		case strings.Contains(x.V, "."):
-			f, err := strconv.ParseFloat(x.V, 64)
-			if err != nil {
-				return cty.NilVal, err
-			}
-			return cty.NumberFloatVal(f), nil
 		case sqlx.IsLiteralNumber(x.V) && !textlike:
+			if strings.Contains(x.V, ".") {
+				f, err := strconv.ParseFloat(x.V, 64)
+				if err != nil {
+					return cty.NilVal, err
+				}
+				return cty.NumberFloatVal(f), nil
+			}
 			switch i, err := strconv.ParseInt(x.V, 10, 64); {
 			case errors.Is(err, strconv.ErrRange):
 				u, err := strconv.ParseUint(x.V, 10, 64)
@@ -985,12 +986,8 @@ func ColumnDefault(c *schema.Column) (cty.Value, error) {
 				return cty.NumberIntVal(i), nil
 			}
 		default:
-			// Literal values (non-expressions) are returned
-			// as strings for text-like types.
-			if textlike {
-				return cty.StringVal(x.V), nil
-			}
-			return cty.NilVal, fmt.Errorf("unsupported literal value %s for column %s", x.V, c.Name)
+			// Literal values (non-expressions) are returned as strings.
+			return cty.StringVal(x.V), nil
 		}
 	default:
 		return cty.NilVal, fmt.Errorf("converting expr %T to literal value for column %s", x, c.Name)

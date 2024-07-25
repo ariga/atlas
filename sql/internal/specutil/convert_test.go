@@ -134,6 +134,14 @@ func TestDefault(t *testing.T) {
 			v: cty.NumberFloatVal(-1024.1024),
 			x: "-1024.1024",
 		},
+		{
+			v: cty.StringVal("{}"),
+			x: "{}",
+		},
+		{
+			v: cty.StringVal("1a.1"),
+			x: "1a.1",
+		},
 	} {
 		// From cty.Value (HCL) to database literal.
 		x, err := Default(tt.v)
