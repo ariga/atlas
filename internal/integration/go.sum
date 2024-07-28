@@ -13,8 +13,8 @@ cloud.google.com/go/longrunning v0.5.4 h1:w8xEcbZodnA2BbW6sVirkkoC+1gP8wS57EUUgG
 cloud.google.com/go/longrunning v0.5.4/go.mod h1:zqNVncI0BOP8ST6XQD1+VcvuShMmq7+xFSzOL++V0dI=
 cloud.google.com/go/secretmanager v1.11.4 h1:krnX9qpG2kR2fJ+u+uNyNo+ACVhplIAS4Pu7u+4gd+k=
 cloud.google.com/go/secretmanager v1.11.4/go.mod h1:wreJlbS9Zdq21lMzWmJ0XhWW2ZxgPeahsqeV/vZoJ3w=
-entgo.io/ent v0.13.0 h1:DclxWczaCpyiKn6ZWVcJjq1zIKtJ11iNKy+08lNYsJE=
-entgo.io/ent v0.13.0/go.mod h1:+oU8oGna69xy29O+g+NEz+/TM7yJDhQQGJfuOWq1pT8=
+entgo.io/ent v0.13.2-0.20240728160047-15bebe8d8920 h1:nbro7OIsADbHVgau1PWC19QCZNDyin5pMOJabt0kWcs=
+entgo.io/ent v0.13.2-0.20240728160047-15bebe8d8920/go.mod h1:qCEmo+biw3ccBn9OyL4ZK5dfpwg++l1Gxwac5B1206A=
 github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1 h1:LejjvYg4tCW5HO7q/1nzPrprh47oUD9OUySQ29pDp5c=
 github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1/go.mod h1:cnC/60IoLiDM0GhdKYJ6oO7AwpZe1IQfPnSKlAURgHw=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=

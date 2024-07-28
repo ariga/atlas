@@ -25,7 +25,7 @@ require (
 	cloud.google.com/go/iam v1.1.5 // indirect
 	cloud.google.com/go/longrunning v0.5.4 // indirect
 	cloud.google.com/go/secretmanager v1.11.4 // indirect
-	entgo.io/ent v0.13.0 // indirect
+	entgo.io/ent v0.13.2-0.20240728160047-15bebe8d8920 // indirect
 	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230512164433-5d1fd1a340c9 // indirect

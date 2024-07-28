@@ -14,6 +14,7 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/internal"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/predicate"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -65,7 +66,7 @@ func (rq *RevisionQuery) Order(o ...revision.OrderOption) *RevisionQuery {
 // First returns the first Revision entity from the query.
 // Returns a *NotFoundError when no Revision was found.
 func (rq *RevisionQuery) First(ctx context.Context) (*Revision, error) {
-	nodes, err := rq.Limit(1).All(setContextOp(ctx, rq.ctx, "First"))
+	nodes, err := rq.Limit(1).All(setContextOp(ctx, rq.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +89,7 @@ func (rq *RevisionQuery) FirstX(ctx context.Context) *Revision {
 // Returns a *NotFoundError when no Revision ID was found.
 func (rq *RevisionQuery) FirstID(ctx context.Context) (id string, err error) {
 	var ids []string
-	if ids, err = rq.Limit(1).IDs(setContextOp(ctx, rq.ctx, "FirstID")); err != nil {
+	if ids, err = rq.Limit(1).IDs(setContextOp(ctx, rq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -111,7 +112,7 @@ func (rq *RevisionQuery) FirstIDX(ctx context.Context) string {
 // Returns a *NotSingularError when more than one Revision entity is found.
 // Returns a *NotFoundError when no Revision entities are found.
 func (rq *RevisionQuery) Only(ctx context.Context) (*Revision, error) {
-	nodes, err := rq.Limit(2).All(setContextOp(ctx, rq.ctx, "Only"))
+	nodes, err := rq.Limit(2).All(setContextOp(ctx, rq.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +140,7 @@ func (rq *RevisionQuery) OnlyX(ctx context.Context) *Revision {
 // Returns a *NotFoundError when no entities are found.
 func (rq *RevisionQuery) OnlyID(ctx context.Context) (id string, err error) {
 	var ids []string
-	if ids, err = rq.Limit(2).IDs(setContextOp(ctx, rq.ctx, "OnlyID")); err != nil {
+	if ids, err = rq.Limit(2).IDs(setContextOp(ctx, rq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -164,7 +165,7 @@ func (rq *RevisionQuery) OnlyIDX(ctx context.Context) string {
 
 // All executes the query and returns a list of Revisions.
 func (rq *RevisionQuery) All(ctx context.Context) ([]*Revision, error) {
-	ctx = setContextOp(ctx, rq.ctx, "All")
+	ctx = setContextOp(ctx, rq.ctx, ent.OpQueryAll)
 	if err := rq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
@@ -186,7 +187,7 @@ func (rq *RevisionQuery) IDs(ctx context.Context) (ids []string, err error) {
 	if rq.ctx.Unique == nil && rq.path != nil {
 		rq.Unique(true)
 	}
-	ctx = setContextOp(ctx, rq.ctx, "IDs")
+	ctx = setContextOp(ctx, rq.ctx, ent.OpQueryIDs)
 	if err = rq.Select(revision.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
@@ -204,7 +205,7 @@ func (rq *RevisionQuery) IDsX(ctx context.Context) []string {
 
 // Count returns the count of the given query.
 func (rq *RevisionQuery) Count(ctx context.Context) (int, error) {
-	ctx = setContextOp(ctx, rq.ctx, "Count")
+	ctx = setContextOp(ctx, rq.ctx, ent.OpQueryCount)
 	if err := rq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
@@ -222,7 +223,7 @@ func (rq *RevisionQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (rq *RevisionQuery) Exist(ctx context.Context) (bool, error) {
-	ctx = setContextOp(ctx, rq.ctx, "Exist")
+	ctx = setContextOp(ctx, rq.ctx, ent.OpQueryExist)
 	switch _, err := rq.FirstID(ctx); {
 	case IsNotFound(err):
 		return false, nil
@@ -461,7 +462,7 @@ func (rgb *RevisionGroupBy) Aggregate(fns ...AggregateFunc) *RevisionGroupBy {
 
 // Scan applies the selector query and scans the result into the given value.
 func (rgb *RevisionGroupBy) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, rgb.build.ctx, "GroupBy")
+	ctx = setContextOp(ctx, rgb.build.ctx, ent.OpQueryGroupBy)
 	if err := rgb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
@@ -509,7 +510,7 @@ func (rs *RevisionSelect) Aggregate(fns ...AggregateFunc) *RevisionSelect {
 
 // Scan applies the selector query and scans the result into the given value.
 func (rs *RevisionSelect) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, rs.ctx, "Select")
+	ctx = setContextOp(ctx, rs.ctx, ent.OpQuerySelect)
 	if err := rs.prepareQuery(ctx); err != nil {
 		return err
 	}
