@@ -329,6 +329,17 @@ table "users" {
 
 ```
 
+:::info Sorting Style `AUTO`
+Redshift restricts user access to certain external tables which are used to inspect the sort style.
+Therefore, Atlas will ignore differences when changing the style to `AUTO`.
+You will need to manually adjust the sort style on your target Redshift database after modifying it in the Atlas schema.
+
+To change the sort style to `AUTO`, run the following SQL command:
+```sql
+ALTER TABLE "my_table" ALTER SORTKEY AUTO;
+```
+:::
+
 ## View
 
 A `view` is a virtual table in the database, defined by a statement that queries rows from one or more existing
