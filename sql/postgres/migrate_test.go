@@ -1489,6 +1489,9 @@ func TestPlanChanges(t *testing.T) {
 					},
 				},
 			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
 			wantPlan: &migrate.Plan{
 				Reversible:    true,
 				Transactional: true,
@@ -1496,6 +1499,29 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     `ALTER INDEX "a" RENAME TO "b"`,
 						Reverse: `ALTER INDEX "b" RENAME TO "a"`,
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
+					Changes: []schema.Change{
+						&schema.RenameIndex{
+							From: schema.NewIndex("a"),
+							To:   schema.NewIndex("b"),
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER INDEX "s1"."a" RENAME TO "b"`,
+						Reverse: `ALTER INDEX "s1"."b" RENAME TO "a"`,
 					},
 				},
 			},

@@ -427,8 +427,8 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 			changes = append(changes, &migrate.Change{
 				Source:  change,
 				Comment: fmt.Sprintf("rename an index from %q to %q", change.From.Name, change.To.Name),
-				Cmd:     s.Build("ALTER INDEX").Ident(change.From.Name).P("RENAME TO").Ident(change.To.Name).String(),
-				Reverse: s.Build("ALTER INDEX").Ident(change.To.Name).P("RENAME TO").Ident(change.From.Name).String(),
+				Cmd:     s.Build("ALTER INDEX").SchemaResource(modify.T.Schema, change.From.Name).P("RENAME TO").Ident(change.To.Name).String(),
+				Reverse: s.Build("ALTER INDEX").SchemaResource(modify.T.Schema, change.To.Name).P("RENAME TO").Ident(change.From.Name).String(),
 			})
 		case *schema.ModifyForeignKey:
 			// Foreign-key modification is translated into 2 steps.
