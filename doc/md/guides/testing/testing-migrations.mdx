@@ -1,0 +1,276 @@
+---
+id: testing-migrations
+title: Testing Migrations
+slug: /guides/testing/migrations
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Testing your database schema and migrations is crucial to ensure code behaves as expected, catch bugs early,
+and prevent regressions. Databases enforce logic, constraints, and complex relationships,
+so testing ensures these elements work correctly and remain intact after changes.
+
+In this guide we will learn how to use Atlas's [`migrate test`](/testing/migrate) command to test migration files.
+
+:::info [Atlas Pro Feature](/features#pro-plan)
+Testing is currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
+```
+atlas login
+```
+:::
+
+## Project Setup
+
+Before we begin writing tests, we will start by setting up a project with a config file, schema file,
+and a migration directory containing a few migration files.
+
+### Config File
+Create a [config file](/atlas-schema/projects#project-files) named `atlas.hcl`.
+
+In this file we will create an environment, specify the source of our schema,
+and a URL for our [dev database](/concepts/dev-database).
+
+We will also create a file named `migrate.test.hcl` to write our tests, and
+add it to the `atlas.hcl` file in the test block.
+
+```hcl title="atlas.hcl"
+env "dev" {
+  src = "file://schema.hcl"
+  dev = "docker://postgres/15/dev"
+
+  # Test configuration for local development.
+  test {
+    migrate {
+      src = ["migrate.test.hcl"]
+    }
+  }
+}
+```
+
+### Schema File
+
+Next, we will create a schema containing three tables:
+* **`users`**: stores user-specific data, such as `id` and `email`.
+* **`posts`**: holds the post content and links each post to its author with a `user_id`.
+* **`likes`**: records which user liked which post.
+
+```hcl title="schema.hcl"
+schema "public" {}
+table "users" {
+  schema = schema.public
+  column "id" {
+    type    = int
+    null    = false
+  }
+  column "email" {
+    type    = varchar(255)
+    null    = false
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+
+table "posts" {
+  schema = schema.public
+  column "id" {
+    type    = int
+    null    = false
+  }
+  column "title" {
+    type    = varchar(100)
+    null    = false
+  }
+  column "user_id" {
+    type    = int
+    null    = false
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "authors_fk" {
+    columns = [column.user_id]
+    ref_columns = [table.users.column.id]
+  }
+}
+
+table "likes" {
+  schema = schema.public
+  column "id" {
+    type = int
+    null = false
+  }
+  column "user_id" {
+    type    = int
+    null    = false
+  }
+  column "post_id" {
+    type    = int
+    null    = false
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "liked_by_fk" {
+    columns = [column.user_id]
+    ref_columns = [table.users.column.id]
+  }
+  foreign_key "liked_post_fk" {
+    columns = [column.post_id]
+    ref_columns = [table.posts.column.id]
+  }
+}
+```
+
+### Generating a Migration
+
+To generate our first migration, we will run the following command:
+
+```bash
+atlas migrate diff --env dev
+```
+
+We should see a new `migrations` directory created with the following files:
+
+<Tabs>
+<TabItem value="20240730073333.sql" label="20240730073333.sql" default>
+
+```sql title="20240730073333.sql"
+-- Create "users" table
+CREATE TABLE "public"."users" ("id" integer NOT NULL, "email" character varying(255) NOT NULL, PRIMARY KEY ("id"));
+-- Create "posts" table
+CREATE TABLE "public"."posts" ("id" integer NOT NULL, "title" character varying(100) NOT NULL, "user_id" integer NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "authors_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
+-- Create "likes" table
+CREATE TABLE "public"."likes" ("id" integer NOT NULL, "user_id" integer NOT NULL, "post_id" integer NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "liked_by_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION, CONSTRAINT "liked_post_fk" FOREIGN KEY ("post_id") REFERENCES "public"."posts" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
+```
+
+</TabItem>
+<TabItem value="atlas.sum" label="atlas.sum">
+
+```sum title="atlas.sum"
+h1:gUOA9cOgCheiTimm/l1DTlIyUGW1vRY9pKtjXlwp5sY=
+20240730073333.sql h1:PpPJDqDZcNZTFUl26jYUvPMonpknEMiwuevh7FkGoPA=
+```
+
+</TabItem>
+</Tabs>
+
+### Expanding Business Logic
+
+Great! Now that we have a basic schema and migration directory, let's add some business logic before
+we begin testing.
+
+We will add a view `post_likes_count` that will count the number of likes each post gets:
+
+```hcl title="schema.hcl"
+view "post_likes_count" {
+  schema = schema.public
+  column "post_id" {
+    null = false
+    type = integer
+  }
+  column "title" {
+    null = false
+    type = text
+  }
+  column "likes" {
+    null = false
+    type = bigint
+  }
+  as         = <<-SQL
+   SELECT p.id AS post_id,
+      p.title,
+      count(l.id) AS likes
+     FROM (public.posts p
+       LEFT JOIN public.likes l ON ((p.id = l.post_id)))
+    GROUP BY p.id, p.title;
+  SQL
+  depends_on = [table.likes, table.posts]
+}
+```
+
+Run the `migrate diff` command once more to generate another migration:
+
+```bash
+atlas migrate diff --env dev
+```
+
+The following migration should be created:
+
+```sql title="20240730073842.sql"
+-- Create "post_likes_count" view
+CREATE VIEW "public"."post_likes_count" ("post_id", "title", "likes") AS SELECT p.id AS post_id,
+    p.title,
+    count(l.id) AS likes
+   FROM (public.posts p
+     LEFT JOIN public.likes l ON ((p.id = l.post_id)))
+  GROUP BY p.id, p.title;
+```
+
+## Testing Migrations
+
+Now that we have our project setup, we are ready to begin writing tests!
+
+In this case, we want to write a test that will check that the migration from one state (file) to
+the next will run smoothly, without disruptions.
+
+To do so, our test will have the following logic:
+1. Migrate to the first version, before creating the view.
+2. Seed the `users`, `posts`, and `likes` table with data.
+3. Migrate to the final version and query the view.
+
+```hcl title="migrate.test.hcl"
+test "migrate" "check_view" {
+  migrate {
+    to = "20240730073333"
+  }
+  exec {
+    sql = <<-SQL
+      INSERT INTO users (id, email) VALUES (1, 'user1@example.com'), (2, 'user2@example.com'), (3, 'user3@example.com');
+      INSERT INTO posts (id, title, user_id)
+        VALUES (1, 'My First Post', 1),
+       (2, 'Another Interesting Post', 2),
+       (3, 'A Third Post Joins the Party', 3);
+      INSERT INTO likes (id, user_id, post_id)
+      VALUES (1, 1, 1),  -- User 1 likes their own post (post 1)
+       (2, 2, 2),  -- User 2 likes post 2
+       (3, 3, 1);  -- User 3 likes post 1
+    SQL
+  }
+  migrate {
+    to = "20240730073842"
+  }
+  exec {
+    sql = "SELECT * FROM post_likes_count WHERE likes = 2"
+    format = table
+    output = <<TAB
+ post_id |     title     | likes
+---------+---------------+-------
+ 1       | My First Post | 2
+TAB
+  }
+  log {
+    message = "Table is as expected"
+  }
+}
+```
+
+To run this test, we will run the [`migrate test`](/testing/migrate#migrate-command) command:
+
+```bash
+atlas migrate test --env dev
+```
+
+The output should be similar to:
+
+```testoutput title="Test Output"
+-- PASS: check_view (96ms)
+    migrate.test.hcl:30: Table is as expected
+PASS
+```
+
+## Wrapping Up
+
+In this guide we learned how to use the [`atlas migrate test`](/testing/migrate#migrate-command) command
+to test our migration files before deployment.

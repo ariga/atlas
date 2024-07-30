@@ -303,6 +303,11 @@ module.exports = {
                 },
                 {
                     type: 'doc',
+                    id: 'guides/testing/testing-migrations',
+                    label: 'Testing Migrations'
+                },
+                {
+                    type: 'doc',
                     id: 'guides/testing/testing-views',
                     label: 'Testing Views'
                 },
