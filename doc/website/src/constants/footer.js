@@ -31,11 +31,11 @@ module.exports = {
       ],
     },
     {
-      title: "Atlas Cloud",
+      title: "Use Cases",
       items: [
-        { label: "Discover Atlas Cloud", to: "https://atlasgo.cloud/?utm_term=footer" },
-        { label: "Live Demo", to: "https://gh.atlasgo.cloud/projects?utm_term=footer" },
-        { label: "Sign Up", to: "https://auth.atlasgo.cloud/signup?utm_term=footer" },
+        { label: "Database per Tenant", to: "/use-cases/database-per-tenant" },
+        { label: "Atlas Cloud", to: "https://atlasgo.cloud/?utm_term=footer" },
+        { label: "Modern Database CI/CD", to: "https://atlasgo.io/guides/modern-database-ci-cd" },
       ],
     },
     {
