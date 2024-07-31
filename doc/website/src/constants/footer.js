@@ -33,9 +33,9 @@ module.exports = {
     {
       title: "Use Cases",
       items: [
+        { label: "Modern Database CI/CD", to: "/use-cases/modernize-database-migrations" },
         { label: "Database per Tenant", to: "/use-cases/database-per-tenant" },
         { label: "Atlas Cloud", to: "https://atlasgo.cloud/?utm_term=footer" },
-        { label: "Modern Database CI/CD", to: "https://atlasgo.io/guides/modern-database-ci-cd" },
       ],
     },
     {
