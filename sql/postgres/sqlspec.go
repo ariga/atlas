@@ -1032,6 +1032,8 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec(TypeDateRange),
 		schemahcl.NewTypeSpec(TypeDateMultiRange),
 		schemahcl.NewTypeSpec("hstore"),
+		schemahcl.NewTypeSpec(TypeXID),
+		schemahcl.NewTypeSpec(TypeXID8),
 	),
 	// PostgreSQL internal, pseudo, and special types.
 	schemahcl.WithSpecs(func() (specs []*schemahcl.TypeSpec) {

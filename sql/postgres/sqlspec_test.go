@@ -1986,6 +1986,14 @@ func TestTypes(t *testing.T) {
 			typeExpr: "name",
 			expected: &schema.StringType{T: typeName},
 		},
+		{
+			typeExpr: "xid",
+			expected: &schema.IntegerType{T: TypeXID},
+		},
+		{
+			typeExpr: "xid8",
+			expected: &schema.IntegerType{T: TypeXID8},
+		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
 			var test schema.Schema

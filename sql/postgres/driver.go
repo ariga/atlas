@@ -438,6 +438,9 @@ const (
 	TypeInt4     = "int4" // integer.
 	TypeInt8     = "int8" // bigint.
 
+	TypeXID  = "xid"  // transaction identifier.
+	TypeXID8 = "xid8" // 64-bit transaction identifier.
+
 	TypeCIDR     = "cidr"
 	TypeInet     = "inet"
 	TypeMACAddr  = "macaddr"
