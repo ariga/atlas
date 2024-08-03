@@ -155,3 +155,17 @@ func TestUserAgent(t *testing.T) {
 	require.Equal(t, fmt.Sprintf("Atlas/%s (%s; foo/bar; bar/baz)", version, platform), UserAgent("foo/bar", "bar/baz"))
 	require.Equal(t, fmt.Sprintf("Atlas/%s (%s; bar/baz)", version, platform), UserAgent("  ", "", "bar/baz"))
 }
+
+func TestClient_AddHeader(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "val", r.Header.Get("key"))
+	}))
+	client := New(srv.URL, "atlas")
+	defer srv.Close()
+	client.AddHeader("key", "val")
+	_, err := client.ReportMigration(context.Background(), ReportMigrationInput{
+		EnvName:     "foo",
+		ProjectName: "bar",
+	})
+	require.NoError(t, err)
+}

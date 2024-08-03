@@ -48,7 +48,8 @@ func New(endpoint, token string) *Client {
 		endpoint: endpoint,
 		client: &http.Client{
 			Transport: &roundTripper{
-				token: token,
+				token:        token,
+				extraHeaders: make(map[string]string),
 			},
 			Timeout: time.Second * 30,
 		},
@@ -298,13 +299,23 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 	return nil
 }
 
+// AddHeader adds a header to the client requests.
+func (c *Client) AddHeader(key, value string) {
+	rt, ok := c.client.Transport.(*roundTripper)
+	if !ok {
+		return
+	}
+	rt.extraHeaders[key] = value
+}
+
 type (
 	// errlist wraps the gqlerror.List to print errors without
 	// extra newlines and prefix info added.
 	errlist gqlerror.List
 	// roundTripper is a http.RoundTripper that adds the Authorization header.
 	roundTripper struct {
-		token string
+		token        string
+		extraHeaders map[string]string
 	}
 )
 
@@ -316,6 +327,9 @@ func (e errlist) Error() string {
 // RoundTrip implements http.RoundTripper.
 func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	SetHeader(req, r.token)
+	for k, v := range r.extraHeaders {
+		req.Header.Set(k, v)
+	}
 	return http.DefaultTransport.RoundTrip(req)
 }
 
