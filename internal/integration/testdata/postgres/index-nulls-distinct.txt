@@ -22,6 +22,10 @@ table "users" {
     columns        = [column.c]
     nulls_distinct = false
   }
+  unique "nulls_not_distinct2" {
+    columns        = [column.c]
+    nulls_distinct = false
+  }
 }
 
 -- 1.inspect.hcl --
@@ -36,6 +40,10 @@ table "users" {
     columns        = [column.c]
     nulls_distinct = false
   }
+  unique "nulls_not_distinct2" {
+    columns        = [column.c]
+    nulls_distinct = false
+  }
 }
 schema "script_index_nulls_distinct" {
 }
@@ -46,6 +54,7 @@ schema "script_index_nulls_distinct" {
  c      | integer |           | not null |
 Indexes:
     "nulls_not_distinct" UNIQUE, btree (c) NULLS NOT DISTINCT
+    "nulls_not_distinct2" UNIQUE CONSTRAINT, btree (c) NULLS NOT DISTINCT
 
 -- 2.hcl --
 schema "script_index_nulls_distinct" {}
