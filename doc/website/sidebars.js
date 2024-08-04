@@ -396,9 +396,11 @@ module.exports = {
                     label: 'GORM',
                     link: {
                         type: 'doc',
-                        id: 'guides/orms/gorm',
+                        id: 'guides/orms/gorm/gorm',
                     },
                     items: [
+                        {type: 'doc', id: 'guides/orms/gorm/program', label: 'Program Mode'},
+                        {type: 'doc', id: 'guides/orms/gorm/standalone', label: 'Standalone Mode'},
                         {type: 'doc', id: 'guides/orms/gorm/composite-types', label: 'Composite Types'},
                         {type: 'doc', id: 'guides/orms/gorm/domain-types', label: 'Domain Types'},
                         {type: 'doc', id: 'guides/orms/gorm/enum-types', label: 'Enum Types'},
