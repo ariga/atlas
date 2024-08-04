@@ -1151,9 +1151,9 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
 			})
 		})
 	}
-	// Avoid appending the default behavior, which NULL values are distinct.
-	if n := (IndexNullsDistinct{}); sqlx.Has(idx.Attrs, &n) && !n.V {
-		b.P("NULLS NOT DISTINCT")
+	// Handled separately by the UNIQUE builder.
+	if _, ok := uniqueConst(idx.Attrs); !ok {
+		nullsNotDistinct(b, idx)
 	}
 	if p, ok := indexStorageParams(idx.Attrs); ok {
 		b.P("WITH")
@@ -1228,6 +1228,9 @@ func (s *state) unique(b *sqlx.Builder, idx *schema.Index) error {
 		name = idx.Name
 	}
 	b.P("CONSTRAINT").Ident(name).P("UNIQUE")
+	// In UNIQUE constraints, the NULLS [NOT] DISTINCT
+	// clause is written before the index parts.
+	nullsNotDistinct(b, idx)
 	return s.index(b, idx)
 }
 
@@ -1424,5 +1427,13 @@ func dropConst(c schema.Change) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// nullsNotDistinct handles the NULLS [NOT] DISTINCT clause for indexes.
+func nullsNotDistinct(b *sqlx.Builder, idx *schema.Index) {
+	// Avoid appending the default behavior, which NULL values are distinct.
+	if n := (IndexNullsDistinct{}); sqlx.Has(idx.Attrs, &n) && !n.V {
+		b.P("NULLS NOT DISTINCT")
 	}
 }

@@ -811,6 +811,19 @@ func TestPlanChanges(t *testing.T) {
 									},
 								},
 							},
+							&schema.AddIndex{
+								I: &schema.Index{
+									Unique: true,
+									Name:   "unique_const_nulls_not_distinct",
+									Parts: []*schema.IndexPart{
+										{C: users.Columns[0]},
+									},
+									Attrs: []schema.Attr{
+										&IndexNullsDistinct{V: false},
+										&Constraint{N: "unique_const", T: "u"},
+									},
+								},
+							},
 						},
 					}
 				}(),
@@ -824,8 +837,8 @@ func TestPlanChanges(t *testing.T) {
 						Reverse: `CREATE INDEX CONCURRENTLY "drop_con" ON "users" ("id")`,
 					},
 					{
-						Cmd:     `ALTER TABLE "users" DROP CONSTRAINT "id_nonzero", ADD COLUMN "name" character varying(255) NOT NULL DEFAULT 'logged_in', ADD COLUMN "last" character varying(255) NOT NULL DEFAULT 'logged_in', ADD CONSTRAINT "name_not_empty" CHECK ("name" <> ''), ADD CONSTRAINT "positive_id" CHECK ("id" > 0) NOT VALID, DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK (("id") % 2 = 0)`,
-						Reverse: `ALTER TABLE "users" DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK ("id" % 2 = 0), DROP CONSTRAINT "positive_id", DROP CONSTRAINT "name_not_empty", DROP COLUMN "last", DROP COLUMN "name", ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0)`,
+						Cmd:     `ALTER TABLE "users" DROP CONSTRAINT "id_nonzero", ADD COLUMN "name" character varying(255) NOT NULL DEFAULT 'logged_in', ADD COLUMN "last" character varying(255) NOT NULL DEFAULT 'logged_in', ADD CONSTRAINT "name_not_empty" CHECK ("name" <> ''), ADD CONSTRAINT "positive_id" CHECK ("id" > 0) NOT VALID, DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK (("id") % 2 = 0), ADD CONSTRAINT "unique_const" UNIQUE NULLS NOT DISTINCT ("id")`,
+						Reverse: `ALTER TABLE "users" DROP CONSTRAINT "unique_const_nulls_not_distinct", DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK ("id" % 2 = 0), DROP CONSTRAINT "positive_id", DROP CONSTRAINT "name_not_empty", DROP COLUMN "last", DROP COLUMN "name", ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0)`,
 					},
 					{
 						Cmd:     `CREATE INDEX "id_key" ON "users" ("id" DESC) WHERE success`,
