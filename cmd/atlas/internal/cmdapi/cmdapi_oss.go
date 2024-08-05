@@ -40,9 +40,6 @@ func init() {
 		schemaInspectCmd(),
 		unsupportedCommand("schema", "test"),
 	)
-	schemaCmd.PersistentPreRun = func(cmd *cobra.Command, _ []string) {
-		maySuggestUpgrade(cmd)
-	}
 	Root.AddCommand(schemaCmd)
 	migrateCmd := migrateCmd()
 	migrateCmd.AddCommand(
@@ -63,9 +60,6 @@ func init() {
 		unsupportedCommand("migrate", "push"),
 		unsupportedCommand("migrate", "test"),
 	)
-	migrateCmd.PersistentPreRun = func(cmd *cobra.Command, _ []string) {
-		maySuggestUpgrade(cmd)
-	}
 	Root.AddCommand(migrateCmd)
 }
 
@@ -210,6 +204,7 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags, env 
 
 func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, env *Env) error {
 	ctx := cmd.Context()
+	maySuggestUpgrade(cmd)
 	dev, err := sqlclient.Open(ctx, flags.devURL)
 	if err != nil {
 		return err
