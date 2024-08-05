@@ -399,6 +399,7 @@ module.exports = {
                         id: 'guides/orms/gorm/gorm',
                     },
                     items: [
+                        {type: 'doc', id: 'guides/orms/gorm', label: 'Getting Started'},
                         {type: 'doc', id: 'guides/orms/gorm/program', label: 'Program Mode'},
                         {type: 'doc', id: 'guides/orms/gorm/standalone', label: 'Standalone Mode'},
                         {type: 'doc', id: 'guides/orms/gorm/composite-types', label: 'Composite Types'},
@@ -407,6 +408,7 @@ module.exports = {
                         {type: 'doc', id: 'guides/orms/gorm/extensions', label: 'Extensions'},
                         {type: 'doc', id: 'guides/orms/gorm/rls', label: 'Row-Level Security'},
                         {type: 'doc', id: 'guides/orms/gorm/triggers', label: 'Triggers'},
+                        {type: 'doc', id: 'guides/orms/gorm/visualize', label: 'Visualize'},
                     ]
                 },
                 {
