@@ -23,9 +23,9 @@ However, there are two well-known issues with EF Core migrations ([efcore#31790]
 1. The SQL is not visible in merge/pull requests for review purposes.
 2. The designer files repeat the entire schema for each migration.
 
-Atlas supports SQL-based [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology and can 
+Atlas supports a SQL-based [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology and can 
 automatically plan database schema migrations for developers using EF Core.
-Atlas plans migrations by calculating the diff between the _current_ state of the database,
+Atlas plans migrations by calculating the diff between the _current_ state of the database
 and its _desired_ state.
 
 In the context of versioned migrations, the current state can be thought of as the database schema that would have
@@ -43,7 +43,7 @@ EF Core users.
 
 * A local project that uses EF Core for data access.
 
-If you don't have one, you can use [TodoApi](https://github.com/davidfowl/TodoApi) from David Fowler (Microsoft Engineer for 
+If you don't have one, you can use [TodoApi](https://github.com/davidfowl/TodoApi) written by David Fowler (Microsoft Engineer for 
 things like ASP.NET, Aspire, and NuGet, among others) as a starting point:
 
 ```bash
@@ -135,7 +135,7 @@ env {
 
 :::note
 By looking at [DbContext Creation](https://learn.microsoft.com/en-us/ef/core/cli/dbcontext-creation?tabs=dotnet-core-cli), you 
-can see the current DbContext uses Sqlite. Therefore we need to use the correct dev database for Atlas to work.
+can see the current DbContext uses SQLite. Therefore, we need to use the correct [dev database](/concepts/dev-database] for Atlas to work.
 ```csharp title="TodoApi/Program.cs"
 builder.Services.AddSqlite<TodoDbContext>(connectionString);
 ```
@@ -161,7 +161,6 @@ public class Todo
     [Required]
     public string OwnerId { get; set; } = default!;
 }
-
 ```
 
 We can generate a migration file by running this command:
