@@ -5,7 +5,6 @@
 package specutil
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"slices"
@@ -683,7 +682,7 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc, idxFn IndexSpecFunc) (*s
 	}
 	// In case the view definition is multi-line,
 	// format it as indented heredoc with two spaces.
-	as := MightHeredoc(v.Def)
+	as := sqlspec.MightHeredoc(v.Def)
 	embed := &schemahcl.Resource{
 		Attrs: []*schemahcl.Attr{
 			schemahcl.StringAttr("as", as),
@@ -704,39 +703,6 @@ func FromView(v *schema.View, colFn ViewColumnSpecFunc, idxFn IndexSpecFunc) (*s
 	convertCommentFromSchema(v.Attrs, &embed.Attrs)
 	spec.Extra.Children = append(spec.Extra.Children, embed)
 	return spec, nil
-}
-
-// normalizeCRLF for heredoc strings that inspected and printed in the HCL as-is to
-// avoid having mixed endings in the printed file - Unix-like (default) and Windows-like.
-func normalizeCRLF(s string) string {
-	if strings.Contains(s, "\r\n") {
-		return strings.ReplaceAll(s, "\r\n", "\n")
-	}
-	return s
-}
-
-// MightHeredoc returns the string as an indented heredoc if it has multiple lines.
-func MightHeredoc(s string) string {
-	s = normalizeCRLF(strings.TrimSpace(s))
-	// In case the given definition is multi-line,
-	// format it as indented heredoc with two spaces.
-	if lines := strings.Split(s, "\n"); len(lines) > 1 {
-		var b bytes.Buffer
-		b.Grow(len(s))
-		b.WriteString("<<-SQL\n")
-		for _, l := range lines {
-			// Skip spaces-only lines, as editors stripped these spaces off,
-			// and HCL parser results a different string for them.
-			if strings.TrimSpace(l) != "" {
-				b.WriteString("  ")
-				b.WriteString(l)
-			}
-			b.WriteByte('\n')
-		}
-		b.WriteString("  SQL")
-		s = b.String()
-	}
-	return s
 }
 
 // dependsOn returns the depends_on attribute for the given objects.
