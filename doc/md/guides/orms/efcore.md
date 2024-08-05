@@ -1,47 +1,50 @@
 ---
 id: efcore
-title: Automatic migration planning for Entity Framework Core
+title: Automatic Migration Planning for Entity Framework Core
 slug: /guides/orms/efcore
 ---
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 ## TL;DR
-* [Entity Framework (EF) Core](https://docs.microsoft.com/en-us/ef/core/) is an object-relational mapping (ORM) for .NET.
-* [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, linting and executing schema changes to your database.
+* [Entity Framework (EF) Core](https://docs.microsoft.com/en-us/ef/core/) is an object-relational mapping (ORM) framework for .NET.
+* [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, linting, and executing schema changes to your database.
 * Developers using EF Core can use Atlas to automatically plan schema migrations
-  for them, based on the desired state of their schema instead of crafting them by hand.
+ based on the desired state of their schema instead of crafting them by hand.
 
-## Automatic migration planning for EF Core
+## Automatic Migration Planning for EF Core
 
-EF Core is one of the most popular ORM widely used in the .NET community, supported by **Microsoft**. EF Core allows users to manage their database schemas using its [migrations](https://docs.microsoft.com/en-us/ef/core/managing-schemas/migrations/) feature, which is usually sufficient during development and in many simple cases.
+EF Core is one of the most popular ORMs widely used in the .NET community, supported by **Microsoft**. EF Core allows 
+users to manage their database schemas using its [migrations](https://docs.microsoft.com/en-us/ef/core/managing-schemas/migrations/) 
+feature, which is usually sufficient during development and in many simple cases.
 
 However, there are two well-known issues with EF Core migrations ([efcore#31790](https://github.com/dotnet/efcore/issues/31790)):
 
 1. The SQL is not visible in merge/pull requests for review purposes.
 2. The designer files repeat the entire schema for each migration.
 
-Atlas supports SQL-based [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology and can automatically plan database schema migrations for developers using EF Core.
+Atlas supports SQL-based [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) methodology and can 
+automatically plan database schema migrations for developers using EF Core.
 Atlas plans migrations by calculating the diff between the _current_ state of the database,
 and its _desired_ state.
 
 In the context of versioned migrations, the current state can be thought of as the database schema that would have
 been created by applying all previous migration scripts.
 
-The desired schema of your application can be provided to Atlas via an [External Schema Datasource](/atlas-schema/projects#data-source-external_schema)
+The desired schema of your application can be provided to Atlas via an [External Schema Datasource](/atlas-schema/projects#data-source-external_schema),
 which is any program that can output a SQL schema definition to stdout.
-
 To use Atlas with EF Core, users can utilize the [EF Core Atlas Provider](https://github.com/ariga/atlas-provider-ef),
-a .NET tool that can be used to load the schema of a EF Core project into Atlas.
+a .NET tool that can be used to load the schema of an EF Core project into Atlas.
 
 In this guide, we will show how Atlas can be used to automatically plan schema migrations for
 EF Core users.
 
 ## Prerequisites
 
-* A local project that use EF Core for data access.
+* A local project that uses EF Core for data access.
 
-If you don't have one, you can use [TodoApi](https://github.com/davidfowl/TodoApi) from David Fowler (Microsoft Engineer for things like ASP.NET, Aspire, and NuGet, among others) as a starting point:
+If you don't have one, you can use [TodoApi](https://github.com/davidfowl/TodoApi) from David Fowler (Microsoft Engineer for 
+things like ASP.NET, Aspire, and NuGet, among others) as a starting point:
 
 ```bash
 git clone git@github.com:davidfowl/TodoApi.git
@@ -50,9 +53,9 @@ git clone git@github.com:davidfowl/TodoApi.git
 ## Using the Atlas EF Core Provider
 
 In this guide, we will use the [Atlas Provider for EF Core](https://github.com/ariga/atlas-provider-ef)
-to automatically plan schema migrations for a EF Core project.
+to automatically plan schema migrations for an EF Core project.
 
-A connection to a live database is optional, it depends on the [Database Provider](https://learn.microsoft.com/en-us/ef/core/providers/?tabs=dotnet-core-cli) you are using.
+A connection to a live database is optional; it depends on the [Database Provider](https://learn.microsoft.com/en-us/ef/core/providers/?tabs=dotnet-core-cli) you are using.
 
 ### Installation
 
@@ -81,12 +84,11 @@ curl -sSf https://atlasgo.sh | sh
 
 See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more installation options.
 
-
 #### Atlas Provider for EF Core
 
 This package is available on [NuGet](https://www.nuget.org/packages/atlas-ef/).
 
-Navigate to the `TodoApi` folder and create tool manifest file:
+Navigate to the `TodoApi` folder and create a tool manifest file:
 
 ```bash
 dotnet new tool-manifest
@@ -106,7 +108,7 @@ dotnet atlas-ef --version
 
 ### Configuration
 
-Navigate to the `TodoApi` folder, create a new file named `atlas.hcl` with the following contents:
+Navigate to the `TodoApi` folder and create a new file named `atlas.hcl` with the following contents:
 
 ```hcl
 data "external_schema" "ef" {
@@ -132,7 +134,8 @@ env {
 ```
 
 :::note
-By looking at [DbContext Creation](https://learn.microsoft.com/en-us/ef/core/cli/dbcontext-creation?tabs=dotnet-core-cli), you can see the current DbContext using Sqlite. Therefore we need to use the correct dev database for Atlas to work.
+By looking at [DbContext Creation](https://learn.microsoft.com/en-us/ef/core/cli/dbcontext-creation?tabs=dotnet-core-cli), you 
+can see the current DbContext uses Sqlite. Therefore we need to use the correct dev database for Atlas to work.
 ```csharp title="TodoApi/Program.cs"
 builder.Services.AddSqlite<TodoDbContext>(connectionString);
 ```
@@ -145,7 +148,7 @@ workflow, where each change to the database is versioned and recorded in a migra
 `atlas migrate diff` command to automatically generate a migration file that will migrate the database
 from its latest revision to the current EF Core schema.
 
-Suppose we have the following EF Core `TodoDbContext` class, which have a `Todo` entity:
+Suppose we have the following EF Core `TodoDbContext` class, which has a `Todo` entity:
 
 ```csharp title="TodoApi/Todos/Todo.cs"
 public class Todo
@@ -174,7 +177,7 @@ atlas-migrations
 |-- 20240805093706.sql
 |-- atlas.sum
 
-1 directories, 2 files
+1 directory, 2 files
 ```
 
 Examining the contents of `20240805093706.sql`:
@@ -222,7 +225,7 @@ atlas-migrations
 + |-- 20240805093730.sql
   |-- atlas.sum
 
-1 directories, 3 files
+1 directory, 3 files
 ```
 
 ```sql title="20240805093730.sql"
@@ -232,9 +235,10 @@ ALTER TABLE `Todos` ADD COLUMN `Description` text NOT NULL;
 
 ## Conclusion
 
-In this guide we demonstrated how projects using EF Core can use Atlas to automatically
+In this guide, we demonstrated how projects using EF Core can use Atlas to automatically
 plan schema migrations based only on their entity. To learn more about executing
 migrations against your production database, read the documentation for the
 [`migrate apply`](/versioned/apply) command.
 
-Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT)
+Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT).
+
