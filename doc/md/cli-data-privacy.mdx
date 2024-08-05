@@ -3,22 +3,28 @@ title: Data Privacy and the CLI
 slug: /cli/data-privacy
 id: cli-data-privacy
 ---
-As mentioned on the [Feature Compatability](/features) page, users can unlock advanced features by logging in with the
-Atlas CLI. This can be done by running the following command:
-
-```bash
-atlas login
-```
-
-After running this command, follow the instructions on the screen to log in. If needed, you will be prompted
-to create an account.
 
 ## What data does the Atlas CLI collect?
 
+This document explains what data the Atlas CLI collects and how we use it.
+
+### Anonymous Telemetry
+
+When you run the Atlas CLI, we may collect anonymous telemetry data to help us understand how users are using the
+CLI and provide better support. This includes things like the commands you run, general statistics and information
+about the runtime environment. Under no circumstances do we collect any personally identifiable information
+or sensitive data.  This is further detailed in our [Privacy Policy](https://ariga.io/legal/privacy) and the
+[Atlas EULA](https://ariga.io/legal/atlas/eula).
+
+If you wish to opt-out of telemetry data collection, you can do so by setting the `ATLAS_NO_ANON_TELEMETRY` environment
+variable to `true`.  This will disable all anonymous telemetry collection.
+
+### Identified Users
+
 :::info Logged-in Users
 
-Notice that this document is only relevant to users who have logged in with the Atlas CLI. If you have not logged in,
-the CLI does not collect any data from you.
+The following section pertains only relevant to users who have created an [Atlas Pro](/pricing) account and are logged
+in to the CLI.
 
 :::
 
