@@ -10,10 +10,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -1119,3 +1122,20 @@ func indentLn(input string, indent int) string {
 	pad := strings.Repeat(" ", indent)
 	return strings.ReplaceAll(input, "\n", "\n"+pad)
 }
+
+// WarnOnce allow writing warning messages to the given writer,
+// but ensures only one message will be written in process run.
+func WarnOnce(w io.Writer, text string) error {
+	if !reflect.TypeOf(w).Comparable() {
+		_, err := w.Write([]byte(text))
+		return err
+	}
+	if _, loaded := oneWrites.LoadOrStore(w, true); !loaded {
+		_, err := w.Write([]byte(text))
+		return err
+	}
+	return nil
+}
+
+// oneWrites per writer.
+var oneWrites sync.Map

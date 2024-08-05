@@ -9,8 +9,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"text/template"
 	"time"
@@ -909,3 +911,38 @@ func TestReporter_OutOfOrder(t *testing.T) {
   ERROR: migration files 1.5.sql, 1.6.sql were added out of order. See: https://atlasgo.io/versioned/apply#non-linear-error
 `, buf.String())
 }
+
+func TestWarnOnce(t *testing.T) {
+	b := &strings.Builder{}
+	require.NoError(t, cmdlog.WarnOnce(b, "one"))
+	require.NoError(t, cmdlog.WarnOnce(b, "two"))
+	require.Equal(t, "one", b.String())
+
+	var wg sync.WaitGroup
+	b = &strings.Builder{}
+	wg.Add(5)
+	for i := 0; i < 5; i++ {
+		go func() {
+			defer wg.Done()
+			require.NoError(t, cmdlog.WarnOnce(b, "one"))
+		}()
+	}
+	wg.Wait()
+	require.Equal(t, "one", b.String())
+
+	// Ensure the type is not assignable.
+	require.Panics(t, func() {
+		var m sync.Map
+		m.LoadOrStore(unassignable{}, "text")
+	})
+	b.Reset()
+	require.NoError(t, cmdlog.WarnOnce(unassignable{Writer: b}, "done"))
+	require.Equal(t, "done", b.String())
+}
+
+type unassignable struct {
+	_ func()
+	io.Writer
+}
+
+func (a unassignable) Write(p []byte) (n int, err error) { return a.Writer.Write(p) }
