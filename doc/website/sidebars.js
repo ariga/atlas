@@ -460,6 +460,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/frameworks/sqlc-versioned',
                     label: 'sqlc (versioned)'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/orms/efcore',
+                    label: 'Entity Framework Core'
                 }
             ]
         },
