@@ -16,6 +16,7 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdapi/vercheck"
+	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	_ "ariga.io/atlas/cmd/atlas/internal/docker"
 	_ "ariga.io/atlas/sql/mysql"
 	_ "ariga.io/atlas/sql/mysql/mysqlcheck"
@@ -58,7 +59,7 @@ func main() {
 	update := checkForUpdate(ctx)
 	err = cmdapi.Root.ExecuteContext(ctx)
 	if u := update(); u != "" {
-		fmt.Fprintln(os.Stderr, u)
+		_ = cmdlog.WarnOnce(os.Stderr, u)
 	}
 	done(err)
 	if err != nil {
