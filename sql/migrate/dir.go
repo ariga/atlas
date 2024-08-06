@@ -561,6 +561,18 @@ func (t TemplateFormatter) Format(plan *Plan) ([]File, error) {
 	return files, nil
 }
 
+// FormatFile is like Format, but expects and returns a single file.
+func (t TemplateFormatter) FormatFile(p *Plan) (File, error) {
+	files, err := t.Format(p)
+	if err != nil {
+		return nil, err
+	}
+	if len(files) != 1 {
+		return nil, fmt.Errorf("expected a single file, got %d", len(files))
+	}
+	return files[0], nil
+}
+
 // FormatTo calls Format and writes the files' content to the given writer.
 func (t TemplateFormatter) FormatTo(plan *Plan, w io.Writer) error {
 	files, err := t.Format(plan)

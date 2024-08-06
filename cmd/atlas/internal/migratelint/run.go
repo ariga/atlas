@@ -16,7 +16,6 @@ import (
 	"text/template"
 	"time"
 
-	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
@@ -187,7 +186,7 @@ func (r *Runner) analyze(ctx context.Context, files []*sqlcheck.File) error {
 
 var (
 	// TemplateFuncs are global functions available in templates.
-	TemplateFuncs = cmdlog.WithColorFuncs(template.FuncMap{
+	TemplateFuncs = template.FuncMap{
 		"json": func(v any, args ...string) (string, error) {
 			var (
 				b   []byte
@@ -226,7 +225,12 @@ var (
 			}
 			return append(lines, strings.Join(words[j:], " "))
 		},
-	})
+		"cyan":         color.CyanString,
+		"green":        color.HiGreenString,
+		"red":          color.HiRedString,
+		"redBgWhiteFg": color.New(color.FgHiWhite, color.BgHiRed).SprintFunc(),
+		"yellow":       color.YellowString,
+	}
 	// DefaultTemplate is the default template used by the CI job.
 	DefaultTemplate = template.Must(template.New("report").
 			Funcs(TemplateFuncs).
