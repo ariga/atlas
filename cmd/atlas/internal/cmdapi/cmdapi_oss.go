@@ -40,9 +40,6 @@ func init() {
 		schemaInspectCmd(),
 		unsupportedCommand("schema", "test"),
 	)
-	schemaCmd.PersistentPreRun = func(cmd *cobra.Command, _ []string) {
-		maySuggestUpgrade(cmd)
-	}
 	Root.AddCommand(schemaCmd)
 	migrateCmd := migrateCmd()
 	migrateCmd.AddCommand(
@@ -63,9 +60,6 @@ func init() {
 		unsupportedCommand("migrate", "push"),
 		unsupportedCommand("migrate", "test"),
 	)
-	migrateCmd.PersistentPreRun = func(cmd *cobra.Command, _ []string) {
-		maySuggestUpgrade(cmd)
-	}
 	Root.AddCommand(migrateCmd)
 }
 

@@ -186,6 +186,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 	if err != nil {
 		return err
 	}
+	maySuggestUpgrade(cmd)
 	// Returning at this stage should
 	// not trigger the help message.
 	cmd.SilenceUsage = true
@@ -438,6 +439,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 	if err != nil {
 		return err
 	}
+	maySuggestUpgrade(cmd)
 	return format.Execute(cmd.OutOrStdout(),
 		cmdlog.NewSchemaDiff(ctx, c, diff.from, diff.to, diff.changes),
 	)
@@ -544,6 +546,7 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags, 
 	if err != nil {
 		return err
 	}
+	maySuggestUpgrade(cmd)
 	return format.Execute(cmd.OutOrStdout(), cmdlog.NewSchemaInspect(ctx, client, s))
 }
 
