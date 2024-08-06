@@ -41,7 +41,7 @@ import (
 )
 
 func main() {
-    stmts, err := gormschema.New("mysql").Load(&models.User{}, &models.Pet{})
+    stmts, err := gormschema.New("mysql").Load(&models.User{})
     if err != nil {
         fmt.Fprintf(os.Stderr, "failed to load gorm schema: %v\n", err)
         os.Exit(1)
@@ -77,6 +77,72 @@ env "gorm" {
       diff = "{{ sql . \"  \" }}"
     }
   }
+}
+```
+
+### Verify Setup
+
+Next, let's verify Atlas is able to read our desired schema, by running the
+[`schema inspect`](/declarative/inspect) command, to inspect our desired schema (GORM models).
+
+```shell
+atlas schema inspect --env gorm --url "env://src"
+```
+
+Notice that this command uses `env://src` as the target URL for inspection, meaning "the schema represented by the
+`src` attribute of the `local` environment block."
+
+Given we have a simple GORM model `user` :
+
+```go title="user.go"
+type User struct {
+    gorm.Model
+    Name    string
+    Age     int
+}
+```
+
+We should get the following output after running the `inspect` command above:
+
+```hcl
+table "users" {
+  schema = schema.dev
+  column "id" {
+    null           = false
+    type           = bigint
+    unsigned       = true
+    auto_increment = true
+  }
+  column "created_at" {
+    null = true
+    type = datetime(3)
+  }
+  column "updated_at" {
+    null = true
+    type = datetime(3)
+  }
+  column "deleted_at" {
+    null = true
+    type = datetime(3)
+  }
+  column "name" {
+    null = true
+    type = longtext
+  }
+  column "age" {
+    null = true
+    type = bigint
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "idx_users_deleted_at" {
+    columns = [column.deleted_at]
+  }
+}
+schema "dev" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
 }
 ```
 
