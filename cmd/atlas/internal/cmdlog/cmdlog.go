@@ -31,6 +31,7 @@ import (
 
 var (
 	ColorCyan         = color.CyanString
+	ColorGray         = color.New(color.Attribute(90))
 	ColorGreen        = color.HiGreenString
 	ColorRed          = color.HiRedString
 	ColorRedBgWhiteFg = color.New(color.FgHiWhite, color.BgHiRed).SprintFunc()

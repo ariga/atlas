@@ -44,10 +44,11 @@ type (
 )
 
 // Close redirects calls to Close to the enclosed io.Closer.
-func (r *StateReadCloser) Close() {
+func (r *StateReadCloser) Close() error {
 	if r.Closer != nil {
-		r.Closer.Close()
+		return r.Closer.Close()
 	}
+	return nil
 }
 
 // StateReaderSQL returns a migrate.StateReader from an SQL file or a directory of migrations.
