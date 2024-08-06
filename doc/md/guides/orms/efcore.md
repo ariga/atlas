@@ -68,7 +68,8 @@ Use PowerShell to download the Atlas binary:
 Invoke-WebRequest https://release.ariga.io/atlas/atlas-windows-amd64-latest.exe -OutFile atlas.exe
 ```
 
-Then add the directory where the Atlas binary is located to the system's PATH environment variable.
+Then move the atlas binary to a directory that is included in your system PATH. 
+If you prefer a different directory, you can add it to your system PATH by editing the environment variables.
 
 </TabItem>
 <TabItem value="mac_linux" label="macOS + Linux">
