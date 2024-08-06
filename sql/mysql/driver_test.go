@@ -39,6 +39,20 @@ func TestParser_ParseURL(t *testing.T) {
 			require.Equal(t, d, p.DSN)
 		}
 	})
+	t.Run("Schema", func(t *testing.T) {
+		for u, d := range map[string]string{
+			"mysql://user:pass@localhost:3306/my_db?foo=bar":    "my_db",
+			"mysql://user:pass@localhost:3306?foo=bar":          "",
+			"mysql+unix:///path/to/socket":                      "",
+			"mysql+unix://user:pass@/path/to/socket":            "",
+			"mysql+unix://user@/path/to/socket?database=dbname": "dbname",
+		} {
+			u1, err := url.Parse(u)
+			require.NoError(t, err)
+			p := parser{}.ParseURL(u1)
+			require.Equal(t, d, p.Schema)
+		}
+	})
 }
 
 func TestDriver_LockAcquired(t *testing.T) {
