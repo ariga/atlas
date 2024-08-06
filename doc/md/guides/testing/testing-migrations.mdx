@@ -7,11 +7,18 @@ slug: /guides/testing/migrations
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Testing your database schema and migrations is crucial to ensure code behaves as expected, catch bugs early,
-and prevent regressions. Databases enforce logic, constraints, and complex relationships,
-so testing ensures these elements work correctly and remain intact after changes.
+Testing migrations, especially data migrations, is crucial. Atlas handles other verifications of migrations through linting
+(ensuring changes are safe and compliant) and diffing (confirming the migration results in the intended database state).
+_Data migrations_ involve refactoring data within the database, and mistakes can be problematic and irreversible,
+making thorough testing crucial.
 
-In this guide we will learn how to use Atlas's [`migrate test`](/testing/migrate) command to test migration files.
+Testing requires setting up an empty database, applying migrations up to the one before the test, seeding test data,
+running the migration, and verifying the results, all of which can be cumbersome.
+
+Atlas's [`migrate test`](/testing/migrate) command simplifies this by allowing you to define test cases in a concise
+syntax and acts as a harness to run these tests during local development and in CI.
+
+In this guide we will learn how to use the `migrate test` command to test migration files.
 
 :::info [Atlas Pro Feature](/features#pro-plan)
 Testing is currently available only to [Atlas Pro users](/features#pro-plan). To use this feature, run:
@@ -50,13 +57,16 @@ env "dev" {
 
 ### Schema File
 
-Next, we will create a schema containing three tables:
+Next, we will create a schema containing two tables:
 * **`users`**: stores user-specific data, such as `id` and `email`.
-* **`posts`**: holds the post content and links each post to its author with a `user_id`.
-* **`likes`**: records which user liked which post.
+* **`posts`**: holds the post content, when it was created, and links each post to its author with a `user_id`.
+
+<Tabs>
+<TabItem value="hcl" label="schema.hcl">
 
 ```hcl title="schema.hcl"
 schema "public" {}
+
 table "users" {
   schema = schema.public
   column "id" {
@@ -82,6 +92,10 @@ table "posts" {
     type    = varchar(100)
     null    = false
   }
+  column "created_at" {
+    null = false
+    type = timestamp
+  }
   column "user_id" {
     type    = int
     null    = false
@@ -94,34 +108,23 @@ table "posts" {
     ref_columns = [table.users.column.id]
   }
 }
-
-table "likes" {
-  schema = schema.public
-  column "id" {
-    type = int
-    null = false
-  }
-  column "user_id" {
-    type    = int
-    null    = false
-  }
-  column "post_id" {
-    type    = int
-    null    = false
-  }
-  primary_key {
-    columns = [column.id]
-  }
-  foreign_key "liked_by_fk" {
-    columns = [column.user_id]
-    ref_columns = [table.users.column.id]
-  }
-  foreign_key "liked_post_fk" {
-    columns = [column.post_id]
-    ref_columns = [table.posts.column.id]
-  }
-}
 ```
+
+</TabItem>
+<TabItem value="sql" label="schema.sql">
+
+```sql title="schema.sql
+-- Add new schema named "public"
+CREATE SCHEMA IF NOT EXISTS "public";
+-- Create "users" table
+CREATE TABLE "public"."users" ("id" integer NOT NULL, "email" character varying(255) NOT NULL, PRIMARY KEY ("id"));
+-- Create "posts" table
+CREATE TABLE "public"."posts" ("id" integer NOT NULL, "title" character varying(100) NOT NULL, "created_at" TIMESTAMP NOT NULL, "user_id" integer NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "authors_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
+```
+
+</TabItem>
+</Tabs>
+
 
 ### Generating a Migration
 
@@ -140,9 +143,7 @@ We should see a new `migrations` directory created with the following files:
 -- Create "users" table
 CREATE TABLE "public"."users" ("id" integer NOT NULL, "email" character varying(255) NOT NULL, PRIMARY KEY ("id"));
 -- Create "posts" table
-CREATE TABLE "public"."posts" ("id" integer NOT NULL, "title" character varying(100) NOT NULL, "user_id" integer NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "authors_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
--- Create "likes" table
-CREATE TABLE "public"."likes" ("id" integer NOT NULL, "user_id" integer NOT NULL, "post_id" integer NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "liked_by_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION, CONSTRAINT "liked_post_fk" FOREIGN KEY ("post_id") REFERENCES "public"."posts" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
+CREATE TABLE "public"."posts" ("id" integer NOT NULL, "title" character varying(100) NOT NULL, "created_at" TIMESTAMP NOT NULL, "user_id" integer NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "authors_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
 ```
 
 </TabItem>
@@ -161,34 +162,135 @@ h1:gUOA9cOgCheiTimm/l1DTlIyUGW1vRY9pKtjXlwp5sY=
 Great! Now that we have a basic schema and migration directory, let's add some business logic before
 we begin testing.
 
-We will add a view `post_likes_count` that will count the number of likes each post gets:
+We will add a column `latest_post_ts` to the `users` table, which will hold the timestamp
+of the user's most recent post. To automatically populate this column we will create a trigger
+`update_latest_post_trigger`.
+
+
+<Tabs>
+<TabItem value="hcl" label="schema.hcl">
 
 ```hcl title="schema.hcl"
-view "post_likes_count" {
+schema "public" {}
+table "users" {
   schema = schema.public
-  column "post_id" {
+  column "id" {
+    null = false
+    type = integer
+  }
+  column "email" {
+    null = false
+    type = character_varying(255)
+  }
+// highlight-start
+  column "latest_post_ts" {
+    null = true
+    type = timestamp
+  }
+// highlight-end
+  primary_key {
+    columns = [column.id]
+  }
+}
+
+table "posts" {
+  schema = schema.public
+  column "id" {
     null = false
     type = integer
   }
   column "title" {
     null = false
-    type = text
+    type = character_varying(100)
   }
-  column "likes" {
+  column "created_at" {
     null = false
-    type = bigint
+    type = timestamp
   }
-  as         = <<-SQL
-   SELECT p.id AS post_id,
-      p.title,
-      count(l.id) AS likes
-     FROM (public.posts p
-       LEFT JOIN public.likes l ON ((p.id = l.post_id)))
-    GROUP BY p.id, p.title;
-  SQL
-  depends_on = [table.likes, table.posts]
+  column "user_id" {
+    null = false
+    type = integer
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "authors_fk" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+  }
 }
+
+// highlight-start
+function "update_latest_post" {
+  schema = schema.public
+  lang   = PLpgSQL
+  return = trigger
+  as     = <<-SQL
+    BEGIN
+    UPDATE "public"."users"
+    SET "latest_post_ts" = (
+      SELECT MAX("created_at")
+      FROM "public"."posts"
+      WHERE "user_id" = NEW."user_id"
+    )
+    WHERE "id" = NEW."user_id";
+    RETURN NEW;
+    END;
+  SQL
+}
+
+trigger "update_latest_post_trigger" {
+  on = table.posts
+  after {
+    insert = true
+  }
+  for = ROW
+  execute {
+    function = function.update_latest_post
+  }
+}
+// highlight-end
 ```
+
+</TabItem>
+<TabItem value="sql" label="schema.sql">
+
+```sql title="schema.sql"
+-- Add new schema named "public"
+CREATE SCHEMA IF NOT EXISTS "public";
+// highlight-start
+-- Create "users" table
+CREATE TABLE "public"."users" ("id" integer NOT NULL, "email" character varying(255) NOT NULL, "latest_post_ts" TIMESTAMP, PRIMARY KEY ("id"));
+// highlight-end
+-- Create "posts" table
+CREATE TABLE "public"."posts" ("id" integer NOT NULL, "title" character varying(100) NOT NULL, "created_at" TIMESTAMP NOT NULL, "user_id" integer NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "authors_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
+
+// highlight-start
+-- Create the trigger function
+CREATE OR REPLACE FUNCTION update_latest_post()
+RETURNS TRIGGER AS $$
+BEGIN
+UPDATE "public"."users"
+SET "latest_post_ts" = (
+    SELECT MAX("created_at")
+    FROM "public"."posts"
+    WHERE "user_id" = NEW."user_id"
+)
+WHERE "id" = NEW."user_id";
+RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create the trigger
+CREATE TRIGGER update_latest_post_trigger
+AFTER INSERT ON "public"."posts"
+FOR EACH ROW
+EXECUTE FUNCTION update_latest_post();
+// highlight-end
+```
+
+</TabItem>
+</Tabs>
 
 Run the `migrate diff` command once more to generate another migration:
 
@@ -199,13 +301,23 @@ atlas migrate diff --env dev
 The following migration should be created:
 
 ```sql title="20240730073842.sql"
--- Create "post_likes_count" view
-CREATE VIEW "public"."post_likes_count" ("post_id", "title", "likes") AS SELECT p.id AS post_id,
-    p.title,
-    count(l.id) AS likes
-   FROM (public.posts p
-     LEFT JOIN public.likes l ON ((p.id = l.post_id)))
-  GROUP BY p.id, p.title;
+-- Create "update_latest_post" function
+CREATE FUNCTION "public"."update_latest_post" () RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+UPDATE "public"."users"
+SET "latest_post_ts" = (
+    SELECT MAX("created_at")
+    FROM "public"."posts"
+    WHERE "user_id" = NEW."user_id"
+)
+WHERE "id" = NEW."user_id";
+RETURN NEW;
+END;
+$$;
+-- Create trigger "update_latest_post_trigger"
+CREATE TRIGGER "update_latest_post_trigger" AFTER INSERT ON "public"."posts" FOR EACH ROW EXECUTE FUNCTION "public"."update_latest_post"();
+-- Modify "users" table
+ALTER TABLE "public"."users" ADD COLUMN "latest_post_ts" timestamp NULL;
 ```
 
 ## Testing Migrations
@@ -213,48 +325,55 @@ CREATE VIEW "public"."post_likes_count" ("post_id", "title", "likes") AS SELECT 
 Now that we have our project setup, we are ready to begin writing tests!
 
 In this case, we want to write a test that will check that the migration from one state (file) to
-the next will run smoothly, without disruptions.
+the next will run smoothly, without disruptions. Most importantly, we want to ensure any data we have in the `users`
+and `posts` table that already exists won't be affected.
 
 To do so, our test will have the following logic:
-1. Migrate to the first version, before creating the view.
-2. Seed the `users`, `posts`, and `likes` table with data.
-3. Migrate to the final version and query the view.
+1. Migrate to the first version, before creating the trigger and modifying the `users` table.
+2. Seed the `users` and `posts` tables with data.
+3. Migrate to the final version, add new posts, and query the `users` table to ensure that `latest_post_ts`
+is updated as expected.
 
 ```hcl title="migrate.test.hcl"
-test "migrate" "check_view" {
+test "migrate" "check_latest_post" {
   migrate {
     to = "20240730073333"
   }
   exec {
     sql = <<-SQL
-      INSERT INTO users (id, email) VALUES (1, 'user1@example.com'), (2, 'user2@example.com'), (3, 'user3@example.com');
-      INSERT INTO posts (id, title, user_id)
-        VALUES (1, 'My First Post', 1),
-       (2, 'Another Interesting Post', 2),
-       (3, 'A Third Post Joins the Party', 3);
-      INSERT INTO likes (id, user_id, post_id)
-      VALUES (1, 1, 1),  -- User 1 likes their own post (post 1)
-       (2, 2, 2),  -- User 2 likes post 2
-       (3, 3, 1);  -- User 3 likes post 1
+      INSERT INTO users (id, email) VALUES (1, 'user1@example.com'), (2, 'user2@example.com');
+      INSERT INTO posts (id, title, created_at, user_id) VALUES (1, 'My First Post', '2024-01-23 00:51:54', 1), (2, 'Another Interesting Post', '2024-02-24 02:14:09', 2);
     SQL
   }
   migrate {
-    to = "20240730073842"
+    to = "20240806122629"
   }
   exec {
-    sql = "SELECT * FROM post_likes_count WHERE likes = 2"
+    sql = <<-SQL
+      INSERT INTO posts (id, title, created_at, user_id)
+      VALUES (3, 'A Third Post', '2024-03-17 14:22:56', 1),
+      (4, 'And a Fourth!', '2024-09-05 02:47:13', 2);
+    SQL
+  }
+  exec {
+    sql = "select * from users"
     format = table
     output = <<TAB
- post_id |     title     | likes
----------+---------------+-------
- 1       | My First Post | 2
+ id |       email       |   latest_post_ts
+----+-------------------+---------------------
+1  | user1@example.com | 2024-03-17 14:22:56
+2  | user2@example.com | 2024-09-05 02:47:13
 TAB
   }
   log {
-    message = "Table is as expected"
+    message = "Table is as expected!"
   }
 }
 ```
+
+In the test above, we initially seed the `users` and `posts` tables with basic data of two users and two posts. After
+migrating to our second file, which includes the new trigger and the `latest_post_ts` column, we insert in new values into the
+`posts` table. Note that the new data includes the posts whose timestamps should be listed as the "latest" posts.
 
 To run this test, we will run the [`migrate test`](/testing/migrate#migrate-command) command:
 
@@ -265,8 +384,8 @@ atlas migrate test --env dev
 The output should be similar to:
 
 ```testoutput title="Test Output"
--- PASS: check_view (96ms)
-    migrate.test.hcl:30: Table is as expected
+-- PASS: check_latest_post (90ms)
+    migrate.test.hcl:36: Table is as expected!
 PASS
 ```
 
