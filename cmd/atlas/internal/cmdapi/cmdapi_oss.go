@@ -136,7 +136,7 @@ Or, visit the website to see all installation options:
 	https://atlasgo.io/docs#installation
 
 `
-	fmt.Fprintf(cmd.ErrOrStderr(), cmdlog.ColorCyan(s))
+	_ = cmdlog.WarnOnce(cmd.ErrOrStderr(), cmdlog.ColorCyan(s))
 	prev.UpgradeSuggested = time.Now()
 	_ = state.Write(prev)
 }

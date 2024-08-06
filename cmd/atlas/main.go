@@ -59,7 +59,7 @@ func main() {
 	update := checkForUpdate(ctx)
 	err = cmdapi.Root.ExecuteContext(ctx)
 	if u := update(); u != "" {
-		_ = cmdlog.WarnOnce(os.Stderr, u)
+		_ = cmdlog.WarnOnce(os.Stderr, cmdlog.ColorCyan(u))
 	}
 	done(err)
 	if err != nil {
