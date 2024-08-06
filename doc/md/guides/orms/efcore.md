@@ -168,7 +168,7 @@ env {
 
 :::note
 By looking at [DbContext Creation](https://learn.microsoft.com/en-us/ef/core/cli/dbcontext-creation?tabs=dotnet-core-cli), you 
-can see the current DbContext uses SQLite. Therefore, we need to use the correct [dev database](/concepts/dev-database] for Atlas to work.
+can see the current DbContext uses SQLite. Therefore, we need to use the correct [dev database](/concepts/dev-database) for Atlas to work.
 ```csharp title="TodoApi/Program.cs"
 builder.Services.AddSqlite<TodoDbContext>(connectionString);
 ```
