@@ -51,7 +51,7 @@ var (
 
 	// version holds Atlas version. When built with cloud packages should be set by build flag, e.g.
 	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.version=v0.1.2'"
-	version string
+	version = "v0.19.0"
 
 	// versionCmd represents the subcommand 'atlas version'.
 	versionCmd = &cobra.Command{
