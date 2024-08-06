@@ -396,10 +396,10 @@ module.exports = {
                     label: 'GORM',
                     link: {
                         type: 'doc',
-                        id: 'guides/orms/gorm/gorm',
+                        id: 'guides/orms/gorm',
                     },
                     items: [
-                        {type: 'doc', id: 'guides/orms/gorm', label: 'Getting Started'},
+                        {type: 'doc', id: 'guides/orms/gorm/getting-started', label: 'Getting Started'},
                         {type: 'doc', id: 'guides/orms/gorm/program', label: 'Program Mode'},
                         {type: 'doc', id: 'guides/orms/gorm/standalone', label: 'Standalone Mode'},
                         {type: 'doc', id: 'guides/orms/gorm/composite-types', label: 'Composite Types'},
