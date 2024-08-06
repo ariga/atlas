@@ -151,7 +151,6 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	maySuggestUpgrade(cmd)
 	if flags.devURL != "" {
 		if dev, err = sqlclient.Open(ctx, flags.devURL); err != nil {
 			return err
@@ -187,6 +186,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 	if err != nil {
 		return err
 	}
+	maySuggestUpgrade(cmd)
 	// Returning at this stage should
 	// not trigger the help message.
 	cmd.SilenceUsage = true
@@ -393,7 +393,6 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 		ctx = cmd.Context()
 		c   *sqlclient.Client
 	)
-	maySuggestUpgrade(cmd)
 	// We need a driver for diffing and planning. If given, dev database has precedence.
 	if flags.devURL != "" {
 		var err error
@@ -440,6 +439,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 	if err != nil {
 		return err
 	}
+	maySuggestUpgrade(cmd)
 	return format.Execute(cmd.OutOrStdout(),
 		cmdlog.NewSchemaDiff(ctx, c, diff.from, diff.to, diff.changes),
 	)
@@ -521,7 +521,6 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags, 
 		}
 		defer dev.Close()
 	}
-	maySuggestUpgrade(cmd)
 	r, err := stateReader(ctx, env, &stateReaderConfig{
 		urls:    []string{flags.url},
 		dev:     dev,
@@ -547,6 +546,7 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags, 
 	if err != nil {
 		return err
 	}
+	maySuggestUpgrade(cmd)
 	return format.Execute(cmd.OutOrStdout(), cmdlog.NewSchemaInspect(ctx, client, s))
 }
 
