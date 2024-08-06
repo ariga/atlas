@@ -212,7 +212,8 @@ module.exports = {
     "./plugins/utm-plugin",
     "./plugins/intercom",
     "./plugins/page-view",
-    "./plugins/tailwind"
+    "./plugins/tailwind",
+    "./plugins/scroll-to-top"
   ],
   presets: [
     [
