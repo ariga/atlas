@@ -13,7 +13,6 @@ import (
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
@@ -248,18 +247,20 @@ table_name | column_name |      data_type      | formatted | is_nullable |      
 users      | id          | integer             | int       | NO          |                                 |                          |                32 |                    |             0 |               |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |   20
 users      | oid         | integer             | int       | NO          |                                 |                          |                32 |                    |             0 |               |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |   21
 users      | uid         | integer             | int       | NO          |                                 |                          |                32 |                    |             0 |               |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |   21
+users      | tid         | integer             | int       | NO          |                                 |                          |                32 |                    |             0 |               |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |   22
 `))
 				m.noIndexes()
 				m.ExpectQuery(queryFKs).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-constraint_name | table_name | column_name | table_schema | referenced_table_name | referenced_column_name | referenced_schema_name | confupdtype | condeltype
------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------
-multi_column    | users      | id          | public       | t1                    | gid                    | public                 | a            | c
-multi_column    | users      | id          | public       | t1                    | xid                    | public                 | a            | c
-multi_column    | users      | oid         | public       | t1                    | gid                    | public                 | a            | c
-multi_column    | users      | oid         | public       | t1                    | xid                    | public                 | a            | c
-self_reference  | users      | uid         | public       | users                 | id                     | public                 | a            | c
+constraint_name | table_name | column_name | table_schema | referenced_table_name | referenced_column_name | referenced_schema_name | confupdtype | condeltype | deferrable | deferred
+----------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+------------+------------+----------
+multi_column    | users      | id          | public       | t1                    | gid                    | public                 | a           | c          | false      | false
+multi_column    | users      | id          | public       | t1                    | xid                    | public                 | a           | c          | false      | false
+multi_column    | users      | oid         | public       | t1                    | gid                    | public                 | a           | c          | false      | false
+multi_column    | users      | oid         | public       | t1                    | xid                    | public                 | a           | c          | false      | false
+self_reference  | users      | uid         | public       | users                 | id                     | public                 | a           | c          | true       | false
+single_column   | users      | tid         | public       | t2                    | id                     | public                 | a           | c          | true       | true
 `))
 				m.noChecks()
 			},
@@ -269,16 +270,19 @@ self_reference  | users      | uid         | public       | users               
 				require.Equal("public", t.Schema.Name)
 				fks := []*schema.ForeignKey{
 					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1", Schema: t.Schema}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
-					{Symbol: "self_reference", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
+					{Symbol: "self_reference", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t, Attrs: []schema.Attr{&Deferrable{V: true, Default: false}}},
+					{Symbol: "single_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t2", Schema: t.Schema}, RefColumns: []*schema.Column{{Name: "id"}}, Attrs: []schema.Attr{&Deferrable{V: true, Default: true}}},
 				}
 				columns := []*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, ForeignKeys: fks[0:1]},
 					{Name: "oid", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, ForeignKeys: fks[0:1]},
 					{Name: "uid", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, ForeignKeys: fks[1:2]},
+					{Name: "tid", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, ForeignKeys: fks[2:]},
 				}
 				fks[0].Columns = columns[:2]
-				fks[1].Columns = columns[2:]
+				fks[1].Columns = columns[2:3]
 				fks[1].RefColumns = columns[:1]
+				fks[2].Columns = columns[3:]
 				require.EqualValues(columns, t.Columns)
 				require.EqualValues(fks, t.ForeignKeys)
 			},

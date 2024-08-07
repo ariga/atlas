@@ -112,6 +112,7 @@ type (
 		RefColumns []*Column
 		OnUpdate   ReferenceOption
 		OnDelete   ReferenceOption
+		Attrs      []Attr
 	}
 
 	// A Trigger represents a trigger definition.
