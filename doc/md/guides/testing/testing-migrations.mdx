@@ -1,19 +1,27 @@
 ---
-id: testing-migrations
-title: Testing Migrations
-slug: /guides/testing/migrations
+id: testing-data-migrations
+title: Testing Data Migrations
+slug: /guides/testing/data-migrations
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Testing migrations, especially data migrations, is crucial. Atlas handles other verifications of migrations through linting
-(ensuring changes are safe and compliant) and diffing (confirming the migration results in the intended database state).
-_Data migrations_ involve refactoring data within the database, and mistakes can be problematic and irreversible,
-making thorough testing crucial.
+Most commonly, migrations deal with schema changes, such as adding or removing columns, creating tables, or altering constraints.
+However, as your application evolves, you may need to add or refactor data within the database, which is where data migrations come in.
+For instance, you may need to seed data in a table, backfill data for existing records in new columns, or somehow
+transform existing data to accommodate changes in your application.
 
-Testing requires setting up an empty database, applying migrations up to the one before the test, seeding test data,
-running the migration, and verifying the results, all of which can be cumbersome.
+Data migrations can be especially tricky to get right, and mistakes can be problematic and irreversible. For this reason
+testing data migrations is crucial. Testing data migrations typically involves the following steps:
+1. Setting up an empty database.
+2. Applying migrations up to the one before the test.
+3. Seeding test data.
+4. Running the migration under test.
+5. Making assertions to verify the results.
+
+This process can be cumbersome to set up and error-prone as it often involves writing an ad-hoc program to automate
+the steps mentioned above or manually testing the migration.
 
 Atlas's [`migrate test`](/testing/migrate) command simplifies this by allowing you to define test cases in a concise
 syntax and acts as a harness to run these tests during local development and in CI.
@@ -137,21 +145,21 @@ atlas migrate diff --env dev
 We should see a new `migrations` directory created with the following files:
 
 <Tabs>
-<TabItem value="20240730073333.sql" label="20240730073333.sql" default>
+<TabItem value="20240807192632.sql" label="20240807192632.sql" default>
 
-```sql title="20240730073333.sql"
+```sql title="20240807192632.sql"
 -- Create "users" table
-CREATE TABLE "public"."users" ("id" integer NOT NULL, "email" character varying(255) NOT NULL, PRIMARY KEY ("id"));
+CREATE TABLE "users" ("id" integer NOT NULL, "email" character varying(255) NOT NULL, PRIMARY KEY ("id"));
 -- Create "posts" table
-CREATE TABLE "public"."posts" ("id" integer NOT NULL, "title" character varying(100) NOT NULL, "created_at" TIMESTAMP NOT NULL, "user_id" integer NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "authors_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
+CREATE TABLE "posts" ("id" integer NOT NULL, "title" character varying(100) NOT NULL, "created_at" timestamp NOT NULL, "user_id" integer NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "authors_fk" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
 ```
 
 </TabItem>
 <TabItem value="atlas.sum" label="atlas.sum">
 
 ```sum title="atlas.sum"
-h1:gUOA9cOgCheiTimm/l1DTlIyUGW1vRY9pKtjXlwp5sY=
-20240730073333.sql h1:PpPJDqDZcNZTFUl26jYUvPMonpknEMiwuevh7FkGoPA=
+h1:fzAvfmbDGG5M4KAjGXqAylAE3PawD5+6GqkVqvizMys=
+20240807192632.sql h1:oOoSEXM3VyBkPGeWdyoYfAVF1dFn79c3yGhsy3Ys8PI=
 ```
 
 </TabItem>
@@ -165,7 +173,6 @@ we begin testing.
 We will add a column `latest_post_ts` to the `users` table, which will hold the timestamp
 of the user's most recent post. To automatically populate this column we will create a trigger
 `update_latest_post_trigger`.
-
 
 <Tabs>
 <TabItem value="hcl" label="schema.hcl">
@@ -300,44 +307,69 @@ atlas migrate diff --env dev
 
 The following migration should be created:
 
-```sql title="20240730073842.sql"
+```sql title="20240807192934.sql"
 -- Create "update_latest_post" function
-CREATE FUNCTION "public"."update_latest_post" () RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION "update_latest_post" () RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
 UPDATE "public"."users"
 SET "latest_post_ts" = (
-    SELECT MAX("created_at")
-    FROM "public"."posts"
-    WHERE "user_id" = NEW."user_id"
+  SELECT MAX("created_at")
+  FROM "public"."posts"
+  WHERE "user_id" = NEW."user_id"
 )
 WHERE "id" = NEW."user_id";
 RETURN NEW;
 END;
 $$;
 -- Create trigger "update_latest_post_trigger"
-CREATE TRIGGER "update_latest_post_trigger" AFTER INSERT ON "public"."posts" FOR EACH ROW EXECUTE FUNCTION "public"."update_latest_post"();
+CREATE TRIGGER "update_latest_post_trigger" AFTER INSERT ON "posts" FOR EACH ROW EXECUTE FUNCTION "update_latest_post"();
 -- Modify "users" table
-ALTER TABLE "public"."users" ADD COLUMN "latest_post_ts" timestamp NULL;
+ALTER TABLE "users" ADD COLUMN "latest_post_ts" timestamp NULL;
 ```
+
+## Back-filling Data
+
+The trigger we created will automatically update the `latest_post_ts` column in the `users` table
+whenever a new post is added. However, we need to back-fill the existing data in the `posts` table
+to ensure that the `latest_post_ts` column is accurate.
+
+To do this, let's edit the `20240730073842.sql` migration file to include a query that will update
+the `latest_post_ts` column for each user. Add the following SQL statement to the migration file:
+
+```sql title="20240730073842.sql"
+-- .. Redacted for brevity
+
+-- Back-fill the latest post timestamp for each user
+UPDATE "users"
+SET "latest_post_ts" = (
+  SELECT MAX("created_at")
+  FROM "posts"
+  WHERE "user_id" = "users"."id"
+);
+```
+
+After changing the contents of a migration file we need to recalculate the `atlas.sum` file to ensure
+directory integrity. Run the following command:
+
+```bash
+atlas migrate hash --env dev
+````
 
 ## Testing Migrations
 
-Now that we have our project setup, we are ready to begin writing tests!
-
-In this case, we want to write a test that will check that the migration from one state (file) to
-the next will run smoothly, without disruptions. Most importantly, we want to ensure any data we have in the `users`
-and `posts` table that already exists won't be affected.
+Rewriting data on a production database can be risky (and scary) if not done correctly. Let's now write
+a test to ensure that our migration will run smoothly and leave our application in a consistent state.
 
 To do so, our test will have the following logic:
-1. Migrate to the first version, before creating the trigger and modifying the `users` table.
+1. Migrate to the first version, before creating the trigger, modifying the `users` table and back-filling the data.
 2. Seed the `users` and `posts` tables with data.
-3. Migrate to the final version, add new posts, and query the `users` table to ensure that `latest_post_ts`
-is updated as expected.
+3. Run our new migration file, which will create the trigger and back-fill the `latest_post_ts` column.
+4. Verify that the `latest_post_ts` column is correctly populated.
 
 ```hcl title="migrate.test.hcl"
 test "migrate" "check_latest_post" {
   migrate {
-    to = "20240730073333"
+    to = "20240807192632"
   }
   exec {
     sql = <<-SQL
@@ -346,14 +378,7 @@ test "migrate" "check_latest_post" {
     SQL
   }
   migrate {
-    to = "20240806122629"
-  }
-  exec {
-    sql = <<-SQL
-      INSERT INTO posts (id, title, created_at, user_id)
-      VALUES (3, 'A Third Post', '2024-03-17 14:22:56', 1),
-      (4, 'And a Fourth!', '2024-09-05 02:47:13', 2);
-    SQL
+    to = "20240807192934"
   }
   exec {
     sql = "select * from users"
@@ -361,19 +386,23 @@ test "migrate" "check_latest_post" {
     output = <<TAB
  id |       email       |   latest_post_ts
 ----+-------------------+---------------------
-1  | user1@example.com | 2024-03-17 14:22:56
-2  | user2@example.com | 2024-09-05 02:47:13
+1  | user1@example.com | 2024-01-23 00:51:54
+2  | user2@example.com | 2024-02-24 02:14:09
 TAB
   }
   log {
-    message = "Table is as expected!"
+    message = "Data migrated successfully"
   }
 }
 ```
 
-In the test above, we initially seed the `users` and `posts` tables with basic data of two users and two posts. After
-migrating to our second file, which includes the new trigger and the `latest_post_ts` column, we insert in new values into the
-`posts` table. Note that the new data includes the posts whose timestamps should be listed as the "latest" posts.
+Let's break down the test:
+1. We define a migration test named `check_latest_post`.
+2. We migrate to the first version of the schema, which does not include the trigger and the `latest_post_ts` column.
+3. We insert data into the `users` and `posts` tables. At this point, the `latest_post_ts` column does not exist.
+4. We migrate to the second version of the schema, which includes the trigger and the `latest_post_ts` column as well
+   as our back-fill.
+5. We assert that the `latest_post_ts` column is correctly populated with the latest post timestamp for each user.
 
 To run this test, we will run the [`migrate test`](/testing/migrate#migrate-command) command:
 
@@ -384,10 +413,19 @@ atlas migrate test --env dev
 The output should be similar to:
 
 ```testoutput title="Test Output"
--- PASS: check_latest_post (90ms)
-    migrate.test.hcl:36: Table is as expected!
+-- PASS: check_latest_post (50ms)
+    migrate.test.hcl:24: Data migrated successfully
 PASS
 ```
+
+Great! Our test passed, and we can now confidently deploy our migration to production.
+
+## Integrating with CI
+
+Writing and running tests locally is a great start, but it's equally important to run these tests in a CI/CD pipeline.
+Atlas provides out-of-the-box integrations for running `migrate test` in popular CI/CD platforms such as
+[GitHub Actions](/integrations/github-actions#arigaatlas-actionmigratetest) and [CircleCI](/integrations/circleci-orbs#atlas-orbmigrate_test).
+However, you can easily integrate migration testing into any CI/CD platform by running the `atlas migrate test` command.
 
 ## Wrapping Up
 

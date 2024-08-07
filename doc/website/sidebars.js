@@ -303,8 +303,8 @@ module.exports = {
                 },
                 {
                     type: 'doc',
-                    id: 'guides/testing/testing-migrations',
-                    label: 'Testing Migrations'
+                    id: 'guides/testing/testing-data-migrations',
+                    label: 'Testing Data Migrations'
                 },
                 {
                     type: 'doc',
