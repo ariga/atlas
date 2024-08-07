@@ -605,19 +605,8 @@ func parseConfig(ctx context.Context, path, env string, vars map[string]cty.Valu
 				}),
 			}),
 			schemahcl.WithFunctions(map[string]function.Function{
-				"file": schemahcl.MakeFileFunc(base),
-				"getenv": function.New(&function.Spec{
-					Params: []function.Parameter{
-						{
-							Name: "key",
-							Type: cty.String,
-						},
-					},
-					Type: function.StaticReturnType(cty.String),
-					Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-						return cty.StringVal(os.Getenv(args[0].AsString())), nil
-					},
-				}),
+				"file":   schemahcl.MakeFileFunc(base),
+				"getenv": getEnvFunc,
 			}),
 		)...,
 	)
@@ -686,3 +675,18 @@ const (
 )
 
 var ReviewModes = []string{ReviewAlways, ReviewWarning, ReviewError}
+
+// getEnvFunc is a custom HCL function that returns
+// the value of an environment variable.
+var getEnvFunc = function.New(&function.Spec{
+	Params: []function.Parameter{
+		{
+			Name: "key",
+			Type: cty.String,
+		},
+	},
+	Type: function.StaticReturnType(cty.String),
+	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		return cty.StringVal(os.Getenv(args[0].AsString())), nil
+	},
+})
