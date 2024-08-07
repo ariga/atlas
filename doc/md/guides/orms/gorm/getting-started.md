@@ -1,7 +1,6 @@
 ---
-id: gorm
 title: Automatic migration planning for GORM
-slug: /guides/orms/gorm
+slug: /guides/orms/gorm/getting-started
 ---
 
 ## TL;DR
@@ -13,12 +12,12 @@ slug: /guides/orms/gorm
 
 ## Automatic migration planning for GORM
 
-GORM is a popular ORM widely used in the Go community. GORM allows users to 
+GORM is a popular ORM widely used in the Go community. GORM allows users to
 manage their database schemas using its [AutoMigrate](https://gorm.io/docs/migration.html#Auto-Migration)
-feature, which is usually sufficient during development and in many simple cases. 
+feature, which is usually sufficient during development and in many simple cases.
 
-However, at some point, teams need more control and decide to employ 
-the [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) 
+However, at some point, teams need more control and decide to employ
+the [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations)
 methodology. Once this happens, the responsibility for planning migration scripts and making
 sure they are in line with what GORM expects at runtime is moved to developers.
 
@@ -49,7 +48,7 @@ as a starting point:
 git clone git@github.com:go-admin-team/go-admin.git
 ```
 
-## Using the Atlas GORM Provider 
+## Using the Atlas GORM Provider
 
 In this guide, we will use the [GORM Atlas Provider](https://github.com/ariga/atlas-provider-gorm)
 to automatically plan schema migrations for tables and [views](https://github.com/ariga/atlas-provider-gorm?tab=readme-ov-file#views) in a GORM project.
@@ -65,14 +64,14 @@ See [atlasgo.io](https://atlasgo.io/getting-started#installation) for more insta
 Install the provider by running:
 ```bash
 go get -u ariga.io/atlas-provider-gorm
-``` 
+```
 
 ### Standalone vs Go Program mode
 
 The Atlas GORM Provider can be used in two modes:
-* **Standalone** - If all of your GORM models exist in a single package, and either embed `gorm.Model` or contain `gorm` struct tags, 
+* **Standalone** - If all of your GORM models exist in a single package, and either embed `gorm.Model` or contain `gorm` struct tags,
   you can use the provider directly to load your GORM schema into Atlas.
-* **Go Program** - If your GORM models are spread across multiple packages, or do not embed `gorm.Model` or contain `gorm` struct tags, 
+* **Go Program** - If your GORM models are spread across multiple packages, or do not embed `gorm.Model` or contain `gorm` struct tags,
   you can use the provider as a library in your Go program to load your GORM schema into Atlas.
 
 ### Standalone mode
@@ -146,7 +145,7 @@ import (
     "os"
 
     "ariga.io/atlas-provider-gorm/gormschema"
-	
+
     "github.com/<yourorg>/<yourrepo>/path/to/models"
 )
 
@@ -159,7 +158,7 @@ func main() {
     io.WriteString(os.Stdout, stmts)
 }
 ```
-  
+
 Be sure to replace `github.com/<yourorg>/<yourrepo>/path/to/models` with the import path to your GORM models.
 In addition, replace the model types (e.g `models.User`) with the types of your GORM models.
 
@@ -203,7 +202,7 @@ package models
 
 import "gorm.io/gorm"
 
-type User struct {  
+type User struct {
 	gorm.Model
     Name string
     Pets []Pet
@@ -221,7 +220,7 @@ Using the [Standalone mode](#standalone-mode) configuration file for the Atlas G
 we can generate a migration file by running this command:
 
 ```bash
-atlas migrate diff --env gorm 
+atlas migrate diff --env gorm
 ```
 
 Will generate files similar to this in the `migrations` directory:
@@ -278,10 +277,10 @@ type Pet struct {
 }
 ```
 
-Re-run this command: 
+Re-run this command:
 
 ```shell
-atlas migrate diff --env gorm 
+atlas migrate diff --env gorm
 ```
 
 Observe a new migration file is generated:
@@ -293,7 +292,7 @@ ALTER TABLE `pets` ADD COLUMN `nickname` longtext NULL;
 
 ### View
 
-A database view is a virtual table based on the result of a query. Views are helpful when you want to simplify complex queries, strengthen 
+A database view is a virtual table based on the result of a query. Views are helpful when you want to simplify complex queries, strengthen
 security by selecting only the necessary data, or encapsulate the details of your table structures.
 
 From a querying perspective, views and tables are identical. For this reason, GORM can natively query any views that exist on the database.
@@ -302,7 +301,7 @@ The Atlas GORM Provider provides an API that allows you to define database views
 
 > The view feature is only available for [Atlas Pro users](/features#pro-plan); run `atlas login` if you haven't already.
 
-To define a Go struct as a database `VIEW`, implement the [`ViewDefiner`](https://pkg.go.dev/ariga.io/atlas-provider-gorm/gormschema#ViewDefiner) interface. 
+To define a Go struct as a database `VIEW`, implement the [`ViewDefiner`](https://pkg.go.dev/ariga.io/atlas-provider-gorm/gormschema#ViewDefiner) interface.
 The `ViewDef()` method receives the dialect argument to determine the SQL dialect to generate the view. It is helpful for generating the view definition for different SQL dialects. The `gormschema` package provide two styles for defining a view's base query:
 
 ##### BuildStmt
@@ -348,9 +347,9 @@ func (WorkingAgedUsers) ViewDef(dialect string) []gormschema.ViewOption {
 }
 ```
 
-The View feature works in both **Standalone** and **Go Program** mode. 
+The View feature works in both **Standalone** and **Go Program** mode.
 
-For **Standalone** mode, if you place the view definition in the same package as your models, the provider will 
+For **Standalone** mode, if you place the view definition in the same package as your models, the provider will
 automatically detect and create migration files for them.
 
 For **Go Program** mode, you can load the `VIEW` definition in the same way as a model:
@@ -362,14 +361,14 @@ gormschema.New("mysql").Load(
 )
 ```
 
-With the atlas.hcl configuration file set up as before, you now can run `atlas migrate diff --env gorm` to generate the migration file. 
+With the atlas.hcl configuration file set up as before, you now can run `atlas migrate diff --env gorm` to generate the migration file.
 For more information and usage of `VIEW`, please refer to the documentation [Atlas GORM Provider#View](https://github.com/ariga/atlas-provider-gorm?tab=readme-ov-file#views)
 
 ## Conclusion
 
 In this guide we demonstrated how projects using GORM can use Atlas to automatically
 plan schema migrations based only on their data model. To learn more about executing
-these migrations against your production database, read the documentation for the 
+these migrations against your production database, read the documentation for the
 [`migrate apply`](/versioned/apply) command.
 
 Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT).

@@ -399,12 +399,16 @@ module.exports = {
                         id: 'guides/orms/gorm',
                     },
                     items: [
+                        {type: 'doc', id: 'guides/orms/gorm/getting-started', label: 'Getting Started'},
+                        {type: 'doc', id: 'guides/orms/gorm/program', label: 'Program Mode'},
+                        {type: 'doc', id: 'guides/orms/gorm/standalone', label: 'Standalone Mode'},
                         {type: 'doc', id: 'guides/orms/gorm/composite-types', label: 'Composite Types'},
                         {type: 'doc', id: 'guides/orms/gorm/domain-types', label: 'Domain Types'},
                         {type: 'doc', id: 'guides/orms/gorm/enum-types', label: 'Enum Types'},
                         {type: 'doc', id: 'guides/orms/gorm/extensions', label: 'Extensions'},
                         {type: 'doc', id: 'guides/orms/gorm/rls', label: 'Row-Level Security'},
                         {type: 'doc', id: 'guides/orms/gorm/triggers', label: 'Triggers'},
+                        {type: 'doc', id: 'guides/orms/gorm/visualize', label: 'Visualize'},
                     ]
                 },
                 {
