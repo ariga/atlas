@@ -3,8 +3,14 @@ title: Go Program Mode
 slug: /guides/orms/gorm/program
 ---
 
-To use GORM with Atlas, we will use the [GORM Atlas Provider](https://github.com/ariga/atlas-provider-gorm)
-to automatically plan schema migrations.
+This document describes how to set up the provider to load your GORM schema into Atlas in **Go Program Mode**.
+Go Program Mode is for more advanced scenarios where you need more control specifying which structs to consider as models.
+
+Using this mode, you can load your GORM schema into Atlas by writing a Go program that imports your GORM models and
+uses the provider as a library to generate the schema.
+
+If all of your GORM models are in a single package, and either embed `gorm.Model` or contain `gorm` struct tags,
+consider using the [Standalone Mode](/guides/orms/gorm/standalone) instead.
 
 ### Installation
 

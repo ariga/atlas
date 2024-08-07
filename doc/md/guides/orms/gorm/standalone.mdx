@@ -2,9 +2,14 @@
 title: Standalone Mode
 slug: /guides/orms/gorm/standalone
 ---
+This document describes how to set up the provider to load your GORM schema into Atlas in **Standalone Mode**.
+Standalone Mode is for the common case, where all of your GORM models exist in a single package and either embed `gorm.Model`
+or contain `gorm` struct tags.
 
-To use GORM with Atlas, we will use the [GORM Atlas Provider](https://github.com/ariga/atlas-provider-gorm)
-to automatically plan schema migrations.
+Using these heuristics, the provider can automatically detect your models and load them into Atlas.
+
+For more advanced use cases, where you need more control specifying which structs to consider as models, see
+[Go Program Mode](/guides/orms/gorm/program).
 
 ### Installation
 
