@@ -975,7 +975,7 @@ func sqlDiff(diff *SchemaDiff, indent ...string) (string, error) {
 	return fmtPlan(diff.ctx, diff.client, diff.Changes, indent)
 }
 
-func fmtPlan(ctx context.Context, client *sqlclient.Client, changes schema.Changes, indent []string) (string, error) {
+func fmtPlan(ctx context.Context, client *sqlclient.Client, changes schema.Changes, indent []string, edit ...func(*migrate.Plan)) (string, error) {
 	if len(indent) > 1 {
 		return "", fmt.Errorf("unexpected number of arguments: %d", len(indent))
 	}
@@ -992,14 +992,15 @@ func fmtPlan(ctx context.Context, client *sqlclient.Client, changes schema.Chang
 	if err != nil {
 		return "", err
 	}
-	switch files, err := migrate.DefaultFormatter.Format(plan); {
-	case err != nil:
-		return "", err
-	case len(files) != 1:
-		return "", fmt.Errorf("unexpected number of files: %d", len(files))
-	default:
-		return string(files[0].Bytes()), nil
+	// Optional edit functions.
+	for i := range edit {
+		edit[i](plan)
 	}
+	f, err := migrate.DefaultFormatter.FormatFile(plan)
+	if err != nil {
+		return "", err
+	}
+	return string(f.Bytes()), nil
 }
 
 func mermaid(i *SchemaInspect, _ ...string) (string, error) {
