@@ -1,0 +1,115 @@
+---
+title: What's missing in EF Core Migrations? Announcing Atlas v0.26
+authors: rotemtam
+tags: [release, efcore, migrations, atlas]
+---
+import InstallationInstructions from '../../md/components/_installation_instructions.mdx'
+
+Hi everyone,
+
+It's been about a month since our last release, and we're excited to announce that
+[Atlas v0.26](https://github.com/ariga/atlas/releases/tag/v0.25.0) is now available!
+In this release we are happy to introduce a new feature that has been requested by many of you: **support for Entity
+Framework Core**.  As part of our ever going effort to improve the quality and coverage of our documentation, we have
+published a set of guides on testing database schemas and migrations as well as a new GORM Portal.
+
+Additionally, we have published an official "Supported Version Policy" and made some changes to our EULA, described below.
+
+<InstallationInstructions />
+
+### What's missing in EF Core Migrations?
+
+EF Core is the most popular ORM used in the .NET community, supported by **Microsoft**. EF Core allows
+users to manage their database schemas using its [migrations](https://docs.microsoft.com/en-us/ef/core/managing-schemas/migrations/).
+EF Core's migrations have long been a popular and reliable choice for managing database schema changes in the C# ecosystem.
+
+However, EF Core migrations have lacks some capabilities can make them difficult to work with:
+
+1. **Support for advanced database features.** Like many ORMs, EF Core is designed to be database-agnostic, which means
+it does not support all the features of every database it can connect to. This can make it difficult to use and manage
+database features such as triggers, stored procedures, Row-level security and custom data types.
+2. **Testing migrations.** Migrations are typically considered the most risky part of a deployment. Therefore, automatically
+verifying they are [safe](/versioned/lint) and [correct](/testing/migrate) is paramount.  Like most ORMs, EF Core does not
+provide a way to automatically test migrations.
+3. **Production Grade Declarative Flow.** EF Core supports a very basic declarative flow name
+[`EnsureCreated`](https://learn.microsoft.com/en-us/ef/core/managing-schemas/ensure-created#ensurecreated)
+that can be used to create the database without specifying migrations. However, as the documentation
+[warns](https://learn.microsoft.com/en-us/ef/core/managing-schemas/ensure-created#ensurecreated), this method should
+not be used in production. For teams that want to adapt a "Terraform-for-databases" approach, this can be a blocker.
+4. **Integration with modern CI/CD pipelines.** EF Core migrations are typically run using the `dotnet ef` command line tool.
+Migrations should be integrated into the software delivery pipeline to ensure that the database schema is always in sync
+with the application code. This can be difficult to achieve with EF Core migrations.
+
+## Atlas and EF Core Migrations
+
+[Atlas](https://atlasgo.io) is a database schema as code tool that allows developers to inspect, plan, test, and execute
+schema changes to their database. Atlas can be used to replace EF Core migrations with a more modern DevOps approach.
+
+Comparing Atlas to EF Core migrations:
+* **Loading Core Models.** Similarly to EF Core migrations, Atlas can load the schema of an EF Core project. EF Core users
+can keep using the EF Core models as the source of truth for their database schema. Using the
+[Atlas EF Core Provider](https://github.com/ariga/atlas-provider-ef), Atlas can load the schema of an EF Core project
+and use it as the source of truth for the database schema.
+
+* **Composing schemas.** Atlas can compose schemas from multiple sources, including EF Core models, SQL files, and
+external schema datasources. This enables users to natively declare schemas that layer advanced database features
+(such as views, triggers) as part of the schema source of truth which is not possible with EF Core.
+
+* **Automatic planning.** Similarly to EF Core migrations, with its "versioned migrations" workflow, Atlas can
+automatically plan schema migrations by diffing the data model with the migration directory.
+
+* **Declarative flow.** Atlas supports a declarative flow that can be used to create the database schema from scratch
+without using migrations. This is useful for teams that want to adapt a "Terraform-for-databases" approach.
+
+* **Testing migrations.** Atlas can automatically lint and test migrations to ensure they are safe and correct. Using
+this capability teams can reduce the risk of deploying migrations to production.
+
+* **Integration with CI/CD pipelines.** Atlas can be integrated into modern CI/CD pipelines using native integrations
+with popular CI/CD tools like GitHub Actions, CircleCI, GitLab CI, Terraform, Kubernetes, ArgoCD, and more.
+
+### Getting Started with Atlas + EF Core
+
+As part of this version, we are happy to release the [Atlas EF Core Provider](https://github.com/ariga/atlas-provider-ef).
+To get started with Atlas and EF Core, head over to the [Official Guide](/guides/orms/efcore) and follow the instructions.
+
+## New GORM Portal
+
+Over the past year, we have seen a significant increase in the number of users using [GORM](https://gorm.io) with Atlas.
+To better support GORM users in the Atlas ecosystem, we have launched a new [GORM Portal](/orms/gorm) that provides
+guides, tutorials, and examples for using GORM with Atlas.
+
+## Testing Database Schemas and Migrations
+
+Since starting Atlas, it has been [Ariel](https://github.com/a8m) and my belief that accurate and thorough documentation
+is essential for the success of any software project targeted at developers. To that end, our team has been working hard
+to improve the quality and coverage of our documentation covering one of the most important aspects of working with
+Database Schema-as-Code: **Testing**.
+
+As part of this set of guides you can find:
+
+* [Testing Data Migrations](/guides/testing/data-migrations)
+* [Testing SQL Views](/guides/testing/views)
+* [Testing SQL Functions](/guides/testing/functions)
+* [Testing Postgres Domains](/guides/testing/domains)
+* [Testing SQL Procedures](/guides/testing/procedures)
+* [Testing SQL Triggers](/guides/testing/triggers)
+
+## Supported Version Policy
+
+To ensure the best performance, security and compatibility with the Atlas Cloud service, the Atlas team will only
+support the two most recent minor versions of the CLI. For example, if the latest version is v0.26, the supported versions
+will be v0.25 and v0.24 (in addition to any patch releases and the "canary" release which is built twice a day).
+
+As part of our this policy, binaries for versions that were published more than 6 months ago will be removed from the
+CDN and Docker Hub.
+
+## EULA Changes
+
+The standard Atlas binary is provided under the Atlas EULA. We have recently made some changes to the EULA to reflect
+new data privacy considerations described in our [CLI Data Privacy](/cli/data-privacy) document.  As part of these changes
+Atlas may collect anonymous telemetry (aggregated, anonymized, non-personal) data to help us improve the product.
+If you wish to opt-out of telemetry, you may set the `ATLAS_NO_ANON_TELEMETRY` environment variable to `true`.
+
+The updated EULA can be found [here](https://ariga.io/legal/atlas/eula).
+
+
