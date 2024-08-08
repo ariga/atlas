@@ -177,7 +177,7 @@ atlas schema inspect --env ef --url "env://src"
 Notice that this command uses `env://src` as the target URL for inspection, meaning "the schema represented by the
 `src` attribute of the `local` environment block."
 
-Given we have a simple entity `Todo` :
+Given we have a simple model `Todo` :
 
 ```csharp title="Todo.cs"
 public class Todo
@@ -223,7 +223,7 @@ workflow, where each change to the database is versioned and recorded in a migra
 `atlas migrate diff` command to automatically generate a migration file that will migrate the database
 from its latest revision to the current EF Core schema.
 
-Suppose we have the following EF Core `TodoDbContext` class, which has a `Todo` entity:
+Suppose we have the following EF Core `TodoDbContext` class, which has a `Todo` model:
 
 ```csharp title="TodoApi/Todos/Todo.cs"
 public class Todo
@@ -323,7 +323,7 @@ resources to study next:
 ## Conclusion
 
 In this guide, we demonstrated how projects using EF Core can use Atlas to automatically
-plan schema migrations based only on their entity. To learn more about executing
+plan schema migrations based only on their models. To learn more about executing
 migrations against your production database, read the documentation for the
 [`migrate apply`](/versioned/apply) command.
 
