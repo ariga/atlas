@@ -486,7 +486,7 @@ func init() {
 		"docker",
 		sqlclient.OpenerFunc(Open),
 		sqlclient.RegisterFlavours(
-			"docker+postgres", "docker+mysql", "docker+maria",
+			"docker+postgres", "docker+mysql", "docker+maria", "docker+mariadb",
 			"docker+sqlserver", "docker+clickhouse",
 		),
 	)
