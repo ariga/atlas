@@ -87,11 +87,11 @@ module.exports = {
       ],
     },
     footer,
-    announcementBar: {
-      id: 'announcementBar-15', // Increment on change
-      content: `<strong>Atlas v0.25: PostgreSQL Row-level Security and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/07/09/v025-row-level-security">Read it here</a>`,
-      isCloseable: true,
-    },
+    // announcementBar: {
+    //   id: 'announcementBar-15', // Increment on change
+    //   content: `<strong>Atlas v0.25: PostgreSQL Row-level Security and more. </strong><a class="cta" href="https://atlasgo.io/blog/2024/07/09/v025-row-level-security">Read it here</a>`,
+    //   isCloseable: true,
+    // },
   },
   plugins: [
     [
