@@ -167,7 +167,54 @@ builder.Services.AddSqlite<TodoDbContext>(connectionString);
 
 ### Verifying the Configuration
 
-TODO(luantranminh). See https://atlasgo.io/guides/orms/gorm/standalone#verify-setup
+Next, let's verify Atlas is able to read our desired schema, by running the
+[`schema inspect`](/declarative/inspect) command, to inspect our desired schema:
+
+```shell
+atlas schema inspect --env ef --url "env://src"
+```
+
+Notice that this command uses `env://src` as the target URL for inspection, meaning "the schema represented by the
+`src` attribute of the `local` environment block."
+
+Given we have a simple entity `Todo` :
+
+```csharp title="Todo.cs"
+public class Todo
+{
+    [Key]
+    public int Id { get; set; }
+    [Required]
+    public string Title { get; set; } = default!;
+    public bool IsComplete { get; set; }
+}
+```
+
+We should get the following output after running the `inspect` command above:
+
+```hcl
+table "Todos" {
+  schema = schema.main
+  column "Id" {
+    null           = false
+    type           = integer
+    auto_increment = true
+  }
+  column "Title" {
+    null = false
+    type = text
+  }
+  column "IsComplete" {
+    null = false
+    type = integer
+  }
+  primary_key {
+    columns = [column.Id]
+  }
+}
+schema "main" {
+}
+```
 
 ### Planning Migrations
 
