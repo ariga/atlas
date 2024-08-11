@@ -27,7 +27,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -54,7 +54,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -81,7 +81,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -108,7 +108,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -135,7 +135,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -162,7 +162,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -188,7 +188,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -214,7 +214,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -240,7 +240,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -266,7 +266,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -292,7 +292,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -318,7 +318,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -344,7 +344,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -357,7 +357,7 @@ jobs:
   integration-sqlite:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -372,7 +372,7 @@ jobs:
         ports:
           - 4309:4000
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -387,7 +387,7 @@ jobs:
         ports:
           - 4310:4000
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
@@ -402,7 +402,7 @@ jobs:
         ports:
           - 26257:26257
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: cmd/atlas/go.mod
