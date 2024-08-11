@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"testing"
 	"text/template"
 	"time"
 
@@ -112,7 +113,7 @@ const (
 // at most once a week. The user can disable this message by setting the ATLAS_NO_UPGRADE_SUGGESTIONS
 // environment variable.
 func maySuggestUpgrade(cmd *cobra.Command) {
-	if os.Getenv(envSkipUpgradeSuggestions) != "" {
+	if os.Getenv(envSkipUpgradeSuggestions) != "" || testing.Testing() {
 		return
 	}
 	state := cmdstate.File[LocalState]{Name: localStateFile}
