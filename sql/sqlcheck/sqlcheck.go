@@ -122,6 +122,11 @@ type (
 	}
 )
 
+// SuggestFix appends a suggested fix to the diagnostic.
+func (d *Diagnostic) SuggestFix(m string, e *TextEdit) {
+	d.SuggestedFixes = append(d.SuggestedFixes, SuggestedFix{Message: m, TextEdit: e})
+}
+
 // Analyzers implements Analyzer.
 type Analyzers []Analyzer
 
