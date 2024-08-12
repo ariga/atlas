@@ -381,9 +381,9 @@ view "comedies" {
   as           = "SELECT id, name FROM films WHERE kind = 'Comedy'"
   depends_on   = [table.films]
   check_option = CASCADED
+  security     = INVOKER // DEFINER | INVOKER (MySQL/MariaDB only).
 }
 ```
-
 
 :::info <a class="sticky-anchor" id={"#testing-views"} href={"#testing-views"}>Testing Views</a>
 
