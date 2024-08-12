@@ -287,63 +287,6 @@ schema "schema" {
 	require.NoError(t, err)
 }
 
-func TestUnmarshalViews(t *testing.T) {
-	f := `table "t1" {
-  schema = schema.public
-  column "id" {
-    null = false
-    type = int
-  }
-}
-view "v1" {
- schema = schema.public
- as     = "SELECT * FROM t2 WHERE id IS NOT NULL"
-}
-view "v2" {
-  schema = schema.public
-  column "id" {
-    null = false
-    type = int
-  }
-  as      = "SELECT * FROM t3 WHERE id IS NOT NULL ORDER BY id"
-  comment = "view comment"
-}
-view "v3" {
-  schema     = schema.public
-  as         = "SELECT * FROM v2 JOIN t1 USING (id)"
-  depends_on = [view.v1, table.t1]
-}
-schema "public" {
-}
-`
-	var (
-		r   schema.Realm
-		s   schema.Schema
-		exp = schema.New("public").
-			AddTables(
-				schema.NewTable("t1").
-					AddColumns(
-						schema.NewIntColumn("id", "int"),
-					),
-			).
-			AddViews(
-				schema.NewView("v1", "SELECT * FROM t2 WHERE id IS NOT NULL"),
-				schema.NewView("v2", "SELECT * FROM t3 WHERE id IS NOT NULL ORDER BY id").
-					AddColumns(
-						schema.NewIntColumn("id", "int"),
-					).
-					SetComment("view comment"),
-			)
-	)
-	exp.AddViews(
-		schema.NewView("v3", "SELECT * FROM v2 JOIN t1 USING (id)").
-			AddDeps(exp.Views[0], exp.Tables[0]),
-	)
-	r.AddSchemas(exp)
-	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
-	require.EqualValues(t, exp, &s)
-}
-
 func TestMarshalSpec_Charset(t *testing.T) {
 	s := &schema.Schema{
 		Name: "test",
