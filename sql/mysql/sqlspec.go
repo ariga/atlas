@@ -155,23 +155,6 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 	return t, nil
 }
 
-// convertView converts a sqlspec.View to a schema.View.
-func convertView(spec *sqlspec.View, parent *schema.Schema) (*schema.View, error) {
-	v, err := specutil.View(
-		spec, parent,
-		func(c *sqlspec.Column, _ *schema.View) (*schema.Column, error) {
-			return specutil.Column(c, convertColumnType)
-		},
-		func(i *sqlspec.Index, v *schema.View) (*schema.Index, error) {
-			return nil, fmt.Errorf("unexpected view index %s.%s", v.Name, i.Name)
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
 // convertPK converts a sqlspec.PrimaryKey into a schema.Index.
 func convertPK(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
 	idx, err := specutil.PrimaryKey(spec, parent)
@@ -337,21 +320,6 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	}
 	tableAttrsSpec(t, ts)
 	return ts, nil
-}
-
-// viewSpec converts from a concrete MySQL schema.View to a sqlspec.View.
-func viewSpec(view *schema.View) (*sqlspec.View, error) {
-	spec, err := specutil.FromView(
-		view,
-		func(c *schema.Column, _ *schema.View) (*sqlspec.Column, error) {
-			return specutil.FromColumn(c, columnTypeSpec)
-		},
-		indexSpec,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return spec, nil
 }
 
 func pkSpec(idx *schema.Index) (*sqlspec.PrimaryKey, error) {

@@ -57,6 +57,14 @@ func tableAttrsSpec(*schema.Table, *sqlspec.Table) {
 	// unimplemented.
 }
 
+func viewSpec(*schema.View) (*sqlspec.View, error) {
+	return nil, nil // unimplemented.
+}
+
+func convertView(*sqlspec.View, *schema.Schema) (*schema.View, error) {
+	return nil, nil // unimplemented.
+}
+
 func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
 }
