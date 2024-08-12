@@ -88,7 +88,7 @@ module.exports = {
     },
     footer,
     announcementBar: {
-      id: 'announcementBar-16', // Increment on change
+      id: 'announcementBar-17', // Increment on change
       content: `<strong>Atlas on The New Stack:</strong> Play Rock, Paper, Scissors on Postgres! <a class="cta" href="https://thenewstack.io/build-a-rock-paper-scissors-game-on-postgresql-with-database-programming/">Read it here</a>`,
       isCloseable: true,
     },
