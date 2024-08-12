@@ -13,9 +13,11 @@ Atlas supports the concept of pre-migration checks, where each migration version
 For example, before dropping a table, we aim to ensure that no data is deleted and the table must be empty, or we check
 for the absence of duplicate values before adding a unique index to a table.
 
-:::info Cloud Directory
-Pre-migration checks only work for migration directories in the [Atlas Schema Registry](/cloud/features/registry). Check out the
-[introduction guide](/versioned/intro#pushing-migrations-to-atlas) to get started with Atlas Cloud.
+:::info [Atlas Pro Feature](/features#pro)
+Pre-migration checks are available only to [Atlas Pro users](/features#pro). To use this feature, run:
+```
+atlas login
+```
 :::
 
 ### `atlas:txtar` directive
@@ -99,7 +101,7 @@ If the pre-execution checks pass, the migration will be applied, and Atlas will 
 atlas migrate --dir atlas://app --env prod
 ```
 
-![Check passed](https://atlasgo.io/uploads/cloud/deploy/check-passed.png)
+![Check passed](https://atlasgo.io/uploads/cloud/deploy/check-passed-v1.png)
 
 ```applylog title="Output"
 Migrating to version 20240201131900 from 20240201131800 (1 migrations in total):
@@ -129,7 +131,7 @@ If the pre-execution checks fail, the migration will not be applied, and Atlas w
 atlas migrate --dir atlas://app --env prod
 ```
 
-![Check failed](https://atlasgo.io/uploads/cloud/deploy/check-failed.png)
+![Check failed](https://atlasgo.io/uploads/cloud/deploy/check-failed-v1.png)
 
 ```applylog title="Output"
 Migrating to version 20240201131900 from 20240201131800 (1 migrations in total):
