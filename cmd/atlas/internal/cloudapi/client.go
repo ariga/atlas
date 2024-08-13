@@ -291,7 +291,7 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 		Data: data,
 	}
 	if err := json.NewDecoder(res.Body).Decode(&scan); err != nil && !errors.Is(err, io.EOF) {
-		return err
+		return fmt.Errorf("decoding response: %w", err)
 	}
 	if len(scan.Errors) > 0 {
 		return scan.Errors
