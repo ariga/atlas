@@ -329,7 +329,7 @@ func typeChanged(from, to *schema.Column, ns string) (bool, error) {
 	switch fromT := fromT.(type) {
 	case *schema.BinaryType, *BitType, *schema.BoolType, *schema.DecimalType, *schema.FloatType, *IntervalType,
 		*schema.IntegerType, *schema.JSONType, *OIDType, *RangeType, *SerialType, *schema.SpatialType,
-		*schema.StringType, *schema.TimeType, *TextSearchType, *NetworkType, *schema.UUIDType:
+		*schema.StringType, *PseudoType, *schema.TimeType, *TextSearchType, *NetworkType, *schema.UUIDType:
 		t1, err := FormatType(toT)
 		if err != nil {
 			return false, err
