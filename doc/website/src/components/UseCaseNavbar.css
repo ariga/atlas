@@ -1,0 +1,35 @@
+.use-case-link {
+  @apply flex items-center gap-3 md:px-2 py-1 md:min-w-[350px] md:mb-2 last:md:mb-0 transition duration-200 ease-in-out;
+}
+
+.use-case-link.disabled {
+  @apply opacity-70 cursor-default;
+}
+
+.use-case-link.disabled:hover {
+  @apply !bg-[transparent] no-underline;
+}
+
+.use-case-link:hover {
+  @apply bg-black/5 no-underline dark:bg-[#fff]/5;
+}
+
+.use-case-link span {
+  @apply text-ellipsis break-words text-xs text-[#606770] dark:text-[#e3e3e3] md:whitespace-nowrap md:text-sm font-normal md:text-[#1c1e21];
+}
+
+.use-case-link .use-case-link-title {
+  @apply text-sm font-semibold md:text-base flex justify-between items-center gap-2;
+}
+
+.use-case-link .use-case-link-title div {
+  @apply px-1 bg-[#FFD6D6] text-xs uppercase rounded-full text-center text-[black];
+}
+
+.use-case-link svg {
+  @apply aspect-square w-5 md:w-8;
+}
+
+.use-case-link div {
+  @apply flex flex-col gap-1 md:text-sm;
+}

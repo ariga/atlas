@@ -69,10 +69,29 @@ module.exports = {
           label: 'Docs',
           position: 'left',
         },
+
         {
-          to: 'guides',
-          label: 'Guides',
+          type: 'dropdown',
+          label: 'Use Cases',
           position: 'left',
+          items: [
+            {
+              type: 'custom-use-case-navbar',
+              content: 'migrations'
+            },
+            {
+              type: 'custom-use-case-navbar',
+              content: 'monitoring'
+            },   
+            {
+              type: 'custom-use-case-navbar',
+              content: 'tenant'
+            },
+            {
+              type: 'custom-use-case-navbar',
+              content: 'governance'
+            },
+          ],
         },
         {
           to: 'blog',
