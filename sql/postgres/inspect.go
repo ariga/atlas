@@ -1496,12 +1496,14 @@ const (
 	schemasQuery = `
 SELECT
 	nspname AS schema_name,
-	pg_catalog.obj_description(oid) AS comment
+	pg_catalog.obj_description(ns.oid) AS comment
 FROM
-    pg_catalog.pg_namespace
+	pg_catalog.pg_namespace ns
+	LEFT JOIN pg_depend AS dep ON dep.classid = 'pg_catalog.pg_namespace'::regclass::oid AND dep.objid = ns.oid AND dep.deptype = 'e'
 WHERE
-    nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast', 'crdb_internal', 'pg_extension')
-    AND nspname NOT LIKE 'pg_%temp_%'
+	nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast', 'crdb_internal', 'pg_extension')
+	AND nspname NOT LIKE 'pg_%temp_%'
+	AND dep.objid IS NULL
 ORDER BY
     nspname`
 
@@ -1509,11 +1511,13 @@ ORDER BY
 	schemasQueryArgs = `
 SELECT
 	nspname AS schema_name,
-	pg_catalog.obj_description(oid) AS comment
+	pg_catalog.obj_description(ns.oid) AS comment
 FROM
-    pg_catalog.pg_namespace
+	pg_catalog.pg_namespace ns
+	LEFT JOIN pg_depend AS dep ON dep.classid = 'pg_catalog.pg_namespace'::regclass::oid AND dep.objid = ns.oid AND dep.deptype = 'e'
 WHERE
-    nspname %s
+	nspname %s
+	AND dep.objid IS NULL
 ORDER BY
     nspname`
 
