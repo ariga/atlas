@@ -238,7 +238,7 @@ module.exports = {
                 {
                     type: 'doc',
                     id: 'guides/deploying/cloud-dir',
-                    label: 'Deploying from Atlas Cloud'
+                    label: 'Working with Atlas Registry'
                 },
                 {
                     type: 'doc',

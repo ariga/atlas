@@ -346,3 +346,8 @@ h3 > .login {
 div[class^='announcementBar'] {
   @apply border-0;
 }
+
+.footer__copyright {
+  font-size: 10px;
+  line-height: 14px;
+}
