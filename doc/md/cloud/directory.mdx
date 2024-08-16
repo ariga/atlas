@@ -4,45 +4,22 @@ id: directories
 slug: /cloud/directories
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
 import MigratePushCommand from '../components/migrate-push-command.mdx'
 
 The following guide explains how to connect a migration directory to Atlas Cloud. Once connected, Atlas provides a list
 of features enabling users to seamlessly audit their migration history, run continuous migration linting on their PRs,
 monitor executed migrations and receive webhook notifications, among other capabilities.
 
-To get started, you need to create the migration directory in Atlas Cloud.
+To get started, you need to sync your migration directory to the [Schema Registry](/cloud/features/registry) in Atlas Cloud.
 
 ### Login to Atlas Cloud
 
 Firstly, you'll need to [log in to Atlas](https://auth.atlasgo.cloud/signup). If it's your first time, you'll be
 prompted to create both an account and a workspace (organization):
 
-<Tabs>
-<TabItem value="web" label="Via Web">
-
 ```bash
 atlas login
 ```
-
-</TabItem>
-<TabItem value="token" label="Via Token">
-
-```bash
-atlas login --token "ATLAS_TOKEN"
-```
-
-</TabItem>
-<TabItem value="env-var" label="Via Environment Variable">
-
-```bash
-ATLAS_TOKEN="$ATLAS_TOKEN" atlas login
-```
-
-</TabItem>
-</Tabs>
 
 ### Push the migration directory
 
@@ -57,7 +34,9 @@ different name containing only alphanumeric characters, dashes, and underscores.
 :::
 
 <div style={{textAlign: 'center'}}>
-    <img src="https://atlasgo.io/uploads/cloud/images/init-migration-dir.png" alt="atlas migrate push" width="100%"/>
+    <a href={"https://gh.atlasgo.cloud/dirs/4294967383"} target="_blank">
+        <img src="https://atlasgo.io/uploads/cloud/images/dir-overview-v1.png" alt="atlas migrate push" width="100%"/>
+    </a>
     <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
 </div>
 

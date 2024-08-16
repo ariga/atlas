@@ -183,12 +183,16 @@ module.exports = {
             to: '/cloud/getting-started',
           },
           {
-            "to": "/declarative/inspect",
-            "from": "/cli/getting-started/inspection",
+            to: "/declarative/inspect",
+            from: "/cli/getting-started/inspection",
           },
           {
-            "to": "/declarative/apply",
-            "from": "/cli/getting-started/applying-schemas",
+            to: "/declarative/apply",
+            from: "/cli/getting-started/applying-schemas",
+          },
+          {
+            to: "/guides/deploying/remote-directories",
+            from: "/guides/deploying/from-cloud",
           },
         ],
       },
