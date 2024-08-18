@@ -237,6 +237,39 @@ func TestSortChanges(t *testing.T) {
 		&schema.DropFunc{F: f2},
 	}, nil)
 	require.Equal(t, []schema.Change{&schema.DropFunc{F: f2}, &schema.AddFunc{F: f1}}, planned)
+
+	// Do not change the order in case there is no
+	// dependency between the function and the view.
+	v1 := schema.NewView("v1", "select 1")
+	planned = SortChanges([]schema.Change{
+		&schema.AddFunc{F: f1},
+		&schema.AddView{V: v1},
+	}, nil)
+	require.IsType(t, &schema.AddFunc{}, planned[0])
+	require.IsType(t, &schema.AddView{}, planned[1])
+	// Respect dependencies between views and functions.
+	f1.Deps = []schema.Object{v1}
+	planned = SortChanges([]schema.Change{
+		&schema.AddFunc{F: f1},
+		&schema.AddView{V: v1},
+	}, nil)
+	require.IsType(t, &schema.AddView{}, planned[0])
+	require.IsType(t, &schema.AddFunc{}, planned[1])
+	// Respect copies.
+	planned = SortChanges([]schema.Change{
+		&schema.AddFunc{F: f1},
+		&schema.AddView{V: P(V(v1))},
+	}, nil)
+	require.IsType(t, &schema.AddView{}, planned[0])
+	require.IsType(t, &schema.AddFunc{}, planned[1])
+	// Respect driver-specific logic.
+	f1.Deps = nil
+	planned = SortChanges([]schema.Change{
+		&schema.AddFunc{F: f1},
+		&schema.AddView{V: v1},
+	}, &SortOptions{FuncDepV: func(*schema.Func, *schema.View) bool { return true }})
+	require.IsType(t, &schema.AddView{}, planned[0])
+	require.IsType(t, &schema.AddFunc{}, planned[1])
 }
 
 func TestSameTable(t *testing.T) {
@@ -250,4 +283,17 @@ func TestSameTable(t *testing.T) {
 	require.True(t, SameTable(t1, schema.NewTable("t1").SetSchema(schema.New("public"))), "same copy")
 	require.False(t, SameTable(t1, schema.NewTable("t1")))
 	require.False(t, SameTable(t1, schema.NewTable("t1").SetSchema(schema.New("private"))))
+}
+
+func TestSameView(t *testing.T) {
+	v1 := schema.NewView("v1", "")
+	require.True(t, SameView(v1, v1))
+	require.True(t, SameView(v1, schema.NewView("v1", "")), "same copy")
+	require.False(t, SameView(v1, schema.NewView("v2", "")))
+
+	v1.SetSchema(schema.New("public"))
+	require.True(t, SameView(v1, v1))
+	require.True(t, SameView(v1, schema.NewView("v1", "").SetSchema(schema.New("public"))), "same copy")
+	require.False(t, SameView(v1, schema.NewView("v1", "")))
+	require.False(t, SameView(v1, schema.NewView("v1", "").SetSchema(schema.New("private"))))
 }

@@ -594,6 +594,9 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 		}
 		return depOfAdd(c1.To.Deps, c2)
 	case *schema.AddFunc:
+		if depOfAdd(c1.F.Deps, c2) {
+			return true
+		}
 		switch c2 := c2.(type) {
 		case *schema.AddSchema:
 			return c1.F.Schema.Name == c2.S.Name
@@ -623,7 +626,9 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 				return true
 			}
 		}
-		return depOfAdd(c1.F.Deps, c2)
+		// If object is not defined explicitly in the depends_on list,
+		// and not detected by the cases above, it is not a dependency.
+		return false
 	case *schema.DropFunc:
 		switch c2 := c2.(type) {
 		case *schema.DropFunc:
@@ -826,11 +831,20 @@ func depOfAdd(refs []schema.Object, c schema.Change) bool {
 	var o schema.Object
 	switch c := c.(type) {
 	case *schema.AddTable:
-		o = c.T
+		return slices.ContainsFunc(refs, func(o schema.Object) bool {
+			t, ok := o.(*schema.Table)
+			return ok && SameTable(c.T, t)
+		})
 	case *schema.ModifyTable:
-		o = c.T
+		return slices.ContainsFunc(refs, func(o schema.Object) bool {
+			t, ok := o.(*schema.Table)
+			return ok && SameTable(c.T, t)
+		})
 	case *schema.AddView:
-		o = c.V
+		return slices.ContainsFunc(refs, func(o schema.Object) bool {
+			v, ok := o.(*schema.View)
+			return ok && SameView(c.V, v)
+		})
 	case *schema.AddObject:
 		o = c.O
 	case *schema.AddTrigger:
@@ -865,6 +879,14 @@ func dependsOnT(t1, t2 schema.Type) bool {
 	// Comparing might panic due to mismatch types.
 	defer func() { recover() }()
 	return t1 == t2 || schema.UnderlyingType(t1) == t2
+}
+
+// SameView reports if the two objects represent the same view.
+func SameView(v1, v2 *schema.View) bool {
+	if v1 == nil || v2 == nil {
+		return v1 == v2
+	}
+	return v1.Name == v2.Name && SameSchema(v1.Schema, v2.Schema)
 }
 
 // SameTable reports if the two objects represent the same table.
