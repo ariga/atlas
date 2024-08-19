@@ -1,0 +1,59 @@
+atlas migrate diff --env local
+cmpmig 0 expected.sql
+
+-- atlas.hcl --
+data "hcl_schema" "app" {
+  paths = glob("schema-*.hcl")
+  vars = {
+    default_value = "unknown"
+  }
+}
+
+env "local" {
+  src = data.hcl_schema.app.url
+  dev = "sqlite://dev?mode=memory&_fk=1"
+}
+
+-- schema-1.hcl --
+schema "main" {}
+
+table "pets" {
+  schema = schema.main
+  column "name" {
+    null    = false
+    type    = text
+    default = var.default_value
+  }
+  column "owner_id" {
+    type = integer
+  }
+  foreign_key "owner_id" {
+    columns     = [column.owner_id]
+    ref_columns = [table.users.column.id]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+}
+
+-- schema-2.hcl --
+variable "default_value" {
+  type = string
+}
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = true
+    type = integer
+  }
+  column "name" {
+    null    = false
+    type    = text
+    default = var.default_value
+  }
+}
+
+-- expected.sql --
+-- Create "pets" table
+CREATE TABLE `pets` (`name` text NOT NULL DEFAULT 'unknown', `owner_id` integer NOT NULL, CONSTRAINT `owner_id` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION);
+-- Create "users" table
+CREATE TABLE `users` (`id` integer NULL, `name` text NOT NULL DEFAULT 'unknown');
