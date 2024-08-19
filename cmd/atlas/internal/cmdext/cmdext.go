@@ -535,7 +535,8 @@ var clientType = cty.Capsule("client", reflect.TypeOf(cloudapi.Client{}))
 func SchemaHCL(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
 	var (
 		args struct {
-			Path   string               `hcl:"path"`
+			Paths  []string             `hcl:"paths,optional"`
+			Path   string               `hcl:"path,optional"`
 			Vars   map[string]cty.Value `hcl:"vars,optional"`
 			Remain hcl.Body             `hcl:",remain"`
 		}
@@ -551,8 +552,16 @@ func SchemaHCL(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block)
 	if len(attrs) > 0 {
 		return cty.NilVal, errorf("unexpected attributes: %v", attrs)
 	}
-	if args.Path == "" {
-		return cty.NilVal, errorf("path cannot be empty")
+	paths := args.Paths
+	switch {
+	case len(paths) != 0:
+		if args.Path != "" {
+			return cty.NilVal, errorf("path and paths cannot be set together")
+		}
+	case args.Path == "":
+		return cty.NilVal, errorf("path or paths must be set")
+	default:
+		paths = []string{args.Path}
 	}
 	u, err := url.JoinPath("mem://hcl_schema", block.Labels[1])
 	if err != nil {
@@ -561,7 +570,7 @@ func SchemaHCL(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block)
 	memLoader.states[u] = StateLoaderFunc(func(ctx context.Context, config *StateReaderConfig) (*StateReadCloser, error) {
 		cfg := *config
 		cfg.Vars = args.Vars
-		return stateReaderHCL(ctx, &cfg, []string{args.Path})
+		return stateReaderHCL(ctx, &cfg, paths)
 	})
 	return cty.ObjectVal(map[string]cty.Value{
 		"url": cty.StringVal(u),
