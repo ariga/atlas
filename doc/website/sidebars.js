@@ -683,5 +683,35 @@ module.exports = {
                 }
             ]
         },
+    ],
+    observability: [
+        {
+            type: 'category',
+            collapsed: false,
+            label: 'Schema Monitoring',
+            items: [
+                {
+                    type: 'doc',
+                    id: 'monitoring/home',
+                    label: 'Home'
+                },
+                {
+                    type: 'doc',
+                    id: 'monitoring/quickstart'
+                },
+                {
+                    type: 'doc',
+                    id: 'monitoring/overview'
+                },
+                {
+                    type: 'doc',
+                    id: 'monitoring/security'
+                },
+                {
+                    type: 'doc',
+                    id: 'monitoring/helm'
+                }
+            ]
+        },
     ]
 };

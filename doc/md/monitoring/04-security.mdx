@@ -1,0 +1,48 @@
+---
+title: Security and Credentials
+---
+
+Atlas Schema Monitoring is designed with the principle of minimal access in mind. The Atlas agent is designed to only
+require read-only access to the database schema and only requires access to system information schema tables and not
+user data.
+
+Additionally, to provide further security and control, database credentials are never provided or stored in the Atlas
+Cloud control plane. Instead, the Atlas agent is deployed in your environment and connects to the database directly
+using a variety of secure methods.
+
+## Providing credentials to the Atlas Agent
+
+To be able to monitor the database schema, the Atlas agent needs to be able to connect to the database. However,
+to provide an additional layer of security, the Atlas agent does not store the database credentials in the Atlas Cloud
+control plane. Instead, the credentials are provided to the agent at deployment time.
+
+The Atlas Agent supports to following methods to provide database credentials:
+
+1. Environment variables
+2. Cloud IAM Roles
+3. Secret managers
+
+### Environment variables
+
+The simplest way to provide database credentials to the Atlas agent is to use environment variables. The agent
+runs as a container on the user's infrastructure. As such, users may provide custom environment variables
+to the agent which can be read by the agent at run-time and used as database credentials.
+
+To use ...
+
+### Cloud IAM Roles
+
+Modern cloud providers support database authentication using IAM roles. The Atlas agent runs as a container on
+the user's infrastructure. As such, users may provide the agent with an IAM role that has the necessary permissions
+to connect to the database. The agent will then use the IAM role to authenticate with the database.
+
+To use ...
+
+### Secret managers
+
+Secret managers are a secure way to store and manage sensitive information such as database credentials. The Atlas
+agent supports connecting to secret managers to retrieve database credentials. The agent can be configured to connect
+to a secret manager and retrieve the necessary credentials at run-time.
+
+To use ...
+

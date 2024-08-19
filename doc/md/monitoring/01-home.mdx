@@ -1,0 +1,92 @@
+---
+title: Atlas Schema Monitoring
+slug: /monitoring
+---
+
+import { DocCard } from "../home/components/doc-card";
+import {Icon} from "../home/components/icon";
+import { GuideCard } from "../home/components/guide-card";
+import { Layout } from "../home/components/layout";
+
+<Layout>
+
+Atlas Schema Monitoring provides a set of tools and features to help you manage and monitor your database
+schema effectively.  Teams install an agent (container) on their database VPC which tracks changes to the
+database schema and reports metadata to the Atlas Cloud control plane. Using this metadata Atlas Schema
+Monitoring provides:
+
+1. **Live visibility** of your database schema with automated ER diagrams and auto-generated documentation.
+2. A **Changelog** of schema changes, so you can see how schemas change over time, and easily triage schema
+   change related issues.
+3. **Alerts.** Use Webhooks or Slack notifications to inform or alert teams that need to know about
+   schema changes or drift.
+
+<div className="grid gap-6 grid-cols-1 lg:grid-cols-2 auto-cols-fr lg:auto-rows-fr mb-12 mt-6">
+    <DocCard
+        name={
+            <>
+                <Icon icon={"sql-icon.svg"} className="mr-2" /> Quickstart
+            </>
+        }
+        description="Get visibility into your database schema in under 5 minutes."
+        icon=""
+        url="/monitoring/quickstart"
+        className={"border-[#A7B5FF] bg-[#E9ECFF]"}
+    />
+    <DocCard
+        name={
+            <>
+                <Icon icon={"sql-icon.svg"} className="mr-2" /> Live Demo
+            </>
+        }
+        description="See it in action with a live demo."
+        icon=""
+        url="https://gh.atlasgo.link"
+    />
+</div>
+
+### Overview
+
+<div className="grid gap-6 grid-cols-1 lg:grid-cols-2 auto-cols-fr lg:auto-rows-fr mb-12 mt-6">
+    <DocCard
+        name={
+            <>
+                <Icon icon={"sql-icon.svg"} className="mr-2" /> How it works
+            </>
+        }
+        description="Learn about the key concepts and features of Atlas Database Schema Observability."
+        icon=""
+        url="/observability/overview"
+    />
+    <DocCard
+        name={
+            <>
+                <Icon icon={"sql-icon.svg"} className="mr-2" /> Database Credentials and Security
+            </>
+        }
+        description="Discover how to securely provide database credentials to the Atlas agent."
+        icon=""
+        url="/observability/use-cases" />
+
+</div>
+
+### Deployment Guides
+
+<div className="grid gap-6 grid-cols-1 lg:grid-cols-2 auto-cols-fr lg:auto-rows-fr mb-12 mt-6">
+    <GuideCard
+        name="Helm"
+        description="Deploy the Atlas agent using Helm on Kubernetes."
+        icon="kubernetes-icon.svg"
+        url="/observability/deployment-guides/helm"
+    />
+    <GuideCard
+        name="ECS Fargate"
+        description="Deploy the Atlas agent using Kubernetes."
+        icon="kubernetes-icon.svg"
+        url="/observability/deployment-guides/kubernetes"
+    />
+</div>
+
+
+
+</Layout>
