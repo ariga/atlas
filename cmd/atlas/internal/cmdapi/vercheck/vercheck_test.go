@@ -152,6 +152,7 @@ func TestTemplate(t *testing.T) {
 				},
 			},
 			exp: `A new version of Atlas is available (v0.7.2): https://atlasgo.io/v0.7.2
+
 A great version including amazing features.`,
 		},
 		{
@@ -162,7 +163,8 @@ A great version including amazing features.`,
 					Link:    "https://atlasgo.io/v0.7.2",
 				},
 			},
-			exp: `A new version of Atlas is available (v0.7.2): https://atlasgo.io/v0.7.2`,
+			exp: `A new version of Atlas is available (v0.7.2): https://atlasgo.io/v0.7.2
+`,
 		},
 		{
 			name: "with advisory",
