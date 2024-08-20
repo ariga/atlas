@@ -202,6 +202,27 @@ func ExampleMarshal() {
 	// }
 }
 
+func TestIgnore(t *testing.T) {
+	var test struct {
+		IgnoreAttr    string `spec:"-"`
+		NotIgnoreAttr string `spec:"not_ignore_attr"`
+		IgnoreBlock   struct {
+			Name string `spec:",name"`
+		} `spec:"-"`
+		NotIgnore struct {
+			Name string `spec:",name"`
+		} `spec:"not_ignore_block"`
+	}
+	test.IgnoreAttr, test.NotIgnoreAttr = "ignore", "not ignore"
+	test.IgnoreBlock.Name, test.NotIgnore.Name = "ignore", "not ignore"
+	buf, err := Marshal(&test)
+	require.NoError(t, err)
+	require.Equal(t, `not_ignore_attr = "not ignore"
+not_ignore_block "not ignore" {
+}
+`, string(buf))
+}
+
 func TestInterface(t *testing.T) {
 	type (
 		Animal interface {
