@@ -572,7 +572,7 @@ func specFields(ext any) []fieldDesc {
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
 		tag, ok := f.Tag.Lookup("spec")
-		if !ok {
+		if !ok || tag == "-" {
 			continue
 		}
 		d := fieldDesc{tag: tag, StructField: f}
