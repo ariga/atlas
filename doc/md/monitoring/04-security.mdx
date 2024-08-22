@@ -2,6 +2,9 @@
 title: Security and Credentials
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 Atlas Schema Monitoring is designed with the principle of minimal access in mind. The Atlas agent is designed to only
 require read-only access to the database schema and only requires access to system information schema tables and not
 user data.
@@ -22,13 +25,27 @@ The Atlas Agent supports to following methods to provide database credentials:
 2. Cloud IAM Roles
 3. Secret managers
 
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/monitoring/7.png)
+</details>
+
 ### Environment variables
 
 The simplest way to provide database credentials to the Atlas agent is to use environment variables. The agent
 runs as a container on the user's infrastructure. As such, users may provide custom environment variables
 to the agent which can be read by the agent at run-time and used as database credentials.
 
-To use ...
+To let the agent fetch the password for a database from an environment variable, select **Einvironment Variable** in the
+Connection dropdown and provide the environment variables name. E.g. if the database is stored in a variable like
+**DATABASE_PASSWORD=passw0rd** you'd specify **DATABASE_PASSWORD**.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/monitoring/8.png)
+</details>
 
 ### Cloud IAM Roles
 
@@ -36,13 +53,83 @@ Modern cloud providers support database authentication using IAM roles. The Atla
 the user's infrastructure. As such, users may provide the agent with an IAM role that has the necessary permissions
 to connect to the database. The agent will then use the IAM role to authenticate with the database.
 
-To use ...
+<Tabs>
+<TabItem value="aws" label="AWS RDS Token">
+
+AWS RDS databases offer to obtain a short-lived token using an IAM role to authenticate against an RDS instance.
+
+1. Enable IAM Authentication for your database. For instructions on how to do this,
+   [see the AWS documentation](https://aws.github.io/aws-sdk-go-v2/docs/sdk-utilities/rds/#iam-authentication).
+
+2. Create an IAM role with the "rds-db:connect" permission for the specific database and user. For instructions on how
+   to do this, [see the AWS documentation](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html).
+
+All you need to provide to the connection settings is the region your RDS lives in.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/monitoring/9.png)
+</details>
+
+</TabItem>
+<TabItem value="gcp" label="GCP Cloud SQL Token (IAM Auth)">
+
+[GCP CloudSQL](https://cloud.google.com/sql) offers using
+[IAM Authentication](https://cloud.google.com/sql/docs/mysql/authentication#manual) to generate a short-lived token to
+use for authentication against a GCP CloudSQL database.
+
+1. Enable IAM Authentication for your database. For instructions on how to do this,
+   [see the GCP documentation](https://cloud.google.com/sql/docs/mysql/create-edit-iam-instances).
+
+2. Create a database user and grant it permission to authenticate using IAM, see
+   [the GCP documentation](https://cloud.google.com/sql/docs/mysql/add-manage-iam-users)
+   for instructions.
+
+All other info required to obtain a token is derived from the CloudSQL endpoint you define in the connection modal.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/monitoring/10.png)
+</details>
+
+</TabItem>
+</Tabs>
 
 ### Secret managers
 
 Secret managers are a secure way to store and manage sensitive information such as database credentials. The Atlas
-agent supports connecting to secret managers to retrieve database credentials. The agent can be configured to connect
-to a secret manager and retrieve the necessary credentials at run-time.
+agent supports connecting to secret managers at runtime to retrieve database credentials.
 
-To use ...
+<Tabs>
+<TabItem value="aws" label="AWS Secrets Manager">
 
+AWS Secrets Manager is a secret store you can use to retrieve a secret from. This is somewhat similar to IAM
+authentication, since in this case you need to have access to the secret's store, usually using IAM authentication.
+Find the secret name and region for your secret. If you need more info,
+[read this guide](/guides/deploying/secrets##using-iam-authentication). If your secret is stored as JSON, e.g. when you
+choose to let RDS handle your database password in the Secrets Manager, you can provide the path to the actual token
+using a dot-notation. For example, for a secret like `{"password":"my_passw0rd!"}` you'd provide `password` as the path
+to the token, and for a secret like `{"nested":{"password":"my_passw0rd!"}}` you'd provide `nested.password`.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/monitoring/11.png)
+</details>
+
+</TabItem>
+<TabItem value="gcp" label="GCP Secrets Manager">
+
+GCP Secrets Manager is a secret store you can use to retrieve a secret from. Find the project ID and secret name of your
+secret. If you need more info, [read this guide](/guides/deploying/secrets##using-iam-authentication).
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/monitoring/12.png)
+</details>
+
+</TabItem>
+</Tabs>

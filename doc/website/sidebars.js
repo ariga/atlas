@@ -116,7 +116,34 @@ module.exports = {
                 {type: 'doc', id: 'cloud/setup-ci', label: 'CI Setup'},
                 {type: 'doc', id: 'cloud/bots', label: 'Creating Bots'},
                 {type: 'doc', id: 'cloud/deployment', label: 'Deployments'},
-                {type: 'doc', id: 'cloud/agents', label: 'Drift Detection'},
+                {
+                    type: 'category',
+                    label: 'Schema Monitoring',
+                    collapsed: false,
+                    items: [
+                        {
+                            type: 'doc',
+                            id: 'monitoring/home',
+                            label: 'Home'
+                        },
+                        {
+                            type: 'doc',
+                            id: 'monitoring/quickstart'
+                        },
+                        {
+                            type: 'doc',
+                            id: 'monitoring/overview'
+                        },
+                        {
+                            type: 'doc',
+                            id: 'monitoring/security'
+                        },
+                        {
+                            type: 'doc',
+                            id: 'monitoring/helm'
+                        }
+                    ]
+                },
                 {
                     type: 'category',
                     label: 'Features',
@@ -684,34 +711,4 @@ module.exports = {
             ]
         },
     ],
-    observability: [
-        {
-            type: 'category',
-            collapsed: false,
-            label: 'Schema Monitoring',
-            items: [
-                {
-                    type: 'doc',
-                    id: 'monitoring/home',
-                    label: 'Home'
-                },
-                {
-                    type: 'doc',
-                    id: 'monitoring/quickstart'
-                },
-                {
-                    type: 'doc',
-                    id: 'monitoring/overview'
-                },
-                {
-                    type: 'doc',
-                    id: 'monitoring/security'
-                },
-                {
-                    type: 'doc',
-                    id: 'monitoring/helm'
-                }
-            ]
-        },
-    ]
 };
