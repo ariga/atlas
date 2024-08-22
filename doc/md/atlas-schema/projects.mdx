@@ -674,7 +674,8 @@ The `hcl_schema` data source allows the loading of an Atlas HCL schema from a fi
 
 ##### Arguments {#data-source-hcl-schema-arguments}
 
-- `path` - The path to the HCL file or directory.
+- `path` - The path to the HCL file or directory (cannot be used with `paths`).
+- `paths` - List of paths to HCL files or directories (cannot be used with `path`).
 - `vars` - A map of variables to pass to the HCL schema.
 
 ##### Attributes {#data-source-hcl-schema-attributes}
@@ -771,7 +772,7 @@ the Atlas commands, such as `migrate diff`, `schema apply`, or `schema inspect`.
 
 ##### Arguments {#data-source-composite-schema-arguments}
 
-- `schema` - one or more **named** blocks containing the [URL](../concepts/url.mdx) to read the schema from.
+`schema` - one or more blocks containing the [URL](../concepts/url.mdx) to read the schema from.
 
 <details>
 <summary>Usage Details</summary>
@@ -826,6 +827,15 @@ data "composite_schema" "project" {
   }
 }
 ```
+
+##### Labeled vs. Unlabeled Schema Blocks
+
+Note, if the `schema` block is labeled (e.g., `schema "public"`), the schema will be created if it does not exist,
+and the computation for loading the state from the URL will be done within the scope of this schema.
+
+If the `schema` block is unlabeled (e.g., `schema { ... }`), no schema will be created, and the computation for loading
+the state from the URL will be done within the scope of the database. Read more about this in [Schema vs. Database Scope](/concepts/url#scope)
+doc.
 
 </details>
 
