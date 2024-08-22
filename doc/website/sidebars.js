@@ -119,7 +119,7 @@ module.exports = {
                 {
                     type: 'category',
                     label: 'Schema Monitoring',
-                    collapsed: false,
+                    collapsed: true,
                     items: [
                         {
                             type: 'doc',

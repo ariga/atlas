@@ -22,25 +22,17 @@ Monitoring provides:
    schema changes or drift.
 
 <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 auto-cols-fr lg:auto-rows-fr mb-12 mt-6">
-    <DocCard
-        name={
-            <>
-                <Icon icon={"sql-icon.svg"} className="mr-2" /> Quickstart
-            </>
-        }
+    <GuideCard
+        name="Quickstart"
         description="Get visibility into your database schema in under 5 minutes."
-        icon=""
+        icon="sql-icon.svg"
         url="/monitoring/quickstart"
         className={"border-[#A7B5FF] bg-[#E9ECFF]"}
     />
-    <DocCard
-        name={
-            <>
-                <Icon icon={"sql-icon.svg"} className="mr-2" /> Live Demo
-            </>
-        }
+    <GuideCard
+        name="Live Demo"
         description="See it in action with a live demo."
-        icon=""
+        icon="sql-icon.svg"
         url="https://gh.atlasgo.cloud/instances"
     />
 </div>
@@ -48,26 +40,18 @@ Monitoring provides:
 ### Overview
 
 <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 auto-cols-fr lg:auto-rows-fr mb-12 mt-6">
-    <DocCard
-        name={
-            <>
-                <Icon icon={"sql-icon.svg"} className="mr-2" /> How it works
-            </>
-        }
+    <GuideCard
+        name="How it works"
         description="Learn about the key concepts and features of Atlas Database Schema Monitoring."
-        icon=""
+        icon="sql-icon.svg"
         url="/monitoring/overview"
     />
-    <DocCard
-        name={
-            <>
-                <Icon icon={"sql-icon.svg"} className="mr-2" /> Database Credentials and Security
-            </>
-        }
+    <GuideCard
+        name="Database Credentials and Security"
         description="Discover how to securely provide database credentials to the Atlas agent."
-        icon=""
-        url="/monitoring/use-cases" />
-
+        icon="sql-icon.svg"
+        url="/monitoring/security"
+    />
 </div>
 
 ### Deployment Guides
@@ -77,16 +61,14 @@ Monitoring provides:
         name="Helm"
         description="Deploy the Atlas agent using Helm on Kubernetes."
         icon="kubernetes-icon.svg"
-        url="/monitoring/deployment-guides/helm"
+        url="/monitoring/helm"
     />
     <GuideCard
         name="ECS Fargate"
-        description="Deploy the Atlas agent using Kubernetes."
+        description="Deploy the Atlas agent using ECS Fargate."
         icon="kubernetes-icon.svg"
-        url="/monitoring/deployment-guides/kubernetes"
+        url="/monitoring/fargate"
     />
 </div>
-
-
 
 </Layout>
