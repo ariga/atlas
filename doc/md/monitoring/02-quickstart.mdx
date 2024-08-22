@@ -65,10 +65,10 @@ green, and you can save the changes.
 
 ### 4. View the schema
 
-Click on the newly created instance. It should present you a list of all available postgres databases. Click on the
-sakila database and there click on **Create Snapshot**, give it a name (e.g. Sakila), click **Add Scope** and wait for
-the agent to inspect the database and report back its database schema. Once that happened, you can view the schema ERD,
-docs and in the Changelog tab you can see the changes done to your schema over time.
+Click on the newly created instance. You will see an empty state screen, click on **Create Scope**, give it a name
+(e.g. Sakila), click **Add Scope** and wait for the agent to inspect the database and report back its database schema.
+Once that happened, you can view the schema ERD, docs and in the Changelog tab you can see the changes done to your
+schema over time.
 
 <details>
 <summary>Screenshot Example</summary>
@@ -81,7 +81,7 @@ docs and in the Changelog tab you can see the changes done to your schema over t
 To simulate a change to the database schema, let's create a new table.
 
 ```shell
-mysql -h127.0.0.1 -P33060 -usakila -pp_ssW0rd sakila -e "create table some_table (some_column int)"
+docker exec sakila mysql -h127.0.0.1 -P3306 -usakila -pp_ssW0rd sakila -e "create table some_table (some_column int)"
 ```
 
 Hit the Refresh button and observe the ERD and schema docs reflect the changes. The Changelog will contain a new entry

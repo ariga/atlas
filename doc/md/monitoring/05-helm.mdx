@@ -18,14 +18,14 @@ kubectl create namespace atlas-agent
 Create a `Secret` named `atlas-agent` with your API key,
 
 ```shell
-kubectl create secret generic atlas-agent --from-literal api-key=YOUR_API_KEY
+kubectl create secret generic atlas-agent --from-literal api-key=YOUR_API_KEY --namespace atlas-agent
 ```
 
 If you wish the Agent to have access to your database using a password, create a second secret named
 `atlas-agent-db` with your database password:
 
 ```shell
-kubectl create secret generic atlas-agent-db --from-literal password=YOUR_DB_PASSWORD
+kubectl create secret generic atlas-agent-db --from-literal password=YOUR_DB_PASSWORD --namespace atlas-agent
 ```
 
 ### Install the agent
@@ -47,7 +47,7 @@ extraEnvs:
 Install the agent using Helm:
 
 ```shell
-helm install atlas-agent oci://ghcr.io/ariga/charts/atlas-agent
+helm install atlas-agent oci://ghcr.io/ariga/charts/atlas-agent --namespace atlas-agent
 ```
 
 Verify that the agent is running:
