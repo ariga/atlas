@@ -316,6 +316,31 @@ schema "main" {
 </TabItem>
 </Tabs>
 
+## Builtin Functions
+
+### `file`
+
+The `file` function reads the content of a file and returns it as a string. The file path is relative to the project
+directory or an absolute path.
+
+```hcl
+variable "cloud_token" {
+  type    = string
+  default = file("/var/run/secrets/atlas_token")
+}
+```
+
+### `glob`
+
+The `glob` function returns the list of files that match the given pattern. The pattern is relative to the project
+directory.
+
+```hcl
+data "hcl_schema" "app" {
+  paths = glob("schema/*.pg.hcl")
+}
+```
+
 ### Project Input Variables
 
 Project files may also declare [input variables](hcl-input.md) that can be supplied to the CLI
