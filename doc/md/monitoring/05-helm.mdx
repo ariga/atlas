@@ -36,6 +36,8 @@ Create a file named `values.yaml` with the following content:
 apiKeySecret:
   name: atlas-agent
   key: api-key
+image:
+  tag: "latest"
 extraEnvs:
   - name: ATLAS_AGENT_DB_PASSWORD
     valueFrom:
@@ -47,7 +49,7 @@ extraEnvs:
 Install the agent using Helm:
 
 ```shell
-helm install atlas-agent oci://ghcr.io/ariga/charts/atlas-agent --namespace atlas-agent
+helm install atlas-agent oci://ghcr.io/ariga/charts/atlas-agent --namespace atlas-agent -f values.yaml
 ```
 
 Verify that the agent is running:
