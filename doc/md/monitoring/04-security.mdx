@@ -108,7 +108,7 @@ agent supports connecting to secret managers at runtime to retrieve database cre
 AWS Secrets Manager is a secret store you can use to retrieve a secret from. This is somewhat similar to IAM
 authentication, since in this case you need to have access to the secret's store, usually using IAM authentication.
 Find the secret name and region for your secret. If you need more info,
-[read this guide](/guides/deploying/secrets##using-iam-authentication). If your secret is stored as JSON, e.g. when you
+[read this guide](/guides/deploying/secrets#using-iam-authentication). If your secret is stored as JSON, e.g. when you
 choose to let RDS handle your database password in the Secrets Manager, you can provide the path to the actual token
 using a dot-notation. For example, for a secret like `{"password":"my_passw0rd!"}` you'd provide `password` as the path
 to the token, and for a secret like `{"nested":{"password":"my_passw0rd!"}}` you'd provide `nested.password`.
@@ -123,7 +123,7 @@ to the token, and for a secret like `{"nested":{"password":"my_passw0rd!"}}` you
 <TabItem value="gcp" label="GCP Secrets Manager">
 
 GCP Secrets Manager is a secret store you can use to retrieve a secret from. Find the project ID and secret name of your
-secret. If you need more info, [read this guide](/guides/deploying/secrets##using-iam-authentication).
+secret. If you need more info, [read this guide](/guides/deploying/secrets#using-iam-authentication).
 
 <details>
 <summary>Screenshot Example</summary>
