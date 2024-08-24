@@ -1,6 +1,6 @@
 module ariga.io/atlas/internal/integration
 
-go 1.22.5
+go 1.23.0
 
 replace ariga.io/atlas => ../../
 
@@ -14,7 +14,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e
-	github.com/rogpeppe/go-internal v1.9.0
+	github.com/rogpeppe/go-internal v1.12.0
 	github.com/stretchr/testify v1.9.0
 	github.com/zclconf/go-cty v1.14.4
 )
@@ -25,7 +25,7 @@ require (
 	cloud.google.com/go/iam v1.1.5 // indirect
 	cloud.google.com/go/longrunning v0.5.4 // indirect
 	cloud.google.com/go/secretmanager v1.11.4 // indirect
-	entgo.io/ent v0.13.2-0.20240728160047-15bebe8d8920 // indirect
+	entgo.io/ent v0.14.1 // indirect
 	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230512164433-5d1fd1a340c9 // indirect
@@ -81,15 +81,16 @@ require (
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	gocloud.dev v0.36.0 // indirect
-	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a // indirect
-	golang.org/x/mod v0.15.0 // indirect
-	golang.org/x/net v0.24.0 // indirect
+	golang.org/x/mod v0.20.0 // indirect
+	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/oauth2 v0.16.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sys v0.23.0 // indirect
+	golang.org/x/text v0.17.0 // indirect
 	golang.org/x/time v0.4.0 // indirect
+	golang.org/x/tools v0.24.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/api v0.151.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
