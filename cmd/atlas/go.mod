@@ -1,12 +1,12 @@
 module ariga.io/atlas/cmd/atlas
 
-go 1.22.5
+go 1.23.0
 
 replace ariga.io/atlas => ../..
 
 require (
 	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43
-	entgo.io/ent v0.13.2-0.20240728160047-15bebe8d8920
+	entgo.io/ent v0.14.1
 	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1
 	github.com/antlr4-go/antlr/v4 v4.13.0
 	github.com/aws/aws-sdk-go-v2/config v1.26.1
@@ -29,7 +29,7 @@ require (
 	github.com/zclconf/go-cty v1.14.4
 	gocloud.dev v0.36.0
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
-	golang.org/x/mod v0.15.0
+	golang.org/x/mod v0.20.0
 	golang.org/x/oauth2 v0.16.0
 	google.golang.org/api v0.151.0
 )
@@ -83,8 +83,8 @@ require (
 	go.opentelemetry.io/otel/sdk v1.24.0 // indirect
 	golang.org/x/crypto v0.22.0 // indirect
 	golang.org/x/net v0.24.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sys v0.23.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.4.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
