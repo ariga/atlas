@@ -793,7 +793,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		h    = sha256.New()
 	)
 	for i, stmt := range stmts {
-		if _, err := h.Write([]byte(stmt)); err != nil {
+		if _, err := h.Write([]byte(stmt.Text)); err != nil {
 			return err
 		}
 		sums[i] = base64.StdEncoding.EncodeToString(h.Sum(nil))
@@ -844,13 +844,13 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		return err
 	}
 	for _, stmt := range stmts[r.Applied:] {
-		e.log.Log(LogStmt{stmt})
-		if _, err = e.drv.ExecContext(ctx, stmt); err != nil {
-			e.log.Log(LogError{SQL: stmt, Error: err})
+		e.log.Log(LogStmt{SQL: stmt.Text, Stmt: stmt})
+		if _, err = e.drv.ExecContext(ctx, stmt.Text); err != nil {
+			e.log.Log(LogError{SQL: stmt.Text, Error: err})
 			r.done()
-			r.ErrorStmt = stmt
+			r.ErrorStmt = stmt.Text
 			r.Error = err.Error()
-			return fmt.Errorf("sql/migrate: executing statement %q from version %q: %w", stmt, r.Version, err)
+			return fmt.Errorf("sql/migrate: executing statement %q from version %q: %w", stmt.Text, r.Version, err)
 		}
 		r.PartialHashes = append(r.PartialHashes, "h1:"+sums[r.Applied])
 		r.Applied++
@@ -1135,7 +1135,8 @@ type (
 
 	// LogStmt is sent if a new SQL statement is executed.
 	LogStmt struct {
-		SQL string
+		SQL  string // SQL statement.
+		Stmt *Stmt  // Scanned statement with extra information.
 	}
 
 	// LogDone is sent if the execution is done.

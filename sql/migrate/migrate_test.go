@@ -606,10 +606,19 @@ func TestExecutor(t *testing.T) {
 	require.Equal(t, "1.a_sub.up.sql", (*log)[0].(migrate.LogExecution).Files[0].Name())
 	require.Equal(t, "2.10.x-20_description.sql", (*log)[0].(migrate.LogExecution).Files[1].Name())
 	require.IsType(t, migrate.LogFile{}, (*log)[1])
-	require.Equal(t, migrate.LogStmt{SQL: "CREATE TABLE t_sub(c int);"}, (*log)[2])
-	require.Equal(t, migrate.LogStmt{SQL: "ALTER TABLE t_sub ADD c1 int;"}, (*log)[3])
+	require.Equal(t, migrate.LogStmt{
+		SQL:  "CREATE TABLE t_sub(c int);",
+		Stmt: &migrate.Stmt{Pos: 24, Text: "CREATE TABLE t_sub(c int);", Comments: []string{"-- create table \"t_sub\"\n"}},
+	}, (*log)[2])
+	require.Equal(t, migrate.LogStmt{
+		SQL:  "ALTER TABLE t_sub ADD c1 int;",
+		Stmt: &migrate.Stmt{Pos: 68, Text: "ALTER TABLE t_sub ADD c1 int;", Comments: []string{"-- add c1 column\n"}},
+	}, (*log)[3])
 	require.IsType(t, migrate.LogFile{}, (*log)[4])
-	require.Equal(t, migrate.LogStmt{SQL: "ALTER TABLE t_sub ADD c2 int;"}, (*log)[5])
+	require.Equal(t, migrate.LogStmt{
+		SQL:  "ALTER TABLE t_sub ADD c2 int;",
+		Stmt: &migrate.Stmt{Pos: 17, Text: "ALTER TABLE t_sub ADD c2 int;", Comments: []string{"-- add c2 column\n"}},
+	}, (*log)[5])
 	require.Equal(t, migrate.LogDone{}, (*log)[6])
 
 	// Partly is pending.
