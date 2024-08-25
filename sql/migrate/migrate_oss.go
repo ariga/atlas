@@ -22,8 +22,8 @@ func (f *LocalFile) CheckpointTag() (string, error) {
 }
 
 // fileStmts returns the statements defined in the given file.
-func (e *Executor) fileStmts(f File) ([]string, error) {
-	return FileStmts(e.drv, f)
+func (e *Executor) fileStmts(f File) ([]*Stmt, error) {
+	return FileStmtDecls(e.drv, f)
 }
 
 func (e *Executor) fileChecks(context.Context, File, *Revision) error {

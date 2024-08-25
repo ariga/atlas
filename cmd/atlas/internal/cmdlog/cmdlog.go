@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
@@ -400,8 +401,8 @@ var (
 				Parse(`{{- if not .Pending -}}
 {{- println "No migration files to execute" }}
 {{- else -}}
-Migrating to version {{ cyan .Target }}{{ with .Current }} from {{ cyan . }}{{ end }} ({{ len .Pending }} migrations in total):
-{{ range $i, $f := .Applied }}
+{{- println .Header }}
+{{- range $i, $f := .Applied }}
 	{{- println }}
 	{{- $checkFailed := false }}
 	{{- range $cf := $f.Checks }}
@@ -560,7 +561,25 @@ func (a *MigrateApply) Log(e migrate.LogEntry) {
 	}
 }
 
-// Summary returns a footer of the migration attempt.
+// Header returns a header of the migration log.
+func (a *MigrateApply) Header() string {
+	if len(a.Pending) == 0 {
+		return "No migration files to execute"
+	}
+	var b strings.Builder
+	b.WriteString("Migrating to version ")
+	b.WriteString(ColorCyan(a.Target))
+	if a.Current != "" {
+		b.WriteString(" from ")
+		b.WriteString(ColorCyan(a.Current))
+	}
+	b.WriteString(" (")
+	b.WriteString(strconv.Itoa(len(a.Pending)))
+	b.WriteString(" migrations in total):")
+	return b.String()
+}
+
+// Summary returns a footer of the migration log.
 func (a *MigrateApply) Summary(ident string) string {
 	var (
 		passedC, failedC int
