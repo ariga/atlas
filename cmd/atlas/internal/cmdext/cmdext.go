@@ -502,6 +502,9 @@ func (c *AtlasConfig) InitBlock() schemahcl.Option {
 		if diags := gohcl.DecodeBody(block.Body, ectx, &args); diags.HasErrors() {
 			return cty.NilVal, fmt.Errorf("atlas.cloud: decoding body: %v", diags)
 		}
+		if args.Cloud.Token == "" {
+			return cty.NilVal, nil // If no token was set, the cloud is not initialized.
+		}
 		if args.Cloud.Project == "" {
 			args.Cloud.Project = cloudapi.DefaultProjectName
 		}
