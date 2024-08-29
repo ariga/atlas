@@ -38,6 +38,15 @@ apiKeySecret:
   key: api-key
 image:
   tag: "latest"
+livenessProbe:
+  httpGet:
+    path: /livez
+    port: 80
+readinessProbe:
+  initialDelaySeconds: 5
+  httpGet:
+    path: /readyz
+    port: 80
 extraEnvs:
   - name: ATLAS_AGENT_DB_PASSWORD
     valueFrom:
