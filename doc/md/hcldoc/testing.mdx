@@ -1,0 +1,545 @@
+---
+title: Atlas Testing
+id: testing
+slug: /hcl/testing
+---
+
+
+
+## `test migrate` {#test.migrate}
+The `test "migrate" "name"` block describes a migrate test case.
+
+~~~hcl
+test "migrate" "20240613061102" {
+  migrate {
+    to = "20240613061046"
+  }
+  exec {
+    sql = "INSERT INTO users (name) VALUES ('Ada Lovelace')"
+  }
+  migrate {
+    to = "20240613061102"
+  }
+  exec {
+    sql = "SELECT first_name,last_name FROM users"
+    output = "Ada, Lovelace"
+  }
+}
+~~~
+
+
+
+
+### Attributes {#test.migrate-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.migrate.skip"><a href="#test.migrate.skip"><code>skip</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+### Blocks {#test.migrate-blocks}
+
+
+
+    
+#### `test.assert` {#test.assert}
+
+
+##### `test.assert` attributes {#test.assert-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.assert.error_message"><a href="#test.assert.error_message"><code>error_message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.assert.sql"><a href="#test.assert.sql"><code>sql</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.assert` constraints {#test.assert-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `test.catch` {#test.catch}
+
+
+##### `test.catch` attributes {#test.catch-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.catch.error"><a href="#test.catch.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.catch.sql"><a href="#test.catch.sql"><code>sql</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.catch` constraints {#test.catch-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `test.exec` {#test.exec}
+
+
+##### `test.exec` attributes {#test.exec-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.exec.format"><a href="#test.exec.format"><code>format</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (csv, table)`
+  </td>
+
+  </tr>
+  <tr>
+      <td id="test.exec.match"><a href="#test.exec.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.exec.output"><a href="#test.exec.output"><code>output</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.exec.sql"><a href="#test.exec.sql"><code>sql</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.exec` constraints {#test.exec-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[output, match]`
+
+
+
+
+
+    
+#### `test.log` {#test.log}
+
+
+##### `test.log` attributes {#test.log-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.log.message"><a href="#test.log.message"><code>message</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.log` constraints {#test.log-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `test.migrate` {#test.migrate}
+
+
+##### `test.migrate` attributes {#test.migrate-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.migrate.to"><a href="#test.migrate.to"><code>to</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.migrate` constraints {#test.migrate-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#test.migrate-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `test schema` {#test.schema}
+The `test "schema" "name"` block describes a schema test case.
+
+~~~hcl
+test "schema" "postal" {
+  parallel = true
+  exec {
+    sql = "SELECT '12345'::us_postal_code"
+  }
+  catch {
+    sql = "SELECT 'hello'::us_postal_code"
+  }
+}
+~~~
+
+
+
+
+### Attributes {#test.schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.schema.parallel"><a href="#test.schema.parallel"><code>parallel</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="test.schema.skip"><a href="#test.schema.skip"><code>skip</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+### Blocks {#test.schema-blocks}
+
+
+
+    
+#### `test.assert` {#test.assert}
+
+
+##### `test.assert` attributes {#test.assert-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.assert.error_message"><a href="#test.assert.error_message"><code>error_message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.assert.sql"><a href="#test.assert.sql"><code>sql</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.assert` constraints {#test.assert-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `test.catch` {#test.catch}
+
+
+##### `test.catch` attributes {#test.catch-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.catch.error"><a href="#test.catch.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.catch.sql"><a href="#test.catch.sql"><code>sql</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.catch` constraints {#test.catch-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `test.exec` {#test.exec}
+
+
+##### `test.exec` attributes {#test.exec-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.exec.format"><a href="#test.exec.format"><code>format</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (csv, table)`
+  </td>
+
+  </tr>
+  <tr>
+      <td id="test.exec.match"><a href="#test.exec.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.exec.output"><a href="#test.exec.output"><code>output</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.exec.sql"><a href="#test.exec.sql"><code>sql</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.exec` constraints {#test.exec-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[output, match]`
+
+
+
+
+
+    
+#### `test.log` {#test.log}
+
+
+##### `test.log` attributes {#test.log-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.log.message"><a href="#test.log.message"><code>message</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.log` constraints {#test.log-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#test.schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+

@@ -175,8 +175,25 @@ module.exports = {
             ]
         },
         {
-            type: 'doc',
-            id: 'contributing',
+            type: 'category',
+            label: 'HCL Docs',
+            collapsed: true,
+            link: {
+                type: 'doc',
+                id: 'hcldoc/home',
+            },
+            items: [
+                {type: 'doc', id: 'hcldoc/postgres', label: 'PostgreSQL Schema'},
+                {type: 'doc', id: 'hcldoc/mysql', label: 'MySQL Schema'},
+                {type: 'doc', id: 'hcldoc/mariadb', label: 'MariaDB Schema'},
+                {type: 'doc', id: 'hcldoc/sqlite', label: 'SQLite Schema'},
+                {type: 'doc', id: 'hcldoc/clickhouse', label: 'ClickHouse Schema'},
+                {type: 'doc', id: 'hcldoc/mssql', label: 'SQL Server Schema'},
+                {type: 'doc', id: 'hcldoc/redshift', label: 'Redshift Schema'},
+                {type: 'doc', id: 'hcldoc/config', label: 'Atlas Config'},
+                {type: 'doc', id: 'hcldoc/testing', label: 'Atlas Testing'},
+                {type: 'doc', id: 'hcldoc/plan', label: 'Atlas Migration Plan'},
+            ]
         },
         {
             type: 'category',
@@ -201,6 +218,10 @@ module.exports = {
                     label: 'Data Privacy'
                 }
             ]
+        },
+        {
+            type: 'doc',
+            id: 'contributing',
         },
         {
             type: 'doc',

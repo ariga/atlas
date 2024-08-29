@@ -1,0 +1,74 @@
+---
+title: Atlas HCL Documentation
+slug: /hcl/docs
+---
+
+import { GuideCard } from "../home/components/guide-card";
+import { Layout } from "../home/components/layout";
+
+<Layout>
+
+### Driver Schemas
+
+
+<div className="grid grid-cols-1 lg:grid-cols-3 auto-cols-fr auto-rows-fr gap-2 mb-12 mt-6">
+  <GuideCard
+    name="PostgreSQL"
+    description="API Reference for PostgreSQL HCL Schema"
+    url="/hcl/postgres"
+  />
+  <GuideCard
+    name="MySQL"
+    description="API Reference for MySQL HCL Schema"
+    url="/hcl/mysql"
+  />
+  <GuideCard
+    name="MariaDB"
+    description="API Reference for MariaDB HCL Schema"
+    url="/hcl/mariadb"
+  />
+  <GuideCard
+    name="SQL Server"
+    description="API Reference for SQL Server HCL Schema"
+    url="/hcl/mssql"
+  />
+  <GuideCard
+    name="ClickHouse"
+    description="API Reference for ClickHouse HCL Schema"
+    url="/hcl/clickhouse"
+  />
+  <GuideCard
+    name="Redshift"
+    description="API Reference for Redshift HCL Schema"
+    url="/hcl/redshift"
+  />
+  <GuideCard
+    name="SQLite"
+    description="API Reference for SQLite HCL Schema"
+    url="/hcl/sqlite"
+  />
+</div>
+
+
+### Atlas HCL
+
+
+<div className="grid grid-cols-1 lg:grid-cols-3 auto-cols-fr auto-rows-fr gap-2 mb-12 mt-6">
+  <GuideCard
+    name="Atlas Configuration"
+    description="API Reference for Atlas Configuration HCL. Also known as: atlas.hcl"
+    url="/hcl/config"
+  />
+  <GuideCard
+    name="Atlas Testing"
+    description="API Reference for Atlas Testing HCL"
+    url="/hcl/testing"
+  />
+  <GuideCard
+    name="Atlas Migration Plan"
+    description="API Reference for Migration Plan definition in HCL"
+    url="/hcl/plan"
+  />
+</div>
+
+</Layout>
