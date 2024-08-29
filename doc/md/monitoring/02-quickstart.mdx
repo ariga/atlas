@@ -22,7 +22,7 @@ to see the database.
 
 ```shell
 docker network create atlas-agent-network
-docker run --network atlas-agent-network -p 33060:3306 -d --rm --name sakila sakiladb/mysql:8
+docker run --network atlas-agent-network -p 3306:3306 -d --rm --name sakila sakiladb/mysql:8
 ```
 
 [Sakila](https://dev.mysql.com/doc/sakila/en/) is a demo database by the MySQL team. It serves as an example database
