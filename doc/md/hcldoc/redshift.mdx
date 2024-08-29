@@ -1,0 +1,686 @@
+---
+title: Redshift Schema
+id: redshift
+slug: /hcl/redshift
+---
+
+
+
+## `materialized` {#materialized}
+The `materialized` block describes a materialized view in a database schema.
+
+~~~hcl
+materialized "name" {
+  schema = schema.public
+  column "total" {
+    null = true
+    type = numeric
+  }
+  ...
+}
+~~~
+
+
+
+
+### Attributes {#materialized-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="materialized.as"><a href="#materialized.as"><code>as</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="materialized.auto_refresh"><a href="#materialized.auto_refresh"><code>auto_refresh</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="materialized.comment"><a href="#materialized.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="materialized.depends_on"><a href="#materialized.depends_on"><code>depends_on</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of object references
+  </td>
+
+  </tr>
+  <tr>
+      <td id="materialized.schema"><a href="#materialized.schema"><code>schema</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`schema`](#schema)
+  </td>
+
+  </tr>
+</table>
+
+
+
+### Blocks {#materialized-blocks}
+
+
+
+    
+#### `materialized.column` {#materialized.column}
+
+
+##### `materialized.column` attributes {#materialized.column-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="materialized.column.comment"><a href="#materialized.column.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="materialized.column.null"><a href="#materialized.column.null"><code>null</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="materialized.column.type"><a href="#materialized.column.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Column type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `materialized.column` constraints {#materialized.column-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `materialized.distribution` {#materialized.distribution}
+
+
+##### `materialized.distribution` attributes {#materialized.distribution-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="materialized.distribution.column"><a href="#materialized.distribution.column"><code>column</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+Object reference
+  </td>
+
+  </tr>
+  <tr>
+      <td id="materialized.distribution.style"><a href="#materialized.distribution.style"><code>style</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (EVEN, ALL, KEY)`
+  </td>
+
+  </tr>
+</table>
+
+
+
+
+##### `materialized.distribution` constraints {#materialized.distribution-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `materialized.sort` {#materialized.sort}
+
+
+##### `materialized.sort` attributes {#materialized.sort-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="materialized.sort.columns"><a href="#materialized.sort.columns"><code>columns</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of object reference to [`column`](#materialized.column)
+  </td>
+
+  </tr>
+  <tr>
+      <td id="materialized.sort.style"><a href="#materialized.sort.style"><code>style</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (COMPOUND)`
+  </td>
+
+  </tr>
+</table>
+
+
+
+
+##### `materialized.sort` constraints {#materialized.sort-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#materialized-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `schema` {#schema}
+The `schema` block describes a database schema.
+
+~~~hcl
+schema "public" {
+  ...
+}
+~~~
+
+
+
+
+### Attributes {#schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="schema.comment"><a href="#schema.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="schema.name"><a href="#schema.name"><code>name</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `table` {#table}
+The `table` block describes a table in a database schema.
+
+~~~hcl
+table "users" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
+  ...
+}
+~~~
+
+
+
+
+### Attributes {#table-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.comment"><a href="#table.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.schema"><a href="#table.schema"><code>schema</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`schema`](#schema)
+  </td>
+
+  </tr>
+</table>
+
+
+
+### Blocks {#table-blocks}
+
+
+
+    
+#### `table.column` {#table.column}
+
+
+##### `table.column` attributes {#table.column-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.column.comment"><a href="#table.column.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.column.default"><a href="#table.column.default"><code>default</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Column default value can be one of:
+1. `bool`
+2. `string`
+3. `number`
+4. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+  <tr>
+      <td id="table.column.encode"><a href="#table.column.encode"><code>encode</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (RAW, AZ64, BYTEDICT, DELTA, DELTA32K, LZO, MOSTLY8, MOSTLY16, MOSTLY32, RUNLENGTH, TEXT255, TEXT32K, ZSTD)`
+  </td>
+
+  </tr>
+  <tr>
+      <td id="table.column.null"><a href="#table.column.null"><code>null</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="table.column.type"><a href="#table.column.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Column type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `table.column` constraints {#table.column-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `table.distribution` {#table.distribution}
+
+
+##### `table.distribution` attributes {#table.distribution-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.distribution.column"><a href="#table.distribution.column"><code>column</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+Object reference
+  </td>
+
+  </tr>
+  <tr>
+      <td id="table.distribution.style"><a href="#table.distribution.style"><code>style</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (EVEN, KEY, ALL, AUTO)`
+  </td>
+
+  </tr>
+</table>
+
+
+
+
+##### `table.distribution` constraints {#table.distribution-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `table.sort` {#table.sort}
+
+
+##### `table.sort` attributes {#table.sort-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.sort.columns"><a href="#table.sort.columns"><code>columns</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of object reference to [`column`](#table.column)
+  </td>
+
+  </tr>
+  <tr>
+      <td id="table.sort.style"><a href="#table.sort.style"><code>style</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (AUTO, COMPOUND, INTERLEAVED)`
+  </td>
+
+  </tr>
+</table>
+
+
+
+
+##### `table.sort` constraints {#table.sort-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#table-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `view` {#view}
+The `view` block describes a view in a database schema.
+
+~~~hcl
+view "clean_users" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
+  ...
+}
+~~~
+
+
+
+
+### Attributes {#view-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="view.as"><a href="#view.as"><code>as</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="view.comment"><a href="#view.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="view.depends_on"><a href="#view.depends_on"><code>depends_on</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of object references
+  </td>
+
+  </tr>
+  <tr>
+      <td id="view.schema"><a href="#view.schema"><code>schema</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`schema`](#schema)
+  </td>
+
+  </tr>
+</table>
+
+
+
+### Blocks {#view-blocks}
+
+
+
+    
+#### `view.column` {#view.column}
+
+
+##### `view.column` attributes {#view.column-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="view.column.comment"><a href="#view.column.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="view.column.null"><a href="#view.column.null"><code>null</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="view.column.type"><a href="#view.column.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Column type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `view.column` constraints {#view.column-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#view-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+

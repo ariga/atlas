@@ -1,0 +1,2663 @@
+---
+title: SQL Server Schema
+id: mssql
+slug: /hcl/mssql
+---
+
+
+
+## `function` {#function}
+The `function` block describes a function in a database schema.
+
+~~~hcl
+function "positive" {
+  schema = schema.public
+  lang   = SQL
+  arg "v" {
+    type = integer
+  }
+  ...
+}
+~~~
+
+
+
+
+### Attributes {#function-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="function.as"><a href="#function.as"><code>as</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="function.depends_on"><a href="#function.depends_on"><code>depends_on</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of object references
+  </td>
+
+  </tr>
+  <tr>
+      <td id="function.execute_as"><a href="#function.execute_as"><code>execute_as</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+The execution context of the function can be one of:
+1. Raw expression defined with `sql("expr")`
+2. `string`
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.inline"><a href="#function.inline"><code>inline</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="function.lang"><a href="#function.lang"><code>lang</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Function language can be one of:
+1. `string`
+2. `enum (SQL, CRL)`
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.null_call"><a href="#function.null_call"><code>null_call</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (CALLED, RETURNS_NULL)`
+  </td>
+
+  </tr>
+  <tr>
+      <td id="function.return"><a href="#function.return"><code>return</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Function return type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+3. Object reference to [`type_alias`](#type_alias)
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.schema"><a href="#function.schema"><code>schema</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`schema`](#schema)
+  </td>
+
+  </tr>
+  <tr>
+      <td id="function.schema_bound"><a href="#function.schema_bound"><code>schema_bound</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+### Blocks {#function-blocks}
+
+
+
+    
+#### `function.arg` {#function.arg}
+
+
+##### `function.arg` attributes {#function.arg-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="function.arg.default"><a href="#function.arg.default"><code>default</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Function argument default value can be one of:
+1. `bool`
+2. `string`
+3. `number`
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.arg.mode"><a href="#function.arg.mode"><code>mode</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Function argument mode can be one of:
+1. `string`
+2. `enum (IN, INOUT, OUT)`
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.arg.readonly"><a href="#function.arg.readonly"><code>readonly</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="function.arg.type"><a href="#function.arg.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Function argument type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+3. Object reference to [`type_alias`](#type_alias)
+4. Object reference to [`type_table`](#type_table)
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `function.arg` constraints {#function.arg-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `function.return_table` {#function.return_table}
+
+
+
+
+##### `function.return_table` blocks {#function.return_table-blocks}
+
+
+
+    
+#### `function.return_table.check` {#function.return_table.check}
+
+
+##### `function.return_table.check` attributes {#function.return_table.check-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="function.return_table.check.expr"><a href="#function.return_table.check.expr"><code>expr</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `function.return_table.check` constraints {#function.return_table.check-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `function.return_table.column` {#function.return_table.column}
+
+
+##### `function.return_table.column` attributes {#function.return_table.column-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="function.return_table.column.as"><a href="#function.return_table.column.as"><code>as</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.column.collate"><a href="#function.return_table.column.collate"><code>collate</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.column.comment"><a href="#function.return_table.column.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.column.default"><a href="#function.return_table.column.default"><code>default</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Column default value can be one of:
+1. `bool`
+2. `string`
+3. `number`
+4. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.return_table.column.null"><a href="#function.return_table.column.null"><code>null</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.column.type"><a href="#function.return_table.column.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Column type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+3. Object reference to [`type_alias`](#type_alias)
+
+</td>
+  </tr>
+</table>
+
+
+
+##### `function.return_table.column` blocks {#function.return_table.column-blocks}
+
+
+
+    
+#### `function.return_table.column.as` {#function.return_table.column.as}
+
+
+##### `function.return_table.column.as` attributes {#function.return_table.column.as-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="function.return_table.column.as.expr"><a href="#function.return_table.column.as.expr"><code>expr</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.column.as.type"><a href="#function.return_table.column.as.type"><code>type</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (PERSISTED)`
+  </td>
+
+  </tr>
+</table>
+
+
+
+
+##### `function.return_table.column.as` constraints {#function.return_table.column.as-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `function.return_table.column.identity` {#function.return_table.column.identity}
+
+
+##### `function.return_table.column.identity` attributes {#function.return_table.column.identity-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="function.return_table.column.identity.increment"><a href="#function.return_table.column.identity.increment"><code>increment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.column.identity.seed"><a href="#function.return_table.column.identity.seed"><code>seed</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `function.return_table.column.identity` constraints {#function.return_table.column.identity-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `function.return_table.column` constraints {#function.return_table.column-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `true`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[as (attribute), as (block)]`
+
+
+
+
+
+    
+#### `function.return_table.index` {#function.return_table.index}
+
+
+##### `function.return_table.index` attributes {#function.return_table.index-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="function.return_table.index.columns"><a href="#function.return_table.index.columns"><code>columns</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index columns can be one of:
+1. List of object reference to [`column`](#function.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.return_table.index.comment"><a href="#function.return_table.index.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.index.include"><a href="#function.return_table.index.include"><code>include</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index included columns can be one of:
+1. List of object reference to [`column`](#function.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.return_table.index.nonclustered"><a href="#function.return_table.index.nonclustered"><code>nonclustered</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.index.type"><a href="#function.return_table.index.type"><code>type</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index key type can be one of:
+1. `string`
+2. `enum (COLUMNSTORE, HASH, HEAP, SPATIAL, XML)`
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.return_table.index.unique"><a href="#function.return_table.index.unique"><code>unique</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.index.where"><a href="#function.return_table.index.where"><code>where</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+##### `function.return_table.index` blocks {#function.return_table.index-blocks}
+
+
+
+    
+#### `function.return_table.index.on` {#function.return_table.index.on}
+
+
+##### `function.return_table.index.on` attributes {#function.return_table.index.on-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="function.return_table.index.on.column"><a href="#function.return_table.index.on.column"><code>column</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index columns can be one of:
+1. Object reference to [`column`](#function.column)
+2. Object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.return_table.index.on.desc"><a href="#function.return_table.index.on.desc"><code>desc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.index.on.expr"><a href="#function.return_table.index.on.expr"><code>expr</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.index.on.ops"><a href="#function.return_table.index.on.ops"><code>ops</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index operator class can be one of:
+1. `string`
+2. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `function.return_table.index.on` constraints {#function.return_table.index.on-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[column, expr]`
+
+
+
+
+##### `function.return_table.index` constraints {#function.return_table.index-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[columns, on]`
+
+
+
+
+
+    
+#### `function.return_table.primary_key` {#function.return_table.primary_key}
+
+
+##### `function.return_table.primary_key` attributes {#function.return_table.primary_key-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="function.return_table.primary_key.columns"><a href="#function.return_table.primary_key.columns"><code>columns</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Primary key columns can be one of:
+1. List of object reference to [`column`](#function.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.return_table.primary_key.comment"><a href="#function.return_table.primary_key.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.primary_key.include"><a href="#function.return_table.primary_key.include"><code>include</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Primary key included columns can be one of:
+1. List of object reference to [`column`](#function.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="function.return_table.primary_key.nonclustered"><a href="#function.return_table.primary_key.nonclustered"><code>nonclustered</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="function.return_table.primary_key.type"><a href="#function.return_table.primary_key.type"><code>type</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index key type can be one of:
+1. `string`
+2. `enum (HASH)`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `function.return_table.primary_key` constraints {#function.return_table.primary_key-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `function.return_table` constraints {#function.return_table-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#function-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `procedure` {#procedure}
+The `procedure` block describes a procedure in a database schema.
+
+~~~hcl
+procedure "proc" {
+  schema = schema.public
+  lang   = SQL
+  arg "a" {
+    type = integer
+  }
+  ...
+}
+~~~
+
+
+
+
+### Attributes {#procedure-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="procedure.as"><a href="#procedure.as"><code>as</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="procedure.depends_on"><a href="#procedure.depends_on"><code>depends_on</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of object references
+  </td>
+
+  </tr>
+  <tr>
+      <td id="procedure.execute_as"><a href="#procedure.execute_as"><code>execute_as</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+The execution context of the procedure can be one of:
+1. Raw expression defined with `sql("expr")`
+2. `string`
+
+</td>
+  </tr>
+  <tr>
+      <td id="procedure.lang"><a href="#procedure.lang"><code>lang</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Procedure language can be one of:
+1. `string`
+2. `enum (SQL, CRL)`
+
+</td>
+  </tr>
+  <tr>
+      <td id="procedure.schema"><a href="#procedure.schema"><code>schema</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`schema`](#schema)
+  </td>
+
+  </tr>
+</table>
+
+
+
+### Blocks {#procedure-blocks}
+
+
+
+    
+#### `procedure.arg` {#procedure.arg}
+
+
+##### `procedure.arg` attributes {#procedure.arg-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="procedure.arg.default"><a href="#procedure.arg.default"><code>default</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Procedure argument default value can be one of:
+1. `bool`
+2. Raw expression defined with `sql("expr")`
+3. `string`
+4. `number`
+
+</td>
+  </tr>
+  <tr>
+      <td id="procedure.arg.mode"><a href="#procedure.arg.mode"><code>mode</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Procedure argument mode can be one of:
+1. `string`
+2. `enum (IN, INOUT, OUT)`
+
+</td>
+  </tr>
+  <tr>
+      <td id="procedure.arg.readonly"><a href="#procedure.arg.readonly"><code>readonly</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="procedure.arg.type"><a href="#procedure.arg.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Procedure argument type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+3. Object reference to [`type_alias`](#type_alias)
+4. Object reference to [`type_table`](#type_table)
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `procedure.arg` constraints {#procedure.arg-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#procedure-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `schema` {#schema}
+The `schema` block describes a database schema.
+
+~~~hcl
+schema "public" {
+  ...
+}
+~~~
+
+
+
+
+### Attributes {#schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="schema.name"><a href="#schema.name"><code>name</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `sequence` {#sequence}
+The `sequence` block describes a sequence in a database schema.
+
+~~~hcl
+sequence "name" {
+  schema    = schema.public
+  type      = int
+  increment = 3
+  min_value = 9
+}
+~~~
+
+
+
+
+### Attributes {#sequence-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="sequence.cache"><a href="#sequence.cache"><code>cache</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+  <tr>
+      <td id="sequence.cycle"><a href="#sequence.cycle"><code>cycle</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="sequence.increment"><a href="#sequence.increment"><code>increment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+  <tr>
+      <td id="sequence.max_value"><a href="#sequence.max_value"><code>max_value</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+  <tr>
+      <td id="sequence.min_value"><a href="#sequence.min_value"><code>min_value</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+  <tr>
+      <td id="sequence.schema"><a href="#sequence.schema"><code>schema</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`schema`](#schema)
+  </td>
+
+  </tr>
+  <tr>
+      <td id="sequence.start"><a href="#sequence.start"><code>start</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+  <tr>
+      <td id="sequence.type"><a href="#sequence.type"><code>type</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Sequence type can be one of:
+1. Schema type
+2. Object reference to [`type_alias`](#type_alias)
+
+</td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#sequence-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `table` {#table}
+The `table` block describes a table in a database schema.
+
+~~~hcl
+table "users" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
+  ...
+}
+~~~
+
+
+
+
+### Attributes {#table-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.comment"><a href="#table.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.depends_on"><a href="#table.depends_on"><code>depends_on</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of object references
+  </td>
+
+  </tr>
+  <tr>
+      <td id="table.memory_optimized"><a href="#table.memory_optimized"><code>memory_optimized</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="table.schema"><a href="#table.schema"><code>schema</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`schema`](#schema)
+  </td>
+
+  </tr>
+</table>
+
+
+
+### Blocks {#table-blocks}
+
+
+
+    
+#### `table.check` {#table.check}
+
+
+##### `table.check` attributes {#table.check-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.check.expr"><a href="#table.check.expr"><code>expr</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `table.check` constraints {#table.check-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `table.column` {#table.column}
+
+
+##### `table.column` attributes {#table.column-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.column.as"><a href="#table.column.as"><code>as</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.column.collate"><a href="#table.column.collate"><code>collate</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.column.comment"><a href="#table.column.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.column.default"><a href="#table.column.default"><code>default</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Column default value can be one of:
+1. `bool`
+2. `string`
+3. `number`
+4. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+  <tr>
+      <td id="table.column.null"><a href="#table.column.null"><code>null</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="table.column.type"><a href="#table.column.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Column type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+3. Object reference to [`type_alias`](#type_alias)
+
+</td>
+  </tr>
+</table>
+
+
+
+##### `table.column` blocks {#table.column-blocks}
+
+
+
+    
+#### `table.column.as` {#table.column.as}
+
+
+##### `table.column.as` attributes {#table.column.as-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.column.as.expr"><a href="#table.column.as.expr"><code>expr</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.column.as.type"><a href="#table.column.as.type"><code>type</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (PERSISTED)`
+  </td>
+
+  </tr>
+</table>
+
+
+
+
+##### `table.column.as` constraints {#table.column.as-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `table.column.identity` {#table.column.identity}
+
+
+##### `table.column.identity` attributes {#table.column.identity-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.column.identity.increment"><a href="#table.column.identity.increment"><code>increment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+  <tr>
+      <td id="table.column.identity.seed"><a href="#table.column.identity.seed"><code>seed</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `table.column.identity` constraints {#table.column.identity-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `table.column` constraints {#table.column-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[as (attribute), as (block)]`
+
+
+
+
+
+    
+#### `table.foreign_key` {#table.foreign_key}
+
+
+##### `table.foreign_key` attributes {#table.foreign_key-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.foreign_key.columns"><a href="#table.foreign_key.columns"><code>columns</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Foreign key columns can be one of:
+1. List of object reference to [`column`](#table.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="table.foreign_key.comment"><a href="#table.foreign_key.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.foreign_key.on_delete"><a href="#table.foreign_key.on_delete"><code>on_delete</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (NO_ACTION, RESTRICT, CASCADE, SET_NULL, SET_DEFAULT)`
+  </td>
+
+  </tr>
+  <tr>
+      <td id="table.foreign_key.on_update"><a href="#table.foreign_key.on_update"><code>on_update</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (NO_ACTION, RESTRICT, CASCADE, SET_NULL, SET_DEFAULT)`
+  </td>
+
+  </tr>
+  <tr>
+      <td id="table.foreign_key.ref_columns"><a href="#table.foreign_key.ref_columns"><code>ref_columns</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Foreign key reference columns can be one of:
+1. List of object reference to [`column`](#table.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `table.foreign_key` constraints {#table.foreign_key-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `table.index` {#table.index}
+
+
+##### `table.index` attributes {#table.index-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.index.columns"><a href="#table.index.columns"><code>columns</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index columns can be one of:
+1. List of object reference to [`column`](#table.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="table.index.comment"><a href="#table.index.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.index.include"><a href="#table.index.include"><code>include</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index included columns can be one of:
+1. List of object reference to [`column`](#table.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="table.index.nonclustered"><a href="#table.index.nonclustered"><code>nonclustered</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="table.index.type"><a href="#table.index.type"><code>type</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index key type can be one of:
+1. `string`
+2. `enum (COLUMNSTORE, HASH, HEAP, SPATIAL, XML)`
+
+</td>
+  </tr>
+  <tr>
+      <td id="table.index.unique"><a href="#table.index.unique"><code>unique</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="table.index.where"><a href="#table.index.where"><code>where</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+##### `table.index` blocks {#table.index-blocks}
+
+
+
+    
+#### `table.index.on` {#table.index.on}
+
+
+##### `table.index.on` attributes {#table.index.on-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.index.on.column"><a href="#table.index.on.column"><code>column</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index columns can be one of:
+1. Object reference to [`column`](#table.column)
+2. Object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="table.index.on.desc"><a href="#table.index.on.desc"><code>desc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="table.index.on.expr"><a href="#table.index.on.expr"><code>expr</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.index.on.ops"><a href="#table.index.on.ops"><code>ops</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index operator class can be one of:
+1. `string`
+2. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `table.index.on` constraints {#table.index.on-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[column, expr]`
+
+
+
+
+##### `table.index` constraints {#table.index-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[columns, on]`
+
+
+
+
+
+    
+#### `table.primary_key` {#table.primary_key}
+
+
+##### `table.primary_key` attributes {#table.primary_key-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.primary_key.columns"><a href="#table.primary_key.columns"><code>columns</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Primary key columns can be one of:
+1. List of object reference to [`column`](#table.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="table.primary_key.comment"><a href="#table.primary_key.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.primary_key.include"><a href="#table.primary_key.include"><code>include</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Primary key included columns can be one of:
+1. List of object reference to [`column`](#table.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="table.primary_key.nonclustered"><a href="#table.primary_key.nonclustered"><code>nonclustered</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="table.primary_key.type"><a href="#table.primary_key.type"><code>type</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index key type can be one of:
+1. `string`
+2. `enum (HASH)`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `table.primary_key` constraints {#table.primary_key-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#table-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `trigger` {#trigger}
+The `trigger` block describes a trigger on a table in a database schema.
+
+~~~hcl
+trigger "trigger_orders_audit" {
+  on = table.orders
+  ...
+}
+~~~
+
+
+
+
+### Attributes {#trigger-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="trigger.as"><a href="#trigger.as"><code>as</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="trigger.execute_as"><a href="#trigger.execute_as"><code>execute_as</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+The execution context of the trigger can be one of:
+1. Raw expression defined with `sql("expr")`
+2. `string`
+
+</td>
+  </tr>
+  <tr>
+      <td id="trigger.on"><a href="#trigger.on"><code>on</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Trigger on can be one of:
+1. Object reference to [`table`](#table)
+2. Object reference to [`view`](#view)
+
+</td>
+  </tr>
+  <tr>
+      <td id="trigger.schema_bound"><a href="#trigger.schema_bound"><code>schema_bound</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+### Blocks {#trigger-blocks}
+
+
+
+    
+#### `trigger.after` {#trigger.after}
+
+
+##### `trigger.after` attributes {#trigger.after-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="trigger.after.delete"><a href="#trigger.after.delete"><code>delete</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="trigger.after.insert"><a href="#trigger.after.insert"><code>insert</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="trigger.after.update"><a href="#trigger.after.update"><code>update</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `trigger.after` constraints {#trigger.after-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| One of required sets       | `[insert, delete, update]`
+
+
+
+
+
+    
+#### `trigger.instead_of` {#trigger.instead_of}
+
+
+##### `trigger.instead_of` attributes {#trigger.instead_of-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="trigger.instead_of.delete"><a href="#trigger.instead_of.delete"><code>delete</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="trigger.instead_of.insert"><a href="#trigger.instead_of.insert"><code>insert</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="trigger.instead_of.update"><a href="#trigger.instead_of.update"><code>update</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `trigger.instead_of` constraints {#trigger.instead_of-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| One of required sets       | `[insert, delete, update]`
+
+
+
+
+### Constraints {#trigger-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[after, instead_of]`
+| One of required sets       | `[after, instead_of]`
+
+
+
+
+
+## `type_alias` {#type_alias}
+
+
+### Attributes {#type_alias-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="type_alias.null"><a href="#type_alias.null"><code>null</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="type_alias.schema"><a href="#type_alias.schema"><code>schema</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`schema`](#schema)
+  </td>
+
+  </tr>
+  <tr>
+      <td id="type_alias.type"><a href="#type_alias.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Base type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#type_alias-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `type_table` {#type_table}
+
+
+### Attributes {#type_table-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="type_table.schema"><a href="#type_table.schema"><code>schema</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`schema`](#schema)
+  </td>
+
+  </tr>
+</table>
+
+
+
+### Blocks {#type_table-blocks}
+
+
+
+    
+#### `type_table.check` {#type_table.check}
+
+
+##### `type_table.check` attributes {#type_table.check-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="type_table.check.expr"><a href="#type_table.check.expr"><code>expr</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `type_table.check` constraints {#type_table.check-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `type_table.column` {#type_table.column}
+
+
+##### `type_table.column` attributes {#type_table.column-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="type_table.column.as"><a href="#type_table.column.as"><code>as</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.column.collate"><a href="#type_table.column.collate"><code>collate</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.column.comment"><a href="#type_table.column.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.column.default"><a href="#type_table.column.default"><code>default</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Column default value can be one of:
+1. `bool`
+2. `string`
+3. `number`
+4. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+  <tr>
+      <td id="type_table.column.null"><a href="#type_table.column.null"><code>null</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.column.type"><a href="#type_table.column.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Column type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+3. Object reference to [`type_alias`](#type_alias)
+
+</td>
+  </tr>
+</table>
+
+
+
+##### `type_table.column` blocks {#type_table.column-blocks}
+
+
+
+    
+#### `type_table.column.as` {#type_table.column.as}
+
+
+##### `type_table.column.as` attributes {#type_table.column.as-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="type_table.column.as.expr"><a href="#type_table.column.as.expr"><code>expr</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.column.as.type"><a href="#type_table.column.as.type"><code>type</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (PERSISTED)`
+  </td>
+
+  </tr>
+</table>
+
+
+
+
+##### `type_table.column.as` constraints {#type_table.column.as-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `type_table.column.identity` {#type_table.column.identity}
+
+
+##### `type_table.column.identity` attributes {#type_table.column.identity-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="type_table.column.identity.increment"><a href="#type_table.column.identity.increment"><code>increment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.column.identity.seed"><a href="#type_table.column.identity.seed"><code>seed</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `type_table.column.identity` constraints {#type_table.column.identity-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `type_table.column` constraints {#type_table.column-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `true`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[as (attribute), as (block)]`
+
+
+
+
+
+    
+#### `type_table.index` {#type_table.index}
+
+
+##### `type_table.index` attributes {#type_table.index-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="type_table.index.columns"><a href="#type_table.index.columns"><code>columns</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index columns can be one of:
+1. List of object reference to [`column`](#type_table.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="type_table.index.comment"><a href="#type_table.index.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.index.include"><a href="#type_table.index.include"><code>include</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index included columns can be one of:
+1. List of object reference to [`column`](#type_table.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="type_table.index.nonclustered"><a href="#type_table.index.nonclustered"><code>nonclustered</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.index.type"><a href="#type_table.index.type"><code>type</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index key type can be one of:
+1. `string`
+2. `enum (COLUMNSTORE, HASH, HEAP, SPATIAL, XML)`
+
+</td>
+  </tr>
+  <tr>
+      <td id="type_table.index.unique"><a href="#type_table.index.unique"><code>unique</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.index.where"><a href="#type_table.index.where"><code>where</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+##### `type_table.index` blocks {#type_table.index-blocks}
+
+
+
+    
+#### `type_table.index.on` {#type_table.index.on}
+
+
+##### `type_table.index.on` attributes {#type_table.index.on-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="type_table.index.on.column"><a href="#type_table.index.on.column"><code>column</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index columns can be one of:
+1. Object reference to [`column`](#type_table.column)
+2. Object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="type_table.index.on.desc"><a href="#type_table.index.on.desc"><code>desc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.index.on.expr"><a href="#type_table.index.on.expr"><code>expr</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.index.on.ops"><a href="#type_table.index.on.ops"><code>ops</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index operator class can be one of:
+1. `string`
+2. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `type_table.index.on` constraints {#type_table.index.on-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[column, expr]`
+
+
+
+
+##### `type_table.index` constraints {#type_table.index-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[columns, on]`
+
+
+
+
+
+    
+#### `type_table.primary_key` {#type_table.primary_key}
+
+
+##### `type_table.primary_key` attributes {#type_table.primary_key-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="type_table.primary_key.columns"><a href="#type_table.primary_key.columns"><code>columns</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Primary key columns can be one of:
+1. List of object reference to [`column`](#type_table.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="type_table.primary_key.comment"><a href="#type_table.primary_key.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.primary_key.include"><a href="#type_table.primary_key.include"><code>include</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Primary key included columns can be one of:
+1. List of object reference to [`column`](#type_table.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="type_table.primary_key.nonclustered"><a href="#type_table.primary_key.nonclustered"><code>nonclustered</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="type_table.primary_key.type"><a href="#type_table.primary_key.type"><code>type</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index key type can be one of:
+1. `string`
+2. `enum (HASH)`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `type_table.primary_key` constraints {#type_table.primary_key-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#type_table-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `view` {#view}
+The `view` block describes a view in a database schema.
+
+~~~hcl
+view "clean_users" {
+  schema = schema.public
+  column "id" {
+    type = int
+  }
+  ...
+}
+~~~
+
+
+
+
+### Attributes {#view-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="view.as"><a href="#view.as"><code>as</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="view.check_option"><a href="#view.check_option"><code>check_option</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (LOCAL, LOCAL, CASCADED)`
+  </td>
+
+  </tr>
+  <tr>
+      <td id="view.comment"><a href="#view.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="view.depends_on"><a href="#view.depends_on"><code>depends_on</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of object references
+  </td>
+
+  </tr>
+  <tr>
+      <td id="view.schema"><a href="#view.schema"><code>schema</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`schema`](#schema)
+  </td>
+
+  </tr>
+  <tr>
+      <td id="view.schema_bound"><a href="#view.schema_bound"><code>schema_bound</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+### Blocks {#view-blocks}
+
+
+
+    
+#### `view.column` {#view.column}
+
+
+##### `view.column` attributes {#view.column-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="view.column.null"><a href="#view.column.null"><code>null</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="view.column.type"><a href="#view.column.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Column type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+3. Object reference to [`type_alias`](#type_alias)
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `view.column` constraints {#view.column-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `view.index` {#view.index}
+
+
+##### `view.index` attributes {#view.index-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="view.index.columns"><a href="#view.index.columns"><code>columns</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index columns can be one of:
+1. List of object reference to [`column`](#view.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="view.index.comment"><a href="#view.index.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="view.index.include"><a href="#view.index.include"><code>include</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index included columns can be one of:
+1. List of object reference to [`column`](#view.column)
+2. List of object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="view.index.nonclustered"><a href="#view.index.nonclustered"><code>nonclustered</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="view.index.type"><a href="#view.index.type"><code>type</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index key type can be one of:
+1. `string`
+2. `enum (COLUMNSTORE, HASH, HEAP, SPATIAL, XML)`
+
+</td>
+  </tr>
+  <tr>
+      <td id="view.index.unique"><a href="#view.index.unique"><code>unique</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="view.index.where"><a href="#view.index.where"><code>where</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+##### `view.index` blocks {#view.index-blocks}
+
+
+
+    
+#### `view.index.on` {#view.index.on}
+
+
+##### `view.index.on` attributes {#view.index.on-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="view.index.on.column"><a href="#view.index.on.column"><code>column</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index columns can be one of:
+1. Object reference to [`column`](#view.column)
+2. Object reference to [`table.column`](#table.column)
+
+</td>
+  </tr>
+  <tr>
+      <td id="view.index.on.desc"><a href="#view.index.on.desc"><code>desc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="view.index.on.expr"><a href="#view.index.on.expr"><code>expr</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="view.index.on.ops"><a href="#view.index.on.ops"><code>ops</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Index operator class can be one of:
+1. `string`
+2. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `view.index.on` constraints {#view.index.on-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[column, expr]`
+
+
+
+
+##### `view.index` constraints {#view.index-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[columns, on]`
+
+
+
+
+### Constraints {#view-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+

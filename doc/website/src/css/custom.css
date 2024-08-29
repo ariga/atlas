@@ -241,14 +241,28 @@ div[class^='announcementBar_']  a.cta {
   width:100%;
 }
 
-/* Full-width supported ORMs table. */
-.docs-doc-id-atlas-schema\/external-schema table {
+/* Full-width checks table. */
+.docs-doc-id-lint\/analyzers table {
   display:table;
   width:100%;
 }
 
 .docs-doc-id-atlas-schema\/external-schema table td:first-child {
   width: 20%;
+}
+
+/* Full-width supported HCL doc table. */
+html[class*="docs-doc-id-hcldoc"] table {
+  display:table;
+  width:100%;
+}
+
+.attributes-table td:nth-child(2) {
+  width: 10px;
+}
+
+.no-margin-bottom p:last-child {
+  margin-bottom: 0;
 }
 
 .join-discord {

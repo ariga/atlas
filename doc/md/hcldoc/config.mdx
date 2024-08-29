@@ -1,0 +1,3906 @@
+---
+title: Atlas Configuration
+id: config
+slug: /hcl/config
+---
+
+
+
+## `atlas` {#atlas}
+The `atlas` is an optional block for login to Atlas Cloud.
+
+
+
+
+### Blocks {#atlas-blocks}
+
+
+
+    
+#### `atlas.cloud` {#atlas.cloud}
+
+
+##### `atlas.cloud` attributes {#atlas.cloud-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="atlas.cloud.token"><a href="#atlas.cloud.token"><code>token</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `atlas.cloud` constraints {#atlas.cloud-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `true`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#atlas-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Allow Qualifier             |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `data aws_rds_token` {#data.aws_rds_token}
+The `aws_rds_token` data source generates a short-lived token for an AWS RDS database using IAM Authentication.
+
+~~~hcl
+data "aws_rds_token" "db" {
+  region = "us-east-1"
+  endpoint = local.endpoint
+  username = local.user
+}
+~~~
+
+
+
+
+### Attributes {#data.aws_rds_token-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="data.aws_rds_token.endpoint"><a href="#data.aws_rds_token.endpoint"><code>endpoint</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="data.aws_rds_token.region"><a href="#data.aws_rds_token.region"><code>region</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="data.aws_rds_token.username"><a href="#data.aws_rds_token.username"><code>username</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#data.aws_rds_token-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `data composite_schema` {#data.composite_schema}
+The `composite_schema` data source allows the composition of multiple Atlas schemas into a unified schema graph.
+
+~~~hcl
+data "composite_schema" "app" {
+  schema "inventory" {
+    url = data.external_schema.sqlalchemy.url
+  }
+  schema "graph" {
+    url = "ent://ent/schema"
+  }
+  ...
+}
+~~~
+
+
+
+
+
+
+### Blocks {#data.composite_schema-blocks}
+
+
+
+    
+#### `data.schema` {#data.schema}
+
+
+##### `data.schema` attributes {#data.schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="data.schema.url"><a href="#data.schema.url"><code>url</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Composite_schema url can be one of:
+1. Object reference
+2. `string`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `data.schema` constraints {#data.schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `true`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#data.composite_schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `data external` {#data.external}
+The `external` allows the execution of an external program and uses its output in the project.
+
+~~~hcl
+data "external" "dot_env" {
+  program = [
+    "npm",
+    "run",
+    "load-env.js"
+  ]
+}
+~~~
+
+
+
+
+### Attributes {#data.external-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="data.external.program"><a href="#data.external.program"><code>program</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="data.external.working_dir"><a href="#data.external.working_dir"><code>working_dir</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#data.external-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `data external_schema` {#data.external_schema}
+The `external_schema` data source allows the import of an SQL schema from an external program into Atlas' desired state.
+
+~~~hcl
+data "external_schema" "graph" {
+  program = [
+    "npm",
+    "run",
+    "generate-schema"
+  ]
+}
+~~~
+
+
+
+
+### Attributes {#data.external_schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="data.external_schema.program"><a href="#data.external_schema.program"><code>program</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="data.external_schema.working_dir"><a href="#data.external_schema.working_dir"><code>working_dir</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#data.external_schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `data gcp_cloudsql_token` {#data.gcp_cloudsql_token}
+The `gcp_cloudsql_token` data source generates a short-lived token for an GCP CloudSQL database using IAM Authentication.
+
+~~~hcl
+data "gcp_cloudsql_token" "db" {}
+~~~
+
+
+
+
+### Attributes {#data.gcp_cloudsql_token-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="data.gcp_cloudsql_token.region"><a href="#data.gcp_cloudsql_token.region"><code>region</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#data.gcp_cloudsql_token-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `data hcl_schema` {#data.hcl_schema}
+The `hcl_schema` data source allows the loading of an Atlas HCL schema from a file or directory, with optional variables.
+
+~~~hcl
+data "hcl_schema" "app" {
+  path = "schema.hcl"
+  vars = {
+    tenant = var.tenant
+  }
+}
+~~~
+
+
+
+
+### Attributes {#data.hcl_schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="data.hcl_schema.path"><a href="#data.hcl_schema.path"><code>path</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="data.hcl_schema.paths"><a href="#data.hcl_schema.paths"><code>paths</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="data.hcl_schema.vars"><a href="#data.hcl_schema.vars"><code>vars</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#data.hcl_schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `data remote_dir` {#data.remote_dir}
+The `remote_dir` data source reads the state of a migration directory from Atlas Cloud.
+
+~~~hcl
+data "remote_dir" "migrations" {
+  name = "myapp"
+}
+~~~
+
+
+
+
+### Attributes {#data.remote_dir-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="data.remote_dir.name"><a href="#data.remote_dir.name"><code>name</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="data.remote_dir.tag"><a href="#data.remote_dir.tag"><code>tag</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#data.remote_dir-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `data remote_schema` {#data.remote_schema}
+
+
+### Attributes {#data.remote_schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="data.remote_schema.name"><a href="#data.remote_schema.name"><code>name</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="data.remote_schema.tag"><a href="#data.remote_schema.tag"><code>tag</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="data.remote_schema.version"><a href="#data.remote_schema.version"><code>version</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#data.remote_schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `data runtimevar` {#data.runtimevar}
+The `runtimevar` data source allows fetching runtime variables from a remote source.
+
+
+
+
+### Attributes {#data.runtimevar-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="data.runtimevar.url"><a href="#data.runtimevar.url"><code>url</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#data.runtimevar-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `data sql` {#data.sql}
+The `sql` data source allows executing SQL queries and using their result in the project.
+
+~~~hcl
+data "sql" "tenants" {
+  url   = var.url
+  query = "..."
+  args  = [var.pattern]
+}
+~~~
+
+
+
+
+### Attributes {#data.sql-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="data.sql.args"><a href="#data.sql.args"><code>args</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+Any value
+  </td>
+
+  </tr>
+  <tr>
+      <td id="data.sql.query"><a href="#data.sql.query"><code>query</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="data.sql.url"><a href="#data.sql.url"><code>url</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#data.sql-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `data template_dir` {#data.template_dir}
+The `template_dir` data source renders a migration directory from a template directory.
+
+~~~hcl
+data "template_dir" "app" {
+  path = var.path
+  vars = {
+    Key1 = "value1"
+    Key2 = "value2"
+  }
+}
+~~~
+
+
+
+
+### Attributes {#data.template_dir-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="data.template_dir.path"><a href="#data.template_dir.path"><code>path</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="data.template_dir.vars"><a href="#data.template_dir.vars"><code>vars</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#data.template_dir-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `diff` {#diff}
+The `diff` block defines the diffing configuration
+
+~~~hcl
+diff {
+  concurrent_index {
+    add  = true
+    drop = true
+  }
+}
+~~~
+
+
+
+
+
+
+### Blocks {#diff-blocks}
+
+
+
+    
+#### `diff.concurrent_index` {#diff.concurrent_index}
+
+
+##### `diff.concurrent_index` attributes {#diff.concurrent_index-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="diff.concurrent_index.add"><a href="#diff.concurrent_index.add"><code>add</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.concurrent_index.create"><a href="#diff.concurrent_index.create"><code>create</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.concurrent_index.drop"><a href="#diff.concurrent_index.drop"><code>drop</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `diff.concurrent_index` constraints {#diff.concurrent_index-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `diff.skip` {#diff.skip}
+
+
+##### `diff.skip` attributes {#diff.skip-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="diff.skip.add_column"><a href="#diff.skip.add_column"><code>add_column</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.add_foreign_key"><a href="#diff.skip.add_foreign_key"><code>add_foreign_key</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.add_func"><a href="#diff.skip.add_func"><code>add_func</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.add_index"><a href="#diff.skip.add_index"><code>add_index</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.add_proc"><a href="#diff.skip.add_proc"><code>add_proc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.add_schema"><a href="#diff.skip.add_schema"><code>add_schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.add_table"><a href="#diff.skip.add_table"><code>add_table</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.add_trigger"><a href="#diff.skip.add_trigger"><code>add_trigger</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.add_view"><a href="#diff.skip.add_view"><code>add_view</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.drop_column"><a href="#diff.skip.drop_column"><code>drop_column</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.drop_foreign_key"><a href="#diff.skip.drop_foreign_key"><code>drop_foreign_key</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.drop_func"><a href="#diff.skip.drop_func"><code>drop_func</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.drop_index"><a href="#diff.skip.drop_index"><code>drop_index</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.drop_proc"><a href="#diff.skip.drop_proc"><code>drop_proc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.drop_schema"><a href="#diff.skip.drop_schema"><code>drop_schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.drop_table"><a href="#diff.skip.drop_table"><code>drop_table</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.drop_trigger"><a href="#diff.skip.drop_trigger"><code>drop_trigger</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.drop_view"><a href="#diff.skip.drop_view"><code>drop_view</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.modify_column"><a href="#diff.skip.modify_column"><code>modify_column</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.modify_foreign_key"><a href="#diff.skip.modify_foreign_key"><code>modify_foreign_key</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.modify_func"><a href="#diff.skip.modify_func"><code>modify_func</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.modify_index"><a href="#diff.skip.modify_index"><code>modify_index</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.modify_proc"><a href="#diff.skip.modify_proc"><code>modify_proc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.modify_schema"><a href="#diff.skip.modify_schema"><code>modify_schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.modify_table"><a href="#diff.skip.modify_table"><code>modify_table</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.modify_trigger"><a href="#diff.skip.modify_trigger"><code>modify_trigger</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.modify_view"><a href="#diff.skip.modify_view"><code>modify_view</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.rename_func"><a href="#diff.skip.rename_func"><code>rename_func</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.rename_proc"><a href="#diff.skip.rename_proc"><code>rename_proc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.rename_table"><a href="#diff.skip.rename_table"><code>rename_table</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.rename_trigger"><a href="#diff.skip.rename_trigger"><code>rename_trigger</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="diff.skip.rename_view"><a href="#diff.skip.rename_view"><code>rename_view</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `diff.skip` constraints {#diff.skip-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#diff-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Allow Qualifier             |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `docker clickhouse` {#docker.clickhouse}
+
+
+### Attributes {#docker.clickhouse-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="docker.clickhouse.baseline"><a href="#docker.clickhouse.baseline"><code>baseline</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.clickhouse.image"><a href="#docker.clickhouse.image"><code>image</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.clickhouse.schema"><a href="#docker.clickhouse.schema"><code>schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#docker.clickhouse-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `docker mariadb` {#docker.mariadb}
+
+
+### Attributes {#docker.mariadb-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="docker.mariadb.baseline"><a href="#docker.mariadb.baseline"><code>baseline</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.mariadb.image"><a href="#docker.mariadb.image"><code>image</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.mariadb.schema"><a href="#docker.mariadb.schema"><code>schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#docker.mariadb-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `docker mysql` {#docker.mysql}
+
+
+### Attributes {#docker.mysql-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="docker.mysql.baseline"><a href="#docker.mysql.baseline"><code>baseline</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.mysql.image"><a href="#docker.mysql.image"><code>image</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.mysql.schema"><a href="#docker.mysql.schema"><code>schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#docker.mysql-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `docker postgres` {#docker.postgres}
+
+
+### Attributes {#docker.postgres-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="docker.postgres.baseline"><a href="#docker.postgres.baseline"><code>baseline</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.postgres.database"><a href="#docker.postgres.database"><code>database</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.postgres.image"><a href="#docker.postgres.image"><code>image</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.postgres.schema"><a href="#docker.postgres.schema"><code>schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#docker.postgres-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `docker sqlserver` {#docker.sqlserver}
+
+
+### Attributes {#docker.sqlserver-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="docker.sqlserver.baseline"><a href="#docker.sqlserver.baseline"><code>baseline</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.sqlserver.database"><a href="#docker.sqlserver.database"><code>database</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.sqlserver.image"><a href="#docker.sqlserver.image"><code>image</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.sqlserver.schema"><a href="#docker.sqlserver.schema"><code>schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+### Constraints {#docker.sqlserver-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `env` {#env}
+The `env` block describes an environment block that can be selected by using the `--env` flag.
+
+
+
+
+### Attributes {#env-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.dev"><a href="#env.dev"><code>dev</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.exclude"><a href="#env.exclude"><code>exclude</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="env.name"><a href="#env.name"><code>name</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.schemas"><a href="#env.schemas"><code>schemas</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="env.src"><a href="#env.src"><code>src</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Schema source can be one of:
+1. Object reference
+2. `string`
+3. List of strings
+
+</td>
+  </tr>
+  <tr>
+      <td id="env.url"><a href="#env.url"><code>url</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+### Blocks {#env-blocks}
+
+
+
+    
+#### `env.diff` {#env.diff}
+The `diff` block defines the diffing configuration
+
+~~~hcl
+diff {
+  concurrent_index {
+    add  = true
+    drop = true
+  }
+}
+~~~
+
+
+
+
+
+
+##### `env.diff` blocks {#env.diff-blocks}
+
+
+
+    
+#### `env.diff.concurrent_index` {#env.diff.concurrent_index}
+
+
+##### `env.diff.concurrent_index` attributes {#env.diff.concurrent_index-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.diff.concurrent_index.add"><a href="#env.diff.concurrent_index.add"><code>add</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.concurrent_index.create"><a href="#env.diff.concurrent_index.create"><code>create</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.concurrent_index.drop"><a href="#env.diff.concurrent_index.drop"><code>drop</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.diff.concurrent_index` constraints {#env.diff.concurrent_index-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.diff.skip` {#env.diff.skip}
+
+
+##### `env.diff.skip` attributes {#env.diff.skip-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.add_column"><a href="#env.diff.skip.add_column"><code>add_column</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.add_foreign_key"><a href="#env.diff.skip.add_foreign_key"><code>add_foreign_key</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.add_func"><a href="#env.diff.skip.add_func"><code>add_func</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.add_index"><a href="#env.diff.skip.add_index"><code>add_index</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.add_proc"><a href="#env.diff.skip.add_proc"><code>add_proc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.add_schema"><a href="#env.diff.skip.add_schema"><code>add_schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.add_table"><a href="#env.diff.skip.add_table"><code>add_table</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.add_trigger"><a href="#env.diff.skip.add_trigger"><code>add_trigger</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.add_view"><a href="#env.diff.skip.add_view"><code>add_view</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.drop_column"><a href="#env.diff.skip.drop_column"><code>drop_column</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.drop_foreign_key"><a href="#env.diff.skip.drop_foreign_key"><code>drop_foreign_key</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.drop_func"><a href="#env.diff.skip.drop_func"><code>drop_func</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.drop_index"><a href="#env.diff.skip.drop_index"><code>drop_index</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.drop_proc"><a href="#env.diff.skip.drop_proc"><code>drop_proc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.drop_schema"><a href="#env.diff.skip.drop_schema"><code>drop_schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.drop_table"><a href="#env.diff.skip.drop_table"><code>drop_table</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.drop_trigger"><a href="#env.diff.skip.drop_trigger"><code>drop_trigger</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.drop_view"><a href="#env.diff.skip.drop_view"><code>drop_view</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.modify_column"><a href="#env.diff.skip.modify_column"><code>modify_column</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.modify_foreign_key"><a href="#env.diff.skip.modify_foreign_key"><code>modify_foreign_key</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.modify_func"><a href="#env.diff.skip.modify_func"><code>modify_func</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.modify_index"><a href="#env.diff.skip.modify_index"><code>modify_index</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.modify_proc"><a href="#env.diff.skip.modify_proc"><code>modify_proc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.modify_schema"><a href="#env.diff.skip.modify_schema"><code>modify_schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.modify_table"><a href="#env.diff.skip.modify_table"><code>modify_table</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.modify_trigger"><a href="#env.diff.skip.modify_trigger"><code>modify_trigger</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.modify_view"><a href="#env.diff.skip.modify_view"><code>modify_view</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.rename_func"><a href="#env.diff.skip.rename_func"><code>rename_func</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.rename_proc"><a href="#env.diff.skip.rename_proc"><code>rename_proc</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.rename_table"><a href="#env.diff.skip.rename_table"><code>rename_table</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.rename_trigger"><a href="#env.diff.skip.rename_trigger"><code>rename_trigger</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.diff.skip.rename_view"><a href="#env.diff.skip.rename_view"><code>rename_view</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.diff.skip` constraints {#env.diff.skip-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `env.diff` constraints {#env.diff-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.format` {#env.format}
+The `format` block defines the output format of the different commands
+
+~~~hcl
+format {
+  migrate {
+    diff = "{{ sql . \"  \" }}"
+  }
+}
+~~~
+
+
+
+
+
+##### `env.format` blocks {#env.format-blocks}
+
+
+
+    
+#### `env.format.migrate` {#env.format.migrate}
+
+
+##### `env.format.migrate` attributes {#env.format.migrate-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.format.migrate.apply"><a href="#env.format.migrate.apply"><code>apply</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.format.migrate.diff"><a href="#env.format.migrate.diff"><code>diff</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.format.migrate.down"><a href="#env.format.migrate.down"><code>down</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.format.migrate.lint"><a href="#env.format.migrate.lint"><code>lint</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.format.migrate.status"><a href="#env.format.migrate.status"><code>status</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.format.migrate` constraints {#env.format.migrate-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.format.schema` {#env.format.schema}
+
+
+##### `env.format.schema` attributes {#env.format.schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.format.schema.apply"><a href="#env.format.schema.apply"><code>apply</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.format.schema.diff"><a href="#env.format.schema.diff"><code>diff</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.format.schema.inspect"><a href="#env.format.schema.inspect"><code>inspect</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.format.schema` constraints {#env.format.schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `env.format` constraints {#env.format-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint` {#env.lint}
+The `lint` block defines the linting configuration
+
+~~~hcl
+lint {
+  destructive {
+    error = false
+  }
+  concurrent_index {
+    error = true
+  }
+}
+~~~
+
+
+
+
+##### `env.lint` attributes {#env.lint-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.format"><a href="#env.lint.format"><code>format</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.latest"><a href="#env.lint.latest"><code>latest</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.log"><a href="#env.lint.log"><code>log</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.review"><a href="#env.lint.review"><code>review</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (ALWAYS, WARNING, ERROR)`
+  </td>
+
+  </tr>
+</table>
+
+
+
+##### `env.lint` blocks {#env.lint-blocks}
+
+
+
+    
+#### `env.lint.concurrent_index` {#env.lint.concurrent_index}
+
+
+##### `env.lint.concurrent_index` attributes {#env.lint.concurrent_index-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.concurrent_index.check_create"><a href="#env.lint.concurrent_index.check_create"><code>check_create</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.concurrent_index.check_drop"><a href="#env.lint.concurrent_index.check_drop"><code>check_drop</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.concurrent_index.check_txmode"><a href="#env.lint.concurrent_index.check_txmode"><code>check_txmode</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.concurrent_index.error"><a href="#env.lint.concurrent_index.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.concurrent_index` constraints {#env.lint.concurrent_index-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.condrop` {#env.lint.condrop}
+
+
+##### `env.lint.condrop` attributes {#env.lint.condrop-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.condrop.error"><a href="#env.lint.condrop.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.condrop` constraints {#env.lint.condrop-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.data_depend` {#env.lint.data_depend}
+
+
+##### `env.lint.data_depend` attributes {#env.lint.data_depend-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.data_depend.error"><a href="#env.lint.data_depend.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.data_depend` constraints {#env.lint.data_depend-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.destructive` {#env.lint.destructive}
+
+
+##### `env.lint.destructive` attributes {#env.lint.destructive-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.destructive.error"><a href="#env.lint.destructive.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.destructive` constraints {#env.lint.destructive-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.git` {#env.lint.git}
+
+
+##### `env.lint.git` attributes {#env.lint.git-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.git.base"><a href="#env.lint.git.base"><code>base</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.git.dir"><a href="#env.lint.git.dir"><code>dir</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.git` constraints {#env.lint.git-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.incompatible` {#env.lint.incompatible}
+
+
+##### `env.lint.incompatible` attributes {#env.lint.incompatible-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.incompatible.error"><a href="#env.lint.incompatible.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.incompatible` constraints {#env.lint.incompatible-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.naming` {#env.lint.naming}
+
+
+##### `env.lint.naming` attributes {#env.lint.naming-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.error"><a href="#env.lint.naming.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.match"><a href="#env.lint.naming.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.message"><a href="#env.lint.naming.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+##### `env.lint.naming` blocks {#env.lint.naming-blocks}
+
+
+
+    
+#### `env.lint.naming.check` {#env.lint.naming.check}
+
+
+##### `env.lint.naming.check` attributes {#env.lint.naming.check-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.check.match"><a href="#env.lint.naming.check.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.check.message"><a href="#env.lint.naming.check.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.naming.check` constraints {#env.lint.naming.check-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.naming.column` {#env.lint.naming.column}
+
+
+##### `env.lint.naming.column` attributes {#env.lint.naming.column-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.column.match"><a href="#env.lint.naming.column.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.column.message"><a href="#env.lint.naming.column.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.naming.column` constraints {#env.lint.naming.column-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.naming.foreign_key` {#env.lint.naming.foreign_key}
+
+
+##### `env.lint.naming.foreign_key` attributes {#env.lint.naming.foreign_key-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.foreign_key.match"><a href="#env.lint.naming.foreign_key.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.foreign_key.message"><a href="#env.lint.naming.foreign_key.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.naming.foreign_key` constraints {#env.lint.naming.foreign_key-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.naming.index` {#env.lint.naming.index}
+
+
+##### `env.lint.naming.index` attributes {#env.lint.naming.index-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.index.match"><a href="#env.lint.naming.index.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.index.message"><a href="#env.lint.naming.index.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.naming.index` constraints {#env.lint.naming.index-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.naming.schema` {#env.lint.naming.schema}
+
+
+##### `env.lint.naming.schema` attributes {#env.lint.naming.schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.schema.match"><a href="#env.lint.naming.schema.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.schema.message"><a href="#env.lint.naming.schema.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.naming.schema` constraints {#env.lint.naming.schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.naming.table` {#env.lint.naming.table}
+
+
+##### `env.lint.naming.table` attributes {#env.lint.naming.table-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.table.match"><a href="#env.lint.naming.table.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.lint.naming.table.message"><a href="#env.lint.naming.table.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.naming.table` constraints {#env.lint.naming.table-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `env.lint.naming` constraints {#env.lint.naming-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.lint.non_linear` {#env.lint.non_linear}
+
+
+##### `env.lint.non_linear` attributes {#env.lint.non_linear-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.lint.non_linear.error"><a href="#env.lint.non_linear.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.lint.non_linear` constraints {#env.lint.non_linear-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `env.lint` constraints {#env.lint-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[latest, git]`, `[log, format]`
+
+
+
+
+
+    
+#### `env.log` {#env.log}
+Use the format block instead
+
+
+
+
+##### `env.log` blocks {#env.log-blocks}
+
+
+
+    
+#### `env.log.migrate` {#env.log.migrate}
+
+
+##### `env.log.migrate` attributes {#env.log.migrate-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.log.migrate.apply"><a href="#env.log.migrate.apply"><code>apply</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.log.migrate.diff"><a href="#env.log.migrate.diff"><code>diff</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.log.migrate.down"><a href="#env.log.migrate.down"><code>down</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.log.migrate.lint"><a href="#env.log.migrate.lint"><code>lint</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.log.migrate.status"><a href="#env.log.migrate.status"><code>status</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.log.migrate` constraints {#env.log.migrate-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.log.schema` {#env.log.schema}
+
+
+##### `env.log.schema` attributes {#env.log.schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.log.schema.apply"><a href="#env.log.schema.apply"><code>apply</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.log.schema.diff"><a href="#env.log.schema.diff"><code>diff</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.log.schema.inspect"><a href="#env.log.schema.inspect"><code>inspect</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.log.schema` constraints {#env.log.schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `env.log` constraints {#env.log-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.migration` {#env.migration}
+The `migration` block defines the migration configuration
+
+~~~hcl
+migration {
+  dir = "file://migrations"
+  repo {
+    name = "app"
+  }
+}
+~~~
+
+
+
+##### `env.migration` attributes {#env.migration-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.migration.baseline"><a href="#env.migration.baseline"><code>baseline</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.migration.dir"><a href="#env.migration.dir"><code>dir</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.migration.exec_order"><a href="#env.migration.exec_order"><code>exec_order</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (LINEAR, linear, LINEAR_SKIP, linear-skip, NON_LINEAR, non-linear)`
+  </td>
+
+  </tr>
+  <tr>
+      <td id="env.migration.format"><a href="#env.migration.format"><code>format</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Migration format can be one of:
+1. `enum (atlas, golang-migrate, goose, flyway, liquibase, dbmate)`
+2. `string`
+
+</td>
+  </tr>
+  <tr>
+      <td id="env.migration.lock_timeout"><a href="#env.migration.lock_timeout"><code>lock_timeout</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="env.migration.revisions_schema"><a href="#env.migration.revisions_schema"><code>revisions_schema</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+##### `env.migration` blocks {#env.migration-blocks}
+
+
+
+    
+#### `env.migration.repo` {#env.migration.repo}
+The repository configuration for the migrations directory in the registry
+
+~~~hcl
+repo {
+  name = "app"
+}
+~~~
+
+
+
+##### `env.migration.repo` attributes {#env.migration.repo-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.migration.repo.name"><a href="#env.migration.repo.name"><code>name</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.migration.repo` constraints {#env.migration.repo-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `env.migration` constraints {#env.migration-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.schema` {#env.schema}
+The configuration for the desired schema
+
+~~~hcl
+schema {
+  src = "file://schema.hcl"
+  repo {
+    name = "app"
+  }
+}
+~~~
+
+
+
+##### `env.schema` attributes {#env.schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.schema.src"><a href="#env.schema.src"><code>src</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+##### `env.schema` blocks {#env.schema-blocks}
+
+
+
+    
+#### `env.schema.repo` {#env.schema.repo}
+The repository configuration for the desired schema in the registry
+
+~~~hcl
+repo {
+  name = "app"
+}
+~~~
+
+
+
+##### `env.schema.repo` attributes {#env.schema.repo-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.schema.repo.name"><a href="#env.schema.repo.name"><code>name</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.schema.repo` constraints {#env.schema.repo-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `env.schema` constraints {#env.schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.test` {#env.test}
+The `test` block defines the testing configuration
+
+~~~hcl
+test {
+  schema {
+    src = ["schema.test.hcl"]
+    vars = {
+      seed_file = "filename.sql"
+      variable2 = var.name
+      variable3 = data.external.value
+    }
+  }
+}
+~~~
+
+
+
+
+
+##### `env.test` blocks {#env.test-blocks}
+
+
+
+    
+#### `env.test.migrate` {#env.test.migrate}
+
+
+##### `env.test.migrate` attributes {#env.test.migrate-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.test.migrate.src"><a href="#env.test.migrate.src"><code>src</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="env.test.migrate.vars"><a href="#env.test.migrate.vars"><code>vars</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.test.migrate` constraints {#env.test.migrate-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `env.test.schema` {#env.test.schema}
+
+
+##### `env.test.schema` attributes {#env.test.schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="env.test.schema.src"><a href="#env.test.schema.src"><code>src</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="env.test.schema.vars"><a href="#env.test.schema.vars"><code>vars</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `env.test.schema` constraints {#env.test.schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `env.test` constraints {#env.test-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#env-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Allow Qualifier             |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `true`
+
+
+
+
+
+## `hook sql` {#hook.sql}
+The `hook "sql" "name"` block defines an SQL hook configuration.
+
+~~~hcl
+hook "sql" "timeout" {
+  transaction {
+    after_begin = [
+      "SET statement_timeout TO '50ms'",
+    ]
+  }
+}
+~~~
+
+
+
+
+### Attributes {#hook.sql-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="hook.sql.skip_errors"><a href="#hook.sql.skip_errors"><code>skip_errors</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+### Blocks {#hook.sql-blocks}
+
+
+
+    
+#### `hook.transaction` {#hook.transaction}
+
+
+##### `hook.transaction` attributes {#hook.transaction-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="hook.transaction.after_begin"><a href="#hook.transaction.after_begin"><code>after_begin</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="hook.transaction.before_commit"><a href="#hook.transaction.before_commit"><code>before_commit</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="hook.transaction.before_rollback"><a href="#hook.transaction.before_rollback"><code>before_rollback</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+</table>
+
+
+
+
+##### `hook.transaction` constraints {#hook.transaction-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#hook.sql-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+## `lint` {#lint}
+The `lint` block defines the linting configuration
+
+~~~hcl
+lint {
+  destructive {
+    error = false
+  }
+  concurrent_index {
+    error = true
+  }
+}
+~~~
+
+
+
+
+### Attributes {#lint-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.format"><a href="#lint.format"><code>format</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="lint.latest"><a href="#lint.latest"><code>latest</code></a></td>
+    <td><code>false</code></td>
+  <td><code>int</code></td>
+  </tr>
+  <tr>
+      <td id="lint.log"><a href="#lint.log"><code>log</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="lint.review"><a href="#lint.review"><code>review</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (ALWAYS, WARNING, ERROR)`
+  </td>
+
+  </tr>
+</table>
+
+
+
+### Blocks {#lint-blocks}
+
+
+
+    
+#### `lint.concurrent_index` {#lint.concurrent_index}
+
+
+##### `lint.concurrent_index` attributes {#lint.concurrent_index-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.concurrent_index.check_create"><a href="#lint.concurrent_index.check_create"><code>check_create</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="lint.concurrent_index.check_drop"><a href="#lint.concurrent_index.check_drop"><code>check_drop</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="lint.concurrent_index.check_txmode"><a href="#lint.concurrent_index.check_txmode"><code>check_txmode</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="lint.concurrent_index.error"><a href="#lint.concurrent_index.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.concurrent_index` constraints {#lint.concurrent_index-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.condrop` {#lint.condrop}
+
+
+##### `lint.condrop` attributes {#lint.condrop-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.condrop.error"><a href="#lint.condrop.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.condrop` constraints {#lint.condrop-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.data_depend` {#lint.data_depend}
+
+
+##### `lint.data_depend` attributes {#lint.data_depend-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.data_depend.error"><a href="#lint.data_depend.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.data_depend` constraints {#lint.data_depend-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.destructive` {#lint.destructive}
+
+
+##### `lint.destructive` attributes {#lint.destructive-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.destructive.error"><a href="#lint.destructive.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.destructive` constraints {#lint.destructive-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.git` {#lint.git}
+
+
+##### `lint.git` attributes {#lint.git-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.git.base"><a href="#lint.git.base"><code>base</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="lint.git.dir"><a href="#lint.git.dir"><code>dir</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.git` constraints {#lint.git-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.incompatible` {#lint.incompatible}
+
+
+##### `lint.incompatible` attributes {#lint.incompatible-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.incompatible.error"><a href="#lint.incompatible.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.incompatible` constraints {#lint.incompatible-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.naming` {#lint.naming}
+
+
+##### `lint.naming` attributes {#lint.naming-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.naming.error"><a href="#lint.naming.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="lint.naming.match"><a href="#lint.naming.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="lint.naming.message"><a href="#lint.naming.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+##### `lint.naming` blocks {#lint.naming-blocks}
+
+
+
+    
+#### `lint.naming.check` {#lint.naming.check}
+
+
+##### `lint.naming.check` attributes {#lint.naming.check-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.naming.check.match"><a href="#lint.naming.check.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="lint.naming.check.message"><a href="#lint.naming.check.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.naming.check` constraints {#lint.naming.check-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.naming.column` {#lint.naming.column}
+
+
+##### `lint.naming.column` attributes {#lint.naming.column-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.naming.column.match"><a href="#lint.naming.column.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="lint.naming.column.message"><a href="#lint.naming.column.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.naming.column` constraints {#lint.naming.column-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.naming.foreign_key` {#lint.naming.foreign_key}
+
+
+##### `lint.naming.foreign_key` attributes {#lint.naming.foreign_key-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.naming.foreign_key.match"><a href="#lint.naming.foreign_key.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="lint.naming.foreign_key.message"><a href="#lint.naming.foreign_key.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.naming.foreign_key` constraints {#lint.naming.foreign_key-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.naming.index` {#lint.naming.index}
+
+
+##### `lint.naming.index` attributes {#lint.naming.index-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.naming.index.match"><a href="#lint.naming.index.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="lint.naming.index.message"><a href="#lint.naming.index.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.naming.index` constraints {#lint.naming.index-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.naming.schema` {#lint.naming.schema}
+
+
+##### `lint.naming.schema` attributes {#lint.naming.schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.naming.schema.match"><a href="#lint.naming.schema.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="lint.naming.schema.message"><a href="#lint.naming.schema.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.naming.schema` constraints {#lint.naming.schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.naming.table` {#lint.naming.table}
+
+
+##### `lint.naming.table` attributes {#lint.naming.table-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.naming.table.match"><a href="#lint.naming.table.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="lint.naming.table.message"><a href="#lint.naming.table.message"><code>message</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.naming.table` constraints {#lint.naming.table-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+##### `lint.naming` constraints {#lint.naming-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `lint.non_linear` {#lint.non_linear}
+
+
+##### `lint.non_linear` attributes {#lint.non_linear-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="lint.non_linear.error"><a href="#lint.non_linear.error"><code>error</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `lint.non_linear` constraints {#lint.non_linear-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#lint-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Allow Qualifier             |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[latest, git]`, `[log, format]`
+
+
+
+
+
+## `test` {#test}
+The `test` block defines the testing configuration
+
+~~~hcl
+test {
+  schema {
+    src = ["schema.test.hcl"]
+    vars = {
+      seed_file = "filename.sql"
+      variable2 = var.name
+      variable3 = data.external.value
+    }
+  }
+}
+~~~
+
+
+
+
+
+### Blocks {#test-blocks}
+
+
+
+    
+#### `test.migrate` {#test.migrate}
+
+
+##### `test.migrate` attributes {#test.migrate-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.migrate.src"><a href="#test.migrate.src"><code>src</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="test.migrate.vars"><a href="#test.migrate.vars"><code>vars</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.migrate` constraints {#test.migrate-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `test.schema` {#test.schema}
+
+
+##### `test.schema` attributes {#test.schema-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.schema.src"><a href="#test.schema.src"><code>src</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="test.schema.vars"><a href="#test.schema.vars"><code>vars</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.schema` constraints {#test.schema-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#test-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Allow Qualifier             |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
