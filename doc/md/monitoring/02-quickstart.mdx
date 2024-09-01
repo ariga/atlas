@@ -20,13 +20,15 @@ This is what this guide will walk you through:
 Create a docker network and a database container attached to this network. This is required for the Atlas agent docker
 to see the database.
 
+After the database is up, create the database schema.
+
 ```shell
 docker network create atlas-agent-network
-docker run --network atlas-agent-network -p 3306:3306 -d --rm --name sakila sakiladb/mysql:8
+docker run --network atlas-agent-network -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=dev -p 3306:3306 -d --name dev mysql:8
+docker exec -i dev mysql -uroot -ppass dev -e "
+  CREATE TABLE users(id int NOT NULL, name varchar(100) NULL, PRIMARY KEY(id));
+  CREATE TABLE blog_posts(id int NOT NULL, title varchar(100) NULL, body text NULL, author_id int NULL, PRIMARY KEY(id), CONSTRAINT author_fk FOREIGN KEY(author_id) REFERENCES users(id));"
 ```
-
-[Sakila](https://dev.mysql.com/doc/sakila/en/) is a demo database by the MySQL team. It serves as an example database
-with an already existing schema for us to use in this guide.
 
 ### 2. Install Atlas agent
 
@@ -41,18 +43,18 @@ chose a name for your agent and click on Proceed. Copy the token.
 </details>
 
 Run the following command on your local machine to start the agent (replace `<your-token>` with the token shown to you
-in the modal). Notice the PASS environment variable containing the password for the Sakila db (`p_ssW0rd`).
+in the modal). Notice the PASS environment variable containing the password for the dev db we set up earlier (`pass`).
 
 ```shell
-docker run -e PASS=p_ssW0rd -e ATLAS_CLOUD_TOKEN="<your-token>" -e ATLAS_AUTO_UPDATE=false --network atlas-agent-network -d arigaio/atlas-agent
+docker run -e PASS=pass -e ATLAS_CLOUD_TOKEN="<your-token>" -e ATLAS_AUTO_UPDATE=false --network atlas-agent-network -d arigaio/atlas-agent
 ```
 
 Once you see the success message, save the Agent configuration.
 
 ### 3. Connect Atlas to your database
 
-Click on **New** and assign your database instance a name, Sakila in this case. Select driver (**MYSQL**) and agent
-(there should only be the one you just created), and as address use `sakila:3306`, username is `sakila`. Atlas does not
+Click on **New** and assign your database instance a name, dev in this case. Select driver (**MYSQL**) and agent
+(there should only be the one you just created), and as address use `dev:3306`, username is `root`. Atlas does not
 store any credentials, the agent just needs to know how to obtain them. In our case the password is given to the agent
 as the environment variable `PASS`. Once you have filled out all fields, click on **Check Connection**. It should go
 green, and you can save the changes.
@@ -60,20 +62,20 @@ green, and you can save the changes.
 <details>
 <summary>Screenshot Example</summary>
 
-![](https://atlasgo.io/uploads/cloud/monitoring/3.png)
+![](https://atlasgo.io/uploads/cloud/monitoring/add-instance.png)
 </details>
 
 ### 4. View the schema
 
 Click on the newly created instance. You will see an empty state screen, click on **Create Scope**, give it a name
-(e.g. Sakila), click **Add Scope** and wait for the agent to inspect the database and report back its database schema.
+(e.g. all), click **Add Scope** and wait for the agent to inspect the database and report back its database schema.
 Once that happened, you can view the schema ERD, docs and in the Changelog tab you can see the changes done to your
 schema over time.
 
 <details>
 <summary>Screenshot Example</summary>
 
-![](https://atlasgo.io/uploads/cloud/monitoring/4.png)
+![](https://atlasgo.io/uploads/cloud/monitoring/show-instance.png)
 </details>
 
 ### 5. Make a change
@@ -81,7 +83,7 @@ schema over time.
 To simulate a change to the database schema, let's create a new table.
 
 ```shell
-docker exec sakila mysql -h127.0.0.1 -P3306 -usakila -pp_ssW0rd sakila -e "create table some_table (some_column int)"
+docker exec dev mysql -h127.0.0.1 -P3306 -uroot -ppass dev -e "create table some_table (some_column int)"
 ```
 
 Hit the Refresh button and observe the ERD and schema docs reflect the changes. The Changelog will contain a new entry
@@ -90,11 +92,12 @@ with detailed information about the change.
 <details>
 <summary>Screenshot Example</summary>
 
-![](https://atlasgo.io/uploads/cloud/monitoring/5.png)
+![](https://atlasgo.io/uploads/cloud/monitoring/changelog.png)
 </details>
 
 ### Next steps
 
+- [Drift detection](06-drift-detection.mdx)
 - [Arch overview](03-overview.mdx)
 - [Real agent installation with Kubernetes](05-helm.mdx)
 - [Learn more about security considerations](04-security.mdx)

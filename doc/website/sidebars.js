@@ -131,6 +131,10 @@ module.exports = {
                             id: 'monitoring/quickstart'
                         },
                         {
+                             type: 'doc',
+                             id: 'monitoring/drift-detection'
+                        },
+                        {
                             type: 'doc',
                             id: 'monitoring/overview'
                         },
