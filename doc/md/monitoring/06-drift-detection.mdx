@@ -22,7 +22,6 @@ an ERD, HCL and SQL of the diff.
 #### Prerequisites:
 - [Migration directory](/cloud/directories) in atlas cloud
 
-
 #### Creating desired database schema
 
 First, we will need to deploy our migration directory to a target database. This will be our desired state.
@@ -39,12 +38,14 @@ env {
 ```
 
 And run the following command:
+
 ```shell
 atlas migrate apply --env local
 ```
 
 
 #### Enabling Drift Detection
+
 Atlas enables you to automatically monitor schema drifts by periodically checking if your deployed database schema align with the desired schema.
 
 To enable periodic inspection, go the **settings** tab of the database you want to monitor and enable the **Periodic Inspection** toggle.
