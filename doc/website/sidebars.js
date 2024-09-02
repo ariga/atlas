@@ -10,10 +10,6 @@
  */
 
 module.exports = {
-    useCases: [
-        'cases/tenant',
-        'cases/modernize',
-      ],
     documentation: [
         {
             type: 'doc',
