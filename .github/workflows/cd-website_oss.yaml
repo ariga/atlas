@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2.1.5
         with:
-          node-version: 16
+          node-version: 18
       - name: Cache dependencies
         uses: actions/cache@v2.1.6
         with:
