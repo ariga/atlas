@@ -14,8 +14,7 @@ and application logic may break. Additionally, schema migrations are planned bas
 database is in a specific state and may fail and cause unknown side effects. This can result in hard-to-debug issues and
 degraded system performance, ultimately affecting the reliability and stability of your application.
 
-
-You can use Atlas [schema monitoring](/monitoring) to detect schema drift and ensure your database schema are always in sync with their
+You can use Atlas [Schema Monitoring](/monitoring) to detect schema drift and ensure your database schema are always in sync with their
 intended state. Atlas schema monitoring automatically detects schema drift by comparing the actual database schema with the
 intended schema. If a drift is detected, Atlas will notify you and provide detailed information about the drift, including
 an ERD, HCL and SQL of the diff.
