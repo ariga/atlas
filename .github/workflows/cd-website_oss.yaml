@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - 'doc/**'
+      - '.github/workflows/cd-website_oss.yaml'
 jobs:
   docs:
     name: deploy atlasgo.io
