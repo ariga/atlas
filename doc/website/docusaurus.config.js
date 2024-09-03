@@ -107,8 +107,8 @@ module.exports = {
     },
     footer,
     announcementBar: {
-      id: 'announcementBar-17', // Increment on change
-      content: `<strong>Atlas on The New Stack:</strong> Play Rock, Paper, Scissors on Postgres! <a class="cta" href="https://thenewstack.io/build-a-rock-paper-scissors-game-on-postgresql-with-database-programming/">Read it here</a>`,
+      id: 'announcementBar-18', // Increment on change
+      content: `<strong>New!</strong> Announcing Atlas Schema Monitoring<a class="cta" href="/blog/2024/09/02/schema-monitoring-v027">Read it here</a>`,
       isCloseable: true,
     },
   },

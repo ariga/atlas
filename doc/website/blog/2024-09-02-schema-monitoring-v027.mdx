@@ -1,0 +1,95 @@
+---
+title: What is Schema Monitoring and Atlas v0.27
+authors: rotemtam
+tags: [release, atlas, monitoring, schema]
+---
+import InstallationInstructions from '../../md/components/_installation_instructions.mdx'
+
+Hi Everyone,
+
+It's been a few weeks since our last release, and I'm very excited to share with you the news of
+[Atlas v0.27](https://github.com/ariga/atlas/releases/tag/v0.27.0). In this release, you will find:
+* [**Atlas Schema Monitoring**](#schema-monitoring): A new product that provides a set of tools and features to help you manage and monitor your
+  database schema effectively.
+* [**Pay via AWS Marketplace**](#aws-marketplace): Atlas users can now pay for their Atlas subscription via the AWS Marketplace.
+* [**Atlas HCL Doc Portal**](#hcl-portal): A new portal that contains always up to date, automatically generated documentation for the
+  Atlas HCL language.
+
+### Introducing Schema Monitoring {#schema-monitoring}
+
+![](https://atlasgo.io/uploads/cloud/monitoring/4.png)
+
+The hallmark of this release is a new product we call [**Atlas Schema Monitoring**](/monitoring). Atlas Schema Monitoring
+provides a set of tools and features to help you manage and monitor your database schema effectively.
+Teams install an agent (container) on their database VPC which tracks changes to the database schema and
+reports metadata to the Atlas Cloud control plane. Using this metadata Atlas Schema Monitoring provides:
+
+1. **Live visibility** of your database schema with automated ER diagrams and auto-generated documentation.
+2. A **Changelog** of schema changes, so you can see how schemas change over time, and easily triage schema
+change related issues.
+3. **Alerts** Use Webhooks or Slack notifications to inform or alert teams that need to know about
+schema changes or drift.
+
+Starting today, we are providng one free monitored instance to all signed up Atlas users.
+
+A [Live Demo](https://gh.atlasgo.cloud/instances/193273528321/dbs/188978561025/scopes/180388626433) is available for you
+to try out.
+
+#### How it works
+
+Atlas Cloud never has direct access to your database, instead it uses a middleman, the Atlas agent, to connect to your
+database instead. In order for this to work, the agent needs to be installed somewhere with network connectivity to the
+database, usually within the same VPC as the database. In addition, the agent should have outbound connectivity to your
+cloud account (e.g.,https://your-tenant.atlasgo.cloud).
+
+The agent then starts polling Atlas Cloud for work. Once assigned a task, it connects to the database and executes the
+task, e.g. "take a snapshot" and then reports back the result to Atlas Cloud. The Agent does not read or report back any
+user data, only meta information about the database schema.
+
+To read more about the key concepts and features of Atlas Schema Monitoring, head over to the
+[Overview](/monitoring/overview) page.
+
+#### Getting started
+
+To get started with Schema Monitoring in under 5 minutes, head over to the [Quickstart](/monitoring/quickstart) guide.
+
+#### Security
+
+Atlas Schema Monitoring is designed with the principle of minimal access in mind. The Atlas agent is designed to only
+require read-only access to the database schema and only requires access to system information schema tables and not
+user data.
+
+Additionally, to provide further security and control, database credentials are never provided or stored in the Atlas
+Cloud control plane. Instead, the Atlas agent is deployed in your environment and connects to the database directly
+using a variety of secure methods.
+
+To learn more about how to securely provide database credentials to the Atlas agent, head over to the
+[Security and Credentials](/monitoring/security) guide.
+
+### Pay via AWS Marketplace {#aws-marketplace}
+
+![](https://atlasgo.io/uploads/blog/v027/aws-marketplace.png)
+
+Atlas users can now pay for their Atlas subscription via the [AWS Marketplace](https://aws.amazon.com/). This is a great option for users who
+prefer to consolidate their billing and payments in one place or have AWS credits they would like to use.
+
+To purchase Atlas quota via the AWS Marketplace, visit our
+[Product Page](https://aws.amazon.com/marketplace/pp/prodview-moxc4333krar2).
+
+### Atlas HCL Doc Portal {#hcl-portal}
+
+![](https://atlasgo.io/uploads/blog/v027/hcl-docs.png)
+
+Atlas enables users manage their database schema as code. One of the popular ways to define the desired state of your
+is via the [Atlas HCL](/atlas-schema/hcl) data definition language. Additionally, users have a powerful
+[configuration language](/atlas-schema/projects) to define their project configuration.
+
+We have added a new [Atlas HCL Portal](/hcl/docs) to the documentation website, which contains always up to date,
+automatically generated documentation for the Atlas HCL language.
+
+### Wrapping Up
+
+That's all for this release! We hope you enjoy the new features and improvements.
+As always, we would love to hear your feedback and suggestions on our [Discord server](https://discord.com/invite/zZ6sWVg6NT).
+
+
