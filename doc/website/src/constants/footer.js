@@ -36,7 +36,6 @@ module.exports = {
         { label: "Database per Tenant", to: "/use-cases/database-per-tenant" },
         { label: "Modernize Database Migrations", to: "/use-cases/modernize-database-migrations" },
         { label: "Standardize Schema Migrations", to: "/use-cases/standardize-schema-migrations" },
-
         { label: "Atlas Cloud", to: "https://atlasgo.cloud/?utm_term=footer" },
       ],
     },

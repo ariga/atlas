@@ -6,7 +6,7 @@ import "@ariga/atlas-website/style.css";
 
 export default function () {
   return (
-    <Layout>
+    <Layout title="Standardize Schema Migrations with Atlas">
       <MigrationTool />
     </Layout>
   );
