@@ -6,7 +6,7 @@ import "@ariga/atlas-website/style.css";
 
 export default function () {
   return (
-    <Layout>
+    <Layout title="Schema Migrations for Database per Tenant with Atlas">
       <DatabasePerTenant />
     </Layout>
   );
