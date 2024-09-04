@@ -7,6 +7,10 @@ cmpshow users 1.sql
 apply 2.hcl
 cmpshow users 2.sql
 
+atlas schema inspect --url file://schema.v1.sql --dev-url DEV_URL --format '{{ sql . }}'
+stdout '-- Create "geom" table'
+stdout 'CREATE TABLE `geom` \(`g` geometry NOT NULL, SPATIAL INDEX `idx` \(`g`\)\) .*'
+
 -- 1.hcl --
 schema "$db" {}
 
@@ -49,4 +53,7 @@ table "users" {
 CREATE TABLE `users` (
   `text` text NOT NULL
 )
+-- schema.v1.sql --
+CREATE TABLE geom (g GEOMETRY NOT NULL);
+CREATE SPATIAL INDEX idx ON geom (g);
 
