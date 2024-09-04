@@ -57,10 +57,11 @@ func ExcludeSchema(s *Schema, patterns []string) (*Schema, error) {
 	if s.Realm == nil {
 		return nil, fmt.Errorf("missing realm for schema %q", s.Name)
 	}
+	qualified := make([]string, len(patterns))
 	for i, p := range patterns {
-		patterns[i] = fmt.Sprintf("%s.%s", s.Name, p)
+		qualified[i] = fmt.Sprintf("%s.%s", s.Name, p)
 	}
-	if _, err := ExcludeRealm(s.Realm, patterns); err != nil {
+	if _, err := ExcludeRealm(s.Realm, qualified); err != nil {
 		return nil, err
 	}
 	return s, nil

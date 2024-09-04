@@ -65,6 +65,17 @@ func TestSchemaDirState(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, r.Schemas[0].Tables, "non-empty schema")
 
+	// Exclude patterns.
+	sr, err = StateReaderSQL(ctx, &StateReaderConfig{
+		Dev:     dev,
+		URLs:    []*url.URL{u2},
+		Exclude: []string{"t1"},
+	})
+	require.NoError(t, err)
+	r, err = sr.ReadState(ctx)
+	require.NoError(t, err)
+	require.Empty(t, r.Schemas[0].Tables, "empty schema after excluding table")
+
 	// If schema contains a checksum file, it must be valid.
 	require.NoError(t, d2.WriteFile(migrate.HashFileName, []byte("invalid")))
 	_, err = StateReaderSQL(ctx, &StateReaderConfig{

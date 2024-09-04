@@ -157,7 +157,9 @@ func stateReaderSQL(ctx context.Context, cfg *StateReaderConfig, dir migrate.Dir
 	}
 	sr, err := ex.Replay(ctx, func() migrate.StateReader {
 		if cfg.Dev.URL.Schema != "" {
-			return migrate.SchemaConn(cfg.Dev, "", nil)
+			return migrate.SchemaConn(cfg.Dev, "", &schema.InspectOptions{
+				Exclude: cfg.Exclude,
+			})
 		}
 		return migrate.RealmConn(cfg.Dev, &schema.InspectRealmOption{
 			Schemas: cfg.Schemas,
