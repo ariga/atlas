@@ -404,7 +404,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			if !ok {
 				return fmt.Errorf("mysql: column %q was not found for index %q", column.String, idx.Name)
 			}
-			if sqlx.ValidString(subPart) {
+			if sqlx.ValidString(subPart) && indexType != IndexTypeSpatial {
 				n, err := strconv.Atoi(subPart.String)
 				if err != nil {
 					return fmt.Errorf("mysql: parse index prefix size %q: %w", subPart.String, err)
