@@ -405,6 +405,7 @@ func TemplateDir(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Bloc
 	}
 	dirname := path.Join(args.Path, block.Labels[1])
 	dir := migrate.OpenMemDir(dirname)
+	dir.SetPath(args.Path)
 	// Clear existing directories in case the config was called
 	// multiple times with different variables.
 	if files, err := dir.Files(); err != nil || len(files) > 0 {

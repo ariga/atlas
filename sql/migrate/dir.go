@@ -346,6 +346,9 @@ type (
 	MemDir struct {
 		fs     map[string]*LocalFile
 		syncTo []func(string, []byte) error
+		// Optional path for the MemDir set by its creator.
+		// See SetPath() and Path() methods.
+		path string
 	}
 	// An opened MemDir.
 	openedMem struct {
@@ -496,6 +499,18 @@ func (d *MemDir) Checksum() (HashFile, error) {
 		return nil, err
 	}
 	return NewHashFile(files)
+}
+
+// SetPath allows the caller to set a path that can be retrieved by a user using the Path method.
+// Although MemDir resides only in memory, its source can be associated with a real directory
+// (such as a template directory).
+func (d *MemDir) SetPath(path string) {
+	d.path = path
+}
+
+// Path returns the path set by the SetPath method.
+func (d *MemDir) Path() string {
+	return d.path
 }
 
 // NewVersion generates a new migration version.
