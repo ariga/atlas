@@ -1300,6 +1300,31 @@ atlas migrate diff create_users \
   --format '{{ sql . "  " }}'
 ```
 
+## Exclude Objects
+
+:::note
+This option is not recommended for general use. It is intended for use when you encounter limitations in the Atlas
+schema definition or when your schema references objects that are not part of the desired state (schema) and you want
+Atlas to ignore their existence.
+:::
+
+Atlas allows setting exclusion patterns for the migrations directory. Objects that match the exclusion patterns are not
+considered during the `migrate diff` stage.
+
+Using this option, users can (manually) define objects such as tables, functions, and foreign keys in the migration
+directory that are not part of the desired state (schema), and instruct Atlas not to drop them during the
+`migrate diff` stage - essentially, to ignore their existence.
+
+```hcl title="atlas.hcl"
+env "dev" {
+  migration {
+    exclude = ["*.constraint_name"]
+  }
+}
+```
+
+For more examples, see the [exclude documentation](/declarative/inspect#exclude-schema-resources).
+
 ## Reference
 
 [CLI Command Reference](/cli-reference#atlas-migrate-diff)
