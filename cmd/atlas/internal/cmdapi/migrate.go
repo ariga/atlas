@@ -1653,10 +1653,6 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 		if err := maySetFlag(cmd, flagGitBase, env.Lint.Git.Base); err != nil {
 			return err
 		}
-	case "push":
-		if err := maySetFlag(cmd, flagExclude, strings.Join(env.Exclude, ",")); err != nil {
-			return err
-		}
 	case "status":
 		if err := maySetFlag(cmd, flagFormat, env.Format.Migrate.Status); err != nil {
 			return err
