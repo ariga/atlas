@@ -194,6 +194,7 @@ type (
 		dir      Dir                 // where migration files are stored and read from
 		fmt      Formatter           // how to format a plan to migration files
 		sum      bool                // whether to create a sum file for the migration directory
+		exclude  []string            // exclude resources from planning that match the patterns
 		planOpts []PlanOption        // plan options
 		diffOpts []schema.DiffOption // diff options
 	}
@@ -363,6 +364,14 @@ func PlanWithChecksum(b bool) PlannerOption {
 	}
 }
 
+// PlanWithExclude allows setting exclude patterns for the planner.
+// Resources that match the patterns are excluded from planning.
+func PlanWithExclude(patterns ...string) PlannerOption {
+	return func(p *Planner) {
+		p.exclude = patterns
+	}
+}
+
 var (
 	// WithFormatter calls PlanFormat.
 	// Deprecated: use PlanFormat instead.
@@ -477,11 +486,15 @@ func (p *Planner) current(ctx context.Context, realmScope bool) (*schema.Realm, 
 	}
 	return from.Replay(ctx, func() StateReader {
 		if realmScope {
-			return RealmConn(p.drv, nil)
+			return RealmConn(p.drv, &schema.InspectRealmOption{
+				Exclude: p.exclude,
+			})
 		}
 		// In case the scope is the schema connection,
 		// inspect it and return its connected realm.
-		return SchemaConn(p.drv, "", nil)
+		return SchemaConn(p.drv, "", &schema.InspectOptions{
+			Exclude: p.exclude,
+		})
 	}())
 }
 

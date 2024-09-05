@@ -73,13 +73,14 @@ type (
 
 	// Migration represents the migration directory for the Env.
 	Migration struct {
-		Dir             string `spec:"dir"`
-		Format          string `spec:"format"`
-		Baseline        string `spec:"baseline"`
-		ExecOrder       string `spec:"exec_order"`
-		LockTimeout     string `spec:"lock_timeout"`
-		RevisionsSchema string `spec:"revisions_schema"`
-		Repo            *Repo  `spec:"repo"`
+		Dir             string   `spec:"dir"`
+		Exclude         []string `spec:"exclude"`
+		Format          string   `spec:"format"`
+		Baseline        string   `spec:"baseline"`
+		ExecOrder       string   `spec:"exec_order"`
+		LockTimeout     string   `spec:"lock_timeout"`
+		RevisionsSchema string   `spec:"revisions_schema"`
+		Repo            *Repo    `spec:"repo"`
 	}
 
 	// Schema represents a schema in the registry.
@@ -203,6 +204,14 @@ func (e *Env) MigrationRepo() (s string) {
 		s = e.Migration.Repo.Name
 	}
 	return
+}
+
+// MigrationExclude returns the exclusion patterns of the migration directory.
+func (e *Env) MigrationExclude() []string {
+	if e != nil && e.Migration != nil {
+		return e.Migration.Exclude
+	}
+	return nil
 }
 
 // SchemaRepo returns the desired schema repository name, if set.
