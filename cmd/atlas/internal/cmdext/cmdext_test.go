@@ -537,6 +537,22 @@ atlas {
 	require.NoError(t, err)
 	require.Nil(t, cfg.Client)
 	require.Empty(t, cfg.Project)
+
+	cfg = &cmdext.AtlasConfig{}
+	err = state.EvalBytes([]byte(`
+atlas {
+  cloud {
+    url   = "url"
+    token = ""
+  }
+}
+env {
+  name = atlas.env
+}
+`), &v, map[string]cty.Value{})
+	require.NoError(t, err)
+	require.Nil(t, cfg.Client)
+	require.Empty(t, cfg.Project)
 }
 
 // backupEnv backs up the current value of an environment variable
