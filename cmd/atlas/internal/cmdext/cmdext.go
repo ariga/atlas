@@ -493,6 +493,16 @@ type AtlasConfig struct {
 //	}
 func (c *AtlasConfig) InitBlock() schemahcl.Option {
 	return schemahcl.WithInitBlock("atlas", func(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+		atlasVal, diags := (&hclsyntax.ScopeTraversalExpr{
+			Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "atlas", SrcRange: block.Range()}},
+		}).Value(ectx)
+		if diags.HasErrors() {
+			if len(diags) > 1 || diags[0].Summary != "Unknown variable" {
+				return cty.NilVal, fmt.Errorf("atlas.cloud: getting config: %v", diags)
+			}
+			// Create an empty object if the atlas object is not set.
+			atlasVal = cty.ObjectVal(map[string]cty.Value{})
+		}
 		var args struct {
 			Cloud struct {
 				Token   string `hcl:"token"`
@@ -500,34 +510,24 @@ func (c *AtlasConfig) InitBlock() schemahcl.Option {
 				Project string `hcl:"project,optional"`
 			} `hcl:"cloud,block"`
 		}
-		if diags := gohcl.DecodeBody(block.Body, ectx, &args); diags.HasErrors() {
+		switch diags := gohcl.DecodeBody(block.Body, ectx, &args); {
+		case diags.HasErrors():
 			return cty.NilVal, fmt.Errorf("atlas.cloud: decoding body: %v", diags)
-		}
-		if args.Cloud.Token == "" {
-			return cty.NilVal, nil // If no token was set, the cloud is not initialized.
-		}
-		if args.Cloud.Project == "" {
-			args.Cloud.Project = cloudapi.DefaultProjectName
-		}
-		c.Token = args.Cloud.Token
-		c.Project = args.Cloud.Project
-		c.Client = cloudapi.New(args.Cloud.URL, args.Cloud.Token)
-		cloud := cty.ObjectVal(map[string]cty.Value{
-			"client":  cty.CapsuleVal(clientType, c.Client),
-			"project": cty.StringVal(args.Cloud.Project),
-		})
-		av, diags := (&hclsyntax.ScopeTraversalExpr{
-			Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "atlas", SrcRange: block.Range()}},
-		}).Value(ectx)
-		switch {
-		case !diags.HasErrors():
-			m := av.AsValueMap()
-			m["cloud"] = cloud
-			return cty.ObjectVal(m), nil
-		case len(diags) == 1 && diags[0].Summary == "Unknown variable":
-			return cty.ObjectVal(map[string]cty.Value{"cloud": cloud}), nil
+		case args.Cloud.Token == "":
+			return atlasVal, nil // If no token was set, the cloud is not initialized.
 		default:
-			return cty.NilVal, fmt.Errorf("atlas.cloud: getting config: %v", diags)
+			if args.Cloud.Project == "" {
+				args.Cloud.Project = cloudapi.DefaultProjectName
+			}
+			c.Token = args.Cloud.Token
+			c.Project = args.Cloud.Project
+			c.Client = cloudapi.New(args.Cloud.URL, args.Cloud.Token)
+			m := atlasVal.AsValueMap()
+			m["cloud"] = cty.ObjectVal(map[string]cty.Value{
+				"client":  cty.CapsuleVal(clientType, c.Client),
+				"project": cty.StringVal(args.Cloud.Project),
+			})
+			return cty.ObjectVal(m), nil
 		}
 	})
 }
