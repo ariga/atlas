@@ -274,6 +274,21 @@ func addRefs(dependent Object, refs []Object) {
 	}
 }
 
+// DepRemover wraps the RemoveDep method. Objects that implemented this method
+// allow dependent objects to remove themselves from their references.
+type DepRemover interface {
+	RemoveDep(Object)
+}
+
+// removeObj removes the given object from the list of objects.
+func removeObj(objs []Object, o Object) []Object {
+	i := slices.Index(objs, o)
+	if i == -1 {
+		return objs
+	}
+	return append(objs[:i:i], objs[i+1:]...)
+}
+
 // sortRefs maintains consistent dependents list.
 func sortRefs(refs []Object) {
 	slices.SortFunc(refs, func(a, b Object) int {
@@ -302,6 +317,11 @@ func sortRefs(refs []Object) {
 func (t *Table) AddRefs(refs ...Object) {
 	t.Refs = append(t.Refs, refs...)
 	sortRefs(t.Refs)
+}
+
+// RemoveDep removes the given object from the table dependencies.
+func (t *Table) RemoveDep(o Object) {
+	t.Deps = removeObj(t.Deps, o)
 }
 
 // NewView creates a new View.
@@ -345,6 +365,11 @@ func (v *View) AddDeps(objs ...Object) *View {
 	v.Deps = append(v.Deps, objs...)
 	addRefs(v, objs)
 	return v
+}
+
+// RemoveDep removes the given object from the view dependencies.
+func (v *View) RemoveDep(o Object) {
+	v.Deps = removeObj(v.Deps, o)
 }
 
 // AddRefs adds references to the view.
@@ -908,6 +933,11 @@ func (f *Func) AddDeps(objs ...Object) *Func {
 	return f
 }
 
+// RemoveDep removes the given object from the function dependencies.
+func (f *Func) RemoveDep(o Object) {
+	f.Deps = removeObj(f.Deps, o)
+}
+
 // AddRefs adds references to the function.
 func (f *Func) AddRefs(refs ...Object) {
 	f.Refs = append(f.Refs, refs...)
@@ -919,6 +949,11 @@ func (p *Proc) AddDeps(objs ...Object) *Proc {
 	p.Deps = append(p.Deps, objs...)
 	addRefs(p, objs)
 	return p
+}
+
+// RemoveDep removes the given object from the procedure dependencies.
+func (p *Proc) RemoveDep(o Object) {
+	p.Deps = removeObj(p.Deps, o)
 }
 
 // AddRefs adds references to the procedure.

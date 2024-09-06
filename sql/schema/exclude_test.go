@@ -130,6 +130,30 @@ func TestExcludeRealm_Enums(t *testing.T) {
 	require.Empty(t, r.Schemas[2].Objects)
 }
 
+func TestExcludeRealm_DependsOn(t *testing.T) {
+	s1, s2 := New("s1"), New("s2")
+	s1.AddTables(NewTable("t1"), NewTable("t2"))
+	s2.AddTables(NewTable("t1"), NewTable("t2"))
+	s1.AddViews(NewView("v1", "SELECT * FROM t1").AddDeps(s1.Tables[0], s2.Tables[1]))
+	r, err := ExcludeRealm(NewRealm(s1, s2), []string{"s1.t1"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas[0].Views[0].Deps, 1)
+	require.Equal(t, s2.Tables[1], r.Schemas[0].Views[0].Deps[0])
+
+	f1 := &Func{Name: "f1"}
+	s1.AddFuncs(f1)
+	s1.Views[0].AddDeps(f1)
+	r, err = ExcludeRealm(NewRealm(s1, s2), []string{"s1.f1", "s1.t2"})
+	require.NoError(t, err)
+	require.Empty(t, r.Schemas[0].Funcs)
+	require.Empty(t, r.Schemas[0].Tables)
+	require.Len(t, r.Schemas[0].Views[0].Deps, 1)
+
+	r, err = ExcludeRealm(NewRealm(s1, s2), []string{"s2.t2"})
+	require.NoError(t, err)
+	require.Empty(t, r.Schemas[0].Views[0].Deps)
+}
+
 type (
 	domain struct {
 		Object
