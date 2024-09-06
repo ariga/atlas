@@ -135,6 +135,7 @@ func excludeS(s *Schema, glob []string) error {
 				// In case there is a match, and it is
 				// a single glob we exclude this table.
 				if len(glob) == 1 {
+					detachObject(t, t.Refs)
 					continue
 				}
 				if err := excludeT(t, glob[1]); err != nil {
@@ -155,6 +156,7 @@ func excludeS(s *Schema, glob []string) error {
 			}
 			if match {
 				if len(glob) == 1 {
+					detachObject(v, v.Refs)
 					continue
 				}
 				if err := excludeV(v, glob[1]); err != nil {
@@ -168,7 +170,11 @@ func excludeS(s *Schema, glob []string) error {
 	if globF, exclude := excludeType(typeFn, glob[0]); exclude {
 		var err error
 		s.Funcs, err = filter(s.Funcs, func(f *Func) (bool, error) {
-			return filepath.Match(globF, f.Name)
+			if match, err := filepath.Match(globF, f.Name); !match || err != nil {
+				return false, err
+			}
+			detachObject(f, f.Refs)
+			return true, nil
 		})
 		if err != nil {
 			return err
@@ -177,7 +183,11 @@ func excludeS(s *Schema, glob []string) error {
 	if globP, exclude := excludeType(typePr, glob[0]); exclude {
 		var err error
 		s.Procs, err = filter(s.Procs, func(p *Proc) (bool, error) {
-			return filepath.Match(globP, p.Name)
+			if match, err := filepath.Match(globP, p.Name); !match || err != nil {
+				return false, err
+			}
+			detachObject(p, p.Refs)
+			return true, nil
 		})
 		if err != nil {
 			return err
@@ -260,7 +270,6 @@ func excludeV(v *View, pattern string) (err error) {
 }
 
 const (
-	typeE  = "enum"
 	typeV  = "view"
 	typeT  = "table"
 	typeC  = "column"
@@ -302,4 +311,13 @@ func filter[T any](s []T, f func(T) (bool, error)) ([]T, error) {
 		}
 	}
 	return r, nil
+}
+
+// detach the given object from all its references.
+func detachObject(o Object, refs []Object) {
+	for _, r := range refs {
+		if d, ok := r.(DepRemover); ok {
+			d.RemoveDep(o)
+		}
+	}
 }
