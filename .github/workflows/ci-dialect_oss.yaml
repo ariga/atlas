@@ -27,8 +27,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for mysql56
@@ -54,8 +54,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for mysql57
@@ -81,8 +81,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for mysql8
@@ -108,8 +108,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for maria107
@@ -135,8 +135,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for maria102
@@ -162,8 +162,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for maria103
@@ -188,8 +188,8 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for postgres-ext-postgis
@@ -214,8 +214,8 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for postgres10
@@ -240,8 +240,8 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for postgres11
@@ -266,8 +266,8 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for postgres12
@@ -292,8 +292,8 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for postgres13
@@ -318,8 +318,8 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for postgres14
@@ -344,8 +344,8 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for postgres15
@@ -357,8 +357,8 @@ jobs:
   integration-sqlite:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for sqlite
@@ -372,8 +372,8 @@ jobs:
         ports:
           - 4309:4000
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for tidb5
@@ -387,8 +387,8 @@ jobs:
         ports:
           - 4310:4000
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for tidb6
@@ -402,8 +402,8 @@ jobs:
         ports:
           - 26257:26257
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       - name: Run integration tests for cockroach
