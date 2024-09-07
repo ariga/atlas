@@ -16,10 +16,10 @@ jobs:
   revisions:
     runs-on: {{ $.Runner }}
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       {{- with .SharedSteps }}

@@ -24,10 +24,10 @@ jobs:
   lint:
     runs-on: {{ $.Runner }}
     steps:
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-      - uses: actions/checkout@v2
+          go-version-file: cmd/atlas/go.mod
       {{- with .SharedSteps }}
       {{- range . }}
       - name: {{ .Name }}
@@ -40,15 +40,15 @@ jobs:
       {{- end }}
       {{- end }}
       - name: Run linters
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v6
         with:
           args: --verbose
 
   generate-cmp:
     runs-on: {{ $.Runner }}
     steps:
-      - uses: actions/checkout@v2.4.0
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       {{- with .SharedSteps }}
@@ -83,8 +83,8 @@ jobs:
       matrix:
         go: {{ with $.GoVersions }}{{ . }}{{ end }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: {{ "${{ matrix.go }}" }}
       {{- with .SharedSteps }}
@@ -108,8 +108,8 @@ jobs:
   cli:
     runs-on: {{ $.Runner }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       {{- with .SharedSteps }}
@@ -130,8 +130,8 @@ jobs:
   integration:
     runs-on: {{ $.Runner }}
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: cmd/atlas/go.mod
       {{- with .SharedSteps }}
