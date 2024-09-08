@@ -302,6 +302,11 @@ module.exports = {
                     label: 'Kubernetes (Flux CD)'
                 },
                 {
+                  type: 'doc',
+                  id: 'guides/deploying/k8s-cloud-versioned',
+                  label: 'Kubernetes (Atlas Cloud)'
+                },
+                {
                     type: 'doc',
                     id: 'guides/deploying/image',
                     label: 'Creating container images'
