@@ -69,7 +69,11 @@ module.exports = {
           label: 'Docs',
           position: 'left',
         },
-
+        {
+          to: 'guides',
+          label: 'Guides',
+          position: 'left',
+        },
         {
           type: 'dropdown',
           label: 'Use Cases',
