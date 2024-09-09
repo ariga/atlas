@@ -141,6 +141,15 @@ func (a *Attr) Int() (int, error) {
 	return int(i), nil
 }
 
+// Float64 returns a float64 from the Value of the Attr. If The value is not a LiteralValue or the value
+// cannot be converted to a float64 an error is returned.
+func (a *Attr) Float64() (f float64, err error) {
+	if err = gocty.FromCtyValue(a.V, &f); err != nil {
+		return 0, err
+	}
+	return f, nil
+}
+
 // BigFloat returns a big.Float from the Value of the Attr. If The value is not a LiteralValue or the value
 // cannot be converted to a big.Float an error is returned.
 func (a *Attr) BigFloat() (*big.Float, error) {
