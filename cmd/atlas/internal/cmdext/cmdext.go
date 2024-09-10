@@ -619,7 +619,7 @@ func SchemaExternal(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.B
 	// Directory files must have an .sql extension to be read by the executor.
 	// The "schema" word is added to indicate that unlike data-source errors, load error
 	// comes from the output of the data-source (SQL representation of the state/schema).
-	dir, err := filesAsDir(migrate.NewLocalFile(fmt.Sprintf("%s/schema.sql", block.Labels[1]), out))
+	dir, err := FilesAsDir(migrate.NewLocalFile(fmt.Sprintf("%s/schema.sql", block.Labels[1]), out))
 	if err != nil {
 		return cty.NilVal, errorf("converting output to migration: %v", err)
 	}

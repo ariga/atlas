@@ -297,6 +297,7 @@ const (
 	flagLatest         = "latest"
 	flagLockTimeout    = "lock-timeout"
 	flagLog            = "log"
+	flagPlan           = "plan"
 	flagRevisionSchema = "revisions-schema"
 	flagSchema         = "schema"
 	flagSchemaShort    = "s"

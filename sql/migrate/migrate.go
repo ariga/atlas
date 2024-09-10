@@ -863,7 +863,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 			r.done()
 			r.ErrorStmt = stmt.Text
 			r.Error = err.Error()
-			return fmt.Errorf("sql/migrate: executing statement %q from version %q: %w", stmt.Text, r.Version, err)
+			return &StmtExecError{Stmt: stmt, Version: r.Version, Err: err}
 		}
 		r.PartialHashes = append(r.PartialHashes, "h1:"+sums[r.Applied])
 		r.Applied++
@@ -977,6 +977,18 @@ func (e *Executor) ExecuteTo(ctx context.Context, version string) (err error) {
 	return e.exec(ctx, pending)
 }
 
+// ExecuteFiles executes the given migration files on the database. Note, this method does not
+// validate the migration directory, check for pending/baseline/checkpoint files, or update the
+// revision history. It is meant to be used by the declarative workflow to apply files as-is.
+func (e *Executor) ExecuteFiles(ctx context.Context, files []File) error {
+	switch e.rrw.(type) {
+	case NopRevisionReadWriter, *NopRevisionReadWriter:
+		return e.exec(ctx, files)
+	default:
+		return fmt.Errorf("sql/migrate: unexpected usage of ExecuteFiles with non-nop revision read writer: %T", e.rrw)
+	}
+}
+
 func (e *Executor) exec(ctx context.Context, files []File) error {
 	revs, err := e.rrw.ReadRevisions(ctx)
 	if err != nil {
@@ -1067,7 +1079,22 @@ type (
 		Reason string        // reason why the database is considered not clean
 		State  *schema.Realm // the state the dev-connection is in
 	}
+
+	// StmtExecError is returned when the execution of a statement fails during migration.
+	StmtExecError struct {
+		Stmt    *Stmt  // Statement that failed.
+		Version string // Version of the file.
+		Err     error  // Underlying error during execution.
+	}
 )
+
+func (e *StmtExecError) Error() string {
+	return fmt.Sprintf("sql/migrate: executing statement %q from version %q: %v", e.Stmt.Text, e.Version, e.Err)
+}
+
+func (e *StmtExecError) Unwrap() error {
+	return e.Err
+}
 
 func (e *NotCleanError) Error() string {
 	return "sql/migrate: connected database is not clean: " + e.Reason

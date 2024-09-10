@@ -1,7 +1,7 @@
 only mysql8
 
-atlas schema apply --auto-approve --url URL --env dev --var "url=URL" --var "pattern=script_cli_schema_apply_datasrc" > got.txt
-cmp got.txt expected.txt
+atlas schema apply --auto-approve --url URL --env dev --var "url=URL" --var "pattern=script_cli_schema_apply_datasrc"
+stdout '\{"Applied":\["CREATE TABLE `users` \(\\n  `id` int NOT NULL\\n\);*"\],"Tenant":"script_cli_schema_apply_datasrc"\}'
 
 -- schema.hcl --
 variable "tenant" {
@@ -55,6 +55,3 @@ env "dev" {
   // Inject custom variables to our schema.
   tenant = each.value
 }
-
--- expected.txt --
-{"Applied":["CREATE TABLE `users` (\n  `id` int NOT NULL\n)"],"Tenant":"script_cli_schema_apply_datasrc"}

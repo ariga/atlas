@@ -1388,9 +1388,10 @@ func revisionSchemaName(c *sqlclient.Client, flag string) string {
 }
 
 const (
-	txModeNone = "none"
-	txModeAll  = "all"
-	txModeFile = "file"
+	txModeNone      = "none"
+	txModeAll       = "all"
+	txModeFile      = "file"
+	txModeDirective = "txmode"
 
 	execOrderLinear     = "linear"
 	execOrderLinearSkip = "linear-skip"
@@ -1487,17 +1488,29 @@ func (tx *tx) modeFor(f migrate.File) (string, error) {
 	if !ok {
 		return tx.mode, nil
 	}
-	switch ds := l.Directive("txmode"); {
+	switch m, err := txmodeFor(l); {
+	case err != nil:
+		return "", err
+	case m == "", m == tx.mode:
+		return tx.mode, nil
+	default: // m == txModeNone, m == txModeFile
+		if tx.mode == txModeAll {
+			return "", fmt.Errorf("cannot set txmode directive to %q in %q when txmode %q is set globally", m, l.Name(), txModeAll)
+		}
+		return m, nil
+	}
+}
+
+// txmodeFor returns the transaction mode for the given file.
+func txmodeFor(f *migrate.LocalFile) (string, error) {
+	switch ds := f.Directive(txModeDirective); {
+	case len(ds) == 0:
+		return "", nil
 	case len(ds) > 1:
 		return "", fmt.Errorf("multiple txmode values found in file %q: %q", f.Name(), ds)
-	case len(ds) == 0 || ds[0] == tx.mode:
-		return tx.mode, nil
 	case ds[0] == txModeAll:
-		return "", fmt.Errorf("txmode %q is not allowed in file directive %q", txModeAll, f.Name())
+		return "", fmt.Errorf("txmode %q is not allowed in file directive %q. Use %q instead", txModeAll, f.Name(), txModeFile)
 	case ds[0] == txModeNone, ds[0] == txModeFile:
-		if tx.mode == txModeAll {
-			return "", fmt.Errorf("cannot set txmode directive to %q in %q when txmode %q is set globally", ds[0], f.Name(), txModeAll)
-		}
 		return ds[0], nil
 	default:
 		return "", fmt.Errorf("unknown txmode %q found in file directive %q", ds[0], f.Name())

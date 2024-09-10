@@ -222,6 +222,14 @@ func (e *Env) SchemaRepo() (s string) {
 	return
 }
 
+// LintReview returns the review mode for the lint command.
+func (e *Env) LintReview() string {
+	if e != nil && e.Lint != nil && e.Lint.Review != "" {
+		return e.Lint.Review
+	}
+	return ReviewAlways
+}
+
 // VarFromURL returns the string variable (env attribute) from the URL.
 func (e *Env) VarFromURL(s string) (string, error) {
 	u, err := url.Parse(s)
