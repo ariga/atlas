@@ -69,7 +69,7 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 		if err != nil {
 			return nil, err
 		}
-		if dir, err = filesAsDir(migrate.NewLocalFile(fi.Name(), b)); err != nil {
+		if dir, err = FilesAsDir(migrate.NewLocalFile(fi.Name(), b)); err != nil {
 			return nil, err
 		}
 		return stateSchemaSQL(ctx, config, dir)
@@ -87,7 +87,7 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 			}
 			files = append(files, migrate.NewLocalFile(d.Name(), b))
 		}
-		if dir, err = filesAsDir(files...); err != nil {
+		if dir, err = FilesAsDir(files...); err != nil {
 			return nil, err
 		}
 		return stateSchemaSQL(ctx, config, dir)
@@ -385,7 +385,9 @@ func isProjectFile(f *hcl.File) bool {
 	}
 	return false
 }
-func filesAsDir(files ...migrate.File) (migrate.Dir, error) {
+
+// FilesAsDir wraps the given files as MemDir.
+func FilesAsDir(files ...migrate.File) (migrate.Dir, error) {
 	dir := &migrate.MemDir{}
 	for _, f := range files {
 		if err := dir.WriteFile(f.Name(), f.Bytes()); err != nil {

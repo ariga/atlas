@@ -44,12 +44,36 @@ type schemaApplyFlags struct {
 	devURL      string   // URL of the dev database.
 	paths       []string // Paths to HCL files.
 	toURLs      []string // URLs of the desired state.
+	planURL     string   // URL to a pre-planned migration.
 	schemas     []string // Schemas to take into account when diffing.
 	exclude     []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
 	dryRun      bool     // Only show SQL on screen instead of applying it.
+	edit        bool     // Open the generated SQL in an editor.
 	autoApprove bool     // Don't prompt for approval before applying SQL.
 	logFormat   string   // Log format.
 	txMode      string   // (none, file)
+}
+
+// check that the flags are valid before running the command.
+func (f *schemaApplyFlags) check(env *Env) error {
+	switch {
+	case f.url == "":
+		return errors.New(`required flag(s) "url" not set`)
+	case len(f.paths) == 0 && len(f.toURLs) == 0:
+		return errors.New(`one of flag(s) "file" or "to" is required`)
+	case f.txMode != txModeNone && f.txMode != txModeFile:
+		return fmt.Errorf("unknown tx-mode %q", f.txMode)
+	case f.autoApprove && env.Lint.Review != "":
+		return fmt.Errorf("auto-approve is not allowed when a lint policy is set to %q", env.Lint.Review)
+	case f.edit && f.devURL == "":
+		return errors.New("--edit requires a connection to the dev-database (provided by --dev-url)")
+	}
+	// If the old -f flag is given convert them to the URL format. If both are given,
+	// cobra would throw an error since they are marked as mutually exclusive.
+	if len(f.toURLs) == 0 {
+		f.toURLs = fixFileURLs(f.paths)
+	}
+	return nil
 }
 
 // schemaApplyCmd represents the 'atlas schema apply' subcommand.
@@ -79,22 +103,7 @@ migration.`,
   atlas schema apply --env local --dev-url "docker://postgres/15/dev?search_path=public" --dry-run
   atlas schema apply -u "sqlite://file.db" --to "file://schema.sql" --dev-url "sqlite://dev?mode=memory"`,
 			RunE: RunE(func(cmd *cobra.Command, args []string) error {
-				switch {
-				case GlobalFlags.SelectedEnv == "":
-					env, err := selectEnv(cmd)
-					if err != nil {
-						return err
-					}
-					return schemaApplyRun(cmd, flags, env)
-				default:
-					_, envs, err := EnvByName(cmd, GlobalFlags.SelectedEnv, GlobalFlags.Vars)
-					if err != nil {
-						return err
-					}
-					return cmdEnvsRun(envs, setSchemaEnvFlags, cmd, func(e *Env) error {
-						return schemaApplyRun(cmd, flags, e)
-					})
-				}
+				return schemaApplyRunE(cmd, args, &flags)
 			}),
 		}
 	)
@@ -109,121 +118,16 @@ migration.`,
 	addFlagLog(cmd.Flags(), &flags.logFormat)
 	addFlagFormat(cmd.Flags(), &flags.logFormat)
 	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file]")
+	cmd.Flags().StringVarP(&flags.planURL, flagPlan, "", "", "URL to a pre-planned migration (e.g., atlas://repo/plans/name)")
+	cmd.Flags().BoolVarP(&flags.edit, flagEdit, "", false, "open the generated SQL in an editor")
 	// Hidden support for the deprecated -f flag.
 	cmd.Flags().StringSliceVarP(&flags.paths, flagFile, "f", nil, "[paths...] file or directory containing HCL or SQL files")
 	cobra.CheckErr(cmd.Flags().MarkHidden(flagFile))
 	cmd.MarkFlagsMutuallyExclusive(flagFile, flagTo)
 	cmd.MarkFlagsMutuallyExclusive(flagLog, flagFormat)
+	cmd.MarkFlagsMutuallyExclusive(flagEdit, flagPlan)
+	cmd.MarkFlagsMutuallyExclusive(flagDryRun, flagAutoApprove)
 	return cmd
-}
-
-func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error {
-	switch {
-	case flags.url == "":
-		return errors.New(`required flag(s) "url" not set`)
-	case len(flags.paths) == 0 && len(flags.toURLs) == 0:
-		return errors.New(`one of flag(s) "file" or "to" is required`)
-	case flags.logFormat != "" && !flags.dryRun && !flags.autoApprove:
-		return errors.New(`--log and --format can only be used with --dry-run or --auto-approve`)
-	case flags.txMode != txModeNone && flags.txMode != txModeFile:
-		return fmt.Errorf("unknown tx-mode %q", flags.txMode)
-	case flags.autoApprove && env.Lint.Review != "":
-		return fmt.Errorf("auto-approve is not allowed when a lint policy is set to %q", env.Lint.Review)
-	}
-	// If the old -f flag is given convert them to the URL format. If both are given,
-	// cobra would throw an error since they are marked as mutually exclusive.
-	if len(flags.toURLs) == 0 {
-		for _, p := range flags.paths {
-			if !isURL(p) {
-				p = "file://" + p
-			}
-			flags.toURLs = append(flags.toURLs, p)
-		}
-	}
-	var (
-		err    error
-		dev    *sqlclient.Client
-		ctx    = cmd.Context()
-		format = cmdlog.SchemaPlanTemplate
-	)
-	if v := flags.logFormat; v != "" {
-		if format, err = template.New("format").Funcs(cmdlog.ApplyTemplateFuncs).Parse(v); err != nil {
-			return fmt.Errorf("parse log format: %w", err)
-		}
-	}
-	if flags.devURL != "" {
-		if dev, err = sqlclient.Open(ctx, flags.devURL); err != nil {
-			return err
-		}
-		defer dev.Close()
-	}
-	from, err := stateReader(ctx, env, &stateReaderConfig{
-		urls:    []string{flags.url},
-		schemas: flags.schemas,
-		exclude: flags.exclude,
-	})
-	if err != nil {
-		return err
-	}
-	defer from.Close()
-	client, ok := from.Closer.(*sqlclient.Client)
-	if !ok {
-		return errors.New("--url must be a database connection")
-	}
-	to, err := stateReader(ctx, env, &stateReaderConfig{
-		urls:    flags.toURLs,
-		dev:     dev,
-		client:  client,
-		schemas: flags.schemas,
-		exclude: flags.exclude,
-		vars:    GlobalFlags.Vars,
-	})
-	if err != nil {
-		return err
-	}
-	defer to.Close()
-	diff, err := computeDiff(ctx, client, from, to, diffOptions(cmd, env)...)
-	if err != nil {
-		return err
-	}
-	maySuggestUpgrade(cmd)
-	// Returning at this stage should
-	// not trigger the help message.
-	cmd.SilenceUsage = true
-	switch changes := diff.changes; {
-	case len(changes) == 0:
-		return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaApply{})
-	case flags.logFormat != "" && flags.autoApprove:
-		var (
-			applied int
-			plan    *migrate.Plan
-			cause   *cmdlog.StmtError
-			out     = cmd.OutOrStdout()
-		)
-		if plan, err = client.PlanChanges(ctx, "", changes, planOptions(client)...); err != nil {
-			return err
-		}
-		if err = applyChanges(ctx, client, changes, flags.txMode); err == nil {
-			applied = len(plan.Changes)
-		} else if i, ok := err.(interface{ Applied() int }); ok && i.Applied() < len(plan.Changes) {
-			applied, cause = i.Applied(), &cmdlog.StmtError{Stmt: plan.Changes[i.Applied()].Cmd, Text: err.Error()}
-		} else {
-			cause = &cmdlog.StmtError{Text: err.Error()}
-		}
-		err1 := format.Execute(out, cmdlog.NewSchemaApply(ctx, cmdlog.NewEnv(client, nil), plan.Changes[:applied], plan.Changes[applied:], cause))
-		return errors.Join(err, err1)
-	default:
-		switch err := summary(cmd, client, changes, format); {
-		case err != nil:
-			return err
-		case flags.dryRun:
-			return nil
-		case flags.autoApprove:
-			return applyChanges(ctx, client, changes, flags.txMode)
-		default:
-			return promptApply(cmd, flags, diff, client, dev)
-		}
-	}
 }
 
 func applyChanges(ctx context.Context, client *sqlclient.Client, changes []schema.Change, txMode string) error {
@@ -261,7 +165,7 @@ func planOptions(c *sqlclient.Client) []migrate.PlanOption {
 	return opts
 }
 
-type schemeCleanFlags struct {
+type schemaCleanFlags struct {
 	URL         string // URL of database to apply the changes on.
 	AutoApprove bool   // Don't prompt for approval before applying SQL.
 }
@@ -269,7 +173,7 @@ type schemeCleanFlags struct {
 // schemaCleanCmd represents the 'atlas schema clean' subcommand.
 func schemaCleanCmd() *cobra.Command {
 	var (
-		flags schemeCleanFlags
+		flags schemaCleanFlags
 		cmd   = &cobra.Command{
 			Use:   "clean [flags]",
 			Short: "Removes all objects from the connected database.",
@@ -292,7 +196,7 @@ As a safety feature, 'atlas schema clean' will ask for confirmation before attem
 	return cmd
 }
 
-func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemeCleanFlags) error {
+func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemaCleanFlags) error {
 	// Open a client to the database.
 	c, err := sqlclient.Open(cmd.Context(), flags.URL)
 	if err != nil {
@@ -325,15 +229,7 @@ func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemeCleanFlags) erro
 		cmd.Println("Nothing to drop")
 		return nil
 	}
-	if err := summary(cmd, c, drop, cmdlog.SchemaPlanTemplate); err != nil {
-		return err
-	}
-	if flags.AutoApprove || promptUser(cmd) {
-		if err := c.ApplyChanges(cmd.Context(), drop); err != nil {
-			return err
-		}
-	}
-	return nil
+	return applySchemaClean(cmd, c, drop, flags)
 }
 
 type schemaDiffFlags struct {
@@ -735,17 +631,6 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *cmdext
 		from:    current,
 		to:      desired,
 	}, nil
-}
-
-func summary(cmd *cobra.Command, c *sqlclient.Client, changes []schema.Change, t *template.Template) error {
-	p, err := c.PlanChanges(cmd.Context(), "", changes, planOptions(c)...)
-	if err != nil {
-		return err
-	}
-	return t.Execute(
-		cmd.OutOrStdout(),
-		cmdlog.NewSchemaPlan(cmd.Context(), cmdlog.NewEnv(c, nil), p.Changes, nil),
-	)
 }
 
 const (

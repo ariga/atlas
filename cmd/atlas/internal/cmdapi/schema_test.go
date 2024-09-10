@@ -484,108 +484,6 @@ func TestSchema_Apply(t *testing.T) {
 	)
 }
 
-func TestSchema_ApplyTemplateDir(t *testing.T) {
-	p := t.TempDir()
-	cfg := filepath.Join(p, "atlas.hcl")
-	src := filepath.Join(p, "schema.sql")
-	err := os.WriteFile(cfg, []byte(`
-variable "path" {
-  type        = string
-  description = "A path to the template directory"
-}
-
-data "template_dir" "schema" {
-  path = var.path
-  vars = {
-    table = "table_name"
-  }
-}
-
-env "dev" {
-  src = data.template_dir.schema.url
-  dev = "sqlite://dev?mode=memory"
-}`), 0600)
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(src, []byte(`create table {{ .table }} (c text);`), 0600))
-
-	cmd := schemaCmd()
-	cmd.AddCommand(schemaApplyCmd())
-	s, err := runCmd(
-		cmd, "apply",
-		"--url", openSQLite(t, ""),
-		"-c", "file://"+cfg,
-		"--var", "path="+p,
-		"--env", "dev",
-		"--auto-approve",
-	)
-	require.NoError(t, err)
-	require.Equal(t, "-- Planned Changes:\n-- Create \"table_name\" table\nCREATE TABLE `table_name` (\n  `c` text NULL\n);\n", s)
-}
-
-func TestSchema_ApplyMultiEnv(t *testing.T) {
-	p := t.TempDir()
-	cfg := filepath.Join(p, "atlas.hcl")
-	src := filepath.Join(p, "schema.hcl")
-	err := os.WriteFile(cfg, []byte(`
-variable "urls" {
-  type = list(string)
-}
-
-variable "src" {
-  type = string
-}
-
-env "local" {
-  for_each = toset(var.urls)
-  url      = each.value
-  src 	   = var.src
-}`), 0600)
-	require.NoError(t, err)
-	err = os.WriteFile(src, []byte(`
-schema "main" {}
-
-table "users" {
-  schema = schema.main
-  column "id" {
-    type = int
-  }
-}
-`), 0600)
-	require.NoError(t, err)
-	db1, db2 := filepath.Join(p, "test1.db"), filepath.Join(p, "test2.db")
-	cmd := schemaCmd()
-	cmd.AddCommand(schemaApplyCmd())
-	s, err := runCmd(
-		cmd, "apply",
-		"-c", "file://"+cfg,
-		"--env", "local",
-		"--var", fmt.Sprintf("src=file://%s", src),
-		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", db1),
-		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", db2),
-		"--auto-approve",
-	)
-	require.NoError(t, err)
-	require.Equal(t, 2, strings.Count(s, "CREATE TABLE `users` (\n  `id` int NOT NULL\n)"))
-	_, err = os.Stat(db1)
-	require.NoError(t, err)
-	_, err = os.Stat(db2)
-	require.NoError(t, err)
-
-	cmd = schemaCmd()
-	cmd.AddCommand(schemaApplyCmd())
-	s, err = runCmd(
-		cmd, "apply",
-		"-c", "file://"+cfg,
-		"--env", "local",
-		"--var", fmt.Sprintf("src=file://%s", src),
-		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", db1),
-		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", db2),
-		"--auto-approve",
-	)
-	require.NoError(t, err)
-	require.Equal(t, 2, strings.Count(s, "Schema is synced, no changes to be made"))
-}
-
 func TestSchema_ApplyLog(t *testing.T) {
 	t.Run("DryRun", func(t *testing.T) {
 		db := openSQLite(t, "")
@@ -611,7 +509,10 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "{\"Pending\":[\"CREATE TABLE `t1` (\\n  `id` int NULL\\n)\"]}", s)
+		require.Equal(
+			t, "{\"Pending\":[\"CREATE TABLE `t1` (\\n  `id` int NULL\\n)\"]}",
+			strings.ReplaceAll(s, ";", ""), // Compatibility between ent/oss.
+		)
 	})
 
 	t.Run("AutoApprove", func(t *testing.T) {
@@ -626,7 +527,10 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "{\"Applied\":[\"CREATE TABLE `t1` (\\n  `id` int NULL\\n)\"]}", s)
+		require.Equal(
+			t, "{\"Applied\":[\"CREATE TABLE `t1` (\\n  `id` int NULL\\n)\"]}",
+			strings.ReplaceAll(s, ";", ""), // Compatibility between ent/oss.
+		)
 
 		cmd = schemaCmd()
 		cmd.AddCommand(schemaApplyCmd())
@@ -650,7 +554,10 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "{\"Applied\":[\"PRAGMA foreign_keys = off\",\"DROP TABLE `t1`\",\"CREATE TABLE `t2` (\\n  `id` int NULL\\n)\",\"PRAGMA foreign_keys = on\"]}", s)
+		require.Equal(
+			t, "{\"Applied\":[\"PRAGMA foreign_keys = off\",\"DROP TABLE `t1`\",\"CREATE TABLE `t2` (\\n  `id` int NULL\\n)\",\"PRAGMA foreign_keys = on\"]}",
+			strings.ReplaceAll(s, ";", ""), // Compatibility between ent/oss.
+		)
 
 		// Simulate a failed execution.
 		conn, err := sql.Open("sqlite3", strings.TrimPrefix(db, "sqlite://"))
@@ -667,17 +574,19 @@ func TestSchema_ApplyLog(t *testing.T) {
 			"--auto-approve",
 			"--format", "{{ json .Changes }}\n",
 		)
-		require.EqualError(t, err, `create index "t2_id" to table: "t2": UNIQUE constraint failed: t2.id`)
+		require.ErrorContains(t, err, `UNIQUE constraint failed: t2.id`)
 		var out struct {
 			Applied []string
 			Pending []string
 			Error   cmdlog.StmtError
 		}
 		require.NoError(t, json.NewDecoder(strings.NewReader(s)).Decode(&out))
-		require.Equal(t, []string{"ALTER TABLE `t2` ADD COLUMN `c` int NULL"}, out.Applied)
-		require.Equal(t, []string{"CREATE UNIQUE INDEX `t2_id` ON `t2` (`id`)"}, out.Pending)
+		require.Len(t, out.Applied, 1)
+		require.Len(t, out.Pending, 1)
+		require.Equal(t, "ALTER TABLE `t2` ADD COLUMN `c` int NULL", strings.TrimRight(out.Applied[0], ";"))
+		require.Equal(t, "CREATE UNIQUE INDEX `t2_id` ON `t2` (`id`)", strings.TrimRight(out.Pending[0], ";"))
 		require.Equal(t, out.Pending[0], out.Error.Stmt)
-		require.Equal(t, `create index "t2_id" to table: "t2": UNIQUE constraint failed: t2.id`, out.Error.Text)
+		require.Contains(t, out.Error.Text, `UNIQUE constraint failed: t2.id`)
 	})
 }
 
@@ -752,9 +661,13 @@ diff {
 		"--var", "schema=file://"+src,
 		"--env", "local",
 		"--auto-approve",
+		"--format", "{{ json .Changes }}",
 	)
 	require.NoError(t, err)
-	require.Equal(t, "-- Planned Changes:\n-- Create \"users\" table\nCREATE TABLE `users` (\n  `id` int NOT NULL\n);\n", s)
+	require.Equal(
+		t, "{\"Applied\":[\"CREATE TABLE `users` (\\n  `id` int NOT NULL\\n)\"]}",
+		strings.ReplaceAll(s, ";", ""), // Compatibility between ent/oss.
+	)
 
 	// Skip destructive changes by using project-level policy (no --env was passed).
 	cmd = schemaCmd()
@@ -766,9 +679,13 @@ diff {
 		"--to", "file://"+src,
 		"--dev-url", "sqlite://dev?mode=memory&_fk=1",
 		"--auto-approve",
+		"--format", "{{ json .Changes }}",
 	)
 	require.NoError(t, err)
-	require.Equal(t, "-- Planned Changes:\n-- Create \"users\" table\nCREATE TABLE `users` (\n  `id` int NOT NULL\n);\n", s)
+	require.Equal(
+		t, "{\"Applied\":[\"CREATE TABLE `users` (\\n  `id` int NOT NULL\\n)\"]}",
+		strings.ReplaceAll(s, ";", ""), // Compatibility between ent/oss.
+	)
 
 	// Apply destructive changes.
 	cmd = schemaCmd()
@@ -781,15 +698,13 @@ diff {
 		"--var", "destructive=true",
 		"--env", "local",
 		"--auto-approve",
+		"--format", "{{ json .Changes }}",
 	)
 	require.NoError(t, err)
-	lines := strings.Split(strings.TrimSpace(s), ";\n")
-	require.Equal(t, []string{
-		"-- Planned Changes:\n-- Disable the enforcement of foreign-keys constraints\nPRAGMA foreign_keys = off",
-		"-- Drop \"pets\" table\nDROP TABLE `pets`",
-		"-- Create \"users\" table\nCREATE TABLE `users` (\n  `id` int NOT NULL\n)",
-		"-- Enable back the enforcement of foreign-keys constraints\nPRAGMA foreign_keys = on;",
-	}, lines)
+	require.Equal(
+		t, "{\"Applied\":[\"PRAGMA foreign_keys = off\",\"DROP TABLE `pets`\",\"CREATE TABLE `users` (\\n  `id` int NOT NULL\\n)\",\"PRAGMA foreign_keys = on\"]}",
+		strings.ReplaceAll(s, ";", ""), // Compatibility between ent/oss.
+	)
 }
 
 func TestSchema_ApplySources(t *testing.T) {
@@ -832,13 +747,13 @@ env "local" {
 		"-c", "file://"+cfg,
 		"--env", "local",
 		"--auto-approve",
+		"--format", "{{ json .Changes }}",
 	)
 	require.NoError(t, err)
-	lines := strings.Split(strings.TrimSpace(s), ";\n")
-	require.Equal(t, []string{
-		"-- Planned Changes:\n-- Create \"one\" table\nCREATE TABLE `one` (\n  `id` int NOT NULL\n)",
-		"-- Create \"two\" table\nCREATE TABLE `two` (\n  `id` int NOT NULL\n);",
-	}, lines)
+	require.Equal(
+		t, "{\"Applied\":[\"CREATE TABLE `one` (\\n  `id` int NOT NULL\\n)\",\"CREATE TABLE `two` (\\n  `id` int NOT NULL\\n)\"]}",
+		strings.ReplaceAll(s, ";", ""), // Compatibility between ent/oss.
+	)
 }
 
 func TestSchema_ToFlagPrecedence(t *testing.T) {
@@ -876,11 +791,12 @@ env "local" {
 		"--to", "file://"+hclFile,
 		"--env", "local",
 		"--auto-approve",
+		"--format", "{{ json .Changes }}",
 	)
 	require.NoError(t, err)
-	require.Equal(t,
-		"-- Planned Changes:\n-- Create \"one\" table\nCREATE TABLE `one` (\n  `id` int NOT NULL\n);",
-		strings.TrimSpace(s),
+	require.Equal(
+		t, "{\"Applied\":[\"CREATE TABLE `one` (\\n  `id` int NOT NULL\\n)\"]}",
+		strings.ReplaceAll(s, ";", ""), // Compatibility between ent/oss.
 	)
 }
 
@@ -895,9 +811,13 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"--dev-url", openSQLite(t, ""),
 			"--to", "file://"+p,
 			"--auto-approve",
+			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "-- Planned Changes:\n-- Create \"t1\" table\nCREATE TABLE `t1` (\n  `id` int NOT NULL\n);\n", s)
+		require.Equal(
+			t, "{\"Applied\":[\"CREATE TABLE `t1` (\\n  `id` int NOT NULL\\n)\"]}",
+			strings.ReplaceAll(s, ";", ""), // Compatibility between ent/oss.
+		)
 
 		s, err = runCmd(
 			schemaApplyCmd(),
@@ -917,9 +837,13 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"--dev-url", openSQLite(t, ""),
 			"--to", "file://testdata/sqlite",
 			"--auto-approve",
+			"--format", "{{ json .Changes }}",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "-- Planned Changes:\n-- Create \"tbl\" table\nCREATE TABLE `tbl` (\n  `col` int NOT NULL,\n  `col_2` bigint NULL\n);\n", s)
+		require.Equal(
+			t, "{\"Applied\":[\"CREATE TABLE `tbl` (\\n  `col` int NOT NULL,\\n  `col_2` bigint NULL\\n)\"]}",
+			strings.ReplaceAll(s, ";", ""), // Compatibility between ent/oss.
+		)
 
 		s, err = runCmd(
 			schemaApplyCmd(),
@@ -992,16 +916,14 @@ table "bad" {
 			"-u", db,
 			"--to", "file://"+p,
 			"--auto-approve",
+			"--format", "{{ json .Changes }}",
 		)
 		require.Error(t, err)
-		require.Equal(t, strings.Join([]string{
-			"-- Planned Changes:",
-			`-- Create "ok" table`,
-			"CREATE TABLE `ok` (\n  `id` int NOT NULL\n);",
-			`-- Create "bad" table`,
-			"CREATE TABLE `bad` (\n  `id` int NOT NULL DEFAULT invalid check\n);",
-			"Error: create \"bad\" table: near \")\": syntax error\n",
-		}, "\n"), s)
+		require.Contains(
+			t, strings.ReplaceAll(s, ";", ""), // Compatibility between ent/oss.
+			"{\"Applied\":[\"CREATE TABLE `ok` (\\n  `id` int NOT NULL\\n)\"],\"Pending\":[\"CREATE TABLE `bad` (\\n  `id` int NOT NULL DEFAULT invalid check\\n)\"],\"Error\":{\"Stmt\":\"CREATE TABLE `bad` (\\n  `id` int NOT NULL DEFAULT invalid check\\n)\",",
+		)
+		require.Regexp(t, `Error: .* near "\)": syntax error`, s)
 
 		// The "ok" table should be created, as changes are rolled back on error.
 		s, err = runCmd(schemaInspectCmd(), "-u", db)

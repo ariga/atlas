@@ -67,7 +67,27 @@ func init() {
 // unsupportedCommand create a stub command that reports
 // the command is not supported by this build.
 func unsupportedCommand(cmd, sub string) *cobra.Command {
-	s := fmt.Sprintf(
+	s := unsupportedMessage(cmd, sub)
+	c := &cobra.Command{
+		Hidden: true,
+		Use:    fmt.Sprintf("%s is not supported by this build", sub),
+		Short:  s,
+		Long:   s,
+		RunE: RunE(func(*cobra.Command, []string) error {
+			return AbortErrorf(s)
+		}),
+	}
+	c.SetHelpTemplate(s + "\n")
+	return c
+}
+
+// unsupportedMessage returns a message informing the user that the command
+// or one of its options are not supported. For example:
+//
+// unsupportedMessage("migrate", "checkpoint")
+// unsupportedMessage("schema", "apply --plan")
+func unsupportedMessage(cmd, sub string) string {
+	return fmt.Sprintf(
 		`'atlas %s %s' is not supported by the community version.
 
 To install the non-community version of Atlas, use the following command:
@@ -80,17 +100,6 @@ Or, visit the website to see all installation options:
 `,
 		cmd, sub,
 	)
-	c := &cobra.Command{
-		Hidden: true,
-		Use:    fmt.Sprintf("%s is not supported by this build", sub),
-		Short:  s,
-		Long:   s,
-		RunE: RunE(func(*cobra.Command, []string) error {
-			return AbortErrorf(s)
-		}),
-	}
-	c.SetHelpTemplate(s + "\n")
-	return c
 }
 
 type (
@@ -294,6 +303,151 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	default:
 		return pl.WritePlan(plan)
 	}
+}
+
+// schemaApplyRunE is the community version of the 'atlas schema apply' command.
+func schemaApplyRunE(cmd *cobra.Command, _ []string, flags *schemaApplyFlags) error {
+	switch {
+	case flags.edit:
+		return AbortErrorf(unsupportedMessage("schema", "apply --edit"))
+	case flags.planURL != "":
+		return AbortErrorf(unsupportedMessage("schema", "apply --plan"))
+	case GlobalFlags.SelectedEnv == "":
+		env, err := selectEnv(cmd)
+		if err != nil {
+			return err
+		}
+		return schemaApplyRun(cmd, *flags, env)
+	default:
+		_, envs, err := EnvByName(cmd, GlobalFlags.SelectedEnv, GlobalFlags.Vars)
+		if err != nil {
+			return err
+		}
+		if len(envs) != 1 {
+			return fmt.Errorf("multi-environment %q is not supported", GlobalFlags.SelectedEnv)
+		}
+		if err := setSchemaEnvFlags(cmd, envs[0]); err != nil {
+			return err
+		}
+		return schemaApplyRun(cmd, *flags, envs[0])
+	}
+}
+
+func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error {
+	var (
+		err    error
+		ctx    = cmd.Context()
+		dev    *sqlclient.Client
+		format = cmdlog.SchemaPlanTemplate
+	)
+	if err = flags.check(env); err != nil {
+		return err
+	}
+	if v := flags.logFormat; v != "" {
+		if !flags.dryRun && !flags.autoApprove {
+			return errors.New(`--log and --format can only be used with --dry-run or --auto-approve`)
+		}
+		if format, err = template.New("format").Funcs(cmdlog.ApplyTemplateFuncs).Parse(v); err != nil {
+			return fmt.Errorf("parse log format: %w", err)
+		}
+	}
+	if flags.devURL != "" {
+		if dev, err = sqlclient.Open(ctx, flags.devURL); err != nil {
+			return err
+		}
+		defer dev.Close()
+	}
+	from, err := stateReader(ctx, env, &stateReaderConfig{
+		urls:    []string{flags.url},
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+	})
+	if err != nil {
+		return err
+	}
+	defer from.Close()
+	client, ok := from.Closer.(*sqlclient.Client)
+	if !ok {
+		return errors.New("--url must be a database connection")
+	}
+	to, err := stateReader(ctx, env, &stateReaderConfig{
+		urls:    flags.toURLs,
+		dev:     dev,
+		client:  client,
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+		vars:    GlobalFlags.Vars,
+	})
+	if err != nil {
+		return err
+	}
+	defer to.Close()
+	diff, err := computeDiff(ctx, client, from, to, diffOptions(cmd, env)...)
+	if err != nil {
+		return err
+	}
+	maySuggestUpgrade(cmd)
+	// Returning at this stage should
+	// not trigger the help message.
+	cmd.SilenceUsage = true
+	switch changes := diff.changes; {
+	case len(changes) == 0:
+		return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaApply{})
+	case flags.logFormat != "" && flags.autoApprove:
+		var (
+			applied int
+			plan    *migrate.Plan
+			cause   *cmdlog.StmtError
+			out     = cmd.OutOrStdout()
+		)
+		if plan, err = client.PlanChanges(ctx, "", changes, planOptions(client)...); err != nil {
+			return err
+		}
+		if err = applyChanges(ctx, client, changes, flags.txMode); err == nil {
+			applied = len(plan.Changes)
+		} else if i, ok := err.(interface{ Applied() int }); ok && i.Applied() < len(plan.Changes) {
+			applied, cause = i.Applied(), &cmdlog.StmtError{Stmt: plan.Changes[i.Applied()].Cmd, Text: err.Error()}
+		} else {
+			cause = &cmdlog.StmtError{Text: err.Error()}
+		}
+		err1 := format.Execute(out, cmdlog.NewSchemaApply(ctx, cmdlog.NewEnv(client, nil), plan.Changes[:applied], plan.Changes[applied:], cause))
+		return errors.Join(err, err1)
+	default:
+		switch err := summary(cmd, client, changes, format); {
+		case err != nil:
+			return err
+		case flags.dryRun:
+			return nil
+		case flags.autoApprove:
+			return applyChanges(ctx, client, changes, flags.txMode)
+		default:
+			return promptApply(cmd, flags, diff, client, dev)
+		}
+	}
+}
+
+// applySchemaClean is the community-version of the 'atlas schema clean' handler.
+func applySchemaClean(cmd *cobra.Command, client *sqlclient.Client, drop []schema.Change, flags schemaCleanFlags) error {
+	if err := summary(cmd, client, drop, cmdlog.SchemaPlanTemplate); err != nil {
+		return err
+	}
+	if flags.AutoApprove || promptUser(cmd) {
+		if err := client.ApplyChanges(cmd.Context(), drop); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func summary(cmd *cobra.Command, c *sqlclient.Client, changes []schema.Change, t *template.Template) error {
+	p, err := c.PlanChanges(cmd.Context(), "", changes, planOptions(c)...)
+	if err != nil {
+		return err
+	}
+	return t.Execute(
+		cmd.OutOrStdout(),
+		cmdlog.NewSchemaPlan(cmd.Context(), cmdlog.NewEnv(c, nil), p.Changes, nil),
+	)
 }
 
 func promptApply(cmd *cobra.Command, flags schemaApplyFlags, diff *diff, client, _ *sqlclient.Client) error {

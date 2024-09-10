@@ -719,40 +719,11 @@ Schema is synced, no changes to be made
 {{ end -}}
 `))
 
-type (
-	// SchemaApply contains a summary of a 'schema apply' execution on a database.
-	SchemaApply struct {
-		ctx context.Context `json:"-"`
-		Env
-		Changes Changes `json:"Changes,omitempty"`
-		// General error that occurred during execution.
-		// e.g., when committing or rolling back a transaction.
-		Error string `json:"Error,omitempty"`
-	}
-	// Changes represents a list of changes that are pending or applied.
-	Changes struct {
-		Applied []*migrate.Change `json:"Applied,omitempty"` // SQL changes applied with success
-		Pending []*migrate.Change `json:"Pending,omitempty"` // SQL changes that were not applied
-		Error   *StmtError        `json:"Error,omitempty"`   // Error that occurred during applying
-	}
-)
-
-// NewSchemaApply returns a SchemaApply.
-func NewSchemaApply(ctx context.Context, env Env, applied, pending []*migrate.Change, err *StmtError) *SchemaApply {
-	return &SchemaApply{
-		ctx: ctx,
-		Env: env,
-		Changes: Changes{
-			Applied: applied,
-			Pending: pending,
-			Error:   err,
-		},
-	}
-}
-
-// NewSchemaPlan returns a SchemaApply only with pending changes.
-func NewSchemaPlan(ctx context.Context, env Env, pending []*migrate.Change, err *StmtError) *SchemaApply {
-	return NewSchemaApply(ctx, env, nil, pending, err)
+// Changes represents a list of changes that are pending or applied.
+type Changes struct {
+	Applied []*migrate.Change `json:"Applied,omitempty"` // SQL changes applied with success
+	Pending []*migrate.Change `json:"Pending,omitempty"` // SQL changes that were not applied
+	Error   *StmtError        `json:"Error,omitempty"`   // Error that occurred during applying
 }
 
 // MarshalJSON implements json.Marshaler.

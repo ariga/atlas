@@ -419,7 +419,7 @@ func testCLIMultiSchemaApply(t T, h string, url string, schemas []string, eval s
 	defer stdin.Close()
 	_, err = io.WriteString(stdin, "\n")
 	require.NoError(t, cmd.Run(), stderr.String())
-	require.Contains(t, stdout.String(), `-- Add new schema named "test2"`)
+	require.True(t, strings.Contains(stdout.String(), `CREATE SCHEMA`) || strings.Contains(stdout.String(), `CREATE DATABASE`), "create schema test2")
 }
 
 func testCLIMultiSchemaInspect(t T, h string, url string, schemas []string, eval schemahcl.Evaluator) {
@@ -473,7 +473,7 @@ func testCLISchemaApply(t T, h string, url string, args ...string) {
 	require.NoError(t, err)
 	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
 	require.Empty(t, stderr.String(), stderr.String())
-	require.Contains(t, stdout.String(), "-- Planned")
+	require.Contains(t, stdout.String(), "CREATE TABLE")
 	u := t.loadUsers()
 	require.NotNil(t, u)
 }
@@ -502,7 +502,7 @@ func testCLISchemaApplyDry(t T, h string, url string) {
 	require.NoError(t, err)
 	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
 	require.Empty(t, stderr.String(), stderr.String())
-	require.Contains(t, stdout.String(), "-- Planned")
+	require.Contains(t, stdout.String(), "CREATE TABLE")
 	require.NotContains(t, stdout.String(), "Are you sure?", "dry run should not prompt")
 	realm := t.loadRealm()
 	_, ok := realm.Schemas[0].Table("users")
@@ -531,7 +531,7 @@ func testCLISchemaApplyAutoApprove(t T, h string, url string, args ...string) {
 	require.NoError(t, err)
 	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
 	require.Empty(t, stderr.String(), stderr.String())
-	require.Contains(t, stdout.String(), "-- Planned")
+	require.Contains(t, stdout.String(), "CREATE TABLE")
 	u := t.loadUsers()
 	require.NotNil(t, u)
 }
@@ -565,7 +565,7 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 			var buf strings.Builder
 			for _, c := range c {
 				buf.WriteString(c.Cmd)
-				buf.WriteString(";\n")
+				buf.WriteString("\n")
 			}
 			return buf.String()
 		}
@@ -591,8 +591,11 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 		"--to", "file://"+p,
 		"--dev-url", t.url(devname),
 		"--dry-run",
+		"--format", "{{ range $c := .Changes.Pending }}{{ println $c.Cmd }}{{ end }}",
 	).CombinedOutput()
 	require.NoError(t, err)
+	// Normalize oss/ent output.
+	out = bytes.ReplaceAll(out, []byte(";"), []byte(""))
 	require.Contains(t, string(out), one)
 	require.Contains(t, string(out), two)
 
@@ -604,8 +607,11 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 		"--to", "file://"+p+"?version=1",
 		"--dev-url", t.url(devname),
 		"--dry-run",
+		"--format", "{{ range $c := .Changes.Pending }}{{ println $c.Cmd }}{{ end }}",
 	).CombinedOutput()
 	require.NoError(t, err)
+	// Normalize oss/ent output.
+	out = bytes.ReplaceAll(out, []byte(";"), []byte(""))
 	require.Contains(t, string(out), one)
 	require.NotContains(t, string(out), two)
 }
