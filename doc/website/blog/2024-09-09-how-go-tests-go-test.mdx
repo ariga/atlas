@@ -1,0 +1,691 @@
+---
+title: How Go Tests "go test"
+authors: rotemtam
+tags: [golang, gophercon, testing, atlas]
+---
+
+*Adapted from a talk given at [GopherCon Israel 2024](https://www.gophercon.org.il/)*
+
+## Introduction
+
+How does [Go](https://go.dev), the project, and team behind it, test `go test`, the Go tool's command for running tests?
+Does Go test `go test` using the `go test` command? In this article, we explore the evolution of how the Go
+team tests the Go tool (`go`) and discuss strategies for testing command-line tools written in Go in general.
+
+## CLIs and Go
+
+If you are a software engineer in 2024, you are most likely
+using a CLI tool written a tool to perform some critical part of your work. Perhaps you're using
+`docker`, to build and run container images or `kubectl` to interact with a kubernetes cluster.
+Maybe you're using `terraform` to manage your infrastructure as code. Maybe you're using `atlas`
+(the [project I work on](https://atlasgo.io)) to manage your database schema as code.  You could be
+using `trivy` to scan your code for vulnerabilities or `gh` to interact with your code on GitHub.
+
+Go is a fantastic language for writing CLI tools, and today we're going to try and study some of the
+strategies that you can employ to test CLI tools by looking at how the Go team tests the `go` tool.
+
+## Motivation
+
+My personal motivation for digging into this topic arose from my work on Atlas, a database schema
+as code tool.  Atlas is a CLI written in Go (see our [GitHub repo](https://github.com/ariga/atlas)),
+that has sometimes been described as a "Terraform for databases."  It is used by many companies big and
+small to streamline their database schema management process.
+
+One of the first decisions [Ariel](https://github.com/a8m) (my co-founder) and I made when we started
+to work on Atlas was that we were going to be employing a continuous delivery strategy, shipping new
+features and bug fixes to our users as soon as they were ready, often times multiple times
+a day. This meant that we needed to have a robust testing strategy in place to ensure that we were
+shipping high-quality software to our users. After all, we were building a tool that was going to be
+used by other developers to manage their most critical data assets.
+
+## Testing CLI tools
+
+Before we dive into how the Go team tests the `go` tool, let's take a step back and think about what
+CLI testing is all about. Testing CLIs has it's unique challenges, but at the end of the day, it's
+very similar to testing any other piece of software.
+
+As with all automated tests, we can identify four discrete phases with CLI tests which I characterize
+as the "Quadruple A" of testing:
+
+* **Arrange**: We setup the environment for the test. For CLI tests this typically involves creating temporary files,
+and setting up environment variables.
+* **Act**: When testing server software we would issue a request, but when testing CLIs, this means executing the
+binary under test, often supplying it with command-line arguments, flags, and potentially piping data into STDIN.
+* **Assert**: We consume the output streams (STDOUT, STDERR) and compare them to expected values. We also check the
+exit code of the process, and any side effects that the command may have had on the environment.
+* **And... cleanup**: We clean up the environment, removing any temporary files, and resetting any environment variables
+that we may have changed. Failing to do this can lead to flaky tests - which debugging is arguably one of the worst
+things in software development.
+
+## How the Go team tests `go test`
+
+With that in mind let's now explore how testing the `go` tool has evolved over time.
+
+This section is mostly built upon a terrific and detailed commit message on [CL #123577](https://go-review.googlesource.com/c/go/+/123577)
+by [Russ Cox](https://github.com/rsc). I highly recommend reading the original commit message for a more detailed
+explanation of the evolution of the Go test suite.
+
+### 2012-2015: `test.bash`
+
+In the early days of Go, the Go test suite was tested using a shell script called `test.bash`. This script
+started out as a simple 30-40 line script that ran the `go` tool with various flags and options and checked
+the output. Over time, as the Go tool grew in complexity, so did the `test.bash` script. It eventually grew
+to be a 1500+ line shell script that tested the `go` tool in a variety of ways.  The tests looked something
+like this:
+
+```bash
+TEST 'file:line in error messages'
+    # Test that error messages have file:line information at beginning of
+    # the line. Also test issue 4917: that the error is on stderr.
+    d=$(TMPDIR=/var/tmp mktemp -d -t testgoXXX)
+    fn=$d/err.go
+    echo "package main" > $fn
+    echo 'import "bar"' >> $fn
+    ./testgo run $fn 2>$d/err.out || true
+    if ! grep -q "^$fn:" $d/err.out; then
+        echo "missing file:line in error message"
+        cat $d/err.out
+        ok=false
+    fi
+    rm -r $d
+```
+
+If you examine the test above, you will see that it is comprised of the same four phases that we discussed
+earlier: Arrange, Act, Assert, and Cleanup:
+* **Arrange**: The test creates a temporary directory and a temporary file.
+* **Act**: The test runs the `go` tool with the `run` subcommand and pipes the output to a file.
+* **Assert**: The test checks that the output contains the filename and line number of the error.
+* **Cleanup**: The test removes the temporary directory.
+
+Russ writes about the `test.bash` script:
+
+> The original cmd/go tests were tiny shell scripts
+> written against a library of shell functions.
+>
+>  They were okay to write but difficult to run:
+>  you couldn't select individual tests (with -run)
+>  they didn't run on Windows, they were slow, and so on.
+>
+>  The tests had always been awkward to write.
+
+### 2015-2018: `testgo`
+
+In June 2015, [CL #10464](https://go-review.googlesource.com/c/go/+/10464) introduced `go_test.go`. This file
+contained a basic framework for writing Go tests for the `go` tool named `testgo`. The same test from above, written
+in Go, looked something like this:
+
+```go
+func TestFileLineInErrorMessages(t *testing.T) {
+        tg := testgo(t)
+        defer tg.cleanup()
+        tg.parallel()
+        tg.tempFile("err.go", `package main; import "bar"`)
+        path := tg.path("err.go")
+        tg.runFail("run", path)
+        shortPath := path
+        if rel, err := filepath.Rel(tg.pwd(), path);
+            err == nil && len(rel) < len(path) {
+            shortPath = rel
+        }
+        tg.grepStderr(
+            "^"+regexp.QuoteMeta(shortPath)+":",
+            "missing file:line in error message",
+        )
+}
+```
+As you can see, the test is still comprised of the same four phases: Arrange, Act, Assert, and Cleanup:
+* **Arrange**: The test creates a temporary file.
+* **Act**: The test runs the `go` tool with the `run` subcommand.
+* **Assert**: The test checks that the output contains the filename and line number of the error.
+* **Cleanup**: The test removes the temporary file. (this happens in the `defer tg.cleanup()` call)
+
+Russ writes about the `testgo` framework:
+
+> “CL 10464 introduced go_test.go's testgo framework and later CLs translated the test shell script over to individual go tests.
+> This let us run tests selectively, run tests on Windows, run tests in parallel, isolate different tests, and so on.
+>
+> It was a big advance. It's better but still quite difficult to skim.”
+
+### 2018-?: script_test.go
+
+Most teams and projects that I know would stop here. Go's testing infrastructure, the `testing` package, as well as
+the accompanying `go test` tool is terrific.  When coupled with some thoughtful library code, testing CLIs in Go can
+be a breeze.  But the Go team didn't stop there. In 2018, [CL #123577](https://go-review.googlesource.com/c/go/+/123577)
+introduced a new testing framework for the `go` tool called `script_test.go`.
+
+Russ writes about it:
+
+> script_test.go brings back the style of writing tests as little scripts, but they are now scripts in a
+> built-for-purpose shell-like language, not bash itself.
+
+Under `script_test.go`, test cases are described as `txt` files which are [`txtar`](https://pkg.go.dev/golang.org/x/tools/txtar)
+archives containing the test script and any accompanying files.  Here's the "Hello, world" example for `script_test`:
+
+```txt
+# src/cmd/go/testdata/script/run_hello.txt
+
+# this is a txtar archive
+
+# run hello.go (defined below)
+go run hello.go
+
+# assert ‘hello world’ was printed to stderr
+stderr 'hello world'
+
+-- hello.go --
+package main
+func main() { println("hello world") }
+```
+
+As before, the test comprises the same four phases: Arrange, Act, Assert, and Cleanup:
+
+* **Arrange**: The test creates a temporary file, defined by the `-- hello.go --` section.
+* **Act**: The test runs the `go` tool with the `run` subcommand on the temporary file.
+* **Assert**: The test checks that the output contains the string `hello world`.
+* **Cleanup**: Where is the cleanup code? We'll explore that in a moment.
+
+#### How does `script_test.go` work?
+
+`script_test` does a lot of cool things under the hood that makes it ideal for testing a CLI tool:
+1. Each script becomes a Go sub-test, which means from the perspective of `go test`, it's a normal test,
+that can be run in parallel, skipped, or run with the `-run` flag.
+2. `script_test` creates an isolated sandbox for each test, so that tests can't interfere with each other.
+Doing so enables it to run tests in parallel, which can significantly speed up the test suite.
+3. The files defined in the `txtar` archive are created in the sandbox, and the test is run in that directory.
+
+After setting up, `script_test` runs the test script commands, line by line:
+1. Commands are run in sequence, and the output is captured into `stdout` and `stderr` buffers.
+2. Commands are expected to succeed, unless explicitly negated with `!` at the beginning of the line.
+3. Many helpful assertion commands such as `stdout` (to check the `stdout` buffer), `stderr` (to check the `stderr` buffer),
+and `cmp` (to compare the contents of two files) are available.
+
+As for cleanup, `script_test` automatically cleans up the sandbox after each test, removing all files and directories
+created during the test.
+
+#### Can I use `script_test.go` for my CLI?
+
+If you are writing a CLI tool in Go, I hope by now you are pretty excited about `script_test.go`.  Wouldn't
+you love to have a testing framework that allows you to write tests in a shell-like language, that can be run
+in parallel, and that automatically cleans up after itself?
+
+You are probably asking yourself, "Can I use `script_test.go` for my CLI?"
+
+Well, surprisingly enough, the answer is:
+
+No, you can't.
+
+`script_test.go` is under an internal package in the Go repository, and it is pretty tightly coupled to the
+`go` tool.
+
+The End.
+
+Or is it?
+
+## Introducing `testscript`
+
+In late 2018, [Roger Peppe](https://github.com/rogpeppe), a long time Go user, contributor and member of the Go community
+created a repo named [`rogpeppe/go-internal`](https://github.com/rogpeppe/go-internal) to factor out some useful
+internal packages from within the Go codebase. One of these packages is `testscript`, which is based on the work the
+Go team created for `script_test`.
+
+Roger was kind enough to speak with me in preparation for this talk, so I hope that even if you've read about it
+before, I can share some new things you haven't heard.
+
+`script_test.go`, as we mentioned, never exposed a public API, and so over the past 6 years, the package gained
+steam and popularity, especially among Go "insiders" - people who knew about `script_test`, but couldn't use it.
+Today, according to public GitHub data, `go-internal` is depended upon by over 100K repositories on GitHub.
+
+(As a side-note, Roger pointed out to me that it's difficult to get the exact number of projects that use testscript
+itself, as the go.dev site omits any dependencies that run through test code. If you look at go.dev it shows that
+only 14 (!) packages import it)
+
+Because `script_test` never had a public API, and was very tightly coupled to testing the Go tool codebase,
+`testscript` should be thought of as more of a conceptual "factoring out" than a 1:1 exporting.
+
+Over time, many features that weren't available in the original implementation, such as generating coverage data,
+a standalone CLI, and auto-updated of Golden files was added.
+
+As I will show later, `testscript` is a fantastic tool and we have been utilizing it in the Atlas codebase
+for a long time with great success. However, it is worth mentioning that in November 2023, Russ Cox published
+a similar package named [`rsc.io/script`](http://rsc.io/script) which is also based on the `script_test` codebase.
+I haven't used it myself, but it's worth checking out.
+
+### Our example CLI: `wordwrap`
+
+To demonstrate how `testscript` works, I've created a simple CLI tool named `wordwrap`. `wordwrap` is a simple
+tool that takes a path and applies simple word wrapping to all `.txt` files in that path. You can find the code
+[on GitHub](https://github.com/rotemtam/wordwrap).  Wordwrap has a few features that we would like to test:
+
+On the simple case, suppose our current working directory contains a file named `example.txt` with the following
+content:
+
+```txt
+This is a text file with some text in it. To demonstrate wordwrap, it has more than 40 chars.
+```
+
+Running `wordwrap`:
+
+```bash
+go run ./cmd/wordwrap -path ./dir-with-txt-files
+```
+
+Our `example.txt` file would be transformed into:
+
+```txt
+This is a text file with some text in
+it. To demonstrate wordwrap, it has more
+than 40 chars.
+```
+
+By default, `wordwrap` wraps lines at 40 characters, but you can specify a different line length with the `-width`
+flag:
+
+```bash
+go run ./cmd/wordwrap -path ./dir-with-txt-files -width 20
+```
+
+Would wrap the lines at 20 characters:
+
+```txt
+This is a text file
+with some text in
+it. To demonstrate
+wordwrap, it has
+more
+than 40 chars.
+```
+
+To make things more interesting, we have also added a `-strict` flag that will cause `wordwrap` to fail if any
+line in the file is longer than the specified width. For example, suppose our `example.txt` file contains a word
+that is 34 characters long:
+
+```txt
+It's supercalifragilisticexpialidocious
+Even though the sound of it is something quite atrocious
+If you say it loud enough you'll always sound precocious
+```
+
+Running `wordwrap` with the `-strict` flag and a width of 20:
+
+```bash
+go run ./cmd/wordwrap -path ./hack -width 20 -strict
+```
+
+Would fail with an error message:
+
+```bash
+file hack/example.txt: line 2 exceeds specified width 20
+exit status 1
+```
+
+### Writing tests with `testscript`
+
+Let's see how to write tests for `wordwrap` using `testscript`.
+
+To set up, first create a file named `wordwrap_test.go` in your projects and create the following
+boilerplate code:
+
+```go
+package wordwrap_test
+
+import (
+	"bufio"
+	"os"
+	"testing"
+	"github.com/rogpeppe/go-internal/testscript"
+
+	"rotemtam.com/wordwrap"
+)
+
+func TestMain(m *testing.M) {
+	os.Exit(testscript.RunMain(m, map[string]func() int{
+		"wordwrap": wordwrap.Run,
+	}))
+}
+
+func TestScript(t *testing.T) {
+	testscript.Run(t, testscript.Params{
+		Dir: "testdata",
+	})
+}
+```
+
+Here's what's happening in the code above:
+1. Our `TestMain` function is a setup function that prepares the test environment. It uses `testscript.RunMain`
+   to tell testscript that it should create a custom command `wordwrap` that runs the `wordwrap.Run` function.
+   This simulates having a binary named `wordwrap` that runs our program's main function.
+2. `TestScript` is where the actual magic happens. It uses `testscript.Run` to run the tests in the `testdata`
+   directory. The `testdata` directory contains the test scripts that we will write in the next step.
+
+### Our first test script
+
+Let's create a file named `testdata/basic.txt` with the following content:
+
+```txt
+wordwrap
+
+cmp basic.txt basic.golden
+
+-- basic.txt --
+This is a text file with some text in it. To demonstrate wordwrap, it has more than 40 chars.
+
+-- basic.golden --
+This is a text file with some text in
+it. To demonstrate wordwrap, it has more
+than 40 chars.
+```
+
+As before, you will find our test script is comprised of the same four phases: Arrange, Act, Assert, and Cleanup:
+* **Arrange**: The test creates a temporary file, defined by the `-- basic.txt --` section.
+* **Act**: The test runs the `wordwrap` command.
+* **Assert**: The test compares the output to the contents of the `basic.golden` file. This is done using the included
+  `cmp` command.
+* **Cleanup**: There is no explicit cleanup in this test, as `testscript` will automatically clean up the sandbox after
+    the test.
+
+The awesome thing about `testscript`, is that from `go test`'s perspective, `basic` is just a regular Go test.
+This means that we can execute it as we would any other test:
+
+```bash
+go test -v ./... -run TestScript/basic
+```
+
+This is the output you should see:
+
+```bash
+=== RUN   TestScript
+=== RUN   TestScript/basic
+=== PAUSE TestScript/basic
+=== CONT  TestScript/basic
+    testscript.go:558: WORK=$WORK
+        # --- redacted for brevity ---
+        > wordwrap
+        > cmp basic.txt basic.golden
+        PASS
+
+--- PASS: TestScript (0.00s)
+    --- PASS: TestScript/basic (0.15s)
+PASS
+ok      rotemtam.com/wordwrap   (cached)
+```
+
+### A more involved test script
+
+Next, let's create a more involved test script that verifies additional behavior in `wordwrap`. Create a file named
+`testdata/dont-touch.txt` with the following content:
+
+```txt
+wordwrap -path p1.txt
+
+! stderr .
+
+cmp p1.txt p1.golden
+
+exec cat dont-touch.txt
+stdout 'This file shouldn''t be modified, because we invoke wordwrap with a path argument.'
+
+-- p1.txt --
+Don't communicate by sharing memory, share memory by communicating.
+
+-- p1.golden --
+Don't communicate by sharing memory,
+share memory by communicating.
+
+-- dont-touch.txt --
+This file shouldn't be modified, because we invoke wordwrap with a path argument.
+```
+
+This test verifies that `wordwrap` doesn't modify files that are not passed as arguments. The test script is
+comprised of the same phases.
+
+* **Arrange**: The test creates `p1.txt`, which is the file we are going to modify, and `dont-touch.txt`, which
+    is the file we don't want to modify.
+* **Act**: The test runs the `wordwrap` command with the `-path` flag.
+* **Assert**: The test compares the output to the contents of the `p1.golden` file. This is done using the included
+    `cmp` command. The test also verifies that the `dont-touch.txt` file hasn't been modified.
+* **Cleanup**: There is no explicit cleanup in this test, as `testscript` will automatically clean up the sandbox after
+
+### Testing the `-width` flag
+
+In addition, we should probably verify that the `-width` flag works as expected. Create a file named `testdata/width.txt`:
+
+```txt
+skip
+
+wordwrap -width 60
+
+cmp effective.txt effective.golden
+
+-- effective.txt --
+This document gives tips for writing clear, idiomatic Go code. It augments the language specification, the Tour of Go, and How to Write Go Code, all of which you should read first.
+
+Note added January, 2022: This document was written for Go's release in 2009, and has not been updated significantly since.
+
+-- effective.golden --
+This document gives tips for writing clear, idiomatic Go
+code. It augments the language specification, the Tour of
+Go, and How to Write Go Code, all of which you should read
+first.
+
+Note added January, 2022: This document was written for Go's
+release in 2009, and has not been updated significantly
+since.
+```
+
+This test script verifies that the `-width` flag works as expected. The test script is comprised of the same phases.
+
+This works, but I didn't love writing it. Creating the `.golden` file by hand is a bit tedious, and it's easy to
+make mistakes. In this case, wouldn't it be great if we could create a custom command that verifies that the
+output is wrapped at 60 characters?
+
+Thankfully, `testscript` allows us to create custom commands. Let's create a custom command named `maxlen` that
+verifies that the output is wrapped at a maximum of `n` characters. Add the following code to `wordwrap_test.go`:
+
+```go
+// maxline verifies that the longest line in args[0] is shorter than args[1] chars.
+// Usage: maxline <path> <maxline>
+func maxline(ts *testscript.TestScript, neg bool, args []string) {
+	if len(args) != 2 {
+		ts.Fatalf("usage: maxline <path> <maxline>")
+	}
+	l, ok := strconv.Atoi(args[1])
+	if ok != nil {
+		ts.Fatalf("usage: maxline <path> <maxline>")
+	}
+	scanner := bufio.NewScanner(
+		strings.NewReader(
+			ts.ReadFile(args[0]),
+		),
+	)
+	tooLong := false
+	for scanner.Scan() {
+		if len(scanner.Text()) > l {
+			tooLong = true
+			break
+		}
+	}
+	if tooLong && !neg {
+		ts.Fatalf("line too long in %s", args[0])
+	}
+	if !tooLong && neg {
+		ts.Fatalf("no line too long in %s", args[0])
+	}
+}
+```
+
+In order to use the `maxline` command in our test scripts, we need to register it with `testscript`. Update the
+`TestScript` function in `wordwrap_test.go` to include the following code:
+
+```go
+func TestScript(t *testing.T) {
+	testscript.Run(t, testscript.Params{
+		Dir: "testdata",
+
+		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
+			"maxline": maxline,
+		},
+	})
+}
+```
+
+Now we can use the `maxline` command in our test scripts. Create a new test named `testdata/width-custom.txt` with the
+following content:
+
+```txt
+wordwrap -width 60
+
+! maxline effective.txt 20
+maxline effective.txt 60
+
+wordwrap -width 40
+! maxline effective.txt 20
+maxline effective.txt 40
+
+wordwrap -width 20
+maxline effective.txt 20
+
+-- effective.txt --
+This document gives tips for writing clear, idiomatic Go code. It augments the language specification, the Tour of Go, and How to Write Go Code, all of which you should read first.
+
+Note added January, 2022: This document was written for Go's release in 2009, and has not been updated significantly since.
+```
+
+Running this test script will verify that the output is wrapped at 60 characters, 40 characters, and 20 characters:
+
+```bash
+go test -v ./... -run TestScript/width-custom
+```
+
+Output:
+
+```txt
+?       rotemtam.com/wordwrap/cmd/wordwrap      [no test files]
+=== RUN   TestScript
+=== RUN   TestScript/width-custom
+=== PAUSE TestScript/width-custom
+=== CONT  TestScript/width-custom
+    testscript.go:558: WORK=$WORK
+        # --- redacted for brevity ---
+        > wordwrap -width 60
+        > ! maxline effective.txt 20
+        > maxline effective.txt 60
+        > wordwrap -width 40
+        > ! maxline effective.txt 20
+        > maxline effective.txt 40
+        > wordwrap -width 20
+        > maxline effective.txt 20
+        PASS
+
+--- PASS: TestScript (0.00s)
+    --- PASS: TestScript/width-custom (0.19s)
+PASS
+ok      rotemtam.com/wordwrap   0.626s
+```
+
+### Testing strict mode
+
+Finally, let's create a test script that verifies that the `-strict` flag works as expected. Create a file named
+`testdata/strict.txt` with the following content:
+
+```txt
+! wordwrap -path poppins.txt -width 20 -strict
+stderr 'line 2 exceeds specified width 20'
+
+wordwrap -path poppins.txt -width 20
+cmp poppins.txt poppins.golden
+-- poppins.txt --
+It's supercalifragilisticexpialidocious
+Even though the sound of it is something quite atrocious
+-- poppins.golden --
+It's
+supercalifragilisticexpialidocious
+Even though the
+sound of it is
+something quite
+atrocious
+```
+
+This test script verifies that `wordwrap` fails when a line exceeds the specified width in strict mode.
+
+Awesome!
+
+## Personal impact
+
+Aside from being a super cool tool for writing tests for CLI tools, `testscript` has had a significant impact on
+my team. We have been using it in the Atlas codebase for a long time, and it has been a game-changer for us.
+
+Atlas, as a schema-as-code tool, is a bridge between code (files) and databases. Thus, being able to easily
+write tests to verify our tool's behavior in a way that is close to how our users interact with it has been
+invaluable.
+
+Over the years, we have accumulated a set of custom `testscript` commands that allow us to write test scripts in
+a fluent and intuitive way. You can see this in action in the Atlas codebase, but just to give you a taste, here
+is how our `testscript` entrypoint looks like for MySQL integration tests:
+
+```go
+func TestMySQL_Script(t *testing.T) {
+    myRun(t, func(t *myTest) {
+        testscript.Run(t.T, testscript.Params{
+            Dir:   "testdata/mysql",
+            Setup: t.setupScript,
+            Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
+                "only":        cmdOnly,
+                "apply":       t.cmdApply,
+                "exist":       t.cmdExist,
+                "synced":      t.cmdSynced,
+                "cmphcl":      t.cmdCmpHCL,
+                "cmpshow":     t.cmdCmpShow,
+                "cmpmig":      t.cmdCmpMig,
+                "execsql":     t.cmdExec,
+                "atlas":       t.cmdCLI,
+                "clearSchema": t.clearSchema,
+                "validJSON":   validJSON,
+            },
+        })
+    })
+}
+```
+
+Having these commands, allow us to write test scripts that are easy to read and understand, and that verify the
+behavior of our tool is correct. For example:
+
+```txt
+apply 1.hcl
+cmpshow users 1.sql
+
+-- 1.hcl --
+schema "main" {}
+
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = integer
+    auto_increment = true
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (`id` integer NOT NULL PRIMARY KEY AUTOINCREMENT)
+```
+
+This test applies an Atlas DDL schema on a SQLite database and verifies that the schema is created correctly.
+
+## Conclusion
+
+In this article, we have explored how the Go team tests the `go` tool, and how you can apply similar strategies
+to test your CLI tools using `testscript`.
+
+As a team that develops tools for other developers, we take the reliability of our tools very seriously. The key
+to this, we have found over the years, is to have a robust testing strategy in place.  This allows us to move fast
+(without breaking things) and to ship high-quality software to our users.
+
+### Resources
+
+* Go [CL #123577](https://go-review.googlesource.com/c/go/+/123577)
+* [rogpeppe/go-internal](https://github.com/rogpeppe/go-internal)
+* [`testscript` package docs](https://pkg.go.dev/github.com/rogpeppe/go-internal/testscript)
+* Test scripts on the [Atlas codebase](https://github.com/ariga/atlas/tree/master/internal/integration/testdata)
