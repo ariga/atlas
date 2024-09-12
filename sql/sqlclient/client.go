@@ -298,6 +298,12 @@ func Open(ctx context.Context, s string, opts ...OpenOption) (*Client, error) {
 	return OpenURL(ctx, u, opts...)
 }
 
+// HasDriver reports if there is any driver registered with the given scheme.
+func HasDriver(scheme string) bool {
+	_, ok := drivers.Load(scheme)
+	return ok
+}
+
 // OpenURL opens an Atlas client by its provided url.URL.
 func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, error) {
 	cfg := &openOptions{}
