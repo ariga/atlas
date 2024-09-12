@@ -500,7 +500,6 @@ spec:
       key: url
       name: db-credentials
   cloud:
-    project: "cloud" # Atlas Cloud project name
     tokenFrom:
       secretKeyRef:
         key: token
@@ -530,15 +529,6 @@ envName: "production"
 ### `cloud`
 
 Cloud is used to define the Atlas Cloud configuration.
-
-#### `project`
-
-The `project` field is used to define the project name.
-
-```yaml
-cloud:
-  project: "cloud"
-```
 
 #### `tokenFrom`
 
