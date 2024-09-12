@@ -1,6 +1,6 @@
 module github.com/s-sokolko/atlas
 
-replace ariga.io/atlas => github.com/s-sokolko/atlas v0.0.0-20240912050628-de4f9d1eda8b
+replace ariga.io/atlas => github.com/s-sokolko/atlas latest
 
 go 1.22.7
 
