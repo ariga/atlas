@@ -823,7 +823,18 @@ func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schem
 	for _, t := range s.Tables {
 		args = append(args, t.Name)
 	}
-	return i.QueryContext(ctx, fmt.Sprintf(query, nArgs(1, len(s.Tables))), args...)
+	queryStr := formatQuery(query, len(s.Tables))
+	return i.QueryContext(ctx, queryStr, args...)
+}
+
+func formatQuery(query string, nTables int) string {
+	tables := nArgs(1, nTables)
+	count := strings.Count(query, "%s")
+	args := make([]interface{}, count)
+	for i := range args {
+		args[i] = tables
+	}
+	return fmt.Sprintf(query, args...)
 }
 
 func nArgs(start, n int) string {
@@ -1607,7 +1618,7 @@ SELECT
 	    	JOIN pg_namespace ns1 on t1.relnamespace = ns1.oid
 	    	JOIN pg_namespace ns2 on t2.relnamespace = ns2.oid
 	    	WHERE ns1.nspname = $1
-	    	AND t1.relname IN (%s)
+	    	AND t1.relname IN (%s) AND t2.relname IN (%s)
 	    	AND con.contype = 'f'
 	) AS fk
 	JOIN pg_attribute a1 ON a1.attnum = fk.conkey AND a1.attrelid = fk.conrelid
