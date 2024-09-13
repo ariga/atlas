@@ -1,11 +1,11 @@
-module ariga.io/atlas/cmd/atlas
+module github.com/s-sokolko/atlas/cmd/atlas
 
 go 1.23.1
 
-replace ariga.io/atlas => ../..
+replace github.com/s-sokolko/atlas => ../..
 
 require (
-	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43
+	github.com/s-sokolko/atlas latest
 	entgo.io/ent v0.14.1
 	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1
 	github.com/antlr4-go/antlr/v4 v4.13.0
