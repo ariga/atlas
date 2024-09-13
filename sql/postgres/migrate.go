@@ -235,7 +235,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().NL().P("PRIMARY KEY")
-			if err := s.index(b, pk); err != nil {
+			if err := s.index(b, pk, true); err != nil {
 				errs = append(errs, err.Error())
 			}
 		}
@@ -575,7 +575,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				reverse = append(reverse, &schema.AddIndex{I: change.I})
 			case *schema.AddPrimaryKey:
 				b.P("ADD PRIMARY KEY")
-				if err := s.index(b, change.P); err != nil {
+				if err := s.index(b, change.P, true); err != nil {
 					return err
 				}
 				reverse = append(reverse, &schema.DropPrimaryKey{P: change.P})
@@ -969,7 +969,7 @@ func (s *state) addIndexes(src schema.Change, t *schema.Table, adds ...*schema.A
 			b.Ident(idx.Name)
 		}
 		b.P("ON").Table(t)
-		if err := s.index(b, idx); err != nil {
+		if err := s.index(b, idx, false); err != nil {
 			return err
 		}
 		s.append(&migrate.Change{
@@ -1135,10 +1135,12 @@ func (s *state) partAttrs(b *sqlx.Builder, idx *schema.Index, p *schema.IndexPar
 	return nil
 }
 
-func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
-	// Avoid appending the default method.
-	if t := (IndexType{}); sqlx.Has(idx.Attrs, &t) && strings.ToUpper(t.T) != IndexTypeBTree {
-		b.P("USING", t.T)
+func (s *state) index(b *sqlx.Builder, idx *schema.Index, pk bool) error {
+	if !pk {
+		// Avoid appending the default method.
+		if t := (IndexType{}); sqlx.Has(idx.Attrs, &t) && strings.ToUpper(t.T) != IndexTypeBTree {
+			b.P("USING", t.T)
+		}
 	}
 	if err := s.indexParts(b, idx); err != nil {
 		return err
@@ -1231,7 +1233,7 @@ func (s *state) unique(b *sqlx.Builder, idx *schema.Index) error {
 	// In UNIQUE constraints, the NULLS [NOT] DISTINCT
 	// clause is written before the index parts.
 	nullsNotDistinct(b, idx)
-	return s.index(b, idx)
+	return s.index(b, idx, false)
 }
 
 func (s *state) exclude(b *sqlx.Builder, idx *schema.Index) error {
@@ -1244,7 +1246,7 @@ func (s *state) exclude(b *sqlx.Builder, idx *schema.Index) error {
 		name = idx.Name
 	}
 	b.P("CONSTRAINT").Ident(name).P("EXCLUDE")
-	return s.index(b, idx)
+	return s.index(b, idx, false)
 }
 
 func (s *state) append(c ...*migrate.Change) {
