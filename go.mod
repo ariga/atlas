@@ -1,6 +1,7 @@
 module github.com/s-sokolko/atlas
 
-replace ariga.io/atlas => github.com/s-sokolko/atlas master
+replace ariga.io/atlas => github.com/s-sokolko/atlas v0.0.0-20240913093003-f75535d9cddc
+
 go 1.22.7
 
 require (

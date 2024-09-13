@@ -27,8 +27,8 @@ github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7 h1:DpOJ2HYzC
 github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7/go.mod h1:ZXFpozHsX6DPmq2I0TCekCxypsnAUbP2oI0UX1GXzOo=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/s-sokolko/atlas v0.0.0-20240912073347-86c02a1e241d h1:/AZ5ctpDhI72cwUqPd7+Bt1Ai7WryoouF25sc6YDh4I=
-github.com/s-sokolko/atlas v0.0.0-20240912073347-86c02a1e241d/go.mod h1:jyCLDrByTySJK2PLkSb29ubm+ije4dGEh1o894caQ3k=
+github.com/s-sokolko/atlas v0.0.0-20240913093003-f75535d9cddc h1:qr6cltXC0z5ASwpC3Br7KjA1x++3k9Ke3nTbh03yZzY=
+github.com/s-sokolko/atlas v0.0.0-20240913093003-f75535d9cddc/go.mod h1:EAUgFcRnDViFfnOn3UmIMHUYCPCPKzIyWB21pR1lV9M=
 github.com/sergi/go-diff v1.0.0 h1:Kpca3qRNrduNnOQeazBd0ysaKrUJiIuISHxogkT9RPQ=
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
