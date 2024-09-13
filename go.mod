@@ -2,6 +2,8 @@ module ariga.io/atlas
 
 go 1.22.7
 
+replace ariga.io/atlas => github.com/s-sokolko/atlas v0.0.0-20240913093003-f75535d9cddc
+
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/go-openapi/inflect v0.19.0
@@ -23,4 +25,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace ariga.io/atlas => github.com/s-sokolko/atlas v0.0.0-20240913093003-f75535d9cddc
