@@ -13,8 +13,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e
 	github.com/rogpeppe/go-internal v1.12.0
-	github.com/s-sokolko/atlas v0.0.0-20240913111746-7c1d50b2d10a
-	github.com/s-sokolko/atlas/cmd/atlas v0.0.0-20240913111746-7c1d50b2d10a
+	github.com/s-sokolko/atlas v0.0.0-20240913114147-4d7f262b7db5
+	github.com/s-sokolko/atlas/cmd/atlas v0.0.0-20240913114147-4d7f262b7db5
 	github.com/stretchr/testify v1.9.0
 	github.com/zclconf/go-cty v1.14.4
 )

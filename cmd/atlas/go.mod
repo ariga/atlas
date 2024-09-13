@@ -19,7 +19,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pganalyze/pg_query_go/v5 v5.1.0
-	github.com/s-sokolko/atlas v0.0.0-20240913111746-7c1d50b2d10a
+	github.com/s-sokolko/atlas v0.0.0-20240913114147-4d7f262b7db5
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
