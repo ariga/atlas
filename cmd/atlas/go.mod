@@ -1,8 +1,8 @@
-module github.com/s-sokolko/atlas/cmd/atlas
+module ariga.io/atlas/cmd/atlas
 
 go 1.23.1
 
-replace ariga.io/atlas => github.com/s-sokolko/atlas latest
+replace ariga.io/atlas => ../..
 
 require (
 	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43
