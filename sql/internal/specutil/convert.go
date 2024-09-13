@@ -853,7 +853,7 @@ func fromDependsOn[T interface{ AddDeps(...schema.Object) T }](loc string, t T, 
 			})
 		}
 		if err != nil {
-			return fmt.Errorf("find %s refrence for %s.depends_on[%d]: %w", loc, p[0].T, i, err)
+			return fmt.Errorf("find %s reference for %s.depends_on[%d]: %w", loc, p[0].T, i, err)
 		}
 		t.AddDeps(o)
 	}

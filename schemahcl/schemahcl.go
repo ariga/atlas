@@ -598,7 +598,7 @@ func (s *State) mayScopeContext(ctx *hcl.EvalContext, scope []string) *hcl.EvalC
 		return ctx
 	}
 	nctx := ctx.NewChild()
-	// Use the same variables/functions maps to avoid copying per scope, but return a
+	// Use the same variables/functions maps to avoid copying per scope, but return
 	// another child context to prevent writes from different blocks to the same maps.
 	nctx.Variables, nctx.Functions = vars, funcs
 	return nctx.NewChild()
