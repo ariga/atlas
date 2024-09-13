@@ -22,3 +22,5 @@ require (
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace ariga.io/atlas => github.com/s-sokolko/atlas v0.0.0-20240913093003-f75535d9cddc
