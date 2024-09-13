@@ -21,11 +21,11 @@ import (
 	"text/template"
 	"time"
 
-	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
-	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
-	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlclient"
+	cmdmigrate "github.com/s-sokolko/atlas/cmd/atlas/internal/migrate"
+	"github.com/s-sokolko/atlas/cmd/atlas/internal/migrate/ent/revision"
+	"github.com/s-sokolko/atlas/sql/migrate"
+	"github.com/s-sokolko/atlas/sql/schema"
+	"github.com/s-sokolko/atlas/sql/sqlclient"
 
 	"github.com/fatih/color"
 )

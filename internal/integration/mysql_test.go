@@ -14,9 +14,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/mysql"
-	"ariga.io/atlas/sql/schema"
+	"github.com/s-sokolko/atlas/sql/migrate"
+	"github.com/s-sokolko/atlas/sql/mysql"
+	"github.com/s-sokolko/atlas/sql/schema"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 )

@@ -11,10 +11,10 @@ import (
 	"testing"
 	"text/template"
 
-	"ariga.io/atlas/cmd/atlas/internal/migratelint"
-	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/sqlcheck"
-	"ariga.io/atlas/sql/sqlclient"
+	"github.com/s-sokolko/atlas/cmd/atlas/internal/migratelint"
+	"github.com/s-sokolko/atlas/sql/migrate"
+	"github.com/s-sokolko/atlas/sql/sqlcheck"
+	"github.com/s-sokolko/atlas/sql/sqlclient"
 
 	"github.com/stretchr/testify/require"
 )

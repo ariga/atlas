@@ -9,11 +9,11 @@ package enttest
 import (
 	"context"
 
-	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
+	"github.com/s-sokolko/atlas/cmd/atlas/internal/migrate/ent"
 	// required by schema hooks.
-	_ "ariga.io/atlas/cmd/atlas/internal/migrate/ent/runtime"
+	_ "github.com/s-sokolko/atlas/cmd/atlas/internal/migrate/ent/runtime"
 
-	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/migrate"
+	"github.com/s-sokolko/atlas/cmd/atlas/internal/migrate/ent/migrate"
 	"entgo.io/ent/dialect/sql/schema"
 )
 

@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"ariga.io/atlas/sql/schema"
+	"github.com/s-sokolko/atlas/sql/schema"
 )
 
 // FormatType converts schema type to its column form in the database.

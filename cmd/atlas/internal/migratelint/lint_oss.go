@@ -10,7 +10,7 @@ import (
 	"context"
 	"fmt"
 
-	"ariga.io/atlas/sql/migrate"
+	"github.com/s-sokolko/atlas/sql/migrate"
 )
 
 func (d *DevLoader) stmts(_ context.Context, f migrate.File, _ bool) ([]*migrate.Stmt, error) {

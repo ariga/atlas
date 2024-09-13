@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"ariga.io/atlas/sql/schema"
+	"github.com/s-sokolko/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
 )

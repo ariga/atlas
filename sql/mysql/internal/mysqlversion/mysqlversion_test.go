@@ -7,7 +7,7 @@ package mysqlversion_test
 import (
 	"testing"
 
-	"ariga.io/atlas/sql/mysql/internal/mysqlversion"
+	"github.com/s-sokolko/atlas/sql/mysql/internal/mysqlversion"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )

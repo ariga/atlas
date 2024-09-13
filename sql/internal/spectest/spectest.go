@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"ariga.io/atlas/schemahcl"
-	"ariga.io/atlas/sql/schema"
+	"github.com/s-sokolko/atlas/schemahcl"
+	"github.com/s-sokolko/atlas/sql/schema"
 
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/stretchr/testify/require"

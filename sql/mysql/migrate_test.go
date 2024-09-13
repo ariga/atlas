@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"ariga.io/atlas/sql/internal/sqltest"
-	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/schema"
+	"github.com/s-sokolko/atlas/sql/internal/sqltest"
+	"github.com/s-sokolko/atlas/sql/migrate"
+	"github.com/s-sokolko/atlas/sql/schema"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"

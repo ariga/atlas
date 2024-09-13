@@ -7,7 +7,7 @@ package sqlite
 import (
 	"testing"
 
-	"ariga.io/atlas/sql/schema"
+	"github.com/s-sokolko/atlas/sql/schema"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"

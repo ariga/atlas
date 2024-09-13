@@ -4,5 +4,5 @@
 package main
 
 import (
-	_ "ariga.io/atlas/cmd/atlas"
+	_ "github.com/s-sokolko/atlas/cmd/atlas"
 )

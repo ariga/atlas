@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"ariga.io/atlas/schemahcl"
-	"ariga.io/atlas/sql/internal/sqlx"
-	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlspec"
+	"github.com/s-sokolko/atlas/schemahcl"
+	"github.com/s-sokolko/atlas/sql/internal/sqlx"
+	"github.com/s-sokolko/atlas/sql/schema"
+	"github.com/s-sokolko/atlas/sql/sqlspec"
 
 	"github.com/zclconf/go-cty/cty"
 )

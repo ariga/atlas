@@ -12,7 +12,7 @@ import (
 	"os"
 	"testing"
 
-	"ariga.io/atlas/sql/sqlite"
+	"github.com/s-sokolko/atlas/sql/sqlite"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )

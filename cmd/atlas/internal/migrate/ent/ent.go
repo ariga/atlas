@@ -13,7 +13,7 @@ import (
 	"reflect"
 	"sync"
 
-	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
+	"github.com/s-sokolko/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"

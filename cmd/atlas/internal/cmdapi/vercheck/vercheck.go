@@ -15,7 +15,7 @@ import (
 	"text/template"
 	"time"
 
-	"ariga.io/atlas/cmd/atlas/internal/cmdstate"
+	"github.com/s-sokolko/atlas/cmd/atlas/internal/cmdstate"
 )
 
 // StateFileName is the name of the file where the vercheck state is stored.

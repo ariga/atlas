@@ -8,12 +8,12 @@ import (
 	"context"
 	"testing"
 
-	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlcheck"
-	"ariga.io/atlas/sql/sqlclient"
-	"ariga.io/atlas/sql/sqlite"
-	_ "ariga.io/atlas/sql/sqlite/sqlitecheck"
+	"github.com/s-sokolko/atlas/sql/migrate"
+	"github.com/s-sokolko/atlas/sql/schema"
+	"github.com/s-sokolko/atlas/sql/sqlcheck"
+	"github.com/s-sokolko/atlas/sql/sqlclient"
+	"github.com/s-sokolko/atlas/sql/sqlite"
+	_ "github.com/s-sokolko/atlas/sql/sqlite/sqlitecheck"
 
 	"github.com/stretchr/testify/require"
 )

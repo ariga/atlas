@@ -7,8 +7,8 @@
 package mysqlcheck
 
 import (
-	"ariga.io/atlas/sql/mysql"
-	"ariga.io/atlas/sql/sqlcheck"
+	"github.com/s-sokolko/atlas/sql/mysql"
+	"github.com/s-sokolko/atlas/sql/sqlcheck"
 )
 
 func init() {

@@ -7,14 +7,14 @@ package postgrescheck
 import (
 	"fmt"
 
-	"ariga.io/atlas/schemahcl"
-	"ariga.io/atlas/sql/postgres"
-	"ariga.io/atlas/sql/sqlcheck"
-	"ariga.io/atlas/sql/sqlcheck/condrop"
-	"ariga.io/atlas/sql/sqlcheck/datadepend"
-	"ariga.io/atlas/sql/sqlcheck/destructive"
-	"ariga.io/atlas/sql/sqlcheck/incompatible"
-	"ariga.io/atlas/sql/sqlcheck/naming"
+	"github.com/s-sokolko/atlas/schemahcl"
+	"github.com/s-sokolko/atlas/sql/postgres"
+	"github.com/s-sokolko/atlas/sql/sqlcheck"
+	"github.com/s-sokolko/atlas/sql/sqlcheck/condrop"
+	"github.com/s-sokolko/atlas/sql/sqlcheck/datadepend"
+	"github.com/s-sokolko/atlas/sql/sqlcheck/destructive"
+	"github.com/s-sokolko/atlas/sql/sqlcheck/incompatible"
+	"github.com/s-sokolko/atlas/sql/sqlcheck/naming"
 )
 
 func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err error) {

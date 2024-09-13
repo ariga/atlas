@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
-	"ariga.io/atlas/cmd/atlas/internal/cmdstate"
+	"github.com/s-sokolko/atlas/cmd/atlas/internal/cloudapi"
+	"github.com/s-sokolko/atlas/cmd/atlas/internal/cmdstate"
 
 	"github.com/stretchr/testify/require"
 )

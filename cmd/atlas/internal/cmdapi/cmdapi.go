@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"ariga.io/atlas/cmd/atlas/internal/cmdext"
-	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlclient"
+	"github.com/s-sokolko/atlas/cmd/atlas/internal/cmdext"
+	"github.com/s-sokolko/atlas/sql/migrate"
+	"github.com/s-sokolko/atlas/sql/schema"
+	"github.com/s-sokolko/atlas/sql/sqlclient"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -46,11 +46,11 @@ var (
 	}
 
 	// flavor holds Atlas flavor. Custom flavors (like the community build) should set this by build flag
-	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.flavor=community'"
+	// "-X 'github.com/s-sokolko/atlas/cmd/atlas/internal/cmdapi.flavor=community'"
 	flavor string
 
 	// version holds Atlas version. When built with cloud packages should be set by build flag, e.g.
-	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.version=v0.1.2'"
+	// "-X 'github.com/s-sokolko/atlas/cmd/atlas/internal/cmdapi.version=v0.1.2'"
 	version string
 
 	// versionCmd represents the subcommand 'atlas version'.
@@ -74,7 +74,7 @@ var (
 	}
 
 	// license holds Atlas license. When built with cloud packages should be set by build flag
-	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.license=${license}'"
+	// "-X 'github.com/s-sokolko/atlas/cmd/atlas/internal/cmdapi.license=${license}'"
 	license = `LICENSE
 Atlas is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/blob/master/LICENSE.`
 
