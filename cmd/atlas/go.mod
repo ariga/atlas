@@ -2,8 +2,6 @@ module github.com/s-sokolko/atlas/cmd/atlas
 
 go 1.23.1
 
-replace github.com/s-sokolko/atlas => ../..
-
 require (
 	entgo.io/ent v0.14.1
 	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1
