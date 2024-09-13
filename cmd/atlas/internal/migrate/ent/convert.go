@@ -6,7 +6,7 @@
 
 package ent
 
-import "github.com/s-sokolko/atlas/sql/migrate"
+import "ariga.io/atlas/sql/migrate"
 
 // SetRevision takes the values for each field from the given migrate.Revision.
 func (rc *RevisionCreate) SetRevision(rev *migrate.Revision) *RevisionCreate {

@@ -11,12 +11,12 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/s-sokolko/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/sqlclient"
 )
 
 func TestRegisterOpen(t *testing.T) {

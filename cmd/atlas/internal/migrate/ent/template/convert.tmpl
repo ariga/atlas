@@ -5,7 +5,7 @@
 {{ $pkg := base $.Config.Package }}
 {{ template "header" $ }}
 
-import "github.com/s-sokolko/atlas/sql/migrate"
+import "ariga.io/atlas/sql/migrate"
 
 {{ range $n := $.Nodes }}
     {{ if eq $n.Name "Revision" }}

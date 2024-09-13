@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/s-sokolko/atlas/cmd/atlas/internal/migrate/ent/internal"
-	"github.com/s-sokolko/atlas/cmd/atlas/internal/migrate/ent/predicate"
-	"github.com/s-sokolko/atlas/cmd/atlas/internal/migrate/ent/revision"
+	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/internal"
+	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/predicate"
+	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"

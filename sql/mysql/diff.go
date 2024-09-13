@@ -12,8 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/s-sokolko/atlas/sql/internal/sqlx"
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/sql/internal/sqlx"
+	"ariga.io/atlas/sql/schema"
 )
 
 // DefaultDiff provides basic diffing capabilities for MySQL dialects.

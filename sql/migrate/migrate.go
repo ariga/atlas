@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema"
 )
 
 type (

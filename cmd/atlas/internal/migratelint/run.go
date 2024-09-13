@@ -16,9 +16,9 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/sqlcheck"
-	"github.com/s-sokolko/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/sqlcheck"
+	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/fatih/color"
 )

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/s-sokolko/atlas/cmd/atlas/internal/cmdstate"
+	"ariga.io/atlas/cmd/atlas/internal/cmdstate"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/require"

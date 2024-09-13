@@ -13,7 +13,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/s-sokolko/atlas/cmd/atlas/internal/cmdapi"
+	"ariga.io/atlas/cmd/atlas/internal/cmdapi"
 
 	"github.com/spf13/cobra"
 )

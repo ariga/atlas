@@ -1,8 +1,11 @@
-module github.com/s-sokolko/atlas/cmd/atlas
+module ariga.io/atlas/cmd/atlas
 
 go 1.23.1
 
+replace ariga.io/atlas => ../..
+
 require (
+	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43
 	entgo.io/ent v0.14.1
 	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1
 	github.com/antlr4-go/antlr/v4 v4.13.0
@@ -19,7 +22,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pganalyze/pg_query_go/v5 v5.1.0
-	github.com/s-sokolko/atlas v0.0.0-20240913114147-4d7f262b7db5
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
@@ -33,7 +35,6 @@ require (
 )
 
 require (
-	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43 // indirect
 	cloud.google.com/go/compute v1.23.3 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.5 // indirect

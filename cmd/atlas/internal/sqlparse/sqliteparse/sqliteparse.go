@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/s-sokolko/atlas/cmd/atlas/internal/sqlparse/parseutil"
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parseutil"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 
 	"github.com/antlr4-go/antlr/v4"
 )

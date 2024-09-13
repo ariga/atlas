@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/s-sokolko/atlas/cmd/atlas/internal/sqlparse/parseutil"
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/postgres"
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parseutil"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/postgres"
+	"ariga.io/atlas/sql/schema"
 
 	pgquery "github.com/pganalyze/pg_query_go/v5"
 )

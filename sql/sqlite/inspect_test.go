@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/s-sokolko/atlas/sql/internal/sqltest"
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/sql/internal/sqltest"
+	"ariga.io/atlas/sql/schema"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"

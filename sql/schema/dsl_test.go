@@ -7,7 +7,7 @@ package schema_test
 import (
 	"testing"
 
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
 )

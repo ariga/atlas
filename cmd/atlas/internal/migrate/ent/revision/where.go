@@ -9,8 +9,8 @@ package revision
 import (
 	"time"
 
-	"github.com/s-sokolko/atlas/cmd/atlas/internal/migrate/ent/predicate"
-	"github.com/s-sokolko/atlas/sql/migrate"
+	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/predicate"
+	"ariga.io/atlas/sql/migrate"
 	"entgo.io/ent/dialect/sql"
 )
 

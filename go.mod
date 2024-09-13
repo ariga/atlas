@@ -1,4 +1,4 @@
-module github.com/s-sokolko/atlas
+module ariga.io/atlas
 
 go 1.22.7
 

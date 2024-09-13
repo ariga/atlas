@@ -11,8 +11,8 @@ import (
 	"log"
 	"testing"
 
-	"github.com/s-sokolko/atlas/sql/mysql"
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/sql/mysql"
+	"ariga.io/atlas/sql/schema"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"

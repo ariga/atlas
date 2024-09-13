@@ -9,7 +9,7 @@ package cmdlog
 import (
 	"context"
 
-	"github.com/s-sokolko/atlas/sql/migrate"
+	"ariga.io/atlas/sql/migrate"
 )
 
 // SchemaApply contains a summary of a 'schema apply' execution on a database.

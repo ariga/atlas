@@ -9,10 +9,10 @@ package sqlite
 import (
 	"context"
 
-	"github.com/s-sokolko/atlas/schemahcl"
-	"github.com/s-sokolko/atlas/sql/internal/specutil"
-	"github.com/s-sokolko/atlas/sql/schema"
-	"github.com/s-sokolko/atlas/sql/sqlspec"
+	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/internal/specutil"
+	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlspec"
 )
 
 var (

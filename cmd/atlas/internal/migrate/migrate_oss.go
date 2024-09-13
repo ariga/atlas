@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/s-sokolko/atlas/sql/migrate"
+	"ariga.io/atlas/sql/migrate"
 )
 
 func openAtlasDir(context.Context, *url.URL) (migrate.Dir, error) {

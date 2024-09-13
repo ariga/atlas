@@ -16,10 +16,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/postgres"
-	"github.com/s-sokolko/atlas/sql/schema"
-	"github.com/s-sokolko/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/postgres"
+	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 )

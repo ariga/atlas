@@ -11,10 +11,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	cmdmigrate "github.com/s-sokolko/atlas/cmd/atlas/internal/migrate"
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/sqlclient"
-	_ "github.com/s-sokolko/atlas/sql/sqlite"
+	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/sqlclient"
+	_ "ariga.io/atlas/sql/sqlite"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"

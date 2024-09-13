@@ -1,26 +1,25 @@
-module github.com/s-sokolko/atlas/internal/integration
+module ariga.io/atlas/internal/integration
 
 go 1.23.1
 
-replace github.com/s-sokolko/atlas => ../../
+replace ariga.io/atlas => ../../
 
-replace github.com/s-sokolko/atlas/cmd/atlas => ../../cmd/atlas
+replace ariga.io/atlas/cmd/atlas => ../../cmd/atlas
 
 require (
+	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43
+	ariga.io/atlas/cmd/atlas v0.13.2-0.20231220130200-d8bd6f612d7a
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e
 	github.com/rogpeppe/go-internal v1.12.0
-	github.com/s-sokolko/atlas v0.0.0-20240913114147-4d7f262b7db5
-	github.com/s-sokolko/atlas/cmd/atlas v0.0.0-20240913114147-4d7f262b7db5
 	github.com/stretchr/testify v1.9.0
 	github.com/zclconf/go-cty v1.14.4
 )
 
 require (
-	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43 // indirect
 	cloud.google.com/go/compute v1.23.3 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.5 // indirect

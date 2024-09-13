@@ -21,9 +21,9 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/s-sokolko/atlas/schemahcl"
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/stretchr/testify/require"
 )
@@ -386,7 +386,7 @@ func execPath(t testing.TB) string {
 			"-o", filepath.Join(os.TempDir(), "atlas"),
 		}
 		args = append(args, buildFlags...)
-		args = append(args, "github.com/s-sokolko/atlas/cmd/atlas")
+		args = append(args, "ariga.io/atlas/cmd/atlas")
 		out, err := exec.Command("go", args...).CombinedOutput()
 		require.NoError(t, err, string(out))
 	})
@@ -784,7 +784,7 @@ func cliPath(t testing.TB) string {
 	path := filepath.Join(os.TempDir(), "atlas")
 	buildOnce.Do(func() {
 		args := append([]string{"build"}, buildFlags...)
-		args = append(args, "-o", path, "github.com/s-sokolko/atlas/cmd/atlas")
+		args = append(args, "-o", path, "ariga.io/atlas/cmd/atlas")
 		out, err := exec.Command("go", args...).CombinedOutput()
 		require.NoError(t, err, string(out))
 	})

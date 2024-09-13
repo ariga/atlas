@@ -7,7 +7,7 @@
 package pgparse
 
 import (
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema"
 	pgquery "github.com/pganalyze/pg_query_go/v5"
 )
 

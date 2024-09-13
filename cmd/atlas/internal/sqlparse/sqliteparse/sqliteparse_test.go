@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/s-sokolko/atlas/cmd/atlas/internal/sqlparse/sqliteparse"
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/cmd/atlas/internal/sqlparse/sqliteparse"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
 )

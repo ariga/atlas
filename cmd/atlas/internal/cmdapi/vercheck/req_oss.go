@@ -10,7 +10,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/s-sokolko/atlas/cmd/atlas/internal/cloudapi"
+	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 )
 
 func addHeaders(_ context.Context, req *http.Request) {

@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/s-sokolko/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/go-sql-driver/mysql"
 )

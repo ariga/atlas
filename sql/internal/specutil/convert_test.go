@@ -8,9 +8,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/s-sokolko/atlas/schemahcl"
-	"github.com/s-sokolko/atlas/sql/schema"
-	"github.com/s-sokolko/atlas/sql/sqlspec"
+	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlspec"
 
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"

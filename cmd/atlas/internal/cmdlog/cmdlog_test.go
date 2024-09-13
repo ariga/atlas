@@ -5,7 +5,7 @@
 package cmdlog_test
 
 import (
-	cmdmigrate "github.com/s-sokolko/atlas/cmd/atlas/internal/migrate"
+	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -17,11 +17,11 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/s-sokolko/atlas/cmd/atlas/internal/cmdlog"
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/schema"
-	"github.com/s-sokolko/atlas/sql/sqlclient"
-	_ "github.com/s-sokolko/atlas/sql/sqlite"
+	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
+	_ "ariga.io/atlas/sql/sqlite"
 
 	"github.com/fatih/color"
 	_ "github.com/mattn/go-sqlite3"

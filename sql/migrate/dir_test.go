@@ -16,8 +16,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/sqltool"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/sqltool"
 
 	"github.com/stretchr/testify/require"
 )

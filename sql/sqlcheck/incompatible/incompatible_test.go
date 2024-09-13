@@ -8,11 +8,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/schema"
-	"github.com/s-sokolko/atlas/sql/sqlcheck"
-	"github.com/s-sokolko/atlas/sql/sqlcheck/incompatible"
-	"github.com/s-sokolko/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlcheck"
+	"ariga.io/atlas/sql/sqlcheck/incompatible"
+	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/stretchr/testify/require"
 )

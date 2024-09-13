@@ -7,7 +7,7 @@
 package sqlx
 
 import (
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema"
 )
 
 // sortViewChanges is an optional function to sort to views by their dependencies.

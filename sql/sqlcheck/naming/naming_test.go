@@ -8,11 +8,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/s-sokolko/atlas/schemahcl"
-	"github.com/s-sokolko/atlas/sql/migrate"
-	"github.com/s-sokolko/atlas/sql/schema"
-	"github.com/s-sokolko/atlas/sql/sqlcheck"
-	"github.com/s-sokolko/atlas/sql/sqlcheck/naming"
+	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlcheck"
+	"ariga.io/atlas/sql/sqlcheck/naming"
 
 	"github.com/stretchr/testify/require"
 )

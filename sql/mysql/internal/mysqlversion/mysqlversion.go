@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/s-sokolko/atlas/sql/internal/sqlx"
-	"github.com/s-sokolko/atlas/sql/schema"
+	"ariga.io/atlas/sql/internal/sqlx"
+	"ariga.io/atlas/sql/schema"
 	"golang.org/x/mod/semver"
 )
 
