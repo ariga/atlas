@@ -1444,7 +1444,7 @@ func newIndexStorage(opts string) (*IndexStorageParams, error) {
 	for _, p := range strings.Split(strings.Trim(opts, "{}"), ",") {
 		kv := strings.Split(p, "=")
 		if len(kv) != 2 {
-			return nil, fmt.Errorf("invalid index storage parameter: %s", p)
+			continue
 		}
 		switch kv[0] {
 		case "autosummarize":
