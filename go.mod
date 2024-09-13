@@ -2,8 +2,6 @@ module github.com/s-sokolko/atlas
 
 go 1.22.7
 
-replace ariga.io/atlas => github.com/s-sokolko/atlas v0.0.0-20240913100840-c379f95d25b4
-
 require (
 	ariga.io/atlas v0.0.0-00010101000000-000000000000
 	github.com/DATA-DOG/go-sqlmock v1.5.0
