@@ -294,7 +294,7 @@ data "hcl_schema" "app" {
 }
 
 env "local" {
-  src = data.hcl_schema.app.url
+  src = data.hcl_schema.app.path
   url = "sqlite://test?mode=memory&_fk=1"
 }
 ```
