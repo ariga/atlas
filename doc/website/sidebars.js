@@ -136,6 +136,10 @@ module.exports = {
                         },
                         {
                             type: 'doc',
+                            id: 'monitoring/notifications'
+                        },
+                        {
+                            type: 'doc',
                             id: 'monitoring/overview'
                         },
                         {
