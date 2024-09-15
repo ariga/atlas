@@ -5,7 +5,6 @@ slug: /testing/migrate
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import LoginRequired from '../components/login-required.mdx'
 
 The `atlas migrate test` command allows you to write tests for your schema migrations. This feature
 enables you to test logic in your migrations in a minimal and straightforward way. The command is similar to
@@ -96,9 +95,10 @@ The supported commands are:
 
 ### `migrate` command
 
-The `migrate` command expects a migration version to migrate to. The strategy for testing a specific version is to
-migrate to the version before it, insert test data, migrate to the tested version to ensure it passes, and then run
-assertions to verify its correctness.
+The `migrate` commands migrates the dev-database used by the test case to the desired version.
+
+The strategy for testing a specific version is to execute `migrate` to the version before it, insert test data, migrate
+to the tested version to ensure it passes, and then run assertions to verify its correctness.
 
 ```hcl title="migrate.test.hcl"
 test "migrate" "20240613061102" {
@@ -214,6 +214,102 @@ test "migrate" "20240613061046" {
   }
 }
 ```
+
+### `external` command
+
+The `external` command runs an external program and expects it to pass. If `output` or `match` is defined, the output
+(stdout) of the program is compared to the expected value.
+
+* `program` (`[]string`) - The first element of the string is the program to run. The remaining elements are optional command line arguments.
+* `working_dir` (optional) - The working directory to run the program from. Defaults to the current working directory.
+* `output` (optional) - The expected output of the program.
+* `match` (optional) - A regular expression to match the output of the program.
+
+The example below demonstrates how to run Go tests within an Atlas test case in order to seed the database before
+testing a migration:
+
+<Tabs>
+<TabItem value={"users.test.hcl"}>
+
+```hcl title="migrations/tests/migrate.test.hcl"
+variable "working_dir" {
+  type = string
+}
+
+test "migrate" "20240908145916" {
+  # Migrate the database to one version before the one we are testing.
+  migrate {
+    to = "20240908145846"
+  }
+  # Seed our database using an external program.
+  external {
+    program = [
+      "go", "test",
+      "-run", "Test_20240908145916_Seed",
+      "--dev-url", testing.dev_url,
+    ]
+    working_dir = var.working_dir
+  }
+  # Migrate to the tested version, and ensure it passes.
+  migrate {
+    to = "20240908145916"
+  }
+}
+```
+
+</TabItem>
+<TabItem value={"migrate_test.go"}>
+
+```go title="migrations/tests/users_test.go"
+package tests
+
+import (
+	"database/sql"
+	"flag"
+	"os"
+	"testing"
+
+	_ "github.com/lib/pq"
+	"github.com/stretchr/testify/require"
+)
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	os.Exit(m.Run())
+}
+
+func Test_20240908145916_Seed(t *testing.T) {
+	require.NotEmpty(t, t, *dev)
+	db, err := sql.Open("postgres", *dev)
+	require.NoError(t, err)
+	defer db.Close()
+    // ...
+}
+```
+</TabItem>
+<TabItem value={"atlas.hcl"}>
+
+```hcl title="atlas.hcl"
+env "dev" {
+  dev = "docker://postgres/15/dev?search_path=public"
+  test {
+    migrate {
+      src = ["migrations/tests"]
+      vars = {
+        working_dir = "migrations/tests"
+      }
+    }
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+:::info Test case variables
+The `testing` object is available in the test case scope and contains the following attributes:
+* `name` - the name of the test case.
+* `dev_url` - the URL to the dev-database used by the test case.
+:::
 
 ### Input Variables
 
