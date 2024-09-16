@@ -136,7 +136,7 @@ module.exports = {
                         },
                         {
                             type: 'doc',
-                            id: 'monitoring/notifications'
+                            id: 'monitoring/webhooks'
                         },
                         {
                             type: 'doc',

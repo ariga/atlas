@@ -1,0 +1,104 @@
+---
+title: Webhooks
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+To receive webhooks notifications about schema changes in your database, you can set them up in Atlas Schema Monitoring.
+webhooks can be sent to Slack, Workplace, or any HTTP endpoint.
+
+#### Setting up Webhooks
+
+1. Log in to your Atlas Cloud account at https://auth.atlasgo.cloud.
+
+2. Click on **Monitoring** in the top-level navigation on the left side of the screen.
+
+3. Choose the database you want to monitor and click on the **Webhooks** tab.
+
+4. Click on the **Add Webhook** button
+
+5. Select the integration type  and fill in the required information.
+
+    <Tabs>
+    <TabItem value="slack" label="Slack" default>
+
+    *URL (Required)* -  the URL of the slack integration, you can create one [here](https://my.slack.com/services/new/incoming-webhook).
+
+    <details>
+    <summary>Screenshot Example</summary>
+
+    ![](https://atlasgo.io/uploads/cloud/monitoring/slack-setup.png)
+    </details>
+
+    </TabItem>
+
+    <TabItem value="workplace" label="Workplace">
+
+    *Workplace Group ID (Required)* - The ID of the Workplace group where the notification will be sent to.
+
+    *Access Token (Required)* - The access token of the Workplace [Integration](https://developers.facebook.com/docs/workplace/reference/permissions/#tokens).
+
+    <details>
+    <summary>Screenshot Example</summary>
+
+    ![](https://atlasgo.io/uploads/cloud/monitoring/workplace-setup.png)
+    </details>
+
+    </TabItem>
+
+    <TabItem value="webhook" label="Webhook">
+
+    *URL (Required)* - The URL of the HTTP endpoint where the webhook will be sent.
+
+    *Sensitive Part (Optional)* - The sensitive part of the URL will be hidden in the UI.
+
+    *Secret (Optional)* - The secret key used to sign the webhook body by using X-Hub-Signature header.
+
+    <details>
+    <summary>Screenshot Example</summary>
+
+    ![](https://atlasgo.io/uploads/cloud/monitoring/webhook-setup.png)
+    </details>
+
+    </TabItem>
+    </Tabs>
+
+To test your configuration, use the **Send Test Notification** button.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/monitoring/send-ping.png)
+</details>
+
+After setting up the webhook, you will receive webhooks whenever there are a schema changes in the database.
+
+#### Testing Webhooks
+
+Let's create new table in our database and see how the webhook notification works.
+
+```sql
+CREATE TABLE test_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(255)
+);
+```
+
+Now, hit the **Refresh** button inside the **Overview** tab to trigger schema snapshot of the database.
+
+Now, you should receive a webhook about the schema change.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/monitoring/slack_delivery.png)
+</details>
+
+When clicking on the link inside the message, you will be redirected to the **Changelog** tab, where you can see the details of the schema change.
+
+<details>
+<summary>Screenshot Example</summary>
+
+![](https://atlasgo.io/uploads/cloud/monitoring/slack_link.png)
+</details>
