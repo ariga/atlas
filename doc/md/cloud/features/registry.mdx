@@ -1,24 +1,53 @@
 ---
-title: Schema Registry
+title: Atlas Registry
 id: registry
 slug: /cloud/features/registry
 ---
 
-## Overview
+Atlas Registry allows you to store, version, and maintain a single source of truth for your database schemas,
+database migrations, and additional assets related to schema changes. It is like Docker Hub for Atlas schemas and
+migrations.
 
-By pushing your schemas to the Atlas Cloud Schema Registry, teams can maintain a single source of truth for their database
-schemas and schema changes. It is like Docker Hub but for database schema changes.
+## Getting Started
 
-## How it works
+### Pushing a Schema
 
-Push your migration directory to the Schema Registry by using the `atlas migrate push` command. This will upload your
-migration files to the registry and make it available to others in your organization:
+Push your schema definition to the Atlas Registry by using the `atlas schema push` command. This command uploads your
+schema to the registry and make it available to others in your organization. A new schema version is created if the
+schema definition is different from the previous version:
 
+```bash {4}
+atlas schema push myapp \
+  --env local
+
+https://example.atlasgo.cloud/schemas/141733920769
 ```
-atlas migrate push --env local helloworld
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/cloud/images/schema-overview-v1.png" alt="atlas schema push" width="100%"/>
+    <p style={{fontSize: 12}}>Schema created with <code>atlas schema push</code></p>
+</div>
+
+### Pushing a Migration Directory
+
+Push your migration directory to the registry by using the `atlas migrate push` command. This will upload your
+migration files to the registry and make the directory available to others in your organization:
+
+```bash {4}
+atlas migrate push myapp \
+  --env local
 
 https://example.atlasgo.cloud/dirs/4294967370
 ```
+
+Note that Atlas Registry is schema-aware. In addition to storing and versioning your migrations, it provides ER diagrams,
+SQL diffing, [schema docs](/cloud/features/schema-docs), and other capabilities that make working with your
+schema easier.
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/cloud/images/dir-overview-v1.png" alt="atlas migrate push" width="100%"/>
+    <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
+</div>
 
 ## Simplifying Deployments
 
