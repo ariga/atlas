@@ -3,14 +3,17 @@ title: Notifications
 ---
 
 To receive notifications about schema changes in your database, you can set up notifications in Atlas Schema Monitoring.
-Notifications can be sent to Slack, Workplace, or a plain webhook URL.
-
+Notifications can be sent to Slack, Workplace, or any HTTP endpoint.
 
 #### Setting up Notifications
 
-To set up notifications, go to the **webhooks** tab of the database you want to monitor and click on the **Add Webhook** button.
+1. Log in to your Atlas Cloud account at https://auth.atlasgo.cloud.
 
-Choose where you want to send the notification, and fill in the required information.
+2. Click on **Monitoring** in the top-level navigation on the left side of the screen.
+
+3. Choose the database you want to monitor and click on the **Webhooks** tab.
+
+4. Click on the **Add Webhook** button and fill in the required information.
 
 <details>
 <summary>Screenshot Example</summary>
@@ -18,8 +21,7 @@ Choose where you want to send the notification, and fill in the required informa
 ![](https://atlasgo.io/uploads/cloud/monitoring/webhook-create.png)
 </details>
 
-
-You can send ping webhooks to test the connection and verify that the notification is working as expected by clicking on the **Send Test Notification** button.
+To test your configuration, use the **Send Test Notification** button.
 
 <details>
 <summary>Screenshot Example</summary>
@@ -27,10 +29,11 @@ You can send ping webhooks to test the connection and verify that the notificati
 ![](https://atlasgo.io/uploads/cloud/monitoring/send-ping.png)
 </details>
 
-
 After setting up the notification, you will receive notifications whenever there are a schema changes in the database.
 
-Lest create new table in our database and see how the notification works.
+#### Testing Notifications
+
+Let's create new table in our database and see how the notification works.
 
 ```sql
 CREATE TABLE test_table (
