@@ -10,7 +10,7 @@ import TabItem from '@theme/TabItem';
 With Atlas, users do not need to plan database schema changes themselves. Instead
 of figuring out the correct SQL statements to get their database to the desired state,
 Atlas supports a kind of workflow that we call _declarative schema migration_.
-With declarative schema migrations the user provides a connection string to the target database
+With declarative schema migrations the user provides a URL (connection string) to the target database
 and the desired schema, while Atlas does the planning.
 
 [Read more about declarative workflows](/concepts/declarative-vs-versioned)
@@ -20,8 +20,8 @@ By default, running `atlas schema apply` applies only **schemas**, **tables**, a
 constraints such as **foreign keys** and **checks**.
 
 **Views**, **materialized views**, **functions**, **procedures**, **triggers**, **sequences**, **domains**, **extensions**,
-and additional beta features are available to [Atlas Pro users](/features#pro). To include these resources in schema migrations, use
-the following command:
+and additional database features are available to [Atlas Pro users](/features#pro). To include these resources in schema migrations,
+use the following command:
 
 ```shell
 atlas login
@@ -40,6 +40,7 @@ A desired state can be specified using a database URL, an HCL or SQL schema, or 
 * `--schema` (optional, may be supplied multiple times) - schemas to inspect within the target database.
 * `--exclude` (optional, may be supplied multiple times) - filter out resources matching the given glob pattern.
 * `--format` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
+* `--edit` (optional) - open the planned migration in the default editor, allowing the user to modify it.
 
 ### Auto-approval
 
