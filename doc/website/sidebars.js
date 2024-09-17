@@ -136,6 +136,10 @@ module.exports = {
                         },
                         {
                             type: 'doc',
+                            id: 'monitoring/webhooks'
+                        },
+                        {
+                            type: 'doc',
                             id: 'monitoring/overview'
                         },
                         {
