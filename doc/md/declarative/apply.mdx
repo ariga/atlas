@@ -77,7 +77,7 @@ all options:
 Users can define in which cases their schema changes require manual review and approval, if no migration has already been
 planned and approved for the given [_Schema Transition_ (State1 -> State2)](/declarative/plan#overview). How does it work?
 
-1. During `atlas schema apply`, Atlas checks if there is a pre-planned migration for the given schema transition
+1. During `atlas schema apply`, Atlas checks if there is an approved pre-planned migration for the given schema transition
    (State1 -> State2). If there is one, Atlas will apply it without requiring manual review.
 2. If no migration has been pre-planned, Atlas will run analysis and simulation on the [_Dev-Database_](../concepts/dev.mdx)
    to detect the impact of the proposed changes.
