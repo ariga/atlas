@@ -9,8 +9,7 @@ import TabItem from '@theme/TabItem';
 ## Obtaining Community Binaries
 
 Users that want to use the Community Edition of Atlas which is built directly from the
-[Atlas GitHub repository](https://github.com/ariga/atlas) and licensed under the
-Apache 2.0 license can do so by following the instructions below.
+[Atlas GitHub repository](https://github.com/ariga/atlas) and licensed under the Apache 2.0 license can do so by following the instructions below.
 
 <Tabs
     defaultValue="apple-intel-plain+linux"
@@ -81,7 +80,7 @@ open-source codebase with some additional proprietary features.  Usage of the Op
 
 ### Features Unavailable in the Community Edition
 
-Some commands are only available in the Open and Pro Editions:
+The Community Edition does not support the following commands and integrations:
 
 #### Versioned Migrations
 
@@ -90,14 +89,24 @@ Some commands are only available in the Open and Pro Editions:
 - `migrate rebase` - Reverting applied migration files from the database.
 - `migrate edit` - Edit a migration file.
 - `migrate rm` - Remove a migration file.
-- `migrate push` - Push the migration files to the Schema Registry.
+- `migrate push` - Push the migration files to [Atlas Registry](/cloud/features/registry).
 - `migrate test` - Run tests using the Atlas Testing Framework.
-
-To use these features, please use the Open or Pro Edition of Atlas.
 
 #### Declarative Migrations
 
 - `schema test` - Run tests using the Atlas Testing Framework.
+- `schema plan` - [Pre-plan declarative migrations](/declarative/plan).
+- `schema push` - Push a new version to [Atlas Registry](/cloud/features/registry).
+
+#### Integrations and Providers
+
+- [Atlas Kubernetes Operator](https://github.com/ariga/atlas-operator)
+- [Atlas Terraform Provider](https://github.com/ariga/terraform-provider-atlas)
+- [Atlas GitHub Action](https://github.com/ariga/atlas-action)
+- [Atlas CircleCI Orb](https://github.com/ariga/atlas-orb)
+- [Atlas JetBrains Plugin](https://plugins.jetbrains.com/plugin/22307-atlas-hcl)
+- [Atlas VSCode Extension](https://marketplace.visualstudio.com/items?itemName=Ariga.atlas-hcl)
+- [Atlas Go SDK](https://github.com/ariga/atlas-go-sdk)
 
 #### Database Features
 
@@ -111,6 +120,7 @@ The following database features are not supported in the Community Edition:
 - Domain types
 - Extensions
 - Sequences
+- Composite types
 
 #### Drivers
 

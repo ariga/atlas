@@ -79,7 +79,7 @@ prefer a more imperative approach where each change to the database schema is ch
 to source control and reviewed during code-review.  Each such change
 is called a "migration", as it migrates the database schema from the previous version to 
 the next. To support this kind of requirement, many popular database schema management
-tools such as [Flyway](https://flywaydb.org/), [Liquibase](https://liquibase.org/) or 
+tools such as [Flyway](https://atlasgo.io/atlas-vs-others), [Liquibase](https://atlasgo.io/atlas-vs-others) or 
 [golang-migrate](https://github.com/golang-migrate/migrate) support a workflow that
 is commonly called "versioned migrations".
 
