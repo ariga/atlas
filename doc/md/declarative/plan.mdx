@@ -1,0 +1,368 @@
+---
+id: plan
+slug: /declarative/plan
+title: Pre-planning Schema Migrations
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The `atlas schema plan` command allows users to pre-plan declarative schema migrations before applying them to the
+database. Once a migration is planned, reviewed, and approved, it can be applied using the [`atlas schema apply`](./apply.mdx)
+command to update the database to the desired state.
+
+Note: If you are not familiar with the `atlas schema apply` command, please refer to the [Applying Changes](./apply.mdx)
+guide first.
+
+:::info [Atlas Pro Feature](/features#pro)
+The `atlas schema plan` command is available exclusively to Pro users. To use this feature, run:
+```
+atlas login
+```
+:::
+
+### Overview
+
+The `atlas schema apply` command updates the database to the desired state defined by the user. These auto-planned schema
+changes can be approved in one of the following ways:
+
+1. Reviewed and approved interactively by a human.
+2. Auto-approved using the `--auto-approve` flag, though this may be risky in a production database.
+3. Auto-reviewed based on the lint-review policy, which requires human review only if the linter detects issues. or errors.
+
+These options depend on the database state and cannot predict whether the migration will succeed, fail, or abort.
+This is where `atlas schema plan` becomes useful.
+
+The `atlas schema plan` command allows users to pre-plan, review, and approve migrations before executing `atlas schema apply`
+on the database. This enables users to preview and modify SQL changes, involve team members in the review process, and ensure
+that no human intervention is required during the `atlas schema apply` phase.
+
+How does it work? In short (more details below), `atlas schema plan` generates a migration plan for the specified
+_Schema Transition_ (State1 -> State2) and stores it in the [Atlas Registry](/cloud/features/registry). During
+`atlas schema apply`, Atlas checks if there is an approved migration plan for the specific schema transition and applies
+it without recalculating SQL changes at runtime or requiring user-approval.
+
+If users wish to modify the auto-generated migration plan, they can edit it locally and then push it to the Atlas Registry.
+
+### Local Example
+
+Let's consider a simple example. We have a table `users` with two columns `id` and `name`, and we want to add a new column
+`email` to the table.
+
+<Tabs>
+<TabItem value={"Schema Definition"}>
+
+```sql title="schema.sql"
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT
+//highlight-next-line-info
+  email TEXT
+);
+```
+</TabItem>
+<TabItem value={"Config File"}>
+
+```hcl title="atlas.hcl"
+env "local" {
+  # URL to the underlying database.
+  url = "sqlite://main.db"
+  # URL to the dev-database.
+  dev = "sqlite://dev?mode=memory"
+  schema {
+    # Desired schema state.
+    src = "file://schema.sql"
+    # Atlas Registry config.
+    repo {
+      name = "app"
+    }
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+Before running `atlas schema plan`, we need to ensure the schema repository exists on the Atlas Registry by running the
+following command:
+
+```bash {2}
+atlas schema push --env local
+https://a8m.atlasgo.cloud/schemas/141733920769
+```
+
+We run `atlas schema plan` to generate a migration plan for adding the `email` column to the `users` table:
+```bash
+atlas schema plan --env local
+```
+The output looks like this:
+```planlog
+Planning migration from local database to file://schema.sql (1 statement in total):
+
+  -- add column "email" to table: "users":
+    -> ALTER TABLE `users` ADD COLUMN `email` text NULL;
+
+-------------------------------------------
+
+Analyzing planned statements (1 in total):
+
+  -- no diagnostics found
+
+  -------------------------
+  -- 6.028063ms
+  -- 1 schema change
+? Approve or abort the plan:
+  ▸ Approve and push
+    Abort
+```
+Once approved, the migration plan will be pushed to the Atlas Registry, and can be applied using `atlas schema apply`.
+
+```planlog
+Plan Status: APPROVED
+  -- Atlas URL: atlas://app/plans/20240916133205
+  -- Cloud URL: https://a8m.atlasgo.cloud/schemas/141733920769/plans/210453397504
+```
+
+At this stage, we can run `atlas schema apply` to apply the changes to the database, on any environment, without
+re-calculating the SQL changes at runtime or requiring human intervention.
+
+```applylog
+Applying approved migration using pre-planned file 20240916133205 (1 statement in total):
+
+  -- add column "email" to table: "users"
+    -> ALTER TABLE `users` ADD COLUMN `email` text NULL;
+  -- ok (1.774327ms)
+
+  -------------------------
+  -- 1.826882ms
+  -- 1 migration
+  -- 1 sql statement
+```
+
+### Atlas Registry
+
+Atlas Registry allows you to store, version, and maintain a single source of truth for your database schemas and its
+migration plans. It is similar to Docker Hub, but for your schemas and migrations. In addition to functioning as storage,
+it is schema-aware and provides extra capabilities such as ER diagrams, SQL diffing, [schema docs](/cloud/features/schema-docs),
+and more.
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/cloud/images/schema-overview-v1.png" alt="atlas migrate push" width="100%"/>
+    <p style={{fontSize: 12}}>Schema pushed with <code>atlas schema push</code></p>
+</div>
+
+### Edit a Plan
+
+One of the first questions that come to mind when comparing the declarative approach to the versioned approach is:
+_How can I edit a migration plan?_ There are three ways to edit a migration plan:
+
+1. **Edit in-place:**
+   - Ensure the `EDITOR` environment variable is set (e.g., `export EDITOR=vim`).
+   - Run `atlas schema plan --edit` to open the plan in the default editor. Upon closing, the plan will be pushed
+     after approval.
+
+2. **Save, edit, and push:**
+   - Run `atlas schema plan --save` to save the plan to a file and edit it manually.
+   - Run `atlas schema plan push --file file://<path>` to push the edited plan to the Atlas Registry.
+
+3. **Pull, edit, and push:**
+   - Pull a remote plan by running `atlas schema plan pull --url atlas://<schema>/plans/<plan> > name.plan.hcl`.
+   - Open `name.plan.hcl` in the editor, and edit the `migration` attribute.
+   - Push the edited plan to the Atlas Registry by running `atlas schema plan push --file file://<path>`.
+
+To complete the example, let's edit the migration plan from the [example above](#local-example) by filling all nullable
+`email` columns with a dynamic default value:
+
+1. We pull the plan first into a file named `20240916133205.plan.hcl`:
+
+  ```bash
+  atlas schema plan pull --url atlas://app/plans/20240916133205 > 20240916133205.plan.hcl
+  ```
+
+  ```hcl title="20240916133205.plan.hcl"
+  plan "20240916133205" {
+    from      = "vJYpErjN4kWJpw4nRaJcEX3xx/jExj4a05Ll3Y7gXr4="
+    to        = "hna312Vk535aibL1hTRcBlxeyUvIwV6Mov7kfaZ2+3s="
+    migration = <<-SQL
+    -- Add column "email" to table: "users"
+    ALTER TABLE `users` ADD COLUMN `email` text NULL;
+    SQL
+  }
+  ```
+
+  Note that the `from` and `to` are fingerprints of the schema states. They are used to identify the states in the
+  schema transition. We will ignore them for now (without changing them, of course) and focus on the migration attribute.
+
+2. We edit the `migration` attribute to fill all nullable `email` columns with a dynamic default value:
+
+  ```hcl title="20240916133205.plan.hcl"
+  plan "20240916133205" {
+    from      = "vJYpErjN4kWJpw4nRaJcEX3xx/jExj4a05Ll3Y7gXr4="
+    to        = "hna312Vk535aibL1hTRcBlxeyUvIwV6Mov7kfaZ2+3s="
+    migration = <<-SQL
+    -- Add column "email" to table: "users"
+    ALTER TABLE `users` ADD COLUMN `email` text NULL;
+    //highlight-next-line-info
+    -- Fill all nullable "email" columns with a default email.
+    //highlight-next-line-info
+    UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` IS NULL;
+    SQL
+  }
+  ```
+
+3. Then, we push the edited plan to the Atlas Registry:
+
+  ```bash
+  atlas schema plan push --file file://20240916133205.plan.hcl
+  ```
+
+  ```planlog
+  Planning migration statements (2 in total):
+
+    -- add column "email" to table: "users":
+      -> ALTER TABLE `users` ADD COLUMN `email` text NULL;
+    -- fill all nullable "email" columns with a default email.:
+      -> UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` IS NULL;
+
+  -------------------------------------------
+
+  Analyzing planned statements (2 in total):
+
+    -- no diagnostics found
+
+    -------------------------
+    -- 43.566575ms
+    -- 2 schema changes
+  ? Approve or abort the plan:
+    ▸ Approve and push
+      Abort
+  ```
+  Once approved, the migration plan will be pushed to the Atlas Registry.
+
+  :::note Schema Drift
+  Note that if your manual changes are not in sync with the desired state (i.e., do not bring the database to the
+  desired state), Atlas will detect the schema drift and reject this migration plan.
+  :::
+
+4. Then, running `atlas schema apply` will apply the changes to the database, including the new `UPDATE` statement.
+
+   ```applylog
+   Applying approved migration using pre-planned file 20240916133205 (2 statements in total):
+
+     -- add column "email" to table: "users"
+       -> ALTER TABLE `users` ADD COLUMN `email` text NULL;
+     -- ok (826.977µs)
+
+     -- fill all nullable "email" columns with a default email.
+       -> UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` IS NULL;
+     -- ok (447.152µs)
+
+     -------------------------
+     -- 1.353026ms
+     -- 1 migration
+     -- 2 sql statements
+   ```
+
+### Push a Plan
+
+By default, `atlas schema plan` proposes pushing the plan file to the Atlas registry. However, you can use the `--save` flag
+to dump the plan to a file, edit it, and then push it manually to the Atlas Registry using the `atlas schema plan push`
+command:
+
+```bash
+atlas schema plan push \
+  --file file://<path-plan-file> \
+  --env <config-env>
+```
+
+### Approve a Plan
+
+By default, `atlas schema plan` pushes plans in an **`APPROVED`** state to the registry. However, in some cases, we may prefer to create
+the plan in **pending** state, and later approve it manually or automatically after it passes the team's review.
+
+There are two ways to create a plan in a **pending** state and approve it after review.
+1. Manual workflow:
+   1. Run the `atlas schema plan` command with the `--pending` flag. This creates the plan in **pending** state.
+   2. Then, in order to approve the plan, either go to the Atlas Registry Web UI and approve the plan, or run the
+      `atlas schema plan approve` command.
+2. Automated (CI) workflow:
+   1. When setting the `schema/plan` GitHub Action for your repository, Atlas automatically creates a plan in a pending state.
+   2. Then, after the PR is merged, Atlas auto-approves the created plan in the registry.
+
+:::info Protected Flow
+Users can protect their registry schemas by limiting who can push changes, push approved plans, or approve existing plans.
+To enable this for your schema, go to the schema repository settings in the registry and enable the `Protected Flows` option.
+:::
+
+### Pull a Plan
+
+To pull a plan from the Atlas Registry, use the `atlas schema plan pull` command:
+
+```bash
+atlas schema plan pull \
+  --url atlas://app/plans/add_email > add_email.plan.hcl
+```
+
+### List Plans
+
+To list all plans in the Atlas Registry for the given schema transition, use the `atlas schema plan list` command:
+
+```bash
+atlas schema plan list \
+  --env local
+```
+
+```planlog
+Plan Status: APPROVED
+  -- Atlas URL: atlas://app/plans/add_email
+  -- Cloud URL: https://<tenant>.atlasgo.cloud/schemas/<schema-id>/plans/<plan-id>
+```
+
+### Lint a Plan
+
+To lint a plan (remote or local) before pushing it to the Atlas Registry, use the `atlas schema plan lint` command:
+
+```bash
+atlas schema plan lint \
+  --file file://add_email.plan.hcl \
+  --env local
+```
+
+### Apply a Plan
+
+Running `atlas schema apply` searches for a migration plan in the Atlas Registry and applies it to the database, if exists.
+However, in unusual cases, you might have multiple (approved) migration plans for the same schema transition store in the
+registry (e.g., one per environment). In that case, running `atlas schema apply` will abort with the following error:
+
+```text
+Error: multiple pre-planned migrations were found in the registry for this schema transition.
+
+  Current hash: vJYpErjN4kWJpw4nRaJcEX3xx/jExj4a05Ll3Y7gXr4=
+  Desired hash: hna312Vk535aibL1hTRcBlxeyUvIwV6Mov7kfaZ2+3s=
+
+Plans found:
+
+  atlas://app/plans/<plan-one>
+  atlas://app/plans/<plan-two>
+
+To resolve the issue, either delete the conflicting plans or provide the plan URL explicitly using the --plan flag.
+```
+
+In this case, we either delete the conflicting plans from the Atlas Registry or provide the plan URL explicitly using
+the `--plan` flag:
+
+```applylog
+Applying approved migration using pre-planned file 20240916133205 (2 statements in total):
+
+  -- add column "email" to table: "users"
+    -> ALTER TABLE `users` ADD COLUMN `email` text NULL;
+  -- ok (789.621µs)
+
+  -- fill all nullable "email" columns with a default email.
+    -> UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` IS NULL;
+  -- ok (883.177µs)
+
+  -------------------------
+  -- 1.77283ms
+  -- 1 migration
+  -- 2 sql statements
+```

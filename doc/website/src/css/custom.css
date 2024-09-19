@@ -311,6 +311,10 @@ h3 > .login {
   vertical-align: middle;
 }
 
+/*
+Migrate apply log.
+*/
+
 .language-applylog .version, .language-applylog .action2, .language-applylog .action3 {
   color: #62cece;
 }
@@ -324,44 +328,65 @@ h3 > .login {
   color: white;
 }
 
+/*
+Schema plan log.
+*/
+
+.language-planlog .action2, .language-planlog .action3, .language-planlog .state, .language-planlog .atlaslink {
+  color: #62cece;
+}
+
+.language-planlog .action1 {
+  color: #c0c028;
+}
+
+.language-planlog .questionmark {
+  color: #417fb9;
+  font-weight: bold;
+}
+
+.language-planlog .approved {
+  color: #8bc34a;
+}
+
 .language-testoutput .pass {
-  color: #c4e88d;
+color: #c4e88d;
 }
 
 .language-testoutput .fail {
-  color: #db4b4b;
+color: #db4b4b;
 }
 
 .sticky-anchor {
-  scroll-margin-top:calc(var(--ifm-navbar-height) + 0.5rem);
+scroll-margin-top:calc(var(--ifm-navbar-height) + 0.5rem);
 }
 
 
 .docs-layout h3 {
-  @apply text-xl font-bold mb-4 flex;
+@apply text-xl font-bold mb-4 flex;
 }
 
 .docs-layout h1 {
-  @apply text-4xl;
+@apply text-4xl;
 }
 
 .docs-layout .tabs__item {
-  @apply px-2 py-2.5 text-center flex items-center; 
+@apply px-2 py-2.5 text-center flex items-center;
 }
 
 .docs-layout .tabs {
-  @apply border-b;
+@apply border-b;
 }
 
 .docs-layout p code {
-  @apply rounded-lg border-none p-1 font-roboto;
+@apply rounded-lg border-none p-1 font-roboto;
 }
 
 div[class^='announcementBar'] {
-  @apply border-0;
+@apply border-0;
 }
 
 .footer__copyright {
-  font-size: 10px;
-  line-height: 14px;
+font-size: 10px;
+line-height: 14px;
 }

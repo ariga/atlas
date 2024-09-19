@@ -16,6 +16,16 @@ const prismIncludeLanguages = (Prism) => {
     'action3': /\s\s+->\s/,
     'error': /(Error:\s.+|\s+.+(assertions failed:|check assertion)\s.+)/i,
   };
+  Prism.languages.planlog = {
+    'action1': /\s\s+-{2}\s/,
+    'action2': /\s\s+-{25,}/,
+    'action3': /\s\s+->\s/,
+    'state': /(local database|file:\/\/schema\.sql)\s/,
+    'questionmark': /\? /,
+    'error': /(Error:\s.+|\s+.+(assertions failed:|check assertion)\s.+)/i,
+    'approved': /APPROVED/,
+    'atlaslink': /https:\/\/.+atlasgo.+|atlas:\/\/.+/
+  };
   Prism.languages.testoutput = {
     'dash2': /--/,
     'pass': / PASS/,
