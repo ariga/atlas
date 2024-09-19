@@ -513,9 +513,19 @@ func (d *MemDir) Path() string {
 	return d.path
 }
 
+const versionFormat = "20060102150405"
+
 // NewVersion generates a new migration version.
 func NewVersion() string {
-	return time.Now().UTC().Format("20060102150405")
+	return time.Now().UTC().Format(versionFormat)
+}
+
+// CheckVersion checks if the given version is valid Atlas version.
+func CheckVersion(v string) error {
+	if _, err := time.Parse(versionFormat, v); err != nil {
+		return fmt.Errorf("invalid version: %w. Expected format is: %s", err, versionFormat)
+	}
+	return nil
 }
 
 var (

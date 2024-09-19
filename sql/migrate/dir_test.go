@@ -575,6 +575,11 @@ create table t2(c int);
 	require.Nil(t, f)
 }
 
+func TestCheckVersion(t *testing.T) {
+	require.Error(t, migrate.CheckVersion("1"))
+	require.NoError(t, migrate.CheckVersion(migrate.NewVersion()))
+}
+
 func fileNames(r io.Reader) ([]string, error) {
 	var out []string
 	tr := tar.NewReader(r)

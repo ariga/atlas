@@ -574,6 +574,9 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 		if err := maySetFlag(cmd, flagURL, strings.Join(srcs, ",")); err != nil {
 			return err
 		}
+		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Push); err != nil {
+			return err
+		}
 	case "test":
 		// Give the "src" precedence over the "url" argument.
 		if len(srcs) > 0 {
