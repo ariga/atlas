@@ -190,6 +190,8 @@ type (
 			Apply string `spec:"apply"`
 			// Apply configures the formatting for 'schema diff'.
 			Diff string `spec:"diff"`
+			// Push configures the formatting for 'schema push'.
+			Push string `spec:"push"`
 		} `spec:"schema"`
 		schemahcl.DefaultExtension
 	}
