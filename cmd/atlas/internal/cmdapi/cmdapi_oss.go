@@ -428,10 +428,16 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 
 // applySchemaClean is the community-version of the 'atlas schema clean' handler.
 func applySchemaClean(cmd *cobra.Command, client *sqlclient.Client, drop []schema.Change, flags schemaCleanFlags) error {
+	if flags.dryRun {
+		return AbortErrorf(unsupportedMessage("schema", "clean --dry-run"))
+	}
+	if flags.logFormat != "" {
+		return AbortErrorf(unsupportedMessage("schema", "clean --format"))
+	}
 	if err := summary(cmd, client, drop, cmdlog.SchemaPlanTemplate); err != nil {
 		return err
 	}
-	if flags.AutoApprove || promptUser(cmd) {
+	if flags.autoApprove || promptUser(cmd) {
 		if err := client.ApplyChanges(cmd.Context(), drop); err != nil {
 			return err
 		}

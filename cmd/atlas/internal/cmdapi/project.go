@@ -184,6 +184,8 @@ type (
 			Diff string `spec:"diff"`
 		} `spec:"migrate"`
 		Schema struct {
+			// Clean configures the formatting for 'schema clean'.
+			Clean string `spec:"clean"`
 			// Inspect configures the formatting for 'schema inspect'.
 			Inspect string `spec:"inspect"`
 			// Apply configures the formatting for 'schema apply'.
