@@ -166,8 +166,10 @@ func planOptions(c *sqlclient.Client) []migrate.PlanOption {
 }
 
 type schemaCleanFlags struct {
-	URL         string // URL of database to apply the changes on.
-	AutoApprove bool   // Don't prompt for approval before applying SQL.
+	url         string // URL of database to apply the changes on.
+	autoApprove bool   // Don't prompt for approval before applying SQL.
+	logFormat   string // Log format.
+	dryRun      bool   // Only show SQL on screen instead of applying it.
 }
 
 // schemaCleanCmd represents the 'atlas schema clean' subcommand.
@@ -190,15 +192,16 @@ As a safety feature, 'atlas schema clean' will ask for confirmation before attem
 		}
 	)
 	cmd.Flags().SortFlags = false
-	addFlagURL(cmd.Flags(), &flags.URL)
-	addFlagAutoApprove(cmd.Flags(), &flags.AutoApprove)
+	addFlagURL(cmd.Flags(), &flags.url)
+	addFlagDryRun(cmd.Flags(), &flags.dryRun)
+	addFlagFormat(cmd.Flags(), &flags.logFormat)
+	addFlagAutoApprove(cmd.Flags(), &flags.autoApprove)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
 	return cmd
 }
 
 func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemaCleanFlags) error {
-	// Open a client to the database.
-	c, err := sqlclient.Open(cmd.Context(), flags.URL)
+	c, err := sqlclient.Open(cmd.Context(), flags.url)
 	if err != nil {
 		return err
 	}
@@ -550,6 +553,9 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	switch cmd.Name() {
 	case "clean":
 		if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, flagFormat, env.Format.Schema.Clean); err != nil {
 			return err
 		}
 	case "inspect":
