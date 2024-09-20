@@ -40,6 +40,8 @@ func init() {
 		schemaFmtCmd(),
 		schemaInspectCmd(),
 		unsupportedCommand("schema", "test"),
+		unsupportedCommand("schema", "plan"),
+		unsupportedCommand("schema", "push"),
 	)
 	Root.AddCommand(schemaCmd)
 	migrateCmd := migrateCmd()

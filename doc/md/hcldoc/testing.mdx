@@ -204,6 +204,78 @@ test "migrate" "20240613061102" {
 
 
     
+#### `test.external` {#test.external}
+The `external` allows executing external programs to insert data or run assertions on the dev-database used by test case.
+
+~~~hcl
+external {
+  program = [
+    "go", "run", "seed.go",
+    "--dev-url", testing.dev_url,
+  ]
+}
+~~~
+
+
+
+
+##### `test.external` attributes {#test.external-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.external.match"><a href="#test.external.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.external.output"><a href="#test.external.output"><code>output</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.external.program"><a href="#test.external.program"><code>program</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="test.external.working_dir"><a href="#test.external.working_dir"><code>working_dir</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.external` constraints {#test.external-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[output, match]`
+
+
+
+
+
+    
 #### `test.log` {#test.log}
 
 
@@ -477,6 +549,78 @@ test "schema" "postal" {
 
 
 ##### `test.exec` constraints {#test.exec-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[output, match]`
+
+
+
+
+
+    
+#### `test.external` {#test.external}
+The `external` allows executing external programs to insert data or run assertions on the dev-database used by test case.
+
+~~~hcl
+external {
+  program = [
+    "go", "run", "seed.go",
+    "--dev-url", testing.dev_url,
+  ]
+}
+~~~
+
+
+
+
+##### `test.external` attributes {#test.external-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="test.external.match"><a href="#test.external.match"><code>match</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.external.output"><a href="#test.external.output"><code>output</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="test.external.program"><a href="#test.external.program"><code>program</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+List of strings
+  </td>
+
+  </tr>
+  <tr>
+      <td id="test.external.working_dir"><a href="#test.external.working_dir"><code>working_dir</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `test.external` constraints {#test.external-constraints}
 
 
 
