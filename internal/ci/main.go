@@ -32,6 +32,7 @@ type (
 	}
 	// Job defines an integration job to run.
 	Job struct {
+		Runner      string       // runner to use
 		Version     string       // version to test (passed to go test as flag which database dialect/version)
 		Image       string       // name of service
 		Credentials *Credentials // credentials to pull the image

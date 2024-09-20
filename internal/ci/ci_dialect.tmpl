@@ -14,7 +14,7 @@ env:
 jobs:
 {{- range $.Jobs }}
   integration-{{ .Version }}:
-    runs-on: {{ $.Runner }}
+    runs-on: {{ or .Runner $.Runner }}
     {{- if .Image }}
     services:
       {{ .Version }}:
