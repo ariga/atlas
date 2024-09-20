@@ -217,6 +217,10 @@ module.exports = {
             to: "/guides/deploying/remote-directories",
             from: "/guides/deploying/from-cloud",
           },
+          {
+            from: '/registry',
+            to: '/cloud/features/registry',
+          },
         ],
       },
     ],

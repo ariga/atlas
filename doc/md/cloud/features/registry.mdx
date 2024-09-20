@@ -12,9 +12,8 @@ migrations.
 
 ### Pushing a Schema
 
-Push your schema definition to the Atlas Registry by using the `atlas schema push` command. This command uploads your
-schema to the registry and make it available to others in your organization. A new schema version is created if the
-schema definition is different from the previous version:
+The `atlas schema push` command allows you to push your schema definition to the Atlas Registry. If no repository exists
+in the registry for the schema, a new one is created. Otherwise, a new version is generated.
 
 ```bash {4}
 atlas schema push myapp \
@@ -23,15 +22,39 @@ atlas schema push myapp \
 https://example.atlasgo.cloud/schemas/141733920769
 ```
 
+Once pushed, the schema is available to others in your organization and can be referenced in your deployment pipelines.
+
 <div style={{textAlign: 'center'}}>
     <img src="https://atlasgo.io/uploads/cloud/images/schema-overview-v1.png" alt="atlas schema push" width="100%"/>
     <p style={{fontSize: 12}}>Schema created with <code>atlas schema push</code></p>
 </div>
 
+#### Registry Config for Schemas
+
+The example below demonstrates how to configure the registry for your schema within an `env` block. All commands
+executed in this environment will automatically use the configured repository:
+
+```hcl title="atlas.hcl" {6-13}
+env "local" {
+  # URL to the underlying database.
+  url = env("DATABASE_URL")
+  # URL to the dev-database.
+  dev = "sqlite://dev?mode=memory"
+  schema {
+    # Desired schema state.
+    src = "file://schema.sql"
+    # Atlas Registry config.
+    repo {
+      name = "myapp"
+    }
+  }
+}
+```
+
 ### Pushing a Migration Directory
 
-Push your migration directory to the registry by using the `atlas migrate push` command. This will upload your
-migration files to the registry and make the directory available to others in your organization:
+The `atlas migrate push` command allows you to push your migration directory to the Atlas Registry. If no repository
+exists in the registry for the pushed directory, a new one is created. Otherwise, the directory state will be updated.
 
 ```bash {4}
 atlas migrate push myapp \
@@ -39,6 +62,9 @@ atlas migrate push myapp \
 
 https://example.atlasgo.cloud/dirs/4294967370
 ```
+
+Once pushed, the migration directory is available to others in your organization and can be referenced in your deployment
+pipelines.
 
 Note that Atlas Registry is schema-aware. In addition to storing and versioning your migrations, it provides ER diagrams,
 SQL diffing, [schema docs](/cloud/features/schema-docs), and other capabilities that make working with your
@@ -48,6 +74,28 @@ schema easier.
     <img src="https://atlasgo.io/uploads/cloud/images/dir-overview-v1.png" alt="atlas migrate push" width="100%"/>
     <p style={{fontSize: 12}}>Migration Directory created with <code>atlas migrate push</code></p>
 </div>
+
+#### Registry Config for Migration Directories
+
+The example below demonstrates how to configure the registry for your migration directory within an `env` block.
+All commands executed in this environment will automatically use the configured repository:
+
+```hcl title="atlas.hcl" {8-13}
+env "local" {
+  # URL to the underlying database.
+  url = env("DATABASE_URL")
+  # URL to the dev-database.
+  dev = "sqlite://dev?mode=memory"
+  # URL to the desired schema state.
+  src = "file://schema.sql"
+  migration {
+    # Atlas Registry config.
+    repo {
+      name = "myapp"
+    }
+  }
+}
+```
 
 ## Simplifying Deployments
 
