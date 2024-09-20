@@ -383,12 +383,17 @@ atlas migrate new [flags] [name]
 
 ### atlas migrate push
 
-Push a migration directory with an optional tag to the Atlas registry
+Push a migration directory with an optional tag to the Atlas Registry
 
 #### Usage
 ```
 atlas migrate push [flags] directory[:tag]
 ```
+
+#### Details
+The 'atlas migrate push' command allows you to push your migration directory to the Atlas Registry.
+If no repository exists in the registry for the pushed directory, a new one is created. Otherwise, the
+directory state will be updated. Read more: https://atlasgo.io/registry
 
 #### Example
 
@@ -636,6 +641,8 @@ migration.
       --auto-approve      apply changes without prompting for approval
       --format string     Go template to use to format the output
       --tx-mode string    set transaction mode [none, file] (default "file")
+      --plan string       URL to a pre-planned migration (e.g., atlas://repo/plans/name)
+      --edit              open the generated SQL in an editor
 
 ```
 
@@ -661,8 +668,10 @@ As a safety feature, 'atlas schema clean' will ask for confirmation before attem
 ```
 #### Flags
 ```
-  -u, --url string     [driver://username:password@address/dbname?param=value] select a resource using the URL format
-      --auto-approve   apply changes without prompting for approval
+  -u, --url string      [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --dry-run         print SQL without executing it
+      --format string   Go template to use to format the output
+      --auto-approve    apply changes without prompting for approval
 
 ```
 
@@ -761,6 +770,256 @@ flag.
       --exclude strings   list of glob patterns used to filter resources from applying
       --format string     Go template to use to format the output
   -w, --web               open the schema ERD in the browser
+
+```
+
+
+### atlas schema plan
+
+Plan a declarative migration for the schema transition
+
+#### Usage
+```
+atlas schema plan [flags] [name]
+```
+
+#### Details
+The 'atlas schema plan' command allows users to pre-plan, review, and approve migrations before
+executing 'atlas schema apply' on the database. This enables users to preview and modify SQL changes,
+involve team members in the review process, and ensure that no human intervention is required during
+the atlas schema apply phase. Read more: https://atlasgo.io/declarative/plan
+
+#### Example
+
+```
+  atlas schema plan --env dev
+  atlas schema plan --env dev --to file://schema.hcl
+  atlas schema plan --env dev --from file://schema.hcl
+  atlas schema plan --env dev --pending
+```
+#### Flags
+```
+      --from strings            URL(s) of the current schema state
+      --to strings              URL(s) of the desired schema state
+      --auto-approve            approve the plan without asking for confirmation
+      --repo string             URL to the schema repository
+      --format string           output format
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+      --dry-run                 print the plan and exit
+      --push                    push the plan to the registry
+      --save                    save the plan to a file
+      --edit                    edit the plan in the terminal editor
+      --name string             plan name as stored in the registry
+      --pending                 push the plan in a pending state
+  -o, --output string           output file path (e.g., path/to/file.plan.hcl)
+
+```
+
+
+#### atlas schema plan approve
+
+Approve a migration plan by its registry URL
+
+#### Usage
+```
+atlas schema plan approve [flags]
+```
+
+#### Example
+
+```
+  atlas schema plan approve --url atlas://<schema-slug>/plans/<name>
+```
+#### Flags
+```
+      --url string      URL to the plan file in the registry
+      --format string   output format
+
+```
+
+
+#### atlas schema plan lint
+
+Run analysis (migration linting) on a plan file
+
+#### Usage
+```
+atlas schema plan lint [flags]
+```
+
+#### Flags
+```
+      --from strings            URL(s) of the current schema state
+      --to strings              URL(s) of the desired schema state
+      --auto-approve            approve the plan without asking for confirmation
+      --repo string             URL to the schema repository
+      --format string           output format
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+  -f, --file string             URL to the plan file (e.g., file://path/to/file.plan.hcl)
+
+```
+
+
+#### atlas schema plan list
+
+List all plans in the registry for the given schema transition
+
+#### Usage
+```
+atlas schema plan list [flags]
+```
+
+#### Example
+
+```
+  atlas schema plan list --to file://schema.hcl --env dev
+```
+#### Flags
+```
+      --from strings            URL(s) of the current schema state
+      --to strings              URL(s) of the desired schema state
+      --auto-approve            approve the plan without asking for confirmation
+      --repo string             URL to the schema repository
+      --format string           output format
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+      --pending                 list only pending plans
+
+```
+
+
+#### atlas schema plan new
+
+Create a new plan file for the schema transition
+
+#### Usage
+```
+atlas schema plan new [flags]
+```
+
+#### Flags
+```
+      --from strings            URL(s) of the current schema state
+      --to strings              URL(s) of the desired schema state
+      --auto-approve            approve the plan without asking for confirmation
+      --repo string             URL to the schema repository
+      --format string           output format
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+      --edit                    edit the plan in the terminal editor
+      --name string             plan name as stored in the registry
+  -o, --output string           output file path (e.g., path/to/file.plan.hcl)
+
+```
+
+
+#### atlas schema plan pull
+
+Pull a plan file from the registry
+
+#### Usage
+```
+atlas schema plan pull [flags]
+```
+
+#### Flags
+```
+      --url string   URL to the plan file in the registry
+
+```
+
+
+#### atlas schema plan push
+
+Push a plan file to the registry
+
+#### Usage
+```
+atlas schema plan push [flags]
+```
+
+#### Example
+
+```
+  atlas schema plan push --file file://plan.hcl
+  atlas schema plan push --from file://schema.hcl --to file://schema.hcl --file file://plan.hcl
+```
+#### Flags
+```
+      --from strings            URL(s) of the current schema state
+      --to strings              URL(s) of the desired schema state
+      --auto-approve            approve the plan without asking for confirmation
+      --repo string             URL to the schema repository
+      --format string           output format
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+  -f, --file string             URL to the plan file (e.g., file://path/to/file.plan.hcl)
+      --pending                 push the plan in a pending state
+
+```
+
+
+#### atlas schema plan validate
+
+Validate a plan file against the schema transition
+
+#### Usage
+```
+atlas schema plan validate [flags]
+```
+
+#### Example
+
+```
+  atlas schema plan validate --file file://plan.hcl
+  atlas schema plan validate --from file://schema.hcl --to file://schema.hcl --file file://plan.hcl
+```
+#### Flags
+```
+      --from strings            URL(s) of the current schema state
+      --to strings              URL(s) of the desired schema state
+      --auto-approve            approve the plan without asking for confirmation
+      --repo string             URL to the schema repository
+      --format string           output format
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
+  -f, --file string             URL to the plan file (e.g., file://path/to/file.plan.hcl)
+
+```
+
+
+### atlas schema push
+
+Push the schema with an optional tag to the Atlas Registry
+
+#### Usage
+```
+atlas schema push [flags] schema[:tag]
+```
+
+#### Details
+The 'atlas schema push' command allows you to push your schema definition to the Atlas Registry.
+If no repository exists in the registry for the schema, a new one is created. Otherwise, a new
+version is generated. Read more: https://atlasgo.io/registry
+
+#### Example
+
+```
+  atlas schema push --dev-url docker://mysql/8/dev --url file://schema.hcl app
+  atlas schema push --env dev app
+  atlas schema push --env dev app --version 20230102150405
+```
+#### Flags
+```
+  -u, --url strings             desired schema URL(s) to push
+      --dev-url string          [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --version string          version of the schema to push. Defaults to the current timestamp
+      --desc string             description of the pushed schema version
+      --tag string              tag to push the directory with
+      --format string           Go template to use to format the output
+      --lock-timeout duration   set how long to wait for the database lock (default 10s)
 
 ```
 
