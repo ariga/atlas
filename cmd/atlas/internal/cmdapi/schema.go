@@ -228,10 +228,6 @@ func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemaCleanFlags) erro
 			return err
 		}
 	}
-	if len(drop) == 0 {
-		cmd.Println("Nothing to drop")
-		return nil
-	}
 	return applySchemaClean(cmd, c, drop, flags)
 }
 
