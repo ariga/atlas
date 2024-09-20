@@ -249,6 +249,25 @@ func (e *Env) VarFromURL(s string) (string, error) {
 		sv = e.URL
 	case "dev":
 		sv = e.DevURL
+	case "src":
+		switch n := len(e.Schemas); {
+		case n == 0:
+			return "", fmt.Errorf("env://%s: no schema defined in env %q", u.Host, e.Name)
+		case n > 1:
+			return "", fmt.Errorf("env://%s: expect one schema in env %q, got %d", u.Host, e.Name, n)
+		case n == 1:
+			sv = e.Schemas[0]
+		}
+	case "schema.src":
+		if e.Schema == nil || e.Schema.Src == "" {
+			return "", fmt.Errorf("env://%s: no schema defined in env %q", u.Host, e.Name)
+		}
+		sv = e.Schema.Src
+	case "migration.dir":
+		if e.Migration == nil || e.Migration.Dir == "" {
+			return "", fmt.Errorf("env://%s: no migration dir defined in env %q", u.Host, e.Name)
+		}
+		sv = e.Migration.Dir
 	default:
 		attr, ok := e.Attr(u.Host)
 		if !ok {
