@@ -436,6 +436,10 @@ func applySchemaClean(cmd *cobra.Command, client *sqlclient.Client, drop []schem
 	if flags.logFormat != "" {
 		return AbortErrorf(unsupportedMessage("schema", "clean --format"))
 	}
+	if len(drop) == 0 {
+		cmd.Println("Nothing to drop")
+		return nil
+	}
 	if err := summary(cmd, client, drop, cmdlog.SchemaPlanTemplate); err != nil {
 		return err
 	}
