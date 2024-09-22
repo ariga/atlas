@@ -1,0 +1,421 @@
+---
+title: Deploying with Terraform to AWS
+---
+
+## Intro
+
+This guide will walk you through deploying the Atlas Agent to your AWS account using Terraform.
+The Atlas Agent is a lightweight process that connects to your database and reports back schema metadata to Atlas Cloud.
+
+In this guide we will deploy a serverless Fargate task that runs the Atlas Agent in the same VPC as your database.
+
+### Prerequisites
+
+* A database running in AWS RDS
+* An Atlas Cloud Bot Token (follow the [Quickstart](/monitoring/quickstart) guide to get one)
+* Terraform installed on your local machine
+
+### Architecture
+
+Our solution is based on deploying the following pieces:
+* Use **AWS Secrets Manager** to store the Atlas Agent API Key and the database password. ECS cluster in your AWS account.
+* We will deploy a **Fargate** task that runs the Atlas Agent in the same VPC as your database.
+  To enable this, we will also create the needed serverless ECS cluster, security groups and necessary IAM roles.
+
+## Step 1: Preparing to deploy
+
+### Step 1a: Create a secret for the Atlas Agent Token
+
+Create a secret in AWS Secrets Manager to store the Atlas Agent Token.
+
+```
+aws secretsmanager create-secret --name atlas_agent_token --secret-string "aci_<redacted>"
+```
+
+### Step 1b: Create a secret for the database password
+
+Next, create a secret to store the database password:
+
+```
+aws secretsmanager create-secret --name atlas_agent_db_password --secret-string "<redacted>"
+```
+
+### Step 1c: Locate the target subnet
+
+Before building the Terraform configuration, you need to locate the subnet to which you would like to
+deploy the Fargate task. A few considerations to keep in mind:
+* The subnet should be in the same VPC as your database.
+* The subnet should have outbound internet access to reach the Atlas Cloud API as well as download the Atlas Agent image
+  from Docker Hub.
+
+## Step 2: Building the Terraform configuration
+
+### Step 2a: Import the AWS provider
+
+Create a new directory and create a `main.tf`, this file imports the AWS provider and configures it:
+
+```hcl title="main.tf"
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "5.66.0"
+    }
+  }
+}
+
+provider "aws" {
+  region  = "us-east-1" # Replace with the region where your database is running
+}
+
+data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
+```
+
+### Step 2b: Define the input variables
+
+Next, create a new file named `variables.tf` with the following content:
+
+```hcl title="variables.tf"
+variable "db_pass_secret" {
+  type = string
+}
+
+variable "atlas_cloud_api_secret" {
+  type = string
+}
+
+variable "name" {
+  type    = string
+  default = "atlas-agent"
+}
+
+variable "agent_subnet_id" {
+  type = string
+}
+```
+
+We defined 3 variables:
+* `name` - The name of the ECS task and other resources.
+* `db_pass_secret` - The name of the secret in AWS Secrets Manager that stores the database password.
+* `atlas_cloud_api_secret` - The name of the secret in AWS Secrets Manager that stores the Atlas Cloud API token.
+
+### Step 2c: Define the IAM roles
+
+Now, create a new file named `roles.tf` with the following content:
+
+```hcl title="roles.tf"
+# Fetch metadata about the Atlas Cloud token from Secrets Manager
+data "aws_secretsmanager_secret" "atlas_cloud_token" {
+  name = var.atlas_cloud_api_secret
+}
+
+# Fetch metadata about the database password from Secrets Manager
+data "aws_secretsmanager_secret" "db_password" {
+  name = var.db_pass_secret
+}
+
+# Create an IAM role for the ECS task execution
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "${var.name}-ecs_task_execution_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+# Attach the Amazon ECS task execution policy to the role
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# Grant access to Secrets Manager for both the database password and the Atlas Cloud token
+resource "aws_iam_policy" "access_secrets" {
+  name = "${var.name}-access-secrets"
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ],
+        Resource = [
+          data.aws_secretsmanager_secret.db_password.arn,
+          data.aws_secretsmanager_secret.atlas_cloud_token.arn
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy_attachment" {
+  policy_arn = aws_iam_policy.access_secrets.arn
+  role       = aws_iam_role.ecs_task_execution_role.name
+}
+```
+
+Here's what this file does:
+* Defines an IAM role for the ECS task execution. This role is used by the ECS cluster to run the Fargate task.
+* Creates a policy that grants access to the Secrets Manager secrets that store the database password and the Atlas Cloud API token.
+* Attaches the policy to the ECS task execution role.
+
+
+### Step 2d: Enable CloudWatch logging
+
+When running any workload on ECS, it's a good practice to enable logging to CloudWatch. This helps us gain visibility into
+the task's behavior and troubleshoot any issues that may arise.
+
+Let's create a file named `logs.tf` with the following content:
+
+```hcl title="logs.tf"
+
+# Policy to allow ECS task to write logs to CloudWatch.
+resource "aws_iam_policy" "ecs_cloudwatch_logs_policy" {
+  name = "${var.name}-ecs-cloudwatch-logs-policy"
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        Resource = "arn:aws:logs:us-east-1:${data.aws_caller_identity.current.account_id}:log-group:/ecs/atlas-agent:*"
+      }
+    ]
+  })
+}
+
+# Attach the policy to the ECS task execution role
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_cloudwatch_logs_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = aws_iam_policy.ecs_cloudwatch_logs_policy.arn
+}
+
+# Create a CloudWatch log group for the ECS task
+resource "aws_cloudwatch_log_group" "ecs_log_group" {
+  name              = "/ecs/atlas-agent-${var.name}"
+  retention_in_days = 7 # Adjust retention as needed
+}
+```
+
+This file creates a CloudWatch log group for the ECS task and attaches the necessary policy to the ECS task execution role.
+
+### Step 2e: Define the ECS cluster and task
+
+Next, create a file named `faragte.tf` with the following content:
+
+```hcl title="fargate.tf"
+# Define the ECS cluster
+resource "aws_ecs_cluster" "atlas_cluster" {
+  name = var.name
+}
+
+# Define the ECS service
+resource "aws_ecs_service" "atlas_service" {
+  name            = "atlas-service"
+  cluster         = aws_ecs_cluster.atlas_cluster.id
+  task_definition = aws_ecs_task_definition.atlas_task.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets = [var.agent_subnet_id]
+    security_groups = [aws_security_group.ecs.id]
+    assign_public_ip = true
+  }
+}
+
+# Define the Fargate task definition.
+resource "aws_ecs_task_definition" "atlas_task" {
+  family             = "atlas-task"
+  network_mode       = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                = "256"
+  memory             = "512"
+  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "atlas-agent"
+      image = "arigaio/atlas-agent:latest"
+      secrets = [
+        {
+          name      = "ATLAS_CLOUD_TOKEN"
+          valueFrom = data.aws_secretsmanager_secret.atlas_cloud_token.arn
+        },
+        {
+          name      = "RDS_DB_PASS"
+          valueFrom = data.aws_secretsmanager_secret.db_password.arn
+        }
+      ]
+      portMappings = [
+        {
+          containerPort = 80
+          protocol      = "tcp"
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs_log_group.name
+          awslogs-region        = data.aws_region.current.name
+          awslogs-stream-prefix = "atlas-agent"
+        }
+      }
+      healthCheck = {
+        command = ["CMD-SHELL", "curl -f http://localhost/readyz || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+    }
+  ])
+}
+```
+
+This file defines the ECS cluster, service, and task. Here are some important points about the Faragte task definition:
+* The task uses the `arigaio/atlas-agent:latest` image.
+* The task definition includes the Atlas Cloud API token and the database password as secrets. These secrets are fetched
+  from AWS Secrets Manager using the IAM role we defined earlier.
+* The task logs are sent to CloudWatch logs.
+* The task has a health check that ensures the agent is running correctly.
+
+### Step 2f: Define the security group
+
+The final piece we need to define is the security group that allows the Fargate task to communicate with the database.
+Create a file named `security_group.tf` with the following content:
+
+```hcl title="security_group.tf"
+data "aws_subnet" "subnet" {
+  id = var.agent_subnet_id
+}
+
+# Define a security group for the ECS service
+resource "aws_security_group" "ecs" {
+  name        = "${var.name}-ecs-sg"
+  description = "Allows egress from atlas-agent"
+  vpc_id      = data.aws_subnet.subnet.vpc_id
+
+  # Allow all outbound traffic
+  egress {
+    from_port = 0
+    to_port   = 0
+    protocol = "-1" # -1 means all protocols
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.name}-sg"
+  }
+}
+
+# Define a sg that accepts ingress from the agent sg
+resource "aws_security_group" "agent" {
+  name        = "${var.name}-agent-sg"
+  description = "Allows ingress from atlas-agent"
+  vpc_id      = data.aws_subnet.subnet.vpc_id
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    security_groups = [aws_security_group.ecs.id]
+  }
+
+  tags = {
+    Name = "${var.name}-agent-sg"
+  }
+}
+
+output "agent_sg_id" {
+  value = aws_security_group.agent.id
+}
+```
+This file creates two security groups:
+* The first security group allows all outbound traffic from the Fargate task. This is needed to allow the agent to
+  communicate with the Atlas Cloud API.
+* The second security group allows inbound traffic from the first security group. This is needed to allow connections
+  from the Fargate task to the database.
+
+Additionally, the file defines an output variable that returns the ID of the security group that allows inbound traffic
+from the Fargate task.
+
+## Step 3: Deploying the configuration
+
+### Step 3a: Initialize Terraform
+
+Run the following command to initialize Terraform:
+
+```shell
+terraform init
+```
+
+### Step 3b: Create a `.tfvars` file
+
+Create a file named `terraform.tfvars` with the following content:
+
+```hcl
+atlas_cloud_api_secret = "atlas_agent_token"        # The name of the secret from step 1a
+db_pass_secret         = "atlas_agent_db_password"  # The name of the secret from step 1b
+agent_subnet_id        = "subnet-0c12e1fd02df0ea0a" # The subnet id from step 1c
+```
+
+### Step 3c: Apply the configuration
+
+Run the following command to see what Terraform will do:
+
+```shell
+terraform apply
+```
+
+Terraform will show you a plan of the changes it will make. If everything looks good, type `yes` to apply the changes.
+
+Terraform will create the necessary resources in your AWS account. Once the process is complete, you will see the output
+variables defined in the configuration:
+
+```shell
+Outputs:
+
+agent_sg_id = "sg-0c12e1fd02df0ea0a"
+```
+
+Make a note of the `agent_sg_id` value, as you will need it to configure the database security group.
+
+### Step 3d: Configure the database security group
+
+The final step is to configure the security group of your database to allow inbound traffic from the security group
+associated with the Fargate task. This allows the agent to connect to the database.
+
+This may be done in various ways depending on how you configured your database.
+
+* If your database is running in RDS, you can modify the security group associated with the RDS instance to allow inbound
+  traffic from the security group associated with the Fargate task.
+* If your database is running in EC2, you can modify the security group associated with the EC2 instance to allow inbound
+  traffic from the security group associated with the Fargate task.
+
+## Step 4: Verify the deployment
+
+Once you have configured the database security group, the agent task should start running in your AWS account.
+
+To verify that the agent is able to connect to Atlas Cloud:
+
+1. Go to the "Monitoring" section in your Atlas Cloud account.
+2. Click on the "Agents" tab on the top navigation bar.
+3. You should see the agent you just deployed listed there. See example below.
+
+![](https://atlasgo.io/uploads/cloud/connected-agent.png)
