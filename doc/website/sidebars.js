@@ -149,6 +149,10 @@ module.exports = {
                         {
                             type: 'doc',
                             id: 'monitoring/helm'
+                        },
+                        {
+                            type: 'doc',
+                            id: 'monitoring/terraform'
                         }
                     ]
                 },
