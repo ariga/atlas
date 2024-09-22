@@ -49,6 +49,11 @@ If users wish to modify the auto-generated migration plan, they can edit it loca
 Let's consider a simple example. We have a table `users` with two columns `id` and `name`, and we want to add a new column
 `email` to the table.
 
+#### Example Setup
+
+Before running `atlas schema plan`, we need to ensure that the schema repository exists in Atlas Registry and there
+is a database containing the previous schema state (before our changes):
+
 <Tabs>
 <TabItem value={"Schema Definition"}>
 
@@ -56,8 +61,6 @@ Let's consider a simple example. We have a table `users` with two columns `id` a
 CREATE TABLE users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT
-//highlight-next-line-info
-  email TEXT
 );
 ```
 </TabItem>
@@ -82,12 +85,34 @@ env "local" {
 </TabItem>
 </Tabs>
 
-Before running `atlas schema plan`, we need to ensure the schema repository exists on the Atlas Registry by running the
-following command:
+We run `atlas schema push` to create the schema in Atlas Registry:
 
-```bash {2}
+```planlog {3-5}
 atlas schema push --env local
-https://a8m.atlasgo.cloud/schemas/141733920769
+
+Schema: app
+  -- Atlas URL: atlas://app
+  -- Cloud URL: https://a8m.atlasgo.cloud/schemas/141733920781
+```
+
+Then, we run `atlas schema apply` to align the database with the schema state:
+
+```bash
+atlas schema apply --env local --auto-approve
+```
+
+#### Changing the Schema
+
+At this stage, we want to add a non-nullable `email` column to the `users` table. Let's update the `schema.sql` file and then run
+`atlas schema plan` to generate a migration plan.
+
+```sql title="schema.sql"
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+//highlight-next-line-info
+  email TEXT NOT NULL
+);
 ```
 
 We run `atlas schema plan` to generate a migration plan for adding the `email` column to the `users` table:
@@ -95,11 +120,57 @@ We run `atlas schema plan` to generate a migration plan for adding the `email` c
 atlas schema plan --env local
 ```
 The output looks like this:
+```planlog {10-13}
+Planning migration from local database to file://schema.sql (1 statement in total):
+
+  -- add column "email" to table: "users":
+    -> ALTER TABLE `users` ADD COLUMN `email` text NOT NULL;
+
+-------------------------------------------
+
+Analyzing planned statements (1 in total):
+
+  -- data dependent changes detected:
+    -- L2: Adding a non-nullable "text" column "email" will fail in case table "users"
+       is not empty https://atlasgo.io/lint/analyzers#MF103
+  -- ok (346.192µs)
+
+  -------------------------
+  -- 5.038728ms
+  -- 1 schema change
+  -- 1 diagnostic
+? Approve or abort the plan:
+  ▸ Approve and push
+    Abort
+```
+
+#### Data-Dependent Changes
+
+Atlas detects data-dependent changes in the migration plan and provides a diagnostic message. In this case, it warns
+that adding the non-nullable `email` column, will fail if the `users` table is not empty. The recommended solution is to
+provide a default value for the new column. Let's fix this by adding a default value to the `email` column and re-run the
+`atlas schema plan` command.
+
+```sql title="schema.sql"
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+//highlight-next-line-info
+  email TEXT NOT NULL DEFAULT 'unknown'
+);
+```
+
+Then, we run `atlas schema plan` again to generate a new migration plan, but this time, we approve it:
+
+```bash
+atlas schema plan --env local
+```
+
 ```planlog
 Planning migration from local database to file://schema.sql (1 statement in total):
 
   -- add column "email" to table: "users":
-    -> ALTER TABLE `users` ADD COLUMN `email` text NULL;
+    -> ALTER TABLE `users` ADD COLUMN `email` text NOT NULL DEFAULT 'unknown';
 
 -------------------------------------------
 
@@ -108,17 +179,18 @@ Analyzing planned statements (1 in total):
   -- no diagnostics found
 
   -------------------------
-  -- 6.028063ms
+  -- 6.393773ms
   -- 1 schema change
 ? Approve or abort the plan:
   ▸ Approve and push
     Abort
 ```
+
 Once approved, the migration plan will be pushed to the Atlas Registry, and can be applied using `atlas schema apply`.
 
 ```planlog
 Plan Status: APPROVED
-  -- Atlas URL: atlas://app/plans/20240916133205
+  -- Atlas URL: atlas://app/plans/20240923085308
   -- Cloud URL: https://a8m.atlasgo.cloud/schemas/141733920769/plans/210453397504
 ```
 
@@ -126,14 +198,14 @@ At this stage, we can run `atlas schema apply` to apply the changes to the datab
 re-calculating the SQL changes at runtime or requiring human intervention.
 
 ```applylog
-Applying approved migration using pre-planned file 20240916133205 (1 statement in total):
+Applying approved migration using pre-planned file 20240923085308 (1 statement in total):
 
   -- add column "email" to table: "users"
-    -> ALTER TABLE `users` ADD COLUMN `email` text NULL;
-  -- ok (1.774327ms)
+    -> ALTER TABLE `users` ADD COLUMN `email` text NOT NULL DEFAULT 'unknown';
+  -- ok (749.815µs)
 
   -------------------------
-  -- 1.826882ms
+  -- 802.902µs
   -- 1 migration
   -- 1 sql statement
 ```
@@ -169,22 +241,22 @@ _How can I edit a migration plan?_ There are three ways to edit a migration plan
    - Open `name.plan.hcl` in the editor, and edit the `migration` attribute.
    - Push the edited plan to the Atlas Registry by running `atlas schema plan push --file file://<path>`.
 
-To complete the example, let's edit the migration plan from the [example above](#local-example) by filling all nullable
-`email` columns with a dynamic default value:
+To complete the example, let's edit the migration plan from the [example above](#local-example) by changing all `email`
+columns with `'unknown'` value to a computed email value:
 
-1. We pull the plan first into a file named `20240916133205.plan.hcl`:
+1. We pull the plan first into a file named `20240923085308.plan.hcl`:
 
   ```bash
-  atlas schema plan pull --url atlas://app/plans/20240916133205 > 20240916133205.plan.hcl
+  atlas schema plan pull --url atlas://app/plans/20240923085308 > 20240923085308.plan.hcl
   ```
 
-  ```hcl title="20240916133205.plan.hcl"
-  plan "20240916133205" {
+  ```hcl title="20240923085308.plan.hcl"
+  plan "20240923085308" {
     from      = "vJYpErjN4kWJpw4nRaJcEX3xx/jExj4a05Ll3Y7gXr4="
-    to        = "hna312Vk535aibL1hTRcBlxeyUvIwV6Mov7kfaZ2+3s="
+    to        = "B5OVckDEeHcaSdYCUMEfYe8CZN85ahLkef44hfwCe2g="
     migration = <<-SQL
     -- Add column "email" to table: "users"
-    ALTER TABLE `users` ADD COLUMN `email` text NULL;
+    ALTER TABLE `users` ADD COLUMN `email` text NOT NULL DEFAULT 'unknown';
     SQL
   }
   ```
@@ -192,19 +264,19 @@ To complete the example, let's edit the migration plan from the [example above](
   Note that the `from` and `to` are fingerprints of the schema states. They are used to identify the states in the
   schema transition. We will ignore them for now (without changing them, of course) and focus on the migration attribute.
 
-2. We edit the `migration` attribute to fill all nullable `email` columns with a dynamic default value:
+2. We edit the `migration` attribute to change all rows with `'unknown'` emails to a computed email value:
 
-  ```hcl title="20240916133205.plan.hcl"
+  ```hcl title="20240923085308.plan.hcl"
   plan "20240916133205" {
     from      = "vJYpErjN4kWJpw4nRaJcEX3xx/jExj4a05Ll3Y7gXr4="
-    to        = "hna312Vk535aibL1hTRcBlxeyUvIwV6Mov7kfaZ2+3s="
+    to        = "B5OVckDEeHcaSdYCUMEfYe8CZN85ahLkef44hfwCe2g="
     migration = <<-SQL
     -- Add column "email" to table: "users"
-    ALTER TABLE `users` ADD COLUMN `email` text NULL;
+    ALTER TABLE `users` ADD COLUMN `email` text NOT NULL DEFAULT 'unknown';
     //highlight-next-line-info
-    -- Fill all nullable "email" columns with a default email.
+    -- Change all unknown "email" columns with a new computed email
     //highlight-next-line-info
-    UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` IS NULL;
+    UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` = 'unknown';
     SQL
   }
   ```
@@ -212,16 +284,16 @@ To complete the example, let's edit the migration plan from the [example above](
 3. Then, we push the edited plan to the Atlas Registry:
 
   ```bash
-  atlas schema plan push --file file://20240916133205.plan.hcl
+  atlas schema plan push --file file://20240923085308.plan.hcl
   ```
 
   ```planlog
   Planning migration statements (2 in total):
 
     -- add column "email" to table: "users":
-      -> ALTER TABLE `users` ADD COLUMN `email` text NULL;
-    -- fill all nullable "email" columns with a default email.:
-      -> UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` IS NULL;
+      -> ALTER TABLE `users` ADD COLUMN `email` text NOT NULL DEFAULT 'unknown';
+    -- change all unknown "email" columns with a new computed email
+      -> UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` = 'unknown';
 
   -------------------------------------------
 
@@ -246,14 +318,14 @@ To complete the example, let's edit the migration plan from the [example above](
 4. Then, running `atlas schema apply` will apply the changes to the database, including the new `UPDATE` statement.
 
    ```applylog
-   Applying approved migration using pre-planned file 20240916133205 (2 statements in total):
+   Applying approved migration using pre-planned file 20240923085308 (2 statements in total):
 
      -- add column "email" to table: "users"
-       -> ALTER TABLE `users` ADD COLUMN `email` text NULL;
+       -> ALTER TABLE `users` ADD COLUMN `email` text NOT NULL DEFAULT 'unknown';
      -- ok (826.977µs)
 
-     -- fill all nullable "email" columns with a default email.
-       -> UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` IS NULL;
+     -- change all unknown "email" columns with a new computed email
+       -> UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` = 'unknown';
      -- ok (447.152µs)
 
      -------------------------
@@ -351,14 +423,14 @@ In this case, we either delete the conflicting plans from the Atlas Registry or 
 the `--plan` flag:
 
 ```applylog
-Applying approved migration using pre-planned file 20240916133205 (2 statements in total):
+Applying approved migration using pre-planned file 20240923085308 (2 statements in total):
 
   -- add column "email" to table: "users"
-    -> ALTER TABLE `users` ADD COLUMN `email` text NULL;
+    -> ALTER TABLE `users` ADD COLUMN `email` text NOT NULL DEFAULT 'unknown';
   -- ok (789.621µs)
 
-  -- fill all nullable "email" columns with a default email.
-    -> UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` IS NULL;
+  -- change all unknown "email" columns with a new computed email
+    -> UPDATE `users` SET `email` = PRINTF('%s+a8m@atlasgo.cloud', `name`) WHERE `email` = 'unknown';
   -- ok (883.177µs)
 
   -------------------------
@@ -366,3 +438,227 @@ Applying approved migration using pre-planned file 20240916133205 (2 statements 
   -- 1 migration
   -- 2 sql statements
 ```
+
+### GitHub Actions
+
+Atlas provides an [official GitHub Actions integration](https://github.com/ariga/atlas-action) to automatically plan,
+review, and approve declarative schema migrations during PR workflows. The example below demonstrates how to set up this
+workflow for your repository.
+
+<div style={{textAlign: 'center'}}>
+    <img src="https://atlasgo.io/uploads/plan-action.png" alt="GitHub Action for schema plan command" width="100%"/>
+    <p style={{fontSize: 12}}>Plan Generated by <code>atlas schema plan</code></p>
+</div>
+
+#### Create a Schema Repository in Atlas Registry
+
+For the purpose of the example, let's create a schema repository named `demo` in Atlas Registry with the following
+SQL schema:
+
+<Tabs>
+<TabItem value={"Schema Definition"}>
+
+```sql title="schema.sql"
+CREATE TABLE users (
+  id BIGSERIAL PRIMARY KEY
+);
+```
+</TabItem>
+<TabItem value={"Config File"}>
+
+```hcl title="atlas.hcl"
+env "dev" {
+  # The URL to the dev-database.
+  dev = "docker://postgres/15/dev?search_path=public"
+  schema {
+    # Desired schema state.
+    src = "file://schema.sql"
+    # Atlas Registry config.
+    repo {
+      name = "demo"
+    }
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+To create the schema repository in the Atlas Registry, run the following command:
+
+```bash
+atlas schema push --env dev
+
+https://<your-tenant>.atlasgo.cloud/schemas/141733920769
+```
+
+#### Set Up the `schema/push` GitHub Action
+
+In order to keep our schema repository up-to-date with the latest changes, we can set up the `schema/push` GitHub Action. This
+action automatically pushes the schema to the Atlas Registry whenever changes are made to the SQL schema file:
+
+```yaml title=".github/workflows/schema-push.yml"
+name: Push Declarative Schemas
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/atlas-push.yaml
+      - 'schema.sql' # Can be HCL, ORM, other instead.
+permissions:
+  contents: read
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_TOKEN }}
+      - uses: ariga/atlas-action/schema/push@master
+        with:
+          env: dev # Use the "dev" environment from the atlas.hcl file.
+```
+
+:::info ATLAS_TOKEN
+To push the schema to Atlas Registry from your GitHub Action, set up a GitHub secret named `ATLAS_TOKEN` using your Atlas
+Cloud token. To create a token, follow [these instructions](/cloud/bots).
+:::
+
+#### Set Up the `schema/plan` GitHub Action
+
+The last step is to set up the `schema/plan` and `schema/plan/approve` Actions:
+- `schema/plan` - This action automatically plans the schema migration whenever changes are made to the SQL schema file.
+  After a plan is created, it is pushed to the Atlas Registry in `PENDING` state, and waiting to be approved.
+- `schema/plan/approve` - This action automatically approves the pending plan in the Atlas Registry after the PR is
+  merged to the master branch.
+
+```yaml title=".github/workflows/schema-plan.yml"
+name: Plan Declarative Migrations
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/atlas-plan.yaml
+      - 'schema.sql'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - .github/workflows/atlas-plan.yaml
+      - 'schema.sql'
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  plan:
+    name: plan
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Atlas
+        uses: ariga/setup-atlas@master
+        with:
+          cloud-token: ${{ secrets.ATLAS_TOKEN }}
+      - name: Run schema plan
+        uses: ariga/atlas-action/schema/plan@master
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          env: dev # Use the "dev" environment from the atlas.hcl file.
+  approve:
+    name: approve
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Atlas
+        uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_TOKEN }}
+      - name: Approve the plan
+        id: plan-approve
+        uses: ariga/atlas-action/schema/plan/approve@master
+        with:
+          env: dev # Use the "dev" environment from the atlas.hcl file.
+```
+
+:::info Plan Inputs
+- `from` - Defines the current state of the schema to calculate the migration from. If not provided, Atlas will use the
+  `url` in the `atlas.hcl` file (same as `atlas schema apply`). If the `url` attribute is not set, Atlas will use the
+  last known state from the Atlas Registry.
+- `to` - Defines the desired state of the schema to calculate the migration to. If not provided, Atlas will use the
+  `schema.src` attribute in the `atlas.hcl` file.
+:::
+
+To avoid a race condition between the `push` and `plan` workflows, we can merge them into a single workflow.
+
+```yaml title=".github/workflows/atlas-schema.yml"
+name: Plan Declarative Migrations
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/atlas-schema.yaml
+      - 'schema.sql'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - .github/workflows/atlas-schema.yaml
+      - 'schema.sql'
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  plan:
+    name: plan
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Atlas
+        uses: ariga/setup-atlas@master
+        with:
+          cloud-token: ${{ secrets.ATLAS_TOKEN }}
+      - name: Run schema plan
+        uses: ariga/atlas-action/schema/plan@master
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          env: dev
+  approve-push:
+    name: approve-push
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Atlas
+        uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_TOKEN }}
+      # Plan against the latest schema state (one before the PR).
+      - name: Approve the plan
+        id: plan-approve
+        uses: ariga/atlas-action/schema/plan/approve@master
+        with:
+          env: dev
+      # Push the schema after the plan is approved.
+      - name: Push the schema
+        id: schema-push
+        uses: ariga/atlas-action/schema/push@master
+        with:
+          env: dev
+```
+
