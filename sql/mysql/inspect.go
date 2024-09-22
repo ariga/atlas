@@ -837,6 +837,10 @@ type (
 		V int64
 	}
 
+	Invisible struct {
+		schema.Attr
+	}
+
 	// CreateOptions attribute for describing extra options used with CREATE TABLE.
 	CreateOptions struct {
 		schema.Attr
