@@ -16,7 +16,7 @@
     "invalidate-cdn": "aws cloudfront create-invalidation --distribution-id E3VOJYSV9YO33D --paths \"/*\""
   },
   "dependencies": {
-    "@ariga/atlas-website": "^0.0.65",
+    "@ariga/atlas-website": "^0.0.66",
     "@docusaurus/core": "^2.0.0-rc.1",
     "@docusaurus/plugin-client-redirects": "^2.4.1",
     "@docusaurus/plugin-ideal-image": "^2.4.1",
