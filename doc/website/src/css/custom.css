@@ -357,6 +357,13 @@ color: #c4e88d;
 color: #db4b4b;
 }
 
+/*
+Improve YAML
+ */
+.language-yaml span.token.key.atrule {
+  color: #9CDCFE; /* Same color as HCL properties */
+}
+
 .sticky-anchor {
 scroll-margin-top:calc(var(--ifm-navbar-height) + 0.5rem);
 }
