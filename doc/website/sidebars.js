@@ -229,6 +229,11 @@ module.exports = {
                     type: 'doc',
                     id: 'cli-data-privacy',
                     label: 'Data Privacy'
+                },
+                {
+                    type: 'doc',
+                    id: 'hacker-license',
+                    label: 'Hacker License',
                 }
             ]
         },
