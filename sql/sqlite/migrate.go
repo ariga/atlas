@@ -7,6 +7,7 @@ package sqlite
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -557,7 +558,17 @@ func alterable(modify *schema.ModifyTable) bool {
 		switch change := change.(type) {
 		case *schema.RenameColumn, *schema.RenameIndex, *schema.DropIndex, *schema.AddIndex:
 		case *schema.AddColumn:
-			if len(change.C.Indexes) > 0 || len(change.C.ForeignKeys) > 0 || change.C.Default != nil {
+			if len(change.C.Indexes) > 0 || len(change.C.ForeignKeys) > 0 {
+				return false
+			}
+			// If the column has a DEFAULT clause, it must be a constant value.
+			// See: https://www.sqlite.org/lang_altertable.html#alter_table_add_column.
+			switch x := change.C.Default.(type) {
+			case *schema.Literal:
+				if slices.Contains([]string{"CURRENT_TIME", "CURRENT_DATE", "CURRENT_TIMESTAMP"}, x.V) {
+					return false
+				}
+			case *schema.RawExpr:
 				return false
 			}
 			// Only VIRTUAL generated columns can be added using ALTER TABLE.
