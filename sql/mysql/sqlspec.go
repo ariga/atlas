@@ -262,6 +262,15 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 			c.AddAttrs(&AutoIncrement{})
 		}
 	}
+	if attr, ok := spec.Attr("invisible"); ok {
+		b, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		if b {
+			c.AddAttrs(&Invisible{})
+		}
+	}
 	if err := specutil.ConvertGenExpr(spec.Remain(), c, storedOrVirtual); err != nil {
 		return nil, err
 	}
@@ -383,6 +392,9 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	}
 	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("auto_increment", true))
+	}
+	if sqlx.Has(c.Attrs, &Invisible{}) {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("invisible", true))
 	}
 	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
 		spec.Extra.Children = append(spec.Extra.Children, specutil.FromGenExpr(x, storedOrVirtual))
