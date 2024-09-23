@@ -464,6 +464,7 @@ const (
 	currentTS     = "current_timestamp"
 	defaultGen    = "default_generated"
 	autoIncrement = "auto_increment"
+	invisible = "INVISIBLE" 
 
 	virtual    = "VIRTUAL"
 	stored     = "STORED"
