@@ -166,6 +166,64 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Add column with constant default value.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						AddColumns(schema.NewIntColumn("id", "bigint"))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.AddColumn{
+								C: schema.NewStringColumn("name", "text").
+									SetDefault(&schema.Literal{V: "a8m"}),
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: "ALTER TABLE `users` ADD COLUMN `name` text NOT NULL DEFAULT 'a8m'", Reverse: "ALTER TABLE `users` DROP COLUMN `name`"},
+				},
+			},
+		},
+		// Add column with expression default value.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+							schema.NewStringColumn("name", "text").
+								SetDefault(&schema.RawExpr{X: "NOW()::TEXT"}),
+						)
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.AddColumn{
+								C: users.Columns[1],
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    false,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: "PRAGMA foreign_keys = off"},
+					{Cmd: "CREATE TABLE `new_users` (`id` bigint NOT NULL, `name` text NOT NULL DEFAULT (NOW()::TEXT))", Reverse: "DROP TABLE `new_users`"},
+					{Cmd: "INSERT INTO `new_users` (`id`) SELECT `id` FROM `users`"},
+					{Cmd: "DROP TABLE `users`"},
+					{Cmd: "ALTER TABLE `new_users` RENAME TO `users`"},
+					{Cmd: "PRAGMA foreign_keys = on"},
+				},
+			},
+		},
 		// Add VIRTUAL column.
 		{
 			changes: []schema.Change{
