@@ -2048,6 +2048,15 @@ Column type can be one of:
   <td><code>string</code></td>
   </tr>
   <tr>
+      <td id="table.exclude.deferrable"><a href="#table.exclude.deferrable"><code>deferrable</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (INITIALLY_IMMEDIATE, INITIALLY_DEFERRED)`
+  </td>
+
+  </tr>
+  <tr>
       <td id="table.exclude.include"><a href="#table.exclude.include"><code>include</code></a></td>
     <td><code>false</code></td>
 <td>
@@ -2204,6 +2213,15 @@ Foreign key columns can be one of:
       <td id="table.foreign_key.comment"><a href="#table.foreign_key.comment"><code>comment</code></a></td>
     <td><code>false</code></td>
   <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.foreign_key.deferrable"><a href="#table.foreign_key.deferrable"><code>deferrable</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (INITIALLY_IMMEDIATE, INITIALLY_DEFERRED)`
+  </td>
+
   </tr>
   <tr>
       <td id="table.foreign_key.on_delete"><a href="#table.foreign_key.on_delete"><code>on_delete</code></a></td>
@@ -2570,6 +2588,15 @@ Primary key columns can be one of:
   <td><code>string</code></td>
   </tr>
   <tr>
+      <td id="table.primary_key.deferrable"><a href="#table.primary_key.deferrable"><code>deferrable</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (INITIALLY_IMMEDIATE, INITIALLY_DEFERRED)`
+  </td>
+
+  </tr>
+  <tr>
       <td id="table.primary_key.include"><a href="#table.primary_key.include"><code>include</code></a></td>
     <td><code>false</code></td>
 <td>
@@ -2691,6 +2718,15 @@ Index columns can be one of:
       <td id="table.unique.comment"><a href="#table.unique.comment"><code>comment</code></a></td>
     <td><code>false</code></td>
   <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="table.unique.deferrable"><a href="#table.unique.deferrable"><code>deferrable</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+`enum (INITIALLY_IMMEDIATE, INITIALLY_DEFERRED)`
+  </td>
+
   </tr>
   <tr>
       <td id="table.unique.include"><a href="#table.unique.include"><code>include</code></a></td>
