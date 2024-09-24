@@ -270,6 +270,11 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 	return from != to
 }
 
+// ForeignKeyAttrChanged reports if any of the foreign-key attributes were changed.
+func (*diff) ForeignKeyAttrChanged(_, _ []schema.Attr) bool {
+	return false
+}
+
 // DiffOptions defines PostgreSQL specific schema diffing process.
 type DiffOptions struct {
 	ConcurrentIndex struct {
