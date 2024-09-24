@@ -1,4 +1,4 @@
-const defaultImg = "https://og.atlasgo.io/image?title=Open-source%20database%20schema%20management"
+const defaultImg = "https://og.atlasgo.io/image?title=Manage%20your%20Database%20Schema-as-Code"
 
 // getImage returns the share image URL for a page/blog post. Order of evaluation is:
 // the `image` attribute in the document front-matter, the `shareText` attribute in the
