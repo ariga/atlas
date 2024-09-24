@@ -212,6 +212,11 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 	return from != to
 }
 
+// ForeignKeyAttrChanged reports if any of the foreign-key attributes were changed.
+func (*diff) ForeignKeyAttrChanged(_, _ []schema.Attr) bool {
+	return false
+}
+
 // Normalize implements the sqlx.Normalizer interface.
 func (d *diff) Normalize(from, to *schema.Table, opts *schema.DiffOptions) error {
 	if opts.Mode.Is(schema.DiffModeNormalized) {

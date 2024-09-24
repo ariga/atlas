@@ -67,6 +67,9 @@ type (
 		// ReferenceChanged reports if the foreign key referential action was
 		// changed. For example, action was changed from RESTRICT to CASCADE.
 		ReferenceChanged(from, to schema.ReferenceOption) bool
+
+		// ForeignKeyAttrChanged reports if any of the foreign-key attributes were changed.
+		ForeignKeyAttrChanged(from, to []schema.Attr) bool
 	}
 
 	// DropSchemaChanger is an optional interface allows DiffDriver to drop
@@ -613,6 +616,9 @@ func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 	}
 	if d.ReferenceChanged(from.OnDelete, to.OnDelete) {
 		change |= schema.ChangeDeleteAction
+	}
+	if d.ForeignKeyAttrChanged(from.Attrs, to.Attrs) {
+		change |= schema.ChangeAttr
 	}
 	return change
 }

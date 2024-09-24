@@ -64,6 +64,8 @@ type (
 		Triggers func(*schema.Realm, []*sqlspec.Trigger) error
 		// Objects add themselves to the realm.
 		Objects func(*schema.Realm) error
+		// Optional function to extend the foreign keys.
+		ForeignKey func(*sqlspec.ForeignKey, *schema.ForeignKey) error
 	}
 
 	// SchemaFuncs represents a set of spec functions
@@ -159,7 +161,7 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 	}
 	// Link the foreign keys.
 	for t, fks := range fks {
-		if err := linkForeignKeys(t, fks); err != nil {
+		if err := linkForeignKeys(funcs, t, fks); err != nil {
 			return err
 		}
 	}
@@ -511,7 +513,7 @@ func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, 
 // linkForeignKeys creates the foreign keys defined in the Table's spec by creating references
 // to column in the provided Schema. It is assumed that all tables referenced FK definitions in the spec
 // are reachable from the provided schema or its connected realm.
-func linkForeignKeys(tbl *schema.Table, fks []*sqlspec.ForeignKey) error {
+func linkForeignKeys(funcs *ScanFuncs, tbl *schema.Table, fks []*sqlspec.ForeignKey) error {
 	for _, spec := range fks {
 		fk := &schema.ForeignKey{Symbol: spec.Symbol, Table: tbl}
 		if spec.OnUpdate != nil {
@@ -546,6 +548,11 @@ func linkForeignKeys(tbl *schema.Table, fks []*sqlspec.ForeignKey) error {
 			fk.RefColumns = append(fk.RefColumns, c)
 		}
 		tbl.ForeignKeys = append(tbl.ForeignKeys, fk)
+		if funcs.ForeignKey != nil {
+			if err := funcs.ForeignKey(spec, fk); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
