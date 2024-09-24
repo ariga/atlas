@@ -54,5 +54,7 @@ module.exports = {
     The design for the Go gopher is licensed under the Creative Commons 3.0 Attributions license. Read this 
     <a href="https://blog.golang.org/gopher">article</a> for more details.
     <br/>
+    <small>To manage your cookie settings <a href="javascript:void(0);" onClick="UC_UI.showSecondLayer();">click here.</a></small>
+    <br/>
     `,
 };

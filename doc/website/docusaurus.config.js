@@ -227,7 +227,7 @@ module.exports = {
     [
       require.resolve('docusaurus-gtm-plugin'),
       {
-        id: 'GTM-T9GX8BR', // GTM Container ID
+        id: 'GTM-NMZJF9WR', // GTM Container ID
       }
     ],
     [
@@ -257,9 +257,6 @@ module.exports = {
           showLastUpdateAuthor: false,
           showLastUpdateTime: false,
         },
-        gtag: {
-          trackingID: 'G-Z88N4TF03R'
-        },
         blog: {
           showReadingTime: true,
           blogSidebarTitle: 'All our posts',
@@ -271,4 +268,12 @@ module.exports = {
       },
     ],
   ],
+  scripts: [
+    {
+      src: "https://web.cmp.usercentrics.eu/ui/loader.js",
+      async: true,
+      'data-settings-id': "TmR0w6MKiLTB1T",
+      id: "usercentrics-cmp",
+    },
+  ]
 };
