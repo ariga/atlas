@@ -2,6 +2,8 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
+//go:build !ent
+
 package postgres
 
 import (
@@ -245,7 +247,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		if !ok {
 			return fmt.Errorf("schema %q was not found in realm", tSchema.String)
 		}
-		t := i.newTable(ctx, name.String, extra.String)
+		t := schema.NewTable(name.String)
 		s.AddTables(t)
 		if oid.Valid {
 			t.AddAttrs(&OID{V: oid.Int64})
