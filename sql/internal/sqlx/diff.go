@@ -243,10 +243,10 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 			changes = opts.AddOrSkip(changes, &schema.DropView{V: v1})
 			continue
 		}
-		if change, err := d.indexDiffV(v1, v2, opts); err != nil {
+		if change, err := d.viewDiff(v1, v2, opts); err != nil {
 			return nil, err
-		} else if len(change) > 0 || d.viewDefChanged(v1, v2) || d.ViewAttrChanged(v1, v2) {
-			changes = opts.AddOrSkip(changes, &schema.ModifyView{From: v1, To: v2, Changes: change})
+		} else {
+			changes = append(changes, change...)
 		}
 		if change, err := d.triggerDiff(v1, v2, v1.Triggers, v2.Triggers, opts); err != nil {
 			return nil, err
@@ -430,7 +430,7 @@ func (d *Diff) pkDiff(from, to *schema.Table, opts *schema.DiffOptions) (changes
 		changes = opts.AddOrSkip(changes, &schema.AddPrimaryKey{P: pk2})
 	case pk1 != nil && pk2 == nil:
 		changes = opts.AddOrSkip(changes, &schema.DropPrimaryKey{P: pk1})
-	case pk1 != nil && pk2 != nil:
+	case pk1 != nil:
 		change := d.indexChange(pk1, pk2)
 		change &= ^schema.ChangeUnique
 		if change != schema.NoChange {
@@ -498,6 +498,24 @@ func (d *Diff) indexDiffT(from, to *schema.Table, opts *schema.DiffOptions) ([]s
 	return changes, nil
 }
 
+// viewDiff returns the schema changes (if any) for migrating view from
+// current state to the desired state.
+func (d *Diff) viewDiff(from, to *schema.View, opts *schema.DiffOptions) ([]schema.Change, error) {
+	c1, err := d.indexDiffV(from, to, opts)
+	if err != nil {
+		return nil, err
+	}
+	c2, err := d.columnDiffV(from, to, opts)
+	if err != nil {
+		return nil, err
+	}
+	var changes schema.Changes
+	if len(c1) > 0 || len(c2) > 0 || d.viewDefChanged(from, to) || d.ViewAttrChanged(from, to) {
+		changes = opts.AddOrSkip(changes, &schema.ModifyView{From: from, To: to, Changes: append(c1, c2...)})
+	}
+	return changes, nil
+}
+
 // viewDefChanged checks if the view definition has changed.
 // It allows the DiffDriver to override the default implementation.
 func (d *Diff) viewDefChanged(v1 *schema.View, v2 *schema.View) bool {
@@ -507,6 +525,26 @@ func (d *Diff) viewDefChanged(v1 *schema.View, v2 *schema.View) bool {
 		return vr.ViewDefChanged(v1, v2)
 	}
 	return BodyDefChanged(v1.Def, v2.Def)
+}
+
+// columnDiffV returns the schema changes (if any) for migrating view columns.
+// Currently, only comment changes are supported.
+func (d *Diff) columnDiffV(from, to *schema.View, opts *schema.DiffOptions) ([]schema.Change, error) {
+	var changes []schema.Change
+	for _, c1 := range from.Columns {
+		c2, ok := to.Column(c1.Name)
+		if !ok {
+			continue
+		}
+		if change := CommentChange(c1.Attrs, c2.Attrs); change != schema.NoChange {
+			changes = opts.AddOrSkip(changes, &schema.ModifyColumn{
+				From:   c1,
+				To:     c2,
+				Change: change,
+			})
+		}
+	}
+	return changes, nil
 }
 
 // indexDiffV returns the schema changes (if any) for migrating view
