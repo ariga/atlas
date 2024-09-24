@@ -377,6 +377,19 @@ func (b *Builder) TableResource(t *schema.Table, r any) *Builder {
 	}
 }
 
+// ViewResource writes the view resource identifier to the builder, prefixed
+// with the schema name if exists.
+func (b *Builder) ViewResource(v *schema.View, r any) *Builder {
+	switch c := r.(type) {
+	case *schema.Column:
+		return b.mayQualify(v.Schema, v.Name, c.Name)
+	case *schema.Index:
+		return b.mayQualify(v.Schema, v.Name, c.Name)
+	default:
+		panic(fmt.Sprintf("unexpected view resource: %T", r))
+	}
+}
+
 // SchemaResource writes the schema resource identifier to the builder, prefixed
 // with the schema name if exists.
 func (b *Builder) SchemaResource(s *schema.Schema, name string) *Builder {
