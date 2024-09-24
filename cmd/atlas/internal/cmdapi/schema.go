@@ -59,6 +59,8 @@ func (f *schemaApplyFlags) check(env *Env) error {
 	switch {
 	case f.url == "":
 		return errors.New(`required flag(s) "url" not set`)
+	case f.planURL != "" && len(f.toURLs) == 0:
+		return errors.New(`the flag "to" is required to verify the provided plan`)
 	case len(f.paths) == 0 && len(f.toURLs) == 0:
 		return errors.New(`one of flag(s) "file" or "to" is required`)
 	case f.txMode != txModeNone && f.txMode != txModeFile:
