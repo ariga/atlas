@@ -30,11 +30,6 @@ var (
 	}
 )
 
-// newTable creates a new table.
-func (*inspect) newTable(_ context.Context, name, _ string) *schema.Table {
-	return schema.NewTable(name) // Default implementation.
-}
-
 func tableAttrsSpec(*schema.Table, *sqlspec.Table) {
 	// unimplemented.
 }
