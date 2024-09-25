@@ -1977,6 +1977,10 @@ func TestTypes(t *testing.T) {
 			expected: &ArrayType{Type: &schema.StringType{T: "varchar", Size: 2}, T: "varchar(2)[]"},
 		},
 		{
+			typeExpr: `sql("CaseSensitive")`,
+			expected: &UserDefinedType{T: "CaseSensitive"},
+		},
+		{
 			typeExpr: "oid",
 			expected: &OIDType{T: typeOID},
 		},

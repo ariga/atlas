@@ -172,7 +172,7 @@ func FormatType(t schema.Type) (string, error) {
 			return "", fmt.Errorf("postgres: unsupported text search type: %q", t.T)
 		}
 	case *UserDefinedType:
-		f = strings.ToLower(t.T)
+		f = t.T
 	case *XMLType:
 		f = strings.ToLower(t.T)
 	case *PseudoType:
