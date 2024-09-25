@@ -521,7 +521,7 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 				return ok && refTo([]*schema.ForeignKey{fk.F}, c1.T)
 			})
 		case *schema.DropTrigger:
-			if c2.T.Table == c1.T {
+			if SameTable(c2.T.Table, c1.T) {
 				return true
 			}
 		}
@@ -565,6 +565,23 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 			}) {
 				return true
 			}
+		case *schema.DropTrigger:
+			if SameTable(c1.T, c2.T.Table) {
+				depC := make(map[string]bool)
+				for _, ev := range c2.T.Events {
+					for _, c := range ev.Columns {
+						depC[c.Name] = true
+					}
+				}
+				if slices.ContainsFunc(c1.Changes, func(c schema.Change) bool {
+					// In case a column of the associated table is dropped,
+					// the trigger should be dropped first if it depends on it.
+					d, ok := c.(*schema.DropColumn)
+					return ok && depC[d.C.Name]
+				}) {
+					return true
+				}
+			}
 		}
 		return depOfAdd(c1.T.Deps, c2)
 	case *schema.AddView:
@@ -583,7 +600,7 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 		}
 		return depOfAdd(c1.V.Deps, c2)
 	case *schema.DropView:
-		if c2, ok := c2.(*schema.DropTrigger); ok && c2.T.View == c1.V {
+		if c2, ok := c2.(*schema.DropTrigger); ok && SameView(c2.T.View, c1.V) {
 			return true
 		}
 		return depOfDrop(c1.V, c2)
@@ -754,12 +771,33 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 	case *schema.AddTrigger:
 		switch c2 := c2.(type) {
 		case *schema.AddTable:
-			return c1.T.Table == c2.T
+			return SameTable(c1.T.Table, c2.T)
 		case *schema.AddView:
-			return c1.T.View == c2.V
-		default:
-			return depOfAdd(c1.T.Deps, c2)
+			return SameView(c1.T.View, c2.V)
+		case *schema.ModifyTable:
+			if SameTable(c1.T.Table, c2.T) {
+				depC := make(map[string]bool)
+				for _, ev := range c1.T.Events {
+					for _, c := range ev.Columns {
+						depC[c.Name] = true
+					}
+				}
+				// If the trigger depends on a column that on the changes list,
+				// it should be created after the column.
+				if slices.ContainsFunc(c2.Changes, func(c schema.Change) bool {
+					switch c := c.(type) {
+					case *schema.AddColumn:
+						return depC[c.C.Name]
+					case *schema.RenameColumn:
+						return depC[c.To.Name]
+					}
+					return false
+				}) {
+					return true
+				}
+			}
 		}
+		return depOfAdd(c1.T.Deps, c2)
 	case *schema.DropTrigger:
 		return depOfDrop(c1.T, c2)
 	case *schema.ModifyTrigger:
