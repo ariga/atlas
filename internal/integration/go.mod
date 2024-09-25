@@ -7,7 +7,7 @@ replace ariga.io/atlas => ../../
 replace ariga.io/atlas/cmd/atlas => ../../cmd/atlas
 
 require (
-	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43
+	ariga.io/atlas v0.27.0
 	ariga.io/atlas/cmd/atlas v0.13.2-0.20231220130200-d8bd6f612d7a
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/hashicorp/hcl/v2 v2.13.0
@@ -82,7 +82,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	gocloud.dev v0.36.0 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
-	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a // indirect
+	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 	golang.org/x/mod v0.20.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/oauth2 v0.16.0 // indirect
