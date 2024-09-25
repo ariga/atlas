@@ -270,6 +270,30 @@ func TestSortChanges(t *testing.T) {
 	}, &SortOptions{FuncDepV: func(*schema.Func, *schema.View) bool { return true }})
 	require.IsType(t, &schema.AddView{}, planned[0])
 	require.IsType(t, &schema.AddFunc{}, planned[1])
+
+	// CREATE TRIGGER depends on ALTER TABLE.
+	planned = SortChanges([]schema.Change{
+		&schema.AddTrigger{T: &schema.Trigger{Name: "tr1", Table: t1, Events: []schema.TriggerEvent{schema.TriggerEventUpdateOf(t1.Columns...)}}},
+		&schema.AddTable{T: t1},
+	}, nil)
+	require.IsType(t, &schema.AddTable{}, planned[0])
+	require.IsType(t, &schema.AddTrigger{}, planned[1])
+
+	// DROP TRIGGER depends on ALTER TABLE.
+	planned = SortChanges([]schema.Change{
+		&schema.ModifyTable{T: t1, Changes: []schema.Change{&schema.DropColumn{C: t1.Columns[0]}}},
+		&schema.DropTrigger{T: &schema.Trigger{Name: "tr1", Table: t1, Events: []schema.TriggerEvent{schema.TriggerEventUpdateOf(t1.Columns...)}}},
+	}, nil)
+	require.IsType(t, &schema.DropTrigger{}, planned[0])
+	require.IsType(t, &schema.ModifyTable{}, planned[1])
+
+	// No dependency between DROP TRIGGER and ALTER TABLE.
+	planned = SortChanges([]schema.Change{
+		&schema.ModifyTable{T: t1, Changes: []schema.Change{&schema.DropColumn{C: t1.Columns[0]}}},
+		&schema.DropTrigger{T: &schema.Trigger{Name: "tr1", Table: t1, Events: []schema.TriggerEvent{schema.TriggerEventUpdate}}},
+	}, nil)
+	require.IsType(t, &schema.ModifyTable{}, planned[0])
+	require.IsType(t, &schema.DropTrigger{}, planned[1])
 }
 
 func TestSameTable(t *testing.T) {
