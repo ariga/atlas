@@ -503,7 +503,7 @@ on:
     branches:
       - master
     paths:
-      - .github/workflows/atlas-push.yaml
+      - .github/workflows/schema-push.yml
       - 'schema.sql' # Can be HCL, ORM, other instead.
 permissions:
   contents: read
@@ -520,6 +520,7 @@ jobs:
       - uses: ariga/atlas-action/schema/push@master
         with:
           env: dev # Use the "dev" environment from the atlas.hcl file.
+          tag: latest # Optional, to tag the schema state (by default, it uses the git commit hash).
 ```
 
 :::info ATLAS_TOKEN
