@@ -645,9 +645,10 @@ func parseConfig(ctx context.Context, path, env string, vars map[string]cty.Valu
 				}),
 			}),
 			schemahcl.WithFunctions(map[string]function.Function{
-				"file":   schemahcl.MakeFileFunc(base),
-				"glob":   schemahcl.MakeGlobFunc(base),
-				"getenv": getEnvFunc,
+				"file":    schemahcl.MakeFileFunc(base),
+				"glob":    schemahcl.MakeGlobFunc(base),
+				"fileset": schemahcl.MakeFileSetFunc(base),
+				"getenv":  getEnvFunc,
 			}),
 		)...,
 	)

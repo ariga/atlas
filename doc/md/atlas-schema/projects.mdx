@@ -330,14 +330,14 @@ variable "cloud_token" {
 }
 ```
 
-### `glob`
+### `fileset`
 
-The `glob` function returns the list of files that match the given pattern. The pattern is relative to the project
+The `fileset` function returns the list of files that match the given pattern. The pattern is relative to the project
 directory.
 
 ```hcl
 data "hcl_schema" "app" {
-  paths = glob("schema/*.pg.hcl")
+  paths = fileset("schema/*.pg.hcl")
 }
 ```
 
