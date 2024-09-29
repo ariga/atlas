@@ -496,14 +496,14 @@ https://<your-tenant>.atlasgo.cloud/schemas/141733920769
 In order to keep our schema repository up-to-date with the latest changes, we can set up the `schema/push` GitHub Action. This
 action automatically pushes the schema to the Atlas Registry whenever changes are made to the SQL schema file:
 
-```yaml title=".github/workflows/schema-push.yml"
+```yaml title=".github/workflows/schema-push.yaml"
 name: Push Declarative Schemas
 on:
   push:
     branches:
       - master
     paths:
-      - .github/workflows/schema-push.yml
+      - .github/workflows/schema-push.yaml
       - 'schema.sql' # Can be HCL, ORM, other instead.
 permissions:
   contents: read
@@ -520,7 +520,6 @@ jobs:
       - uses: ariga/atlas-action/schema/push@master
         with:
           env: dev # Use the "dev" environment from the atlas.hcl file.
-          tag: latest # Optional, to tag the schema state (by default, it uses the git commit hash).
 ```
 
 :::info ATLAS_TOKEN
@@ -536,7 +535,7 @@ The last step is to set up the `schema/plan` and `schema/plan/approve` Actions:
 - `schema/plan/approve` - This action automatically approves the pending plan in the Atlas Registry after the PR is
   merged to the master branch.
 
-```yaml title=".github/workflows/schema-plan.yml"
+```yaml title=".github/workflows/schema-plan.yaml"
 name: Plan Declarative Migrations
 on:
   workflow_dispatch:
@@ -544,13 +543,13 @@ on:
     branches:
       - master
     paths:
-      - .github/workflows/schema-plan.yml
+      - .github/workflows/schema-plan.yaml
       - 'schema.sql'
   pull_request:
     branches:
       - master
     paths:
-      - .github/workflows/schema-plan.yml
+      - .github/workflows/schema-plan.yaml
       - 'schema.sql'
 permissions:
   contents: read
@@ -601,7 +600,7 @@ jobs:
 
 To avoid a race condition between the `push` and `plan` workflows, we can merge them into a single workflow.
 
-```yaml title=".github/workflows/atlas-schema.yml"
+```yaml title=".github/workflows/atlas-schema.yaml"
 name: Plan Declarative Migrations
 on:
   workflow_dispatch:
@@ -609,13 +608,13 @@ on:
     branches:
       - master
     paths:
-      - .github/workflows/atlas-schema.yml
+      - .github/workflows/atlas-schema.yaml
       - 'schema.sql'
   pull_request:
     branches:
       - master
     paths:
-      - .github/workflows/atlas-schema.yml
+      - .github/workflows/atlas-schema.yaml
       - 'schema.sql'
 permissions:
   contents: read
