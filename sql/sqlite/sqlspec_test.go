@@ -344,7 +344,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: `sql("custom")`,
-			expected: &schema.UnsupportedType{T: "custom"},
+			expected: &UserDefinedType{T: "custom"},
 		},
 		{
 			typeExpr: "tinyint(10)",

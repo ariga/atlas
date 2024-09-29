@@ -515,6 +515,12 @@ type (
 	//
 	// Deprecated: Use schema.UUIDType instead.
 	UUIDType = schema.UUIDType
+
+	// UserDefinedType defines a user-defined type attribute.
+	UserDefinedType struct {
+		schema.Type
+		T string
+	}
 )
 
 func columnParts(t string) []string {
