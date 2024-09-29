@@ -532,11 +532,13 @@ func MakeFileSetFunc(base string) function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
-				Name: "pattern",
-				Type: cty.String,
+				Name:        "pattern",
+				Type:        cty.String,
+				Description: "A file glob pattern to match against files in the base directory.",
 			},
 		},
-		Type: function.StaticReturnType(cty.List(cty.String)),
+		Type:        function.StaticReturnType(cty.List(cty.String)),
+		Description: "fileset returns a list of file paths matching the given glob pattern in the base directory.",
 		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
 			if !filepath.IsAbs(base) {
 				return cty.NilVal, fmt.Errorf("base directory must be an absolute path. got: %s", base)
