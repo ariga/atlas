@@ -42,6 +42,11 @@ func FormatType(t schema.Type) (string, error) {
 			return "", errors.New("postgres: missing composite type name")
 		}
 		f = t.T
+	case *RowType:
+		if t.T == nil || t.T.Name == "" {
+			return "", errors.New("postgres: missing table for composite (row) type")
+		}
+		f = t.T.Name
 	case *DomainType:
 		if t.T == "" {
 			return "", errors.New("postgres: missing domain type name")
@@ -298,12 +303,12 @@ func columnType(c *columnDesc) (schema.Type, error) {
 		if ft == "" {
 			ft = t
 		}
-		typ = &UserDefinedType{T: ft}
+		typ = &UserDefinedType{T: ft, C: c.typtype}
 	}
 	switch c.typtype {
 	case "d", "e":
 		// User-defined types supported by Atlas.
-		typ = &UserDefinedType{T: c.fmtype}
+		typ = &UserDefinedType{T: c.fmtype, C: c.typtype}
 	}
 	return typ, nil
 }

@@ -296,6 +296,55 @@ func TestSortChanges(t *testing.T) {
 	require.IsType(t, &schema.DropTrigger{}, planned[1])
 }
 
+// RowType is a mocked RowTyper implementation.
+type RowType struct {
+	schema.Type
+	*schema.Table
+}
+
+func (r *RowType) RowType() *schema.Table { return r.Table }
+
+func TestSortChanges_RowTyper(t *testing.T) {
+	t1, t2 := schema.NewTable("t1"), schema.NewTable("t2")
+	t2.AddColumns(schema.NewColumn("t1").SetType(&RowType{Table: t1}))
+	// Tables created before other tables that depend on them.
+	changes := []schema.Change{&schema.AddTable{T: t2}, &schema.AddTable{T: t1}}
+	planned := SortChanges(changes, nil)
+	require.Equal(t, []schema.Change{changes[1], changes[0]}, planned)
+
+	// Tables created before other columns that depend on them.
+	changes = []schema.Change{
+		&schema.ModifyTable{T: t2, Changes: schema.Changes{&schema.AddColumn{C: t2.Columns[0]}}},
+		&schema.AddTable{T: t1},
+	}
+	planned = SortChanges(changes, nil)
+	require.Equal(t, []schema.Change{changes[1], changes[0]}, planned)
+
+	// Tables dropped after other tables that depend on them.
+	changes = []schema.Change{&schema.DropTable{T: t1}, &schema.DropTable{T: t2}}
+	planned = SortChanges(changes, nil)
+	require.Equal(t, []schema.Change{changes[1], changes[0]}, planned)
+
+	// Tables dropped after other columns that depend on them.
+	changes = []schema.Change{
+		&schema.DropTable{T: t1},
+		&schema.ModifyTable{T: t2, Changes: schema.Changes{&schema.DropColumn{C: t2.Columns[0]}}},
+	}
+	planned = SortChanges(changes, nil)
+	require.Equal(t, []schema.Change{changes[1], changes[0]}, planned)
+
+	// Functions created after the tables they depend on.
+	f1 := &schema.Func{Name: "f1", Ret: &RowType{Table: t1}}
+	changes = []schema.Change{&schema.AddFunc{F: f1}, &schema.AddTable{T: t1}}
+	planned = SortChanges(changes, nil)
+	require.Equal(t, []schema.Change{changes[1], changes[0]}, planned)
+
+	// Functions dropped before the tables they depend on.
+	changes = []schema.Change{&schema.DropTable{T: t1}, &schema.DropFunc{F: f1}}
+	planned = SortChanges(changes, nil)
+	require.Equal(t, []schema.Change{changes[1], changes[0]}, planned)
+}
+
 func TestSameTable(t *testing.T) {
 	t1 := schema.NewTable("t1")
 	require.True(t, SameTable(t1, t1))

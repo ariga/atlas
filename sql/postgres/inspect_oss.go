@@ -906,6 +906,14 @@ type (
 	UserDefinedType struct {
 		schema.Type
 		T string
+		C string // Optional type class.
+
+	}
+
+	// RowType defines a composite type that represents a table row.
+	RowType struct {
+		schema.Type
+		T *schema.Table // Table that this row type represents.
 	}
 
 	// PseudoType defines a non-column pseudo-type, such as function arguments and return types.

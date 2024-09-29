@@ -447,14 +447,21 @@ func SortChanges(changes []schema.Change, opts *SortOptions) []schema.Change {
 	return planned
 }
 
-// Depender can be implemented by an object to determine if a change to it
-// depends on other change, or if other change depends on it. For example:
-// A table creation depends on type creation, and a type deletion depends on
-// table deletion.
-type Depender interface {
-	DependsOn(change, other schema.Change) bool
-	DependencyOf(change, other schema.Change) bool
-}
+type (
+	// Depender can be implemented by an object to determine if a change to it
+	// depends on other change, or if other change depends on it. For example:
+	// A table creation depends on type creation, and a type deletion depends on
+	// table deletion.
+	Depender interface {
+		DependsOn(change, other schema.Change) bool
+		DependencyOf(change, other schema.Change) bool
+	}
+	// RowTyper can be implemented by a type to determine if its source
+	// is a regular table (e.g., row types).
+	RowTyper interface {
+		RowType() *schema.Table
+	}
+)
 
 // dependsOn reports if the given change depends on the other change.
 func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
@@ -492,6 +499,11 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 			if refTo(c1.T.ForeignKeys, c2.T) {
 				return true
 			}
+			if slices.ContainsFunc(c1.T.Columns, func(c *schema.Column) bool {
+				return c.Type != nil && typeDependsOnT(c.Type.Type, c2.T)
+			}) {
+				return true
+			}
 		case *schema.ModifyTable:
 			if (c1.T.Name != c2.T.Name || !SameSchema(c1.T.Schema, c2.T.Schema)) && refTo(c1.T.ForeignKeys, c2.T) {
 				return true
@@ -512,16 +524,41 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 		// after all resources that rely on it will be dropped.
 		switch c2 := c2.(type) {
 		case *schema.DropTable:
+			// References to this table, must be dropped first.
 			if refTo(c2.T.ForeignKeys, c1.T) {
 				return true
 			}
+			if slices.ContainsFunc(c2.T.Columns, func(c *schema.Column) bool {
+				return c.Type != nil && typeDependsOnT(c.Type.Type, c1.T)
+			}) {
+				return true
+			}
 		case *schema.ModifyTable:
-			return slices.ContainsFunc(c2.Changes, func(c schema.Change) bool {
-				fk, ok := c.(*schema.DropForeignKey)
-				return ok && refTo([]*schema.ForeignKey{fk.F}, c1.T)
-			})
+			if slices.ContainsFunc(c2.Changes, func(c schema.Change) bool {
+				switch c := c.(type) {
+				case *schema.DropForeignKey:
+					return refTo([]*schema.ForeignKey{c.F}, c1.T)
+				case *schema.DropColumn:
+					return c.C.Type != nil && typeDependsOnT(c.C.Type.Type, c1.T)
+				}
+				return false
+			}) {
+				return true
+			}
 		case *schema.DropTrigger:
 			if SameTable(c2.T.Table, c1.T) {
+				return true
+			}
+		case *schema.DropFunc:
+			if c2.F.Ret != nil && typeDependsOnT(c2.F.Ret, c1.T) || slices.ContainsFunc(c2.F.Args, func(f *schema.FuncArg) bool {
+				return typeDependsOnT(f.Type, c1.T)
+			}) {
+				return true
+			}
+		case *schema.DropProc:
+			if slices.ContainsFunc(c2.P.Args, func(f *schema.FuncArg) bool {
+				return typeDependsOnT(f.Type, c1.T)
+			}) {
 				return true
 			}
 		}
@@ -534,10 +571,19 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 				return true
 			}
 			// Tables need to be created before referencing them.
-			return slices.ContainsFunc(c1.Changes, func(c schema.Change) bool {
-				fk, ok := c.(*schema.AddForeignKey)
-				return ok && refTo([]*schema.ForeignKey{fk.F}, c2.T)
-			})
+			if slices.ContainsFunc(c1.Changes, func(c schema.Change) bool {
+				switch c := c.(type) {
+				case *schema.AddForeignKey:
+					return refTo([]*schema.ForeignKey{c.F}, c2.T)
+				case *schema.AddColumn:
+					return c.C.Type != nil && typeDependsOnT(c.C.Type.Type, c2.T)
+				case *schema.ModifyColumn:
+					return c.To.Type != nil && typeDependsOnT(c.To.Type.Type, c2.T)
+				}
+				return false
+			}) {
+				return true
+			}
 		case *schema.ModifyTable:
 			if c1.T != c2.T {
 				addC := make(map[*schema.Column]bool)
@@ -631,6 +677,11 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 			if opts.FuncDepT != nil && opts.FuncDepT(c1.F, c2.T) {
 				return true
 			}
+			if c1.F.Ret != nil && typeDependsOnT(c1.F.Ret, c2.T) || slices.ContainsFunc(c1.F.Args, func(f *schema.FuncArg) bool {
+				return typeDependsOnT(f.Type, c2.T)
+			}) {
+				return true
+			}
 		case *schema.AddView:
 			if opts.FuncDepV != nil && opts.FuncDepV(c1.F, c2.V) {
 				return true
@@ -679,6 +730,12 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 		switch c2 := c2.(type) {
 		case *schema.AddSchema:
 			return c1.P.Schema.Name == c2.S.Name
+		case *schema.AddTable:
+			if slices.ContainsFunc(c1.P.Args, func(f *schema.FuncArg) bool {
+				return typeDependsOnT(f.Type, c2.T)
+			}) {
+				return true
+			}
 		case *schema.DropProc:
 			return c1.P.Name == c2.P.Name && SameSchema(c1.P.Schema, c2.P.Schema) // Proc recreation.
 		case *schema.AddProc:
@@ -734,16 +791,14 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 		// Dropping a type must occur after all its usage were dropped.
 		switch c2 := c2.(type) {
 		case *schema.DropView:
-			// Dropping a view also drops its triggers
-			// and they might depend on the type.
+			// Dropping a view also drops its triggers and might depend on the type.
 			if slices.ContainsFunc(c2.V.Triggers, func(tg *schema.Trigger) bool {
 				return slices.Contains(tg.Deps, c1.O)
 			}) {
 				return true
 			}
 		case *schema.DropTable:
-			// Dropping a table also drops its triggers
-			// and they might depend on the type.
+			// Dropping a table also drops its triggers and might depend on the type.
 			if slices.ContainsFunc(c2.T.Triggers, func(tg *schema.Trigger) bool {
 				return slices.Contains(tg.Deps, c1.O)
 			}) {
@@ -910,6 +965,15 @@ func refTo(fks []*schema.ForeignKey, to *schema.Table) bool {
 	return slices.ContainsFunc(fks, func(fk *schema.ForeignKey) bool {
 		return SameTable(fk.RefTable, to)
 	})
+}
+
+// typeDependsOnT reports if the declaration of type t1 depends on the given change.
+func typeDependsOnT(t schema.Type, tt *schema.Table) bool {
+	rt, ok := schema.UnderlyingType(t).(RowTyper)
+	if !ok {
+		return false
+	}
+	return SameTable(rt.RowType(), tt)
 }
 
 // dependsOnT reports if t1 depends on t2.
