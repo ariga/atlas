@@ -1420,7 +1420,7 @@ create table atlas_types_sanity
 				},
 				{
 					Name: "tUserDefined",
-					Type: &schema.ColumnType{Type: &postgres.UserDefinedType{T: "public.address"}, Raw: "USER-DEFINED", Null: true},
+					Type: &schema.ColumnType{Type: &postgres.UserDefinedType{T: "public.address", C: "c"}, Raw: "USER-DEFINED", Null: true},
 					Default: &schema.RawExpr{
 						X: "'(ab,cd)'::public.address",
 					},
