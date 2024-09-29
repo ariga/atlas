@@ -230,6 +230,26 @@ docker "postgres" "dev" {
 }
 ```
 
+When needed, the `build` block can be used to build the docker image with custom configurations:
+
+```hcl
+docker "postgres" "dev" {
+  image = "postgres:16-aws"
+  // highlight-start
+  // The built image will be tagged as "postgres:16-aws".
+  build {
+    context    = "path/to/context"
+    dockerfile = "Dockerfile"
+    target     = "build-target"
+    args       = {
+      key = "value"
+    }
+  }
+  // highlight-end
+}
+```
+
+
 MySQL and MariaDB users can use the `docker "mysql"` / `docker "mariadb"` to configure such block.
 
 
