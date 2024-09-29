@@ -1018,6 +1018,79 @@ diff {
 
 
 
+### Blocks {#docker.clickhouse-blocks}
+
+
+
+    
+#### `docker.build` {#docker.build}
+The `build` block defines the build configuration for the Docker image.
+The given image is built using the provided Dockerfile and context.
+
+~~~hcl
+docker "postgres" "pg-vn" {
+  image = "postgres:15-vn"
+  build {
+    context    = "."
+    dockerfile = "locale.Dockerfile"
+    args = {
+      LOCALE = "vi-VN"
+    }
+  }
+}
+~~~
+
+
+
+##### `docker.build` attributes {#docker.build-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="docker.build.args"><a href="#docker.build.args"><code>args</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.context"><a href="#docker.build.context"><code>context</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.dockerfile"><a href="#docker.build.dockerfile"><code>dockerfile</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.target"><a href="#docker.build.target"><code>target</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `docker.build` constraints {#docker.build-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
 
 ### Constraints {#docker.clickhouse-constraints}
 
@@ -1066,6 +1139,79 @@ diff {
 
 
 
+### Blocks {#docker.mariadb-blocks}
+
+
+
+    
+#### `docker.build` {#docker.build}
+The `build` block defines the build configuration for the Docker image.
+The given image is built using the provided Dockerfile and context.
+
+~~~hcl
+docker "postgres" "pg-vn" {
+  image = "postgres:15-vn"
+  build {
+    context    = "."
+    dockerfile = "locale.Dockerfile"
+    args = {
+      LOCALE = "vi-VN"
+    }
+  }
+}
+~~~
+
+
+
+##### `docker.build` attributes {#docker.build-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="docker.build.args"><a href="#docker.build.args"><code>args</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.context"><a href="#docker.build.context"><code>context</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.dockerfile"><a href="#docker.build.dockerfile"><code>dockerfile</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.target"><a href="#docker.build.target"><code>target</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `docker.build` constraints {#docker.build-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
 
 ### Constraints {#docker.mariadb-constraints}
 
@@ -1111,6 +1257,79 @@ diff {
   <td><code>string</code></td>
   </tr>
 </table>
+
+
+
+### Blocks {#docker.mysql-blocks}
+
+
+
+    
+#### `docker.build` {#docker.build}
+The `build` block defines the build configuration for the Docker image.
+The given image is built using the provided Dockerfile and context.
+
+~~~hcl
+docker "postgres" "pg-vn" {
+  image = "postgres:15-vn"
+  build {
+    context    = "."
+    dockerfile = "locale.Dockerfile"
+    args = {
+      LOCALE = "vi-VN"
+    }
+  }
+}
+~~~
+
+
+
+##### `docker.build` attributes {#docker.build-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="docker.build.args"><a href="#docker.build.args"><code>args</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.context"><a href="#docker.build.context"><code>context</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.dockerfile"><a href="#docker.build.dockerfile"><code>dockerfile</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.target"><a href="#docker.build.target"><code>target</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `docker.build` constraints {#docker.build-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
 
 
 
@@ -1167,6 +1386,79 @@ diff {
 
 
 
+### Blocks {#docker.postgres-blocks}
+
+
+
+    
+#### `docker.build` {#docker.build}
+The `build` block defines the build configuration for the Docker image.
+The given image is built using the provided Dockerfile and context.
+
+~~~hcl
+docker "postgres" "pg-vn" {
+  image = "postgres:15-vn"
+  build {
+    context    = "."
+    dockerfile = "locale.Dockerfile"
+    args = {
+      LOCALE = "vi-VN"
+    }
+  }
+}
+~~~
+
+
+
+##### `docker.build` attributes {#docker.build-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="docker.build.args"><a href="#docker.build.args"><code>args</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.context"><a href="#docker.build.context"><code>context</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.dockerfile"><a href="#docker.build.dockerfile"><code>dockerfile</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.target"><a href="#docker.build.target"><code>target</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `docker.build` constraints {#docker.build-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
 
 ### Constraints {#docker.postgres-constraints}
 
@@ -1217,6 +1509,79 @@ diff {
   <td><code>string</code></td>
   </tr>
 </table>
+
+
+
+### Blocks {#docker.sqlserver-blocks}
+
+
+
+    
+#### `docker.build` {#docker.build}
+The `build` block defines the build configuration for the Docker image.
+The given image is built using the provided Dockerfile and context.
+
+~~~hcl
+docker "postgres" "pg-vn" {
+  image = "postgres:15-vn"
+  build {
+    context    = "."
+    dockerfile = "locale.Dockerfile"
+    args = {
+      LOCALE = "vi-VN"
+    }
+  }
+}
+~~~
+
+
+
+##### `docker.build` attributes {#docker.build-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="docker.build.args"><a href="#docker.build.args"><code>args</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.context"><a href="#docker.build.context"><code>context</code></a></td>
+    <td><code>true</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.dockerfile"><a href="#docker.build.dockerfile"><code>dockerfile</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="docker.build.target"><a href="#docker.build.target"><code>target</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `docker.build` constraints {#docker.build-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
 
 
 
