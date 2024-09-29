@@ -41,6 +41,8 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *schema.UUIDType:
 		f = strings.ToLower(t.T)
+	case *UserDefinedType:
+		f = t.T
 	case *schema.UnsupportedType:
 		return "", fmt.Errorf("sqlite: unsupported type: %q", t.T)
 	default:
@@ -102,6 +104,6 @@ func ParseType(c string) (schema.Type, error) {
 	case "uuid":
 		return &schema.UUIDType{T: t}, nil
 	default:
-		return &schema.UnsupportedType{T: t}, nil
+		return &UserDefinedType{T: c}, nil
 	}
 }

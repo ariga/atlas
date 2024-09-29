@@ -1,0 +1,54 @@
+# Initial changes.
+atlas schema apply --url URL --dev-url DEV_URL --to file://schema.v1.hcl --auto-approve
+atlas schema apply --url URL --dev-url DEV_URL --to file://schema.v1.hcl --auto-approve
+stdout 'Schema is synced, no changes to be made'
+atlas schema inspect --url URL > got
+cmp schema.v1.hcl.inspected got
+
+# Changing user defined type.
+atlas schema apply --url URL --dev-url DEV_URL --to file://schema.v2.hcl --auto-approve
+atlas schema apply --url URL --dev-url DEV_URL --to file://schema.v2.hcl --auto-approve
+stdout 'Schema is synced, no changes to be made'
+atlas schema inspect --url URL > got
+cmp schema.v2.hcl.inspected got
+
+-- schema.v1.hcl --
+table "t" {
+  schema = schema.main
+  column "c" {
+    null = true
+    type = sql("USER_DEFINED")
+  }
+}
+schema "main" {
+}
+-- schema.v1.hcl.inspected --
+table "t" {
+  schema = schema.main
+  column "c" {
+    null = true
+    type = sql("USER_DEFINED")
+  }
+}
+schema "main" {
+}
+-- schema.v2.hcl --
+table "t" {
+  schema = schema.main
+  column "c" {
+    null = true
+    type = sql("USER_TYPE")
+  }
+}
+schema "main" {
+}
+-- schema.v2.hcl.inspected --
+table "t" {
+  schema = schema.main
+  column "c" {
+    null = true
+    type = sql("USER_TYPE")
+  }
+}
+schema "main" {
+}
