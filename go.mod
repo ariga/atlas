@@ -4,6 +4,7 @@ go 1.22.7
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/bmatcuk/doublestar v1.3.4
 	github.com/go-openapi/inflect v0.19.0
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/stretchr/testify v1.8.2

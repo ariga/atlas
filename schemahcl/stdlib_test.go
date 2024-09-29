@@ -197,6 +197,69 @@ func TestMakeGlobFunc(t *testing.T) {
 	require.Equal(t, []string{"a.hcl", "b.hcl", "variables.hcl"}, result)
 }
 
+func TestMakeFilesetFunc(t *testing.T) {
+	base, err := filepath.Abs("testdata")
+	require.NoError(t, err)
+
+	fn := MakeFileSetFunc(base)
+
+	tests := []struct {
+		name     string
+		pattern  string
+		expected []string
+	}{
+		{
+			name:     "Simple HCL files",
+			pattern:  "*.hcl",
+			expected: []string{"a.hcl", "b.hcl", "variables.hcl"},
+		},
+		{
+			name:     "Non-existent files",
+			pattern:  "*.txt",
+			expected: []string{},
+		},
+		{
+			name:     "Nested directories",
+			pattern:  "**/*.hcl",
+			expected: []string{"a.hcl", "b.hcl", "nested/c.hcl", "variables.hcl"},
+		},
+		{
+			name:     "Single file",
+			pattern:  "a.hcl",
+			expected: []string{"a.hcl"},
+		},
+		{
+			name:     "Files with specific prefix",
+			pattern:  "a*.hcl",
+			expected: []string{"a.hcl"},
+		},
+		{
+			name:     "Files in specific directory",
+			pattern:  "nested/*.hcl",
+			expected: []string{"nested/c.hcl"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v, err := fn.Call([]cty.Value{cty.StringVal(tt.pattern)})
+			require.NoError(t, err)
+			var result []string
+			for _, f := range v.AsValueSlice() {
+				p, err := filepath.Rel(base, f.AsString())
+				require.NoError(t, err)
+				result = append(result, filepath.ToSlash(p))
+			}
+			require.ElementsMatch(t, tt.expected, result)
+		})
+	}
+
+	// Test with relative base path
+	relativeFn := MakeFileSetFunc("testdata")
+	_, err = relativeFn.Call([]cty.Value{cty.StringVal("*.hcl")})
+	require.EqualError(t, err, "base directory must be an absolute path. got: testdata")
+}
+
 func Example_RegexpEscapeFunc() {
 	for _, f := range []string{
 		`v  = regexpescape("a|b|c")`,

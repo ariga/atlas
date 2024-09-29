@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bmatcuk/doublestar"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/tryfunc"
 	"github.com/zclconf/go-cty/cty"
@@ -490,6 +491,7 @@ func MakeFileFunc(base string) function.Function {
 
 // MakeGlobFunc returns a function that returns the names of all files
 // matching pattern or nil if there is no matching file
+// Deprecated: use fileset function instead.
 func MakeGlobFunc(base string) function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
@@ -508,6 +510,44 @@ func MakeGlobFunc(base string) function.Function {
 				path = filepath.Clean(filepath.Join(base, path))
 			}
 			matches, err := filepath.Glob(path)
+			switch {
+			case err != nil:
+				return cty.NilVal, err
+			case len(matches) == 0:
+				return cty.ListValEmpty(cty.String), nil
+			default:
+				vals := make([]cty.Value, len(matches))
+				for i, match := range matches {
+					vals[i] = cty.StringVal(match)
+				}
+				return cty.ListVal(vals), nil
+			}
+		},
+	})
+}
+
+// MakeFileSetFunc returns a function that returns the names of all files
+// matching pattern or nil if there is no matching file
+func MakeFileSetFunc(base string) function.Function {
+	return function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name:        "pattern",
+				Type:        cty.String,
+				Description: "A file glob pattern to match against files in the base directory.",
+			},
+		},
+		Type:        function.StaticReturnType(cty.List(cty.String)),
+		Description: "fileset returns a list of file paths matching the given glob pattern in the base directory.",
+		Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
+			if !filepath.IsAbs(base) {
+				return cty.NilVal, fmt.Errorf("base directory must be an absolute path. got: %s", base)
+			}
+			path := args[0].AsString()
+			if !filepath.IsAbs(path) {
+				path = filepath.Clean(filepath.Join(base, path))
+			}
+			matches, err := doublestar.Glob(path)
 			switch {
 			case err != nil:
 				return cty.NilVal, err
