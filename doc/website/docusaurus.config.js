@@ -111,8 +111,8 @@ module.exports = {
     },
     footer,
     announcementBar: {
-      id: 'announcementBar-18', // Increment on change
-      content: `<strong>New!</strong> Announcing Atlas Schema Monitoring<a class="cta" href="/blog/2024/09/02/schema-monitoring-v027">Read it here</a>`,
+      id: 'announcementBar-19', // Increment on change
+      content: `<strong>Atlas v0.30:</strong> Like Terraform, but for Databases <a class="cta" href="/blog/2024/10/01/tf-for-database-schemas">Read now</a>`,
       isCloseable: true,
     },
   },
