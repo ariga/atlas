@@ -51,7 +51,7 @@ Let's consider a simple example. We have a table `users` with two columns `id` a
 
 #### Example Setup
 
-Before running `atlas schema plan`, we need to ensure that the schema repository exists in Atlas Registry and there
+Before running `atlas schema plan`, let's ensure that a schema repository named `app` exists in Atlas Registry and there
 is a database containing the previous schema state (before our changes):
 
 <Tabs>
@@ -68,7 +68,7 @@ CREATE TABLE users (
 
 ```hcl title="atlas.hcl"
 env "local" {
-  # URL to the underlying database.
+  # URL to the target database.
   url = "sqlite://main.db"
   # URL to the dev-database.
   dev = "sqlite://dev?mode=memory"
