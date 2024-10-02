@@ -211,6 +211,7 @@ div[class^='announcementBar_']  a.cta {
   padding: 2px 6px;
   text-decoration: none;
   margin: 2px;
+  white-space: nowrap;
 }
 
 .code-block-error-message {

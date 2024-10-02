@@ -112,7 +112,7 @@ module.exports = {
     footer,
     announcementBar: {
       id: 'announcementBar-19', // Increment on change
-      content: `<strong>Atlas v0.28:</strong> Like Terraform, but for Databases <a class="cta" href="/blog/2024/10/01/tf-for-database-schemas">Read now</a>`,
+      content: `<strong>Atlas v0.28:</strong> Like Terraform, but for Databases <a class="cta" href="/blog/2024/10/01/terraform-for-database-schemas">Read now</a>`,
       isCloseable: true,
     },
   },
@@ -221,6 +221,10 @@ module.exports = {
             from: '/registry',
             to: '/cloud/features/registry',
           },
+          {
+            from: '/blog/2024/10/01/tf-for-database-schemas',
+            to: '/blog/2024/10/01/terraform-for-database-schemas',
+          }
         ],
       },
     ],
