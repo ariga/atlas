@@ -6,6 +6,274 @@ slug: /hcl/clickhouse
 
 
 
+## `dictionary` {#dictionary}
+The `dictionary` block describes a dictionary in a database schema.
+
+~~~hcl
+dictionary "name" {
+  schema = schema.public
+  source = sql("CLICKHOUSE(TABLE)")
+  layout = sql("HASH()")
+  key "id" {
+	type = UInt64
+  }
+  attribute "name" {
+	type = String
+  }
+  lifetime {
+	min = 0
+	max = 0
+  }
+  ...
+}
+~~~
+
+
+
+### Attributes {#dictionary-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="dictionary.comment"><a href="#dictionary.comment"><code>comment</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+  <tr>
+      <td id="dictionary.layout"><a href="#dictionary.layout"><code>layout</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Raw expression defined with `sql("expr")`
+  </td>
+
+  </tr>
+  <tr>
+      <td id="dictionary.schema"><a href="#dictionary.schema"><code>schema</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`schema`](#schema)
+  </td>
+
+  </tr>
+  <tr>
+      <td id="dictionary.settings"><a href="#dictionary.settings"><code>settings</code></a></td>
+    <td><code>false</code></td>
+  <td><code>map</code></td>
+  </tr>
+  <tr>
+      <td id="dictionary.source"><a href="#dictionary.source"><code>source</code></a></td>
+    <td><code>true</code></td>
+  <td class="no-margin-bottom">
+
+Raw expression defined with `sql("expr")`
+  </td>
+
+  </tr>
+</table>
+
+
+
+### Blocks {#dictionary-blocks}
+
+
+
+    
+#### `dictionary.attribute` {#dictionary.attribute}
+
+
+##### `dictionary.attribute` attributes {#dictionary.attribute-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="dictionary.attribute.default"><a href="#dictionary.attribute.default"><code>default</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Column default expression can be one of:
+1. `bool`
+2. `string`
+3. `number`
+4. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+  <tr>
+      <td id="dictionary.attribute.null"><a href="#dictionary.attribute.null"><code>null</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="dictionary.attribute.type"><a href="#dictionary.attribute.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Attribute type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `dictionary.attribute` constraints {#dictionary.attribute-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `dictionary.key` {#dictionary.key}
+
+
+##### `dictionary.key` attributes {#dictionary.key-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="dictionary.key.default"><a href="#dictionary.key.default"><code>default</code></a></td>
+    <td><code>false</code></td>
+<td>
+
+Column default expression can be one of:
+1. `bool`
+2. `string`
+3. `number`
+4. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+  <tr>
+      <td id="dictionary.key.null"><a href="#dictionary.key.null"><code>null</code></a></td>
+    <td><code>false</code></td>
+  <td><code>bool</code></td>
+  </tr>
+  <tr>
+      <td id="dictionary.key.type"><a href="#dictionary.key.type"><code>type</code></a></td>
+    <td><code>true</code></td>
+<td>
+
+Attribute type can be one of:
+1. Schema type
+2. Raw expression defined with `sql("expr")`
+
+</td>
+  </tr>
+</table>
+
+
+
+
+##### `dictionary.key` constraints {#dictionary.key-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
+    
+#### `dictionary.lifetime` {#dictionary.lifetime}
+
+
+##### `dictionary.lifetime` attributes {#dictionary.lifetime-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="dictionary.lifetime.max"><a href="#dictionary.lifetime.max"><code>max</code></a></td>
+    <td><code>true</code></td>
+  <td><code>int</code></td>
+  </tr>
+  <tr>
+      <td id="dictionary.lifetime.min"><a href="#dictionary.lifetime.min"><code>min</code></a></td>
+    <td><code>true</code></td>
+  <td><code>int</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `dictionary.lifetime` constraints {#dictionary.lifetime-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `true`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+### Constraints {#dictionary-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `true`
+| Allow Qualifier             |      `true`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+
+
+
+
+
 ## `materialized` {#materialized}
 The `materialized` block describes a materialized view in a database schema.
 
@@ -755,6 +1023,105 @@ Primary key column can be one of:
 
 
 ##### `table.primary_key` constraints {#table.primary_key-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `false`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[columns, on]`
+| One of required sets       | `[columns, on]`
+
+
+
+
+
+    
+#### `table.sort` {#table.sort}
+
+
+##### `table.sort` attributes {#table.sort-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.sort.columns"><a href="#table.sort.columns"><code>columns</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+List of object reference to [`column`](#table.column)
+  </td>
+
+  </tr>
+</table>
+
+
+
+##### `table.sort` blocks {#table.sort-blocks}
+
+
+
+    
+#### `table.sort.on` {#table.sort.on}
+
+
+##### `table.sort.on` attributes {#table.sort.on-attributes}
+
+
+
+<table class="attributes-table">
+  <tr>
+    <th>Name</th>
+    <th>Required</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+      <td id="table.sort.on.column"><a href="#table.sort.on.column"><code>column</code></a></td>
+    <td><code>false</code></td>
+  <td class="no-margin-bottom">
+
+Object reference to [`column`](#table.column)
+  </td>
+
+  </tr>
+  <tr>
+      <td id="table.sort.on.expr"><a href="#table.sort.on.expr"><code>expr</code></a></td>
+    <td><code>false</code></td>
+  <td><code>string</code></td>
+  </tr>
+</table>
+
+
+
+
+##### `table.sort.on` constraints {#table.sort.on-constraints}
+
+
+
+|    Constraint               |           Value
+|-----------------------------|------------------------------------
+| Required                    |      `false`
+| Require Name                |      `false`
+| Repeatable                  |      `true`
+| Allow unknown blocks        |      `false`
+| Allow unknown attributes    |      `false`
+| Mutually exclusive sets     | `[column, expr]`
+| One of required sets       | `[column, expr]`
+
+
+
+
+##### `table.sort` constraints {#table.sort-constraints}
 
 
 
