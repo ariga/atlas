@@ -52,7 +52,7 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 			}
 			for i := range c.Changes {
 				d, ok := c.Changes[i].(*schema.DropForeignKey)
-				if !ok {
+				if !ok || p.File.ForeignKeySpan(c.T, d.F)&sqlcheck.SpanAdded != 0 {
 					continue
 				}
 				dropC := func() bool {

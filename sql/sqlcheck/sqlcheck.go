@@ -193,9 +193,14 @@ func (f *File) ColumnSpan(t *schema.Table, c *schema.Column) ResourceSpan {
 	return f.tableSpan(t).columns[c.Name]
 }
 
-// IndexSpan returns the span information for the span.
+// IndexSpan returns the span information for the index.
 func (f *File) IndexSpan(t *schema.Table, i *schema.Index) ResourceSpan {
 	return f.tableSpan(t).indexes[i.Name]
+}
+
+// ForeignKeySpan returns the span information for the foreign-key constraint.
+func (f *File) ForeignKeySpan(t *schema.Table, fk *schema.ForeignKey) ResourceSpan {
+	return f.tableSpan(t).forkeys[fk.Symbol]
 }
 
 type (
@@ -209,6 +214,7 @@ type (
 		state   ResourceSpan
 		columns map[string]ResourceSpan
 		indexes map[string]ResourceSpan
+		forkeys map[string]ResourceSpan
 	}
 )
 
@@ -230,6 +236,9 @@ func (f *File) loadSpans() {
 				for _, idx := range c.T.Indexes {
 					span.indexes[idx.Name] = SpanAdded
 				}
+				for _, fk := range c.T.ForeignKeys {
+					span.forkeys[fk.Symbol] = SpanAdded
+				}
 			case *schema.DropTable:
 				f.tableSpan(c.T).state |= SpanDropped
 			case *schema.ModifyTable:
@@ -244,6 +253,10 @@ func (f *File) loadSpans() {
 						span.indexes[c1.I.Name] = SpanAdded
 					case *schema.DropIndex:
 						span.indexes[c1.I.Name] |= SpanDropped
+					case *schema.AddForeignKey:
+						span.forkeys[c1.F.Symbol] = SpanAdded
+					case *schema.DropForeignKey:
+						span.forkeys[c1.F.Symbol] |= SpanDropped
 					}
 				}
 			}
@@ -267,6 +280,7 @@ func (f *File) tableSpan(t *schema.Table) *tableSpan {
 		span.tables[t.Name] = &tableSpan{
 			columns: make(map[string]ResourceSpan),
 			indexes: make(map[string]ResourceSpan),
+			forkeys: make(map[string]ResourceSpan),
 		}
 	}
 	return f.spans[t.Schema.Name].tables[t.Name]
