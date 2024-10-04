@@ -37,7 +37,7 @@ type (
 
 		// SchemaObjectDiff returns a changeset for migrating schema objects from
 		// one state to the other. For example, changing schema custom types.
-		SchemaObjectDiff(from, to *schema.Schema) ([]schema.Change, error)
+		SchemaObjectDiff(from, to *schema.Schema, _ *schema.DiffOptions) ([]schema.Change, error)
 
 		// TableAttrDiff returns a changeset for migrating table attributes from
 		// one state to the other. For example, dropping or adding a `CHECK` constraint.
@@ -196,7 +196,7 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 		})
 	}
 	// Add, drop or modify objects.
-	change, err := d.SchemaObjectDiff(from, to)
+	change, err := d.SchemaObjectDiff(from, to, opts)
 	if err != nil {
 		return nil, err
 	}

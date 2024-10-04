@@ -105,6 +105,11 @@ type (
 	AbortError struct {
 		Err error
 	}
+	// Aborter allows errors to signal if the error is an abort error.
+	Aborter interface {
+		error
+		IsAbort()
+	}
 )
 
 func (e *FormattedError) Error() string { return e.Err.Error() }
@@ -129,10 +134,14 @@ func (e *AbortError) FormatError(cmd *cobra.Command) {
 
 // RunE wraps the command cobra.Command.RunE function with additional postrun logic.
 func RunE(f func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
-	return func(cmd *cobra.Command, args []string) error {
-		err := f(cmd, args)
-		if ef, ok := err.(ErrorFormatter); ok {
-			ef.FormatError(cmd)
+	return func(cmd *cobra.Command, args []string) (err error) {
+		if err = f(cmd, args); err != nil {
+			if err1 := (Aborter)(nil); errors.As(err, &err1) {
+				err = &AbortError{Err: err}
+			}
+			if ef, ok := err.(ErrorFormatter); ok {
+				ef.FormatError(cmd)
+			}
 		}
 		return err
 	}

@@ -36,7 +36,7 @@ func (*diff) RealmObjectDiff(_, _ *schema.Realm) ([]schema.Change, error) {
 
 // SchemaObjectDiff returns a changeset for migrating schema objects from
 // one state to the other.
-func (*diff) SchemaObjectDiff(_, _ *schema.Schema) ([]schema.Change, error) {
+func (*diff) SchemaObjectDiff(_, _ *schema.Schema, _ *schema.DiffOptions) ([]schema.Change, error) {
 	return nil, nil
 }
 
