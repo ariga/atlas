@@ -204,7 +204,7 @@ func (*diff) RealmObjectDiff(_, _ *schema.Realm) ([]schema.Change, error) {
 
 // SchemaObjectDiff returns a changeset for migrating schema objects from
 // one state to the other.
-func (*diff) SchemaObjectDiff(from, to *schema.Schema) ([]schema.Change, error) {
+func (*diff) SchemaObjectDiff(from, to *schema.Schema, _ *schema.DiffOptions) ([]schema.Change, error) {
 	var changes []schema.Change
 	// Drop or modify enums.
 	for _, o1 := range from.Objects {
