@@ -66,7 +66,7 @@ func (f *schemaApplyFlags) check(env *Env) error {
 		return errors.New(`one of flag(s) "file" or "to" is required`)
 	case f.txMode != txModeNone && f.txMode != txModeFile:
 		return fmt.Errorf("unknown tx-mode %q", f.txMode)
-	case f.autoApprove && env.Lint.Review != "":
+	case f.autoApprove && env.LintReview() != ReviewAlways:
 		return fmt.Errorf("auto-approve is not allowed when a lint policy is set to %q", env.Lint.Review)
 	case f.edit && f.devURL == "":
 		return errors.New("--edit requires a connection to the dev-database (provided by --dev-url)")
