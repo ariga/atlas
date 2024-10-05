@@ -587,6 +587,10 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, vr SchemaValidator, hclAttrs hclsy
 		if diag.HasErrors() {
 			return nil, s.typeError(diag, scope)
 		}
+		// Setting an attribute as null means omission.
+		if value.IsNull() {
+			continue
+		}
 		if err := vr.ValidateAttribute(ctx, hclAttr, value); err != nil {
 			return nil, err
 		}

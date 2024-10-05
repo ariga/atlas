@@ -57,6 +57,18 @@ vars = {
 	marshal, err := Marshal(&test)
 	require.NoError(t, err)
 	require.EqualValues(t, f, string(marshal))
+
+	var v struct {
+		NullV string  `spec:"null_v"`
+		NullP *string `spec:"null_p"`
+	}
+	err = New().EvalBytes([]byte(`
+null_v = null
+null_p = null
+`), &v, nil)
+	require.NoError(t, err)
+	require.Empty(t, v.NullV)
+	require.Nil(t, v.NullP)
 }
 
 func TestResource(t *testing.T) {
