@@ -1,0 +1,103 @@
+only mysql8
+
+# Version 1.
+atlas schema inspect --url file://schema.v1.sql --dev-url URL > got
+cmp got schema.v1.hcl
+atlas schema inspect --url file://schema.v1.hcl --dev-url URL > got
+cmp got schema.v1.hcl
+atlas migrate diff v1 --to file://schema.v1.hcl --dev-url URL
+cmpmig 0 migration.v1.sql
+atlas migrate diff v1-check --to file://schema.v1.hcl --dev-url URL
+stdout 'The migration directory is synced with the desired state, no changes to be made'
+
+# Version 2.
+atlas migrate diff v2 --to file://schema.v2.hcl --dev-url URL
+cmpmig 1 migration.v2.sql
+atlas migrate diff v2-check --to file://schema.v2.hcl --dev-url URL
+stdout 'The migration directory is synced with the desired state, no changes to be made'
+
+-- schema.v1.sql --
+CREATE TABLE `t1` (`id` tinytext NOT NULL, PRIMARY KEY (`id` (7)));
+CREATE TABLE `t2` (`id` tinytext NOT NULL, PRIMARY KEY (`id` (7) DESC));
+-- schema.v1.hcl --
+table "t1" {
+  schema = schema.script_primary_key_parts
+  column "id" {
+    null = false
+    type = tinytext
+  }
+  primary_key {
+    on {
+      column = column.id
+      prefix = 7
+    }
+  }
+}
+table "t2" {
+  schema = schema.script_primary_key_parts
+  column "id" {
+    null = false
+    type = tinytext
+  }
+  primary_key {
+    on {
+      desc   = true
+      column = column.id
+      prefix = 7
+    }
+  }
+}
+schema "script_primary_key_parts" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+-- migration.v1.sql --
+-- Create "t1" table
+CREATE TABLE `t1` (`id` tinytext NOT NULL, PRIMARY KEY (`id` (7))) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- Create "t2" table
+CREATE TABLE `t2` (`id` tinytext NOT NULL, PRIMARY KEY (`id` (7) DESC)) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- schema.v2.hcl --
+table "t1" {
+  schema = schema.script_primary_key_parts
+  column "id" {
+    null = false
+    type = tinytext
+  }
+  column "id2" {
+    null = false
+    type = tinytext
+  }
+  primary_key {
+    on {
+      column = column.id
+      prefix = 7
+    }
+    on {
+      column = column.id2
+      prefix = 1
+    }
+  }
+}
+table "t2" {
+  schema = schema.script_primary_key_parts
+  column "id" {
+    null = false
+    type = tinytext
+  }
+  primary_key {
+    on {
+      desc   = false
+      column = column.id
+      prefix = 6
+    }
+  }
+}
+schema "script_primary_key_parts" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+-- migration.v2.sql --
+-- Modify "t1" table
+ALTER TABLE `t1` ADD COLUMN `id2` tinytext NOT NULL, DROP PRIMARY KEY, ADD PRIMARY KEY (`id` (7), `id2` (1));
+-- Modify "t2" table
+ALTER TABLE `t2` DROP PRIMARY KEY, ADD PRIMARY KEY (`id` (6));

@@ -157,17 +157,11 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 
 // convertPK converts a sqlspec.PrimaryKey into a schema.Index.
 func convertPK(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
-	idx, err := specutil.PrimaryKey(spec, parent)
-	if err != nil {
-		return nil, err
-	}
-	if err := convertIndexType(spec, idx); err != nil {
-		return nil, err
-	}
-	if err := convertIndexParser(spec, idx); err != nil {
-		return nil, err
-	}
-	return idx, nil
+	return convertIndex(&sqlspec.Index{
+		Parts:            spec.Parts,
+		Columns:          spec.Columns,
+		DefaultExtension: spec.DefaultExtension,
+	}, parent)
 }
 
 // convertIndex converts a sqlspec.Index into a schema.Index.
@@ -323,12 +317,16 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 }
 
 func pkSpec(idx *schema.Index) (*sqlspec.PrimaryKey, error) {
-	spec, err := specutil.FromPrimaryKey(idx)
+	spec, err := indexSpec(idx)
 	if err != nil {
 		return nil, err
 	}
-	spec.Extra.Attrs = indexTypeSpec(idx, spec.Extra.Attrs)
-	return spec, nil
+	for _, p := range spec.Parts {
+		if p.Expr != "" {
+			return nil, fmt.Errorf("primary key %q cannot have functional part", idx.Name)
+		}
+	}
+	return &sqlspec.PrimaryKey{Parts: spec.Parts, Columns: spec.Columns, DefaultExtension: spec.DefaultExtension}, nil
 }
 
 func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {

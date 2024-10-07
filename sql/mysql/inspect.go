@@ -330,17 +330,6 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		c.SetCollation(collation.String)
 	}
 	t.AddColumns(c)
-	// From MySQL doc: A UNIQUE index may be displayed as "PRI" if it is NOT NULL
-	// and there is no PRIMARY KEY in the table. We detect this in `addIndexes`.
-	if key.String == "PRI" {
-		if t.PrimaryKey == nil {
-			t.PrimaryKey = &schema.Index{Table: t, Name: key.String}
-		}
-		t.PrimaryKey.Parts = append(t.PrimaryKey.Parts, &schema.IndexPart{
-			C:     c,
-			SeqNo: len(t.PrimaryKey.Parts),
-		})
-	}
 	return nil
 }
 
@@ -360,7 +349,6 @@ func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
 
 // addIndexes scans the rows and adds the indexes to the table.
 func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
-	hasPK := make(map[*schema.Table]bool)
 	for rows.Next() {
 		var (
 			seqno                          int
@@ -375,23 +363,28 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		if !ok {
 			return fmt.Errorf("table %q was not found in schema", table)
 		}
-		// Ignore primary keys.
-		if name == "PRIMARY" {
-			hasPK[t] = true
-			continue
-		}
-		idx, ok := t.Index(name)
-		if !ok {
-			idx = schema.NewIndex(name).
-				SetUnique(!nonuniq.Bool).
-				AddAttrs(&IndexType{T: indexType})
-			if indexType == IndexTypeFullText {
-				putShow(t).addFullText(idx)
+		var idx *schema.Index
+		switch {
+		// Primary key.
+		case name == "PRIMARY":
+			if idx = t.PrimaryKey; idx == nil {
+				idx = schema.NewIndex("PRI").
+					AddAttrs(&IndexType{T: indexType})
+				t.PrimaryKey = idx
 			}
-			if sqlx.ValidString(comment) {
-				idx.SetComment(comment.String)
+		default:
+			if idx, ok = t.Index(name); !ok {
+				idx = schema.NewIndex(name).
+					SetUnique(!nonuniq.Bool).
+					AddAttrs(&IndexType{T: indexType})
+				if indexType == IndexTypeFullText {
+					putShow(t).addFullText(idx)
+				}
+				if sqlx.ValidString(comment) {
+					idx.SetComment(comment.String)
+				}
+				t.AddIndexes(idx)
 			}
-			t.AddIndexes(idx)
 		}
 		// Rows are ordered by SEQ_IN_INDEX that specifies the
 		// position of the column in the index definition.
@@ -418,11 +411,6 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			return fmt.Errorf("mysql: invalid part for index %q", idx.Name)
 		}
 		idx.Parts = append(idx.Parts, part)
-	}
-	for _, t := range s.Tables {
-		if !hasPK[t] && t.PrimaryKey != nil {
-			t.PrimaryKey = nil
-		}
 	}
 	return nil
 }

@@ -92,7 +92,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.Len(t.PrimaryKey.Parts, 1)
 				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
 				require.EqualValues([]*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{V: 55834574848}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{V: 55834574848}}, Indexes: []*schema.Index{t.PrimaryKey}},
 				}, t.Columns)
 			},
 		},
@@ -581,7 +581,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "unique_index", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "BTREE"}}},
 				}
 				columns := []*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Indexes: []*schema.Index{t.PrimaryKey}},
 					{Name: "nickname", Type: &schema.ColumnType{Raw: "varchar(255)", Type: &schema.StringType{T: "varchar", Size: 255}}, Indexes: indexes[0:1], Attrs: []schema.Attr{&schema.Charset{V: "utf8mb4"}, &schema.Collation{V: "utf8mb4_0900_ai_ci"}}},
 					{Name: "oid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Indexes: indexes[2:]},
 					{Name: "uid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Indexes: indexes[2:]},
