@@ -76,20 +76,20 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
-func (d *diff) ColumnChange(_ *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
+func (d *diff) ColumnChange(_ *schema.Table, from, to *schema.Column) (schema.Change, error) {
 	change := sqlx.CommentChange(from.Attrs, to.Attrs)
 	if from.Type.Null != to.Type.Null {
 		change |= schema.ChangeNull
 	}
 	changed, err := d.typeChanged(from, to)
 	if err != nil {
-		return schema.NoChange, err
+		return sqlx.NoChange, err
 	}
 	if changed {
 		change |= schema.ChangeType
 	}
 	if changed, err = d.defaultChanged(from, to); err != nil {
-		return schema.NoChange, err
+		return sqlx.NoChange, err
 	}
 	if changed {
 		change |= schema.ChangeDefault
@@ -98,12 +98,19 @@ func (d *diff) ColumnChange(_ *schema.Table, from, to *schema.Column) (schema.Ch
 		change |= schema.ChangeAttr
 	}
 	if changed, err = d.generatedChanged(from, to); err != nil {
-		return schema.NoChange, err
+		return sqlx.NoChange, err
 	}
 	if changed {
 		change |= schema.ChangeGenerated
 	}
-	return change, nil
+	if change.Is(schema.NoChange) {
+		return sqlx.NoChange, nil
+	}
+	return &schema.ModifyColumn{
+		Change: change,
+		From:   from,
+		To:     to,
+	}, nil
 }
 
 // defaultChanged reports if the default value of a column was changed.
