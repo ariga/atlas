@@ -64,14 +64,14 @@ func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
 // Note that column comments are ignored as SQLite does not support it.
-func (d *diff) ColumnChange(_ *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
+func (d *diff) ColumnChange(_ *schema.Table, from, to *schema.Column) (schema.Change, error) {
 	var change schema.ChangeKind
 	if from.Type.Null != to.Type.Null {
 		change |= schema.ChangeNull
 	}
 	changed, err := d.typeChanged(from, to)
 	if err != nil {
-		return schema.NoChange, err
+		return sqlx.NoChange, err
 	}
 	if changed {
 		change |= schema.ChangeType
@@ -82,7 +82,14 @@ func (d *diff) ColumnChange(_ *schema.Table, from, to *schema.Column) (schema.Ch
 	if d.generatedChanged(from, to) {
 		change |= schema.ChangeGenerated
 	}
-	return change, nil
+	if change.Is(schema.NoChange) {
+		return sqlx.NoChange, nil
+	}
+	return &schema.ModifyColumn{
+		Change: change,
+		From:   from,
+		To:     to,
+	}, nil
 }
 
 // typeChanged reports if the column type was changed.

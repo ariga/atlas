@@ -78,7 +78,7 @@ func (cd *crdbDiff) Normalize(from, to *schema.Table, _ *schema.DiffOptions) err
 	return nil
 }
 
-func (cd *crdbDiff) ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
+func (cd *crdbDiff) ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.Change, error) {
 	// All serial types in Cockroach are implemented as bigint.
 	// See: https://www.cockroachlabs.com/docs/stable/serial.html#generated-values-for-mode-sql_sequence-and-sql_sequence_cached.
 	for _, c := range []*schema.Column{from, to} {

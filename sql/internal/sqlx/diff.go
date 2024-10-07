@@ -14,6 +14,10 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
+// NoChange can be returned by DiffDriver methods
+// to indicate that no change is needed.
+var NoChange = schema.Change(nil)
+
 type (
 	// A Diff provides a generic schema.Differ for diffing schema elements.
 	//
@@ -48,7 +52,7 @@ type (
 		ViewAttrChanged(from, to *schema.View) bool
 
 		// ColumnChange returns the schema changes (if any) for migrating one column to the other.
-		ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.ChangeKind, error)
+		ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.Change, error)
 
 		// IndexAttrChanged reports if the index attributes were changed.
 		// For example, an index type or predicate (for partial indexes).
@@ -393,12 +397,8 @@ func (d *Diff) columnDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]s
 		if err != nil {
 			return nil, err
 		}
-		if change != schema.NoChange {
-			all = append(all, &schema.ModifyColumn{
-				From:   c1,
-				To:     c2,
-				Change: change,
-			})
+		if change != NoChange {
+			all = append(all, change)
 		}
 	}
 	// Add columns.
