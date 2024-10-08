@@ -85,8 +85,10 @@ type (
 
 	// Schema represents a schema in the registry.
 	Schema struct {
-		Src  string `spec:"src"` // Source of the schema. Typically, a URL to a computed one.
-		Repo *Repo  `spec:"repo"`
+		// The extension holds the "src" attribute.
+		// It can be a string, or a list of strings.
+		schemahcl.DefaultExtension
+		Repo *Repo `spec:"repo"`
 	}
 
 	// Repo represents a repository in the schema registry
@@ -249,20 +251,39 @@ func (e *Env) VarFromURL(s string) (string, error) {
 		sv = e.URL
 	case "dev":
 		sv = e.DevURL
-	case "src":
-		switch n := len(e.Schemas); {
-		case n == 0:
-			return "", fmt.Errorf("env://%s: no schema defined in env %q", u.Host, e.Name)
-		case n > 1:
-			return "", fmt.Errorf("env://%s: expect one schema in env %q, got %d", u.Host, e.Name, n)
-		case n == 1:
-			sv = e.Schemas[0]
+	case "src", "schema.src":
+		var (
+			ok   bool
+			attr *schemahcl.Attr
+		)
+		switch {
+		case u.Host == "src":
+			attr, ok = e.Attr("src")
+		case e.Schema != nil:
+			attr, ok = e.Schema.Attr("src")
 		}
-	case "schema.src":
-		if e.Schema == nil || e.Schema.Src == "" {
-			return "", fmt.Errorf("env://%s: no schema defined in env %q", u.Host, e.Name)
+		if !ok {
+			return "", fmt.Errorf("env://%s: no src attribute defined in env %q", u.Host, e.Name)
 		}
-		sv = e.Schema.Src
+		switch attr.V.Type() {
+		case cty.String:
+			s, err := attr.String()
+			if err != nil {
+				return "", fmt.Errorf("env://%s: %w", u.Host, err)
+			}
+			return s, nil
+		case cty.List(cty.String):
+			vs, err := attr.Strings()
+			if err != nil {
+				return "", fmt.Errorf("env://%s: %w", u.Host, err)
+			}
+			if len(vs) != 0 {
+				return "", fmt.Errorf("env://%s: expect no schema in env %q, got %d", u.Host, e.Name, len(vs))
+			}
+			return vs[0], nil
+		default:
+			return "", fmt.Errorf("env://%s: src attribute must be a string or list of strings, got %s", u.Host, attr.V.Type().FriendlyName())
+		}
 	case "migration.dir":
 		if e.Migration == nil || e.Migration.Dir == "" {
 			return "", fmt.Errorf("env://%s: no migration dir defined in env %q", u.Host, e.Name)
@@ -440,11 +461,14 @@ func (e *Env) DiffOptions() []schema.DiffOption {
 // The "src" attribute predates the "schema" block. If the "schema"
 // is defined, it takes precedence over the "src" attribute.
 func (e *Env) Sources() ([]string, error) {
-	if e.Schema != nil && e.Schema.Src != "" {
-		return []string{e.Schema.Src}, nil
+	var (
+		ok   bool
+		attr *schemahcl.Attr
+	)
+	if attr, ok = e.Attr("src"); !ok && e.Schema != nil {
+		attr, ok = e.Schema.Attr("src")
 	}
-	attr, exists := e.Attr("src")
-	if !exists {
+	if !ok {
 		return nil, nil
 	}
 	switch attr.V.Type() {
