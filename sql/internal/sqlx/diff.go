@@ -52,7 +52,7 @@ type (
 		ViewAttrChanged(from, to *schema.View) bool
 
 		// ColumnChange returns the schema changes (if any) for migrating one column to the other.
-		ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.Change, error)
+		ColumnChange(fromT *schema.Table, from, to *schema.Column, _ *schema.DiffOptions) (schema.Change, error)
 
 		// IndexAttrChanged reports if the index attributes were changed.
 		// For example, an index type or predicate (for partial indexes).
@@ -393,7 +393,7 @@ func (d *Diff) columnDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]s
 			all = append(all, &schema.DropColumn{C: c1})
 			continue
 		}
-		change, err := d.ColumnChange(from, c1, c2)
+		change, err := d.ColumnChange(from, c1, c2, opts)
 		if err != nil {
 			return nil, err
 		}
