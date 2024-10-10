@@ -753,9 +753,10 @@ type SchemaInspect struct {
 var (
 	// InspectTemplateFuncs are global functions available in inspect report templates.
 	InspectTemplateFuncs = template.FuncMap{
-		"sql":     sqlInspect,
-		"json":    jsonEncode,
-		"mermaid": mermaid,
+		"base64url": base64url,
+		"sql":       sqlInspect,
+		"json":      jsonEncode,
+		"mermaid":   mermaid,
 	}
 
 	// SchemaInspectTemplate holds the default template of the 'schema inspect' command.
@@ -915,6 +916,12 @@ func (s *SchemaInspect) MarshalSQL(indent ...string) (string, error) {
 
 func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
 	return fmtPlan(report.ctx, report.client, cmdmigrate.ChangesToRealm(report.client, report.Realm), indent)
+}
+
+// base64url assumes the input is a base64 encoded string and
+// replaces characters to make it URL safe.
+func base64url(s string) string {
+	return strings.NewReplacer("+", "-", "/", "_", "=", "").Replace(s)
 }
 
 // SchemaDiff contains a summary of the 'schema diff' command.
