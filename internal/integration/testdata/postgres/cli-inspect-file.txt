@@ -1,4 +1,4 @@
-# inspect without dev-db will failed
+# inspect without dev-db will fail
 ! atlas schema inspect -u file://a.sql
 stderr 'Error: --dev-url cannot be empty'
 

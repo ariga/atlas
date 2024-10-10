@@ -181,7 +181,7 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 
 func expectModify(changes schema.Changes) (*schema.ModifyTable, error) {
 	if len(changes) != 1 {
-		return nil, fmt.Errorf("unexpected number fo changes: %d", len(changes))
+		return nil, fmt.Errorf("unexpected number of changes: %d", len(changes))
 	}
 	modify, ok := changes[0].(*schema.ModifyTable)
 	if !ok {
