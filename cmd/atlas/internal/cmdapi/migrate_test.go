@@ -1665,7 +1665,7 @@ lint {
 	require.Error(t, err)
 	require.Regexp(t, `Analyzing changes from version 1.up to 2.up \(1 migration in total\):
 
-  Error: executing statement: near "BORING": syntax error
+  Error: executing statement: BORING: near "BORING": syntax error
 
   -------------------------
   -- .+

@@ -16,6 +16,7 @@ import (
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 
+	"github.com/fatih/color"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +25,7 @@ func TestRunner_Run(t *testing.T) {
 	b := &bytes.Buffer{}
 	c, err := sqlclient.Open(ctx, "sqlite://run?mode=memory&cache=shared&_fk=1")
 	require.NoError(t, err)
-	t.Setenv("NO_COLOR", "1")
+	color.NoColor = true
 
 	t.Run("checksum mismatch", func(t *testing.T) {
 		var (

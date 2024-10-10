@@ -162,11 +162,22 @@ func (r *Runner) analyze(ctx context.Context, files []*sqlcheck.File) error {
 			continue
 		}
 		for _, az := range r.Analyzers {
-			err := az.Analyze(ctx, &sqlcheck.Pass{
-				File:     f,
-				Dev:      r.Dev,
-				Reporter: nl.reporterFor(fr, az),
-			})
+			err := func(az sqlcheck.Analyzer) (rerr error) {
+				defer func() {
+					if rc := recover(); rc != nil {
+						var name string
+						if n, ok := az.(sqlcheck.NamedAnalyzer); ok {
+							name = fmt.Sprintf(" (%s)", n.Name())
+						}
+						rerr = fmt.Errorf("skip crashed analyzer %s: %v", name, rc)
+					}
+				}()
+				return az.Analyze(ctx, &sqlcheck.Pass{
+					File:     f,
+					Dev:      r.Dev,
+					Reporter: nl.reporterFor(fr, az),
+				})
+			}(az)
 			// If the last report was skipped,
 			// skip emitting its error.
 			if err != nil && !nl.skipped {
@@ -606,8 +617,11 @@ func nolintRules(f *sqlcheck.File) *skipRules {
 		}
 	}
 	for _, c := range f.Changes {
-		for _, d := range c.Stmt.Directive("nolint") {
-			s.pos2rules[c.Stmt.Pos] = append(s.pos2rules[c.Stmt.Pos], strings.Split(d, " ")...)
+		// A list of changes that were loaded in a batch (no statements per change).
+		if c.Stmt != nil {
+			for _, d := range c.Stmt.Directive("nolint") {
+				s.pos2rules[c.Stmt.Pos] = append(s.pos2rules[c.Stmt.Pos], strings.Split(d, " ")...)
+			}
 		}
 	}
 	return s
