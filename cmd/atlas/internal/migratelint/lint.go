@@ -238,7 +238,15 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 			cks = append(cks, i)
 			continue
 		}
-		if current, err = d.next(ctx, diff.Files[i], current); err != nil {
+		// A common case is when importing a project to Atlas the baseline
+		// migration file might be very long. However, since we execute on
+		// a clean database, the per-statement analysis is not needed.
+		if len(base) == 0 && i == 0 {
+			current, err = d.first(ctx, diff.Files[i], current)
+		} else {
+			current, err = d.next(ctx, diff.Files[i], current)
+		}
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -283,17 +291,58 @@ func (d *DevLoader) base(ctx context.Context, base []migrate.File) (*schema.Real
 	return d.inspect(ctx)
 }
 
-// next returns the next state of the database after executing the statements in
-// the file. The changes detected by the statements are attached to the file.
-func (d *DevLoader) next(ctx context.Context, f *sqlcheck.File, start *schema.Realm) (current *schema.Realm, err error) {
+// first is a version of "next" but is used when linting the first migration file. In this case we do not
+// need to analyze each statement, but the entire result of the file (much faster). For example, a baseline
+// file or the first migration when running 'schema apply' might contain thousands of lines.
+func (d *DevLoader) first(ctx context.Context, f *sqlcheck.File, start *schema.Realm) (current *schema.Realm, err error) {
 	stmts, err := d.stmts(ctx, f.File, true)
 	if err != nil {
 		return nil, err
 	}
+	// We define the max number of apply-inspect-diff cycles to 10,
+	// to limit our linting time for baseline/first migration files.
+	const maxStmtLoop = 10
+	if len(stmts) <= maxStmtLoop {
+		return d.nextStmts(ctx, f, stmts, start)
+	}
+	for _, s := range stmts {
+		if _, err := d.Dev.ExecContext(ctx, s.Text); err != nil {
+			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %s: %w", s.Text, err), Pos: s.Pos}
+		}
+	}
+	if current, err = d.inspect(ctx); err != nil {
+		return nil, err
+	}
+	changes, err := d.Dev.RealmDiff(start, current)
+	if err != nil {
+		return nil, err
+	}
+	f.Changes = append(f.Changes, &sqlcheck.Change{
+		Changes: changes,
+		Stmt: &migrate.Stmt{
+			Pos: 0, // Beginning of the file.
+		},
+	})
+	f.Sum = changes
+	return current, nil
+}
+
+// next returns the next state of the database after executing the statements in
+// the file. The changes detected by the statements are attached to the file.
+func (d *DevLoader) next(ctx context.Context, f *sqlcheck.File, start *schema.Realm) (*schema.Realm, error) {
+	stmts, err := d.stmts(ctx, f.File, true)
+	if err != nil {
+		return nil, err
+	}
+	return d.nextStmts(ctx, f, stmts, start)
+}
+
+// nextStmts is a version of "next" but accepts the statements to execute.
+func (d *DevLoader) nextStmts(ctx context.Context, f *sqlcheck.File, stmts []*migrate.Stmt, start *schema.Realm) (current *schema.Realm, err error) {
 	current = start
 	for _, s := range stmts {
 		if _, err := d.Dev.ExecContext(ctx, s.Text); err != nil {
-			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err), Pos: s.Pos}
+			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %s: %w", s.Text, err), Pos: s.Pos}
 		}
 		next, err := d.inspect(ctx)
 		if err != nil {

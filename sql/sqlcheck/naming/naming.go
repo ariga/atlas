@@ -100,6 +100,20 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 				diags = append(diags, a.match(sc, codeNameS, c.S.Name, "Schema", a.Schema)...)
 			case *schema.AddTable:
 				diags = append(diags, a.match(sc, codeNameT, c.T.Name, "Table", a.Table)...)
+				for _, c := range c.T.Columns {
+					diags = append(diags, a.match(sc, codeNameC, c.Name, "Column", a.Column)...)
+				}
+				for _, i := range c.T.Indexes {
+					diags = append(diags, a.match(sc, codeNameI, i.Name, "Index", a.Index)...)
+				}
+				for _, f := range c.T.ForeignKeys {
+					diags = append(diags, a.match(sc, codeNameF, f.Symbol, "Foreign-key constraint", a.ForeignKey)...)
+				}
+				for _, at := range c.T.Attrs {
+					if k, ok := at.(*schema.Check); ok {
+						diags = append(diags, a.match(sc, codeNameK, k.Name, "Check constraint", a.Check)...)
+					}
+				}
 			case *schema.RenameTable:
 				diags = append(diags, a.match(sc, codeNameT, c.To.Name, "Table", a.Table)...)
 			case *schema.ModifyTable:
