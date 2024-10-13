@@ -47,9 +47,8 @@ type (
 		// one state to the other. For example, dropping or adding a `CHECK` constraint.
 		TableAttrDiff(from, to *schema.Table) ([]schema.Change, error)
 
-		// ViewAttrChanged reports if the view attributes were changed.
-		// For example, a view was changed to a materialized view.
-		ViewAttrChanged(from, to *schema.View) bool
+		// ViewAttrChanges returns the changes between the two view attributes.
+		ViewAttrChanges(from, to *schema.View) []schema.Change
 
 		// ColumnChange returns the schema changes (if any) for migrating one column to the other.
 		ColumnChange(fromT *schema.Table, from, to *schema.Column, _ *schema.DiffOptions) (schema.Change, error)
@@ -509,9 +508,9 @@ func (d *Diff) viewDiff(from, to *schema.View, opts *schema.DiffOptions) ([]sche
 	if err != nil {
 		return nil, err
 	}
-	var changes schema.Changes
-	if len(c1) > 0 || len(c2) > 0 || d.viewDefChanged(from, to) || d.ViewAttrChanged(from, to) {
-		changes = opts.AddOrSkip(changes, &schema.ModifyView{From: from, To: to, Changes: append(c1, c2...)})
+	var changes []schema.Change
+	if vs := append(d.ViewAttrChanges(from, to), append(c1, c2...)...); len(vs) > 0 || d.viewDefChanged(from, to) {
+		changes = opts.AddOrSkip(changes, &schema.ModifyView{From: from, To: to, Changes: vs})
 	}
 	return changes, nil
 }
