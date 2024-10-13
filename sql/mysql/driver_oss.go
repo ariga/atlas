@@ -93,8 +93,8 @@ func (*state) renameView(*schema.RenameView) {
 	// unimplemented.
 }
 
-func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
-	return false // Not implemented.
+func (*diff) ViewAttrChanges(_, _ *schema.View) []schema.Change {
+	return nil // Not implemented.
 }
 
 func (s *state) addFunc(*schema.AddFunc) error {

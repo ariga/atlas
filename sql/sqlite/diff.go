@@ -58,8 +58,8 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	return append(changes, sqlx.CheckDiff(from, to)...), nil
 }
 
-func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
-	return false // Not implemented.
+func (*diff) ViewAttrChanges(_, _ *schema.View) []schema.Change {
+	return nil // Not implemented.
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.

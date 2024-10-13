@@ -192,8 +192,8 @@ func (*state) modifyTrigger(*schema.ModifyTrigger) error {
 	return nil // unimplemented.
 }
 
-func (d *diff) ViewAttrChanged(_, _ *schema.View) bool {
-	return false // unimplemented.
+func (*diff) ViewAttrChanges(_, _ *schema.View) []schema.Change {
+	return nil // unimplemented.
 }
 
 // RealmObjectDiff returns a changeset for migrating realm (database) objects
