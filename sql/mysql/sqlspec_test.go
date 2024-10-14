@@ -30,16 +30,25 @@ func TestSQLSpec(t *testing.T) {
   column "price1" {
     null = false
     type = int
+	
+
   }
   column "price2" {
     null           = false
     type           = int
     auto_increment = true
   }
+   column "price_deprecated" {
+    null           = false
+    type           = int
+    invisible = true
+	
+  }
   column "account_name" {
     null    = false
     type    = varchar(32)
     default = "unknown"
+
   }
   column "account_type" {
     null    = false
@@ -150,6 +159,15 @@ schema "schema" {
 						},
 					},
 					Attrs: []schema.Attr{&AutoIncrement{}},
+				},
+				{
+					Name: "price_deprecated",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: TypeInt,
+						},
+					},
+					Attrs: []schema.Attr{&Invisible{}},
 				},
 				{
 					Name: "account_name",
@@ -269,7 +287,7 @@ schema "schema" {
 		{
 			Symbol:     "accounts",
 			Table:      exp.Tables[0],
-			Columns:    []*schema.Column{exp.Tables[0].Columns[4]},
+			Columns:    []*schema.Column{exp.Tables[0].Columns[5]},
 			RefTable:   exp.Tables[1],
 			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
 			OnDelete:   schema.SetNull,
@@ -522,6 +540,41 @@ schema "test" {
 `
 	require.EqualValues(t, expected, string(buf))
 }
+func TestMarshalSpec_Invisible(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+						Attrs: []schema.Attr{
+							&Invisible{},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null      = false
+    type      = bigint
+    invisible = true
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
 
 func TestMarshalSpec_Check(t *testing.T) {
 	s := schema.New("test").
