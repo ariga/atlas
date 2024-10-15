@@ -39,7 +39,7 @@ type (
 		Image string
 		// Env vars to pass to the docker container.
 		Env []string
-		// Internal Port to expose anc connect to.
+		// Internal Port to expose and connect to.
 		Port string
 		// Database name to create and connect on init.
 		Database string
