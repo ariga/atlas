@@ -12,9 +12,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"runtime"
 	"slices"
 	"strings"
+	"testing"
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
@@ -57,6 +59,10 @@ func New(endpoint, token string) *Client {
 	}
 	// Disable logging until "ATLAS_DEBUG" option will be added.
 	client.Logger = nil
+	// Keep retry short for unit/integration tests.
+	if u, err := url.Parse(endpoint); err == nil && slices.Contains([]string{"localhost", "127.0.0.1"}, u.Hostname()) || testing.Testing() {
+		client.RetryWaitMin, client.RetryWaitMax = 0, time.Microsecond
+	}
 	return &Client{
 		endpoint: endpoint,
 		client:   client,
