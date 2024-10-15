@@ -20,6 +20,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlclient"
 
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
@@ -35,7 +36,7 @@ const (
 
 // Client is a client for the Atlas Cloud API.
 type Client struct {
-	client   *http.Client
+	client   *retryablehttp.Client
 	endpoint string
 }
 
@@ -44,15 +45,21 @@ func New(endpoint, token string) *Client {
 	if endpoint == "" {
 		endpoint = defaultURL
 	}
+	var (
+		client    = retryablehttp.NewClient()
+		transport = client.HTTPClient.Transport
+	)
+	client.HTTPClient.Timeout = time.Second * 30
+	client.HTTPClient.Transport = &roundTripper{
+		token:        token,
+		base:         transport,
+		extraHeaders: make(map[string]string),
+	}
+	// Disable logging until "ATLAS_DEBUG" option will be added.
+	client.Logger = nil
 	return &Client{
 		endpoint: endpoint,
-		client: &http.Client{
-			Transport: &roundTripper{
-				token:        token,
-				extraHeaders: make(map[string]string),
-			},
-			Timeout: time.Second * 30,
-		},
+		client:   client,
 	}
 }
 
@@ -262,7 +269,7 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
+	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -301,7 +308,7 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 
 // AddHeader adds a header to the client requests.
 func (c *Client) AddHeader(key, value string) {
-	rt, ok := c.client.Transport.(*roundTripper)
+	rt, ok := c.client.HTTPClient.Transport.(*roundTripper)
 	if !ok {
 		return
 	}
@@ -316,6 +323,7 @@ type (
 	roundTripper struct {
 		token        string
 		extraHeaders map[string]string
+		base         http.RoundTripper
 	}
 )
 
@@ -330,7 +338,7 @@ func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	for k, v := range r.extraHeaders {
 		req.Header.Set(k, v)
 	}
-	return http.DefaultTransport.RoundTrip(req)
+	return r.base.RoundTrip(req)
 }
 
 // RedactedURL returns a URL string with the userinfo redacted.
