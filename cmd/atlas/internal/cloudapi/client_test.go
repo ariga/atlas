@@ -169,3 +169,23 @@ func TestClient_AddHeader(t *testing.T) {
 	})
 	require.NoError(t, err)
 }
+
+func TestClient_Retry(t *testing.T) {
+	var (
+		calls = []int{http.StatusInternalServerError, http.StatusInternalServerError, http.StatusOK}
+		srv   = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "val", r.Header.Get("key"))
+			require.Equal(t, "Bearer atlas", r.Header.Get("Authorization"))
+			w.WriteHeader(calls[0])
+			calls = calls[1:]
+		}))
+		client = New(srv.URL, "atlas")
+	)
+	defer srv.Close()
+	client.AddHeader("key", "val")
+	_, err := client.ReportMigration(context.Background(), ReportMigrationInput{
+		EnvName: "foo",
+	})
+	require.NoError(t, err)
+	require.Empty(t, calls)
+}
