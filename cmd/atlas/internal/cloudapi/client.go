@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"runtime"
 	"slices"
 	"strings"
@@ -60,7 +59,9 @@ func New(endpoint, token string) *Client {
 	// Disable logging until "ATLAS_DEBUG" option will be added.
 	client.Logger = nil
 	// Keep retry short for unit/integration tests.
-	if u, err := url.Parse(endpoint); err == nil && slices.Contains([]string{"localhost", "127.0.0.1"}, u.Hostname()) || testing.Testing() {
+	// Keep retry short for unit/integration tests.
+	if testing.Testing() || testingURL(endpoint) {
+		client.HTTPClient.Timeout = 0
 		client.RetryWaitMin, client.RetryWaitMax = 0, time.Microsecond
 	}
 	return &Client{
