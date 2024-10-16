@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-
 	"os"
 	"os/signal"
 	"syscall"
@@ -27,9 +26,9 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
-	_ "github.com/libsql/libsql-client-go/libsql"
 	"github.com/mattn/go-isatty"
 	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	"golang.org/x/mod/semver"
 )
 
