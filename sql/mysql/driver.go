@@ -326,7 +326,11 @@ func (parser) ParseURL(u *url.URL) *sqlclient.URL {
 	v := u.Query()
 	v.Set("parseTime", "true")
 	u.RawQuery = v.Encode()
-	return &sqlclient.URL{URL: u, DSN: dsn(u), Schema: strings.TrimPrefix(u.Path, "/")}
+	cu := &sqlclient.URL{URL: u, DSN: dsn(u), Schema: strings.TrimPrefix(u.Path, "/")}
+	if strings.HasSuffix(u.Scheme, "+unix") {
+		cu.Schema = v.Get("database")
+	}
+	return cu
 }
 
 // ChangeSchema implements the sqlclient.SchemaChanger interface.
