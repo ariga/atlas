@@ -326,7 +326,11 @@ func (parser) ParseURL(u *url.URL) *sqlclient.URL {
 	v := u.Query()
 	v.Set("parseTime", "true")
 	u.RawQuery = v.Encode()
-	return &sqlclient.URL{URL: u, DSN: dsn(u), Schema: parseSchema(u)}
+	cu := &sqlclient.URL{URL: u, DSN: dsn(u), Schema: strings.TrimPrefix(u.Path, "/")}
+	if strings.HasSuffix(u.Scheme, "+unix") {
+		cu.Schema = v.Get("database")
+	}
+	return cu
 }
 
 // ChangeSchema implements the sqlclient.SchemaChanger interface.
@@ -379,17 +383,6 @@ func dsn(u *url.URL) string {
 		b.WriteString(p)
 	}
 	return b.String()
-}
-
-// parseSchema returns the schema of the url
-// if it exists empty string otherwise.
-func parseSchema(u *url.URL) string {
-	if strings.HasSuffix(u.Scheme, "+unix") {
-		v := u.Query()
-		return v.Get("database")
-	} else {
-		return strings.TrimPrefix(u.Path, "/")
-	}
 }
 
 // MySQL standard column types as defined in its codebase. Name and order
