@@ -145,6 +145,7 @@ func stdFuncs() map[string]function.Function {
 		"regexall":        stdlib.RegexAllFunc,
 		"regexpescape":    regexpEscape,
 		"regexreplace":    stdlib.RegexReplaceFunc,
+		"replace":         stdlib.ReplaceFunc,
 		"reverse":         stdlib.ReverseListFunc,
 		"setintersection": stdlib.SetIntersectionFunc,
 		"setproduct":      stdlib.SetProductFunc,
