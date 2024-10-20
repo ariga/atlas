@@ -614,6 +614,17 @@ type (
 	Materialized struct {
 		Attr
 	}
+
+	// Pos is an attribute that holds the position of a schema element.
+	Pos struct {
+		// Filename is the name (or full path) of the file which loaded the schema element.
+		Filename string
+
+		// Start and End represent the bounds of this range.
+		Start, End struct {
+			Line, Column, Byte int // hcl.Pos fields.
+		}
+	}
 )
 
 // A list of known view check options.
@@ -650,6 +661,7 @@ func (*DecimalType) typ()     {}
 func (*UnsupportedType) typ() {}
 
 // attributes.
+func (*Pos) attr()             {}
 func (*Check) attr()           {}
 func (*Comment) attr()         {}
 func (*Charset) attr()         {}

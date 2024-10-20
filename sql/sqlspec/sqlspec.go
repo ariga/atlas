@@ -10,6 +10,7 @@ import (
 
 	"ariga.io/atlas/schemahcl"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -31,6 +32,7 @@ type (
 		Indexes     []*Index       `spec:"index"`
 		Checks      []*Check       `spec:"check"`
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// View holds a specification for an SQL view.
@@ -45,6 +47,7 @@ type (
 		// The definition is appended as additional attribute
 		// by the spec creator to marshal it after the columns.
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// Column holds a specification for a column in an SQL table.
@@ -54,6 +57,7 @@ type (
 		Type    *schemahcl.Type `spec:"type"`
 		Default cty.Value       `spec:"default"`
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// PrimaryKey holds a specification for the primary key of a table.
@@ -61,6 +65,7 @@ type (
 		Parts   []*IndexPart     `spec:"on"`
 		Columns []*schemahcl.Ref `spec:"columns"`
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// Index holds a specification for the index key of a table.
@@ -70,6 +75,7 @@ type (
 		Parts   []*IndexPart     `spec:"on"`
 		Columns []*schemahcl.Ref `spec:"columns"`
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// IndexPart holds a specification for the index key part.
@@ -78,6 +84,7 @@ type (
 		Column *schemahcl.Ref `spec:"column"`
 		Expr   string         `spec:"expr,omitempty"`
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// Check holds a specification for a check constraint on a table.
@@ -85,6 +92,7 @@ type (
 		Name string `spec:",name"`
 		Expr string `spec:"expr"`
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// ForeignKey holds a specification for the Foreign key of a table.
@@ -95,6 +103,7 @@ type (
 		OnUpdate   *schemahcl.Ref   `spec:"on_update"`
 		OnDelete   *schemahcl.Ref   `spec:"on_delete"`
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// Func holds the specification for a function.
@@ -107,6 +116,7 @@ type (
 		// The definition and the return type are appended as additional
 		// attribute by the spec creator to marshal it after the arguments.
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// FuncArg holds the specification for a function argument.
@@ -117,6 +127,7 @@ type (
 		// Optional attributes such as mode are added by the driver,
 		// as their definition can be either a string or an enum (ref).
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// Trigger holds the specification for a trigger.
@@ -125,6 +136,7 @@ type (
 		On   *schemahcl.Ref `spec:"on"` // A table or a view.
 		// Attributes and blocks are different for each driver.
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// Sequence holds a specification for a Sequence.
@@ -135,6 +147,7 @@ type (
 		// Type, Start, Increment, Min, Max, Cache, Cycle
 		// are optionally added to the sequence definition.
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 )
 

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
 )
@@ -96,10 +97,12 @@ func (r *Resource) As(target any) error {
 	return r.as(target)
 }
 
+var typeRange = reflect.TypeOf(&hcl.Range{})
+
 // As reads the attributes and children resources of the resource into the target struct.
 func (r *Resource) as(target any) error {
 	existingAttrs, existingChildren := existingElements(r)
-	var seenName, seenQualifier bool
+	var seenName, seenQualifier, setRange bool
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
 		field := v.FieldByName(ft.Name)
@@ -119,6 +122,14 @@ func (r *Resource) as(target any) error {
 			}
 			seenQualifier = true
 			field.SetString(r.Qualifier)
+		case ft.isRange() && !hasAttr(r, ft.tag):
+			if field.Type() != typeRange {
+				return fmt.Errorf("schemahcl: expected field %q to be of type *hcl.Range: %v", ft.Name, field.Type())
+			}
+			if r.rang != nil {
+				setRange = true
+				field.Set(reflect.ValueOf(r.rang))
+			}
 		case hasAttr(r, ft.tag):
 			attr, _ := r.Attr(ft.tag)
 			if err := setField(field, attr); err != nil {
@@ -221,9 +232,9 @@ func (r *Resource) as(target any) error {
 		children := childrenOfType(r, childType)
 		extras.Children = append(extras.Children, children...)
 	}
-	// In case the resource contains a remain (DefaultExtension)
-	// field, attach to it the position.
-	if r.rang != nil && rem.Remain() != nil {
+	// In case the resource contains a remain (DefaultExtension) and
+	// the range was not explicitly set, attach to it the position.
+	if r.rang != nil && rem.Remain() != nil && !setRange {
 		rem.Remain().SetRange(r.rang)
 	}
 	return nil
@@ -612,6 +623,8 @@ type fieldDesc struct {
 func (f fieldDesc) isName() bool { return f.is("name") }
 
 func (f fieldDesc) isQualifier() bool { return f.is("qualifier") }
+
+func (f fieldDesc) isRange() bool { return f.is("range") }
 
 func (f fieldDesc) omitempty() bool { return f.is("omitempty") }
 

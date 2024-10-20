@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"testing"
 
+	"ariga.io/atlas/sql/schema"
+
+	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -147,4 +150,18 @@ func TestBuildRef(t *testing.T) {
 			require.Equal(t, tt.wantRef, ref.V)
 		})
 	}
+}
+
+func TestRangeAsPos(t *testing.T) {
+	p := RangeAsPos(hcl.Range{
+		Filename: "schema.pg.hcl",
+	})
+	require.Equal(t, &schema.Pos{Filename: "schema.pg.hcl"}, p)
+
+	p = RangeAsPos(hcl.Range{
+		Filename: "schema.pg.hcl",
+		Start:    hcl.Pos{Byte: 10},
+		End:      hcl.Pos{Byte: 20},
+	})
+	require.Equal(t, &schema.Pos{Filename: "schema.pg.hcl", Start: hcl.Pos{Byte: 10}, End: hcl.Pos{Byte: 20}}, p)
 }

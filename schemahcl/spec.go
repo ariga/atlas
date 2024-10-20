@@ -609,3 +609,12 @@ func StringEnumsAttr(k string, elems ...*EnumString) *Attr {
 		V: cty.ListVal(vv),
 	}
 }
+
+// RangeAsPos builds a schema position from the give HCL range.
+func RangeAsPos(r hcl.Range) *schema.Pos {
+	return &schema.Pos{
+		Filename: r.Filename,
+		Start:    r.Start,
+		End:      r.End,
+	}
+}
