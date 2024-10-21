@@ -153,12 +153,12 @@ func TestBuildRef(t *testing.T) {
 }
 
 func TestRangeAsPos(t *testing.T) {
-	p := RangeAsPos(hcl.Range{
+	p := RangeAsPos(&hcl.Range{
 		Filename: "schema.pg.hcl",
 	})
 	require.Equal(t, &schema.Pos{Filename: "schema.pg.hcl"}, p)
 
-	p = RangeAsPos(hcl.Range{
+	p = RangeAsPos(&hcl.Range{
 		Filename: "schema.pg.hcl",
 		Start:    hcl.Pos{Byte: 10},
 		End:      hcl.Pos{Byte: 20},

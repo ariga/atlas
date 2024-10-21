@@ -230,7 +230,7 @@ func excludeT(t *Table, pattern string) (err error) {
 			return filepath.Match(p, fk.Symbol)
 		})
 	}
-	if p, exclude := excludeType(typeG, pattern); exclude {
+	if p, exclude := excludeType(typeTg, pattern); exclude {
 		t.Triggers, err = filter(t.Triggers, func(t *Trigger) (bool, error) {
 			return filepath.Match(p, t.Name)
 		})
@@ -261,7 +261,7 @@ func excludeV(v *View, pattern string) (err error) {
 			return true, nil
 		})
 	}
-	if p, exclude := excludeType(typeG, pattern); exclude {
+	if p, exclude := excludeType(typeTg, pattern); exclude {
 		v.Triggers, err = filter(v.Triggers, func(t *Trigger) (bool, error) {
 			return filepath.Match(p, t.Name)
 		})
@@ -275,8 +275,8 @@ const (
 	typeC  = "column"
 	typeI  = "index"
 	typeF  = "fk"
-	typeG  = "trigger"
 	typeK  = "check"
+	typeTg = "trigger"
 	typeFn = "function"
 	typePr = "procedure"
 )

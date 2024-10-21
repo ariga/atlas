@@ -7,6 +7,7 @@ package sqlx
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -58,7 +59,9 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 			},
 		})
 	}
+	name2pos := make(key2pos)
 	for _, s := range r.Schemas {
+		k, _ := name2pos.put(s.Attrs, keyS, s.Name)
 		opts.Schemas = append(opts.Schemas, s.Name)
 		changes = append(changes, &schema.AddSchema{
 			S: s,
@@ -67,32 +70,43 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 			},
 		})
 		for _, t := range s.Tables {
-			changes = append(changes, &schema.AddTable{T: t})
-			for _, r := range t.Triggers {
-				changes = append(changes, &schema.AddTrigger{T: r})
+			changes = append(changes, addTableChange(t)...)
+			// If the table was loaded with its position,
+			// record the position of its children.
+			if tk, ok := name2pos.put(t.Attrs, k, keyT, t.Name); ok {
+				name2pos.putTable(t, tk)
 			}
 		}
 		for _, v := range s.Views {
-			changes = append(changes, &schema.AddView{V: v})
-			for _, r := range v.Triggers {
-				changes = append(changes, &schema.AddTrigger{T: r})
+			changes = append(changes, addViewChange(v)...)
+			// If the view was loaded with its position,
+			// record the position of its children.
+			if vk, ok := name2pos.put(v.Attrs, k, keyV, v.Name); ok {
+				name2pos.putView(v, vk)
 			}
 		}
 		for _, o := range s.Objects {
 			changes = append(changes, &schema.AddObject{O: o})
 		}
 		for _, f := range s.Funcs {
+			name2pos.put(f.Attrs, k, keyFn, f.Name)
 			changes = append(changes, &schema.AddFunc{F: f})
 		}
 		for _, p := range s.Procs {
+			name2pos.put(p.Attrs, k, keyPr, p.Name)
 			changes = append(changes, &schema.AddProc{P: p})
 		}
 	}
 	if err := d.Driver.ApplyChanges(ctx, changes); err != nil {
 		return nil, err
 	}
-	nr, err = d.Driver.InspectRealm(ctx, opts)
-	return
+	if nr, err = d.Driver.InspectRealm(ctx, opts); err != nil {
+		return nil, err
+	}
+	if len(name2pos) > 0 {
+		name2pos.patchRealm(nr)
+	}
+	return nr, nil
 }
 
 // NormalizeSchema returns the normal representation of the given database. See NormalizeRealm for more info.
@@ -125,6 +139,8 @@ func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sch
 	}
 	prevName := s.Name
 	s.Name = dev.Name
+	name2pos := make(key2pos)
+	k, _ := name2pos.put(s.Attrs, keyS, s.Name)
 	for _, t := range s.Tables {
 		// If objects are not strongly connected.
 		if t.Schema != s {
@@ -136,6 +152,9 @@ func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sch
 			}
 		}
 		changes = append(changes, addTableChange(t)...)
+		if tk, ok := name2pos.put(t.Attrs, k, keyT, t.Name); ok {
+			name2pos.putTable(t, tk)
+		}
 	}
 	for _, v := range s.Views {
 		// If objects are not strongly connected.
@@ -143,6 +162,9 @@ func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sch
 			v.Schema = s
 		}
 		changes = append(changes, addViewChange(v)...)
+		if vk, ok := name2pos.put(v.Attrs, k, keyV, v.Name); ok {
+			name2pos.putView(v, vk)
+		}
 	}
 	for _, o := range s.Objects {
 		if d.PatchObject != nil {
@@ -172,5 +194,131 @@ func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sch
 	for _, a := range s.Attrs {
 		schema.ReplaceOrAppend(&ns.Attrs, a)
 	}
+	if len(name2pos) > 0 {
+		name2pos.patchSchema(ns)
+	}
 	return ns, err
+}
+
+const (
+	keyS  = "schema"
+	keyV  = "view"
+	keyT  = "table"
+	keyC  = "column"
+	keyI  = "index"
+	keyP  = "pk"
+	keyF  = "fk"
+	keyK  = "check"
+	keyTg = "trigger"
+	keyFn = "function"
+	keyPr = "procedure"
+)
+
+type key2pos map[string]*schema.Pos
+
+func (k key2pos) putTable(t *schema.Table, tk string) {
+	for _, c := range t.Columns {
+		k.put(c.Attrs, tk, keyC, c.Name)
+	}
+	for _, i := range t.Indexes {
+		k.put(i.Attrs, tk, keyI, i.Name)
+	}
+	for _, f := range t.ForeignKeys {
+		k.put(f.Attrs, tk, keyF, f.Symbol)
+	}
+	for _, ck := range t.Checks() {
+		k.put(ck.Attrs, tk, keyK, ck.Name)
+	}
+	if t.PrimaryKey != nil {
+		k.put(t.PrimaryKey.Attrs, tk, keyP, t.PrimaryKey.Name)
+	}
+	for _, r := range t.Triggers {
+		k.put(r.Attrs, tk, keyTg, r.Name)
+	}
+}
+
+func (k key2pos) putView(v *schema.View, vk string) {
+	for _, c := range v.Columns {
+		k.put(c.Attrs, vk, keyC, c.Name)
+	}
+	for _, i := range v.Indexes {
+		k.put(i.Attrs, vk, keyI, i.Name)
+	}
+	for _, r := range v.Triggers {
+		k.put(r.Attrs, vk, keyTg, r.Name)
+	}
+}
+
+func (k key2pos) put(attrs []schema.Attr, typename ...string) (string, bool) {
+	n := poskey(typename...)
+	if p := (schema.Pos{}); Has(attrs, &p) {
+		k[n] = &p
+		return n, true
+	}
+	return n, false
+}
+
+func (k key2pos) patchRealm(r *schema.Realm) {
+	for _, s := range r.Schemas {
+		k.patchSchema(s)
+	}
+}
+
+func (k key2pos) patchSchema(s *schema.Schema) {
+	ks, _ := k.patch(&s.Attrs, keyS, s.Name)
+	for _, t := range s.Tables {
+		tk, ok := k.patch(&t.Attrs, ks, keyT, t.Name)
+		if !ok {
+			continue
+		}
+		for _, tr := range t.Triggers {
+			k.patch(&tr.Attrs, tk, keyTg, tr.Name)
+		}
+		for _, c := range t.Columns {
+			k.patch(&c.Attrs, tk, keyC, c.Name)
+		}
+		for _, i := range t.Indexes {
+			k.patch(&i.Attrs, tk, keyI, i.Name)
+		}
+		for _, f := range t.ForeignKeys {
+			k.patch(&f.Attrs, tk, keyF, f.Symbol)
+		}
+		for _, ck := range t.Checks() {
+			k.patch(&ck.Attrs, tk, keyK, ck.Name)
+		}
+	}
+	for _, v := range s.Views {
+		vk, ok := k.patch(&v.Attrs, ks, keyV, v.Name)
+		if !ok {
+			continue
+		}
+		for _, tr := range v.Triggers {
+			k.patch(&tr.Attrs, vk, keyTg, tr.Name)
+		}
+		for _, c := range v.Columns {
+			k.patch(&c.Attrs, vk, keyC, c.Name)
+		}
+		for _, i := range v.Indexes {
+			k.patch(&i.Attrs, vk, keyI, i.Name)
+		}
+	}
+	for _, f := range s.Funcs {
+		k.patch(&f.Attrs, ks, keyFn, f.Name)
+	}
+	for _, p := range s.Procs {
+		k.patch(&p.Attrs, ks, keyPr, p.Name)
+	}
+}
+
+func (k key2pos) patch(attrs *[]schema.Attr, typename ...string) (string, bool) {
+	n := poskey(typename...)
+	if p, ok := k[n]; ok {
+		*attrs = append(*attrs, p)
+		return n, true
+	}
+	return n, false
+}
+
+func poskey(typename ...string) string {
+	return strings.Join(typename, ".")
 }
