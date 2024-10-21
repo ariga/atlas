@@ -19,6 +19,7 @@ type (
 	Schema struct {
 		Name string `spec:"name,name"`
 		schemahcl.DefaultExtension
+		Range *hcl.Range `spec:",range"`
 	}
 
 	// Table holds a specification for an SQL table.

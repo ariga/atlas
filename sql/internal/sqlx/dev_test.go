@@ -11,6 +11,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,6 +37,41 @@ func TestDriver_NormalizeRealm(t *testing.T) {
 		// operation noop for schema like "public" in Postgres.
 		Extra: []schema.Clause{&schema.IfNotExists{}},
 	}, drv.changes[0])
+
+	// Retain positions.
+	r.Schemas[0].
+		AddAttrs(
+			schema.NewFilePos("schema.hcl").
+				SetStart(hcl.Pos{Line: 1, Column: 1, Byte: 1}),
+		).
+		AddTables(
+			schema.NewTable("t1").
+				SetPos(
+					schema.NewFilePos("schema.hcl").
+						SetStart(hcl.Pos{Line: 2, Column: 2, Byte: 2}),
+				).
+				AddColumns(
+					schema.NewIntColumn("id", "int").
+						SetPos(
+							schema.NewFilePos("schema.hcl").
+								SetStart(hcl.Pos{Line: 3, Column: 3, Byte: 3}),
+						),
+				),
+		)
+	drv.realm.Schemas[0].AddTables(
+		schema.NewTable("t1").AddColumns(schema.NewIntColumn("id", "int")),
+	)
+	normal, err = dev.NormalizeRealm(context.Background(), r)
+	require.NoError(t, err)
+	p, ok := normal.Schemas[0].Pos()
+	require.True(t, ok)
+	require.Equal(t, schema.NewFilePos("schema.hcl").SetStart(hcl.Pos{Line: 1, Column: 1, Byte: 1}), p)
+	p, ok = normal.Schemas[0].Tables[0].Pos()
+	require.True(t, ok)
+	require.Equal(t, schema.NewFilePos("schema.hcl").SetStart(hcl.Pos{Line: 2, Column: 2, Byte: 2}), p)
+	p, ok = normal.Schemas[0].Tables[0].Columns[0].Pos()
+	require.True(t, ok)
+	require.Equal(t, schema.NewFilePos("schema.hcl").SetStart(hcl.Pos{Line: 3, Column: 3, Byte: 3}), p)
 }
 
 type mockDriver struct {

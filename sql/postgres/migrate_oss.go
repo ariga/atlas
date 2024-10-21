@@ -1011,16 +1011,8 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 	}
 	b.P("NULL")
 	s.columnDefault(b, c)
-	for _, attr := range c.Attrs {
-		switch a := attr.(type) {
-		case *schema.Comment, *schema.Check:
-		case *schema.Collation:
-			b.P("COLLATE").Ident(a.V)
-		case *Identity, *schema.GeneratedExpr:
-			// Handled below.
-		default:
-			return fmt.Errorf("unexpected column attribute: %T", attr)
-		}
+	if collate := (schema.Collation{}); sqlx.Has(c.Attrs, &collate) {
+		b.P("COLLATE").Ident(collate.V)
 	}
 	switch hasI, hasX := sqlx.Has(c.Attrs, &Identity{}), sqlx.Has(c.Attrs, &schema.GeneratedExpr{}); {
 	case hasI && hasX:
@@ -1103,25 +1095,16 @@ func (s *state) partAttrs(b *sqlx.Builder, idx *schema.Index, p *schema.IndexPar
 	if p.Desc {
 		b.P("DESC")
 	}
-	for _, attr := range p.Attrs {
-		switch attr := attr.(type) {
-		case *IndexColumnProperty:
-			switch {
-			// Defaults when DESC is specified.
-			case p.Desc && attr.NullsFirst:
-			case p.Desc && attr.NullsLast:
-				b.P("NULLS LAST")
-			// Defaults when DESC is not specified.
-			case !p.Desc && attr.NullsLast:
-			case !p.Desc && attr.NullsFirst:
-				b.P("NULLS FIRST")
-			}
-		// Handled above.
-		case *IndexOpClass, *schema.Collation:
-		// Handled below.
-		case *Operator:
-		default:
-			return fmt.Errorf("postgres: unexpected index part attribute: %T", attr)
+	if prop := (&IndexColumnProperty{}); sqlx.Has(p.Attrs, prop) {
+		switch {
+		// Defaults when DESC is specified.
+		case p.Desc && prop.NullsFirst:
+		case p.Desc && prop.NullsLast:
+			b.P("NULLS LAST")
+		// Defaults when DESC is not specified.
+		case !p.Desc && prop.NullsLast:
+		case !p.Desc && prop.NullsFirst:
+			b.P("NULLS FIRST")
 		}
 	}
 	if _, isE := excludeConst(idx.Attrs); isE {
@@ -1172,13 +1155,6 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
 	}
 	if p := (IndexPredicate{}); sqlx.Has(idx.Attrs, &p) {
 		b.P("WHERE").P(p.P)
-	}
-	for _, attr := range idx.Attrs {
-		switch attr.(type) {
-		case *schema.Comment, *IndexType, *IndexInclude, *Constraint, *IndexPredicate, *IndexStorageParams, *IndexNullsDistinct:
-		default:
-			return fmt.Errorf("postgres: unexpected index attribute: %T", attr)
-		}
 	}
 	return nil
 }

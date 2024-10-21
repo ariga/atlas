@@ -234,6 +234,16 @@ func (r *Realm) Object(f func(Object) bool) (Object, bool) {
 	return nil, false
 }
 
+// Pos of the schema, if exists.
+func (s *Schema) Pos() (*Pos, bool) {
+	for _, a := range s.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p, true
+		}
+	}
+	return nil, false
+}
+
 // Table returns the first table that matched the given name.
 func (s *Schema) Table(name string) (*Table, bool) {
 	for _, t := range s.Tables {
@@ -304,6 +314,16 @@ func (t *Table) Column(name string) (*Column, bool) {
 	return nil, false
 }
 
+// Pos of the table, if exists.
+func (t *Table) Pos() (*Pos, bool) {
+	for _, a := range t.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p, true
+		}
+	}
+	return nil, false
+}
+
 // Index returns the first index that matched the given name.
 func (t *Table) Index(name string) (*Index, bool) {
 	for _, i := range t.Indexes {
@@ -329,6 +349,26 @@ func (t *Table) Trigger(name string) (*Trigger, bool) {
 	for _, r := range t.Triggers {
 		if r.Name == name {
 			return r, true
+		}
+	}
+	return nil, false
+}
+
+// Checks of the table.
+func (t *Table) Checks() (ck []*Check) {
+	for _, a := range t.Attrs {
+		if c, ok := a.(*Check); ok {
+			ck = append(ck, c)
+		}
+	}
+	return ck
+}
+
+// Pos of the view, if exists.
+func (v *View) Pos() (*Pos, bool) {
+	for _, a := range v.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p, true
 		}
 	}
 	return nil, false
@@ -389,6 +429,56 @@ func (v *View) AsTable() *Table {
 	return NewTable(v.Name).
 		SetSchema(v.Schema).
 		AddColumns(v.Columns...)
+}
+
+// Pos of the column, if exists.
+func (c *Column) Pos() (*Pos, bool) {
+	for _, a := range c.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p, true
+		}
+	}
+	return nil, false
+}
+
+// Pos of the index, if exists.
+func (i *Index) Pos() (*Pos, bool) {
+	for _, a := range i.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p, true
+		}
+	}
+	return nil, false
+}
+
+// Pos of the index part, if exists.
+func (p *IndexPart) Pos() (*Pos, bool) {
+	for _, a := range p.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p, true
+		}
+	}
+	return nil, false
+}
+
+// Pos of the check, if exists.
+func (c *Check) Pos() (*Pos, bool) {
+	for _, a := range c.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p, true
+		}
+	}
+	return nil, false
+}
+
+// Pos of the foreign-key, if exists.
+func (f *ForeignKey) Pos() (*Pos, bool) {
+	for _, a := range f.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p, true
+		}
+	}
+	return nil, false
 }
 
 // Column returns the first column that matches the given name.
