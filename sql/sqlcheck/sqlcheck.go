@@ -35,8 +35,8 @@ type (
 		Name() string
 	}
 
-	// A Pass provides information to the Run function that
-	// applies a specific analyzer to an SQL file.
+	// A Pass provides information to the Analyzer.Analyze function
+	// that applies a specific analyzer to an SQL file.
 	Pass struct {
 		// A migration file and the changes it describes.
 		File *File
