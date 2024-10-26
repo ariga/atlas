@@ -378,11 +378,22 @@ func (d *DevLoader) mayFix(stmt string, changes schema.Changes) schema.Changes {
 
 // inspect the realm and filter by schema if we are connected to one.
 func (d *DevLoader) inspect(ctx context.Context) (*schema.Realm, error) {
-	opts := &schema.InspectRealmOption{}
-	if d.Dev.URL.Schema != "" {
-		opts.Schemas = append(opts.Schemas, d.Dev.URL.Schema)
+	if d.Dev.URL.Schema == "" {
+		return d.Dev.InspectRealm(ctx, &schema.InspectRealmOption{})
 	}
-	return d.Dev.InspectRealm(ctx, opts)
+	ns, err := d.Dev.InspectSchema(ctx, "", &schema.InspectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	// Normalize the returned realm to
+	// look like InspectRealm output.
+	if ns.Name == "" {
+		ns.Name = d.Dev.URL.Schema
+	}
+	if ns.Realm == nil {
+		ns.Realm = schema.NewRealm(ns)
+	}
+	return ns.Realm, nil
 }
 
 // lock database so no one else interferes with our change detection.
