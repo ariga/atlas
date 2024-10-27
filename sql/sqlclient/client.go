@@ -371,10 +371,8 @@ type (
 		txOpener   TxOpener
 		parser     URLParser
 		flavours   []string
-		codec      interface {
-			schemahcl.Marshaler
-			schemahcl.Evaluator
-		}
+		schemahcl.Marshaler
+		schemahcl.Evaluator
 	}
 	// RegisterOption allows configuring the Opener
 	// registration using functional options.
@@ -401,13 +399,7 @@ func RegisterURLParser(p URLParser) RegisterOption {
 // the client after it is opened.
 func RegisterCodec(m schemahcl.Marshaler, e schemahcl.Evaluator) RegisterOption {
 	return func(opts *registerOptions) {
-		opts.codec = struct {
-			schemahcl.Marshaler
-			schemahcl.Evaluator
-		}{
-			Marshaler: m,
-			Evaluator: e,
-		}
+		opts.Marshaler, opts.Evaluator = m, e
 	}
 }
 
@@ -499,14 +491,14 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 	for i := range opts {
 		opts[i](opt)
 	}
-	if opt.codec != nil {
+	if opt.Marshaler != nil && opt.Evaluator != nil {
 		f := opener
 		opener = OpenerFunc(func(ctx context.Context, u *url.URL) (*Client, error) {
 			c, err := f.Open(ctx, u)
 			if err != nil {
 				return nil, err
 			}
-			c.Marshaler, c.Evaluator = opt.codec, opt.codec
+			c.Marshaler, c.Evaluator = opt.Marshaler, opt.Evaluator
 			return c, nil
 		})
 	}
