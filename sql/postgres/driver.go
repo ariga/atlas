@@ -58,7 +58,7 @@ func init() {
 		sqlclient.OpenerFunc(opener),
 		sqlclient.RegisterDriverOpener(Open),
 		sqlclient.RegisterFlavours("postgresql"),
-		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
+		sqlclient.RegisterCodec(codec, codec),
 		sqlclient.RegisterURLParser(parser{}),
 	)
 }

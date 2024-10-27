@@ -303,6 +303,20 @@ func (s *State) MarshalSpec(v any) ([]byte, error) {
 	return s.encode(r)
 }
 
+// EvalOptions configures the evaluation of HCL documents.
+type EvalOptions struct {
+	// Variables is a map of input variables to be used during evaluation.
+	Variables map[string]cty.Value
+
+	// RecordPos indicates whether to record the source code positions of the
+	// evaluated resources and attributes. It defaults to the State (Driver) config.
+	RecordPos bool
+
+	// Validator is the schema validator to be used during evaluation.
+	// It defaults to the State (Driver) config.
+	Validator SchemaValidator
+}
+
 // EvalFiles evaluates the files in the provided paths using the input variables and
 // populates v with the result.
 func (s *State) EvalFiles(paths []string, v any, input map[string]cty.Value) error {
@@ -318,6 +332,13 @@ func (s *State) EvalFiles(paths []string, v any, input map[string]cty.Value) err
 // Eval evaluates the parsed HCL documents using the input variables and populates v
 // using the result.
 func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value) error {
+	return s.EvalOptions(parsed, v, &EvalOptions{
+		Variables: input,
+	})
+}
+
+// EvalOptions evaluates the parsed HCL documents and populates v using the result.
+func (s *State) EvalOptions(parsed *hclparse.Parser, v any, opts *EvalOptions) error {
 	var (
 		hasVars      bool
 		ctx          = s.newCtx()
@@ -334,7 +355,7 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 	}
 	for name, file := range files {
 		fileNames = append(fileNames, name)
-		if err := s.setInputVals(ctx, file.Body, input); err != nil {
+		if err := s.setInputVals(ctx, file.Body, opts.Variables); err != nil {
 			return err
 		}
 		body := file.Body.(*hclsyntax.Body)
@@ -400,13 +421,20 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 	sort.Slice(fileNames, func(i, j int) bool {
 		return fileNames[i] < fileNames[j]
 	})
-	vr := SchemaValidator(&nopValidator{})
-	if s.config.validator != nil {
+	var vr SchemaValidator
+	switch {
+	case opts.Validator != nil:
+		vr = opts.Validator
+	case s.config.validator != nil:
 		vr = s.config.validator()
+		opts.Validator = vr
+	default:
+		vr = &nopValidator{}
+		opts.Validator = vr
 	}
 	for _, name := range fileNames {
 		file := files[name]
-		r, err := s.resource(ctx, vr, file, reg)
+		r, err := s.resource(ctx, opts, file, reg)
 		if err != nil {
 			return err
 		}
@@ -492,16 +520,16 @@ func (r addrRef) load(res *Resource, track string) addrRef {
 }
 
 // resource converts the hcl file to a schemahcl.Resource.
-func (s *State) resource(ctx *hcl.EvalContext, vr SchemaValidator, file *hcl.File, dec *blockDef) (*Resource, error) {
+func (s *State) resource(ctx *hcl.EvalContext, opts *EvalOptions, file *hcl.File, dec *blockDef) (*Resource, error) {
 	body, ok := file.Body.(*hclsyntax.Body)
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected remainder to be of type *hclsyntax.Body")
 	}
-	closeScope, err := vr.ValidateBody(ctx, body)
+	closeScope, err := opts.Validator.ValidateBody(ctx, body)
 	if err != nil {
 		return nil, err
 	}
-	attrs, err := s.toAttrs(ctx, vr, body.Attributes, nil)
+	attrs, err := s.toAttrs(ctx, opts, body.Attributes, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -519,7 +547,7 @@ func (s *State) resource(ctx *hcl.EvalContext, vr SchemaValidator, file *hcl.Fil
 		if err != nil {
 			return nil, err
 		}
-		resource, err := s.toResource(ctx, vr, blk, []string{blk.Type}, dec.children[blk.Type])
+		resource, err := s.toResource(ctx, opts, blk, []string{blk.Type}, dec.children[blk.Type])
 		if err != nil {
 			return nil, err
 		}
@@ -576,7 +604,7 @@ func (s *State) mayScopeContext(ctx *hcl.EvalContext, scope []string) *hcl.EvalC
 	return nctx.NewChild()
 }
 
-func (s *State) toAttrs(ctx *hcl.EvalContext, vr SchemaValidator, hclAttrs hclsyntax.Attributes, scope []string) ([]*Attr, error) {
+func (s *State) toAttrs(ctx *hcl.EvalContext, opts *EvalOptions, hclAttrs hclsyntax.Attributes, scope []string) ([]*Attr, error) {
 	attrs := make([]*Attr, 0, len(hclAttrs))
 	for _, hclAttr := range hclAttrs {
 		var (
@@ -591,11 +619,11 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, vr SchemaValidator, hclAttrs hclsy
 		if value.IsNull() {
 			continue
 		}
-		if err := vr.ValidateAttribute(ctx, hclAttr, value); err != nil {
+		if err := opts.Validator.ValidateAttribute(ctx, hclAttr, value); err != nil {
 			return nil, err
 		}
 		at := &Attr{K: hclAttr.Name}
-		if s.config.withPos {
+		if s.config.withPos || opts.RecordPos {
 			at.SetRange(&hclAttr.SrcRange)
 		}
 		switch t := value.Type(); {
@@ -703,13 +731,13 @@ func isOneRef(v cty.Value) bool {
 	return t.IsObjectType() && t.HasAttribute("__ref")
 }
 
-func (s *State) toResource(ctx *hcl.EvalContext, vr SchemaValidator, block *hclsyntax.Block, scope []string, dec *blockDef) (spec *Resource, err error) {
-	closeScope, err := vr.ValidateBlock(ctx, block)
+func (s *State) toResource(ctx *hcl.EvalContext, opts *EvalOptions, block *hclsyntax.Block, scope []string, dec *blockDef) (spec *Resource, err error) {
+	closeScope, err := opts.Validator.ValidateBlock(ctx, block)
 	if err != nil {
 		return nil, err
 	}
 	spec = &Resource{Type: block.Type}
-	if s.config.withPos {
+	if s.config.withPos || opts.RecordPos {
 		spec.SetRange(&block.TypeRange)
 	}
 	switch len(block.Labels) {
@@ -723,7 +751,7 @@ func (s *State) toResource(ctx *hcl.EvalContext, vr SchemaValidator, block *hcls
 		return nil, fmt.Errorf("too many labels for block: %s", block.Labels)
 	}
 	ctx = s.mayScopeContext(ctx, scope)
-	attrs, err := s.toAttrs(ctx, vr, block.Body.Attributes, scope)
+	attrs, err := s.toAttrs(ctx, opts, block.Body.Attributes, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -734,7 +762,7 @@ func (s *State) toResource(ctx *hcl.EvalContext, vr SchemaValidator, block *hcls
 		if err != nil {
 			return nil, err
 		}
-		r, err := s.toResource(ctx, vr, blk, append(scope, blk.Type), cdec)
+		r, err := s.toResource(ctx, opts, blk, append(scope, blk.Type), cdec)
 		if err != nil {
 			return nil, err
 		}
@@ -749,8 +777,10 @@ func (s *State) toResource(ctx *hcl.EvalContext, vr SchemaValidator, block *hcls
 // encode the given *schemahcl.Resource into a byte slice containing an Atlas HCL
 // document representing it.
 func (s *State) encode(r *Resource) ([]byte, error) {
-	f := hclwrite.NewFile()
-	body := f.Body()
+	var (
+		f    = hclwrite.NewFile()
+		body = f.Body()
+	)
 	// If the resource has a Type then it is rendered as an HCL block.
 	if r.Type != "" {
 		blk := body.AppendNewBlock(r.Type, labels(r))

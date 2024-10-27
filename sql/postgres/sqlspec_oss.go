@@ -208,12 +208,22 @@ func init() {
 	schemahcl.Register("event_trigger", &eventTrigger{})
 }
 
-// evalSpec evaluates an Atlas DDL document into v using the input.
-func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
+// Codec for schemahcl.
+type Codec struct {
+	State *schemahcl.State
+}
+
+// Eval evaluates an Atlas DDL document into v using the input.
+func (c *Codec) Eval(p *hclparse.Parser, v any, input map[string]cty.Value) error {
+	return c.EvalOptions(p, v, &schemahcl.EvalOptions{Variables: input})
+}
+
+// EvalOptions decodes the HCL with the given options.
+func (c *Codec) EvalOptions(p *hclparse.Parser, v any, opts *schemahcl.EvalOptions) error {
 	switch v := v.(type) {
 	case *schema.Realm:
 		var d doc
-		if err := hclState.Eval(p, &d, input); err != nil {
+		if err := c.State.EvalOptions(p, &d, opts); err != nil {
 			return err
 		}
 		if err := specutil.Scan(v, d.ScanDoc(), scanFuncs); err != nil {
@@ -242,7 +252,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		}
 	case *schema.Schema:
 		var d doc
-		if err := hclState.Eval(p, &d, input); err != nil {
+		if err := c.State.EvalOptions(p, &d, opts); err != nil {
 			return err
 		}
 		if len(d.Schemas) != 1 {
@@ -278,7 +288,7 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
-func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
+func (c *Codec) MarshalSpec(v any) ([]byte, error) {
 	var (
 		d  doc
 		ts []*schema.Trigger
@@ -345,38 +355,37 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 	if err := triggersSpec(ts, &d); err != nil {
 		return nil, err
 	}
-	return marshaler.MarshalSpec(&d)
+	return c.State.MarshalSpec(&d)
 }
 
 var (
-	hclState = schemahcl.New(append(specOptions,
-		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
-		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
-		schemahcl.WithTypes("materialized.column.type", TypeRegistry.Specs()),
-		schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
-		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, "GiST", IndexTypeSPGiST, "SPGiST"),
-		schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
-		schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
-		schemahcl.WithScopedEnums("table.column.as.type", "STORED"),
-		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
-		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
-		schemahcl.WithScopedEnums("table.index.on.ops", func() (ops []string) {
-			for _, op := range postgresop.Classes {
-				ops = append(ops, op.Name)
-			}
-			return ops
-		}()...))...,
-	)
+	codec = &Codec{
+		State: schemahcl.New(append(specOptions,
+			schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
+			schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
+			schemahcl.WithTypes("materialized.column.type", TypeRegistry.Specs()),
+			schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
+			schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, "GiST", IndexTypeSPGiST, "SPGiST"),
+			schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
+			schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
+			schemahcl.WithScopedEnums("table.column.as.type", "STORED"),
+			schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
+			schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+			schemahcl.WithScopedEnums("table.index.on.ops", func() (ops []string) {
+				for _, op := range postgresop.Classes {
+					ops = append(ops, op.Name)
+				}
+				return ops
+			}()...))...,
+		),
+	}
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
-	MarshalHCL = schemahcl.MarshalerFunc(func(v any) ([]byte, error) {
-		return MarshalSpec(v, hclState)
-	})
+	MarshalHCL = schemahcl.MarshalerFunc(codec.MarshalSpec)
 	// EvalHCL implements the schemahcl.Evaluator interface.
-	EvalHCL = schemahcl.EvalFunc(evalSpec)
-
+	EvalHCL = schemahcl.EvalFunc(codec.Eval)
 	// EvalHCLBytes is a helper that evaluates an HCL document from a byte slice instead
 	// of from an hclparse.Parser instance.
-	EvalHCLBytes = specutil.HCLBytesFunc(EvalHCL)
+	EvalHCLBytes = specutil.HCLBytesFunc(codec)
 )
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting

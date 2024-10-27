@@ -912,7 +912,7 @@ func TestMarshalSpec_IndexPredicate(t *testing.T) {
 			},
 		},
 	}
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.test
@@ -952,7 +952,7 @@ func TestMarshalSpec_IndexNullsDistinct(t *testing.T) {
 						AddAttrs(&IndexNullsDistinct{V: false}),
 				),
 		)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.public
@@ -1000,7 +1000,7 @@ func TestMarshalSpec_IndexNullsLastFirst(t *testing.T) {
 						AddParts(schema.NewColumnPart(schema.NewColumn("c")).SetDesc(false).AddAttrs(&IndexColumnProperty{NullsFirst: true})),
 				),
 		)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.public
@@ -1040,7 +1040,7 @@ schema "public" {
 	err = EvalHCLBytes([]byte(expected), &got, nil)
 	require.NoError(t, err)
 
-	buf, err = MarshalSpec(s, hclState)
+	buf, err = MarshalHCL(s)
 	require.NoError(t, err)
 	require.EqualValues(t, expected, string(buf))
 }
@@ -1076,7 +1076,7 @@ func TestMarshalSpec_BRINIndex(t *testing.T) {
 			},
 		},
 	}
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.test
@@ -1185,7 +1185,7 @@ func TestMarshalSpec_IndexOpClass(t *testing.T) {
 			},
 		},
 	}
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.test
@@ -1346,7 +1346,7 @@ func TestMarshalSpec_IndexInclude(t *testing.T) {
 			},
 		},
 	}
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.test
@@ -1382,7 +1382,7 @@ func TestMarshalSpec_PrimaryKey(t *testing.T) {
 		schema.NewPrimaryKey(s.Tables[0].Columns[:1]...).
 			AddAttrs(&IndexInclude{Columns: s.Tables[0].Columns[1:]}),
 	)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.test
@@ -1452,7 +1452,7 @@ func TestMarshalSpec_GeneratedColumn(t *testing.T) {
 						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c3 * c4", Type: "STORED"}),
 				),
 		)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.test
@@ -1553,7 +1553,7 @@ func TestMarshalSpec_Enum(t *testing.T) {
 						SetType(typeE),
 				),
 		)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "account" {
   schema = schema.test
@@ -1599,7 +1599,7 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
 					schema.NewTimeColumn("t_timestamptz", TypeTimestampTZ, schema.TimePrecision(2)),
 				),
 		)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "times" {
   schema = schema.test
