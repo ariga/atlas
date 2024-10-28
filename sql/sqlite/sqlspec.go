@@ -26,27 +26,37 @@ type doc struct {
 	Schemas  []*sqlspec.Schema  `spec:"schema"`
 }
 
-// evalSpec evaluates an Atlas DDL document using an unmarshaler into v by using the input.
-func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
+// Codec for schemahcl.
+type Codec struct {
+	State *schemahcl.State
+}
+
+// Eval evaluates an Atlas DDL document into v using the input.
+func (c *Codec) Eval(p *hclparse.Parser, v any, input map[string]cty.Value) error {
+	return c.EvalOptions(p, v, &schemahcl.EvalOptions{Variables: input})
+}
+
+// EvalOptions decodes the HCL with the given options.
+func (c *Codec) EvalOptions(p *hclparse.Parser, v any, opts *schemahcl.EvalOptions) error {
 	switch v := v.(type) {
 	case *schema.Realm:
 		var d doc
-		if err := hclState.Eval(p, &d, input); err != nil {
+		if err := c.State.EvalOptions(p, &d, opts); err != nil {
 			return err
 		}
 		if err := specutil.Scan(v,
 			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Triggers: d.Triggers},
 			scanFuncs,
 		); err != nil {
-			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
+			return fmt.Errorf("sqlite: failed converting to *schema.Realm: %w", err)
 		}
 	case *schema.Schema:
 		var d doc
-		if err := hclState.Eval(p, &d, input); err != nil {
+		if err := c.State.EvalOptions(p, &d, opts); err != nil {
 			return err
 		}
 		if len(d.Schemas) != 1 {
-			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
+			return fmt.Errorf("sqlite: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
 		r := &schema.Realm{}
 		if err := specutil.Scan(r,
@@ -59,14 +69,14 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 	case schema.Schema, schema.Realm:
 		return fmt.Errorf("sqlite: Eval expects a pointer: received %[1]T, expected *%[1]T", v)
 	default:
-		return hclState.Eval(p, v, input)
+		return fmt.Errorf("sqlite: unexpected type %T", v)
 	}
 	return nil
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
-func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
-	return specutil.Marshal(v, marshaler, specutil.RealmFuncs{
+func (c *Codec) MarshalSpec(v any) ([]byte, error) {
+	return specutil.Marshal(v, c.State, specutil.RealmFuncs{
 		Schema:   schemaSpec,
 		Triggers: triggersSpec,
 	})
@@ -285,21 +295,20 @@ var TypeRegistry = schemahcl.NewRegistry(
 )
 
 var (
-	hclState = schemahcl.New(append(
-		specOptions,
-		schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
-		schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
-		schemahcl.WithScopedEnums("table.column.as.type", stored, virtual),
-		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
-		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
-	)...)
+	codec = &Codec{
+		State: schemahcl.New(append(
+			specOptions,
+			schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
+			schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
+			schemahcl.WithScopedEnums("table.column.as.type", stored, virtual),
+			schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
+			schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+		)...),
+	}
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
-	MarshalHCL = schemahcl.MarshalerFunc(func(v any) ([]byte, error) {
-		return MarshalSpec(v, hclState)
-	})
+	MarshalHCL = schemahcl.MarshalerFunc(codec.MarshalSpec)
 	// EvalHCL implements the schemahcl.Evaluator interface.
-	EvalHCL = schemahcl.EvalFunc(evalSpec)
-
+	EvalHCL = schemahcl.EvalFunc(codec.Eval)
 	// EvalHCLBytes is a helper that evaluates an HCL document from a byte slice instead
 	// of from an hclparse.Parser instance.
 	EvalHCLBytes = specutil.HCLBytesFunc(EvalHCL)

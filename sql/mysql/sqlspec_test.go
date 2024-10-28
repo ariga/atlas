@@ -349,7 +349,7 @@ func TestMarshalSpec_Charset(t *testing.T) {
 	}
 	s.Tables[0].Schema = s
 	s.Tables[1].Schema = s
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	// Charset and collate that are identical to their parent elements
 	// should not be printed as they are inherited by default from it.
@@ -458,7 +458,7 @@ func TestMarshalSpec_Comment(t *testing.T) {
 			},
 		},
 	}
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	// We expect a zero value comment to not be present in the marshaled HCL.
 	const expected = `table "users" {
@@ -507,7 +507,7 @@ func TestMarshalSpec_AutoIncrement(t *testing.T) {
 		},
 	}
 	s.Tables[0].Schema = s
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.test
@@ -536,7 +536,7 @@ func TestMarshalSpec_Check(t *testing.T) {
 					schema.NewCheck().SetExpr("price1 <> price2").AddAttrs(&Enforced{}),
 				),
 		)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "products" {
   schema = schema.test
@@ -572,7 +572,7 @@ func TestMarshalSpec_TableEngine(t *testing.T) {
 			schema.NewTable("issues").AddAttrs(&Engine{V: "MYISAM"}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
 			schema.NewTable("commits").AddAttrs(&Engine{V: "MyRocks"}).AddColumns(schema.NewIntColumn("id", TypeBigInt)),
 		)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "repos" {
   schema = schema.a8m
@@ -985,7 +985,7 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
 					schema.NewTimeColumn("tYear", TypeYear, schema.TimePrecision(2)),
 				),
 		)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "times" {
   schema = schema.test
@@ -1036,7 +1036,7 @@ func TestMarshalSpec_GeneratedColumn(t *testing.T) {
 						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c3 * c4", Type: "STORED"}),
 				),
 		)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.test
@@ -1141,7 +1141,7 @@ func TestMarshalSpec_FloatUnsigned(t *testing.T) {
 					),
 				),
 		)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "test" {
   schema = schema.test

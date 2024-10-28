@@ -259,7 +259,7 @@ func TestMarshalSpec_AutoIncrement(t *testing.T) {
 		},
 	}
 	s.Tables[0].Schema = s
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.test
@@ -308,7 +308,7 @@ func TestMarshalSpec_IndexPredicate(t *testing.T) {
 			},
 		},
 	}
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.test
@@ -479,7 +479,7 @@ schema "test" {
 			require.NoError(t, err)
 			colspec := test.Tables[0].Columns[0]
 			require.EqualValues(t, tt.expected, colspec.Type.Type)
-			spec, err := MarshalSpec(&test, hclState)
+			spec, err := MarshalHCL(&test)
 			require.NoError(t, err)
 			var after schema.Schema
 			err = EvalHCLBytes(spec, &after, nil)
@@ -502,7 +502,7 @@ func TestMarshalSpec_TableOptions(t *testing.T) {
 				),
 		)
 	s.Tables[0].SetSchema(s)
-	buf, err := MarshalSpec(s, hclState)
+	buf, err := MarshalHCL(s)
 	require.NoError(t, err)
 	const expected = `table "users" {
   schema = schema.test

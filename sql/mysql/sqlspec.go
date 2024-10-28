@@ -20,12 +20,22 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// evalSpec evaluates an Atlas DDL document into v using the input.
-func evalSpec(state *schemahcl.State, p *hclparse.Parser, v any, input map[string]cty.Value) error {
+// Codec for schemahcl.
+type Codec struct {
+	State *schemahcl.State
+}
+
+// Eval evaluates an Atlas DDL document into v using the input.
+func (c *Codec) Eval(p *hclparse.Parser, v any, input map[string]cty.Value) error {
+	return c.EvalOptions(p, v, &schemahcl.EvalOptions{Variables: input})
+}
+
+// EvalOptions decodes the HCL with the given options.
+func (c *Codec) EvalOptions(p *hclparse.Parser, v any, opts *schemahcl.EvalOptions) error {
 	switch v := v.(type) {
 	case *schema.Realm:
 		var d specutil.Doc
-		if err := state.Eval(p, &d, input); err != nil {
+		if err := c.State.EvalOptions(p, &d, opts); err != nil {
 			return err
 		}
 		if err := specutil.Scan(v,
@@ -45,7 +55,7 @@ func evalSpec(state *schemahcl.State, p *hclparse.Parser, v any, input map[strin
 		}
 	case *schema.Schema:
 		var d specutil.Doc
-		if err := state.Eval(p, &d, input); err != nil {
+		if err := c.State.EvalOptions(p, &d, opts); err != nil {
 			return err
 		}
 		if len(d.Schemas) != 1 {
@@ -65,14 +75,14 @@ func evalSpec(state *schemahcl.State, p *hclparse.Parser, v any, input map[strin
 	case schema.Schema, schema.Realm:
 		return fmt.Errorf("mysql: Eval expects a pointer: received %[1]T, expected *%[1]T", v)
 	default:
-		return state.Eval(p, v, input)
+		return fmt.Errorf("mysql: unexpected type %T", v)
 	}
 	return nil
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
-func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
-	return specutil.Marshal(v, marshaler, specutil.RealmFuncs{
+func (c *Codec) MarshalSpec(v any) ([]byte, error) {
+	return specutil.Marshal(v, c.State, specutil.RealmFuncs{
 		Schema:   schemaSpec,
 		Triggers: triggersSpec,
 	})
@@ -92,32 +102,30 @@ var (
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	}
-	hclState = schemahcl.New(
-		append(
-			specOptions,
-			sharedSpecOptions...,
-		)...,
-	)
-	mariaHCLState = schemahcl.New(
-		append(
-			mariaSpecOptions,
-			sharedSpecOptions...,
-		)...,
-	)
+	codec = &Codec{
+		State: schemahcl.New(
+			append(
+				specOptions,
+				sharedSpecOptions...,
+			)...,
+		),
+	}
+	mariaCodec = &Codec{
+		State: schemahcl.New(
+			append(
+				mariaSpecOptions,
+				sharedSpecOptions...,
+			)...,
+		),
+	}
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
-	MarshalHCL = schemahcl.MarshalerFunc(func(v any) ([]byte, error) {
-		return MarshalSpec(v, hclState)
-	})
+	MarshalHCL = schemahcl.MarshalerFunc(codec.MarshalSpec)
 	// EvalHCL implements the schemahcl.Evaluator interface.
-	EvalHCL = schemahcl.EvalFunc(func(h *hclparse.Parser, v any, m map[string]cty.Value) error {
-		return evalSpec(hclState, h, v, m)
-	})
+	EvalHCL = schemahcl.EvalFunc(codec.Eval)
 	// EvalHCLBytes is a helper that evaluates an HCL document from a byte slice.
 	EvalHCLBytes = specutil.HCLBytesFunc(EvalHCL)
 	// EvalMariaHCL implements the schemahcl.Evaluator interface for MariaDB flavor.
-	EvalMariaHCL = schemahcl.EvalFunc(func(h *hclparse.Parser, v any, m map[string]cty.Value) error {
-		return evalSpec(mariaHCLState, h, v, m)
-	})
+	EvalMariaHCL = schemahcl.EvalFunc(mariaCodec.Eval)
 	// EvalMariaHCLBytes is a helper that evaluates a MariaDB HCL document from a byte slice.
 	EvalMariaHCLBytes = specutil.HCLBytesFunc(EvalMariaHCL)
 )
