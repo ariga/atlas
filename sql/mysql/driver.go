@@ -57,7 +57,7 @@ func init() {
 		DriverName,
 		sqlclient.OpenerFunc(opener),
 		sqlclient.RegisterDriverOpener(Open),
-		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
+		sqlclient.RegisterCodec(codec, codec),
 		sqlclient.RegisterFlavours("mysql+unix"),
 		sqlclient.RegisterURLParser(parser{}),
 	)
@@ -65,7 +65,7 @@ func init() {
 		"mariadb",
 		sqlclient.OpenerFunc(opener),
 		sqlclient.RegisterDriverOpener(Open),
-		sqlclient.RegisterCodec(MarshalHCL, EvalMariaHCL),
+		sqlclient.RegisterCodec(mariaCodec, mariaCodec),
 		sqlclient.RegisterFlavours("mariadb+unix", "maria", "maria+unix"),
 		sqlclient.RegisterURLParser(parser{}),
 	)
