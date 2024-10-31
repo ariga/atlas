@@ -6,6 +6,21 @@ cmp expected.hcl got.hcl
 atlas schema inspect --url file://schema.sql --dev-url URL --format '{{ sql . "  " }}' > got.sql
 cmp expected.sql got.sql
 
+atlas migrate diff v1 --to file://schema.sql --dev-url URL --format '{{ sql . "  " }}'
+cmpmig 0 migration.v1.sql
+atlas migrate diff v1-check --to file://schema.sql --dev-url URL --format '{{ sql . "  " }}'
+stdout 'The migration directory is synced with the desired state, no changes to be made'
+
+atlas migrate diff v2 --to file://schema.v2.sql --dev-url URL --format '{{ sql . "  " }}'
+cmpmig 1 migration.v2.sql
+atlas migrate diff v2-check --to file://schema.v2.sql --dev-url URL --format '{{ sql . "  " }}'
+stdout 'The migration directory is synced with the desired state, no changes to be made'
+
+atlas migrate diff v3 --to file://schema.v3.sql --dev-url URL --format '{{ sql . "  " }}'
+cmpmig 2 migration.v3.sql
+atlas migrate diff v3 --to file://schema.v3.sql --dev-url URL --format '{{ sql . "  " }}'
+stdout 'The migration directory is synced with the desired state, no changes to be made'
+
 -- schema.sql --
 CREATE TABLE t1(
   name varchar(20) CHECK(name in ('a', 'b', 'c')),
@@ -83,3 +98,52 @@ CREATE TABLE `t2` (
   CONSTRAINT `t2_chk_1` CHECK (`name` in (_utf8mb4'a',_utf8mb4'b',_utf8mb4'c')),
   CONSTRAINT `t2_chk_2` CHECK (`age` > 0)
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- migration.v1.sql --
+-- Create "t1" table
+CREATE TABLE `t1` (
+  `name` varchar(20) NULL,
+  `age` int NULL,
+  CONSTRAINT `t1_check` CHECK ((`name` <> _utf8mb4'a') or (`age` > 10)),
+  CONSTRAINT `t1_chk_1` CHECK (`name` in (_utf8mb4'a',_utf8mb4'b',_utf8mb4'c')),
+  CONSTRAINT `t1_chk_2` CHECK (`age` > 0)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- Create "t2" table
+CREATE TABLE `t2` (
+  `name` varchar(20) NULL,
+  `age` int NULL,
+  CONSTRAINT `t2_check` CHECK ((`name` <> _utf8mb4'a') or (`age` > 10)),
+  CONSTRAINT `t2_chk_1` CHECK (`name` in (_utf8mb4'a',_utf8mb4'b',_utf8mb4'c')),
+  CONSTRAINT `t2_chk_2` CHECK (`age` > 0)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- schema.v2.sql --
+CREATE TABLE t1(
+  name varchar(20) CHECK(name in ('a', 'b', 'c')),
+  age int CHECK(age > 0),
+  -- MySQL check constraint names are unique in schema level.
+  CONSTRAINT `t1_check` CHECK (name <> 'b' or age > 10)
+);
+CREATE TABLE t2(
+  name varchar(20) CHECK(name in ('a', 'b', 'c')),
+  age int CHECK(age > 0),
+  -- MySQL check constraint names are unique in schema level.
+  CONSTRAINT `t2_check` CHECK (name <> 'a' or age > 10)
+);
+-- migration.v2.sql --
+-- Modify "t1" table
+ALTER TABLE `t1` DROP CHECK `t1_check`, ADD CONSTRAINT `t1_check` CHECK ((`name` <> _utf8mb4'b') or (`age` > 10));
+-- schema.v3.sql --
+CREATE TABLE t1(
+  name varchar(20) CHECK(name in ('a', 'b', 'c')),
+  age int CHECK(age > 0),
+  -- MySQL check constraint names are unique in schema level.
+  CONSTRAINT `t1_check` CHECK (name <> 'b' or age > 10)
+);
+CREATE TABLE t2(
+  name varchar(20) CHECK(name in ('a', 'b', 'c')),
+  age int CHECK(age > 0),
+  -- MySQL check constraint names are unique in schema level.
+  CONSTRAINT `t2_check` CHECK (name <> 'b' or age > 10)
+);
+-- migration.v3.sql --
+-- Modify "t2" table
+ALTER TABLE `t2` DROP CHECK `t2_check`, ADD CONSTRAINT `t2_check` CHECK ((`name` <> _utf8mb4'b') or (`age` > 10));
