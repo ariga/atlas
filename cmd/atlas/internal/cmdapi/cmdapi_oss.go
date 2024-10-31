@@ -253,7 +253,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	if f, indent, err = mayIndent(u, f, flags.format); err != nil {
 		return err
 	}
-	diffOpts := append(diffOptions(cmd, env), schema.DiffNormalized())
+	diffOpts := diffOptions(cmd, env)
 	// If there is a state-loader that requires a custom
 	// 'migrate diff' handling, offload it the work.
 	if d, ok := cmdext.States.Differ(flags.desiredURLs); ok {
@@ -481,7 +481,7 @@ var specOptions []schemahcl.Option
 
 // diffOptions returns environment-aware diff options.
 func diffOptions(_ *cobra.Command, env *Env) []schema.DiffOption {
-	return env.DiffOptions()
+	return append(env.DiffOptions(), schema.DiffNormalized())
 }
 
 // openClient allows opening environment-aware clients.

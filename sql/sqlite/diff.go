@@ -41,7 +41,7 @@ func (*diff) SchemaObjectDiff(_, _ *schema.Schema, _ *schema.DiffOptions) ([]sch
 }
 
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
-func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
+func (d *diff) TableAttrDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]schema.Change, error) {
 	var changes []schema.Change
 	for _, a := range []schema.Attr{&WithoutRowID{}, &Strict{}} {
 		switch {
@@ -55,7 +55,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 			})
 		}
 	}
-	return append(changes, sqlx.CheckDiff(from, to)...), nil
+	return append(changes, sqlx.CheckDiffMode(from, to, opts.Mode)...), nil
 }
 
 func (*diff) ViewAttrChanges(_, _ *schema.View) []schema.Change {
