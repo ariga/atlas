@@ -66,7 +66,7 @@ func (*diff) SchemaObjectDiff(_, _ *schema.Schema, _ *schema.DiffOptions) ([]sch
 }
 
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
-func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
+func (d *diff) TableAttrDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]schema.Change, error) {
 	var changes []schema.Change
 	if change := d.autoIncChange(from.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
@@ -94,7 +94,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	// also cannot be dropped using "DROP CONSTRAINTS", but can be modified and dropped
 	// using "MODIFY COLUMN".
 	var checks []schema.Change
-	for _, c := range sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
+	for _, c := range sqlx.CheckDiffMode(from, to, opts.Mode, func(c1, c2 *schema.Check) bool {
 		return enforced(c1.Attrs) == enforced(c2.Attrs)
 	}) {
 		drop, ok := c.(*schema.DropCheck)

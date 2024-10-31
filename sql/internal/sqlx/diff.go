@@ -45,7 +45,7 @@ type (
 
 		// TableAttrDiff returns a changeset for migrating table attributes from
 		// one state to the other. For example, dropping or adding a `CHECK` constraint.
-		TableAttrDiff(from, to *schema.Table) ([]schema.Change, error)
+		TableAttrDiff(from, to *schema.Table, _ *schema.DiffOptions) ([]schema.Change, error)
 
 		// ViewAttrChanges returns the changes between the two view attributes.
 		ViewAttrChanges(from, to *schema.View) []schema.Change
@@ -309,7 +309,7 @@ func (d *Diff) tableDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]sc
 	}
 	var changes []schema.Change
 	// Drop or modify attributes (collations, checks, etc).
-	change, err := d.TableAttrDiff(from, to)
+	change, err := d.TableAttrDiff(from, to, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -804,6 +804,20 @@ func CommentDiff(from, to []schema.Attr) schema.Change {
 		}
 	}
 	return nil
+}
+
+// CheckDiffMode is like CheckDiff, but compares also expressions
+// if the schema.DiffMode is equal to schema.DiffModeNormalized.
+func CheckDiffMode(from, to *schema.Table, mode schema.DiffMode, compare ...func(c1, c2 *schema.Check) bool) []schema.Change {
+	if !mode.Is(schema.DiffModeNormalized) {
+		return CheckDiff(from, to, compare...)
+	}
+	return CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
+		if len(compare) == 1 && !compare[0](c1, c2) {
+			return false
+		}
+		return c1.Expr == c2.Expr || MayWrap(c1.Expr) == MayWrap(c2.Expr)
+	})
 }
 
 // CheckDiff computes the change diff between the 2 tables. A compare

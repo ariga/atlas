@@ -57,7 +57,7 @@ func skipDefaultComment(s *schema.Schema, public string) []schema.Attr {
 }
 
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
-func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
+func (d *diff) TableAttrDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]schema.Change, error) {
 	var changes []schema.Change
 	if change := sqlx.CommentDiff(from.Attrs, to.Attrs); change != nil {
 		changes = append(changes, change)
@@ -70,7 +70,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 		return nil, err
 	}
 	changes = append(changes, change...)
-	return append(changes, sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
+	return append(changes, sqlx.CheckDiffMode(from, to, opts.Mode, func(c1, c2 *schema.Check) bool {
 		return sqlx.Has(c1.Attrs, &NoInherit{}) == sqlx.Has(c2.Attrs, &NoInherit{})
 	})...), nil
 }
