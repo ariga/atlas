@@ -2,6 +2,7 @@
 
 [![Twitter](https://img.shields.io/twitter/url.svg?label=Follow%20%40ariga%2Fatlas&style=social&url=https%3A%2F%2Ftwitter.com%2Fatlasgo_io)](https://twitter.com/atlasgo_io)
 [![Discord](https://img.shields.io/discord/930720389120794674?label=discord&logo=discord&style=flat-square&logoColor=white)](https://discord.com/invite/zZ6sWVg6NT)
+[![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Atlas%20Guru-006BFF)](https://gurubase.io/g/atlas)
 
 <p>
   <a href="https://atlasgo.io" target="_blank">
