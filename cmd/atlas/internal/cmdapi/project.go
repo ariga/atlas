@@ -278,7 +278,7 @@ func (e *Env) VarFromURL(s string) (string, error) {
 				return "", fmt.Errorf("env://%s: %w", u.Host, err)
 			}
 			if len(vs) != 0 {
-				return "", fmt.Errorf("env://%s: expect no schema in env %q, got %d", u.Host, e.Name, len(vs))
+				return "", fmt.Errorf("env://%s: expect one schema in env %q, got %d", u.Host, e.Name, len(vs))
 			}
 			return vs[0], nil
 		default:
