@@ -255,6 +255,17 @@ func stateReaderHCL(_ context.Context, config *StateReaderConfig, paths []string
 					return nil, err
 				}
 			}
+			// Apply Exclude flag for schemas or realm.
+			switch {
+			case len(config.Exclude) == 0:
+			case schemaScope != "" && len(realm.Schemas) == 1:
+				realm.Schemas[0], err = schema.ExcludeSchema(realm.Schemas[0], config.Exclude)
+			default:
+				realm, err = schema.ExcludeRealm(realm, config.Exclude)
+			}
+			if err != nil {
+				return nil, err
+			}
 			return realm, nil
 		}),
 	}, nil

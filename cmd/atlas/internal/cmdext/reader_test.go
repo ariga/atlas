@@ -13,6 +13,7 @@ import (
 
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	_ "ariga.io/atlas/sql/sqlite"
 
@@ -83,4 +84,60 @@ func TestSchemaDirState(t *testing.T) {
 		URLs: []*url.URL{u2},
 	})
 	require.Error(t, err, "invalid checksum file")
+}
+
+func TestStateReaderHCL(t *testing.T) {
+	ctx := context.Background()
+	dev, err := sqlclient.Open(ctx, "sqlite://dev?mode=memory")
+	require.NoError(t, err)
+
+	p := filepath.Join(t.TempDir(), "schema")
+	require.NoError(t, os.Mkdir(p, 0755))
+
+	// Write an empty schema file into the directory.
+	os.WriteFile(p+"/schema.hcl", []byte(`
+schema "default" {}
+table "t1" {
+  schema = schema.default
+  column "id" {
+    type = int
+  }
+  column "name" {
+  	type = text
+  }
+}`), 0644)
+
+	// Read schema file.
+	u, err := url.Parse("file://" + p + "/schema.hcl")
+	sr, err := StateReaderHCL(ctx, &StateReaderConfig{
+		Dev:  dev,
+		URLs: []*url.URL{u},
+	})
+	require.NoError(t, err)
+	r, err := sr.ReadState(ctx)
+	require.NoError(t, err)
+	require.Equal(t, schema.NewRealm().AddSchemas(
+		schema.New("default").AddTables(
+			schema.NewTable("t1").AddColumns(
+				schema.NewColumn("id").SetType(&schema.IntegerType{
+					T: "int",
+				}),
+				schema.NewColumn("name").SetType(&schema.StringType{
+					T: "text",
+				}),
+			),
+		),
+	), r)
+
+	// Read schema file with exclude patterns.
+	sr, err = StateReaderHCL(ctx, &StateReaderConfig{
+		Dev:     dev,
+		URLs:    []*url.URL{u},
+		Exclude: []string{"*.name"},
+	})
+	require.NoError(t, err)
+	r, err = sr.ReadState(ctx)
+	require.NoError(t, err)
+	_, exists := r.Schemas[0].Tables[0].Column("name")
+	require.False(t, exists, "column 'name' should be excluded")
 }
