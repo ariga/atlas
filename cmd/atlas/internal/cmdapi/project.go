@@ -485,20 +485,22 @@ func (e *Env) Sources() ([]string, error) {
 	}
 }
 
-// asMap returns the extra attributes stored in the Env as a map[string]string.
-func (e *Env) asMap() (map[string]string, error) {
-	m := make(map[string]string, len(e.Extra.Attrs))
+// Vars returns the extra attributes stored in the Env as a map[string]cty.Value.
+func (e *Env) Vars() map[string]cty.Value {
+	m := make(map[string]cty.Value, len(e.Extra.Attrs))
 	for _, attr := range e.Extra.Attrs {
 		if attr.K == "src" {
 			continue
 		}
-		if v, err := attr.String(); err == nil {
-			m[attr.K] = v
-			continue
-		}
-		return nil, fmt.Errorf("expecting attr %q to be a literal, got: %T", attr.K, attr.V)
+		m[attr.K] = attr.V
 	}
-	return m, nil
+	// For backward compatibility, we append the GlobalFlags as variables.
+	for k, v := range GlobalFlags.Vars {
+		if _, ok := m[k]; !ok {
+			m[k] = v
+		}
+	}
+	return m
 }
 
 // Extend allows extending environment blocks with

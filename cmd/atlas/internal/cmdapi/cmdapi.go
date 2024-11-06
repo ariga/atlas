@@ -159,32 +159,6 @@ func init() {
 	})
 }
 
-// inputValuesFromEnv populates GlobalFlags.Vars from the active environment. If we are working
-// inside a project, the "var" flag is not propagated to the schema definition. Instead, it
-// is used to evaluate the project file which can pass input values via the "values" block
-// to the schema.
-func inputValuesFromEnv(cmd *cobra.Command, env *Env) error {
-	if fl := cmd.Flag(flagVar); fl == nil {
-		return nil
-	}
-	values, err := env.asMap()
-	if err != nil {
-		return err
-	}
-	if len(values) == 0 {
-		return nil
-	}
-	pairs := make([]string, 0, len(values))
-	for k, v := range values {
-		pairs = append(pairs, fmt.Sprintf("%s=%s", k, v))
-	}
-	vars := strings.Join(pairs, ",")
-	if err := cmd.Flags().Set(flagVar, vars); err != nil {
-		return fmt.Errorf("set flag %q: %w", flagVar, err)
-	}
-	return nil
-}
-
 // parseV returns a user facing version and release notes url
 func parseV(version string) (string, string) {
 	u := "https://github.com/ariga/atlas/releases/latest"
