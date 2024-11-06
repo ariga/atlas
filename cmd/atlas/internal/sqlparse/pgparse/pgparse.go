@@ -93,7 +93,7 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 		switch stmt := stmt.GetStmt(); {
 		case stmt.GetRenameStmt() != nil &&
 			stmt.GetRenameStmt().GetRenameType() == pgquery.ObjectType_OBJECT_COLUMN:
-			modify, err := expectModify(changes)
+			modify, err := expectHaveModify(changes)
 			if err != nil {
 				return nil, err
 			}
@@ -104,7 +104,7 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 			})
 		case stmt.GetRenameStmt() != nil &&
 			stmt.GetRenameStmt().GetRenameType() == pgquery.ObjectType_OBJECT_INDEX:
-			modify, err := expectModify(changes)
+			modify, err := expectOneModify(changes)
 			if err != nil {
 				return nil, err
 			}
@@ -122,7 +122,7 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 			})
 		case stmt.GetIndexStmt() != nil &&
 			stmt.GetIndexStmt().GetConcurrent():
-			modify, err := expectModify(changes)
+			modify, err := expectOneModify(changes)
 			if err != nil {
 				return nil, err
 			}
@@ -139,7 +139,7 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 				add.Extra = append(add.Extra, &postgres.Concurrently{})
 			}
 		case stmt.GetDropStmt() != nil && stmt.GetDropStmt().GetConcurrent():
-			modify, err := expectModify(changes)
+			modify, err := expectOneModify(changes)
 			if err != nil {
 				return nil, err
 			}
@@ -179,15 +179,30 @@ func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (
 	return changes, nil
 }
 
-func expectModify(changes schema.Changes) (*schema.ModifyTable, error) {
-	if len(changes) != 1 {
-		return nil, fmt.Errorf("unexpected number fo changes: %d", len(changes))
-	}
+func expectOneModify(changes schema.Changes) (*schema.ModifyTable, error) {
 	modify, ok := changes[0].(*schema.ModifyTable)
 	if !ok {
 		return nil, fmt.Errorf("expected modify-table change for alter-table statement, but got: %T", changes[0])
 	}
 	return modify, nil
+}
+
+func expectHaveModify(changes schema.Changes) (*schema.ModifyTable, error) {
+	var modify []*schema.ModifyTable
+	for _, c := range changes {
+		switch c := c.(type) {
+		case *schema.ModifyTable:
+			modify = append(modify, c)
+		// The column might be used in the view.
+		case *schema.ModifyView:
+		default:
+			return nil, fmt.Errorf("unexpected change for alter-table statement: %#v", c)
+		}
+	}
+	if len(modify) != 1 {
+		return nil, fmt.Errorf("expected one modify-table change for alter-table statement, but got: %d", len(modify))
+	}
+	return modify[0], nil
 }
 
 // tableUpdated checks if the table was updated in the statement.
