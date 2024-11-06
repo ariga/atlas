@@ -1604,9 +1604,6 @@ func migrateFlagsFromConfig(cmd *cobra.Command) error {
 }
 
 func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
-	if err := inputValuesFromEnv(cmd, env); err != nil {
-		return err
-	}
 	if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
 		return err
 	}

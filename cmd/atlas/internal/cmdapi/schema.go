@@ -303,7 +303,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 	from, err := stateReader(ctx, env, &stateReaderConfig{
 		urls:    flags.fromURL,
 		dev:     c,
-		vars:    GlobalFlags.Vars,
+		vars:    env.Vars(),
 		schemas: flags.schemas,
 		exclude: flags.exclude,
 	})
@@ -314,7 +314,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 	to, err := stateReader(ctx, env, &stateReaderConfig{
 		urls:    flags.toURL,
 		dev:     c,
-		vars:    GlobalFlags.Vars,
+		vars:    env.Vars(),
 		schemas: flags.schemas,
 		exclude: flags.exclude,
 	})
@@ -422,7 +422,7 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags, 
 	r, err := stateReader(ctx, env, &stateReaderConfig{
 		urls:    []string{flags.url},
 		dev:     dev,
-		vars:    GlobalFlags.Vars,
+		vars:    env.Vars(),
 		schemas: flags.schemas,
 		exclude: flags.exclude,
 	})
@@ -529,9 +529,6 @@ func schemaFlagsFromConfig(cmd *cobra.Command) error {
 }
 
 func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
-	if err := inputValuesFromEnv(cmd, env); err != nil {
-		return err
-	}
 	if err := maySetFlag(cmd, flagDevURL, env.DevURL); err != nil {
 		return err
 	}

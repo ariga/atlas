@@ -273,7 +273,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 		dev:     dev,
 		client:  dev,
 		schemas: flags.schemas,
-		vars:    GlobalFlags.Vars,
+		vars:    env.Vars(),
 	})
 	if err != nil {
 		return err
@@ -378,7 +378,7 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 		client:  client,
 		schemas: flags.schemas,
 		exclude: flags.exclude,
-		vars:    GlobalFlags.Vars,
+		vars:    env.Vars(),
 	})
 	if err != nil {
 		return err
