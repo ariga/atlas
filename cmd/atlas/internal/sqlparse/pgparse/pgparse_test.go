@@ -56,6 +56,39 @@ func TestFixChange_RenameColumns(t *testing.T) {
 		},
 		changes,
 	)
+
+	changes, err = p.FixChange(
+		nil,
+		"ALTER TABLE t RENAME COLUMN c1 TO c2",
+		schema.Changes{
+			&schema.ModifyTable{
+				Changes: schema.Changes{
+					&schema.DropColumn{C: schema.NewColumn("c1")},
+					&schema.AddColumn{C: schema.NewColumn("c2")},
+				},
+			},
+			&schema.ModifyView{
+				From: &schema.View{Name: "t", Def: "select c1 from t"},
+				To:   &schema.View{Name: "t", Def: "select c2 from t"},
+			},
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.ModifyTable{
+				Changes: schema.Changes{
+					&schema.RenameColumn{From: schema.NewColumn("c1"), To: schema.NewColumn("c2")},
+				},
+			},
+			&schema.ModifyView{
+				From: &schema.View{Name: "t", Def: "select c1 from t"},
+				To:   &schema.View{Name: "t", Def: "select c2 from t"},
+			},
+		},
+		changes,
+	)
 }
 
 func TestFixChange_RenameIndexes(t *testing.T) {
