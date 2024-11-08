@@ -59,7 +59,6 @@ func New(endpoint, token string) *Client {
 	// Disable logging until "ATLAS_DEBUG" option will be added.
 	client.Logger = nil
 	// Keep retry short for unit/integration tests.
-	// Keep retry short for unit/integration tests.
 	if testing.Testing() || testingURL(endpoint) {
 		client.HTTPClient.Timeout = 0
 		client.RetryWaitMin, client.RetryWaitMax = 0, time.Microsecond
