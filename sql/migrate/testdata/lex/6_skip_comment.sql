@@ -25,9 +25,9 @@ CREATE TABLE t5(
     -- comment
 ) ENGINE=InnoDB;
 
-# MySQL comment.
-CREATE INDEX "i" ON "s"."t" (((c #>> '{a,b,c}'::text[])));
-
 SELECT * FROM (
   SELECT * FROM t1 # comment
 );
+
+# This is a statement's comment.
+SELECT * FROM t2;

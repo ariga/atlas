@@ -279,6 +279,7 @@ func (*Driver) ScanStmts(input string) ([]*migrate.Stmt, error) {
 		ScannerOptions: migrate.ScannerOptions{
 			MatchBegin:       true,
 			BackslashEscapes: true,
+			HashComments:     true,
 			// The following are not support by MySQL/MariaDB.
 			MatchBeginAtomic: false,
 			MatchDollarQuote: false,
