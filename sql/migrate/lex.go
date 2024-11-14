@@ -112,6 +112,8 @@ type (
 		// EscapedStringExt enables the supported for PG extension for escaped strings and adopted by its flavors.
 		// See: https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE.
 		EscapedStringExt bool
+		// HashComments enables MySQL/MariaDB hash-like (#) comments.
+		HashComments bool
 	}
 )
 
@@ -216,9 +218,7 @@ Scan:
 			if err := s.skipDollarQuote(); err != nil {
 				return nil, err
 			}
-		// Skip non-standard MySQL comments if they are inside
-		// expressions until we make the lexer driver-aware.
-		case depth == 0 && r == '#':
+		case r == '#' && s.HashComments:
 			s.comment("#", "\n")
 		case r == '-' && s.pick() == '-':
 			s.next()

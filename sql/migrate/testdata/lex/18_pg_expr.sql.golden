@@ -1,0 +1,29 @@
+CREATE INDEX "i" ON "s"."t" (((c #>> '{a,b,c}'::text[])));
+-- end --
+SELECT name
+FROM company.employees
+WHERE info #>> '{department, name}' = 'Engineering';
+-- end --
+SELECT name
+FROM company.employees
+WHERE info #>> '{contact, email}' = 'alice@company.com';
+-- end --
+CREATE INDEX "idx_emp_department" ON "company"."employees" (
+    (info #>> '{department, name}')
+);
+-- end --
+CREATE INDEX "idx_emp_contact" ON "company"."employees" (
+    LOWER(info #>> '{contact, email}')
+);
+-- end --
+SELECT
+    info #>> '{department, name}' AS department,
+    COUNT(*) AS emp_count
+FROM company.employees
+GROUP BY info #>> '{department, name}';
+-- end --
+SELECT name
+FROM company.employees
+WHERE (info #>> '{department, name}' = 'Engineering'
+       OR info #>> '{department, location}' = 'Building A')
+  AND info #>> '{contact, email}' LIKE '%@company.com';
