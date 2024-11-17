@@ -281,8 +281,11 @@ schema "schema" {
 			{SeqNo: 0, C: exp.Tables[1].Columns[0]},
 		},
 	}
+	exp.Tables[0].Columns[0].AddIndexes(exp.Tables[0].PrimaryKey)
+	exp.Tables[0].Columns[0].AddIndexes(exp.Tables[0].Indexes[0])
+	exp.Tables[0].Columns[1].AddIndexes(exp.Tables[0].Indexes[0])
+	exp.Tables[1].Columns[0].AddIndexes(exp.Tables[1].PrimaryKey)
 	require.EqualValues(t, exp, &s)
-
 	_, err = MarshalHCL(&s)
 	require.NoError(t, err)
 }
@@ -708,7 +711,6 @@ table "users" {
 						),
 				),
 		)
-	exp.Tables[0].Columns[0].Indexes = nil
 	schema.NewRealm(exp)
 	require.EqualValues(t, exp, &s)
 }
@@ -801,7 +803,6 @@ schema "test" {
 						AddAttrs(&IndexType{T: IndexTypeFullText}, &IndexParser{P: "custom"}),
 				),
 		)
-	c.Indexes = nil
 	schema.NewRealm(exp)
 	require.EqualValues(t, exp, &s)
 }
@@ -870,6 +871,7 @@ schema "test" {
 		Parts: []*schema.IndexPart{{C: exp.Tables[0].Columns[0]}},
 		Attrs: []schema.Attr{&IndexType{T: IndexTypeHash}},
 	})
+	exp.Tables[0].Columns[0].AddIndexes(exp.Tables[0].PrimaryKey)
 	schema.NewRealm(exp)
 	require.EqualValues(t, exp, &s)
 }

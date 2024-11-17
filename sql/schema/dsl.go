@@ -751,6 +751,16 @@ func (c *Column) SetPos(p *Pos) *Column {
 	return c
 }
 
+// AddIndexes appends the references to the indexes this column is part of.
+func (c *Column) AddIndexes(indexes ...*Index) *Column {
+	for _, idx := range indexes {
+		if !slices.Contains(c.Indexes, idx) {
+			c.Indexes = append(c.Indexes, idx)
+		}
+	}
+	return c
+}
+
 // NewCheck creates a new check.
 func NewCheck() *Check {
 	return &Check{}

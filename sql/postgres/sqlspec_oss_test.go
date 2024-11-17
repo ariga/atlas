@@ -277,6 +277,10 @@ enum "account_type" {
 			{SeqNo: 0, C: exp.Tables[1].Columns[0]},
 		},
 	}
+	exp.Tables[0].Columns[0].AddIndexes(exp.Tables[0].PrimaryKey)
+	exp.Tables[0].Columns[0].AddIndexes(exp.Tables[0].Indexes...)
+	exp.Tables[0].Columns[1].AddIndexes(exp.Tables[0].Indexes...)
+	exp.Tables[1].Columns[0].AddIndexes(exp.Tables[1].PrimaryKey)
 	exp.Realm = schema.NewRealm(exp)
 	require.EqualValues(t, exp, &s)
 }

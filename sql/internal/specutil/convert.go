@@ -477,16 +477,21 @@ func Index(spec *sqlspec.Index, parent *schema.Table, partFns ...func(*sqlspec.I
 			parts = append(parts, part)
 		}
 	}
-	i := &schema.Index{
+	idx := &schema.Index{
 		Name:   spec.Name,
 		Unique: spec.Unique,
 		Table:  parent,
 		Parts:  parts,
 	}
-	if err := convertCommentFromSpec(spec, &i.Attrs); err != nil {
+	if err := convertCommentFromSpec(spec, &idx.Attrs); err != nil {
 		return nil, err
 	}
-	return i, nil
+	for _, p := range idx.Parts {
+		if p.C != nil {
+			p.C.AddIndexes(idx)
+		}
+	}
+	return idx, nil
 }
 
 // Check converts a sqlspec.Check to a schema.Check.
@@ -510,10 +515,19 @@ func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, 
 			C:     c,
 		})
 	}
-	return &schema.Index{
+	pk := &schema.Index{
 		Table: parent,
 		Parts: parts,
-	}, nil
+	}
+	if err := convertCommentFromSpec(spec, &pk.Attrs); err != nil {
+		return nil, err
+	}
+	for _, p := range pk.Parts {
+		if p.C != nil {
+			p.C.AddIndexes(pk)
+		}
+	}
+	return pk, nil
 }
 
 // linkForeignKeys creates the foreign keys defined in the Table's spec by creating references
