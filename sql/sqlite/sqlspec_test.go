@@ -177,6 +177,10 @@ table "accounts" {
 			{SeqNo: 0, C: exp.Tables[1].Columns[0]},
 		},
 	}
+	exp.Tables[0].Columns[0].AddIndexes(exp.Tables[0].PrimaryKey)
+	exp.Tables[0].Columns[0].AddIndexes(exp.Tables[0].Indexes[0])
+	exp.Tables[0].Columns[1].AddIndexes(exp.Tables[0].Indexes[0])
+	exp.Tables[1].Columns[0].AddIndexes(exp.Tables[1].PrimaryKey)
 	var s schema.Schema
 	err := EvalHCLBytes([]byte(f), &s, nil)
 	require.NoError(t, err)
