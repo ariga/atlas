@@ -350,11 +350,13 @@ func View(spec *sqlspec.View, parent *schema.Schema, convertC ConvertViewColumnF
 		return nil, fmt.Errorf("expect string definition for attribute view.%s.as: %w", spec.Name, err)
 	}
 	v := schema.NewView(spec.Name, def).SetSchema(parent)
-	for _, c := range spec.Columns {
-		c, err := convertC(c, v)
+	schemahcl.AppendPos(&v.Attrs, spec.Range)
+	for _, cs := range spec.Columns {
+		c, err := convertC(cs, v)
 		if err != nil {
 			return nil, err
 		}
+		schemahcl.AppendPos(&c.Attrs, cs.Range)
 		v.AddColumns(c)
 	}
 	for _, idx := range spec.Indexes {
@@ -362,6 +364,7 @@ func View(spec *sqlspec.View, parent *schema.Schema, convertC ConvertViewColumnF
 		if err != nil {
 			return nil, err
 		}
+		schemahcl.AppendPos(&i.Attrs, idx.Range)
 		v.AddIndexes(i)
 	}
 	if err := convertCommentFromSpec(spec, &v.Attrs); err != nil {
