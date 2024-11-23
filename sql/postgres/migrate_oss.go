@@ -817,7 +817,7 @@ func (s *state) alterType(b *sqlx.Builder, alter *changeGroup, t *schema.Table, 
 		b.P("TYPE", f)
 	}
 	if collate := (schema.Collation{}); sqlx.Has(c.To.Attrs, &collate) {
-		b.P("COLLATE", collate.V)
+		b.P("COLLATE", strconv.Quote(collate.V))
 	}
 	if using := (ConvertUsing{}); sqlx.Has(c.Extra, &using) {
 		b.P("USING", using.X)
@@ -1012,7 +1012,7 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 	b.P("NULL")
 	s.columnDefault(b, c)
 	if collate := (schema.Collation{}); sqlx.Has(c.Attrs, &collate) {
-		b.P("COLLATE").Ident(collate.V)
+		b.P("COLLATE").Ident(strconv.Quote(collate.V))
 	}
 	switch hasI, hasX := sqlx.Has(c.Attrs, &Identity{}), sqlx.Has(c.Attrs, &schema.GeneratedExpr{}); {
 	case hasI && hasX:
@@ -1081,7 +1081,7 @@ func (s *state) indexParts(b *sqlx.Builder, idx *schema.Index) (err error) {
 
 func (s *state) partAttrs(b *sqlx.Builder, idx *schema.Index, p *schema.IndexPart) error {
 	if c := (schema.Collation{}); sqlx.Has(p.Attrs, &c) {
-		b.P("COLLATE").Ident(c.V)
+		b.P("COLLATE").Ident(strconv.Quote(c.V))
 	}
 	if op := (IndexOpClass{}); sqlx.Has(p.Attrs, &op) {
 		d, err := op.DefaultFor(idx, p)

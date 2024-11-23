@@ -1822,6 +1822,31 @@ func TestPlanChanges(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("users").
+						AddColumns(schema.NewColumn("name").SetType(&schema.StringType{T: "text"}).AddAttrs(&schema.Collation{V: "ja-x-icu"})),
+					Changes: []schema.Change{
+						&schema.ModifyColumn{
+							From:   schema.NewColumn("name").SetType(&schema.StringType{T: "text"}),
+							To:     schema.NewColumn("name").SetType(&schema.StringType{T: "text"}).AddAttrs(&schema.Collation{V: "ja-x-icu"}),
+							Change: schema.ChangeType,
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "users" ALTER COLUMN "name" TYPE text COLLATE "ja-x-icu"`,
+						Reverse: `ALTER TABLE "users" ALTER COLUMN "name" TYPE text`,
+					},
+				},
+			},
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
