@@ -1081,7 +1081,7 @@ func (s *state) indexParts(b *sqlx.Builder, idx *schema.Index) (err error) {
 
 func (s *state) partAttrs(b *sqlx.Builder, idx *schema.Index, p *schema.IndexPart) error {
 	if c := (schema.Collation{}); sqlx.Has(p.Attrs, &c) {
-		b.P("COLLATE").Ident(collate.V)
+		b.P("COLLATE").Ident(c.V)
 	}
 	if op := (IndexOpClass{}); sqlx.Has(p.Attrs, &op) {
 		d, err := op.DefaultFor(idx, p)
