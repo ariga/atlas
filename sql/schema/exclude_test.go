@@ -456,3 +456,56 @@ func TestExcludeSchema(t *testing.T) {
 	require.Len(t, r.Schemas, 1)
 	require.Len(t, r.Schemas[0].Tables, 1)
 }
+
+// TestingUser is fake Realm objects for testing.
+type TestingUser struct {
+	Object
+	Name string
+}
+
+// SpecType returns the type of the user.
+func (t *TestingUser) SpecType() string {
+	return "testing_user"
+}
+
+// SpecName returns the name of the extension.
+func (t *TestingUser) SpecName() string {
+	return t.Name
+}
+
+func TestExcludeRealmObjects(t *testing.T) {
+	r := NewRealm(New("s1"), New("s2")).AddObjects(&TestingUser{Name: "s1"}, &TestingUser{Name: "s2"})
+	r, err := ExcludeRealm(r, []string{"s1[type=schema]"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 1)
+	require.Equal(t, "s2", r.Schemas[0].Name)
+	require.Len(t, r.Objects, 2)
+
+	r, err = ExcludeRealm(r, []string{"s2[type=testing_user]"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 1)
+	require.Len(t, r.Objects, 1)
+	require.Equal(t, "s1", r.Objects[0].(*TestingUser).Name)
+
+	r, err = ExcludeRealm(r, []string{"*"})
+	require.NoError(t, err)
+	require.Empty(t, r.Schemas)
+	require.Empty(t, r.Objects)
+
+	r = NewRealm(New("s1"), New("s2")).AddObjects(&TestingUser{Name: "s1"}, &TestingUser{Name: "s2"})
+	r, err = ExcludeRealm(r, []string{"*.*"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 2)
+	require.Len(t, r.Objects, 2)
+
+	r, err = ExcludeRealm(r, []string{"s*"})
+	require.NoError(t, err)
+	require.Empty(t, r.Schemas)
+	require.Empty(t, r.Objects)
+
+	r = NewRealm(New("s1"), New("s2")).AddObjects(&TestingUser{Name: "s1"}, &TestingUser{Name: "s2"})
+	r, err = ExcludeRealm(r, []string{"s*[type=testing_user]"})
+	require.NoError(t, err)
+	require.Len(t, r.Schemas, 2)
+	require.Empty(t, r.Objects)
+}
