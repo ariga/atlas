@@ -817,7 +817,7 @@ func (s *state) alterType(b *sqlx.Builder, alter *changeGroup, t *schema.Table, 
 		b.P("TYPE", f)
 	}
 	if collate := (schema.Collation{}); sqlx.Has(c.To.Attrs, &collate) {
-		b.P("COLLATE", collate.V)
+		b.P("COLLATE").Ident(collate.V)
 	}
 	if using := (ConvertUsing{}); sqlx.Has(c.Extra, &using) {
 		b.P("USING", using.X)
