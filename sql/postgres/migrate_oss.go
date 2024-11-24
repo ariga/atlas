@@ -1012,7 +1012,7 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 	b.P("NULL")
 	s.columnDefault(b, c)
 	if collate := (schema.Collation{}); sqlx.Has(c.Attrs, &collate) {
-		b.P("COLLATE").Ident(strconv.Quote(collate.V))
+		b.P("COLLATE").Ident(collate.V)
 	}
 	switch hasI, hasX := sqlx.Has(c.Attrs, &Identity{}), sqlx.Has(c.Attrs, &schema.GeneratedExpr{}); {
 	case hasI && hasX:
