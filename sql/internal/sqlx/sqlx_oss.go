@@ -46,3 +46,8 @@ func (*Diff) askForIndexes(_ string, changes []schema.Change, _ *schema.DiffOpti
 func (*Diff) fixRenames(changes schema.Changes) schema.Changes {
 	return changes // unimplemented.
 }
+
+// ContainsCall determines if first function calls the second function.
+func ContainsCall(_, _ *schema.Func, _ SortOptions) bool {
+	return false // unimplemented.
+}

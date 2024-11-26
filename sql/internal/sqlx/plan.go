@@ -657,6 +657,15 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 		}
 		return depOfAdd(c1.To.Deps, c2)
 	case *schema.AddFunc:
+		if c2, ok := c2.(*schema.ModifyTable); ok {
+			// Check if the modification of a table relies on the function.
+			if slices.ContainsFunc(c2.Changes, func(c schema.Change) bool {
+				add, ok := c.(*schema.AddCheck)
+				return ok && ContainsCall(&schema.Func{Schema: c2.T.Schema, Body: add.C.Expr}, c1.F, opts)
+			}) {
+				return false
+			}
+		}
 		if depOfAdd(c1.F.Deps, c2) {
 			return true
 		}
@@ -707,6 +716,14 @@ func dependsOn(c1, c2 schema.Change, opts SortOptions) bool {
 		case *schema.ModifyFunc:
 			if funcDep(c2.From, c1.F, opts) {
 				// If f1 depends on previous definition of f2, f1 should be dropped before f2.
+				return true
+			}
+		case *schema.ModifyTable:
+			// We need to drop the check constraint before dropping the function.
+			if slices.ContainsFunc(c2.Changes, func(c schema.Change) bool {
+				drop, ok := c.(*schema.DropCheck)
+				return ok && ContainsCall(&schema.Func{Schema: c2.T.Schema, Body: drop.C.Expr}, c1.F, opts)
+			}) {
 				return true
 			}
 		}
