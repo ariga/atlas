@@ -294,6 +294,8 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	if err != nil {
 		return err
 	}
+	// The column has an expression default value,
+	// and it is handled in Driver.addColumn.
 	if attr.autoinc {
 		a := &AutoIncrement{}
 		if !sqlx.Has(t.Attrs, a) {
@@ -306,6 +308,9 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	}
 	if attr.onUpdate != "" {
 		c.Attrs = append(c.Attrs, &OnUpdate{A: attr.onUpdate})
+	}
+	if attr.invisible {
+		c.Attrs = append(c.Attrs, &Invisible{})
 	}
 	if x := expr.String; x != "" {
 		if !i.Maria() {
@@ -507,33 +512,56 @@ type extraAttr struct {
 	onUpdate         string
 	generatedType    string
 	defaultGenerated bool
+	invisible        bool
 }
 
 var (
-	reGenerateType = regexp.MustCompile(`(?i)^(stored|persistent|virtual) generated$`)
-	reTimeOnUpdate = regexp.MustCompile(`(?i)^(?:default_generated )?on update (current_timestamp(?:\(\d?\))?)$`)
+	reTimeOnUpdate  = regexp.MustCompile(`(?i)^(?:default_generated )?on update (current_timestamp(?:\(\d?\))?)$`)
+	reGenerateType  = regexp.MustCompile(`(?i)^(virtual|stored|persistent)( generated)?|generated always as \((.*)\) (stored|virtual|persistent)$`)
+	reAutoIncrement = regexp.MustCompile(`(?i)\bauto_increment\b`)
+	reDefaultGen    = regexp.MustCompile(`(?i)\bDEFAULT_GENERATED\b`)
+	reInvisible     = regexp.MustCompile(`(?i)\bINVISIBLE\b`)
 )
 
 // parseExtra returns a parsed version of the EXTRA column
 // from the INFORMATION_SCHEMA.COLUMNS table.
 func parseExtra(extra string) (*extraAttr, error) {
 	attr := &extraAttr{}
-	switch el := strings.ToLower(extra); {
-	case el == "", el == "null":
-	case el == defaultGen:
-		attr.defaultGenerated = true
-		// The column has an expression default value,
-		// and it is handled in Driver.addColumn.
-	case el == autoIncrement:
-		attr.autoinc = true
-	case reTimeOnUpdate.MatchString(extra):
-		attr.onUpdate = reTimeOnUpdate.FindStringSubmatch(extra)[1]
-	case reGenerateType.MatchString(extra):
-		attr.generatedType = reGenerateType.FindStringSubmatch(extra)[1]
-	default:
-		return nil, fmt.Errorf("unknown extra column attribute %q", extra)
+
+	if extra == "" || strings.ToLower(extra) == "null" {
+		return attr, nil
 	}
-	return attr, nil
+
+	if reDefaultGen.MatchString(extra) {
+		attr.defaultGenerated = true
+	}
+
+	if reAutoIncrement.MatchString(extra) {
+		attr.autoinc = true
+	}
+
+	if reInvisible.MatchString(extra) {
+		attr.invisible = true
+	}
+
+	if match := reTimeOnUpdate.FindStringSubmatch(extra); match != nil {
+		attr.onUpdate = match[1]
+	}
+
+	if match := reGenerateType.FindStringSubmatch(extra); match != nil {
+		if match[1] != "" {
+			attr.generatedType = strings.ToUpper(match[1])
+		} else if match[4] != "" {
+			attr.generatedType = strings.ToUpper(match[4])
+		}
+
+	}
+
+	if attr.defaultGenerated || attr.autoinc || attr.invisible || attr.onUpdate != "" || attr.generatedType != "" {
+		return attr, nil
+	}
+
+	return nil, fmt.Errorf("unknown extra column attribute %q", extra)
 }
 
 // showCreate sets and fixes schema elements that require information from
@@ -823,6 +851,10 @@ type (
 	AutoIncrement struct {
 		schema.Attr
 		V int64
+	}
+
+	Invisible struct {
+		schema.Attr
 	}
 
 	// CreateOptions attribute for describing extra options used with CREATE TABLE.
