@@ -301,8 +301,8 @@ func removeObj(objs []Object, o Object) []Object {
 	return append(objs[:i:i], objs[i+1:]...)
 }
 
-// sortRefs maintains consistent dependents list.
-func sortRefs(refs []Object) {
+// SortRefs maintains consistent dependents list.
+func SortRefs(refs []Object) {
 	slices.SortFunc(refs, func(a, b Object) int {
 		typeA, typeB := reflect.TypeOf(a), reflect.TypeOf(b)
 		if typeA != typeB {
@@ -328,7 +328,7 @@ func sortRefs(refs []Object) {
 // AddRefs adds references to the table.
 func (t *Table) AddRefs(refs ...Object) {
 	t.Refs = append(t.Refs, refs...)
-	sortRefs(t.Refs)
+	SortRefs(t.Refs)
 }
 
 // RemoveDep removes the given object from the table dependencies.
@@ -393,7 +393,7 @@ func (v *View) RemoveDep(o Object) {
 // AddRefs adds references to the view.
 func (v *View) AddRefs(refs ...Object) {
 	v.Refs = append(v.Refs, refs...)
-	sortRefs(v.Refs)
+	SortRefs(v.Refs)
 }
 
 // AddIndexes appends the given indexes to the table index list.
@@ -1005,7 +1005,7 @@ func (f *Func) RemoveDep(o Object) {
 // AddRefs adds references to the function.
 func (f *Func) AddRefs(refs ...Object) {
 	f.Refs = append(f.Refs, refs...)
-	sortRefs(f.Refs)
+	SortRefs(f.Refs)
 }
 
 // AddDeps adds the given objects as dependencies to the procedure.
@@ -1023,7 +1023,7 @@ func (p *Proc) RemoveDep(o Object) {
 // AddRefs adds references to the procedure.
 func (p *Proc) AddRefs(refs ...Object) {
 	p.Refs = append(p.Refs, refs...)
-	sortRefs(p.Refs)
+	SortRefs(p.Refs)
 }
 
 // ReplaceOrAppend searches an attribute of the same type as v in
