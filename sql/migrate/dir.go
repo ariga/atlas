@@ -535,7 +535,7 @@ func delim(s string) string {
 	}
 	// Escape delimiters. e.g. "\n" => "\\n".
 	s = strings.NewReplacer("\n", `\n`, "\r", `\r`, "\t", `\t`).Replace(s)
-	return fmt.Sprintf("-- atlas:%s %s\n", directiveDelimiter, s)
+	return fmt.Sprintf("-- atlas:%s %s", directiveDelimiter, s)
 }
 
 var (
@@ -552,7 +552,7 @@ var (
 				"{{ with .Version }}{{ . }}{{ else }}{{ now }}{{ end }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 			)),
 			C: template.Must(template.New("").Funcs(templateFuncs).Parse(
-				`{{ delim .Delimiter }}{{ range .Changes }}{{ with .Comment }}{{ printf "-- %s%s\n" (slice . 0 1 | upper ) (slice . 1) }}{{ end }}{{ printf "%s%s\n" .Cmd (or $.Delimiter ";") }}{{ end }}`,
+				`{{ with .Delimiter }}{{ delim . | printf "%s\n\n" }}{{ end }}{{ range .Changes }}{{ with .Comment }}{{ printf "-- %s%s\n" (slice . 0 1 | upper ) (slice . 1) }}{{ end }}{{ printf "%s%s\n" .Cmd (or $.Delimiter ";") }}{{ end }}`,
 			)),
 		},
 	}
