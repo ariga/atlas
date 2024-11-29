@@ -34,6 +34,9 @@ type (
 
 		// Changes defines the list of changeset in the plan.
 		Changes []*Change
+
+		// Delimiter to use for separating statements.
+		Delimiter string
 	}
 
 	// A Change of migration.

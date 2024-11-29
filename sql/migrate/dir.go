@@ -528,11 +528,22 @@ func CheckVersion(v string) error {
 	return nil
 }
 
+// delim returns a directive with the given delimiter.
+func delim(s string) string {
+	if s == "" {
+		return ""
+	}
+	// Escape delimiters. e.g. "\n" => "\\n".
+	s = strings.NewReplacer("\n", `\n`, "\r", `\r`, "\t", `\t`).Replace(s)
+	return fmt.Sprintf("-- atlas:%s %s\n", directiveDelimiter, s)
+}
+
 var (
 	// templateFunc contains the template.FuncMap for the DefaultFormatter.
 	templateFuncs = template.FuncMap{
 		"upper": strings.ToUpper,
 		"now":   NewVersion,
+		"delim": delim,
 	}
 	// DefaultFormatter is a default implementation for Formatter.
 	DefaultFormatter = TemplateFormatter{
@@ -541,7 +552,7 @@ var (
 				"{{ with .Version }}{{ . }}{{ else }}{{ now }}{{ end }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 			)),
 			C: template.Must(template.New("").Funcs(templateFuncs).Parse(
-				`{{ range .Changes }}{{ with .Comment }}{{ printf "-- %s%s\n" (slice . 0 1 | upper ) (slice . 1) }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
+				`{{ delim .Delimiter }}{{ range .Changes }}{{ with .Comment }}{{ printf "-- %s%s\n" (slice . 0 1 | upper ) (slice . 1) }}{{ end }}{{ printf "%s%s\n" .Cmd (or $.Delimiter ";") }}{{ end }}`,
 			)),
 		},
 	}
