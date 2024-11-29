@@ -104,6 +104,8 @@ type (
 		MatchBegin bool
 		// MatchBeginAtomic enables matching for BEGIN ATOMIC ... END statements block.
 		MatchBeginAtomic bool
+		// MatchBeginCatch enables matching for BEGIN TRY/CATCH ... END TRY/CATCH statements block.
+		MatchBeginTryCatch bool
 		// MatchDollarQuote enables the PostgreSQL dollar-quoted string syntax.
 		MatchDollarQuote bool
 		// BackslashEscapes enables backslash-escaped strings. By default, only MySQL/MariaDB uses backslash as
@@ -164,8 +166,10 @@ var (
 	reDollarQuote = regexp.MustCompile(`^\$([A-Za-zÈ-ÿ_][\wÈ-ÿ]*)*\$`)
 	// The 'BEGIN ATOMIC' syntax as specified in the SQL 2003 standard.
 	reBeginAtomic = regexp.MustCompile(`(?i)^\s*BEGIN\s+ATOMIC\s+`)
+	reBeginTry    = regexp.MustCompile(`(?i)^\s*BEGIN\s+TRY\s+`)
 	reBegin       = regexp.MustCompile(`(?i)^\s*BEGIN\s+`)
 	reEnd         = regexp.MustCompile(`(?i)^\s*END\s*`)
+	reEndCatch    = regexp.MustCompile(`(?i)^\s*END\s*CATCH\s*`)
 )
 
 func (s *Scanner) stmt() (*Stmt, error) {
@@ -232,6 +236,12 @@ Scan:
 				break Scan
 			}
 			// Not a "BEGIN ATOMIC" block.
+		case s.delim == delimiter && s.MatchBeginTryCatch && reBeginTry.MatchString(s.input[s.pos-1:]):
+			if err := s.skipBeginTryCatch(); err == nil {
+				text = s.input[:s.pos]
+				break Scan
+			}
+			// Not a "BEGIN TRY ... END CATCH" block.
 		case s.delim == delimiter && s.MatchBegin &&
 			// Either the current scanned statement starts with BEGIN, or we inside a statement and expects at least one ~space before).
 			(s.pos == 1 && reBegin.MatchString(s.input[s.pos-1:]) || s.pos > 1 && reBegin.MatchString(s.input[s.pos-2:])):
@@ -324,6 +334,37 @@ func (s *Scanner) skipBeginAtomic() error {
 			return s.error(s.pos, "scan sql body: %v", err)
 		}
 		if reEnd.MatchString(stmt.Text) {
+			break
+		}
+	}
+	s.addPos(body.total)
+	return nil
+}
+
+func (s *Scanner) skipBeginTryCatch() error {
+	m := reBeginTry.FindString(s.input[s.pos-1:])
+	if m == "" {
+		return s.error(s.pos, "unexpected missing BEGIN TRY block")
+	}
+	s.addPos(len(m) - 1)
+	body := &Scanner{ScannerOptions: s.ScannerOptions}
+	if err := body.init(s.input[s.pos:]); err != nil {
+		return err
+	}
+	for {
+		stmt, err := body.stmt()
+		if err == io.EOF {
+			return s.error(s.pos, "unexpected eof when scanning sql body")
+		}
+		if err != nil {
+			return s.error(s.pos, "scan sql body: %v", err)
+		}
+		if end := reEndCatch.FindString(stmt.Text); end != "" {
+			// In case "END CATCH" is not followed by a semicolon (\n instead),
+			// backup the extra consumed statement (it might be END;) and exit.
+			if !strings.HasSuffix(strings.TrimSpace(end), ";") {
+				s.addPos(-(len(stmt.Text) - len(end)))
+			}
 			break
 		}
 	}

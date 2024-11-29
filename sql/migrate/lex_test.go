@@ -99,6 +99,36 @@ func TestScanner_EscapedStrings(t *testing.T) {
 	require.Equalf(t, string(buf), strings.Join(got, "\n-- end --\n"), "mismatched statements in file %q", files[1].Name())
 }
 
+func TestScanner_BeginTryCatch(t *testing.T) {
+	path := filepath.Join("testdata", "lexbegintry")
+	dir, err := NewLocalDir(path)
+	require.NoError(t, err)
+	files, err := dir.Files()
+	require.NoError(t, err)
+	for _, f := range files {
+		sc := &Scanner{
+			ScannerOptions: ScannerOptions{
+				MatchBegin:         true,
+				MatchBeginAtomic:   true,
+				MatchBeginTryCatch: true,
+				MatchDollarQuote:   true,
+				BackslashEscapes:   true,
+				EscapedStringExt:   true,
+				HashComments:       false,
+			},
+		}
+		decls, err := sc.Scan(string(f.Bytes()))
+		require.NoErrorf(t, err, "file: %s", f.Name())
+		buf, err := os.ReadFile(filepath.Join(path, f.Name()+".golden"))
+		require.NoError(t, err)
+		stmts := make([]string, len(decls))
+		for i, s := range decls {
+			stmts[i] = s.Text
+		}
+		require.Equalf(t, string(buf), strings.Join(stmts, "\n-- end --\n"), "mismatched statements in file %q", f.Name())
+	}
+}
+
 func TestLocalFile_StmtDecls(t *testing.T) {
 	f := `cmd0;
 -- test
