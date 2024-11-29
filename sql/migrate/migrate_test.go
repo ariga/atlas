@@ -74,6 +74,15 @@ func TestPlanner_WritePlan(t *testing.T) {
 	require.Equal(t, countFiles(t, d), 3)
 	requireFileEqual(t, d, "add_t1_and_t2.up.sql", "CREATE TABLE t1(c int)\nCREATE TABLE t2(c int)\n")
 	requireFileEqual(t, d, "add_t1_and_t2.down.sql", "DROP TABLE t1 IF EXISTS\nDROP TABLE t2\n")
+
+	// With custom delimiter.
+	plan.Delimiter = "\nGO"
+	pl = migrate.NewPlanner(nil, d, migrate.PlanWithChecksum(false))
+	require.NotNil(t, pl)
+	require.NoError(t, pl.WritePlan(plan))
+	v = time.Now().UTC().Format("20060102150405")
+	require.Equal(t, countFiles(t, d), 3)
+	requireFileEqual(t, d, v+"_add_t1_and_t2.sql", "-- atlas:delimiter \\nGO\n\nCREATE TABLE t1(c int)\nGO\nCREATE TABLE t2(c int)\nGO\n")
 }
 
 func TestPlanner_WriteCheckpoint(t *testing.T) {
