@@ -198,14 +198,12 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 	// Prevent usage printing after input validation.
 	cmd.SilenceUsage = true
 	// Acquire a lock.
-	if l, ok := client.Driver.(schema.Locker); ok {
-		unlock, err := l.Lock(ctx, applyLockValue, flags.lockTimeout)
-		if err != nil {
-			return fmt.Errorf("acquiring database lock: %w", err)
-		}
-		// If unlocking fails notify the user about it.
-		defer func() { cobra.CheckErr(unlock()) }()
+	unlock, err := client.Driver.Lock(ctx, applyLockValue, flags.lockTimeout)
+	if err != nil {
+		return fmt.Errorf("acquiring database lock: %w", err)
 	}
+	// If unlocking fails notify the user about it.
+	defer func() { cobra.CheckErr(unlock()) }()
 	if err := checkRevisionSchemaClarity(cmd, client, flags.revisionSchema); err != nil {
 		return err
 	}
@@ -1022,14 +1020,12 @@ func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) (re
 	}
 	defer client.Close()
 	// Acquire a lock.
-	if l, ok := client.Driver.(schema.Locker); ok {
-		unlock, err := l.Lock(ctx, applyLockValue, 0)
-		if err != nil {
-			return fmt.Errorf("acquiring database lock: %w", err)
-		}
-		// If unlocking fails notify the user about it.
-		defer func() { cobra.CheckErr(unlock()) }()
+	unlock, err := client.Driver.Lock(ctx, applyLockValue, 0)
+	if err != nil {
+		return fmt.Errorf("acquiring database lock: %w", err)
 	}
+	// If unlocking fails notify the user about it.
+	defer func() { cobra.CheckErr(unlock()) }()
 	if err := checkRevisionSchemaClarity(cmd, client, flags.revisionSchema); err != nil {
 		return err
 	}

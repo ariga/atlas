@@ -83,6 +83,7 @@ type (
 		schema.Differ
 		schema.ExecQuerier
 		schema.Inspector
+		schema.Locker
 		PlanApplier
 	}
 

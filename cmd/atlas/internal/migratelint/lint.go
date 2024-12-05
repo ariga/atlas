@@ -398,19 +398,13 @@ func (d *DevLoader) inspect(ctx context.Context) (*schema.Realm, error) {
 
 // lock database so no one else interferes with our change detection.
 func (d *DevLoader) lock(ctx context.Context) (schema.UnlockFunc, error) {
-	l, ok := d.Dev.Driver.(schema.Locker)
-	if !ok {
-		// Some drivers do not support advisory locks.
-		// In this case, we just return a no-op unlock function.
-		return func() error { return nil }, nil
-	}
 	name := "atlas_lint"
 	// In case the client is connected to specific schema,
 	// minimize the lock resolution to the schema name.
 	if s := d.Dev.URL.Schema; s != "" {
 		name = fmt.Sprintf("%s_%s", name, s)
 	}
-	unlock, err := l.Lock(ctx, name, 0)
+	unlock, err := d.Dev.Driver.Lock(ctx, name, 0)
 	if err != nil {
 		return nil, fmt.Errorf("acquiring database lock: %w", err)
 	}
