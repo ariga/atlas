@@ -222,14 +222,12 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 	}
 	defer dev.Close()
 	// Acquire a lock.
-	if l, ok := dev.Driver.(schema.Locker); ok {
-		unlock, err := l.Lock(ctx, "atlas_migrate_diff", flags.lockTimeout)
-		if err != nil {
-			return fmt.Errorf("acquiring database lock: %w", err)
-		}
-		// If unlocking fails notify the user about it.
-		defer func() { cobra.CheckErr(unlock()) }()
+	unlock, err := dev.Lock(ctx, "atlas_migrate_diff", flags.lockTimeout)
+	if err != nil {
+		return fmt.Errorf("acquiring database lock: %w", err)
 	}
+	// If unlocking fails notify the user about it.
+	defer func() { cobra.CheckErr(unlock()) }()
 	// Open the migration directory.
 	u, err := url.Parse(flags.dirURL)
 	if err != nil {
