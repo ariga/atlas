@@ -400,7 +400,9 @@ func (d *DevLoader) inspect(ctx context.Context) (*schema.Realm, error) {
 func (d *DevLoader) lock(ctx context.Context) (schema.UnlockFunc, error) {
 	l, ok := d.Dev.Driver.(schema.Locker)
 	if !ok {
-		return nil, errors.New("driver does not support locking")
+		// Some drivers do not support advisory locks.
+		// In this case, we just return a no-op unlock function.
+		return func() error { return nil }, nil
 	}
 	name := "atlas_lint"
 	// In case the client is connected to specific schema,
