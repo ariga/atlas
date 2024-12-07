@@ -214,7 +214,7 @@ var Classes = []*Class{
 
 var (
 	mapOnce sync.Once
-	byName map[string]struct{}
+	byName  map[string]struct{}
 )
 
 // HasClass reports if the given operator class name exists.
