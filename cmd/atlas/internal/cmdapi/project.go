@@ -534,7 +534,7 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 		setEnvs(cmd.Context(), envs[name])
 	}()
 	if p, e, ok := envsCache.load(GlobalFlags.ConfigURL, name, vars); ok {
-		return p, e, maySetTokenContext(cmd, p)
+		return p, e, maySetLoginContext(cmd, p)
 	}
 	u, err := url.Parse(GlobalFlags.ConfigURL)
 	if err != nil {
@@ -554,9 +554,9 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 	if err != nil {
 		return nil, nil, err
 	}
-	// The project token predates 'atlas login' command. If exists,
+	// The atlas.hcl token predates 'atlas login' command. If exists,
 	// attach it to the context to indicate the user is authenticated.
-	if err := maySetTokenContext(cmd, project); err != nil {
+	if err := maySetLoginContext(cmd, project); err != nil {
 		return nil, nil, err
 	}
 	if err := project.Lint.remainedLog(); err != nil {
@@ -594,19 +594,6 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 	default:
 		return project, envs[name], nil
 	}
-}
-
-// maySetTokenContext sets the token context and cloud client if
-// defined in the project file.
-func maySetTokenContext(cmd *cobra.Command, p *Project) error {
-	if p.cloud.Token != "" && p.cloud.Client != nil {
-		ctx, err := withTokenContext(cmd.Context(), p.cloud.Token, p.cloud.Client)
-		if err != nil {
-			return err
-		}
-		cmd.SetContext(ctx)
-	}
-	return nil
 }
 
 type (

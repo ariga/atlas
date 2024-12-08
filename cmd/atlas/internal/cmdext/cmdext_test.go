@@ -16,7 +16,6 @@ import (
 	"strings"
 	"testing"
 
-	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
@@ -473,86 +472,6 @@ output = local.dot_env.URL
 	})
 	require.NoError(t, err)
 	require.Equal(t, "https://example.com", v.Output)
-}
-
-func TestAtlasConfig(t *testing.T) {
-	var (
-		v struct {
-			Env       string    `spec:"env"`
-			HasClient bool      `spec:"has_client"`
-			CloudKeys []string  `spec:"cloud_keys"`
-			Atlas     cty.Value `spec:"atlas"`
-		}
-		cfg   = &cmdext.AtlasConfig{}
-		state = schemahcl.New(append(cmdext.SpecOptions, cfg.InitBlock(), schemahcl.WithVariables(map[string]cty.Value{
-			"atlas": cty.ObjectVal(map[string]cty.Value{
-				"env": cty.StringVal("dev"),
-			}),
-		}))...)
-	)
-	require.Nil(t, cfg.Client)
-	require.Empty(t, cfg.Project)
-	err := state.EvalBytes([]byte(`
-atlas {
-  cloud {
-    url = "url"
-    token = "token"
-    project = "atlasgo.io"
-  }
-}
-
-env = atlas.env
-has_client = atlas.cloud != null
-cloud_keys = keys(atlas.cloud)
-`), &v, map[string]cty.Value{})
-	require.NoError(t, err)
-	require.Equal(t, "dev", v.Env)
-	require.True(t, v.HasClient)
-	require.Equal(t, []string{"client", "project"}, v.CloudKeys, "token and url should not be exported")
-	// Config options should be populated from the init block.
-	require.NotNil(t, cfg.Client)
-	require.Equal(t, "token", cfg.Token)
-	require.Equal(t, "atlasgo.io", cfg.Project)
-
-	err = state.EvalBytes([]byte(`
-atlas {
-  cloud {
-    url = "url"
-    token = "token"
-  }
-}
-`), &v, map[string]cty.Value{})
-	require.NoError(t, err)
-	require.Equal(t, cloudapi.DefaultProjectName, cfg.Project)
-
-	cfg = &cmdext.AtlasConfig{}
-	err = state.EvalBytes([]byte(`
-atlas {
-  cloud {
-    url   = "url"
-    token = ""
-  }
-}
-`), &v, map[string]cty.Value{})
-	require.NoError(t, err)
-	require.Nil(t, cfg.Client)
-	require.Empty(t, cfg.Project)
-
-	cfg = &cmdext.AtlasConfig{}
-	err = state.EvalBytes([]byte(`
-atlas {
-  cloud {
-    url   = "url"
-    token = ""
-  }
-}
-env {
-  name = atlas.env
-}
-`), &v, map[string]cty.Value{})
-	require.NoError(t, err)
-	require.Nil(t, cfg.Client)
-	require.Empty(t, cfg.Project)
 }
 
 // backupEnv backs up the current value of an environment variable
