@@ -46,3 +46,10 @@ func (l EntLoader) LoadState(context.Context, *StateReaderConfig) (*StateReadClo
 func (l EntLoader) MigrateDiff(context.Context, *MigrateDiffOptions) error {
 	return fmt.Errorf("ent:// scheme is no longer supported by this release. See: https://atlasgo.io/getting-started")
 }
+
+// InitBlock returns the handler for the "atlas" init block.
+func (c *AtlasConfig) InitBlock() schemahcl.Option {
+	return schemahcl.WithInitBlock("atlas", func(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
+		return cty.NilVal, fmt.Errorf("atlas block is not supported by this release. See: https://atlasgo.io/getting-started")
+	})
+}

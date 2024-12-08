@@ -16,7 +16,6 @@ import (
 	"text/template"
 	"time"
 
-	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/cmd/atlas/internal/cmdstate"
@@ -467,9 +466,8 @@ func promptApply(cmd *cobra.Command, flags schemaApplyFlags, diff *diff, client,
 	return nil
 }
 
-// withTokenContext allows attaching token to the context.
-func withTokenContext(ctx context.Context, _ string, _ *cloudapi.Client) (context.Context, error) {
-	return ctx, nil // unimplemented.
+func maySetLoginContext(*cobra.Command, *Project) error {
+	return nil
 }
 
 func setEnvs(context.Context, []*Env) {}

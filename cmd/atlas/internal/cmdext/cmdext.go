@@ -17,7 +17,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"reflect"
 	"text/template"
 	"time"
 
@@ -26,11 +25,9 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
-	"golang.org/x/oauth2/google"
-	sqladmin "google.golang.org/api/sqladmin/v1beta4"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -44,6 +41,8 @@ import (
 	_ "gocloud.dev/runtimevar/gcpruntimeconfig"
 	_ "gocloud.dev/runtimevar/gcpsecretmanager"
 	_ "gocloud.dev/runtimevar/httpvar"
+	"golang.org/x/oauth2/google"
+	sqladmin "google.golang.org/api/sqladmin/v1beta4"
 )
 
 // SpecOptions exposes the schema spec options like data-sources provided by this package.
@@ -62,6 +61,16 @@ var SpecOptions = append(
 	},
 	specOptions...,
 )
+
+// AtlasConfig exposes non-sensitive information returned by the "atlas" init-block.
+// By invoking AtlasInitBlock() a new config is returned that is set by the init block
+// defined and executed on schemahcl Eval functions.
+type AtlasConfig struct {
+	Client  *cloudapi.Client // Client attached to Atlas Cloud.
+	Token   string           // User token.
+	Org     string           // Organization to connect to.
+	Project string           // Optional project.
+}
 
 // RuntimeVar exposes the gocloud.dev/runtimevar as a schemahcl datasource.
 //
@@ -472,67 +481,6 @@ func TemplateDir(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Bloc
 		"url": cty.StringVal(u),
 	}), nil
 }
-
-// AtlasConfig exposes non-sensitive information returned by the "atlas" init-block.
-// By invoking AtlasInitBlock() a new config is returned that is set by the init block
-// defined and executed on schemahcl Eval functions.
-type AtlasConfig struct {
-	Client  *cloudapi.Client // Client attached to Atlas Cloud.
-	Token   string           // User token.
-	Project string           // Optional project.
-}
-
-// InitBlock returns the handler for the "atlas" init block.
-//
-//	atlas {
-//	  cloud {
-//	    token   = data.runtimevar.token  // User token.
-//	    url     = var.cloud_url          // Optional URL.
-//	    project = var.project            // Optional project. Defaults to DefaultProjectName.
-//	  }
-//	}
-func (c *AtlasConfig) InitBlock() schemahcl.Option {
-	return schemahcl.WithInitBlock("atlas", func(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
-		atlasVal, diags := (&hclsyntax.ScopeTraversalExpr{
-			Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "atlas", SrcRange: block.Range()}},
-		}).Value(ectx)
-		if diags.HasErrors() {
-			if len(diags) > 1 || diags[0].Summary != "Unknown variable" {
-				return cty.NilVal, fmt.Errorf("atlas.cloud: getting config: %v", diags)
-			}
-			// Create an empty object if the atlas object is not set.
-			atlasVal = cty.ObjectVal(map[string]cty.Value{})
-		}
-		var args struct {
-			Cloud struct {
-				Token   string `hcl:"token"`
-				URL     string `hcl:"url,optional"`
-				Project string `hcl:"project,optional"`
-			} `hcl:"cloud,block"`
-		}
-		switch diags := gohcl.DecodeBody(block.Body, ectx, &args); {
-		case diags.HasErrors():
-			return cty.NilVal, fmt.Errorf("atlas.cloud: decoding body: %v", diags)
-		case args.Cloud.Token == "":
-			return atlasVal, nil // If no token was set, the cloud is not initialized.
-		default:
-			if args.Cloud.Project == "" {
-				args.Cloud.Project = cloudapi.DefaultProjectName
-			}
-			c.Token = args.Cloud.Token
-			c.Project = args.Cloud.Project
-			c.Client = cloudapi.New(args.Cloud.URL, args.Cloud.Token)
-			m := atlasVal.AsValueMap()
-			m["cloud"] = cty.ObjectVal(map[string]cty.Value{
-				"client":  cty.CapsuleVal(clientType, c.Client),
-				"project": cty.StringVal(args.Cloud.Project),
-			})
-			return cty.ObjectVal(m), nil
-		}
-	})
-}
-
-var clientType = cty.Capsule("client", reflect.TypeOf(cloudapi.Client{}))
 
 // SchemaHCL is a data source that reads an Atlas HCL schema file(s), evaluates it
 // with the given variables and exposes its resulting schema as in-memory HCL file.

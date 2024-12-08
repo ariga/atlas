@@ -381,12 +381,12 @@ flag.
   atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
   atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"`,
-			PreRunE: func(cmd *cobra.Command, args []string) (err error) {
+			PreRunE: RunE(func(cmd *cobra.Command, args []string) (err error) {
 				if env, err = selectEnv(cmd); err != nil {
 					return err
 				}
 				return setSchemaEnvFlags(cmd, env)
-			},
+			}),
 			RunE: RunE(func(cmd *cobra.Command, args []string) error {
 				return schemaInspectRun(cmd, args, flags, env)
 			}),
