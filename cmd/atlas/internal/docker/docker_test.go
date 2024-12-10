@@ -25,6 +25,7 @@ func TestDockerConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, &Config{
 		Image: "arigaio/mysql:latest",
+		User:  url.UserPassword("root", pass),
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
 		Out:   io.Discard,
@@ -35,6 +36,7 @@ func TestDockerConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, &Config{
 		Image: "arigaio/mariadb:latest",
+		User:  url.UserPassword("root", pass),
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
 		Out:   io.Discard,
@@ -45,6 +47,7 @@ func TestDockerConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, &Config{
 		Image:    "postgres:latest",
+		User:     url.UserPassword("postgres", pass),
 		Env:      []string{"POSTGRES_PASSWORD=pass"},
 		Database: "postgres",
 		Port:     "5432",
@@ -56,6 +59,7 @@ func TestDockerConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, &Config{
 		Image:    "mcr.microsoft.com/mssql/server:2022-latest",
+		User:     url.UserPassword("sa", passSQLServer),
 		Port:     "1433",
 		Database: "master",
 		Out:      io.Discard,
@@ -71,6 +75,7 @@ func TestDockerConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, &Config{
 		Image: "clickhouse/clickhouse-server:23.11",
+		User:  url.UserPassword("default", pass),
 		Port:  "9000",
 		Out:   io.Discard,
 		Env: []string{
@@ -87,6 +92,7 @@ func TestFromURL(t *testing.T) {
 	require.Equal(t, &Config{
 		driver: "mysql",
 		Image:  "arigaio/mysql",
+		User:   url.UserPassword("root", pass),
 		Env:    []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:   "3306",
 		Out:    io.Discard,
@@ -99,6 +105,7 @@ func TestFromURL(t *testing.T) {
 	require.Equal(t, &Config{
 		driver: "mysql",
 		Image:  "arigaio/mysql:8",
+		User:   url.UserPassword("root", pass),
 		Env:    []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:   "3306",
 		Out:    io.Discard,
@@ -113,6 +120,7 @@ func TestFromURL(t *testing.T) {
 		Image:    "arigaio/mysql:latest",
 		Database: "test",
 		Env:      []string{"MYSQL_ROOT_PASSWORD=pass", "MYSQL_DATABASE=test"},
+		User:     url.UserPassword("root", pass),
 		Port:     "3306",
 		Out:      io.Discard,
 		setup:    []string{"CREATE DATABASE IF NOT EXISTS `test`"},
@@ -127,6 +135,7 @@ func TestFromURL(t *testing.T) {
 		Image:    "postgres:13",
 		Database: "postgres",
 		Env:      []string{"POSTGRES_PASSWORD=pass"},
+		User:     url.UserPassword("postgres", pass),
 		Port:     "5432",
 		Out:      io.Discard,
 	}, cfg)
@@ -140,6 +149,7 @@ func TestFromURL(t *testing.T) {
 		Image:    "postgis/postgis:14-3.4",
 		Database: "postgres",
 		Env:      []string{"POSTGRES_PASSWORD=pass"},
+		User:     url.UserPassword("postgres", pass),
 		Port:     "5432",
 		Out:      io.Discard,
 	}, cfg)
@@ -153,6 +163,7 @@ func TestFromURL(t *testing.T) {
 		Image:    "postgis/postgis:14-3.4",
 		Database: "dev",
 		Env:      []string{"POSTGRES_PASSWORD=pass"},
+		User:     url.UserPassword("postgres", pass),
 		Port:     "5432",
 		Out:      io.Discard,
 		setup:    []string{`CREATE DATABASE "dev"`},
@@ -167,6 +178,7 @@ func TestFromURL(t *testing.T) {
 		driver:   "sqlserver",
 		Image:    "mcr.microsoft.com/mssql/server",
 		Database: "master",
+		User:     url.UserPassword("sa", passSQLServer),
 		Port:     "1433",
 		Out:      io.Discard,
 		Env: []string{
@@ -184,6 +196,7 @@ func TestFromURL(t *testing.T) {
 		driver:   "sqlserver",
 		Image:    "mcr.microsoft.com/mssql/server:2022-latest",
 		Database: "master",
+		User:     url.UserPassword("sa", passSQLServer),
 		Port:     "1433",
 		Out:      io.Discard,
 		Env: []string{
@@ -202,6 +215,7 @@ func TestFromURL(t *testing.T) {
 		setup:    []string{"CREATE DATABASE [foo]"},
 		Image:    "mcr.microsoft.com/mssql/server:2019-latest",
 		Database: "foo",
+		User:     url.UserPassword("sa", passSQLServer),
 		Port:     "1433",
 		Out:      io.Discard,
 		Env: []string{
@@ -221,6 +235,7 @@ func TestFromURL(t *testing.T) {
 		setup:    []string{"CREATE DATABASE [foo]"},
 		Image:    "mcr.microsoft.com/azure-sql-edge:1.0.7",
 		Database: "foo",
+		User:     url.UserPassword("sa", passSQLServer),
 		Port:     "1433",
 		Out:      io.Discard,
 		Env: []string{
@@ -239,6 +254,7 @@ func TestFromURL(t *testing.T) {
 		driver: "clickhouse",
 		Image:  "clickhouse/clickhouse-server",
 		Env:    []string{"CLICKHOUSE_PASSWORD=pass"},
+		User:   url.UserPassword("default", pass),
 		Port:   "9000",
 		Out:    io.Discard,
 	}, cfg)
@@ -251,6 +267,7 @@ func TestFromURL(t *testing.T) {
 	require.Equal(t, &Config{
 		driver: "clickhouse",
 		Image:  "clickhouse/clickhouse-server:23.11",
+		User:   url.UserPassword("default", pass),
 		Env:    []string{"CLICKHOUSE_PASSWORD=pass"},
 		Port:   "9000",
 		Out:    io.Discard,
@@ -416,7 +433,13 @@ func TestImageURL(t *testing.T) {
 }
 
 func TestContainerURL(t *testing.T) {
-	c := &Container{cfg: Config{driver: "postgres"}, Passphrase: "pass", Port: "5432"}
+	c := &Container{
+		Config: Config{
+			driver: "postgres",
+			User:   url.UserPassword("postgres", "pass"),
+		},
+		Port: "5432",
+	}
 	u, err := c.URL()
 	require.NoError(t, err)
 	require.Equal(t, "postgres://postgres:pass@localhost:5432/?sslmode=disable", u.String())
