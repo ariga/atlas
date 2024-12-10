@@ -414,3 +414,16 @@ func TestImageURL(t *testing.T) {
 		require.Equal(t, u, got.String())
 	}
 }
+
+func TestContainerURL(t *testing.T) {
+	c := &Container{cfg: Config{driver: "postgres"}, Passphrase: "pass", Port: "5432"}
+	u, err := c.URL()
+	require.NoError(t, err)
+	require.Equal(t, "postgres://postgres:pass@localhost:5432/?sslmode=disable", u.String())
+
+	// With DOCKER_HOST
+	t.Setenv("DOCKER_HOST", "tcp://host.docker.internal:2375")
+	u, err = c.URL()
+	require.NoError(t, err)
+	require.Equal(t, "postgres://postgres:pass@host.docker.internal:5432/?sslmode=disable", u.String())
+}
