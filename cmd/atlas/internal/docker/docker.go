@@ -430,15 +430,25 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 
 // URL returns a URL to connect to the Container.
 func (c *Container) URL() (*url.URL, error) {
+	host := "localhost"
+	// Check if the DOCKER_HOST env var is set.
+	// If it is, use the host from the URL.
+	if h := os.Getenv("DOCKER_HOST"); h != "" {
+		u, err := url.Parse(h)
+		if err != nil {
+			return nil, err
+		}
+		host = u.Hostname()
+	}
 	switch c.cfg.driver {
 	case DriverClickHouse:
-		return url.Parse(fmt.Sprintf("clickhouse://:%s@%s:%s/%s", c.Passphrase, "localhost", c.Port, c.cfg.Database))
+		return url.Parse(fmt.Sprintf("clickhouse://:%s@%s:%s/%s", c.Passphrase, host, c.Port, c.cfg.Database))
 	case DriverSQLServer:
-		return url.Parse(fmt.Sprintf("sqlserver://sa:%s@localhost:%s?database=%s", passSQLServer, c.Port, c.cfg.Database))
+		return url.Parse(fmt.Sprintf("sqlserver://sa:%s@%s:%s?database=%s", passSQLServer, host, c.Port, c.cfg.Database))
 	case DriverPostgres:
-		return url.Parse(fmt.Sprintf("postgres://postgres:%s@localhost:%s/%s?sslmode=disable", c.Passphrase, c.Port, c.cfg.Database))
+		return url.Parse(fmt.Sprintf("postgres://postgres:%s@%s:%s/%s?sslmode=disable", c.Passphrase, host, c.Port, c.cfg.Database))
 	case DriverMySQL, DriverMariaDB:
-		return url.Parse(fmt.Sprintf("%s://root:%s@localhost:%s/%s", c.cfg.driver, c.Passphrase, c.Port, c.cfg.Database))
+		return url.Parse(fmt.Sprintf("%s://root:%s@%s:%s/%s", c.cfg.driver, c.Passphrase, host, c.Port, c.cfg.Database))
 	default:
 		return nil, fmt.Errorf("unknown driver: %q", c.cfg.driver)
 	}
