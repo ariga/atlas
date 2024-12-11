@@ -413,7 +413,7 @@ type (
 		Result *FileReport `json:"Result,omitempty"` // Result of the step. For example, a diagnostic.
 
 		// Text formatting
-		NameColor string `json:"NameColor,omitempty"` // Color of the name field when printed to the terminal.
+		NameColor string `json:"_"` // Color of the name field when printed to the terminal.
 	}
 
 	// FileReport contains a summary of the analysis of a single file.
