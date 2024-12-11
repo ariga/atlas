@@ -241,6 +241,20 @@ var (
 		"red":          color.HiRedString,
 		"redBgWhiteFg": color.New(color.FgHiWhite, color.BgHiRed).SprintFunc(),
 		"yellow":       color.YellowString,
+		"colorize": func(cc, text string) string {
+			switch cc {
+			case "cyan":
+				return color.CyanString(text)
+			case "green":
+				return color.HiGreenString(text)
+			case "red":
+				return color.HiRedString(text)
+			case "yellow":
+				return color.YellowString(text)
+			default:
+				return text
+			}
+		},
 	}
 	// DefaultTemplate is the default template used by the CI job.
 	DefaultTemplate = template.Must(template.New("report").
@@ -397,6 +411,9 @@ type (
 		Text   string      `json:"Text,omitempty"`   // Step description.
 		Error  string      `json:"Error,omitempty"`  // Error that cause the execution to halt.
 		Result *FileReport `json:"Result,omitempty"` // Result of the step. For example, a diagnostic.
+
+		// Text formatting
+		NameColor string `json:"-"` // Color of the name field when printed to the terminal.
 	}
 
 	// FileReport contains a summary of the analysis of a single file.
