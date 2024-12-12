@@ -5,6 +5,7 @@
 package pgparse
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -85,6 +86,9 @@ func (p *Parser) CreateViewAfter(stmts []*migrate.Stmt, old, new string, pos int
 
 // FixChange fixes the changes according to the given statement.
 func (p *Parser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Changes, error) {
+	if len(changes) == 0 {
+		return nil, errors.New("no changes to fix")
+	}
 	tr, err := pgquery.Parse(s)
 	if err != nil {
 		return nil, err
