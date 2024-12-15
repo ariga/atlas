@@ -600,6 +600,9 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 			if a.V > 0 && !sqlx.Has(t.Attrs, &AutoIncrement{}) {
 				t.Attrs = append(t.Attrs, a)
 			}
+		case *Invisible:
+			b.P("INVISIBLE")
+
 		default:
 			s.attr(b, a)
 		}
