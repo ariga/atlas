@@ -26,6 +26,7 @@ jobs:
           - dialect: mysql:5.7.26
             platforms: linux/amd64
           - dialect: mysql:8
+          - dialect: mysql:8.0.40
           - dialect: mysql:8.4
           - dialect: mysql:8.4.0
           - dialect: mysql:8.3
