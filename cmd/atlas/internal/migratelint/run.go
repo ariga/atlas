@@ -400,6 +400,12 @@ type (
 		End        time.Time `json:"-"` // End time of the analysis.
 		FromV, ToV string    `json:"-"` // From and to versions.
 		TotalFiles int       `json:"-"` // Total number of files to analyze.
+
+		// A warning to be printed to the terminal, such as a license warning.
+		Warning *struct {
+			Title string
+			Text  string
+		} `json:"-"`
 	}
 
 	// FileChange specifies whether the file was added, deleted or changed.
@@ -412,8 +418,11 @@ type (
 		Error  string      `json:"Error,omitempty"`  // Error that cause the execution to halt.
 		Result *FileReport `json:"Result,omitempty"` // Result of the step. For example, a diagnostic.
 
-		// Text formatting
-		NameColor string `json:"-"` // Color of the name field when printed to the terminal.
+		// A warning to be printed to the terminal, such as a license warning.
+		Warning struct {
+			Title string `json:"Title,omitempty"`
+			Text  string `json:"Text,omitempty"`
+		} `json:"-"`
 	}
 
 	// FileReport contains a summary of the analysis of a single file.
