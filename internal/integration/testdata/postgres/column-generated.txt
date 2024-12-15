@@ -1,5 +1,5 @@
-# Skip PostgreSQL 10, 11 as they do not support generated columns.
-! only postgres10|postgres11
+# Skip PostgreSQL 10, 11 as they do not support generated columns. Also, skip PostgreSQL 17, because it has a separate test file.
+! only postgres10|postgres11|postgres-ext-postgis
 
 apply 1.hcl
 cmpshow users 1.sql
