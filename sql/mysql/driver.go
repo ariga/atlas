@@ -49,21 +49,24 @@ var _ interface {
 	schema.TypeParseFormatter
 } = (*Driver)(nil)
 
-// DriverName holds the name used for registration.
-const DriverName = "mysql"
+// DriverName and DriverMaria holds the names used for registration.
+const (
+	DriverName  = "mysql"
+	DriverMaria = "mariadb"
+)
 
 func init() {
 	sqlclient.Register(
 		DriverName,
-		sqlclient.OpenerFunc(opener),
+		opener(DriverName),
 		sqlclient.RegisterDriverOpener(Open),
 		sqlclient.RegisterCodec(codec, codec),
 		sqlclient.RegisterFlavours("mysql+unix"),
 		sqlclient.RegisterURLParser(parser{}),
 	)
 	sqlclient.Register(
-		"mariadb",
-		sqlclient.OpenerFunc(opener),
+		DriverMaria,
+		opener(DriverMaria),
 		sqlclient.RegisterDriverOpener(Open),
 		sqlclient.RegisterCodec(mariaCodec, mariaCodec),
 		sqlclient.RegisterFlavours("mariadb+unix", "maria", "maria+unix"),
@@ -97,26 +100,29 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	}, nil
 }
 
-func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
-	ur := parser{}.ParseURL(u)
-	db, err := sql.Open(DriverName, ur.DSN)
-	if err != nil {
-		return nil, err
-	}
-	drv, err := Open(db)
-	if err != nil {
-		if cerr := db.Close(); cerr != nil {
-			err = fmt.Errorf("%w: %v", err, cerr)
+// opener for the given driver name.
+func opener(name string) sqlclient.OpenerFunc {
+	return func(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
+		ur := parser{}.ParseURL(u)
+		db, err := sql.Open(DriverName, ur.DSN)
+		if err != nil {
+			return nil, err
 		}
-		return nil, err
+		drv, err := Open(db)
+		if err != nil {
+			if cerr := db.Close(); cerr != nil {
+				err = fmt.Errorf("%w: %v", err, cerr)
+			}
+			return nil, err
+		}
+		drv.(*Driver).schema = ur.Schema
+		return &sqlclient.Client{
+			Name:   name,
+			DB:     db,
+			URL:    ur,
+			Driver: drv,
+		}, nil
 	}
-	drv.(*Driver).schema = ur.Schema
-	return &sqlclient.Client{
-		Name:   DriverName,
-		DB:     db,
-		URL:    ur,
-		Driver: drv,
-	}, nil
 }
 
 // NormalizeRealm returns the normal representation of the given database.
