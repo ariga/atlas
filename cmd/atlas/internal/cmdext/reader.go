@@ -215,13 +215,19 @@ func stateReaderHCL(_ context.Context, config *StateReaderConfig, paths []string
 			}
 		}
 	}
-	// In case the dev connection is bound to a specific schema, we require the
-	// desired schema to contain only one schema. Thus, executing diff will be
+	// In case the dev or client connection is bound to a specific schema, we require
+	// the desired schema to contain only one schema. Thus, executing diff will be
 	// done on the content of these two schema and not the whole realm.
-	if client.URL.Schema != "" && len(realm.Schemas) > 1 {
+	switch {
+	case config.Dev != nil && config.Dev.URL.Schema != "" && len(realm.Schemas) > 1:
 		return nil, fmt.Errorf(
 			"cannot use HCL with more than 1 schema when dev-url is limited to schema %q",
 			config.Dev.URL.Schema,
+		)
+	case config.Client != nil && config.Client.URL.Schema != "" && len(realm.Schemas) > 1:
+		return nil, fmt.Errorf(
+			"cannot use HCL with more than 1 schema when url is limited to schema %q",
+			config.Client.URL.Schema,
 		)
 	}
 	var (

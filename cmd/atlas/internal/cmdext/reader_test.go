@@ -95,7 +95,7 @@ func TestStateReaderHCL(t *testing.T) {
 	require.NoError(t, os.Mkdir(p, 0755))
 
 	// Write an empty schema file into the directory.
-	os.WriteFile(p+"/schema.hcl", []byte(`
+	require.NoError(t, os.WriteFile(p+"/schema.hcl", []byte(`
 schema "default" {}
 table "t1" {
   schema = schema.default
@@ -105,7 +105,7 @@ table "t1" {
   column "name" {
   	type = text
   }
-}`), 0644)
+}`), 0644))
 
 	// Read schema file.
 	u, err := url.Parse("file://" + p + "/schema.hcl")
@@ -140,4 +140,32 @@ table "t1" {
 	require.NoError(t, err)
 	_, exists := r.Schemas[0].Tables[0].Column("name")
 	require.False(t, exists, "column 'name' should be excluded")
+
+	// Mimic multi-schema file.
+	// Write an empty schema file into the directory.
+	require.NoError(t, os.WriteFile(p+"/schema.hcl", []byte(`
+schema "main" {}
+schema "default" {}
+table "t1" {
+  schema = schema.default
+  column "id" {
+    type = int
+  }
+  column "name" {
+  	type = text
+  }
+}`), 0644))
+	sr, err = StateReaderHCL(ctx, &StateReaderConfig{
+		Dev:  dev,
+		URLs: []*url.URL{u},
+	})
+	require.EqualError(t, err, `cannot use HCL with more than 1 schema when dev-url is limited to schema "main"`)
+	require.Nil(t, sr)
+
+	sr, err = StateReaderHCL(ctx, &StateReaderConfig{
+		Client: dev,
+		URLs:   []*url.URL{u},
+	})
+	require.EqualError(t, err, `cannot use HCL with more than 1 schema when url is limited to schema "main"`)
+	require.Nil(t, sr)
 }
