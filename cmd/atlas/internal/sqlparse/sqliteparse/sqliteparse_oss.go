@@ -4,7 +4,7 @@
 
 //go:build !ent
 
-package pgparse
+package sqliteparse
 
 import (
 	"errors"
@@ -13,16 +13,16 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-type Parser struct{}
+type FileParser struct{}
 
-func (*Parser) ColumnFilledBefore([]*migrate.Stmt, *schema.Table, *schema.Column, int) (bool, error) {
+func (*FileParser) ColumnFilledBefore([]*migrate.Stmt, *schema.Table, *schema.Column, int) (bool, error) {
 	return false, errors.New("unimplemented")
 }
 
-func (*Parser) CreateViewAfter([]*migrate.Stmt, string, string, int) (bool, error) {
+func (*FileParser) CreateViewAfter([]*migrate.Stmt, string, string, int) (bool, error) {
 	return false, errors.New("unimplemented")
 }
 
-func (*Parser) FixChange(_ migrate.Driver, _ string, changes schema.Changes) (schema.Changes, error) {
+func (*FileParser) FixChange(_ migrate.Driver, _ string, changes schema.Changes) (schema.Changes, error) {
 	return changes, nil // Unimplemented.
 }
