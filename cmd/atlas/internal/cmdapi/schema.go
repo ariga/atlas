@@ -91,7 +91,7 @@ func schemaApplyCmd() *cobra.Command {
 database to the state described in the provided Atlas schema. Before running the
 migration, Atlas will print the migration plan and prompt the user for approval.
 
-The schema is provided by one or more URLs (to a HCL file or 
+The schema is provided by one or more URLs (to a HCL file or
 directory, database or migration directory) using the "--to, -t" flag:
   atlas schema apply -u URL --to "file://file1.hcl" --to "file://file2.hcl"
   atlas schema apply -u URL --to "file://schema/" --to "file://override.hcl"
@@ -235,12 +235,13 @@ func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemaCleanFlags) erro
 }
 
 type schemaDiffFlags struct {
-	fromURL []string
-	toURL   []string
-	devURL  string
-	schemas []string
-	exclude []string
-	format  string
+	fromURL    []string
+	toURL      []string
+	devURL     string
+	schemas    []string
+	exclude    []string
+	format     string
+	failOnDiff bool
 }
 
 // schemaDiffCmd represents the 'atlas schema diff' subcommand.
@@ -255,7 +256,7 @@ func schemaDiffCmdWithFlags() (*cobra.Command, *schemaDiffFlags) {
 		cmd   = &cobra.Command{
 			Use:   "diff",
 			Short: "Calculate and print the diff between two schemas.",
-			Long: `'atlas schema diff' reads the state of two given schema definitions, 
+			Long: `'atlas schema diff' reads the state of two given schema definitions,
 calculates the difference in their schemas, and prints a plan of
 SQL statements to migrate the "from" database to the schema of the "to" database.
 The database states can be read from a connected database, an HCL project or a migration directory.`,
@@ -281,6 +282,7 @@ The database states can be read from a connected database, an HCL project or a m
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagExclude(cmd.Flags(), &flags.exclude)
 	addFlagFormat(cmd.Flags(), &flags.format)
+	cmd.Flags().BoolVar(&flags.failOnDiff, flagFailOnDiff, false, "Return a non-zero code if any diff is detected")
 	cobra.CheckErr(cmd.MarkFlagRequired(flagFrom))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
 	return cmd, &flags
@@ -338,9 +340,17 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 		return err
 	}
 	maySuggestUpgrade(cmd)
-	return format.Execute(cmd.OutOrStdout(),
+	err = format.Execute(cmd.OutOrStdout(),
 		cmdlog.NewSchemaDiff(ctx, c, diff.from, diff.to, diff.changes),
 	)
+	if err != nil {
+		return err
+	}
+	if flags.failOnDiff && len(diff.changes) > 0 {
+		cmd.SilenceUsage = true
+		return fmt.Errorf("diff detected")
+	}
+	return nil
 }
 
 type schemaInspectFlags struct {

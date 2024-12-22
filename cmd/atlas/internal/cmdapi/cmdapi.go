@@ -271,6 +271,7 @@ const (
 	flagDryRun         = "dry-run"
 	flagEnv            = "env"
 	flagExclude        = "exclude"
+	flagFailOnDiff     = "fail-on-diff"
 	flagFile           = "file"
 	flagFrom           = "from"
 	flagFromShort      = "f"
