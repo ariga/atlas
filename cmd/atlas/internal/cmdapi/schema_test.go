@@ -217,6 +217,32 @@ table "tbl" {
 		s,
 	)
 
+	// Error if flag is on and schemas differ.
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", openSQLite(t, "create table t1 (id int);"),
+		"--format", `{{ sql . "  " }}`,
+		"--fail-on-diff",
+	)
+	require.Error(t, err)
+	require.EqualValues(
+		t,
+		"-- Create \"t1\" table\nCREATE TABLE `t1` (\n  `id` int NULL\n);\n"+
+			"Error: diff detected\n",
+		s,
+	)
+
+	// No error if flag is on but schemas match.
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", openSQLite(t, ""),
+		"--fail-on-diff",
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "Schemas are synced, no changes to be made.\n", s)
+
 	t.Run("FromConfig", func(t *testing.T) {
 		var (
 			p   = t.TempDir()
