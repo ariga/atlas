@@ -2,6 +2,8 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
+//go:build !ent
+
 package mysql
 
 import (
@@ -41,21 +43,6 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 			}
 			sqlx.LinkSchemaTables(schemas)
 		}
-		if mode.Is(schema.InspectViews) {
-			if err := i.inspectViews(ctx, r, nil); err != nil {
-				return nil, err
-			}
-		}
-		if mode.Is(schema.InspectFuncs) {
-			if err := i.inspectFuncs(ctx, r, nil); err != nil {
-				return nil, err
-			}
-		}
-		if mode.Is(schema.InspectTriggers) {
-			if err := i.inspectTriggers(ctx, r, nil); err != nil {
-				return nil, err
-			}
-		}
 	}
 	return schema.ExcludeRealm(r, opts.Exclude)
 }
@@ -85,21 +72,6 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 			return nil, err
 		}
 		sqlx.LinkSchemaTables(schemas)
-	}
-	if mode.Is(schema.InspectViews) {
-		if err := i.inspectViews(ctx, r, opts); err != nil {
-			return nil, err
-		}
-	}
-	if mode.Is(schema.InspectFuncs) {
-		if err := i.inspectFuncs(ctx, r, opts); err != nil {
-			return nil, err
-		}
-	}
-	if mode.Is(schema.InspectTriggers) {
-		if err := i.inspectTriggers(ctx, r, opts); err != nil {
-			return nil, err
-		}
 	}
 	return schema.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
@@ -212,7 +184,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		if !ok {
 			return fmt.Errorf("schema %q was not found in realm", tSchema.String)
 		}
-		t := i.newTable(name.String, ttyp.String)
+		t := schema.NewTable(name.String)
 		s.AddTables(t)
 		if sqlx.ValidString(charset) {
 			t.Attrs = append(t.Attrs, &schema.Charset{

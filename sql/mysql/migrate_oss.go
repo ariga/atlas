@@ -2,6 +2,8 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
+//go:build !ent
+
 package mysql
 
 import (
@@ -98,32 +100,6 @@ func (s *state) plan(changes []schema.Change) error {
 			err = s.modifyTable(c)
 		case *schema.RenameTable:
 			s.renameTable(c)
-		case *schema.AddFunc:
-			err = s.addFunc(c)
-		case *schema.AddProc:
-			err = s.addProc(c)
-		case *schema.ModifyFunc:
-			err = s.modifyFunc(c)
-		case *schema.ModifyProc:
-			err = s.modifyProc(c)
-		case *schema.DropFunc:
-			err = s.dropFunc(c)
-		case *schema.DropProc:
-			err = s.dropProc(c)
-		case *schema.AddView:
-			err = s.addView(c)
-		case *schema.DropView:
-			err = s.dropView(c)
-		case *schema.ModifyView:
-			err = s.modifyView(c)
-		case *schema.RenameView:
-			s.renameView(c)
-		case *schema.AddTrigger:
-			err = s.addTrigger(c)
-		case *schema.ModifyTrigger:
-			err = s.modifyTrigger(c)
-		case *schema.DropTrigger:
-			err = s.dropTrigger(c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -711,9 +687,6 @@ func (s *state) tableAttrs(b *sqlx.Builder, c schema.Change, attrs ...schema.Att
 			b.P("COLLATE", a.V)
 		case *schema.Comment:
 			b.P("COMMENT", quote(a.Text))
-		default:
-			// Driver/build specific handling.
-			s.tableAttr(b, c, a)
 		}
 	}
 }

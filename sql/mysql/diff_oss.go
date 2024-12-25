@@ -2,6 +2,8 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
+//go:build !ent
+
 package mysql
 
 import (
@@ -722,4 +724,8 @@ func (d *diff) defaultCharset(attrs *[]schema.Attr) error {
 		schema.ReplaceOrAppend(attrs, &schema.Charset{V: v})
 	}
 	return nil
+}
+
+func (*diff) ViewAttrChanges(_, _ *schema.View) []schema.Change {
+	return nil // Not implemented.
 }

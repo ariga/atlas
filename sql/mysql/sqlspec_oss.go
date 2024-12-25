@@ -2,6 +2,8 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
+//go:build !ent
+
 package mysql
 
 import (
@@ -88,6 +90,10 @@ func (c *Codec) MarshalSpec(v any) ([]byte, error) {
 	})
 }
 
+func triggersSpec([]*schema.Trigger, *specutil.Doc) ([]*sqlspec.Trigger, error) {
+	return nil, nil // unimplemented.
+}
+
 var (
 	registrySpecs     = TypeRegistry.Specs()
 	sharedSpecOptions = []schemahcl.Option{
@@ -127,7 +133,16 @@ var (
 	// EvalMariaHCL implements the schemahcl.Evaluator interface for MariaDB flavor.
 	EvalMariaHCL = schemahcl.EvalFunc(mariaCodec.Eval)
 	// EvalMariaHCLBytes is a helper that evaluates a MariaDB HCL document from a byte slice.
-	EvalMariaHCLBytes = specutil.HCLBytesFunc(EvalMariaHCL)
+	EvalMariaHCLBytes             = specutil.HCLBytesFunc(EvalMariaHCL)
+	specOptions, mariaSpecOptions []schemahcl.Option
+	specFuncs                     = &specutil.SchemaFuncs{
+		Table: tableSpec,
+		View:  viewSpec,
+	}
+	scanFuncs = &specutil.ScanFuncs{
+		Table: convertTable,
+		View:  convertView,
+	}
 )
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
@@ -156,9 +171,6 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 			return nil, err
 		}
 		t.AddAttrs(&Engine{V: v})
-	}
-	if err := convertTableAttrs(spec, t); err != nil {
-		return nil, err
 	}
 	return t, nil
 }
@@ -320,7 +332,6 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 		}
 		ts.Extra.Attrs = append(ts.Extra.Attrs, attr)
 	}
-	tableAttrsSpec(t, ts)
 	return ts, nil
 }
 
