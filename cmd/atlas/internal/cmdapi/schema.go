@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
@@ -40,18 +41,19 @@ func schemaCmd() *cobra.Command {
 }
 
 type schemaApplyFlags struct {
-	url         string   // URL of database to apply the changes on.
-	devURL      string   // URL of the dev database.
-	paths       []string // Paths to HCL files.
-	toURLs      []string // URLs of the desired state.
-	planURL     string   // URL to a pre-planned migration.
-	schemas     []string // Schemas to take into account when diffing.
-	exclude     []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
-	dryRun      bool     // Only show SQL on screen instead of applying it.
-	edit        bool     // Open the generated SQL in an editor.
-	autoApprove bool     // Don't prompt for approval before applying SQL.
-	logFormat   string   // Log format.
-	txMode      string   // (none, file)
+	url         string        // URL of database to apply the changes on.
+	devURL      string        // URL of the dev database.
+	paths       []string      // Paths to HCL files.
+	toURLs      []string      // URLs of the desired state.
+	planURL     string        // URL to a pre-planned migration.
+	schemas     []string      // Schemas to take into account when diffing.
+	exclude     []string      // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
+	dryRun      bool          // Only show SQL on screen instead of applying it.
+	edit        bool          // Open the generated SQL in an editor.
+	autoApprove bool          // Don't prompt for approval before applying SQL.
+	logFormat   string        // Log format.
+	txMode      string        // (none, file)
+	lockTimeout time.Duration // Lock timeout.
 }
 
 // check that the flags are valid before running the command.
@@ -123,6 +125,7 @@ migration.`,
 	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file]")
 	cmd.Flags().StringVarP(&flags.planURL, flagPlan, "", "", "URL to a pre-planned migration (e.g., atlas://repo/plans/name)")
 	cmd.Flags().BoolVarP(&flags.edit, flagEdit, "", false, "open the generated SQL in an editor")
+	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
 	// Hidden support for the deprecated -f flag.
 	cmd.Flags().StringSliceVarP(&flags.paths, flagFile, "f", nil, "[paths...] file or directory containing HCL or SQL files")
 	cobra.CheckErr(cmd.Flags().MarkHidden(flagFile))
