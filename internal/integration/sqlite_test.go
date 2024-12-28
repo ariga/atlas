@@ -507,7 +507,7 @@ env "hello" {
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
-			testCLISchemaApply(t, h, t.url(""))
+			testCLISchemaApply(t, h, t.url(""), "--dev-url", t.dev())
 		})
 	})
 	t.Run("SchemaApplyWithVars", func(t *testing.T) {
@@ -526,7 +526,7 @@ table "users" {
 }
 `
 		liteRun(t, func(t *liteTest) {
-			testCLISchemaApply(t, h, t.url(""), "--var", "tenant=main")
+			testCLISchemaApply(t, h, t.url(""), "--var", "tenant=main", "--dev-url", t.dev())
 		})
 	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
@@ -936,6 +936,10 @@ func (t *liteTest) dropTables(names ...string) {
 
 func (t *liteTest) url(_ string) string {
 	return fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", t.file)
+}
+
+func (t *liteTest) dev() string {
+	return fmt.Sprintf("sqlite://%s?mode=memory&_fk=1", t.Name())
 }
 
 func (t *liteTest) applyRealmHcl(spec string) {

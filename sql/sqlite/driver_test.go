@@ -45,7 +45,7 @@ func TestParser_ParseURL(t *testing.T) {
 }
 
 func TestDriver_LockAcquired(t *testing.T) {
-	drv := &Driver{}
+	drv := &Driver{conn: &conn{}}
 
 	// Acquiring a lock does work.
 	unlock, err := drv.Lock(context.Background(), "lock", time.Second)

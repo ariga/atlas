@@ -567,16 +567,6 @@ func (m mock) systemVars(version string) {
 ----------------
  ` + version + `
 `))
-	m.ExpectQuery(sqltest.Escape("SELECT name FROM pragma_collation_list()")).
-		WillReturnRows(sqltest.Rows(`
-  pragma_collation_list   
-------------------------
-      decimal
-      uint
-      RTRIM
-      NOCASE
-      BINARY
-`))
 }
 
 func (m mock) tableExists(table string, exists bool, stmt ...string) {
