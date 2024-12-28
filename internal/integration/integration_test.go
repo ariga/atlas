@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -451,17 +452,15 @@ func testCLISchemaApply(t T, h string, url string, args ...string) {
 	f := filepath.Join(t.TempDir(), "schema.hcl")
 	err := os.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	runArgs := []string{
-		"schema",
-		"apply",
-		"-u",
-		url,
-		"-f",
-		f,
-		"--dev-url",
-		url,
+	runArgs := append([]string{
+		"schema", "apply",
+		"-u", url,
+		"-f", f,
+	}, args...)
+	// Append the --dev-url only if it is not already present.
+	if !slices.Contains(args, "--dev-url") {
+		args = append(args, "--dev-url", url)
 	}
-	runArgs = append(runArgs, args...)
 	cmd := exec.Command(execPath(t), runArgs...)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr

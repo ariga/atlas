@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"hash/adler32"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -35,9 +36,9 @@ type (
 	// database connection and its information.
 	conn struct {
 		schema.ExecQuerier
+		url *sqlclient.URL
 		// System variables that are set on `Open`.
-		version    string
-		collations []string
+		version string
 	}
 )
 
@@ -54,18 +55,12 @@ const DriverName = "sqlite3"
 func init() {
 	sqlclient.Register(
 		DriverName,
-		sqlclient.DriverOpener(Open),
+		sqlclient.OpenerFunc(opener),
+		sqlclient.RegisterDriverOpener(Open),
 		sqlclient.RegisterTxOpener(OpenTx),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("sqlite"),
-		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
-			uc := &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), u.Scheme+"://"), Schema: mainFile}
-			if mode := u.Query().Get("mode"); mode == "memory" {
-				// The "file:" prefix is mandatory for memory modes.
-				uc.DSN = "file:" + uc.DSN
-			}
-			return uc
-		})),
+		sqlclient.RegisterURLParser(urlparse{}),
 	)
 	sqlclient.Register(
 		"libsql",
@@ -83,6 +78,42 @@ func init() {
 	)
 }
 
+type urlparse struct{}
+
+// ParseURL implements the sqlclient.URLParser interface.
+func (urlparse) ParseURL(u *url.URL) *sqlclient.URL {
+	uc := &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), u.Scheme+"://"), Schema: mainFile}
+	if mode := u.Query().Get("mode"); mode == "memory" {
+		// The "file:" prefix is mandatory for memory modes.
+		uc.DSN = "file:" + uc.DSN
+	}
+	return uc
+}
+
+func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
+	ur := urlparse{}.ParseURL(u)
+	db, err := sql.Open(DriverName, ur.DSN)
+	if err != nil {
+		return nil, err
+	}
+	drv, err := Open(db)
+	if err != nil {
+		if cerr := db.Close(); cerr != nil {
+			err = fmt.Errorf("%w: %v", err, cerr)
+		}
+		return nil, err
+	}
+	if drv, ok := drv.(*Driver); ok {
+		drv.url = ur
+	}
+	return &sqlclient.Client{
+		Name:   DriverName,
+		DB:     db,
+		URL:    ur,
+		Driver: drv,
+	}, nil
+}
+
 // Open opens a new SQLite driver.
 func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	var (
@@ -95,12 +126,6 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	}
 	if err := sqlx.ScanOne(rows, &c.version); err != nil {
 		return nil, fmt.Errorf("sqlite: scan version pragma: %w", err)
-	}
-	if rows, err = db.QueryContext(ctx, "SELECT name FROM pragma_collation_list()"); err != nil {
-		return nil, fmt.Errorf("sqlite: query collation_list pragma: %w", err)
-	}
-	if c.collations, err = sqlx.ScanStrings(rows); err != nil {
-		return nil, fmt.Errorf("sqlite: scanning database collations: %w", err)
 	}
 	return &Driver{
 		conn:        c,
@@ -155,6 +180,11 @@ func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error
 
 // Lock implements the schema.Locker interface.
 func (d *Driver) Lock(_ context.Context, name string, timeout time.Duration) (schema.UnlockFunc, error) {
+	// If the URL was set and the database is a file, use its name in the lock file.
+	if d.url != nil && strings.HasPrefix(d.url.DSN, "file:") {
+		p := filepath.Join(d.url.Host, d.url.Path)
+		name = fmt.Sprintf("%s_%s", name, fmt.Sprintf("%x", adler32.Checksum([]byte(p))))
+	}
 	path := filepath.Join(os.TempDir(), name+".lock")
 	c, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
