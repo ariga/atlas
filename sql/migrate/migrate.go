@@ -834,12 +834,16 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	}
 	// Save once to mark as started in the database.
 	if err = e.writeRevision(ctx, r); err != nil {
+		e.log.Log(LogError{Error: err})
 		return err
 	}
-	// Make sure to store the Revision information.
+	// Make sure to store the Revision information,
+	// if the executor was not failed to store it.
 	defer func(ctx context.Context, e *Executor, r *Revision) {
-		if err2 := e.writeRevision(ctx, r); err2 != nil {
-			err = errors.Join(err, err2)
+		if !errors.As(err, new(*WriteRevisionError)) {
+			if err2 := e.writeRevision(ctx, r); err2 != nil {
+				err = errors.Join(err, err2)
+			}
 		}
 	}(ctx, e, r)
 	if r.Applied > 0 {
@@ -872,6 +876,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		r.PartialHashes = append(r.PartialHashes, "h1:"+sums[r.Applied])
 		r.Applied++
 		if err = e.writeRevision(ctx, r); err != nil {
+			e.log.Log(LogError{Error: err})
 			return err
 		}
 	}
@@ -883,9 +888,24 @@ func (e *Executor) writeRevision(ctx context.Context, r *Revision) error {
 	r.ExecutedAt = time.Now()
 	r.OperatorVersion = e.operator
 	if err := e.rrw.WriteRevision(ctx, r); err != nil {
-		return fmt.Errorf("sql/migrate: write revision: %w", err)
+		return &WriteRevisionError{Err: err, Revision: r}
 	}
 	return nil
+}
+
+// WriteRevisionError is reported when writing a
+// revision to the RevisionReadWriter fails.
+type WriteRevisionError struct {
+	Err      error
+	Revision *Revision
+}
+
+func (e WriteRevisionError) Error() string {
+	return "sql/migrate: write revision: " + e.Err.Error()
+}
+
+func (e WriteRevisionError) Unwrap() error {
+	return e.Err
 }
 
 // HistoryChangedError is returned if between two execution attempts already applied statements of a file have changed.

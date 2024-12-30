@@ -708,6 +708,51 @@ func TestExecutor(t *testing.T) {
 	require.EqualError(t, ex.ExecuteTo(context.Background(), ""), "sql/migrate: migration with version \"\" not found")
 	require.NoError(t, ex.ExecuteTo(context.Background(), "2.10.x-20"))
 	requireEqualRevisions(t, []*migrate.Revision{rev1, rev2}, *rrw)
+
+	// Failed storing initial revision state in the database.
+	log = &mockLogger{}
+	*rrw = []*migrate.Revision{}
+	ex, err = migrate.NewExecutor(
+		&mockDriver{}, dir,
+		&mockWriteRevisionError{
+			mockRevisionReadWriter: *rrw,
+			errinit:                errors.New("init error"),
+		},
+		migrate.WithLogger(log),
+	)
+	require.NoError(t, err)
+	err = ex.ExecuteTo(context.Background(), "2.10.x-20")
+	require.EqualError(t, err, `sql/migrate: write revision: init error`)
+	require.Len(t, *log, 2, "fail on init")
+	require.IsType(t, migrate.LogExecution{}, (*log)[0])
+	require.IsType(t, migrate.LogError{}, (*log)[1])
+	e1 := (*log)[1].(migrate.LogError)
+	require.EqualError(t, e1.Error, `sql/migrate: write revision: init error`)
+
+	// Failed storing applied revision state in the database.
+	log = &mockLogger{}
+	*rrw = []*migrate.Revision{}
+	ex, err = migrate.NewExecutor(
+		&mockDriver{}, dir,
+		&mockWriteRevisionError{
+			mockRevisionReadWriter: *rrw,
+			errdone:                errors.New("done error"),
+		},
+		migrate.WithLogger(log),
+	)
+	require.NoError(t, err)
+	err = ex.ExecuteTo(context.Background(), "2.10.x-20")
+	require.EqualError(t, err, `sql/migrate: write revision: done error`)
+	// Logs are: Intro/Execution, File, 2 Stmts (1.a_sub.up.sql),
+	// and Error when writing the revision of the first file.
+	require.Len(t, *log, 5, "expect 5 logs to be fired")
+	require.IsType(t, migrate.LogExecution{}, (*log)[0])
+	require.IsType(t, migrate.LogFile{}, (*log)[1])
+	require.IsType(t, migrate.LogStmt{}, (*log)[2])
+	require.IsType(t, migrate.LogStmt{}, (*log)[3])
+	e1 = (*log)[4].(migrate.LogError)
+	require.EqualError(t, e1.Error, `sql/migrate: write revision: done error`)
+	require.EqualError(t, errors.Unwrap(e1.Error), `done error`)
 }
 
 func TestExecutor_Baseline(t *testing.T) {
@@ -888,6 +933,22 @@ func (rrw *mockRevisionReadWriter) ReadRevisions(context.Context) ([]*migrate.Re
 
 func (rrw *mockRevisionReadWriter) clean() {
 	*rrw = []*migrate.Revision{}
+}
+
+type mockWriteRevisionError struct {
+	mockRevisionReadWriter
+	errinit, errdone error // error on init and done
+}
+
+func (m *mockWriteRevisionError) WriteRevision(ctx context.Context, r *migrate.Revision) error {
+	switch {
+	case r.Applied == 0 && m.errinit != nil:
+		return m.errinit
+	case r.Applied == r.Total && m.errdone != nil:
+		return m.errdone
+	default:
+		return m.mockRevisionReadWriter.WriteRevision(ctx, r)
+	}
 }
 
 type mockLogger []migrate.LogEntry
