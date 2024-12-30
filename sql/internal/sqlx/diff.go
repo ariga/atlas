@@ -7,6 +7,7 @@ package sqlx
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -810,9 +811,9 @@ func CommentDiff(from, to []schema.Attr) schema.Change {
 // if the schema.DiffMode is equal to schema.DiffModeNormalized.
 func CheckDiffMode(from, to *schema.Table, mode schema.DiffMode, compare ...func(c1, c2 *schema.Check) bool) []schema.Change {
 	if !mode.Is(schema.DiffModeNormalized) {
-		return CheckDiff(from, to, compare...)
+		return checksSimilarDiff(from, to, compare...)
 	}
-	return CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
+	return ChecksDiff(from, to, func(c1, c2 *schema.Check) bool {
 		if len(compare) == 1 && !compare[0](c1, c2) {
 			return false
 		}
@@ -820,9 +821,44 @@ func CheckDiffMode(from, to *schema.Table, mode schema.DiffMode, compare ...func
 	})
 }
 
-// CheckDiff computes the change diff between the 2 tables. A compare
-// function is provided to check if a Check object was modified.
-func CheckDiff(from, to *schema.Table, compare ...func(c1, c2 *schema.Check) bool) []schema.Change {
+// ChecksDiff computes the change diff between the 2 tables.
+func ChecksDiff(from, to *schema.Table, compare func(c1, c2 *schema.Check) bool) []schema.Change {
+	var (
+		changes    []schema.Change
+		fromC, toC = checks(from.Attrs), checks(to.Attrs)
+	)
+	for _, c1 := range fromC {
+		idx := slices.IndexFunc(toC, func(c2 *schema.Check) bool {
+			return c1.Name == c2.Name
+		})
+		if idx == -1 {
+			changes = append(changes, &schema.DropCheck{
+				C: c1,
+			})
+		} else if c2 := toC[idx]; !compare(c1, c2) {
+			changes = append(changes, &schema.ModifyCheck{
+				From: c1,
+				To:   c2,
+			})
+		}
+	}
+	for _, c1 := range toC {
+		if !slices.ContainsFunc(fromC, func(c2 *schema.Check) bool {
+			return c1.Name == c2.Name
+		}) {
+			changes = append(changes, &schema.AddCheck{
+				C: c1,
+			})
+		}
+	}
+	return changes
+}
+
+// checksSimilarDiff computes the change diff between the 2 tables.
+// Unlike ChecksDiff, it does not compare the constraint name, but
+// determines if there is any similar constraint by its expression.
+// This is an old implementation that is not used anymore by the CLI.
+func checksSimilarDiff(from, to *schema.Table, compare ...func(c1, c2 *schema.Check) bool) []schema.Change {
 	var changes []schema.Change
 	// Drop or modify checks.
 	for _, c1 := range checks(from.Attrs) {

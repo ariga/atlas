@@ -15,6 +15,11 @@ cmpmig 1 migration.v2.sql
 atlas migrate diff v2-check --to file://schema.v2.sql --dev-url URL --format '{{ sql . "  " }}'
 stdout 'The migration directory is synced with the desired state, no changes to be made'
 
+atlas migrate diff v3 --to file://schema.v3.sql --dev-url URL --format '{{ sql . "  " }}'
+cmpmig 2 migration.v3.sql
+atlas migrate diff v3-check --to file://schema.v3.sql --dev-url URL --format '{{ sql . "  " }}'
+stdout 'The migration directory is synced with the desired state, no changes to be made'
+
 -- schema.sql --
 create table t1 (
   a int constraint c1 check (a > 0),
@@ -119,3 +124,21 @@ create table t2 (
 ALTER TABLE "t1" DROP CONSTRAINT "c1", ADD CONSTRAINT "c1" CHECK (a > 1), DROP CONSTRAINT "c2", ADD CONSTRAINT "c2" CHECK (b > 1);
 -- Modify "t2" table
 ALTER TABLE "t2" DROP CONSTRAINT "c1", ADD CONSTRAINT "c1" CHECK (a > 1), DROP CONSTRAINT "c4", ADD CONSTRAINT "c4" CHECK (c > 1);
+-- schema.v3.sql --
+create table t1 (
+  a int constraint c1 check (a > 1),
+  b int constraint c2 check (b > 1),
+  -- Rename constraint.
+  constraint c4 check (a < b)
+);
+create table t2 (
+  a int constraint c1 check (a > 1),
+  c int constraint c4 check (c > 1),
+  -- Rename constraint.
+  constraint c6 check (a < c)
+);
+-- migration.v3.sql --
+-- Modify "t1" table
+ALTER TABLE "t1" DROP CONSTRAINT "c3", ADD CONSTRAINT "c4" CHECK (a < b);
+-- Modify "t2" table
+ALTER TABLE "t2" DROP CONSTRAINT "c5", ADD CONSTRAINT "c6" CHECK (a < c);
