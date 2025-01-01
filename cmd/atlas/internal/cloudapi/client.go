@@ -51,6 +51,9 @@ func New(endpoint, token string) *Client {
 		transport = client.HTTPClient.Transport
 	)
 	client.HTTPClient.Timeout = time.Second * 30
+	client.ErrorHandler = func(res *http.Response, err error, _ int) (*http.Response, error) {
+		return res, err // Let Client.post handle the error.
+	}
 	client.HTTPClient.Transport = &roundTripper{
 		token:        token,
 		base:         transport,
@@ -284,16 +287,21 @@ func (c *Client) post(ctx context.Context, query string, vars, data any) error {
 	if err != nil {
 		return err
 	}
-	defer req.Body.Close()
+	defer res.Body.Close()
 	switch {
 	case res.StatusCode == http.StatusUnauthorized:
 		return ErrUnauthorized
 	case res.StatusCode != http.StatusOK:
+		buf, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
+		if err != nil {
+			return &HTTPError{StatusCode: res.StatusCode, Message: err.Error()}
+		}
 		var v struct {
 			Errors errlist `json:"errors,omitempty"`
 		}
-		if err := json.NewDecoder(res.Body).Decode(&v); err != nil || len(v.Errors) == 0 {
-			return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		if err := json.Unmarshal(buf, &v); err != nil || len(v.Errors) == 0 {
+			// If the error is not a GraphQL error, return the message as is.
+			return &HTTPError{StatusCode: res.StatusCode, Message: string(bytes.TrimSpace(buf))}
 		}
 		return v.Errors
 	}
@@ -345,6 +353,16 @@ func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Header.Set(k, v)
 	}
 	return r.base.RoundTrip(req)
+}
+
+// HTTPError represents a generic HTTP error. Hence, non 2xx status codes.
+type HTTPError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("unexpected error code %d: %s", e.StatusCode, e.Message)
 }
 
 // RedactedURL returns a URL string with the userinfo redacted.
