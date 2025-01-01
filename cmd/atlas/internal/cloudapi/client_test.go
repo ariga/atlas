@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"strings"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
@@ -53,7 +54,7 @@ func TestClient_Dir(t *testing.T) {
 	require.Equal(t, dcheck.Sum(), gcheck.Sum())
 }
 
-func TestClient_Error(t *testing.T) {
+func TestClient_GraphQLError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_, err := w.Write([]byte(`{"errors":[{"message":"error\n","path":["variable","input","driver"],"extensions":{}}],"data":null}`))
@@ -67,6 +68,58 @@ func TestClient_Error(t *testing.T) {
 	})
 	require.EqualError(t, err, "variable.input.driver error", "error is trimmed")
 	require.Empty(t, link)
+}
+
+func TestClient_HTTPError(t *testing.T) {
+	var (
+		body string
+		code = http.StatusInternalServerError
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, body, code)
+	}))
+	client := New(srv.URL, "atlas")
+	defer srv.Close()
+	body = "internal error"
+	_, err := client.ReportMigration(context.Background(), ReportMigrationInput{
+		EnvName:     "foo",
+		ProjectName: "bar",
+	})
+	require.EqualError(t, err, `unexpected error code 500: internal error`)
+
+	// Error should be limited to 1MB.
+	body = fmt.Sprintf("%s!", strings.Repeat("a", 1<<20))
+	_, err = client.ReportMigration(context.Background(), ReportMigrationInput{
+		EnvName:     "foo",
+		ProjectName: "bar",
+	})
+	require.ErrorContains(t, err, "unexpected error code 500: a")
+	require.NotContains(t, err.Error(), "!")
+
+	// Unauthorized error.
+	body = "unauthorized"
+	code = http.StatusUnauthorized
+	_, err = client.ReportMigration(context.Background(), ReportMigrationInput{
+		EnvName:     "foo",
+		ProjectName: "bar",
+	})
+	require.ErrorIs(t, err, ErrUnauthorized)
+
+	code = http.StatusForbidden
+	body = "Forbidden"
+	_, err = client.ReportMigration(context.Background(), ReportMigrationInput{
+		EnvName:     "foo",
+		ProjectName: "bar",
+	})
+	require.EqualError(t, err, "unexpected error code 403: Forbidden")
+
+	code = http.StatusConflict
+	body = `{"errors":[{"message":"conflict\n","path":["variable","input","driver"],"extensions":{}}],"data":null}`
+	_, err = client.ReportMigration(context.Background(), ReportMigrationInput{
+		EnvName:     "foo",
+		ProjectName: "bar",
+	})
+	require.EqualError(t, err, "variable.input.driver conflict", "GraphQL error")
 }
 
 func TestClient_ReportMigration(t *testing.T) {
