@@ -30,6 +30,8 @@ type (
 	ConvertIndexFunc       func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
 	ConvertViewIndexFunc   func(*sqlspec.Index, *schema.View) (*schema.Index, error)
 	ConvertCheckFunc       func(*sqlspec.Check) (*schema.Check, error)
+	ConvertFuncFunc        func(*sqlspec.Func, *schema.Schema) (*schema.Func, error)
+	ConvertProcFunc        func(*sqlspec.Func, *schema.Schema) (*schema.Proc, error)
 	ColumnTypeSpecFunc     func(schema.Type) (*sqlspec.Column, error)
 	TableSpecFunc          func(*schema.Table) (*sqlspec.Table, error)
 	TableColumnSpecFunc    func(*schema.Column, *schema.Table) (*sqlspec.Column, error)
@@ -58,8 +60,8 @@ type (
 	ScanFuncs struct {
 		Table ConvertTableFunc
 		View  ConvertViewFunc
-		Func  func(*sqlspec.Func) (*schema.Func, error)
-		Proc  func(*sqlspec.Func) (*schema.Proc, error)
+		Func  ConvertFuncFunc
+		Proc  ConvertProcFunc
 		// Triggers add themselves to the relevant tables/views.
 		Triggers func(*schema.Realm, []*sqlspec.Trigger) error
 		// Objects add themselves to the realm.
@@ -220,7 +222,7 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 			if !ok {
 				return fmt.Errorf("schema %q not found for function %q", name, sf.Name)
 			}
-			f, err := funcs.Func(sf)
+			f, err := funcs.Func(sf, s)
 			if err != nil {
 				return fmt.Errorf("cannot convert function %q: %w", sf.Name, err)
 			}
@@ -244,7 +246,7 @@ func Scan(r *schema.Realm, doc *ScanDoc, funcs *ScanFuncs) error {
 			if !ok {
 				return fmt.Errorf("schema %q not found for procedure %q", name, sf.Name)
 			}
-			f, err := funcs.Proc(sf)
+			f, err := funcs.Proc(sf, s)
 			if err != nil {
 				return fmt.Errorf("cannot convert procedure %q: %w", sf.Name, err)
 			}
