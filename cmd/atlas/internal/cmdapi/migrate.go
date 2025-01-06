@@ -238,6 +238,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 	}
 	pending, err := ex.Pending(ctx)
 	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
+		mr.RecordPlanError(cmd, flags, err.Error())
 		return err
 	}
 	noPending := errors.Is(err, migrate.ErrNoPendingFiles)
@@ -464,6 +465,35 @@ func (r *MigrateReport) RecordTargetID(ctx context.Context) error {
 	return nil
 }
 
+// RecordPlanError records any errors that occurred during the planning phase. i.e., when calling to ex.Pending.
+func (r *MigrateReport) RecordPlanError(cmd *cobra.Command, flags migrateApplyFlags, planerr string) {
+	if !r.CloudEnabled(cmd.Context()) {
+		return
+	}
+	var ver string
+	if rev, err := r.rrw.CurrentRevision(cmd.Context()); err == nil {
+		ver = rev.Version
+	}
+	r.done(&cloudapi.ReportMigrationInput{
+		ProjectName:  r.env.config.cloud.Project,
+		EnvName:      r.env.Name,
+		DirName:      r.DirName(flags),
+		AtlasVersion: operatorVersion(),
+		Target: cloudapi.DeployedTargetInput{
+			ID:     r.id,
+			Schema: r.client.URL.Schema,
+			URL:    r.client.URL.Redacted(),
+		},
+		StartTime:      r.log.Start,
+		EndTime:        r.log.End,
+		FromVersion:    r.log.Current,
+		ToVersion:      r.log.Target,
+		CurrentVersion: ver,
+		Error:          &planerr,
+		Log:            planerr,
+	})
+}
+
 // Done closes and flushes this report.
 func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error {
 	if !r.CloudEnabled(cmd.Context()) {
@@ -481,21 +511,10 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 	default:
 		ver = rev.Version
 	}
-	dirName := flags.dirURL
-	switch u, err := url.Parse(flags.dirURL); {
-	case err != nil:
-	// Local directories are reported as (dangling)
-	// deployments without a directory.
-	case u.Scheme == cmdmigrate.DirTypeFile:
-		dirName = cloudapi.DefaultDirName
-	// Directory slug.
-	default:
-		dirName = path.Join(u.Host, u.Path)
-	}
 	r.done(&cloudapi.ReportMigrationInput{
 		ProjectName:  r.env.config.cloud.Project,
 		EnvName:      r.env.Name,
-		DirName:      dirName,
+		DirName:      r.DirName(flags),
 		AtlasVersion: operatorVersion(),
 		Target: cloudapi.DeployedTargetInput{
 			ID:     r.id,
@@ -549,6 +568,22 @@ func (r *MigrateReport) Done(cmd *cobra.Command, flags migrateApplyFlags) error 
 		Log: clog.String(),
 	})
 	return err
+}
+
+// DirName returns the directory name for the report.
+func (r *MigrateReport) DirName(flags migrateApplyFlags) string {
+	dirName := flags.dirURL
+	switch u, err := url.Parse(flags.dirURL); {
+	case err != nil:
+	// Local directories are reported as (dangling)
+	// deployments without a directory.
+	case u.Scheme == cmdmigrate.DirTypeFile:
+		dirName = cloudapi.DefaultDirName
+	// Directory slug.
+	default:
+		dirName = path.Join(u.Host, u.Path)
+	}
+	return dirName
 }
 
 // CloudEnabled reports if cloud reporting is enabled.
