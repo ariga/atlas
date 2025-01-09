@@ -447,8 +447,9 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags, 
 	if err != nil {
 		return err
 	}
-	maySuggestUpgrade(cmd)
-	return format.Execute(cmd.OutOrStdout(), cmdlog.NewSchemaInspect(ctx, client, s))
+	i := cmdlog.NewSchemaInspect(ctx, client, s)
+	i.TargetURL = flags.url
+	return format.Execute(cmd.OutOrStdout(), i)
 }
 
 // schemaFmtCmd represents the 'atlas schema fmt' subcommand.
