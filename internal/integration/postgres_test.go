@@ -1136,6 +1136,9 @@ create table atlas_types_sanity
 		require.True(t, ok)
 		require.Len(t, ts.Attrs, 1)
 		require.IsType(t, &postgres.OID{}, ts.Attrs[0])
+		for _, c := range ts.Columns {
+			c.Attrs = nil // Skip comparing attributes, due to ent/oss differences.
+		}
 		expected := schema.Table{
 			Name:   n,
 			Attrs:  ts.Attrs,
@@ -1429,7 +1432,6 @@ create table atlas_types_sanity
 		}
 		require.EqualValues(t, &expected, ts)
 	})
-
 	t.Run("ImplicitIndexes", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			testImplicitIndexes(t, t.db)
