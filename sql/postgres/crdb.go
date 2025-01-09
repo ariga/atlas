@@ -322,7 +322,8 @@ SELECT
 	col_description(t3.oid, "ordinal_position") AS comment,
 	t4.typtype,
 	t4.typelem,
-	t4.oid
+	t4.oid,
+	a.attnum
 FROM
 	"information_schema"."columns" AS t1
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
