@@ -28,6 +28,7 @@ func TestLocalFile_Stmts(t *testing.T) {
 				BackslashEscapes: true,
 				EscapedStringExt: true,
 				HashComments:     !strings.Contains(f.Name(), "_pg"),
+				GoCommand:        strings.Contains(f.Name(), "_ms"),
 			},
 		}
 		decls, err := sc.Scan(string(f.Bytes()))
