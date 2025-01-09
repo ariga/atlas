@@ -291,11 +291,11 @@ func TestSchemaInspect_Mermaid(t *testing.T) {
 `, b.String())
 }
 
-func TestSchemaInspect_URL(t *testing.T) {
+func TestSchemaInspect_RedactedURL(t *testing.T) {
 	cmd := cmdlog.SchemaInspect{
-		TargetURL: "mysql://root:password@localhost:3306/test",
+		URL: "mysql://root:password@localhost:3306/test",
 	}
-	u, err := cmd.URL()
+	u, err := cmd.RedactedURL()
 	require.NoError(t, err)
 	require.Equal(t, "mysql://root:xxxxx@localhost:3306/test", u)
 }

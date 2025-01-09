@@ -747,7 +747,7 @@ func (c Changes) MarshalJSON() ([]byte, error) {
 type SchemaInspect struct {
 	ctx    context.Context
 	client *sqlclient.Client
-	TargetURL string    // Target URL to inspect.
+	URL string    // Target URL to inspect.
 	Realm  *schema.Realm `json:"Schema,omitempty"` // Inspected realm.
 }
 
@@ -786,9 +786,9 @@ func (s *SchemaInspect) MarshalHCL() (string, error) {
 	return string(spec), nil
 }
 
-// URL returns the inspected url redacted.
-func (s *SchemaInspect) URL() (string, error) {
-	u, err := url.Parse(s.TargetURL)
+// RedactedURL returns the inspected url redacted.
+func (s *SchemaInspect) RedactedURL() (string, error) {
+	u, err := url.Parse(s.URL)
 	if err != nil {
 		return "", err
 	}

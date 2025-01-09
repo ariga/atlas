@@ -447,8 +447,9 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags, 
 	if err != nil {
 		return err
 	}
+	maySuggestUpgrade(cmd)
 	i := cmdlog.NewSchemaInspect(ctx, client, s)
-	i.TargetURL = flags.url
+	i.URL = flags.url
 	return format.Execute(cmd.OutOrStdout(), i)
 }
 
