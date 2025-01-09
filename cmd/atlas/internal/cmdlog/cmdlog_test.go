@@ -5,7 +5,6 @@
 package cmdlog_test
 
 import (
-	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -16,6 +15,8 @@ import (
 	"testing"
 	"text/template"
 	"time"
+
+	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/sql/migrate"
@@ -288,6 +289,15 @@ func TestSchemaInspect_Mermaid(t *testing.T) {
     }
     users |o--o| users : best_friend_id
 `, b.String())
+}
+
+func TestSchemaInspect_RedactedURL(t *testing.T) {
+	cmd := cmdlog.SchemaInspect{
+		URL: "mysql://root:password@localhost:3306/test",
+	}
+	u, err := cmd.RedactedURL()
+	require.NoError(t, err)
+	require.Equal(t, "mysql://root:xxxxx@localhost:3306/test", u)
 }
 
 func TestSchemaDiff_MarshalSQL(t *testing.T) {
