@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -116,6 +117,8 @@ type (
 		EscapedStringExt bool
 		// HashComments enables MySQL/MariaDB hash-like (#) comments.
 		HashComments bool
+		// Enable the "GO" command as a delimiter.
+		GoCommand bool
 	}
 )
 
@@ -170,6 +173,7 @@ var (
 	reBegin       = regexp.MustCompile(`(?i)^\s*BEGIN\s+`)
 	reEnd         = regexp.MustCompile(`(?i)^\s*END\s*`)
 	reEndCatch    = regexp.MustCompile(`(?i)^\s*END\s*CATCH\s*`)
+	reGoCmd       = regexp.MustCompile(`(?i)^GO(?:\s+|$)`)
 )
 
 func (s *Scanner) stmt() (*Stmt, error) {
@@ -213,6 +217,19 @@ Scan:
 				return nil, err
 			}
 			s.skipSpaces()
+		// GO command takes over the delimiter '\nGO'
+		// in cases it can't parse the statements correctly.
+		case s.GoCommand && r == '\n' && reGoCmd.MatchString(s.input[s.pos:]):
+			s.next() // skip '\n'
+			fallthrough
+		case s.GoCommand && (s.pos == 1 || s.pos > 1 && s.input[s.pos-2] == '\n') && reGoCmd.MatchString(s.input[s.pos-1:]):
+			text = s.input[:s.pos-1]
+			s.next() // skip 'O'
+			if err := s.skipGoCount(); err != nil {
+				return nil, err
+			}
+			s.skipSpaces()
+			break Scan
 		// Delimiters take precedence over comments.
 		case depth == 0 && strings.HasPrefix(s.input[s.pos-s.width:], s.delim):
 			s.addPos(len(s.delim) - s.width)
@@ -461,6 +478,24 @@ func (s *Scanner) delimCmd() error {
 	}
 	// Skip all we saw until now.
 	s.emit(s.input[:s.pos])
+	return nil
+}
+
+// skipGoCount checks if the scanned "GO"
+func (s *Scanner) skipGoCount() (err error) {
+	// GO [count]\n
+	if s.pick() == ' ' {
+		c := s.pos
+		// Scan [count]\n
+		for r := s.pick(); r != eos && r != '\n'; {
+			r = s.next()
+		}
+		_, err := strconv.Atoi(strings.TrimSpace(s.input[c:s.pos]))
+		if err != nil {
+			return fmt.Errorf("sql/migrate: invalid GO command, expect digits got %q: %w",
+				s.input[c:s.pos], err)
+		}
+	}
 	return nil
 }
 

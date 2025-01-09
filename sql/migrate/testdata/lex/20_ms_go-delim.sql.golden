@@ -1,0 +1,15 @@
+
+-- end --
+SELECT 1
+-- comment here
+-- end --
+SELECT 2 -- another comment
+-- end --
+SELECT 3 GO
+-- end --
+SELECT 4
+-- end --
+TO -- this command is truncated by delimiter
+SELECT 5
+-- end --
+SELECT 6

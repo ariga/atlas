@@ -1,0 +1,14 @@
+go
+SELECT 1
+-- comment here
+GO
+SELECT 2 -- another comment
+GO
+SELECT 3 GO
+GO
+SELECT 4
+GOTO
+SELECT 5
+GO 11
+SELECT 6
+GO
