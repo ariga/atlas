@@ -747,7 +747,7 @@ func (c Changes) MarshalJSON() ([]byte, error) {
 type SchemaInspect struct {
 	ctx    context.Context
 	client *sqlclient.Client
-	URL    string        `json:"-"`                // Target URL to inspect.
+	URL    string        `json:"-"`                // Target URL to inspect, my contain sensitive information.
 	Realm  *schema.Realm `json:"Schema,omitempty"` // Inspected realm.
 }
 
