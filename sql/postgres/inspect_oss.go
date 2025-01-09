@@ -288,12 +288,12 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 // addColumn scans the current row and adds a new column from it to the scope (table or view).
 func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 	var (
-		typid, typelem, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast                                         sql.NullInt64
+		typid, typelem, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast, attnum                                 sql.NullInt64
 		table, name, typ, fmtype, nullable, defaults, identity, genidentity, genexpr, charset, collate, comment, typtype, interval sql.NullString
 	)
 	if err = rows.Scan(
 		&table, &name, &typ, &fmtype, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &interval, &charset,
-		&collate, &identity, &seqstart, &seqinc, &seqlast, &genidentity, &genexpr, &comment, &typtype, &typelem, &typid,
+		&collate, &identity, &seqstart, &seqinc, &seqlast, &genidentity, &genexpr, &comment, &typtype, &typelem, &typid, &attnum,
 	); err != nil {
 		return err
 	}
@@ -1556,7 +1556,8 @@ SELECT
 	col_description(t3.oid, "ordinal_position") AS comment,
 	t4.typtype,
 	t4.typelem,
-	t4.oid
+	t4.oid,
+	a.attnum
 FROM
 	"information_schema"."columns" AS t1
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
