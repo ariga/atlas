@@ -431,7 +431,7 @@ func (d *Diff) pkDiff(from, to *schema.Table, opts *schema.DiffOptions) (changes
 	case pk1 != nil && pk2 == nil:
 		changes = opts.AddOrSkip(changes, &schema.DropPrimaryKey{P: pk1})
 	case pk1 != nil:
-		change := d.indexChange(pk1, pk2)
+		change := IndexChange(d, pk1, pk2)
 		change &= ^schema.ChangeUnique
 		if change != schema.NoChange {
 			changes = opts.AddOrSkip(changes, &schema.ModifyPrimaryKey{
@@ -456,7 +456,7 @@ func (d *Diff) indexDiffT(from, to *schema.Table, opts *schema.DiffOptions) ([]s
 		idx2, ok := to.Index(idx1.Name)
 		// Found directly.
 		if ok {
-			if change := d.indexChange(idx1, idx2); change != schema.NoChange {
+			if change := IndexChange(d, idx1, idx2); change != schema.NoChange {
 				all = append(all, &schema.ModifyIndex{
 					From:   idx1,
 					To:     idx2,
@@ -558,7 +558,7 @@ func (d *Diff) indexDiffV(from, to *schema.View, opts *schema.DiffOptions) ([]sc
 	for _, idx1 := range from.Indexes {
 		idx2, ok := to.Index(idx1.Name)
 		if ok {
-			if change := d.indexChange(idx1, idx2); change != schema.NoChange {
+			if change := IndexChange(d, idx1, idx2); change != schema.NoChange {
 				changes = opts.AddOrSkip(changes, &schema.ModifyIndex{
 					From:   idx1,
 					To:     idx2,
@@ -583,8 +583,16 @@ func (d *Diff) indexDiffV(from, to *schema.View, opts *schema.DiffOptions) ([]sc
 	return d.askForIndexes(from.Name, changes, opts)
 }
 
-// indexChange returns the schema changes (if any) for migrating one index to the other.
 func (d *Diff) indexChange(from, to *schema.Index) schema.ChangeKind {
+	return IndexChange(d, from, to)
+}
+
+func (d *Diff) partsChange(fromI, toI *schema.Index, renames map[string]string) schema.ChangeKind {
+	return indexPartsChange(d, fromI, toI, renames)
+}
+
+// IndexChange returns the schema changes (if any) for migrating one index to the other.
+func IndexChange(d DiffDriver, from, to *schema.Index) schema.ChangeKind {
 	var change schema.ChangeKind
 	if from.Unique != to.Unique {
 		change |= schema.ChangeUnique
@@ -592,12 +600,12 @@ func (d *Diff) indexChange(from, to *schema.Index) schema.ChangeKind {
 	if d.IndexAttrChanged(from.Attrs, to.Attrs) {
 		change |= schema.ChangeAttr
 	}
-	change |= d.partsChange(from, to, nil)
+	change |= indexPartsChange(d, from, to, nil)
 	change |= CommentChange(from.Attrs, to.Attrs)
 	return change
 }
 
-func (d *Diff) partsChange(fromI, toI *schema.Index, renames map[string]string) schema.ChangeKind {
+func indexPartsChange(d DiffDriver, fromI, toI *schema.Index, renames map[string]string) schema.ChangeKind {
 	from, to := fromI.Parts, toI.Parts
 	if len(from) != len(to) {
 		return schema.ChangeParts
@@ -664,7 +672,7 @@ func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 // similarUnnamedIndex searches for an unnamed index with the same index-parts in the table.
 func (d *Diff) similarUnnamedIndex(t *schema.Table, idx1 *schema.Index) (*schema.Index, bool) {
 	match := func(idx1, idx2 *schema.Index) bool {
-		return idx1.Unique == idx2.Unique && d.partsChange(idx1, idx2, nil) == schema.NoChange
+		return idx1.Unique == idx2.Unique && indexPartsChange(d, idx1, idx2, nil) == schema.NoChange
 	}
 	if f, ok := d.DiffDriver.(interface {
 		FindGeneratedIndex(*schema.Table, *schema.Index) (*schema.Index, bool)
