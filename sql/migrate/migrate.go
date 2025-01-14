@@ -875,6 +875,12 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		}
 		r.PartialHashes = append(r.PartialHashes, "h1:"+sums[r.Applied])
 		r.Applied++
+		// In case retry attempts succeeded,
+		// clean up the error from the table.
+		if r.Error != "" {
+			r.Error = ""
+			r.ErrorStmt = ""
+		}
 		if err = e.writeRevision(ctx, r); err != nil {
 			e.log.Log(LogError{Error: err})
 			return err

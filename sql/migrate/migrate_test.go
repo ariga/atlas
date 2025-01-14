@@ -753,6 +753,20 @@ func TestExecutor(t *testing.T) {
 	e1 = (*log)[4].(migrate.LogError)
 	require.EqualError(t, e1.Error, `sql/migrate: write revision: done error`)
 	require.EqualError(t, errors.Unwrap(e1.Error), `done error`)
+
+	// Successful retry should reset the error.
+	mem := &migrate.MemDir{}
+	require.NoError(t, mem.WriteFile("1.sql", []byte("CREATE TABLE t(c int);")))
+	sum, err := mem.Checksum()
+	require.NoError(t, err)
+	require.NoError(t, migrate.WriteSumFile(mem, sum))
+	*rrw = []*migrate.Revision{{Version: "1", Error: "error", ErrorStmt: ";CREATE TABLE t(c int);", Applied: 0, Total: 1}}
+	ex, err = migrate.NewExecutor(&mockDriver{}, mem, rrw, migrate.WithLogger(log))
+	require.NoError(t, err)
+	err = ex.ExecuteTo(context.Background(), "1")
+	require.NoError(t, err)
+	require.Empty(t, (*rrw)[0].Error)
+	require.Empty(t, (*rrw)[0].ErrorStmt)
 }
 
 func TestExecutor_Baseline(t *testing.T) {
