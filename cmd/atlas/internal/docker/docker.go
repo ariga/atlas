@@ -72,6 +72,7 @@ func NewConfig(opts ...ConfigOption) (*Config, error) {
 	return c, nil
 }
 
+// Well-known DB drivers
 const (
 	DriverMySQL      = "mysql"
 	DriverMariaDB    = "mariadb"
@@ -82,7 +83,7 @@ const (
 
 // FromURL parses a URL in the format of
 // "docker://driver/tag[/dbname]" and returns a Config.
-func FromURL(u *url.URL) (*Config, error) {
+func FromURL(u *url.URL, opts ...ConfigOption) (*Config, error) {
 	var (
 		parts  = strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
 		idxTag = len(parts) - 1
@@ -93,10 +94,7 @@ func FromURL(u *url.URL) (*Config, error) {
 		// The last part is not a tag, so it must be a database name.
 		dbName, idxTag = parts[idxTag], idxTag-1
 	}
-	var (
-		opts []ConfigOption
-		tag  string
-	)
+	var tag string
 	// Support docker+driver://<image>[:<tag>]
 	driver, customImage := strings.CutPrefix(u.Scheme, "docker+")
 	if customImage {
@@ -504,7 +502,12 @@ func init() {
 
 // Open a new docker client.
 func Open(ctx context.Context, u *url.URL) (client *sqlclient.Client, err error) {
-	cfg, err := FromURL(u)
+	return OpenWithOpts(ctx, u)
+}
+
+// OpenWithOpts open a new docker client
+func OpenWithOpts(ctx context.Context, u *url.URL, opts ...ConfigOption) (client *sqlclient.Client, err error) {
+	cfg, err := FromURL(u, opts...)
 	if err != nil {
 		return nil, err
 	}
