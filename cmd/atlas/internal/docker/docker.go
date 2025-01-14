@@ -94,6 +94,7 @@ func FromURL(u *url.URL, opts ...ConfigOption) (*Config, error) {
 		// The last part is not a tag, so it must be a database name.
 		dbName, idxTag = parts[idxTag], idxTag-1
 	}
+	var baseOpts []ConfigOption
 	var tag string
 	// Support docker+driver://<image>[:<tag>]
 	driver, customImage := strings.CutPrefix(u.Scheme, "docker+")
@@ -103,7 +104,7 @@ func FromURL(u *url.URL, opts ...ConfigOption) (*Config, error) {
 		if u.Host != "" && u.Host != "_" {
 			img = path.Join(u.Host, img)
 		}
-		opts = append(opts, Image(img))
+		baseOpts = append(baseOpts, Image(img))
 	} else {
 		driver = u.Host
 		if idxTag >= 0 {
@@ -117,60 +118,60 @@ func FromURL(u *url.URL, opts ...ConfigOption) (*Config, error) {
 	switch driver {
 	case DriverMySQL:
 		if dbName != "" {
-			opts = append(opts,
+			baseOpts = append(baseOpts,
 				Database(dbName),
 				Env("MYSQL_DATABASE="+dbName),
 				Setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName)),
 			)
 		}
-		cfg, err = MySQL(tag, opts...)
+		cfg, err = MySQL(tag, append(baseOpts, opts...)...)
 	case "maria":
 		driver = DriverMariaDB
 		fallthrough
 	case DriverMariaDB:
 		if dbName != "" {
-			opts = append(opts,
+			baseOpts = append(baseOpts,
 				Database(dbName),
 				Env("MYSQL_DATABASE="+dbName),
 				Setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName)),
 			)
 		}
-		cfg, err = MariaDB(tag, opts...)
+		cfg, err = MariaDB(tag, append(baseOpts, opts...)...)
 	case "postgis":
-		opts = append(opts, Image("postgis/postgis:"+tag))
+		baseOpts = append(baseOpts, Image("postgis/postgis:"+tag))
 		if dbName != "" && dbName != "postgres" {
 			// Create manually the PostgreSQL database instead of using the POSTGRES_DB because
 			// PostGIS automatically creates and install the following extensions and schemas:
 			// Schemas: tiger, tiger_data, topology.
 			// Extensions: postgis, postgis_topology, postgis_tiger_geocoder.
-			opts = append(
-				opts, Database(dbName), Setup(fmt.Sprintf("CREATE DATABASE %q", dbName)),
+			baseOpts = append(
+				baseOpts, Database(dbName), Setup(fmt.Sprintf("CREATE DATABASE %q", dbName)),
 			)
 		}
 		driver = DriverPostgres
-		cfg, err = PostgreSQL(tag, opts...)
+		cfg, err = PostgreSQL(tag, append(baseOpts, opts...)...)
 	case DriverPostgres:
 		if dbName != "" {
-			opts = append(opts, Database(dbName), Env("POSTGRES_DB="+dbName))
+			baseOpts = append(baseOpts, Database(dbName), Env("POSTGRES_DB="+dbName))
 		}
-		cfg, err = PostgreSQL(tag, opts...)
+		cfg, err = PostgreSQL(tag, append(baseOpts, opts...)...)
 	case DriverSQLServer:
 		if dbName != "" && dbName != "master" {
-			opts = append(opts,
+			baseOpts = append(baseOpts,
 				Database(dbName),
 				Setup(fmt.Sprintf("CREATE DATABASE [%s]", dbName)),
 			)
 		}
-		cfg, err = SQLServer(tag, opts...)
+		cfg, err = SQLServer(tag, append(baseOpts, opts...)...)
 	case DriverClickHouse:
 		if dbName != "" {
-			opts = append(opts,
+			baseOpts = append(baseOpts,
 				Database(dbName),
 				Env("CLICKHOUSE_DB="+dbName),
 				Setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName)),
 			)
 		}
-		cfg, err = ClickHouse(tag, opts...)
+		cfg, err = ClickHouse(tag, append(baseOpts, opts...)...)
 	default:
 		return nil, fmt.Errorf("unsupported docker image %q", driver)
 	}
