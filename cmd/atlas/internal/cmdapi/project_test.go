@@ -129,6 +129,12 @@ env "multi" {
     }
   }
 }
+env "schema" {
+  url = "mysql://root:pass@localhost:3306/"
+  schema {
+    src = "./a.hcl"
+  }
+}
 `
 	path := filepath.Join(d, "atlas.hcl")
 	err := os.WriteFile(path, []byte(h), 0600)
@@ -273,6 +279,18 @@ env "multi" {
 		GlobalFlags.ConfigURL = defaultConfigPath
 		_, _, err = EnvByName(&cobra.Command{}, "home", nil)
 		require.ErrorContains(t, err, `no such file or directory`)
+	})
+	t.Run("fallback src to schema", func(t *testing.T) {
+		GlobalFlags.ConfigURL = "file://" + path
+		_, envs, err := EnvByName(&cobra.Command{}, "schema", nil)
+		require.NoError(t, err)
+		require.Len(t, envs, 1)
+		srcs, err := envs[0].Sources()
+		require.NoError(t, err)
+		require.EqualValues(t, []string{"./a.hcl"}, srcs)
+		src, err := envs[0].VarFromURL("env://src")
+		require.NoError(t, err)
+		require.Equal(t, "./a.hcl", src)
 	})
 }
 
