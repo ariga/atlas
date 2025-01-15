@@ -35,12 +35,14 @@ type (
 	Config struct {
 		driver string   // driver to open connections with.
 		setup  []string // contains statements to execute once the service is up
+		// User is the user to connect to the database.
+		User *url.Userinfo
+		// Internal Port to expose and connect to.
+		Port string
 		// Image is the name of the image to pull and run.
 		Image string
 		// Env vars to pass to the docker container.
 		Env []string
-		// Internal Port to expose anc connect to.
-		Port string
 		// Database name to create and connect on init.
 		Database string
 		// Out is a custom writer to send docker cli output to.
@@ -48,12 +50,9 @@ type (
 	}
 	// A Container is an instance of a created container.
 	Container struct {
-		cfg Config    // Config used to create this container
-		out io.Writer // custom write to log status messages to
+		Config // Config used to create this container
 		// ID of the container.
 		ID string
-		// Passphrase of the root user.
-		Passphrase string
 		// Port on the host this containers service is bound to.
 		Port string
 	}
@@ -210,6 +209,7 @@ func MySQL(version string, opts ...ConfigOption) (*Config, error) {
 		append(
 			[]ConfigOption{
 				Image(hubUser, "mysql:"+version),
+				Userinfo(url.UserPassword("root", pass)),
 				Port("3306"),
 				Env("MYSQL_ROOT_PASSWORD=" + pass),
 			},
@@ -229,6 +229,7 @@ func PostgreSQL(version string, opts ...ConfigOption) (*Config, error) {
 		append(
 			[]ConfigOption{
 				Image("postgres:" + version),
+				Userinfo(url.UserPassword("postgres", pass)),
 				Port("5432"),
 				Database("postgres"),
 				Env("POSTGRES_PASSWORD=" + pass),
@@ -244,6 +245,7 @@ func SQLServer(version string, opts ...ConfigOption) (*Config, error) {
 		append(
 			[]ConfigOption{
 				Image("mcr.microsoft.com/mssql/server:" + version),
+				Userinfo(url.UserPassword("sa", passSQLServer)),
 				Port("1433"),
 				Database("master"),
 				Env(
@@ -263,6 +265,7 @@ func ClickHouse(version string, opts ...ConfigOption) (*Config, error) {
 		append(
 			[]ConfigOption{
 				Image("clickhouse/clickhouse-server:" + version),
+				Userinfo(url.UserPassword("default", pass)),
 				Port("9000"),
 				Env("CLICKHOUSE_PASSWORD=" + pass),
 			},
@@ -309,9 +312,21 @@ func Env(env ...string) ConfigOption {
 }
 
 // Database sets the database name to connect to. For example:
+//
+//	Database("test")
 func Database(name string) ConfigOption {
 	return func(c *Config) error {
 		c.Database = name
+		return nil
+	}
+}
+
+// Userinfo sets the user to connect to the database. For example:
+//
+//	Userinfo(url.User("root", "pass"))
+func Userinfo(u *url.Userinfo) ConfigOption {
+	return func(c *Config) error {
+		c.User = u
 		return nil
 	}
 }
@@ -365,11 +380,9 @@ func (c *Config) Run(ctx context.Context) (*Container, error) {
 		return nil, err
 	}
 	return &Container{
-		cfg:        *c,
-		ID:         strings.TrimSpace(stdout.String()),
-		Passphrase: pass,
-		Port:       p,
-		out:        c.Out,
+		Config: *c,
+		ID:     strings.TrimSpace(stdout.String()),
+		Port:   p,
 	}, nil
 }
 
@@ -380,7 +393,7 @@ func (c *Container) Close() error {
 
 // Wait waits for this container to be ready.
 func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
-	fmt.Fprintln(c.out, "Waiting for service to be ready ... ")
+	fmt.Fprintln(c.Out, "Waiting for service to be ready ... ")
 	mysql.SetLogger(log.New(io.Discard, "", 1))
 	defer mysql.SetLogger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile))
 	if timeout > time.Minute {
@@ -407,14 +420,14 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 			if err = db.PingContext(ctx); err != nil {
 				continue
 			}
-			for _, s := range c.cfg.setup {
+			for _, s := range c.setup {
 				if _, err := db.ExecContext(ctx, s); err != nil {
 					err = errors.Join(err, db.Close())
 					return fmt.Errorf("%q: %w", s, err)
 				}
 			}
 			_ = db.Close()
-			fmt.Fprintln(c.out, "Service is ready to connect!")
+			fmt.Fprintln(c.Out, "Service is ready to connect!")
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
@@ -439,23 +452,34 @@ func (c *Container) URL() (*url.URL, error) {
 		}
 		host = u.Hostname()
 	}
-	switch c.cfg.driver {
-	case DriverClickHouse:
-		return url.Parse(fmt.Sprintf("clickhouse://:%s@%s:%s/%s", c.Passphrase, host, c.Port, c.cfg.Database))
-	case DriverSQLServer:
-		return url.Parse(fmt.Sprintf("sqlserver://sa:%s@%s:%s?database=%s", passSQLServer, host, c.Port, c.cfg.Database))
-	case DriverPostgres:
-		return url.Parse(fmt.Sprintf("postgres://postgres:%s@%s:%s/%s?sslmode=disable", c.Passphrase, host, c.Port, c.cfg.Database))
-	case DriverMySQL, DriverMariaDB:
-		return url.Parse(fmt.Sprintf("%s://root:%s@%s:%s/%s", c.cfg.driver, c.Passphrase, host, c.Port, c.cfg.Database))
-	default:
-		return nil, fmt.Errorf("unknown driver: %q", c.cfg.driver)
+	u := &url.URL{
+		Scheme: c.driver,
+		User:   c.User,
+		Host:   fmt.Sprintf("%s:%s", host, c.Port),
 	}
+	switch c.driver {
+	case DriverSQLServer:
+		q := u.Query()
+		q.Set("database", c.Database)
+		u.RawQuery = q.Encode()
+	case DriverPostgres:
+		q := u.Query()
+		q.Set("sslmode", "disable")
+		u.Path, u.RawQuery = c.Database, q.Encode()
+		if u.Path == "" {
+			u.Path = "/"
+		}
+	case DriverMySQL, DriverMariaDB, DriverClickHouse: // MySQL compatible
+		u.Path = c.Database
+	default:
+		return nil, fmt.Errorf("unknown driver: %q", c.driver)
+	}
+	return u, nil
 }
 
 // PingURL returns a URL to ping the Container.
 func (c *Container) PingURL(u url.URL) string {
-	switch c.cfg.driver {
+	switch c.driver {
 	case DriverSQLServer:
 		q := u.Query()
 		q.Del("database")
@@ -495,8 +519,9 @@ func init() {
 		"docker",
 		sqlclient.OpenerFunc(Open),
 		sqlclient.RegisterFlavours(
-			"docker+postgres", "docker+mysql", "docker+maria", "docker+mariadb",
-			"docker+sqlserver", "docker+clickhouse",
+			"docker+postgres",
+			"docker+mysql", "docker+maria", "docker+mariadb", "docker+clickhouse",
+			"docker+sqlserver",
 		),
 	)
 }
