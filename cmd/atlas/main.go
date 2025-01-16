@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-
 	"os"
 	"os/signal"
 	"syscall"
@@ -30,6 +29,7 @@ import (
 	_ "github.com/libsql/libsql-client-go/libsql"
 	"github.com/mattn/go-isatty"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
 )
 
@@ -51,10 +51,7 @@ func main() {
 		os.Exit(1)
 	}()
 	ctx, err := extendContext(ctx)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	cobra.CheckErr(err)
 	ctx, done := initialize(ctx)
 	update := checkForUpdate(ctx)
 	err = cmdapi.Root.ExecuteContext(ctx)
