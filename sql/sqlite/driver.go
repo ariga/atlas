@@ -58,7 +58,7 @@ func init() {
 		sqlclient.OpenerFunc(opener),
 		sqlclient.RegisterDriverOpener(Open),
 		sqlclient.RegisterTxOpener(OpenTx),
-		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
+		sqlclient.RegisterCodec(codec, codec),
 		sqlclient.RegisterFlavours("sqlite"),
 		sqlclient.RegisterURLParser(urlparse{}),
 	)
@@ -66,7 +66,7 @@ func init() {
 		"libsql",
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterTxOpener(OpenTx),
-		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
+		sqlclient.RegisterCodec(codec, codec),
 		sqlclient.RegisterFlavours("libsql+ws", "libsql+wss", "libsql+file"),
 		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
 			dsn := strings.TrimPrefix(u.String(), "libsql+")

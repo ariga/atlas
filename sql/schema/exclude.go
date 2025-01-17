@@ -248,6 +248,12 @@ func excludeV(v *View, pattern string) (err error) {
 	return
 }
 
+// SpecTypeNamer is an interface that allows to get the spec type and name of the object.
+type SpecTypeNamer interface {
+	SpecType() string
+	SpecName() string
+}
+
 func excludeObjects(all []Object, glob []string) ([]Object, error) {
 	var (
 		objects = make([]Object, 0, len(all))
@@ -257,10 +263,7 @@ func excludeObjects(all []Object, glob []string) ([]Object, error) {
 		})
 	)
 	for _, o := range all {
-		nt, ok := o.(interface {
-			SpecType() string
-			SpecName() string
-		})
+		nt, ok := o.(SpecTypeNamer)
 		if !ok {
 			objects = append(objects, o)
 			continue

@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
@@ -39,6 +40,7 @@ type (
 		Client, Dev *sqlclient.Client // database connections, while dev is considered a dev database, client is not
 		Schemas     []string          // schemas to work on
 		Exclude     []string          // exclude flag values
+		WithPos     bool              // Indicate if schema.Pos should be loaded.
 		Vars        map[string]cty.Value
 	}
 )
@@ -199,8 +201,18 @@ func stateReaderHCL(_ context.Context, config *StateReaderConfig, paths []string
 	if err != nil {
 		return nil, err
 	}
-	realm := &schema.Realm{}
-	if err := client.Eval(parser, realm, config.Vars); err != nil {
+	var (
+		eval  = client.Eval
+		realm = &schema.Realm{}
+	)
+	if e, ok := client.Evaluator.(interface {
+		EvalOptions(*hclparse.Parser, any, *schemahcl.EvalOptions) error
+	}); ok && config.WithPos {
+		eval = func(pr *hclparse.Parser, v any, vars map[string]cty.Value) error {
+			return e.EvalOptions(pr, v, &schemahcl.EvalOptions{Variables: vars, RecordPos: true})
+		}
+	}
+	if err := eval(parser, realm, config.Vars); err != nil {
 		return nil, err
 	}
 	if len(config.Schemas) > 0 {
