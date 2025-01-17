@@ -464,6 +464,7 @@ type stateReaderConfig struct {
 	client, dev *sqlclient.Client // database connections, while dev is considered a dev database, client is not
 	schemas     []string          // schemas to work on
 	exclude     []string          // exclude flag values
+	withPos     bool              // indicate if schema.Pos should be loaded.
 	vars        Vars
 }
 
@@ -484,6 +485,7 @@ func (c *stateReaderConfig) Exported() (*cmdext.StateReaderConfig, error) {
 		Dev:     c.dev,
 		Schemas: c.schemas,
 		Exclude: c.exclude,
+		WithPos: c.withPos,
 		Vars:    c.vars,
 	}, nil
 }

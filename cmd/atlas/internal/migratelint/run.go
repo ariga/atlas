@@ -23,7 +23,7 @@ import (
 	"github.com/fatih/color"
 )
 
-// Runner is used to execute CI jobs.
+// Runner is used to execute migration linting.
 type Runner struct {
 	// DevClient configures the "dev driver" to calculate
 	// migration changes by the driver.
@@ -36,7 +36,7 @@ type Runner struct {
 	// Dir is used for scanning and validating the migration directory.
 	Dir migrate.Dir
 
-	// Analyzers defines the analysis to be run in the CI job.
+	// Analyzers defines the analysis to run on each migration file.
 	Analyzers []sqlcheck.Analyzer
 
 	// ReportWriter writes the summary report.
@@ -213,14 +213,13 @@ var (
 			}
 			return string(b), err
 		},
-		"sub":    func(i, j int) int { return i - j },
-		"add":    func(i, j int) int { return i + j },
-		"repeat": strings.Repeat,
-		"join":   strings.Join,
-		"underline": func(s string) string {
-			return color.New(color.Underline, color.Attribute(90)).Sprint(s)
-		},
-		"lower": strings.ToLower,
+		"sub":       func(i, j int) int { return i - j },
+		"add":       func(i, j int) int { return i + j },
+		"repeat":    strings.Repeat,
+		"join":      strings.Join,
+		"underline": color.New(color.Underline, color.Attribute(90)).Sprint,
+		"gray":      color.New(color.Reset, color.Attribute(90)).Sprint,
+		"lower":     strings.ToLower,
 		"maxWidth": func(s string, n int) []string {
 			var (
 				j, k  int
@@ -326,7 +325,8 @@ var (
       {{- range $d := $r.Diagnostics }}
         {{- $prefix := printf "      %s L%d: " (cyan "--") ($f.Line $d.Pos) }}
         {{- print $prefix }}
-        {{- $text := printf "%s %s" $d.Text (underline (print "https://atlasgo.io/lint/analyzers#" $d.Code)) }}
+        {{- $link := (underline (print "https://atlasgo.io/lint/analyzers#" $d.Code)) }}{{ if not $d.Code }}{{ $link = "" }}{{ end }}
+        {{- $text := printf "%s %s" $d.Text $link }}
         {{- $lines := maxWidth $text (sub 85 (len $prefix)) }}
         {{- range $i, $line := $lines }}{{- if $i }}{{- print "         " }}{{- end }}{{- println $line }}{{- end }}
       {{- end }}

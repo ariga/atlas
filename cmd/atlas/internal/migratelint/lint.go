@@ -231,6 +231,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 	for i, f := range files {
 		diff.Files[i] = &sqlcheck.File{
 			File:   f,
+			From:   current,
 			Parser: sqlparse.ParserFor(d.Dev.Name),
 		}
 		// Skip checkpoint files and process them separately at the end.
@@ -249,6 +250,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 		if err != nil {
 			return nil, err
 		}
+		diff.Files[i].To = current
 	}
 	diff.To = current
 	// For each checkpoint file, restore the dev environment

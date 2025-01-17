@@ -60,6 +60,10 @@ type (
 		// statement is reverted by the one after it, the Sum is nil.
 		Sum schema.Changes
 
+		// From, To holds the representation of schema
+		// before and after the file was executed.
+		From, To *schema.Realm
+
 		// A Parser that may be used for parsing this file. It sets to any as the contract
 		// between checks and their parsers can vary. For example, in case of running checks
 		// from CLI, the injected parser can be found in cmd/atlas/internal/sqlparse.Parser.
@@ -78,6 +82,7 @@ type (
 	// A Report describes an analysis report with an optional specific diagnostic.
 	Report struct {
 		Text           string         `json:"Text"`                     // Report text.
+		Desc           string         `json:"Desc,omitempty"`           // Optional description (secondary text).
 		Diagnostics    []Diagnostic   `json:"Diagnostics,omitempty"`    // Report diagnostics.
 		SuggestedFixes []SuggestedFix `json:"SuggestedFixes,omitempty"` // Report-level suggested fixes.
 	}
