@@ -440,11 +440,10 @@ func TestDriver_InspectCRDBSchema(t *testing.T) {
 	mk := mock{m}
 	mk.ExpectQuery(sqltest.Escape(paramsQuery)).
 		WillReturnRows(sqltest.Rows(`
-	setting
-------------
-130000
-cockroach
-				`))
+  version       |  am  | crdb
+----------------|------|-----
+ 130000         | heap | cockroach
+`))
 	drv, err := Open(db)
 	require.NoError(t, err)
 	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
@@ -727,14 +726,14 @@ type mock struct {
 func (m mock) version(version string) {
 	m.ExpectQuery(sqltest.Escape(paramsQuery)).
 		WillReturnRows(sqltest.Rows(`
-  setting
-------------
- ` + version + `
+  setting       |  am  | crdb
+----------------|------|-----
+ ` + version + `| heap | NULL
 `))
 }
 
 func (m mock) tableExists(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"oid", "table_schema", "table_name", "table_comment", "partition_attrs", "partition_strategy", "partition_exprs", "attrs"})
+	rows := sqlmock.NewRows([]string{"oid", "table_schema", "table_name", "table_comment", "partition_attrs", "partition_strategy", "partition_exprs", "row_security"})
 	if exists {
 		rows.AddRow(nil, schema, table, nil, nil, nil, nil, nil)
 	}
