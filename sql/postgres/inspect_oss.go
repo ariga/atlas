@@ -1500,7 +1500,7 @@ func parseFmtType(t string) (s, n string) {
 
 const (
 	// Query to list runtime parameters.
-	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('server_version_num', 'crdb_version') ORDER BY name DESC`
+	paramsQuery = `SELECT current_setting('server_version_num'), current_setting('default_table_access_method', true), current_setting('crdb_version', true)`
 
 	// Query to list database schemas.
 	schemasQuery = `

@@ -36,6 +36,8 @@ type (
 		schema.ExecQuerier
 		// The schema in the `search_path` parameter (if given).
 		schema string
+		// Maps to the connection default_table_access_method parameter.
+		accessMethod string
 		// System variables that are set on `Open`.
 		version int
 		crdb    bool
@@ -97,21 +99,18 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("postgres: scanning system variables: %w", err)
 	}
-	params, err := sqlx.ScanStrings(rows)
-	if err != nil {
-		return nil, fmt.Errorf("postgres: failed scanning rows: %w", err)
+	var ver, am, crdb sql.NullString
+	if err := sqlx.ScanOne(rows, &ver, &am, &crdb); err != nil {
+		return nil, fmt.Errorf("postgres: scanning system variables: %w", err)
 	}
-	if len(params) != 1 && len(params) != 2 {
-		return nil, fmt.Errorf("postgres: unexpected number of rows: %d", len(params))
-	}
-	if c.version, err = strconv.Atoi(params[0]); err != nil {
-		return nil, fmt.Errorf("postgres: malformed version: %s: %w", params[0], err)
+	if c.version, err = strconv.Atoi(ver.String); err != nil {
+		return nil, fmt.Errorf("postgres: malformed version: %s: %w", ver.String, err)
 	}
 	if c.version < 10_00_00 {
 		return nil, fmt.Errorf("postgres: unsupported postgres version: %d", c.version)
 	}
-	// Means we are connected to CockroachDB because we have a result for name='crdb_version'. see `paramsQuery`.
-	if c.crdb = len(params) == 2; c.crdb {
+	c.accessMethod = am.String
+	if c.crdb = sqlx.ValidString(crdb); c.crdb {
 		return noLockDriver{
 			&Driver{
 				conn:        c,

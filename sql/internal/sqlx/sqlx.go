@@ -83,11 +83,11 @@ func ScanStrings(rows *sql.Rows) ([]string, error) {
 	defer rows.Close()
 	var vs []string
 	for rows.Next() {
-		var v string
+		var v sql.NullString
 		if err := rows.Scan(&v); err != nil {
 			return nil, err
 		}
-		vs = append(vs, v)
+		vs = append(vs, v.String)
 	}
 	return vs, nil
 }
