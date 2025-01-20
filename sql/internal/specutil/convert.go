@@ -98,6 +98,7 @@ const (
 	typeView         = "view"
 	typeTable        = "table"
 	typeColumn       = "column"
+	typeIndex        = "index"
 	typeSchema       = "schema"
 	typeMaterialized = "materialized"
 	typeFunction     = "function"
@@ -1112,6 +1113,30 @@ func ColumnByRef(tv interface {
 	}
 }
 
+// IndexByRef returns a index from the table/view by its reference.
+func IndexByRef(tv interface {
+	Index(string) (*schema.Index, bool)
+}, ref *schemahcl.Ref) (*schema.Index, error) {
+	vs, err := ref.ByType(typeIndex)
+	if err != nil {
+		return nil, err
+	}
+	if len(vs) != 1 {
+		return nil, fmt.Errorf("expected 1 index ref, got %d", len(vs))
+	}
+	if c, ok := tv.Index(vs[0]); ok {
+		return c, nil
+	}
+	switch tv := tv.(type) {
+	case *schema.Table:
+		return nil, fmt.Errorf("index %q was not found in table %s", vs[0], tv.Name)
+	case *schema.View:
+		return nil, fmt.Errorf("index %q was not found in view %s", vs[0], tv.Name)
+	default:
+		return nil, fmt.Errorf("index %q was not found in %T", vs[0], tv)
+	}
+}
+
 func externalRef(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, *schema.Column, error) {
 	qualifier, name, err := TableName(ref)
 	if err != nil {
@@ -1199,8 +1224,15 @@ func ColumnRef(cName string) *schemahcl.Ref {
 	})
 }
 
+// IndexRef returns the reference of a index by its name.
+func IndexRef(name string) *schemahcl.Ref {
+	return schemahcl.BuildRef([]schemahcl.PathIndex{
+		{T: typeIndex, V: []string{name}},
+	})
+}
+
 // ExternalColumnRef returns the reference of a column by its name and table name.
-func ExternalColumnRef(cName string, tName string) *schemahcl.Ref {
+func ExternalColumnRef(cName, tName string) *schemahcl.Ref {
 	return schemahcl.BuildRef([]schemahcl.PathIndex{
 		{T: typeTable, V: []string{tName}},
 		{T: typeColumn, V: []string{cName}},
