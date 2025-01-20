@@ -323,7 +323,7 @@ func cmdCmpShow(ts *testscript.TestScript, args []string, show func(schema, name
 	}
 	var sb strings.Builder
 	ts.Check(diff.Text("show", fname, t1, t2, &sb))
-	ts.Fatalf(sb.String())
+	ts.Fatalf("\n%s", sb.String())
 }
 
 func (t *myTest) cmdCmpHCL(ts *testscript.TestScript, _ bool, args []string) {
@@ -388,7 +388,7 @@ func cmdCmpHCL(ts *testscript.TestScript, args []string, inspect func(schema str
 	}
 	var sb strings.Builder
 	ts.Check(diff.Text("inspect", fname, f1, f2, &sb))
-	ts.Fatalf(sb.String())
+	ts.Fatalf("\n%s", sb.String())
 }
 
 func (t *myTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
@@ -503,7 +503,7 @@ func cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
 			if len(exLines) != len(acLines) {
 				var sb strings.Builder
 				ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
-				ts.Fatalf(sb.String())
+				ts.Fatalf("\n%s", sb.String())
 			}
 			for i := range exLines {
 				// Skip liquibase changeset comments since they contain a timestamp.
@@ -513,7 +513,7 @@ func cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
 				if exLines[i] != acLines[i] {
 					var sb strings.Builder
 					ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
-					ts.Fatalf(sb.String())
+					ts.Fatalf("\n%s", sb.String())
 				}
 			}
 			return
