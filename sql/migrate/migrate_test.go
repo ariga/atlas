@@ -698,6 +698,7 @@ func TestExecutor(t *testing.T) {
 	*drv = mockDriver{}
 	require.NoError(t, ex.ExecuteN(context.Background(), 1))
 	require.Equal(t, []string{"ALTER TABLE t_sub ADD c4 int;"}, drv.executed)
+	require.Nil(t, revs[len(revs)-1].PartialHashes) // cleared our on successful apply
 
 	// Everything is applied.
 	require.ErrorIs(t, ex.ExecuteN(context.Background(), 0), migrate.ErrNoPendingFiles)
