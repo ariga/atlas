@@ -17,6 +17,7 @@ import (
 	"github.com/bmatcuk/doublestar"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/tryfunc"
+	ctyyaml "github.com/zclconf/go-cty-yaml"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 	"github.com/zclconf/go-cty/cty/function"
@@ -130,6 +131,8 @@ func stdFuncs() map[string]function.Function {
 		"join":            stdlib.JoinFunc,
 		"jsondecode":      stdlib.JSONDecodeFunc,
 		"jsonencode":      stdlib.JSONEncodeFunc,
+		"yamldecode":      ctyyaml.YAMLDecodeFunc,
+		"yamlencode":      ctyyaml.YAMLEncodeFunc,
 		"keys":            stdlib.KeysFunc,
 		"length":          stdlib.LengthFunc,
 		"log":             stdlib.LogFunc,

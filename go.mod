@@ -9,6 +9,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/stretchr/testify v1.8.2
 	github.com/zclconf/go-cty v1.14.4
+	github.com/zclconf/go-cty-yaml v1.1.0
 	golang.org/x/mod v0.17.0
 )
 
