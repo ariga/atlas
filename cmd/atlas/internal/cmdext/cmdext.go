@@ -529,60 +529,6 @@ func SchemaHCL(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block)
 	}), nil
 }
 
-// SchemaExternal is a data source that reads a SQL schema state from external program.
-func SchemaExternal(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
-	var (
-		args struct {
-			Program []string `hcl:"program"`
-			Dir     string   `hcl:"working_dir,optional"`
-			Remain  hcl.Body `hcl:",remain"`
-		}
-		errorf = blockError("data.external_schema", block)
-	)
-	if diags := gohcl.DecodeBody(block.Body, ectx, &args); diags.HasErrors() {
-		return cty.NilVal, errorf("decoding body: %v", diags)
-	}
-	attrs, diags := args.Remain.JustAttributes()
-	if diags.HasErrors() {
-		return cty.NilVal, errorf("getting attributes: %v", diags)
-	}
-	if len(attrs) > 0 {
-		return cty.NilVal, errorf("unexpected attributes: %v", attrs)
-	}
-	if len(args.Program) == 0 {
-		return cty.NilVal, errorf("program cannot be empty")
-	}
-	cmd := exec.Command(args.Program[0], args.Program[1:]...)
-	if args.Dir != "" {
-		cmd.Dir = args.Dir
-	}
-	out, err := cmd.Output()
-	if err != nil {
-		msg := err.Error()
-		if err1 := (*exec.ExitError)(nil); errors.As(err, &err1) && len(err1.Stderr) > 0 {
-			msg = string(err1.Stderr)
-		}
-		return cty.NilVal, errorf("running program %v: %v", cmd.Path, msg)
-	}
-	// Directory files must have an .sql extension to be read by the executor.
-	// The "schema" word is added to indicate that unlike data-source errors, load error
-	// comes from the output of the data-source (SQL representation of the state/schema).
-	dir, err := FilesAsDir(migrate.NewLocalFile(fmt.Sprintf("%s/schema.sql", block.Labels[1]), out))
-	if err != nil {
-		return cty.NilVal, errorf("converting output to migration: %v", err)
-	}
-	u, err := url.JoinPath("mem://external_schema", block.Labels[1])
-	if err != nil {
-		return cty.NilVal, errorf("build url: %v", err)
-	}
-	memLoader.states[u] = StateLoaderFunc(func(ctx context.Context, config *StateReaderConfig) (*StateReadCloser, error) {
-		return stateSchemaSQL(ctx, config, dir)
-	})
-	return cty.ObjectVal(map[string]cty.Value{
-		"url": cty.StringVal(u),
-	}), nil
-}
-
 func blockError(name string, b *hclsyntax.Block) func(string, ...any) error {
 	return func(format string, args ...any) error {
 		return fmt.Errorf("%s.%s: %w", name, b.Labels[1], fmt.Errorf(format, args...))

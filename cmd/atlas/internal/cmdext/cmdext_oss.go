@@ -34,6 +34,11 @@ func StateReaderAtlas(context.Context, *StateReaderConfig) (*StateReadCloser, er
 	return nil, fmt.Errorf("atlas remote state is not supported by this release. See: https://atlasgo.io/getting-started")
 }
 
+// SchemaExternal is a data source that for reading external schemas.
+func SchemaExternal(context.Context, *hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
+	return cty.Zero, fmt.Errorf("data.external_schema is no longer supported by this release. See: https://atlasgo.io/getting-started")
+}
+
 // EntLoader is a StateLoader for loading ent.Schema's as StateReader's.
 type EntLoader struct{}
 
