@@ -301,9 +301,8 @@ func TestDiff_TableDiff(t *testing.T) {
 		}(),
 	}
 	for _, tt := range tests {
-		db, m, err := sqlmock.New()
+		db, _, err := sqlmock.New()
 		require.NoError(t, err)
-		mock{m}.systemVars("3.36.0")
 		drv, err := Open(db)
 		require.NoError(t, err)
 		t.Run(tt.name, func(t *testing.T) {
@@ -315,9 +314,8 @@ func TestDiff_TableDiff(t *testing.T) {
 }
 
 func TestDiff_SchemaDiff(t *testing.T) {
-	db, m, err := sqlmock.New()
+	db, _, err := sqlmock.New()
 	require.NoError(t, err)
-	mock{m}.systemVars("3.36.0")
 	drv, err := Open(db)
 	require.NoError(t, err)
 	from := &schema.Schema{

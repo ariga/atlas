@@ -284,7 +284,6 @@ CREATE TABLE users(
 			db, m, err := sqlmock.New()
 			require.NoError(t, err)
 			mk := mock{m}
-			mk.systemVars("3.36.0")
 			drv, err := Open(db)
 			require.NoError(t, err)
 			tt.before(mk)
@@ -474,7 +473,6 @@ func TestRegex_Checks(t *testing.T) {
 		db, m, err := sqlmock.New()
 		require.NoError(t, err)
 		mk := mock{m}
-		mk.systemVars("3.36.0")
 		mk.tableExists(name, true, tt.input)
 		mk.noColumns(name)
 		mk.noIndexes(name)
@@ -535,7 +533,6 @@ func TestRegex_GeneratedExpr(t *testing.T) {
 		db, m, err := sqlmock.New()
 		require.NoError(t, err)
 		mk := mock{m}
-		mk.systemVars("3.36.0")
 		mk.tableExists(name, true, tt.input)
 		m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, name))).
 			WillReturnRows(sqltest.Rows(fmt.Sprintf(`
@@ -558,15 +555,6 @@ func TestRegex_GeneratedExpr(t *testing.T) {
 
 type mock struct {
 	sqlmock.Sqlmock
-}
-
-func (m mock) systemVars(version string) {
-	m.ExpectQuery(sqltest.Escape("SELECT sqlite_version()")).
-		WillReturnRows(sqltest.Rows(`
-     version    
-----------------
- ` + version + `
-`))
 }
 
 func (m mock) tableExists(table string, exists bool, stmt ...string) {
