@@ -37,8 +37,6 @@ type (
 	conn struct {
 		schema.ExecQuerier
 		url *sqlclient.URL
-		// System variables that are set on `Open`.
-		version string
 	}
 )
 
@@ -116,17 +114,7 @@ func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
 
 // Open opens a new SQLite driver.
 func Open(db schema.ExecQuerier) (migrate.Driver, error) {
-	var (
-		c   = &conn{ExecQuerier: db}
-		ctx = context.Background()
-	)
-	rows, err := db.QueryContext(ctx, "SELECT sqlite_version()")
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: query version pragma: %w", err)
-	}
-	if err := sqlx.ScanOne(rows, &c.version); err != nil {
-		return nil, fmt.Errorf("sqlite: scan version pragma: %w", err)
-	}
+	c := &conn{ExecQuerier: db}
 	return &Driver{
 		conn:        c,
 		Differ:      &sqlx.Diff{DiffDriver: &diff{}},
@@ -202,11 +190,6 @@ func (d *Driver) Lock(_ context.Context, name string, timeout time.Duration) (sc
 		return nil, fmt.Errorf("sql/sqlite: lock on %q already taken", name)
 	}
 	return acquireLock(path, timeout)
-}
-
-// Version returns the version of the connected database.
-func (d *Driver) Version() string {
-	return d.conn.version
 }
 
 // FormatType converts schema type to its column form in the database.

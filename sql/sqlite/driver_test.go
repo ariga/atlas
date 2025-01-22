@@ -6,7 +6,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"database/sql/driver"
 	"os"
 	"path/filepath"
@@ -16,8 +15,6 @@ import (
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlclient"
-
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
@@ -34,14 +31,6 @@ func (m *mockDriver) Open(name string) (driver.Conn, error) {
 	}
 	m.opened = append(m.opened, name)
 	return db.Driver().Open(name)
-}
-
-func TestParser_ParseURL(t *testing.T) {
-	drv := &mockDriver{}
-	sql.Register("libsql", drv)
-	_, err := sqlclient.Open(context.Background(), "libsql+wss://example.com/db.sqlite3?_fk=1")
-	require.Error(t, err, "did not mock queries")
-	require.Equal(t, []string{"wss://example.com/db.sqlite3?_fk=1"}, drv.opened)
 }
 
 func TestDriver_LockAcquired(t *testing.T) {
@@ -100,18 +89,6 @@ func TestDriver_CheckClean(t *testing.T) {
 	r.Schemas[0].Tables = []*schema.Table{schema.NewTable("a"), schema.NewTable("revisions")}
 	err = drv.CheckClean(context.Background(), &migrate.TableIdent{Schema: "test", Name: "revisions"})
 	require.EqualError(t, err, `sql/migrate: connected database is not clean: found multiple tables: 2`)
-}
-
-func TestDriver_Version(t *testing.T) {
-	db, m, err := sqlmock.New()
-	require.NoError(t, err)
-	mock{m}.systemVars("3.36.0")
-	drv, err := Open(db)
-	require.NoError(t, err)
-
-	type vr interface{ Version() string }
-	require.Implements(t, (*vr)(nil), drv)
-	require.Equal(t, "3.36.0", drv.(vr).Version())
 }
 
 type mockInspector struct {

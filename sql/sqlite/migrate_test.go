@@ -484,7 +484,6 @@ func TestPlanChanges(t *testing.T) {
 			db, mk, err := sqlmock.New()
 			require.NoError(t, err)
 			m := mock{mk}
-			m.systemVars("3.36.0")
 			if tt.mock != nil {
 				tt.mock(m)
 			}
@@ -625,9 +624,8 @@ func TestIndentedPlan(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			db, mk, err := sqlmock.New()
+			db, _, err := sqlmock.New()
 			require.NoError(t, err)
-			mock{mk}.systemVars("3.36.0")
 			drv, err := Open(db)
 			require.NoError(t, err)
 			plan, err := drv.PlanChanges(context.Background(), "wantPlan", []schema.Change{&schema.AddTable{T: tt.T}}, func(opts *migrate.PlanOptions) {
