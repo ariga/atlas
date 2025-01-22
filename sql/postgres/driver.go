@@ -7,7 +7,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"hash/fnv"
 	"math/rand"
@@ -237,20 +236,40 @@ func (d *Driver) SchemaRestoreFunc(desired *schema.Schema) migrate.RestoreFunc {
 
 // RealmRestoreFunc returns a function that restores the given realm to its desired state.
 func (d *Driver) RealmRestoreFunc(desired *schema.Realm) migrate.RestoreFunc {
-	return func(ctx context.Context) (err error) {
-		// Default behavior for Postgres is to have a single "public" schema.
-		// In that case, all other schemas are dropped, but this one is cleared
-		// object by object. To keep process faster, we drop the schema and recreate it.
-		if !d.crdb && len(desired.Schemas) == 1 && desired.Schemas[0].Name == "public" {
-			if pb := desired.Schemas[0]; len(pb.Tables)+len(pb.Views)+len(pb.Funcs)+len(pb.Procs)+len(pb.Objects) == 0 {
-				desired = &schema.Realm{Attrs: desired.Attrs, Objects: desired.Objects}
-				defer func() {
-					err = errors.Join(err, d.ApplyChanges(ctx, []schema.Change{
-						&schema.AddSchema{S: pb, Extra: []schema.Clause{&schema.IfExists{}}},
-					}))
-				}()
+	// Default behavior for Postgres is to have a single "public" schema.
+	// In that case, all other schemas are dropped, but this one is cleared
+	// object by object. To keep process faster, we drop the schema and recreate it.
+	if !d.crdb && len(desired.Schemas) == 1 && desired.Schemas[0].Name == "public" {
+		if pb := desired.Schemas[0]; len(pb.Tables)+len(pb.Views)+len(pb.Funcs)+len(pb.Procs)+len(pb.Objects) == 0 {
+			return func(ctx context.Context) error {
+				current, err := d.InspectRealm(ctx, nil)
+				if err != nil {
+					return err
+				}
+				changes, err := d.RealmDiff(current, desired)
+				if err != nil {
+					return err
+				}
+				// If there is no diff, do nothing.
+				if len(changes) == 0 {
+					return nil
+				}
+				// Else, prefer to drop the public schema and apply
+				// database changes instead of executing changes one by one.
+				if changes, err = d.RealmDiff(current, &schema.Realm{Attrs: desired.Attrs, Objects: desired.Objects}); err != nil {
+					return err
+				}
+				if err := d.ApplyChanges(ctx, withCascade(changes)); err != nil {
+					return err
+				}
+				// Recreate the public schema.
+				return d.ApplyChanges(ctx, []schema.Change{
+					&schema.AddSchema{S: pb, Extra: []schema.Clause{&schema.IfExists{}}},
+				})
 			}
 		}
+	}
+	return func(ctx context.Context) (err error) {
 		current, err := d.InspectRealm(ctx, nil)
 		if err != nil {
 			return err

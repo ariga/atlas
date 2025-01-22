@@ -167,6 +167,62 @@ func TestDriver_Version(t *testing.T) {
 	require.Equal(t, "130000", drv.(vr).Version())
 }
 
+func TestDriver_RealmRestoreFunc(t *testing.T) {
+	var (
+		apply   = &mockPlanApplier{}
+		inspect = &mockInspector{}
+		drv     = &Driver{
+			Inspector:   inspect,
+			Differ:      DefaultDiff,
+			conn:        &conn{schema: "test"},
+			PlanApplier: apply,
+		}
+	)
+	f := drv.RealmRestoreFunc(schema.NewRealm().AddSchemas(schema.New("public")))
+
+	// No changes.
+	inspect.realm = schema.NewRealm().AddSchemas(schema.New("public"))
+	err := f(context.Background())
+	require.NoError(t, err)
+	require.Empty(t, apply.applied)
+
+	// Schema changes.
+	inspect.realm = schema.NewRealm().AddSchemas(schema.New("public").AddTables(schema.NewTable("t1")))
+	err = f(context.Background())
+	require.NoError(t, err)
+	require.Len(t, apply.applied, 2)
+	drop, ok := apply.applied[0].(*schema.DropSchema)
+	require.True(t, ok)
+	require.Equal(t, "public", drop.S.Name)
+	create, ok := apply.applied[1].(*schema.AddSchema)
+	require.True(t, ok)
+	require.Equal(t, "public", create.S.Name)
+
+	// Recreate the public schema.
+	apply.applied = nil
+	inspect.realm = schema.NewRealm().AddSchemas(schema.New("test").AddTables(schema.NewTable("t1")))
+	err = f(context.Background())
+	require.NoError(t, err)
+	require.Len(t, apply.applied, 2)
+	drop, ok = apply.applied[0].(*schema.DropSchema)
+	require.True(t, ok)
+	require.Equal(t, "test", drop.S.Name)
+	create, ok = apply.applied[1].(*schema.AddSchema)
+	require.True(t, ok)
+	require.Equal(t, "public", create.S.Name)
+
+	// Non-public changes.
+	apply.applied = nil
+	f = drv.RealmRestoreFunc(schema.NewRealm().AddSchemas(schema.New("test")))
+	inspect.realm = schema.NewRealm().AddSchemas(schema.New("test").AddTables(schema.NewTable("t1")))
+	err = f(context.Background())
+	require.NoError(t, err)
+	require.Len(t, apply.applied, 1)
+	dropT, ok := apply.applied[0].(*schema.DropTable)
+	require.True(t, ok)
+	require.Equal(t, "t1", dropT.T.Name)
+}
+
 type mockInspector struct {
 	schema.Inspector
 	realm  *schema.Realm
@@ -182,4 +238,19 @@ func (m *mockInspector) InspectSchema(context.Context, string, *schema.InspectOp
 
 func (m *mockInspector) InspectRealm(context.Context, *schema.InspectRealmOption) (*schema.Realm, error) {
 	return m.realm, nil
+}
+
+type mockPlanApplier struct {
+	planned []schema.Change
+	applied []schema.Change
+}
+
+func (m *mockPlanApplier) PlanChanges(_ context.Context, _ string, planned []schema.Change, _ ...migrate.PlanOption) (*migrate.Plan, error) {
+	m.planned = append(m.planned, planned...)
+	return nil, nil
+}
+
+func (m *mockPlanApplier) ApplyChanges(_ context.Context, applied []schema.Change, _ ...migrate.PlanOption) error {
+	m.applied = append(m.applied, applied...)
+	return nil
 }
