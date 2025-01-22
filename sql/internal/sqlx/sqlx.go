@@ -78,20 +78,6 @@ func ScanNullBool(rows *sql.Rows) (sql.NullBool, error) {
 	return b, ScanOne(rows, &b)
 }
 
-// ScanStrings scans sql.Rows into a slice of strings and closes it at the end.
-func ScanStrings(rows *sql.Rows) ([]string, error) {
-	defer rows.Close()
-	var vs []string
-	for rows.Next() {
-		var v sql.NullString
-		if err := rows.Scan(&v); err != nil {
-			return nil, err
-		}
-		vs = append(vs, v.String)
-	}
-	return vs, nil
-}
-
 type (
 	// ScanStringer groups the fmt.Stringer and sql.Scanner interfaces.
 	ScanStringer interface {
