@@ -525,6 +525,14 @@ func Int64Attr(k string, v int64) *Attr {
 	}
 }
 
+// Float64Attr is a helper method for constructing *schemahcl.Attr instances that contain float64 value.
+func Float64Attr(k string, v float64) *Attr {
+	return &Attr{
+		K: k,
+		V: cty.NumberFloatVal(v),
+	}
+}
+
 // BoolAttr is a helper method for constructing *schemahcl.Attr instances that contain a boolean value.
 func BoolAttr(k string, v bool) *Attr {
 	return &Attr{

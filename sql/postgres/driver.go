@@ -552,13 +552,33 @@ const (
 
 // List of supported index types.
 const (
-	IndexTypeBTree      = "BTREE"
-	IndexTypeBRIN       = "BRIN"
-	IndexTypeHash       = "HASH"
-	IndexTypeGIN        = "GIN"
-	IndexTypeGiST       = "GIST"
-	IndexTypeSPGiST     = "SPGIST"
-	defaultPagePerRange = 128
+	IndexTypeBTree       = "BTREE"
+	IndexTypeBRIN        = "BRIN"
+	IndexTypeHash        = "HASH"
+	IndexTypeGIN         = "GIN"
+	IndexTypeGiST        = "GIST"
+	IndexTypeSPGiST      = "SPGIST"
+	defaultPagesPerRange = 128
+	defaultListLimit     = 4 * 1024
+	defaultBtreeFill     = 90
+)
+
+const (
+	storageParamFillFactor = "fillfactor"
+	storageParamDedup      = "deduplicate_items"
+	storageParamBuffering  = "buffering"
+	storageParamFastUpdate = "fastupdate"
+	storageParamListLimit  = "gin_pending_list_limit"
+	storageParamPagesRange = "pages_per_range"
+	storageParamAutoSum    = "autosummarize"
+)
+
+const (
+	bufferingOff    = "OFF"
+	bufferingOn     = "ON"
+	bufferingAuto   = "AUTO"
+	storageParamOn  = "ON"
+	storageParamOff = "OFF"
 )
 
 // List of "GENERATED" types.
