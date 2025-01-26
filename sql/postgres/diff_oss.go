@@ -511,7 +511,7 @@ func indexStorageParams(attrs []schema.Attr) (*IndexStorageParams, bool) {
 	if !sqlx.Has(attrs, s) {
 		return nil, false
 	}
-	if !s.AutoSummarize && (s.PagesPerRange == 0 || s.PagesPerRange == defaultPagePerRange) {
+	if !s.AutoSummarize && (s.PagesPerRange == 0 || s.PagesPerRange == defaultPagesPerRange) {
 		return nil, false
 	}
 	return s, true

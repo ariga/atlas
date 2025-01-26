@@ -1147,7 +1147,7 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
 			if p.AutoSummarize {
 				parts = append(parts, "autosummarize = true")
 			}
-			if p.PagesPerRange != 0 && p.PagesPerRange != defaultPagePerRange {
+			if p.PagesPerRange != 0 && p.PagesPerRange != defaultPagesPerRange {
 				parts = append(parts, fmt.Sprintf("pages_per_range = %d", p.PagesPerRange))
 			}
 			b.WriteString(strings.Join(parts, ", "))
