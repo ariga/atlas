@@ -312,6 +312,12 @@ func (b *Builder) Table(t *schema.Table) *Builder {
 	return b.mayQualify(t.Schema, t.Name)
 }
 
+// Trigger writes the trigger identifier to the builder, prefixed
+// with the schema name if exists.
+func (b *Builder) Trigger(t *schema.Trigger) *Builder {
+	return b.mayQualify(t.Schema(), t.Name)
+}
+
 // TableColumn writes the table's resource identifier to the builder, prefixed
 // with the schema name if exists.
 func (b *Builder) TableColumn(t *schema.Table, c *schema.Column) *Builder {
