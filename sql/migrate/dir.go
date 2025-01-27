@@ -538,12 +538,28 @@ func delim(s string) string {
 	return fmt.Sprintf("-- atlas:%s %s", directiveDelimiter, s)
 }
 
+// stmt returns a statement with the given delimiter.
+func stmt(cmd, delim string) string {
+	if cmd == "" {
+		return ""
+	}
+	if delim == "" {
+		delim = delimiter
+	}
+	if nl := strings.LastIndexByte(cmd, '\n'); nl != -1 && strings.HasPrefix(cmd[nl+1:], directivePrefixSQL) {
+		// Put delimiter on the newline, to separate it from the line comment
+		return fmt.Sprintf("%s\n%s\n", cmd, delim)
+	}
+	return fmt.Sprintf("%s%s\n", cmd, delim)
+}
+
 var (
 	// templateFunc contains the template.FuncMap for the DefaultFormatter.
 	templateFuncs = template.FuncMap{
 		"upper": strings.ToUpper,
 		"now":   NewVersion,
 		"delim": delim,
+		"stmt":  stmt,
 	}
 	// DefaultFormatter is a default implementation for Formatter.
 	DefaultFormatter = TemplateFormatter{
@@ -552,7 +568,7 @@ var (
 				"{{ with .Version }}{{ . }}{{ else }}{{ now }}{{ end }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 			)),
 			C: template.Must(template.New("").Funcs(templateFuncs).Parse(
-				`{{ with .Delimiter }}{{ delim . | printf "%s\n\n" }}{{ end }}{{ range .Changes }}{{ with .Comment }}{{ printf "-- %s%s\n" (slice . 0 1 | upper ) (slice . 1) }}{{ end }}{{ printf "%s%s\n" .Cmd (or $.Delimiter ";") }}{{ end }}`,
+				`{{ with .Delimiter }}{{ delim . | printf "%s\n\n" }}{{ end }}{{ range .Changes }}{{ with .Comment }}{{ printf "-- %s%s\n" (slice . 0 1 | upper ) (slice . 1) }}{{ end }}{{ stmt .Cmd $.Delimiter }}{{ end }}`,
 			)),
 		},
 	}
