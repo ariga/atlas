@@ -140,6 +140,7 @@ func TestFromURL(t *testing.T) {
 		Out:      io.Discard,
 	}, cfg)
 
+	// PostGIS.
 	u, err = url.Parse("docker://postgis/14-3.4")
 	require.NoError(t, err)
 	cfg, err = FromURL(u)
@@ -167,6 +168,35 @@ func TestFromURL(t *testing.T) {
 		Port:     "5432",
 		Out:      io.Discard,
 		setup:    []string{`CREATE DATABASE "dev"`},
+	}, cfg)
+
+	// PGVector.
+	u, err = url.Parse("docker://pgvector/pg17")
+	require.NoError(t, err)
+	cfg, err = FromURL(u)
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		driver:   "postgres",
+		Image:    "pgvector/pgvector:pg17",
+		Database: "postgres",
+		Env:      []string{"POSTGRES_PASSWORD=pass"},
+		User:     url.UserPassword("postgres", pass),
+		Port:     "5432",
+		Out:      io.Discard,
+	}, cfg)
+
+	u, err = url.Parse("docker://pgvector/pg17/dev")
+	require.NoError(t, err)
+	cfg, err = FromURL(u)
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		driver:   "postgres",
+		Image:    "pgvector/pgvector:pg17",
+		Database: "dev",
+		Env:      []string{"POSTGRES_PASSWORD=pass", "POSTGRES_DB=dev"},
+		User:     url.UserPassword("postgres", pass),
+		Port:     "5432",
+		Out:      io.Discard,
 	}, cfg)
 
 	// SQL Server
