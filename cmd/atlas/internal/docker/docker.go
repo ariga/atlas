@@ -80,6 +80,11 @@ const (
 	DriverClickHouse = "clickhouse"
 )
 
+const (
+	PostgresPostGIS  = "postgis"
+	PostgresPGVector = "pgvector"
+)
+
 // FromURL parses a URL in the format of
 // "docker://driver/tag[/dbname]" and returns a Config.
 func FromURL(u *url.URL, opts ...ConfigOption) (*Config, error) {
@@ -136,8 +141,10 @@ func FromURL(u *url.URL, opts ...ConfigOption) (*Config, error) {
 			)
 		}
 		cfg, err = MariaDB(tag, append(baseOpts, opts...)...)
-	case "postgis":
-		baseOpts = append(baseOpts, Image("postgis/postgis:"+tag))
+	case PostgresPostGIS:
+		baseOpts = append(baseOpts, Image(
+			fmt.Sprintf("%[1]s/%[1]s:%[2]s", PostgresPostGIS, tag),
+		))
 		if dbName != "" && dbName != "postgres" {
 			// Create manually the PostgreSQL database instead of using the POSTGRES_DB because
 			// PostGIS automatically creates and install the following extensions and schemas:
@@ -146,6 +153,15 @@ func FromURL(u *url.URL, opts ...ConfigOption) (*Config, error) {
 			baseOpts = append(
 				baseOpts, Database(dbName), Setup(fmt.Sprintf("CREATE DATABASE %q", dbName)),
 			)
+		}
+		driver = DriverPostgres
+		cfg, err = PostgreSQL(tag, append(baseOpts, opts...)...)
+	case PostgresPGVector:
+		baseOpts = append(baseOpts, Image(
+			fmt.Sprintf("%[1]s/%[1]s:%[2]s", PostgresPGVector, tag),
+		))
+		if dbName != "" {
+			baseOpts = append(baseOpts, Database(dbName), Env("POSTGRES_DB="+dbName))
 		}
 		driver = DriverPostgres
 		cfg, err = PostgreSQL(tag, append(baseOpts, opts...)...)
