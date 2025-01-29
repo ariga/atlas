@@ -7,6 +7,8 @@ package sqlspec
 import (
 	"testing"
 
+	"ariga.io/atlas/schemahcl"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -54,4 +56,45 @@ SELECT
 	} {
 		require.Equal(t, tt.expected, MightHeredoc(tt.input))
 	}
+}
+
+func TestMarshalPrimaryKey(t *testing.T) {
+	spec := &Table{
+		Name: "users",
+		Columns: []*Column{
+			{Name: "id", Type: &schemahcl.Type{T: "text"}},
+		},
+		PrimaryKey: &PrimaryKey{
+			Columns: []*schemahcl.Ref{
+				{V: "$column.id"},
+			},
+		},
+	}
+	buf, err := schemahcl.Marshal.MarshalSpec(spec)
+	require.NoError(t, err)
+	require.Equal(t, `table "users" {
+  column "id" {
+    null = false
+    type = sql("text")
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+`, string(buf))
+
+	// Include primary key on marshaling.
+	spec.PrimaryKey.Name = "custom_name"
+	buf, err = schemahcl.Marshal.MarshalSpec(spec)
+	require.NoError(t, err)
+	require.Equal(t, `table "users" {
+  column "id" {
+    null = false
+    type = sql("text")
+  }
+  primary_key "custom_name" {
+    columns = [column.id]
+  }
+}
+`, string(buf))
 }

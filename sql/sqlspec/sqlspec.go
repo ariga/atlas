@@ -63,6 +63,7 @@ type (
 
 	// PrimaryKey holds a specification for the primary key of a table.
 	PrimaryKey struct {
+		Name    string           `spec:",name"` // Optional name.
 		Parts   []*IndexPart     `spec:"on"`
 		Columns []*schemahcl.Ref `spec:"columns"`
 		schemahcl.DefaultExtension
