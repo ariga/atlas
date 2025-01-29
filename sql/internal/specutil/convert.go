@@ -522,6 +522,7 @@ func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, 
 		})
 	}
 	pk := &schema.Index{
+		Name:  spec.Name,
 		Table: parent,
 		Parts: parts,
 	}
