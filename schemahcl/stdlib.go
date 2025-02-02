@@ -109,6 +109,7 @@ func stdTypes(ctx *hcl.EvalContext) *hcl.EvalContext {
 func stdFuncs() map[string]function.Function {
 	return map[string]function.Function{
 		"abs":             stdlib.AbsoluteFunc,
+		"alltrue":         allTrueFunc,
 		"can":             tryfunc.CanFunc,
 		"ceil":            stdlib.CeilFunc,
 		"chomp":           stdlib.ChompFunc,
@@ -120,6 +121,7 @@ func stdFuncs() map[string]function.Function {
 		"csvdecode":       stdlib.CSVDecodeFunc,
 		"distinct":        stdlib.DistinctFunc,
 		"element":         stdlib.ElementFunc,
+		"empty":           emptyFunc,
 		"endswith":        endsWithFunc,
 		"flatten":         stdlib.FlattenFunc,
 		"floor":           stdlib.FloorFunc,
@@ -461,6 +463,63 @@ var (
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
 			return cty.StringVal(regexp.QuoteMeta(args[0].AsString())), nil
+		},
+	})
+
+	refineNonNull = func(b *cty.RefinementBuilder) *cty.RefinementBuilder {
+		return b.NotNull()
+	}
+
+	emptyFunc = function.New(&function.Spec{
+		Description: `Returns a boolean indicating whether the given collection is empty.`,
+		Params: []function.Parameter{
+			{
+				Name:             "collection",
+				Type:             cty.DynamicPseudoType,
+				AllowDynamicType: true,
+				AllowUnknown:     true,
+				AllowMarked:      true,
+			},
+		},
+		Type: func(args []cty.Value) (ret cty.Type, err error) {
+			collTy := args[0].Type()
+			if !(collTy.IsTupleType() || collTy.IsListType() || collTy.IsMapType() || collTy.IsSetType() || collTy == cty.DynamicPseudoType) {
+				return cty.NilType, fmt.Errorf("collection must be a list, a map or a tuple")
+			}
+			return cty.Bool, nil
+		},
+		RefineResult: refineNonNull,
+		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+			return args[0].Length().Equals(cty.NumberIntVal(0)), nil
+		},
+	})
+
+	allTrueFunc = function.New(&function.Spec{
+		Description: `Returns a boolean indicating whether all elements in the given collection are true.`,
+		Params: []function.Parameter{
+			{
+				Name:             "collection",
+				Type:             cty.DynamicPseudoType,
+				AllowDynamicType: true,
+				AllowUnknown:     true,
+				AllowMarked:      true,
+			},
+		},
+		Type: func(args []cty.Value) (ret cty.Type, err error) {
+			collTy := args[0].Type()
+			if !(collTy.IsTupleType() || collTy.IsListType() || collTy.IsMapType() || collTy.IsSetType() || collTy == cty.DynamicPseudoType) {
+				return cty.NilType, fmt.Errorf("collection must be a list, a map or a tuple")
+			}
+			return cty.Bool, nil
+		},
+		RefineResult: refineNonNull,
+		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+			for _, v := range args[0].AsValueSlice() {
+				if v.Type() != cty.Bool || !v.True() {
+					return cty.False, nil
+				}
+			}
+			return cty.True, nil
 		},
 	})
 )

@@ -156,6 +156,27 @@ func TestEndsWithFunc(t *testing.T) {
 	require.Equal(t, cty.True, got)
 }
 
+func TestEmptyFunc(t *testing.T) {
+	got, err := emptyFunc.Call([]cty.Value{cty.ListValEmpty(cty.String)})
+	require.NoError(t, err)
+	require.Equal(t, cty.True, got)
+	got, err = emptyFunc.Call([]cty.Value{cty.SetValEmpty(cty.String)})
+	require.NoError(t, err)
+	require.Equal(t, cty.True, got)
+	got, err = emptyFunc.Call([]cty.Value{cty.MapValEmpty(cty.String)})
+	require.NoError(t, err)
+	require.Equal(t, cty.True, got)
+	got, err = emptyFunc.Call([]cty.Value{cty.EmptyTupleVal})
+	require.NoError(t, err)
+	require.Equal(t, cty.True, got)
+	got, err = emptyFunc.Call([]cty.Value{cty.ListVal([]cty.Value{cty.StringVal("a")})})
+	require.NoError(t, err)
+	require.Equal(t, cty.False, got)
+	// Invalid value.
+	got, err = emptyFunc.Call([]cty.Value{cty.StringVal("a")})
+	require.EqualError(t, err, "collection must be a list, a map or a tuple")
+}
+
 func TestRegexpEscapeFunc(t *testing.T) {
 	got, err := regexpEscape.Call([]cty.Value{cty.StringVal("a|b|c")})
 	require.NoError(t, err)
