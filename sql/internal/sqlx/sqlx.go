@@ -273,7 +273,7 @@ func (b *Builder) P(phrases ...string) *Builder {
 		if p == "" {
 			continue
 		}
-		if b.Len() > 0 && b.lastByte() != ' ' && b.lastByte() != '(' {
+		if b.Len() > 0 && !slices.Contains([]byte{' ', '(', '\n'}, b.lastByte()) {
 			b.WriteByte(' ')
 		}
 		b.WriteString(p)
