@@ -527,7 +527,7 @@ func (c *Container) PingURL(u url.URL) string {
 // validate that no empty values are given.
 func (c *Config) validate() error {
 	if c == nil || c.Image == "" || c.Port == "" || c.Out == nil {
-		return fmt.Errorf("invalid configuration %q", c)
+		return fmt.Errorf("invalid configuration %#v", c)
 	}
 	return nil
 }
