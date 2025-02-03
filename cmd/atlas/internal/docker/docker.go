@@ -47,6 +47,8 @@ type (
 		Database string
 		// Out is a custom writer to send docker cli output to.
 		Out io.Writer
+		// ConnOptions allows configuring the underlying connection pool.
+		ConnOptions *ConnOptions
 	}
 	// A Container is an instance of a created container.
 	Container struct {
@@ -55,6 +57,13 @@ type (
 		ID string
 		// Port on the host this containers service is bound to.
 		Port string
+	}
+	// ConnOptions allows configuring the underlying connection pool.
+	ConnOptions struct {
+		MaxOpen     int
+		MaxIdle     int
+		MaxLifetime time.Duration
+		MaxIdleTime time.Duration
 	}
 	// ConfigOption allows configuring Config with functional arguments.
 	ConfigOption func(*Config) error
@@ -369,6 +378,14 @@ func Setup(s ...string) ConfigOption {
 	}
 }
 
+// Conn sets the config connection configuration.
+func Conn(s *ConnOptions) ConfigOption {
+	return func(c *Config) error {
+		c.ConnOptions = s
+		return nil
+	}
+}
+
 // Run pulls and starts a new docker container from the Config.
 func (c *Config) Run(ctx context.Context) (*Container, error) {
 	// Make sure the configuration is not missing critical values.
@@ -585,6 +602,21 @@ func OpenWithOpts(ctx context.Context, u *url.URL, opts ...ConfigOption) (client
 	u1.RawQuery = qr.Encode()
 	if client, err = sqlclient.Open(ctx, u1.String()); err != nil {
 		return nil, err
+	}
+	client.Ephemeral = true
+	if s := c.ConnOptions; s != nil {
+		if s.MaxOpen > 0 {
+			client.DB.SetMaxOpenConns(s.MaxOpen)
+		}
+		if s.MaxIdle > 0 {
+			client.DB.SetMaxIdleConns(s.MaxIdle)
+		}
+		if s.MaxLifetime > 0 {
+			client.DB.SetConnMaxLifetime(s.MaxLifetime)
+		}
+		if s.MaxIdleTime > 0 {
+			client.DB.SetConnMaxIdleTime(s.MaxIdleTime)
+		}
 	}
 	client.AddClosers(c)
 	return client, nil

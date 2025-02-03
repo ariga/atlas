@@ -42,6 +42,12 @@ type (
 		schemahcl.Marshaler
 		schemahcl.Evaluator
 
+		// Ephemeral indicates that the database we connect to is "ephemeral"
+		// (e.g., a temporary running container). This can be set by the driver
+		// that opens the client to signal to its consumers that there is no need
+		// to guard against race conditions with other Atlas clients.
+		Ephemeral bool
+
 		// Functions registered by the drivers and used for opening transactions and their clients.
 		openDriver func(schema.ExecQuerier) (migrate.Driver, error)
 		openTx     TxOpener
