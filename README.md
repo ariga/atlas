@@ -313,4 +313,4 @@ more than 6 months ago will be removed from the CDN and Docker Hub.
 
 [HCL]: https://atlasgo.io/atlas-schema/hcl
 [SQL]: https://atlasgo.io/atlas-schema/sql
-[ORM]: https://atlasgo.io/atlas-schema/external
+[ORM]: https://atlasgo.io/orms
