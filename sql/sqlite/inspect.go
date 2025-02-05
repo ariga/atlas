@@ -178,11 +178,11 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	t.Columns = append(t.Columns, c)
 	if primary {
 		if t.PrimaryKey == nil {
-			t.PrimaryKey = &schema.Index{
+			t.SetPrimaryKey(&schema.Index{
 				Name:   "PRIMARY",
 				Unique: true,
 				Table:  t,
-			}
+			})
 		}
 		// Columns are ordered by the `pk` field.
 		t.PrimaryKey.Parts = append(t.PrimaryKey.Parts, &schema.IndexPart{
