@@ -37,6 +37,10 @@ type (
 
 		// Delimiter to use for separating statements.
 		Delimiter string
+
+		// Directives to add to the file (not associated with any statements) besides the delimiter.
+		// For example, atlas:txtar, atlas:txmode, etc.
+		Directives []string
 	}
 
 	// A Change of migration.

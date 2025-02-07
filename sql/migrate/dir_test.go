@@ -547,6 +547,56 @@ create table t2(c int);
 `, b.String())
 }
 
+func TestDefaultFormatter_Directives(t *testing.T) {
+	var (
+		b bytes.Buffer
+		p = &migrate.Plan{
+			Directives: []string{"-- atlas:txmode none"},
+			Changes: []*migrate.Change{
+				{Cmd: "create table t1(c int)"},
+				{Cmd: "create table t2(c int)", Comment: "create table"},
+			},
+		}
+	)
+	err := migrate.DefaultFormatter.FormatTo(p, &b)
+	require.NoError(t, err)
+	require.Equal(t, `-- atlas:txmode none
+
+create table t1(c int);
+-- Create table
+create table t2(c int);
+`, b.String())
+
+	b.Reset()
+	p.Delimiter = "\nGO"
+	err = migrate.DefaultFormatter.FormatTo(p, &b)
+	require.NoError(t, err)
+	require.Equal(t, `-- atlas:delimiter \nGO
+-- atlas:txmode none
+
+create table t1(c int)
+GO
+-- Create table
+create table t2(c int)
+GO
+`, b.String())
+
+	b.Reset()
+	p.Directives = append(p.Directives, "-- atlas:nolint")
+	err = migrate.DefaultFormatter.FormatTo(p, &b)
+	require.NoError(t, err)
+	require.Equal(t, `-- atlas:delimiter \nGO
+-- atlas:txmode none
+-- atlas:nolint
+
+create table t1(c int)
+GO
+-- Create table
+create table t2(c int)
+GO
+`, b.String())
+}
+
 func TestDefaultFormatter_FormatFile(t *testing.T) {
 	f, err := migrate.DefaultFormatter.FormatFile(&migrate.Plan{
 		Changes: []*migrate.Change{
