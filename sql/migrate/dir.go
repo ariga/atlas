@@ -291,6 +291,16 @@ func directive(content, name string, prefix ...string) (string, bool) {
 	return "", false
 }
 
+// parseDirective returns the directive name and its arguments.
+// Empty strings are returned if the directive is invalid.
+func parseDirective(content string) (string, string) {
+	m := reDirective.FindStringSubmatch(content)
+	if len(m) != 4 {
+		return "", ""
+	}
+	return m[2], m[3]
+}
+
 // Directive returns the (global) file directives that match the provided name.
 // File directives are located at the top of the file and should not be associated with any
 // statement. Hence, double new lines are used to separate file directives from its content.
@@ -528,22 +538,40 @@ func CheckVersion(v string) error {
 	return nil
 }
 
-// delim returns a directive with the given delimiter.
+// delim formats the given string as an atlas:delimiter directive.
 func delim(s string) string {
-	if s == "" {
-		return ""
-	}
 	// Escape delimiters. e.g. "\n" => "\\n".
 	s = strings.NewReplacer("\n", `\n`, "\r", `\r`, "\t", `\t`).Replace(s)
 	return fmt.Sprintf("-- atlas:%s %s", directiveDelimiter, s)
 }
 
+// directives returns the all directives of the plan, if exists.
+func directives(p *Plan) (string, error) {
+	var ds []string
+	if p.Delimiter != "" {
+		ds = append(ds, delim(p.Delimiter))
+	}
+	for _, d := range p.Directives {
+		switch name, _ := parseDirective(d); {
+		case name == "":
+			return "", fmt.Errorf("invalid directive: %q", d)
+		case name == directiveDelimiter && p.Delimiter != "":
+			return "", fmt.Errorf("duplicate directive: %q. delimiter already set", d)
+		}
+		ds = append(ds, d)
+	}
+	if len(ds) == 0 {
+		return "", nil
+	}
+	return fmt.Sprintf("%s\n\n", strings.Join(ds, "\n")), nil
+}
+
 var (
 	// templateFunc contains the template.FuncMap for the DefaultFormatter.
 	templateFuncs = template.FuncMap{
-		"upper": strings.ToUpper,
-		"now":   NewVersion,
-		"delim": delim,
+		"upper":      strings.ToUpper,
+		"now":        NewVersion,
+		"directives": directives,
 	}
 	// DefaultFormatter is a default implementation for Formatter.
 	DefaultFormatter = TemplateFormatter{
@@ -552,7 +580,7 @@ var (
 				"{{ with .Version }}{{ . }}{{ else }}{{ now }}{{ end }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 			)),
 			C: template.Must(template.New("").Funcs(templateFuncs).Parse(
-				`{{ with .Delimiter }}{{ delim . | printf "%s\n\n" }}{{ end }}{{ range .Changes }}{{ with .Comment }}{{ printf "-- %s%s\n" (slice . 0 1 | upper ) (slice . 1) }}{{ end }}{{ printf "%s%s\n" .Cmd (or $.Delimiter ";") }}{{ end }}`,
+				`{{ directives . }}{{ range .Changes }}{{ with .Comment }}{{ printf "-- %s%s\n" (slice . 0 1 | upper ) (slice . 1) }}{{ end }}{{ printf "%s%s\n" .Cmd (or $.Delimiter ";") }}{{ end }}`,
 			)),
 		},
 	}
