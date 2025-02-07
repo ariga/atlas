@@ -80,6 +80,37 @@ func TestHashSum(t *testing.T) {
 	require.NotContains(t, string(c), "exclude_2.sql")
 }
 
+func TestPlanDelimiter(t *testing.T) {
+	var cases = []struct {
+		Cmd       string
+		Delimiter string
+		Expected  string
+	}{
+		{"", "", ""},
+		{"\n", "", "\n;\n"},
+		{"cmd\n-- comment", "", "cmd\n-- comment\n;\n"},
+		{"cmd\n-- comment", "\nGO", "-- atlas:delimiter \\nGO\n\ncmd\n-- comment\n\nGO\n"},
+	}
+	d := &migrate.MemDir{}
+	pl := migrate.NewPlanner(nil, d, migrate.PlanWithChecksum(false))
+	require.NotNil(t, pl)
+	for _, c := range cases {
+		plan := &migrate.Plan{
+			Version:   "1",
+			Name:      "plan",
+			Delimiter: c.Delimiter,
+			Changes: []*migrate.Change{{
+				Cmd: c.Cmd,
+			}},
+		}
+		require.NoError(t, pl.WritePlan(plan))
+		files, err := d.Files()
+		require.NoError(t, err)
+		require.Equal(t, 1, len(files))
+		require.Equal(t, c.Expected, string(files[0].Bytes()))
+	}
+}
+
 var (
 	//go:embed testdata/migrate/atlas.sum
 	hash []byte
