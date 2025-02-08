@@ -63,6 +63,13 @@ type (
 	}
 )
 
+// AddDirectiveOnce adds the given directive to the plan if it does not exist.
+func (p *Plan) AddDirectiveOnce(d string) {
+	if !slices.Contains(p.Directives, d) {
+		p.Directives = append(p.Directives, d)
+	}
+}
+
 // ReverseStmts returns the reverse statements of a Change, if any.
 func (c *Change) ReverseStmts() (cmd []string, err error) {
 	switch r := c.Reverse.(type) {
