@@ -312,6 +312,31 @@ func (b *Builder) Table(t *schema.Table) *Builder {
 	return b.mayQualify(t.Schema, t.Name)
 }
 
+// RefTable writes the referenced/parent table identifier to the builder.
+// Unlike the Table method, RefTable prefix the table with its schema qualifier
+// if the "Schema" is set to nil, or if the schema is set to empty (schema-scope),
+// and the parent table is in a different schema. For example:
+//
+//	CREATE TABLE child (
+//		id INT PRIMARY KEY,
+//		parent_id1 INT REFERENCES other1.parent(id)
+//		parent_id2 INT REFERENCES other2.parent(id)
+//	);
+//
+// This case is possible only if the child table (and its schema) was loaded with
+// baseline schema (contains other1, other2) or with external references to resources
+// not managed by this scope.
+func (b *Builder) RefTable(childT, parentT *schema.Table) *Builder {
+	// Default schema-scope config (no schema qualifier), both schemas are known, and parent table resides in a different schema.
+	if b.Schema != nil && *b.Schema == "" && V(childT.Schema).Name != "" && V(parentT.Schema).Name != "" && !SameSchema(childT.Schema, parentT.Schema) {
+		b.Ident(parentT.Schema.Name)
+		b.rewriteLastByte('.')
+		b.Ident(parentT.Name)
+		return b
+	}
+	return b.Table(parentT)
+}
+
 // TableColumn writes the table's resource identifier to the builder, prefixed
 // with the schema name if exists.
 func (b *Builder) TableColumn(t *schema.Table, c *schema.Column) *Builder {
