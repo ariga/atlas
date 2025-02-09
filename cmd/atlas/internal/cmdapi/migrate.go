@@ -167,7 +167,10 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 	)
 	if len(args) > 0 {
 		if count, err = strconv.Atoi(args[0]); err != nil {
-			return err
+			if nerr := (&strconv.NumError{}); errors.As(err, &nerr) && nerr.Err != nil {
+				err = nerr.Err
+			}
+			return fmt.Errorf("invalid amount argument %q (%w). Omit the argument or pass a valid integer instead", args[0], err)
 		}
 		if count < 1 {
 			return fmt.Errorf("cannot apply '%d' migration files", count)
