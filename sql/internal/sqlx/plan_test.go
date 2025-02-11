@@ -179,3 +179,21 @@ func TestSameView(t *testing.T) {
 	require.False(t, SameView(v1, schema.NewView("v1", "")))
 	require.False(t, SameView(v1, schema.NewView("v1", "").SetSchema(schema.New("private"))))
 }
+
+func TestSortDropTables_WithFK(t *testing.T) {
+	t1 := schema.NewTable("t1").AddColumns(schema.NewColumn("c1"))
+	t2 := schema.NewTable("t2").AddColumns(schema.NewColumn("c1"), schema.NewColumn("c2"))
+	t2.AddForeignKeys(
+		schema.NewForeignKey("FK_t2_t1").
+			AddColumns(t2.Columns[1]).
+			AddRefColumns(t1.Columns[0]).
+			SetRefTable(t1),
+	)
+	t1.Triggers = []*schema.Trigger{
+		{Table: t1, Deps: []schema.Object{t1, t2}},
+	}
+	changes := []schema.Change{&schema.DropTable{T: t2}, &schema.DropTable{T: t1}}
+	require.Equal(t, []schema.Change{changes[0], changes[1]}, SortChanges(changes, nil))
+	changes = []schema.Change{&schema.DropTable{T: t1}, &schema.DropTable{T: t2}}
+	require.Equal(t, []schema.Change{changes[1], changes[0]}, SortChanges(changes, nil))
+}

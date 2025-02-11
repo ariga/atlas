@@ -504,7 +504,13 @@ func depOfDrop(o schema.Object, c schema.Change) bool {
 	case *schema.DropTable:
 		deps = c.T.Deps
 		for _, t := range c.T.Triggers {
-			deps = append(deps, t.Deps...)
+			for _, d := range t.Deps {
+				// If the trigger depends on the table that has FK to its parent,
+				// this dependency should be ignored as the FK need be dropped first.
+				if t, ok := d.(*schema.Table); !ok || !refTo(t.ForeignKeys, c.T) {
+					deps = append(deps, d)
+				}
+			}
 		}
 	case *schema.DropView:
 		deps = c.V.Deps
