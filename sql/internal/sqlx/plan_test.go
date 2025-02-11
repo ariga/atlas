@@ -190,7 +190,7 @@ func TestSortDropTables_WithFK(t *testing.T) {
 			SetRefTable(t1),
 	)
 	t1.Triggers = []*schema.Trigger{
-		{Table: t1, Deps: []schema.Object{t1, t2}},
+		{Table: t1, Deps: []schema.Object{t2}},
 	}
 	changes := []schema.Change{&schema.DropTable{T: t2}, &schema.DropTable{T: t1}}
 	require.Equal(t, []schema.Change{changes[0], changes[1]}, SortChanges(changes, nil))
