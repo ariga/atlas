@@ -13,6 +13,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
@@ -21,6 +23,7 @@ import (
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/sqlite"
 	"ariga.io/atlas/sql/sqltool"
 
 	"entgo.io/ent/dialect"
@@ -84,6 +87,9 @@ func NewEntRevisions(ctx context.Context, ac *sqlclient.Client, opts ...Option) 
 		if err := opt(r); err != nil {
 			return nil, err
 		}
+	}
+	if r.Dialect() == sqlite.DriverName && r.schema != "" && r.schema != "main" {
+		return nil, fmt.Errorf("cannot store revisions-table in a separate schema (%q) with SQLite driver", r.schema)
 	}
 	// Create the connection with the underlying migrate.Driver to have it inside a possible transaction.
 	entopts := []ent.Option{ent.Driver(sql.NewDriver(r.Dialect(), sql.Conn{ExecQuerier: r.ac.Driver}))}
@@ -243,10 +249,12 @@ func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
 			for i := range changes {
 				switch cs := changes[i].(type) {
 				case *schema.AddTable:
+					r.maySetSchemaQualifier(cs.T)
 					if cs.T.Name == revision.Table {
 						return schema.Changes{cs}, nil
 					}
 				case *schema.ModifyTable:
+					r.maySetSchemaQualifier(cs.T)
 					if cs.T.Name == revision.Table {
 						return schema.Changes{cs}, nil
 					}
@@ -255,6 +263,21 @@ func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
 			return nil, nil
 		})
 	}))
+}
+
+// maySetSchemaQualifier sets the schema on the atlas_schema_revisions table
+// for cases the migration should use qualified identifiers due to some limitation
+// in PostgreSQL services that use "connection pooler" and do not support the "search_path"
+// parameter. See: https://github.com/ariga/atlas/issues/2509.
+func (r *EntRevisions) maySetSchemaQualifier(t *schema.Table) {
+	if r.Dialect() != dialect.Postgres || r.schema == "" || t.Schema != nil {
+		return // Not PG, or schema-scope (e.g., public).
+	}
+	if knownServices := []string{"neon.tech", "supabase.co", "supabase.com"}; slices.ContainsFunc(knownServices, func(s string) bool {
+		return strings.HasSuffix(r.ac.URL.Host, s)
+	}) {
+		t.SetSchema(schema.New(r.schema))
+	}
 }
 
 // revisionID holds the column "id" ("version") of the revision that holds the identifier of the
