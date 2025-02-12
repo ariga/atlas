@@ -1481,7 +1481,7 @@ func (t *pgTest) valueByVersion(values map[string]string, defaults string) strin
 func (t *pgTest) loadRealm() *schema.Realm {
 	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"public"},
-		Mode:    schema.InspectSchemas | schema.InspectTables,
+		Mode:    schema.InspectSchemas | schema.InspectTables | schema.InspectTypes,
 	})
 	require.NoError(t, err)
 	return r

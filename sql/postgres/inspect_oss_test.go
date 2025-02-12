@@ -355,7 +355,7 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1
 `))
 			tt.before(mk)
 			s, err := drv.InspectSchema(context.Background(), "public", &schema.InspectOptions{
-				Mode: schema.InspectSchemas | schema.InspectTables,
+				Mode: schema.InspectSchemas | schema.InspectTables | schema.InspectTypes,
 			})
 			require.NoError(t, err)
 			tt.expect(require.New(t), s.Tables[0], err)
@@ -405,7 +405,7 @@ logs3      | c5         | integer   | integer   | NO          |                |
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(checksQuery, "$2, $3, $4"))).
 		WillReturnRows(sqlmock.NewRows([]string{"table_name", "constraint_name", "expression", "column_name", "column_indexes"}))
 	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
-		Mode: schema.InspectSchemas | schema.InspectTables,
+		Mode: schema.InspectSchemas | schema.InspectTables | schema.InspectTypes,
 	})
 	require.NoError(t, err)
 
@@ -453,7 +453,6 @@ func TestDriver_InspectCRDBSchema(t *testing.T) {
 -------------+---------
  public      | nil
 `))
-	mk.noEnums()
 	mk.tableExists("public", "users", true)
 	mk.ExpectQuery(queryCRDBColumns).
 		WithArgs("public", "users").
@@ -520,7 +519,6 @@ func TestDriver_InspectSchema(t *testing.T) {
 -------------+---------
  test        | boring
 `))
-	mk.noEnums()
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
@@ -560,8 +558,6 @@ func TestDriver_Realm(t *testing.T) {
  test        | nil
  public      | nil
 `))
-	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(enumsQuery, "$1, $2"))).
-		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
 		WithArgs("test", "public").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
@@ -604,8 +600,6 @@ func TestDriver_Realm(t *testing.T) {
  test        | nil
  public      | nil
 `))
-	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(enumsQuery, "$1, $2"))).
-		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "enum_name", "comment", "enum_type", "enum_value"}))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
 		WithArgs("test", "public").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
@@ -644,7 +638,6 @@ func TestDriver_Realm(t *testing.T) {
 -------------+---------
  test        | nil
 `))
-	mk.noEnums()
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
