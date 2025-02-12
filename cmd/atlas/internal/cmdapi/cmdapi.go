@@ -31,7 +31,7 @@ var (
 	// Root represents the root command when called without any subcommands.
 	Root = &cobra.Command{
 		Use:          "atlas",
-		Short:        "A database toolkit.",
+		Short:        "Manage your database schema as code",
 		SilenceUsage: true,
 	}
 
