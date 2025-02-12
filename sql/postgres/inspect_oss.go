@@ -49,10 +49,10 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		mode = sqlx.ModeInspectRealm(opts)
 	)
 	if len(schemas) > 0 {
-		if err := i.inspectEnums(ctx, r); err != nil {
-			return nil, err
-		}
 		if mode.Is(schema.InspectTypes) {
+			if err := i.inspectEnums(ctx, r); err != nil {
+				return nil, err
+			}
 			if err := i.inspectTypes(ctx, r, nil); err != nil {
 				return nil, err
 			}
@@ -124,6 +124,9 @@ func (i *inspect) noSearchPath(ctx context.Context) (func() error, error) {
 // InspectSchema returns schema descriptions of the tables in the given schema.
 // If the schema name is empty, the result will be the attached schema.
 func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (s *schema.Schema, err error) {
+	if name == "" && i.schema != "" {
+		name = i.schema // Otherwise, the "current_schema()" is used.
+	}
 	schemas, err := i.schemas(ctx, &schema.InspectRealmOption{Schemas: []string{name}})
 	if err != nil {
 		return nil, err
@@ -145,10 +148,10 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		r    = schema.NewRealm(schemas...)
 		mode = sqlx.ModeInspectSchema(opts)
 	)
-	if err := i.inspectEnums(ctx, r); err != nil {
-		return nil, err
-	}
 	if mode.Is(schema.InspectTypes) {
+		if err := i.inspectEnums(ctx, r); err != nil {
+			return nil, err
+		}
 		if err := i.inspectTypes(ctx, r, opts); err != nil {
 			return nil, err
 		}
