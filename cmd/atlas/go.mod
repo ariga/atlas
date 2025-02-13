@@ -5,8 +5,8 @@ go 1.23.6
 replace ariga.io/atlas => ../..
 
 require (
-	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43
-	entgo.io/ent v0.14.1
+	ariga.io/atlas v0.31.1-0.20250212144724-069be8033e83
+	entgo.io/ent v0.14.2-0.20250212161803-c5db03c30e8d
 	github.com/1lann/promptui v0.8.1-0.20220708222609-81fad96dd5e1
 	github.com/antlr4-go/antlr/v4 v4.13.0
 	github.com/aws/aws-sdk-go-v2/config v1.26.1
