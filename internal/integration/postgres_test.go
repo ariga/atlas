@@ -746,6 +746,145 @@ table "users" {
 	})
 }
 
+func TestPostgres_MigrateApply(t *testing.T) {
+	var (
+		bin = cliPath(t)
+		ctx = context.Background()
+	)
+	pgRun(t, func(t *pgTest) {
+		_, err := t.db.ExecContext(ctx, "DROP DATABASE IF EXISTS migrate_apply")
+		require.NoError(t, err)
+		_, err = t.db.ExecContext(ctx, "CREATE DATABASE migrate_apply")
+		require.NoError(t, err)
+		p := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(p, "1.sql"), []byte(`
+CREATE SCHEMA IF NOT EXISTS public;
+CREATE TABLE public.users (id int);
+`), 0644))
+		require.NoError(t, exec.Command(bin, "migrate", "hash", "--dir", "file://"+p).Run())
+		out, err := exec.Command(
+			bin, "migrate", "apply",
+			"--dir", "file://"+p,
+			"--url", t.dbURL("migrate_apply", "public"),
+		).CombinedOutput()
+		require.NoError(t, err)
+		require.Regexp(t, `Migrating to version 1 \(1 migrations in total\):
+
+  -- migrating version 1
+    -> CREATE SCHEMA IF NOT EXISTS public;
+    -> CREATE TABLE public.users \(id int\);
+  -- ok \(.+\)
+
+  -------------------------
+  -- .+
+  -- 1 migration
+  -- 2 sql statements
+`, string(out))
+
+		out, err = exec.Command(
+			bin, "migrate", "apply",
+			"--dir", "file://"+p,
+			"--url", t.dbURL("migrate_apply", "public"),
+		).CombinedOutput()
+		require.NoError(t, err)
+		require.Equal(t, "No migration files to execute\n", string(out))
+
+		out, err = exec.Command(
+			bin, "schema", "inspect",
+			"--url", t.dbURL("migrate_apply", "public"),
+			"--format", "{{ range $s := .Realm.Schemas }}{{ range .Tables }}{{ $s.Name }}-{{ .Name }},{{ end }}{{ end }}",
+		).CombinedOutput()
+		require.NoError(t, err)
+		require.Equal(t, "public-atlas_schema_revisions,public-users,", string(out), "tables reside on the same public schema")
+
+		// Database-scope migration, default to atlas_schema_revisions.
+		_, err = exec.Command(
+			bin, "schema", "clean",
+			"--url", t.dbURL("migrate_apply", ""),
+			"--auto-approve",
+		).CombinedOutput()
+		require.NoError(t, err)
+
+		out, err = exec.Command(
+			bin, "migrate", "apply",
+			"--dir", "file://"+p,
+			"--url", t.dbURL("migrate_apply", ""),
+		).CombinedOutput()
+		require.NoError(t, err)
+		require.Regexp(t, `Migrating to version 1 \(1 migrations in total\):
+
+  -- migrating version 1
+    -> CREATE SCHEMA IF NOT EXISTS public;
+    -> CREATE TABLE public.users \(id int\);
+  -- ok \(.+\)
+
+  -------------------------
+  -- .+
+  -- 1 migration
+  -- 2 sql statements
+`, string(out))
+		out, err = exec.Command(
+			bin, "migrate", "apply",
+			"--dir", "file://"+p,
+			"--url", t.dbURL("migrate_apply", ""),
+		).CombinedOutput()
+		require.NoError(t, err)
+		require.Equal(t, "No migration files to execute\n", string(out))
+
+		out, err = exec.Command(
+			bin, "schema", "inspect",
+			"--url", t.dbURL("migrate_apply", ""),
+			"--format", "{{ range $s := .Realm.Schemas }}{{ range .Tables }}{{ $s.Name }}-{{ .Name }},{{ end }}{{ end }}",
+		).CombinedOutput()
+		require.NoError(t, err)
+		require.Equal(t, "atlas_schema_revisions-atlas_schema_revisions,public-users,", string(out), "revisions table should reside in atlas_schema_revisions")
+
+		// Custom schema-revisions schema.
+		_, err = exec.Command(
+			bin, "schema", "clean",
+			"--url", t.dbURL("migrate_apply", ""),
+			"--auto-approve",
+		).CombinedOutput()
+		require.NoError(t, err)
+
+		out, err = exec.Command(
+			bin, "migrate", "apply",
+			"--dir", "file://"+p,
+			"--url", t.dbURL("migrate_apply", ""),
+			"--revisions-schema", "mashraki",
+		).CombinedOutput()
+		require.NoError(t, err)
+		require.Regexp(t, `Migrating to version 1 \(1 migrations in total\):
+
+  -- migrating version 1
+    -> CREATE SCHEMA IF NOT EXISTS public;
+    -> CREATE TABLE public.users \(id int\);
+  -- ok \(.+\)
+
+  -------------------------
+  -- .+
+  -- 1 migration
+  -- 2 sql statements
+`, string(out))
+		out, err = exec.Command(
+			bin, "migrate", "apply",
+			"--dir", "file://"+p,
+			"--url", t.dbURL("migrate_apply", ""),
+			"--revisions-schema", "mashraki",
+		).CombinedOutput()
+		require.NoError(t, err)
+		require.Equal(t, "No migration files to execute\n", string(out))
+
+		out, err = exec.Command(
+			bin, "schema", "inspect",
+			"--url", t.dbURL("migrate_apply", ""),
+			"--format", "{{ range $s := .Realm.Schemas }}{{ range .Tables }}{{ $s.Name }}-{{ .Name }},{{ end }}{{ end }}",
+		).CombinedOutput()
+		require.NoError(t, err)
+		require.Equal(t, "mashraki-atlas_schema_revisions,public-users,", string(out), "revisions table should reside in atlas_schema_revisions")
+	})
+}
+
 func TestPostgres_CLI_MultiSchema(t *testing.T) {
 	h := `
 			schema "public" {
@@ -1440,9 +1579,13 @@ create table atlas_types_sanity
 }
 
 func (t *pgTest) url(schema string) string {
+	return t.dbURL("test", schema)
+}
+
+func (t *pgTest) dbURL(db, schema string) string {
 	var (
-		format = "postgres://postgres:pass@localhost:%d/test?sslmode=disable"
-		args   = []any{t.port}
+		format = "postgres://postgres:pass@localhost:%d/%s?sslmode=disable"
+		args   = []any{t.port, db}
 	)
 	if schema != "" {
 		format += "&search_path=%s"

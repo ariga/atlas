@@ -204,17 +204,27 @@ func (r *EntRevisions) DeleteRevision(ctx context.Context, v string) error {
 // execution in a transaction and assumes the underlying connection is of type *sql.DB, which is not true for actually
 // reading and writing revisions.
 func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
-	c := ent.NewClient(ent.Driver(sql.OpenDB(r.Dialect(), r.ac.DB)))
-	// Ensure the ent client is bound to the requested revision schema. Open a new connection, if not.
-	if r.Dialect() != dialect.SQLite && r.ac.URL.Schema != r.schema {
-		sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
-		if err != nil {
-			return err
+	var (
+		opts = []entschema.MigrateOption{
+			entschema.WithDropColumn(true),
 		}
-		defer sc.Close()
-		c = ent.NewClient(ent.Driver(sql.OpenDB(r.Dialect(), sc.DB)))
-	}
-	if r.Dialect() == dialect.SQLite {
+		c = ent.NewClient(ent.Driver(sql.OpenDB(r.Dialect(), r.ac.DB)))
+	)
+	switch {
+	case r.Dialect() != dialect.SQLite:
+		// Ensure the ent client is bound to the requested revision schema. Open a new connection, if not.
+		if r.ac.URL.Schema != r.schema {
+			sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+			if err != nil {
+				return err
+			}
+			defer sc.Close()
+			c = ent.NewClient(ent.Driver(sql.OpenDB(r.Dialect(), sc.DB)))
+		}
+		// In non-SQLite databases, there can be multiple schemas, and we
+		// prefer to pass it explicitly rather than calling to CURRENT_SCHEMA().
+		opts = append(opts, entschema.WithSchemaName(r.schema))
+	default: // SQLite.
 		var on sql.NullBool
 		if err := r.ac.DB.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&on); err != nil {
 			return err
@@ -238,7 +248,7 @@ func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
 			}()
 		}
 	}
-	return c.Schema.Create(ctx, entschema.WithDropColumn(true), entschema.WithDiffHook(func(next entschema.Differ) entschema.Differ {
+	return c.Schema.Create(ctx, append(opts, entschema.WithDiffHook(func(next entschema.Differ) entschema.Differ {
 		return entschema.DiffFunc(func(current, desired *schema.Schema) ([]schema.Change, error) {
 			changes, err := next.Diff(current, desired)
 			if err != nil {
@@ -262,7 +272,7 @@ func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
 			}
 			return nil, nil
 		})
-	}))
+	}))...)
 }
 
 // maySetSchemaQualifier sets the schema on the atlas_schema_revisions table
