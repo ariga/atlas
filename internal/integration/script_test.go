@@ -502,7 +502,7 @@ func cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
 			exLines, acLines := strings.Split(actual, "\n"), strings.Split(expected, "\n")
 			if len(exLines) != len(acLines) {
 				var sb strings.Builder
-				ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
+				ts.Check(diff.Text(f.Name(), args[1], actual, expected, &sb))
 				ts.Fatalf("\n%s", sb.String())
 			}
 			for i := range exLines {
@@ -512,7 +512,7 @@ func cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
 				}
 				if exLines[i] != acLines[i] {
 					var sb strings.Builder
-					ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
+					ts.Check(diff.Text(f.Name(), args[1], actual, expected, &sb))
 					ts.Fatalf("\n%s", sb.String())
 				}
 			}
