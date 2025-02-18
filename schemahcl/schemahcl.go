@@ -645,7 +645,7 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, opts *EvalOptions, hclAttrs hclsyn
 					}
 					v = cty.CapsuleVal(ctyRefType, &Ref{V: v.GetAttr("__ref").AsString()})
 				}
-				if vt != cty.NilType && vt != v.Type() {
+				if vt != cty.NilType && !vt.Equals(v.Type()) {
 					return nil, fmt.Errorf("%s: mixed list types used in %q attribute", hclAttr.SrcRange, hclAttr.Name)
 				}
 				vt = v.Type()
