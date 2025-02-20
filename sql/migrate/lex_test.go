@@ -130,6 +130,28 @@ func TestScanner_BeginTryCatch(t *testing.T) {
 	}
 }
 
+func TestScanner_SQLServer(t *testing.T) {
+	scan := &Scanner{}
+	scan.MatchBegin = true
+	scan.BeginEndTerminator = true
+	path := filepath.Join("testdata", "sqlserver")
+	dir, err := NewLocalDir(path)
+	require.NoError(t, err)
+	files, err := dir.Files()
+	require.NoError(t, err)
+	for _, f := range files {
+		stmts, err := scan.Scan(string(f.Bytes()))
+		require.NoErrorf(t, err, "file: %s", f.Name())
+		buf, err := os.ReadFile(filepath.Join(path, f.Name()+".golden"))
+		require.NoError(t, err)
+		got := make([]string, len(stmts))
+		for i, s := range stmts {
+			got[i] = s.Text
+		}
+		require.Equalf(t, string(buf), strings.Join(got, "\n-- end --\n"), "mismatched statements in file %q", f.Name())
+	}
+}
+
 func TestLocalFile_StmtDecls(t *testing.T) {
 	f := `cmd0;
 -- test
