@@ -97,6 +97,9 @@ type (
 		width      int      // size of latest rune
 		delim      string   // configured delimiter
 		comments   []string // collected comments
+		// internal option to indicate if the
+		// END word is parsed as a terminator.
+		endterm *regexp.Regexp
 	}
 
 	// ScannerOptions controls the behavior of the scanner.
@@ -119,6 +122,9 @@ type (
 		HashComments bool
 		// Enable the "GO" command as a delimiter.
 		GoCommand bool
+		// BeginEndTerminator is a T-SQL specific option that allows
+		// the scanner to terminate BEGIN/END blocks with a semicolon.
+		BeginEndTerminator bool
 	}
 )
 
@@ -247,6 +253,9 @@ Scan:
 		case r == '/' && s.pick() == '*':
 			s.next()
 			s.comment("/*", "*/")
+		case s.endterm != nil && s.endterm.MatchString(s.input[:s.pos]):
+			text = s.input[:s.pos]
+			break Scan
 		case s.delim == delimiter && s.MatchBeginAtomic && reBeginAtomic.MatchString(s.input[s.pos-1:]):
 			if err := s.skipBeginAtomic(); err == nil {
 				text = s.input[:s.pos]
@@ -389,6 +398,10 @@ func (s *Scanner) skipBeginTryCatch() error {
 	return nil
 }
 
+var (
+	reEndTerm = regexp.MustCompile(`(?i)\s*END\s*$`)
+)
+
 func (s *Scanner) skipBegin() error {
 	m := reBegin.FindString(s.input[s.pos-1:])
 	if m == "" {
@@ -396,10 +409,14 @@ func (s *Scanner) skipBegin() error {
 	}
 	s.addPos(len(m) - 1)
 	group := &Scanner{ScannerOptions: s.ScannerOptions}
+	if s.BeginEndTerminator {
+		group.endterm = reEndTerm
+	}
 	if err := group.init(s.input[s.pos:]); err != nil {
 		return err
 	}
-	for depth := 1; depth > 0; {
+Loop:
+	for {
 		switch stmt, err := group.stmt(); {
 		case err == io.EOF:
 			return s.error(s.pos, "unexpected eof when scanning compound statements")
@@ -407,8 +424,10 @@ func (s *Scanner) skipBegin() error {
 			return s.error(s.pos, "scan compound statements: %v", err)
 		case reEnd.MatchString(stmt.Text):
 			if m := reEnd.FindString(stmt.Text); len(m) == len(stmt.Text) || strings.TrimPrefix(stmt.Text, m) == s.delim {
-				depth--
+				break Loop
 			}
+		case s.BeginEndTerminator && reEndTerm.MatchString(stmt.Text):
+			break Loop
 		}
 	}
 	s.addPos(group.total)
