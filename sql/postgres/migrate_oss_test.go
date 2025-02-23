@@ -1847,6 +1847,15 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Adding view is not supported in OSS.
+		{
+			changes: []schema.Change{
+				&schema.AddView{
+					V: schema.NewView("v1", "SELECT * FROM users"),
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
