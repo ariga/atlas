@@ -259,6 +259,10 @@ func (e *Env) VarFromURL(s string) (string, error) {
 		switch {
 		case u.Host == "src":
 			attr, ok = e.Attr("src")
+			if !ok && e.Schema != nil {
+				// Fallback to schema.src
+				attr, ok = e.Schema.Attr("src")
+			}
 		case e.Schema != nil:
 			attr, ok = e.Schema.Attr("src")
 		}
