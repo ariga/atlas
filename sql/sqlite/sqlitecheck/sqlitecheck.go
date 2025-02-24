@@ -17,7 +17,6 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/datadepend"
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 	"ariga.io/atlas/sql/sqlcheck/incompatible"
-	"ariga.io/atlas/sql/sqlcheck/naming"
 	"ariga.io/atlas/sql/sqlite"
 )
 
@@ -53,76 +52,70 @@ func modifyNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err e
 	}, nil
 }
 
-func init() {
-	sqlcheck.Register(sqlite.DriverName, func(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
-		ds, err := destructive.New(r)
-		if err != nil {
-			return nil, err
-		}
-		cd, err := condrop.New(r)
-		if err != nil {
-			return nil, err
-		}
-		dd, err := datadepend.New(r, datadepend.Handler{
-			AddNotNull:    addNotNull,
-			ModifyNotNull: modifyNotNull,
-		})
-		if err != nil {
-			return nil, err
-		}
-		bc, err := incompatible.New(r)
-		if err != nil {
-			return nil, err
-		}
-		nm, err := naming.New(r)
-		if err != nil {
-			return nil, err
-		}
-		return []sqlcheck.Analyzer{
-			sqlcheck.AnalyzerFunc(func(_ context.Context, p *sqlcheck.Pass) error {
-				var changes []*sqlcheck.Change
-				// Detect sequence of changes using temporary table and transform them to one ModifyTable change.
-				// See: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes.
-				for i := 0; i < len(p.File.Changes); i++ {
-					if i+3 >= len(p.File.Changes) {
-						changes = append(changes, p.File.Changes[i])
-						continue
-					}
-					prevT, currT, ok := modifyUsingTemp(p.File.Changes[i], p.File.Changes[i+2], p.File.Changes[i+3])
-					if !ok {
-						changes = append(changes, p.File.Changes[i])
-						continue
-					}
-					diff, err := p.Dev.Driver.TableDiff(prevT, currT)
-					if err != nil {
-						return nil
-					}
-					changes = append(changes, &sqlcheck.Change{
-						Stmt: &migrate.Stmt{
-							// Use the position of the first statement.
-							Pos: p.File.Changes[i].Stmt.Pos,
-							// A combined statement.
-							Text: strings.Join([]string{
-								p.File.Changes[i].Stmt.Text,
-								p.File.Changes[i+2].Stmt.Text,
-								p.File.Changes[i+3].Stmt.Text,
-							}, "\n"),
-						},
-						Changes: schema.Changes{
-							&schema.ModifyTable{
-								T:       currT,
-								Changes: diff,
-							},
-						},
-					})
-					i += 3
-				}
-				p.File.Changes = changes
-				return nil
-			}),
-			ds, dd, cd, bc, nm,
-		}, nil
+func analyzers(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
+	ds, err := destructive.New(r)
+	if err != nil {
+		return nil, err
+	}
+	cd, err := condrop.New(r)
+	if err != nil {
+		return nil, err
+	}
+	dd, err := datadepend.New(r, datadepend.Handler{
+		AddNotNull:    addNotNull,
+		ModifyNotNull: modifyNotNull,
 	})
+	if err != nil {
+		return nil, err
+	}
+	bc, err := incompatible.New(r)
+	if err != nil {
+		return nil, err
+	}
+	return []sqlcheck.Analyzer{
+		sqlcheck.AnalyzerFunc(func(_ context.Context, p *sqlcheck.Pass) error {
+			var changes []*sqlcheck.Change
+			// Detect sequence of changes using temporary table and transform them to one ModifyTable change.
+			// See: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes.
+			for i := 0; i < len(p.File.Changes); i++ {
+				if i+3 >= len(p.File.Changes) {
+					changes = append(changes, p.File.Changes[i])
+					continue
+				}
+				prevT, currT, ok := modifyUsingTemp(p.File.Changes[i], p.File.Changes[i+2], p.File.Changes[i+3])
+				if !ok {
+					changes = append(changes, p.File.Changes[i])
+					continue
+				}
+				diff, err := p.Dev.Driver.TableDiff(prevT, currT)
+				if err != nil {
+					return nil
+				}
+				changes = append(changes, &sqlcheck.Change{
+					Stmt: &migrate.Stmt{
+						// Use the position of the first statement.
+						Pos: p.File.Changes[i].Stmt.Pos,
+						// A combined statement.
+						Text: strings.Join([]string{
+							p.File.Changes[i].Stmt.Text,
+							p.File.Changes[i+2].Stmt.Text,
+							p.File.Changes[i+3].Stmt.Text,
+						}, "\n"),
+					},
+					Changes: schema.Changes{
+						&schema.ModifyTable{
+							T:       currT,
+							Changes: diff,
+						},
+					},
+				})
+				i += 3
+			}
+			p.File.Changes = changes
+			return nil
+		}),
+		ds, dd, cd, bc,
+	}, nil
 }
 
 // modifyUsingTemp indicates if the 3 changes represents a table modification using
