@@ -4,6 +4,10 @@
 
 package schema
 
+import (
+	"reflect"
+)
+
 type (
 	// A Realm or a database describes a domain of schema resources that are logically connected
 	// and can be accessed and queried in the same connection (e.g. a physical database instance).
@@ -779,4 +783,35 @@ func UnderlyingType(t Type) Type {
 		return UnderlyingType(w.Underlying())
 	}
 	return t
+}
+
+// IsType return true if somewhere in the type-chain of t1 is the same as t2.
+func IsType(t1, t2 Type) bool {
+	if t1 == nil || t2 == nil {
+		return t1 == t2
+	}
+	return sameType(t1, t2, reflect.TypeOf(t2).Comparable())
+}
+
+func sameType(t1, t2 Type, targetComparable bool) bool {
+	for {
+		if targetComparable && t1 == t2 {
+			return true
+		}
+		// Check if t1 implements the Is method.
+		// Then call it to check if it is the same as t2.
+		// This is useful for comparing types that are
+		// not directly the same pointer.
+		if x, ok := t1.(interface{ Is(Type) bool }); ok && x.Is(t2) {
+			return true
+		}
+		// Check if t1 has an underlying type.
+		// Then use it to compare with t2.
+		if x, ok := t1.(interface{ Underlying() Type }); ok {
+			if t1 = x.Underlying(); t1 != nil {
+				continue
+			}
+		}
+		return false
+	}
 }
