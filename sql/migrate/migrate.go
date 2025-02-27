@@ -96,6 +96,8 @@ type (
 		schema.Inspector
 		schema.Locker
 		PlanApplier
+		Snapshoter
+		CleanChecker
 	}
 
 	// PlanApplier wraps the methods for planning and applying changes
@@ -564,10 +566,6 @@ func (p *Planner) writeSum() error {
 var (
 	// ErrNoPendingFiles is returned if there are no pending migration files to execute on the managed database.
 	ErrNoPendingFiles = errors.New("sql/migrate: no pending migration files")
-	// ErrSnapshotUnsupported is returned if there is no Snapshoter given.
-	ErrSnapshotUnsupported = errors.New("sql/migrate: driver does not support taking a database snapshot")
-	// ErrCleanCheckerUnsupported is returned if there is no CleanChecker given.
-	ErrCleanCheckerUnsupported = errors.New("sql/migrate: driver does not support checking if database is clean")
 	// ErrRevisionNotExist is returned if the requested revision is not found in the storage.
 	ErrRevisionNotExist = errors.New("sql/migrate: revision not found")
 )
@@ -603,12 +601,6 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 	}
 	if ex.log == nil {
 		ex.log = NopLogger{}
-	}
-	if _, ok := drv.(Snapshoter); !ok {
-		return nil, ErrSnapshotUnsupported
-	}
-	if _, ok := drv.(CleanChecker); !ok {
-		return nil, ErrCleanCheckerUnsupported
 	}
 	if ex.baselineVer != "" && ex.allowDirty {
 		return nil, errors.New("sql/migrate: baseline and allow-dirty are mutually exclusive")
@@ -699,7 +691,7 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	// If it is the first time we run.
 	case len(revs) == 0:
 		var cerr *NotCleanError
-		if err = e.drv.(CleanChecker).CheckClean(ctx, e.rrw.Ident()); err != nil && !errors.As(err, &cerr) {
+		if err = e.drv.CheckClean(ctx, e.rrw.Ident()); err != nil && !errors.As(err, &cerr) {
 			return nil, err
 		}
 		// In case the workspace is not clean one of the flags is required.
@@ -1068,7 +1060,7 @@ func (e *Executor) Replay(ctx context.Context, r StateReader, opts ...ReplayOpti
 		opt(c)
 	}
 	// Clean up after ourselves.
-	restore, err := e.drv.(Snapshoter).Snapshot(ctx)
+	restore, err := e.drv.Snapshot(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("sql/migrate: taking database snapshot: %w", err)
 	}

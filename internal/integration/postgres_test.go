@@ -649,12 +649,12 @@ func TestPostgres_Snapshot(t *testing.T) {
 		})
 		drv := client.Driver
 
-		_, err = t.driver().(migrate.Snapshoter).Snapshot(context.Background())
+		_, err = t.driver().Snapshot(context.Background())
 		require.ErrorAs(t, err, new(*migrate.NotCleanError))
 
 		r, err := drv.InspectRealm(context.Background(), nil)
 		require.NoError(t, err)
-		restore, err := drv.(migrate.Snapshoter).Snapshot(context.Background())
+		restore, err := drv.Snapshot(context.Background())
 		require.NoError(t, err) // connected to test schema
 		require.NoError(t, drv.ApplyChanges(context.Background(), []schema.Change{
 			&schema.AddTable{T: schema.NewTable("my_table").
@@ -1017,7 +1017,7 @@ schema "public" {
   comment = "standard public schema"
 }
 `, string(out))
-		err = t.drv.(migrate.CleanChecker).CheckClean(context.Background(), nil)
+		err = t.drv.CheckClean(context.Background(), nil)
 		require.NoError(t, err)
 	})
 }

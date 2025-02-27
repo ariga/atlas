@@ -206,11 +206,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 	}
 	defer unlock()
 	// Clean up after ourselves.
-	snap, ok := d.Dev.Driver.(migrate.Snapshoter)
-	if !ok {
-		return nil, migrate.ErrSnapshotUnsupported
-	}
-	restore, err := snap.Snapshot(ctx)
+	restore, err := d.Dev.Driver.Snapshot(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("taking database snapshot: %w", err)
 	}
