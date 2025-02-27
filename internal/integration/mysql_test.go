@@ -549,14 +549,14 @@ func TestMySQL_Snapshot(t *testing.T) {
 		drv, err := mysql.Open(db)
 		require.NoError(t, err)
 
-		_, err = drv.(migrate.Snapshoter).Snapshot(context.Background())
+		_, err = drv.Snapshot(context.Background())
 		require.ErrorAs(t, err, new(*migrate.NotCleanError))
 
 		r, err := t.driver().InspectRealm(context.Background(), &schema.InspectRealmOption{
 			Mode: schema.InspectSchemas | schema.InspectTables,
 		})
 		require.NoError(t, err)
-		restore, err := t.driver().(migrate.Snapshoter).Snapshot(context.Background())
+		restore, err := t.driver().Snapshot(context.Background())
 		require.NoError(t, err) // connected to test schema
 		t.migrate(&schema.AddTable{T: schema.NewTable("my_table").AddColumns(
 			schema.NewIntColumn("col_1", "integer").SetNull(true),

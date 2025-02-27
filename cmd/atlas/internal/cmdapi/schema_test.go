@@ -1116,7 +1116,7 @@ func TestSchema_Clean(t *testing.T) {
 	s, err := runCmd(schemaCleanCmd(), "--url", u, "--auto-approve")
 	require.NoError(t, err)
 	require.NotZero(t, s)
-	require.NoError(t, c.Driver.(migrate.CleanChecker).CheckClean(context.Background(), nil))
+	require.NoError(t, c.Driver.CheckClean(context.Background(), nil))
 }
 
 func assertDir(t *testing.T, dir string, expected map[string]string) {
