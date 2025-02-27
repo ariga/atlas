@@ -91,7 +91,7 @@ func dependsOn(c1, c2 schema.Change, _ SortOptions) bool {
 		case *schema.AddObject:
 			t, ok := c2.O.(schema.Type)
 			if ok && slices.ContainsFunc(c1.T.Columns, func(c *schema.Column) bool {
-				return dependsOnT(c.Type.Type, t)
+				return schema.IsType(c.Type.Type, t)
 			}) {
 				return true
 			}
@@ -164,9 +164,9 @@ func dependsOn(c1, c2 schema.Change, _ SortOptions) bool {
 			if ok && slices.ContainsFunc(c1.Changes, func(c schema.Change) bool {
 				switch c := c.(type) {
 				case *schema.AddColumn:
-					return dependsOnT(c.C.Type.Type, t)
+					return schema.IsType(c.C.Type.Type, t)
 				case *schema.ModifyColumn:
-					return dependsOnT(c.To.Type.Type, t)
+					return schema.IsType(c.To.Type.Type, t)
 				default:
 					return false
 				}
@@ -190,14 +190,14 @@ func dependsOn(c1, c2 schema.Change, _ SortOptions) bool {
 				return true
 			}
 			if slices.ContainsFunc(c2.T.Columns, func(c *schema.Column) bool {
-				return dependsOnT(c.Type.Type, t)
+				return schema.IsType(c.Type.Type, t)
 			}) {
 				return true
 			}
 		case *schema.ModifyTable:
 			return slices.ContainsFunc(c2.Changes, func(c schema.Change) bool {
 				d, ok := c.(*schema.DropColumn)
-				return ok && dependsOnT(d.C.Type.Type, t)
+				return ok && schema.IsType(d.C.Type.Type, t)
 			})
 		}
 	}

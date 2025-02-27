@@ -589,13 +589,6 @@ func typeDependsOnT(t schema.Type, tt *schema.Table) bool {
 	return SameTable(rt.RowType(), tt)
 }
 
-// dependsOnT reports if t1 depends on t2.
-func dependsOnT(t1, t2 schema.Type) bool {
-	// Comparing might panic due to mismatch types.
-	defer func() { recover() }()
-	return t1 == t2 || schema.UnderlyingType(t1) == t2
-}
-
 // SameView reports if the two objects represent the same view.
 func SameView(v1, v2 *schema.View) bool {
 	if v1 == nil || v2 == nil {
