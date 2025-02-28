@@ -536,20 +536,10 @@ func depOfAdd(refs []schema.Object, c schema.Change) bool {
 			t, ok := o.(*schema.Table)
 			return ok && SameTable(c.T, t)
 		})
-	case *schema.ModifyTable:
-		return slices.ContainsFunc(refs, func(o schema.Object) bool {
-			t, ok := o.(*schema.Table)
-			return ok && SameTable(c.T, t)
-		})
 	case *schema.AddView:
 		return slices.ContainsFunc(refs, func(o schema.Object) bool {
 			v, ok := o.(*schema.View)
 			return ok && SameView(c.V, v)
-		})
-	case *schema.ModifyView:
-		return slices.ContainsFunc(refs, func(o schema.Object) bool {
-			v, ok := o.(*schema.View)
-			return ok && SameView(c.To, v)
 		})
 	case *schema.AddObject:
 		o = c.O
