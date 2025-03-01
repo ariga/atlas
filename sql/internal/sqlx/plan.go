@@ -414,11 +414,17 @@ func SortChanges(changes []schema.Change, opts *SortOptions) []schema.Change {
 	// To keep backwards compatibility with previous sorting and also in case we miss any dependency between changes
 	// (see, dependsOn function) we push views and drop changes to the end, unless there is a dependency requirement.
 	changes = append(other, append(views, drop...)...)
-	edges := make(map[schema.Change][]schema.Change)
+	var (
+		hasE  = make(map[struct{ e1, e2 schema.Change }]bool)
+		edges = make(map[schema.Change][]schema.Change)
+	)
 	for _, c1 := range changes {
 		for _, c2 := range changes {
-			if c1 != c2 && dependsOn(c1, c2, V(opts)) {
+			// Skip checking dependencies between the same change. Also, if the inverse
+			// dependency is already added, skip it, as circular dependencies are not expected.
+			if c1 != c2 && !hasE[struct{ e1, e2 schema.Change }{c2, c1}] && dependsOn(c1, c2, V(opts)) {
 				edges[c1] = append(edges[c1], c2)
+				hasE[struct{ e1, e2 schema.Change }{c1, c2}] = true
 			}
 		}
 	}
@@ -587,13 +593,6 @@ func typeDependsOnT(t schema.Type, tt *schema.Table) bool {
 		return false
 	}
 	return SameTable(rt.RowType(), tt)
-}
-
-// dependsOnT reports if t1 depends on t2.
-func dependsOnT(t1, t2 schema.Type) bool {
-	// Comparing might panic due to mismatch types.
-	defer func() { recover() }()
-	return t1 == t2 || schema.UnderlyingType(t1) == t2
 }
 
 // SameView reports if the two objects represent the same view.
