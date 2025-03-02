@@ -1355,7 +1355,7 @@ const applyLockValue = "atlas_migrate_execute"
 
 func checkRevisionSchemaClarity(cmd *cobra.Command, c *sqlclient.Client, revisionSchemaFlag string) error {
 	// The "old" default  behavior for the revision schema location was to store the revision table in its own schema.
-	// Now, the table is saved in the connected schema, if any. To keep the backwards compatability, we now require
+	// Now, the table is saved in the connected schema, if any. To keep the backwards compatibility, we now require
 	// for schema bound connections to have the schema-revision flag present if there is no revision table in the schema
 	// but the old default schema does have one.
 	if c.URL.Schema != "" && revisionSchemaFlag == "" {
