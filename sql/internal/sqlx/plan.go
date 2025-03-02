@@ -390,6 +390,8 @@ type SortOptions struct {
 	FuncDepV func(*schema.Func, *schema.View) bool
 	// FuncDepO reports if a function depends on the given object.
 	FuncDepO func(*schema.Func, schema.Object) bool
+	// CompareFuncArgs set to true to compare function arguments.
+	CompareFuncArgs bool
 	// DefaultSchema defines the default schema (also known as "search_path") that
 	// is used by the database to search for objects if no qualifier is provided.
 	DefaultSchema string
