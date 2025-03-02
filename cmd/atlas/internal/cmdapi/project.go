@@ -540,7 +540,10 @@ func EnvByName(cmd *cobra.Command, name string, vars map[string]cty.Value) (*Pro
 	if err != nil {
 		return nil, nil, err
 	}
-	if u.Scheme != "file" {
+	switch {
+	case u.Scheme == "":
+		return nil, nil, fmt.Errorf("missing scheme for config file. Did you mean file://%s?", u)
+	case u.Scheme != "file":
 		return nil, nil, fmt.Errorf("unsupported config file driver %q", u.Scheme)
 	}
 	path := filepath.Join(u.Host, u.Path)
