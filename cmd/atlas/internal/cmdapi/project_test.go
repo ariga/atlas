@@ -6,6 +6,7 @@ package cmdapi
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -378,6 +379,14 @@ diff {
 	require.NotNil(t, project.Diff.SkipChanges)
 	require.True(t, project.Diff.SkipChanges.DropColumn)
 	require.Equal(t, ReviewWarning, project.Lint.Review)
+
+	GlobalFlags.ConfigURL = path
+	_, _, err = EnvByName(&cobra.Command{}, "", nil)
+	require.EqualError(t, err, fmt.Sprintf("missing scheme for config file. Did you mean file://%s?", path))
+
+	GlobalFlags.ConfigURL = "boring://" + path
+	_, _, err = EnvByName(&cobra.Command{}, "", nil)
+	require.EqualError(t, err, `unsupported config file driver "boring"`)
 }
 
 func TestPartialParse(t *testing.T) {
