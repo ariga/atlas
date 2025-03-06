@@ -53,59 +53,6 @@ func (r *StateReadCloser) Close() error {
 	return nil
 }
 
-// StateReaderSQL returns a migrate.StateReader from an SQL file or a directory of migrations.
-func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadCloser, error) {
-	if len(config.URLs) != 1 {
-		return nil, fmt.Errorf("the provided SQL state must be either a single schema file or a migration directory, but %d paths were found", len(config.URLs))
-	}
-	var (
-		dir  migrate.Dir
-		path = filepath.Join(config.URLs[0].Host, config.URLs[0].Path)
-	)
-	switch fi, err := os.Stat(path); {
-	case err != nil:
-		return nil, err
-	// A single schema file.
-	case !fi.IsDir():
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return nil, err
-		}
-		if dir, err = FilesAsDir(migrate.NewLocalFile(fi.Name(), b)); err != nil {
-			return nil, err
-		}
-		return stateSchemaSQL(ctx, config, dir)
-	// The sum file is optional when reading the directory state.
-	case isSchemaDir(config.URLs[0], path):
-		dirs, err := os.ReadDir(path)
-		if err != nil {
-			return nil, err
-		}
-		files := make([]migrate.File, 0, len(dirs))
-		for _, d := range dirs {
-			b, err := os.ReadFile(filepath.Join(path, d.Name()))
-			if err != nil {
-				return nil, err
-			}
-			files = append(files, migrate.NewLocalFile(d.Name(), b))
-		}
-		if dir, err = FilesAsDir(files...); err != nil {
-			return nil, err
-		}
-		return stateSchemaSQL(ctx, config, dir)
-	// A migration directory.
-	default:
-		var opts []migrate.ReplayOption
-		if dir, err = cmdmigrate.DirURL(ctx, config.URLs[0], false); err != nil {
-			return nil, err
-		}
-		if v := config.URLs[0].Query().Get("version"); v != "" {
-			opts = append(opts, migrate.ReplayToVersion(v))
-		}
-		return stateReaderSQL(ctx, config, dir, nil, opts)
-	}
-}
-
 // isSchemaDir returns true if the given path is a schema directory (not a migration directory).
 func isSchemaDir(u *url.URL, path string) bool {
 	if q := u.Query(); q.Has("version") || q.Has("format") || filepath.Base(path) == cmdmigrate.DefaultDirName {

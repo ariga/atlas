@@ -281,7 +281,7 @@ func TestMakeFilesetFunc(t *testing.T) {
 	require.EqualError(t, err, "base directory must be an absolute path. got: testdata")
 }
 
-func Example_RegexpEscapeFunc() {
+func Example_regexpEscapeFunc() {
 	for _, f := range []string{
 		`v  = regexpescape("a|b|c")`,
 		`v  = regexpescape("abc")`,
@@ -311,7 +311,7 @@ TAB
 	// 1  \| foo
 }
 
-func Example_PrintFunc() {
+func Example_printFunc() {
 	for _, f := range []string{
 		`v  = print("a")`,
 		`v  = print("a&b")`,

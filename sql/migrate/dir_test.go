@@ -422,10 +422,21 @@ alter table users drop column id;
 	require.Empty(t, f.Directive("lint"))
 	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:lint ignore"))
 	require.Empty(t, f.Directive("lint"))
-	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:lint ignore\n"))
-	require.Empty(t, f.Directive("lint"))
 	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:lint ignore\n\n"))
 	require.Equal(t, []string{"ignore"}, f.Directive("lint"), "double newline as directive separator")
+
+	// Multiple occurrences of the same directive.
+	f = migrate.NewLocalFile("1.sql", []byte(`-- atlas:import foo
+-- atlas:import
+-- atlas:import bar baz
+-- atlas:import qux
+
+alter table users drop column id;
+`))
+	require.Equal(t, []string{"foo", "", "bar baz", "qux"}, f.Directive("import"))
+
+	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:import foo\n"))
+	require.Equal(t, []string{"foo"}, f.Directive("import"))
 }
 
 func TestLocalFile_AddDirective(t *testing.T) {

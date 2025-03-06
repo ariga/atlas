@@ -91,7 +91,7 @@ func TestChanges_RemoveIndex(t *testing.T) {
 	require.Equal(t, "2", changes[0].(*schema.AddColumn).C.Name)
 }
 
-func ExampleChanges_Replace() {
+func ExampleChanges_RemoveIndex() {
 	changes := schema.Changes{
 		&schema.AddIndex{I: schema.NewIndex("id")},
 		&schema.AddColumn{C: schema.NewColumn("new_name")},

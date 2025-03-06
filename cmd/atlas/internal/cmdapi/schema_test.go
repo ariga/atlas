@@ -863,7 +863,7 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"--to", "file://testdata/sqlite",
 			"--to", "file://testdata/sqlite2",
 		)
-		require.EqualError(t, err, `the provided SQL state must be either a single schema file or a migration directory, but 2 paths were found`)
+		require.Error(t, err)
 
 		_, err = runCmd(
 			schemaApplyCmd(),

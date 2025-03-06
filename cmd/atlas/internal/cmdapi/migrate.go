@@ -361,13 +361,18 @@ func (s *MigrateReportSet) Step(format string, args ...interface{}) {
 }
 
 // StepLog logs a line to the current reporting step.
-func (s *MigrateReportSet) StepLog(format string, args ...interface{}) {
+func (s *MigrateReportSet) StepLog(text string) {
 	if len(s.Log) == 0 {
 		s.Step("Unnamed step") // Unexpected.
 	}
 	s.Log[len(s.Log)-1].Log = append(s.Log[len(s.Log)-1].Log, cloudapi.ReportStepLog{
-		Text: fmt.Sprintf(format, args...),
+		Text: text,
 	})
+}
+
+// StepLogf logs a line to the current reporting step with formatting.
+func (s *MigrateReportSet) StepLogf(format string, args ...interface{}) {
+	s.StepLog(fmt.Sprintf(format, args...))
 }
 
 // StepLogError logs a line to the current reporting step.
@@ -383,8 +388,8 @@ func (s *MigrateReportSet) StepLogError(text string) {
 // ReportFor returns a new MigrateReport for the given environment.
 func (s *MigrateReportSet) ReportFor(flags migrateApplyFlags, e *Env) *MigrateReport {
 	s.Step("Run migration: %d", s.done+1)
-	s.StepLog("Target URL: %s", s.RedactedURL(e.URL))
-	s.StepLog("Migration directory: %s", s.RedactedURL(flags.dirURL))
+	s.StepLogf("Target URL: %s", s.RedactedURL(e.URL))
+	s.StepLogf("Migration directory: %s", s.RedactedURL(flags.dirURL))
 	return &MigrateReport{
 		env: e,
 		done: func(r *cloudapi.ReportMigrationInput) {

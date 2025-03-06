@@ -343,9 +343,10 @@ func (f *LocalFile) comments() []string {
 		comments = append(comments, strings.TrimSpace(content[:idx]))
 		content = content[idx+1:]
 	}
-	// File comments are separated by double newlines from
-	// file content (detached from actual statements).
-	if !strings.HasPrefix(strings.TrimLeft(content, " \t"), "\n") {
+	// File comments are separated by double newlines from file content (detached from actual statements).
+	// However, if the file does not contain any statements (only comments, such as atlas:import) then the
+	// collected comments should treat as file comments.
+	if !strings.HasPrefix(strings.TrimLeft(content, " \t"), "\n") && content != "" {
 		return nil
 	}
 	return comments
