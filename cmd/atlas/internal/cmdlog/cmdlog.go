@@ -612,7 +612,7 @@ func (a *MigrateApply) Summary(ident string) string {
 		}
 	}
 	// Execution time.
-	lines = append(lines, fmt.Sprintf(a.End.Sub(a.Start).String()))
+	lines = append(lines, a.End.Sub(a.Start).String())
 	// Executed files.
 	switch {
 	case passedF > 0 && failedF > 0:

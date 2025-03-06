@@ -1142,7 +1142,7 @@ table "posts" {
 		out, err := exec.Command(
 			bin, "schema", "apply",
 			"-u", fmt.Sprintf("postgres://postgres:pass@localhost:%d/test2?sslmode=disable", t.port),
-			"-f", fmt.Sprintf(filepath.Join(dir, "schema.hcl")),
+			"-f", filepath.Join(dir, "schema.hcl"),
 			"--auto-approve",
 		).CombinedOutput()
 		require.NoError(t, err, string(out))
