@@ -564,7 +564,9 @@ func (r *SummaryReport) TotalChanges() int {
 	var n int
 	for _, f := range r.Files {
 		if f.File != nil {
-			n += len(f.Changes)
+			for _, c := range f.File.Changes {
+				n += len(c.Changes)
+			}
 		}
 	}
 	return n
