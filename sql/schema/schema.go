@@ -74,7 +74,11 @@ type (
 		// part of their child columns.
 		ForeignKeys []*ForeignKey
 	}
-
+	// NamedDefault defines a named default expression.
+	NamedDefault struct {
+		Expr
+		Name string
+	}
 	// ColumnType represents a column type that is implemented by the dialect.
 	ColumnType struct {
 		Type Type
@@ -768,6 +772,11 @@ func (e *EnumType) SpecType() string { return "enum" }
 
 // SpecName returns the name of the spec.
 func (e *EnumType) SpecName() string { return e.T }
+
+// Underlying returns underlying the expression.
+func (n *NamedDefault) Underlying() Expr {
+	return n.Expr
+}
 
 // UnderlyingExpr returns the underlying expression of x.
 func UnderlyingExpr(x Expr) Expr {
