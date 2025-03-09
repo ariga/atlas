@@ -77,7 +77,8 @@ type (
 	// NamedDefault defines a named default expression.
 	NamedDefault struct {
 		Expr
-		Name string
+		Name  string
+		Attrs []Attr
 	}
 	// ColumnType represents a column type that is implemented by the dialect.
 	ColumnType struct {
