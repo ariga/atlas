@@ -68,7 +68,9 @@ table "users" {
 
 	column "account_active" {
 		type = boolean
-		default = true
+		default "DF_expr1" {
+			as = true
+		}
 	}
 
 	primary_key {
@@ -146,28 +148,58 @@ table "accounts" {
 				Schema: &schemahcl.Ref{V: "$schema.hi"},
 				Columns: []*sqlspec.Column{
 					{
-						Name:    "id",
-						Type:    &schemahcl.Type{T: "int"},
-						Null:    false,
-						Default: cty.NumberVal(big.NewFloat(123).SetPrec(512)),
+						Name: "id",
+						Type: &schemahcl.Type{T: "int"},
+						Null: false,
+						DefaultExtension: schemahcl.DefaultExtension{
+							Extra: schemahcl.Resource{
+								Attrs: []*schemahcl.Attr{
+									{K: "default", V: cty.NumberVal(big.NewFloat(123).SetPrec(512))},
+								},
+							},
+						},
 					},
 					{
-						Name:    "age",
-						Type:    &schemahcl.Type{T: "int"},
-						Null:    false,
-						Default: cty.NumberVal(big.NewFloat(10).SetPrec(512)),
+						Name: "age",
+						Type: &schemahcl.Type{T: "int"},
+						Null: false,
+						DefaultExtension: schemahcl.DefaultExtension{
+							Extra: schemahcl.Resource{
+								Attrs: []*schemahcl.Attr{
+									{K: "default", V: cty.NumberVal(big.NewFloat(10).SetPrec(512))},
+								},
+							},
+						},
 					},
 					{
-						Name:    "active",
-						Type:    &schemahcl.Type{T: "boolean"},
-						Null:    false,
-						Default: cty.BoolVal(true),
+						Name: "active",
+						Type: &schemahcl.Type{T: "boolean"},
+						Null: false,
+						DefaultExtension: schemahcl.DefaultExtension{
+							Extra: schemahcl.Resource{
+								Attrs: []*schemahcl.Attr{
+									{K: "default", V: cty.BoolVal(true)},
+								},
+							},
+						},
 					},
 					{
-						Name:    "account_active",
-						Type:    &schemahcl.Type{T: "boolean"},
-						Null:    false,
-						Default: cty.BoolVal(true),
+						Name: "account_active",
+						Type: &schemahcl.Type{T: "boolean"},
+						Null: false,
+						DefaultExtension: schemahcl.DefaultExtension{
+							Extra: schemahcl.Resource{
+								Children: []*schemahcl.Resource{
+									{
+										Type: "default",
+										Name: "DF_expr1",
+										Attrs: []*schemahcl.Attr{
+											{K: "as", V: cty.BoolVal(true)},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
@@ -222,28 +254,52 @@ table "accounts" {
 				Schema: &schemahcl.Ref{V: "$schema.hi"},
 				Columns: []*sqlspec.Column{
 					{
-						Name:    "id",
-						Type:    &schemahcl.Type{T: "int"},
-						Null:    false,
-						Default: cty.NumberVal(big.NewFloat(123).SetPrec(512)),
+						Name: "id",
+						Type: &schemahcl.Type{T: "int"},
+						Null: false,
+						DefaultExtension: schemahcl.DefaultExtension{
+							Extra: schemahcl.Resource{
+								Attrs: []*schemahcl.Attr{
+									{K: "default", V: cty.NumberVal(big.NewFloat(123).SetPrec(512))},
+								},
+							},
+						},
 					},
 					{
-						Name:    "age",
-						Type:    &schemahcl.Type{T: "int"},
-						Null:    false,
-						Default: cty.NumberVal(big.NewFloat(10).SetPrec(512)),
+						Name: "age",
+						Type: &schemahcl.Type{T: "int"},
+						Null: false,
+						DefaultExtension: schemahcl.DefaultExtension{
+							Extra: schemahcl.Resource{
+								Attrs: []*schemahcl.Attr{
+									{K: "default", V: cty.NumberVal(big.NewFloat(10).SetPrec(512))},
+								},
+							},
+						},
 					},
 					{
-						Name:    "active",
-						Type:    &schemahcl.Type{T: "boolean"},
-						Null:    false,
-						Default: cty.BoolVal(true),
+						Name: "active",
+						Type: &schemahcl.Type{T: "boolean"},
+						Null: false,
+						DefaultExtension: schemahcl.DefaultExtension{
+							Extra: schemahcl.Resource{
+								Attrs: []*schemahcl.Attr{
+									{K: "default", V: cty.BoolVal(true)},
+								},
+							},
+						},
 					},
 					{
-						Name:    "user_active",
-						Type:    &schemahcl.Type{T: "boolean"},
-						Null:    false,
-						Default: cty.BoolVal(true),
+						Name: "user_active",
+						Type: &schemahcl.Type{T: "boolean"},
+						Null: false,
+						DefaultExtension: schemahcl.DefaultExtension{
+							Extra: schemahcl.Resource{
+								Attrs: []*schemahcl.Attr{
+									{K: "default", V: cty.BoolVal(true)},
+								},
+							},
+						},
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{

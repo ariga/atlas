@@ -586,16 +586,18 @@ func convertIdentity(r *schemahcl.Resource) (*Identity, error) {
 // fixDefaultQuotes fixes the quotes on the Default field to be single quotes
 // instead of double quotes.
 func fixDefaultQuotes(spec *sqlspec.Column) error {
-	if spec.Default.Type() != cty.String {
-		return nil
-	}
-	if s := spec.Default.AsString(); sqlx.IsQuoted(s, '"') {
-		uq, err := strconv.Unquote(s)
-		if err != nil {
-			return err
+	if a, ok := spec.Attr("default"); ok {
+		if a.V.Type() != cty.String {
+			return nil
 		}
-		s = "'" + uq + "'"
-		spec.Default = cty.StringVal(s)
+		if s := a.V.AsString(); sqlx.IsQuoted(s, '"') {
+			uq, err := strconv.Unquote(s)
+			if err != nil {
+				return err
+			}
+			s = "'" + uq + "'"
+			a.V = cty.StringVal(s)
+		}
 	}
 	return nil
 }

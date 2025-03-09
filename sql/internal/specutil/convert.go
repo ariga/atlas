@@ -391,7 +391,7 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 			Null: spec.Null,
 		},
 	}
-	d, err := Default(spec.Default)
+	d, err := columnDefault(spec.Remain())
 	if err != nil {
 		return nil, err
 	}
@@ -405,6 +405,36 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 		return nil, err
 	}
 	return out, err
+}
+
+func columnDefault(r *schemahcl.Resource) (schema.Expr, error) {
+	defaultA, okA := r.Attr("default")
+	defaultR, okR := r.Resource("default")
+	switch {
+	case okA && okR:
+		return nil, errors.New("both default and default resource are set")
+	case okA:
+		v, err := Default(defaultA.V)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	case okR:
+		var spec struct {
+			Name string    `spec:",name"`
+			As   cty.Value `spec:"as"`
+		}
+		if err := defaultR.As(&spec); err != nil {
+			return nil, err
+		}
+		v, err := Default(spec.As)
+		if err != nil {
+			return nil, err
+		}
+		return &schema.NamedDefault{Name: spec.Name, Expr: v}, nil
+	default:
+		return nil, nil
+	}
 }
 
 // Default converts a cty.Value (as defined in the spec) into a schema.Expr.
@@ -885,12 +915,24 @@ func FromColumn(c *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec.C
 			Extra: schemahcl.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},
 	}
-	if c.Default != nil {
+	switch v := c.Default.(type) {
+	case nil:
+	case *schema.NamedDefault:
 		lv, err := ColumnDefault(c)
 		if err != nil {
 			return nil, err
 		}
-		spec.Default = lv
+		spec.Extra.Children = append(spec.Extra.Children, &schemahcl.Resource{
+			Type:  "default",
+			Name:  v.Name,
+			Attrs: []*schemahcl.Attr{{K: "as", V: lv}},
+		})
+	default:
+		lv, err := ColumnDefault(c)
+		if err != nil {
+			return nil, err
+		}
+		spec.Extra.Attrs = slices.Insert(spec.Extra.Attrs, 0, &schemahcl.Attr{K: "default", V: lv})
 	}
 	convertCommentFromSchema(c.Attrs, &spec.Extra.Attrs)
 	return spec, nil
