@@ -246,6 +246,21 @@ func TableSpecRef(t *schema.Table) *schemahcl.Ref {
 	return schemahcl.BuildRef([]schemahcl.PathIndex{idx})
 }
 
+// ViewSpecRef returns a reference to the view in the spec. In case there is more than
+// one view with the same name, the reference will be qualified with the schema name.
+func ViewSpecRef(v *schema.View) *schemahcl.Ref {
+	typ, name := typeView, v.Name
+	idx := schemahcl.PathIndex{T: typ, V: []string{name}}
+	if s := v.Schema; s != nil && s.Realm != nil && len(s.Realm.Schemas) > 1 && slices.ContainsFunc(s.Realm.Schemas, func(s1 *schema.Schema) bool {
+		return s1 != s && slices.ContainsFunc(s1.Views, func(v1 *schema.View) bool {
+			return v.Name == v1.Name
+		})
+	}) {
+		idx.V = append([]string{s.Name}, idx.V...)
+	}
+	return schemahcl.BuildRef([]schemahcl.PathIndex{idx})
+}
+
 // HCLBytesFunc returns a helper that evaluates an HCL document from a byte slice instead
 // of from an hclparse.Parser instance.
 func HCLBytesFunc(ev schemahcl.Evaluator) func(b []byte, v any, inp map[string]cty.Value) error {

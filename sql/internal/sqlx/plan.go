@@ -469,7 +469,8 @@ type (
 	// RowTyper can be implemented by a type to determine if its source
 	// is a regular table (e.g., row types).
 	RowTyper interface {
-		RowType() *schema.Table
+		RowTypeT() *schema.Table
+		RowTypeV() *schema.View
 	}
 )
 
@@ -590,13 +591,14 @@ func refTo(fks []*schema.ForeignKey, to *schema.Table) bool {
 	})
 }
 
-// typeDependsOnT reports if the declaration of type t1 depends on the given change.
+// typeDependsOnT reports if the declaration of type "t" depends on the table.
 func typeDependsOnT(t schema.Type, tt *schema.Table) bool {
 	rt, ok := schema.UnderlyingType(t).(RowTyper)
 	if !ok {
 		return false
 	}
-	return SameTable(rt.RowType(), tt)
+	rowT := rt.RowTypeT()
+	return rowT != nil && SameTable(rowT, tt)
 }
 
 // SameView reports if the two objects represent the same view.
