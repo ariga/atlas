@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   mysql56:
     container_name: atlas-integration-mysql56
