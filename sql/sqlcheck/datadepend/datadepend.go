@@ -81,6 +81,20 @@ var (
 // Diagnostics runs the common analysis on the file and returns its diagnostics.
 func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sqlcheck.Diagnostic) {
 	for _, sc := range p.File.Changes {
+		var dropI []*schema.DropIndex
+		for _, sc := range p.File.Changes {
+			for _, c := range sc.Changes {
+				m, ok := c.(*schema.ModifyTable)
+				if !ok {
+					continue
+				}
+				for _, mc := range m.Changes {
+					if d, ok := mc.(*schema.DropIndex); ok {
+						dropI = append(dropI, d)
+					}
+				}
+			}
+		}
 		for _, c := range sc.Changes {
 			m, ok := c.(*schema.ModifyTable)
 			if !ok {
@@ -89,6 +103,32 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 			for _, c := range m.Changes {
 				switch c := c.(type) {
 				case *schema.AddIndex:
+					// Check if the current index is not unique or if it matches any of the dropped unique indexes by comparing their parts.
+					if !c.I.Unique || slices.ContainsFunc(dropI, func(drop *schema.DropIndex) bool {
+						if !drop.I.Unique || len(drop.I.Parts) > len(c.I.Parts) {
+							return false
+						}
+						for _, p1 := range c.I.Parts {
+							switch {
+							case p1.C != nil:
+								if p.File.ColumnSpan(m.T, p1.C)&sqlcheck.SpanAdded == 0 && !slices.ContainsFunc(drop.I.Parts, func(p2 *schema.IndexPart) bool {
+									return p2.C != nil && p2.C.Name == p1.C.Name
+								}) {
+									return false
+								}
+							case p1.X != nil:
+								if rx1, ok := p1.X.(*schema.RawExpr); ok && !slices.ContainsFunc(drop.I.Parts, func(p2 *schema.IndexPart) bool {
+									rx2, ok := p2.X.(*schema.RawExpr)
+									return ok && rx1.X == rx2.X
+								}) {
+									return false
+								}
+							}
+						}
+						return true
+					}) {
+						continue
+					}
 					names := func() []string {
 						var names []string
 						for i := range c.I.Parts {
