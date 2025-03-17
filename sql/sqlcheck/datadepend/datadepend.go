@@ -81,52 +81,70 @@ var (
 // Diagnostics runs the common analysis on the file and returns its diagnostics.
 func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sqlcheck.Diagnostic) {
 	for _, sc := range p.File.Changes {
+		var dropI []*schema.DropIndex
+		for _, sc := range p.File.Changes {
+			for _, c := range sc.Changes {
+				m, ok := c.(*schema.ModifyTable)
+				if !ok {
+					continue
+				}
+				for _, mc := range m.Changes {
+					if d, ok := mc.(*schema.DropIndex); ok {
+						dropI = append(dropI, d)
+					}
+				}
+			}
+		}
 		for _, c := range sc.Changes {
 			m, ok := c.(*schema.ModifyTable)
 			if !ok {
 				continue
 			}
-			addedCols := func() []string {
-				var names []string
-				for _, c := range m.Changes {
-					if c, ok := c.(*schema.AddColumn); ok {
-						names = append(names, fmt.Sprintf("%q", c.C.Name))
-					}
-				}
-				return names
-			}()
 			for _, c := range m.Changes {
 				switch c := c.(type) {
 				case *schema.AddIndex:
-					cols := extractColumns(c.I.Parts, p, m)
-					exprs := extractExprs(c.I.Parts)
-					// Check if the index was recreated with extra columns.
-					indexRecreate := slices.ContainsFunc(m.Changes, func(change schema.Change) bool {
-						drop, ok := change.(*schema.DropIndex)
-						if !ok || !drop.I.Unique {
+					// Check if the current index is not unique or if it matches any of the dropped unique indexes by comparing their parts.
+					if !c.I.Unique || slices.ContainsFunc(dropI, func(drop *schema.DropIndex) bool {
+						if !drop.I.Unique || len(drop.I.Parts) > len(c.I.Parts) {
 							return false
 						}
-						dropCols := extractColumns(drop.I.Parts, p, m)
-						dropExprs := extractExprs(drop.I.Parts)
-						dropNames := append(dropCols, dropExprs...)
-						createNames := append(cols, exprs...)
-						// Check if the dropped index covers the new index after substituting added columns.
-						// If there are expression parts they should be checked as well.
-						// Old Index: (a, b, (a+b))
-						// Recreate: (a, b, (a+b), newC1, newC2)
-						// Not recreate : (a, b, (a-b), newC1, newC2)
-						return IsSubset(append(dropNames, addedCols...), createNames)
-					})
-					// The dropped index ensured uniqueness, therefore the new index is safe to add.
-					// Since if the dropped index (a, b) was unique, then necessarily the new index (a, b, c) is unique.
-					if indexRecreate {
+						for _, p1 := range c.I.Parts {
+							switch {
+							case p1.C != nil:
+								if p.File.ColumnSpan(m.T, p1.C)&sqlcheck.SpanAdded == 0 && !slices.ContainsFunc(drop.I.Parts, func(p2 *schema.IndexPart) bool {
+									return p2.C != nil && p2.C.Name == p1.C.Name
+								}) {
+									return false
+								}
+							case p1.X != nil:
+								if rx1, ok := p1.X.(*schema.RawExpr); ok && !slices.ContainsFunc(drop.I.Parts, func(p2 *schema.IndexPart) bool {
+									rx2, ok := p2.X.(*schema.RawExpr)
+									return ok && rx1.X == rx2.X
+								}) {
+									return false
+								}
+							}
+						}
+						return true
+					}) {
 						continue
 					}
+					names := func() []string {
+						var names []string
+						for i := range c.I.Parts {
+							// We consider a column a non-new column if
+							// it was not added in this migration file.
+							if column := c.I.Parts[i].C; column != nil && p.File.ColumnSpan(m.T, column)&sqlcheck.SpanAdded == 0 {
+								names = append(names, fmt.Sprintf("%q", column.Name))
+							}
+						}
+						return names
+					}()
 					// A unique index was added on an existing columns.
-					if c.I.Unique && len(cols) > 0 {
-						s := fmt.Sprintf("columns %s contain", strings.Join(cols, ", "))
-						if len(cols) == 1 {
-							s = fmt.Sprintf("column %s contains", cols[0])
+					if c.I.Unique && len(names) > 0 {
+						s := fmt.Sprintf("columns %s contain", strings.Join(names, ", "))
+						if len(names) == 1 {
+							s = fmt.Sprintf("column %s contains", names[0])
 						}
 						diags = append(diags, sqlcheck.Diagnostic{
 							Code: codeAddUniqueI,
@@ -236,47 +254,4 @@ func HasNotNullCheck(p *sqlcheck.Pass, c *schema.Column) bool {
 		v, err := pr.CheckNotNullFor(ck, c.Name)
 		return err == nil && v
 	})
-}
-
-// IsSubset checks if slice 'sub' is a subset of slice 'main'.
-func IsSubset(main, sub []string) bool {
-	set := make(map[string]struct{}, len(main))
-	for _, v := range main {
-		set[v] = struct{}{}
-	}
-	for _, v := range sub {
-		if _, exists := set[v]; !exists {
-			return false
-		}
-	}
-	return true
-}
-
-// extractExprs extracts the expressions from the index parts.
-func extractExprs(parts []*schema.IndexPart) []string {
-	var exprs []string
-	for i := range parts {
-		if expr := parts[i].X; expr != nil {
-			switch expr := expr.(type) {
-			case *schema.Literal:
-				exprs = append(exprs, expr.V)
-			case *schema.RawExpr:
-				exprs = append(exprs, expr.X)
-			}
-		}
-	}
-	return exprs
-}
-
-// extractColumns extracts the column names from the index parts.
-func extractColumns(parts []*schema.IndexPart, p *sqlcheck.Pass, m *schema.ModifyTable) []string {
-	var names []string
-	for i := range parts {
-		// We consider a column a non-new column if
-		// it was not added in this migration file.
-		if column := parts[i].C; column != nil && p.File.ColumnSpan(m.T, column)&sqlcheck.SpanAdded == 0 {
-			names = append(names, fmt.Sprintf("%q", column.Name))
-		}
-	}
-	return names
 }

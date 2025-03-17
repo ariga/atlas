@@ -84,39 +84,41 @@ func TestAnalyzer_AddUniqueIndex(t *testing.T) {
 	require.Equal(t, `Adding a unique index "idx_c_d" on table "users" might fail in case columns "c", "d" contain duplicate entries`, report.Diagnostics[1].Text)
 
 	// Dropping index and then creating it again with added columns should not report any diagnostics.
-	report = &sqlcheck.Report{}
-	pass.File.Changes = []*sqlcheck.Change{
-		{
-			Stmt: &migrate.Stmt{
-				Text: "ALTER TABLE users",
-			},
-			Changes: schema.Changes{
-				&schema.ModifyTable{
-					T: schema.NewTable("users").
-						SetSchema(schema.New("test")).
-						AddColumns(
-							schema.NewColumn("a"),
-							schema.NewColumn("b"),
-							schema.NewColumn("c"),
-						),
-					Changes: []schema.Change{
-						&schema.DropIndex{
-							I: schema.NewUniqueIndex("idx_a_b").
-								AddColumns(
-									schema.NewColumn("a"),
-									schema.NewColumn("b"),
-								).
-								AddExprs(&schema.RawExpr{X: "a + b"}),
-						},
-						&schema.AddColumn{C: schema.NewColumn("c")},
-						&schema.AddIndex{
-							I: schema.NewUniqueIndex("idx_a_b_c").
-								AddColumns(
-									schema.NewColumn("a"),
-									schema.NewColumn("b"),
-									schema.NewColumn("c"),
-								).
-								AddExprs(&schema.RawExpr{X: "a + b"}),
+	*report = sqlcheck.Report{}
+	pass.File = &sqlcheck.File{
+		Changes: []*sqlcheck.Change{
+			{
+				Stmt: &migrate.Stmt{
+					Text: "ALTER TABLE users",
+				},
+				Changes: schema.Changes{
+					&schema.ModifyTable{
+						T: schema.NewTable("users").
+							SetSchema(schema.New("test")).
+							AddColumns(
+								schema.NewColumn("a"),
+								schema.NewColumn("b"),
+								schema.NewColumn("c"),
+							),
+						Changes: []schema.Change{
+							&schema.DropIndex{
+								I: schema.NewUniqueIndex("idx_a_b").
+									AddColumns(
+										schema.NewColumn("a"),
+										schema.NewColumn("b"),
+									).
+									AddExprs(&schema.RawExpr{X: "a + b"}),
+							},
+							&schema.AddColumn{C: schema.NewColumn("c")},
+							&schema.AddIndex{
+								I: schema.NewUniqueIndex("idx_a_b_c").
+									AddColumns(
+										schema.NewColumn("a"),
+										schema.NewColumn("b"),
+										schema.NewColumn("c"),
+									).
+									AddExprs(&schema.RawExpr{X: "a + b"}),
+							},
 						},
 					},
 				},
