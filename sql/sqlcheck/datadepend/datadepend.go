@@ -102,14 +102,14 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 					}()
 					// Check if the index was recreated with extra columns.
 					indexRecreate := slices.ContainsFunc(m.Changes, func(change schema.Change) bool {
-						dropIndex, ok := change.(*schema.DropIndex)
-						if !ok || !dropIndex.I.Unique {
+						drop, ok := change.(*schema.DropIndex)
+						if !ok || !drop.I.Unique {
 							return false
 						}
 						dropNames := func() []string {
 							var names []string
-							for i := range dropIndex.I.Parts {
-								if column := dropIndex.I.Parts[i].C; column != nil && p.File.ColumnSpan(m.T, column)&sqlcheck.SpanAdded == 0 {
+							for i := range drop.I.Parts {
+								if column := drop.I.Parts[i].C; column != nil && p.File.ColumnSpan(m.T, column)&sqlcheck.SpanAdded == 0 {
 									names = append(names, fmt.Sprintf("%q", column.Name))
 								}
 							}
@@ -239,9 +239,8 @@ func HasNotNullCheck(p *sqlcheck.Pass, c *schema.Column) bool {
 }
 
 // IsSubset checks if slice 'sub' is a subset of slice 'main'.
-// T must be comparable to be used as a map key.
-func IsSubset[T comparable](main, sub []T) bool {
-	set := make(map[T]struct{}, len(main))
+func IsSubset(main, sub []string) bool {
+	set := make(map[string]struct{}, len(main))
 	for _, v := range main {
 		set[v] = struct{}{}
 	}
