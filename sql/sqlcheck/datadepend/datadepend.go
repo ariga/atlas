@@ -100,6 +100,28 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 						}
 						return names
 					}()
+					// Check if the index was recreated with extra columns.
+					indexRecreate := slices.ContainsFunc(m.Changes, func(change schema.Change) bool {
+						dropIndex, ok := change.(*schema.DropIndex)
+						if !ok || !dropIndex.I.Unique {
+							return false
+						}
+						dropNames := func() []string {
+							var names []string
+							for i := range dropIndex.I.Parts {
+								if column := dropIndex.I.Parts[i].C; column != nil && p.File.ColumnSpan(m.T, column)&sqlcheck.SpanAdded == 0 {
+									names = append(names, fmt.Sprintf("%q", column.Name))
+								}
+							}
+							return names
+						}()
+						return IsSubset(names, dropNames)
+					})
+					// The dropped index ensured uniqueness, therefore the new index is safe to add.
+					// Since if the dropped index (a, b) was unique, then necessarily the new index (a, b, c) is unique.
+					if indexRecreate {
+						continue
+					}
 					// A unique index was added on an existing columns.
 					if c.I.Unique && len(names) > 0 {
 						s := fmt.Sprintf("columns %s contain", strings.Join(names, ", "))
@@ -214,4 +236,19 @@ func HasNotNullCheck(p *sqlcheck.Pass, c *schema.Column) bool {
 		v, err := pr.CheckNotNullFor(ck, c.Name)
 		return err == nil && v
 	})
+}
+
+// IsSubset checks if slice 'sub' is a subset of slice 'main'.
+// T must be comparable to be used as a map key.
+func IsSubset[T comparable](main, sub []T) bool {
+	set := make(map[T]struct{}, len(main))
+	for _, v := range main {
+		set[v] = struct{}{}
+	}
+	for _, v := range sub {
+		if _, exists := set[v]; !exists {
+			return false
+		}
+	}
+	return true
 }

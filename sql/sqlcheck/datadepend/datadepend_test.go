@@ -82,6 +82,44 @@ func TestAnalyzer_AddUniqueIndex(t *testing.T) {
 	require.Len(t, report.Diagnostics, 2)
 	require.Equal(t, `Adding a unique index "idx_b" on table "users" might fail in case column "b" contains duplicate entries`, report.Diagnostics[0].Text)
 	require.Equal(t, `Adding a unique index "idx_c_d" on table "users" might fail in case columns "c", "d" contain duplicate entries`, report.Diagnostics[1].Text)
+
+	// Dropping index and then creating it again with added columns should not report any diagnostics.
+	report = &sqlcheck.Report{}
+	pass.File.Changes = []*sqlcheck.Change{
+		{
+			Stmt: &migrate.Stmt{
+				Text: "ALTER TABLE users",
+			},
+			Changes: schema.Changes{
+				&schema.ModifyTable{
+					T: schema.NewTable("users").
+						SetSchema(schema.New("test")).
+						AddColumns(
+							schema.NewColumn("a"),
+							schema.NewColumn("b"),
+						),
+					Changes: []schema.Change{
+						&schema.DropIndex{
+							I: schema.NewUniqueIndex("idx_a").
+								AddColumns(schema.NewColumn("a")),
+						},
+						&schema.AddIndex{
+							I: schema.NewUniqueIndex("idx_a_b").
+								AddColumns(
+									schema.NewColumn("a"),
+									schema.NewColumn("b"),
+								),
+						},
+					},
+				},
+			},
+		},
+	}
+	az, err = datadepend.New(nil, datadepend.Handler{})
+	require.NoError(t, err)
+	err = az.Analyze(context.Background(), pass)
+	require.NoError(t, err)
+	require.Len(t, report.Diagnostics, 0)
 }
 
 func TestAnalyzer_ModifyUniqueIndex(t *testing.T) {
