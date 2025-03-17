@@ -97,18 +97,26 @@ func TestAnalyzer_AddUniqueIndex(t *testing.T) {
 						AddColumns(
 							schema.NewColumn("a"),
 							schema.NewColumn("b"),
+							schema.NewColumn("c"),
 						),
 					Changes: []schema.Change{
 						&schema.DropIndex{
-							I: schema.NewUniqueIndex("idx_a").
-								AddColumns(schema.NewColumn("a")),
-						},
-						&schema.AddIndex{
 							I: schema.NewUniqueIndex("idx_a_b").
 								AddColumns(
 									schema.NewColumn("a"),
 									schema.NewColumn("b"),
-								),
+								).
+								AddExprs(&schema.RawExpr{X: "a + b"}),
+						},
+						&schema.AddColumn{C: schema.NewColumn("c")},
+						&schema.AddIndex{
+							I: schema.NewUniqueIndex("idx_a_b_c").
+								AddColumns(
+									schema.NewColumn("a"),
+									schema.NewColumn("b"),
+									schema.NewColumn("c"),
+								).
+								AddExprs(&schema.RawExpr{X: "a + b"}),
 						},
 					},
 				},
