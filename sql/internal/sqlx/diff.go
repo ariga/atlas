@@ -826,26 +826,31 @@ func ChecksDiff(from, to *schema.Table, compare func(c1, c2 *schema.Check) bool)
 	var (
 		changes    []schema.Change
 		fromC, toC = checks(from.Attrs), checks(to.Attrs)
+		compareTo  = func(c1 *schema.Check) func(c2 *schema.Check) bool {
+			return func(c2 *schema.Check) bool {
+				if c1.Name != "" && c2.Name != "" {
+					// Only compare by name if both have a name.
+					return c1.Name == c2.Name
+				}
+				return compare(c1, c2)
+			}
+		}
 	)
 	for _, c1 := range fromC {
-		idx := slices.IndexFunc(toC, func(c2 *schema.Check) bool {
-			return c1.Name == c2.Name
-		})
-		if idx == -1 {
+		switch idx := slices.IndexFunc(toC, compareTo(c1)); {
+		case idx == -1:
 			changes = append(changes, &schema.DropCheck{
 				C: c1,
 			})
-		} else if c2 := toC[idx]; !compare(c1, c2) {
+		case !compare(c1, toC[idx]):
 			changes = append(changes, &schema.ModifyCheck{
 				From: c1,
-				To:   c2,
+				To:   toC[idx],
 			})
 		}
 	}
 	for _, c1 := range toC {
-		if !slices.ContainsFunc(fromC, func(c2 *schema.Check) bool {
-			return c1.Name == c2.Name
-		}) {
+		if !slices.ContainsFunc(fromC, compareTo(c1)) {
 			changes = append(changes, &schema.AddCheck{
 				C: c1,
 			})
