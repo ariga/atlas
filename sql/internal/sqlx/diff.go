@@ -445,7 +445,8 @@ func (d *Diff) pkDiff(from, to *schema.Table, opts *schema.DiffOptions) (changes
 			changes = opts.AddOrSkip(changes, &schema.ModifyPrimaryKey{
 				From: pk1, To: pk2, Change: change,
 			})
-		case (!ok || c.SupportChange((*schema.RenameConstraint)(nil))) && pk1.Name != pk2.Name:
+		case (!ok || c.SupportChange((*schema.RenameConstraint)(nil))) &&
+			pk1.Name != "" && pk2.Name != "" && pk1.Name != pk2.Name:
 			changes = opts.AddOrSkip(changes, &schema.RenameConstraint{
 				From: pk1, To: pk2,
 			})
