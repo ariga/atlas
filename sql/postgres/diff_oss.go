@@ -28,6 +28,15 @@ var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{&conn{ExecQuerier: 
 // A diff provides a PostgreSQL implementation for sqlx.DiffDriver.
 type diff struct{ *conn }
 
+// SupportChange reports if the change is supported by the differ.
+func (*diff) SupportChange(c schema.Change) bool {
+	switch c.(type) {
+	case *schema.RenameConstraint:
+		return false
+	}
+	return true
+}
+
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
 	var (

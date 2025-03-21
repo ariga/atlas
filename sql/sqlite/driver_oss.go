@@ -62,3 +62,12 @@ func (*state) dropTrigger(*schema.DropTrigger) error {
 func verifyChanges(context.Context, []schema.Change) error {
 	return nil // unimplemented.
 }
+
+// SupportChange reports if the change is supported by the differ.
+func (*diff) SupportChange(c schema.Change) bool {
+	switch c.(type) {
+	case *schema.RenameConstraint:
+		return false
+	}
+	return true
+}

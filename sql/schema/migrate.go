@@ -307,6 +307,11 @@ type (
 		Change   ChangeKind
 	}
 
+	// RenameConstraint describes an constraint rename change.
+	RenameConstraint struct {
+		From, To Object // PK, FK, Unique, Check, etc.
+	}
+
 	// AddAttr describes an attribute addition.
 	AddAttr struct {
 		A Attr
@@ -688,6 +693,7 @@ func (*RenameColumn) change()     {}
 func (*AddForeignKey) change()    {}
 func (*DropForeignKey) change()   {}
 func (*ModifyForeignKey) change() {}
+func (*RenameConstraint) change() {}
 
 // clauses.
 func (*IfExists) clause()    {}

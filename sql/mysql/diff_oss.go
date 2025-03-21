@@ -35,6 +35,15 @@ type diff struct {
 	}
 }
 
+// SupportChange reports if the change is supported by the differ.
+func (*diff) SupportChange(c schema.Change) bool {
+	switch c.(type) {
+	case *schema.RenameConstraint:
+		return false
+	}
+	return true
+}
+
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
 	var (

@@ -741,6 +741,12 @@ func (*Proc) obj()     {}
 func (*Trigger) obj()  {}
 func (*EnumType) obj() {}
 
+// constraints are objects.
+func (*Index) obj()        {}
+func (*Check) obj()        {}
+func (*ForeignKey) obj()   {}
+func (*NamedDefault) obj() {}
+
 // expressions.
 func (*Literal) expr() {}
 func (*RawExpr) expr() {}
