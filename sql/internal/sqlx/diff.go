@@ -118,6 +118,13 @@ type (
 		// one state to the other. For example, changing action time.
 		TriggerDiff(from, to *schema.Trigger) ([]schema.Change, error)
 	}
+
+	// ChangeSupporter wraps the single SupportChange method.
+	ChangeSupporter interface {
+		// SupportChange can be implemented to tell the Differ if they support
+		// a specific change type, or it should avoid suggesting it.
+		SupportChange(schema.Change) bool
+	}
 )
 
 // RealmDiff implements the schema.Differ for Realm objects and returns a list of changes
@@ -433,11 +440,14 @@ func (d *Diff) pkDiff(from, to *schema.Table, opts *schema.DiffOptions) (changes
 	case pk1 != nil:
 		change := d.indexChange(pk1, pk2)
 		change &= ^schema.ChangeUnique
-		if change != schema.NoChange {
+		switch c, ok := d.DiffDriver.(ChangeSupporter); {
+		case change != schema.NoChange:
 			changes = opts.AddOrSkip(changes, &schema.ModifyPrimaryKey{
-				From:   pk1,
-				To:     pk2,
-				Change: change,
+				From: pk1, To: pk2, Change: change,
+			})
+		case (!ok || c.SupportChange((*schema.RenameConstraint)(nil))) && pk1.Name != pk2.Name:
+			changes = opts.AddOrSkip(changes, &schema.RenameConstraint{
+				From: pk1, To: pk2,
 			})
 		}
 	}
