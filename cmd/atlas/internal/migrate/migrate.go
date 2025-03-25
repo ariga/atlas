@@ -56,10 +56,19 @@ type (
 
 // Dialect returns the "ent dialect" of the Ent client.
 func (r *EntRevisions) Dialect() string {
-	if r.ac.Name == mysql.DriverMaria {
+	return EntDialect(r.ac.Name)
+}
+
+// EntDialect returns the Ent dialect for the given driver.
+func EntDialect(d string) string {
+	switch {
+	case d == mysql.DriverMaria:
 		return mysql.DriverName // Ent does not support "mariadb" as dialect.
+	case strings.HasPrefix(d, "libsql"):
+		return sqlite.DriverName // Ent does not support "libsql" as dialect.
+	default:
+		return d
 	}
-	return r.ac.Name
 }
 
 // RevisionsForClient creates a new RevisionReadWriter for the given sqlclient.Client.
