@@ -582,9 +582,12 @@ func parseColumn(typ string) (parts []string, size int, unsigned bool, err error
 	if i := strings.Index(typ, "/*"); i > 0 && strings.HasSuffix(strings.TrimSpace(typ), "*/") {
 		typ = strings.TrimSpace(typ[:i])
 	}
-	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
+	if parts = strings.FieldsFunc(typ, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
-	}); parts[0] {
+	}); len(parts) == 0 {
+		return nil, 0, false, fmt.Errorf("unexpected or empty type %q", typ)
+	}
+	switch parts[0] {
 	case TypeBit, TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
 	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt,
 		TypeDecimal, TypeNumeric, TypeFloat, TypeDouble, TypeReal:
