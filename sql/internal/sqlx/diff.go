@@ -639,7 +639,7 @@ func (d *Diff) partsChange(fromI, toI *schema.Index, renames map[string]string) 
 func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 	var change schema.ChangeKind
 	switch {
-	case from.Table.Name != to.Table.Name:
+	case from.RefTable.Name != to.RefTable.Name:
 		change |= schema.ChangeRefTable | schema.ChangeRefColumn
 	case len(from.RefColumns) != len(to.RefColumns):
 		change |= schema.ChangeRefColumn
