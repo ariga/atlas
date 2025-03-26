@@ -13,6 +13,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
 )
@@ -616,6 +617,56 @@ func StringEnumsAttr(k string, elems ...*EnumString) *Attr {
 		K: k,
 		V: cty.ListVal(vv),
 	}
+}
+
+// TypeExpr is a capsule type for HCL expressions. It allows passing to the
+// type-checker expressions that should not be evaluated, but only validated.
+var TypeExpr = cty.Capsule("expr", reflect.TypeOf((*hclsyntax.Expression)(nil)).Elem())
+
+// ExprValue returns a cty.Value that encapsulates the given HCL expression.
+func ExprValue(x hclsyntax.Expression) cty.Value {
+	return cty.CapsuleVal(TypeExpr, &x)
+}
+
+// ExprFunc for lazy attribute evaluation.
+type ExprFunc func(map[string]cty.Value) (cty.Value, error)
+
+// ctyAttr is a capsule type for hcl.Attribute.
+var ctyExprFunc = cty.Capsule("expr_func", reflect.TypeOf(new(ExprFunc)).Elem())
+
+// LazyExprAttr is a helper method for constructing *schemahcl.Attr instance for the expression function.
+func LazyExprAttr(ctx *hcl.EvalContext, at *hclsyntax.Attribute) *Attr {
+	var (
+		r = at.Range()
+		x = ExprFunc(func(vars map[string]cty.Value) (cty.Value, error) {
+			if len(vars) > 0 {
+				ctx = ctx.NewChild()
+				ctx.Variables = vars
+			}
+			v, diags := at.Expr.Value(ctx)
+			if diags.HasErrors() {
+				return cty.NilVal, diags
+			}
+			return v, nil
+		})
+	)
+	return &Attr{
+		K:    at.Name,
+		rang: &r,
+		V:    cty.CapsuleVal(ctyExprFunc, &x),
+	}
+}
+
+// LazyExpr returns a lazy expression function stored in the attribute value.
+func (a *Attr) LazyExpr() (ExprFunc, error) {
+	if !a.V.Type().IsCapsuleType() {
+		return nil, fmt.Errorf("attribute %s is not a capsule type", a.K)
+	}
+	x, ok := a.V.EncapsulatedValue().(*ExprFunc)
+	if !ok || x == nil {
+		return nil, fmt.Errorf("attribute %s is not an expression function", a.K)
+	}
+	return *x, nil
 }
 
 // RangeAsPos builds a schema position from the give HCL range.

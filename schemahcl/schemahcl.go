@@ -32,6 +32,7 @@ type (
 		validator        func() SchemaValidator
 		datasrc, initblk map[string]BlockFunc
 		typedblk         map[string]map[string]BlockFunc
+		lazyattrs        map[string]bool
 		// Optional context to pass to dynamic block handlers,
 		// such as data-sources, type-blocks, etc.
 		ctx     context.Context
@@ -611,6 +612,13 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, opts *EvalOptions, hclAttrs hclsyn
 			scope = append(scope, hclAttr.Name)
 			nctx  = s.mayScopeContext(ctx, scope)
 		)
+		if path := strings.Join(scope, "."); s.config.lazyattrs[path] {
+			if err := opts.Validator.ValidateAttribute(ctx, hclAttr, ExprValue(hclAttr.Expr)); err != nil {
+				return nil, err
+			}
+			attrs = append(attrs, LazyExprAttr(nctx, hclAttr))
+			continue
+		}
 		value, diag := hclAttr.Expr.Value(nctx)
 		if diag.HasErrors() {
 			return nil, s.typeError(diag, scope)
