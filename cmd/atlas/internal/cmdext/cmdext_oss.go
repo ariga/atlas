@@ -9,10 +9,10 @@ package cmdext
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/schemahcl"
@@ -27,22 +27,22 @@ var specOptions []schemahcl.Option
 
 // RemoteSchema is a data source that for reading remote schemas.
 func RemoteSchema(context.Context, *hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
-	return cty.Zero, fmt.Errorf("data.remote_schema is not supported by this release. See: https://atlasgo.io/getting-started")
+	return cty.Zero, unsupportedError("data.remote_schema")
 }
 
 // RemoteDir is a data source that reads a remote migration directory.
 func RemoteDir(context.Context, *hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
-	return cty.Zero, fmt.Errorf("data.remote_dir is not supported by this release. See: https://atlasgo.io/getting-started")
+	return cty.Zero, unsupportedError("data.remote_dir")
 }
 
 // StateReaderAtlas returns a migrate.StateReader from an Atlas Cloud schema.
 func StateReaderAtlas(context.Context, *StateReaderConfig) (*StateReadCloser, error) {
-	return nil, fmt.Errorf("atlas remote state is not supported by this release. See: https://atlasgo.io/getting-started")
+	return nil, unsupportedError("atlas remote state")
 }
 
 // SchemaExternal is a data source that for reading external schemas.
 func SchemaExternal(context.Context, *hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
-	return cty.Zero, fmt.Errorf("data.external_schema is no longer supported by this release. See: https://atlasgo.io/getting-started")
+	return cty.Zero, unsupportedError("data.external_schema")
 }
 
 // EntLoader is a StateLoader for loading ent.Schema's as StateReader's.
@@ -50,18 +50,18 @@ type EntLoader struct{}
 
 // LoadState returns a migrate.StateReader that reads the schema from an ent.Schema.
 func (l EntLoader) LoadState(context.Context, *StateReaderConfig) (*StateReadCloser, error) {
-	return nil, fmt.Errorf("ent:// scheme is no longer supported by this release. See: https://atlasgo.io/getting-started")
+	return nil, unsupportedError("ent:// scheme")
 }
 
 // MigrateDiff returns the diff between ent.Schema and a directory.
 func (l EntLoader) MigrateDiff(context.Context, *MigrateDiffOptions) error {
-	return fmt.Errorf("ent:// scheme is no longer supported by this release. See: https://atlasgo.io/getting-started")
+	return unsupportedError("ent:// scheme")
 }
 
 // InitBlock returns the handler for the "atlas" init block.
 func (c *AtlasConfig) InitBlock() schemahcl.Option {
 	return schemahcl.WithInitBlock("atlas", func(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
-		return cty.NilVal, fmt.Errorf("atlas block is not supported by this release. See: https://atlasgo.io/getting-started")
+		return cty.Zero, unsupportedError("atlas block")
 	})
 }
 
@@ -84,7 +84,7 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 			return nil, err
 		}
 		if bytes.Contains(b, []byte("-- atlas:import ")) {
-			return nil, errors.New("atlas:import directive is not supported by this release. See: https://atlasgo.io/getting-started")
+			return nil, unsupportedError("atlas:import directive")
 		}
 		if dir, err = FilesAsDir(migrate.NewLocalFile(fi.Name(), b)); err != nil {
 			return nil, err
@@ -103,7 +103,7 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 				return nil, err
 			}
 			if bytes.Contains(b, []byte("-- atlas:import ")) {
-				return nil, errors.New("atlas:import directive is not supported by this release. See: https://atlasgo.io/getting-started")
+				return nil, unsupportedError("atlas:import directive")
 			}
 			files = append(files, migrate.NewLocalFile(d.Name(), b))
 		}
@@ -121,5 +121,22 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 			opts = append(opts, migrate.ReplayToVersion(v))
 		}
 		return stateReaderSQL(ctx, config, dir, nil, opts)
+	}
+}
+
+func unsupportedError(feature string) error {
+	switch runtime.GOOS {
+	case "windows":
+		return fmt.Errorf(`%s is not supported by the community version of Atlas.
+
+Install the non-community version instead: https://atlasgo.io/docs#installation`, feature)
+	default:
+		return fmt.Errorf(`%s is not supported by the community version of Atlas.
+
+Install the non-community version instead:
+
+	curl -sSf https://atlasgo.sh | sh
+
+For more installtion options, see: https://atlasgo.io/docs#installation`, feature)
 	}
 }
