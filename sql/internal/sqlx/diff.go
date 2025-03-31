@@ -95,7 +95,7 @@ type (
 	// TableFinder wraps the FindTable method, providing more
 	// control to the DiffDriver on how tables are matched.
 	TableFinder interface {
-		FindTable(*schema.Schema, string) (*schema.Table, error)
+		FindTable(*schema.Schema, *schema.Table) (*schema.Table, error)
 	}
 
 	// ChangesAnnotator is an optional interface allows DiffDriver to annotate
@@ -215,7 +215,7 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 
 	// Drop or modify tables.
 	for _, t1 := range from.Tables {
-		switch t2, err := d.findTable(to, t1.Name); {
+		switch t2, err := d.findTable(to, t1); {
 		case schema.IsNotExistError(err):
 			// Triggers should be dropped either by the driver or the database.
 			changes = opts.AddOrSkip(changes, &schema.DropTable{T: t1})
@@ -237,7 +237,7 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 	changes = d.fixRenames(changes)
 	// Add tables.
 	for _, t1 := range to.Tables {
-		switch _, err := d.findTable(from, t1.Name); {
+		switch _, err := d.findTable(from, t1); {
 		case schema.IsNotExistError(err):
 			changes = opts.AddOrSkip(changes, addTableChange(t1)...)
 		case err != nil:
@@ -692,15 +692,15 @@ func (d *Diff) similarUnnamedIndex(t *schema.Table, idx1 *schema.Index) (*schema
 	return nil, false
 }
 
-func (d *Diff) findTable(s *schema.Schema, name string) (*schema.Table, error) {
+func (d *Diff) findTable(s *schema.Schema, t1 *schema.Table) (*schema.Table, error) {
 	if f, ok := d.DiffDriver.(TableFinder); ok {
-		return f.FindTable(s, name)
+		return f.FindTable(s, t1)
 	}
-	t, ok := s.Table(name)
+	t2, ok := s.Table(t1.Name)
 	if !ok {
-		return nil, &schema.NotExistError{Err: fmt.Errorf("table %q was not found", name)}
+		return nil, &schema.NotExistError{Err: fmt.Errorf("table %q was not found", t1.Name)}
 	}
-	return t, nil
+	return t2, nil
 }
 
 // CommentChange reports if the element comment was changed.
