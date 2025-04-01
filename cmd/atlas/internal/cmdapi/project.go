@@ -169,6 +169,7 @@ type (
 		DropTrigger      bool `spec:"drop_trigger"`
 		ModifyTrigger    bool `spec:"modify_trigger"`
 		RenameTrigger    bool `spec:"rename_trigger"`
+		RenameConstraint bool `spec:"rename_constraint"`
 	}
 
 	// Format represents the output formatting configuration of an environment.
@@ -436,7 +437,7 @@ func (d *Diff) Options() (opts []schema.DiffOption) {
 		&schema.AddTable{}, &schema.DropTable{}, &schema.ModifyTable{}, &schema.RenameTable{},
 		&schema.AddColumn{}, &schema.DropColumn{}, &schema.ModifyColumn{}, &schema.AddIndex{},
 		&schema.DropIndex{}, &schema.ModifyIndex{}, &schema.AddForeignKey{}, &schema.DropForeignKey{},
-		&schema.ModifyForeignKey{},
+		&schema.ModifyForeignKey{}, &schema.RenameConstraint{},
 	} {
 		if rt := reflect.TypeOf(c).Elem(); rv.FieldByName(rt.Name()).Bool() {
 			changes = append(changes, c)
