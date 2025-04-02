@@ -544,6 +544,8 @@ an HCL, SQL, or ORM schema. See: https://atlasgo.io/versioned/diff`,
 	cmd.Flags().StringVar(&flags.qualifier, flagQualifier, "", "qualify tables with custom qualifier when working on a single schema")
 	cmd.Flags().BoolVarP(&flags.edit, flagEdit, "", false, "edit the generated migration file(s)")
 	cmd.Flags().BoolVar(&flags.dryRun, flagDryRun, false, "print the generated file to stdout instead of writing it to the migration directory")
+	cobra.CheckErr(cmd.Flags().MarkHidden(flagDryRun))
+	cmd.MarkFlagsMutuallyExclusive(flagEdit, flagDryRun)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagDevURL))
 	return cmd
