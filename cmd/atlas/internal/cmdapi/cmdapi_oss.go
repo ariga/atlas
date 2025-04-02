@@ -214,6 +214,9 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags, env 
 }
 
 func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, env *Env) error {
+	if flags.dryRun {
+		return errors.New("'--dry-run' is not supported in the community version")
+	}
 	ctx := cmd.Context()
 	dev, err := sqlclient.Open(ctx, flags.devURL)
 	if err != nil {
