@@ -869,11 +869,11 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	for _, stmt := range stmts[r.Applied:] {
 		e.log.Log(LogStmt{SQL: stmt.Text, Stmt: stmt})
 		if _, err = e.drv.ExecContext(ctx, stmt.Text); err != nil {
-			e.log.Log(LogError{SQL: stmt.Text, Error: err})
+			e.log.Log(LogError{SQL: stmt.Text, Stmt: stmt, Error: err})
 			r.done()
 			r.ErrorStmt = stmt.Text
 			r.Error = err.Error()
-			return &StmtExecError{Stmt: stmt, Version: r.Version, Err: err}
+			return &StmtExecError{File: m, Stmt: stmt, Version: r.Version, Err: err}
 		}
 		r.PartialHashes = append(r.PartialHashes, "h1:"+sums[r.Applied])
 		r.Applied++
@@ -1116,15 +1116,12 @@ type (
 
 	// StmtExecError is returned when the execution of a statement fails during migration.
 	StmtExecError struct {
+		File    File   // Migration file that failed.
 		Stmt    *Stmt  // Statement that failed.
 		Version string // Version of the file.
 		Err     error  // Underlying error during execution.
 	}
 )
-
-func (e *StmtExecError) Error() string {
-	return fmt.Sprintf("sql/migrate: executing statement %q from version %q: %v", e.Stmt.Text, e.Version, e.Err)
-}
 
 func (e *StmtExecError) Unwrap() error {
 	return e.Err
@@ -1219,6 +1216,7 @@ type (
 	// LogError is sent if there is an error while execution.
 	LogError struct {
 		SQL   string // Set, if Error was caused by a SQL statement.
+		Stmt  *Stmt  // Underlying statement declaration.
 		Error error
 	}
 
@@ -1232,6 +1230,7 @@ type (
 	LogCheck struct {
 		Stmt  string // Check statement.
 		Error error  // Check error.
+		Decl  *Stmt  // Check statement declaration.
 	}
 
 	// LogChecksDone is sent after the execution of a group of checks

@@ -39,3 +39,12 @@ func NewSchemaApply(ctx context.Context, env Env, applied, pending []*migrate.Ch
 func NewSchemaPlan(ctx context.Context, env Env, pending []*migrate.Change, err *StmtError) *SchemaApply {
 	return NewSchemaApply(ctx, env, nil, pending, err)
 }
+
+func (*MigrateApply) MaskedText(s *migrate.Stmt) string {
+	return s.Text // Unsupported feature.
+}
+
+// MaskedErrorText returns the masked versioned of the error, if caused by a statement.
+func (*MigrateApply) MaskedErrorText(e migrate.LogError) string {
+	return e.Error.Error() // Unsupported feature.
+}
