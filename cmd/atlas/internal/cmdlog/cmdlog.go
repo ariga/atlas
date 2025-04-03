@@ -396,9 +396,9 @@ var (
 
 	// MigrateApplyTemplate holds the default template of the 'migrate apply' command.
 	MigrateApplyTemplate = template.Must(template.
-				New("report").
-				Funcs(ApplyTemplateFuncs).
-				Parse(`{{- if not .Pending -}}
+		New("report").
+		Funcs(ApplyTemplateFuncs).
+		Parse(`{{- if not .Pending -}}
 {{- println "No migration files to execute" }}
 {{- else -}}
 {{- println .Header }}
@@ -516,10 +516,13 @@ func (a *MigrateApply) Log(e migrate.LogEntry) {
 		var (
 			f  = a.Applied[len(a.Applied)-1]
 			cf = f.Checks[len(f.Checks)-1]
-			ck = &Check{Stmt: e.Stmt}
+			ck = &Check{Stmt: a.MaskedText(e.Decl)}
 		)
 		if e.Error != nil {
-			m := e.Error.Error()
+			m := a.MaskedErrorText(migrate.LogError{
+				Error: e.Error,
+				Stmt:  e.Decl,
+			})
 			ck.Error = &m
 		}
 		cf.Stmts = append(cf.Stmts, ck)
@@ -535,22 +538,27 @@ func (a *MigrateApply) Log(e migrate.LogEntry) {
 		}
 	case migrate.LogStmt:
 		f := a.Applied[len(a.Applied)-1]
-		f.Applied = append(f.Applied, e.SQL)
+		f.Applied = append(f.Applied, a.MaskedText(e.Stmt))
 	case migrate.LogError:
 		// Error during migration.
 		if l := len(a.Applied); l > 0 {
 			f := a.Applied[len(a.Applied)-1]
 			f.End = time.Now()
 			a.End = f.End
-			f.Error = &StmtError{
-				Stmt: e.SQL,
-				Text: e.Error.Error(),
+			switch {
+			case e.Stmt != nil:
+				f.Error = &StmtError{
+					Stmt: a.MaskedText(e.Stmt),
+					Text: a.MaskedErrorText(e),
+				}
+			default:
+				f.Error = &StmtError{Stmt: e.SQL, Text: e.Error.Error()}
 			}
 			// Error during pre stages, such as
 			// scanning migration statements.
 		} else {
 			a.End = time.Now()
-			a.Error = e.Error.Error()
+			a.Error = a.MaskedErrorText(e)
 		}
 	case migrate.LogDone:
 		n := time.Now()
@@ -762,8 +770,8 @@ var (
 
 	// SchemaInspectTemplate holds the default template of the 'schema inspect' command.
 	SchemaInspectTemplate = template.Must(template.New("inspect").
-				Funcs(InspectTemplateFuncs).
-				Parse(`{{ $.MarshalHCL }}`))
+		Funcs(InspectTemplateFuncs).
+		Parse(`{{ $.MarshalHCL }}`))
 )
 
 // NewSchemaInspect returns a SchemaInspect.
@@ -949,9 +957,9 @@ var (
 	}
 	// SchemaDiffTemplate holds the default template of the 'schema diff' command.
 	SchemaDiffTemplate = template.Must(template.
-				New("schema_diff").
-				Funcs(SchemaDiffFuncs).
-				Parse(`{{- with .Changes -}}
+		New("schema_diff").
+		Funcs(SchemaDiffFuncs).
+		Parse(`{{- with .Changes -}}
 {{ sql $ }}
 {{- else -}}
 Schemas are synced, no changes to be made.
@@ -1130,6 +1138,16 @@ func add(a, b int) int {
 func indentLn(input string, indent int) string {
 	pad := strings.Repeat(" ", indent)
 	return strings.ReplaceAll(input, "\n", "\n"+pad)
+}
+
+// noDirectives returns a slice of comments without directives.
+func noDirectives(comments []string) (cs []string) {
+	for _, c := range comments {
+		if !strings.HasPrefix(c, "-- atlas:") {
+			cs = append(cs, c)
+		}
+	}
+	return cs
 }
 
 // WarnOnce allow writing warning messages to the given writer,

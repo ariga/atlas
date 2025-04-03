@@ -37,3 +37,7 @@ func (e *Executor) ValidateDir(context.Context) error {
 	}
 	return nil
 }
+
+func (e *StmtExecError) Error() string {
+	return fmt.Sprintf("sql/migrate: executing statement %q from version %q: %v", e.Stmt.Text, e.Version, e.Err)
+}
