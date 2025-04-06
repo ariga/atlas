@@ -388,9 +388,17 @@ func SetVersion(v, flavor string) {
 
 // SetHeader sets header fields for cloud requests.
 func SetHeader(req *http.Request, token string) {
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("User-Agent", UserAgent())
-	req.Header.Set("Content-Type", "application/json")
+	for k, v := range header(token) {
+		req.Header.Set(k, v[0])
+	}
+}
+
+func header(token string) http.Header {
+	h := make(http.Header)
+	h.Set("Authorization", "Bearer "+token)
+	h.Set("User-Agent", UserAgent())
+	h.Set("Content-Type", "application/json")
+	return h
 }
 
 // UserAgent is the value the CLI uses in the User-Agent HTTP header.
