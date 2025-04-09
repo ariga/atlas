@@ -288,9 +288,7 @@ func TestChecksum(t *testing.T) {
 				return d
 			}(),
 			files: []string{
-				"1_initial.down.sql",
 				"1_initial.up.sql",
-				"2_second_migration.down.sql",
 				"2_second_migration.up.sql",
 			},
 		},
@@ -331,11 +329,9 @@ func TestChecksum(t *testing.T) {
 			}(),
 			files: []string{
 				"B2__baseline.sql",
-				"R__views.sql",
-				"U1__initial.sql",
-				"V1__initial.sql",
-				"V2__second_migration.sql",
 				"V3__third_migration.sql",
+				"v3/V3_1__fourth_migration.sql",
+				"R__views.sql",
 			},
 		},
 		{
