@@ -74,6 +74,21 @@ type (
 		// Tables to inspect. Empty means all tables in the schema.
 		Tables []string
 
+		// Include defines a list of glob patterns used to filter resources for inspection.
+		// If non-empty, only resources matching at least one of the patterns are considered.
+		// After applying inclusion, the Exclude list is used to filter out resources.
+		// The syntax used by the different drivers is implemented as follows:
+		//
+		//	t   // include objects named 't'.
+		//	*   // include all schema objects (tables, views, etc.).
+		//	t.c // include column, index and foreign-key named 'c' in table 't'.
+		//	t.* // the last item defines the filtering; all resources under 't' are included.
+		//	*.c // the last item defines the filtering; all resources named 'c' are included in all tables.
+		//	*.* // the last item defines the filtering; all resources under all tables are included.
+		//
+		// If Include is empty, all resources are considered unless excluded.
+		Include []string
+
 		// Exclude defines a list of glob patterns used to filter resources from inspection.
 		// The syntax used by the different drivers is implemented as follows:
 		//
@@ -95,6 +110,23 @@ type (
 
 		// Schemas to inspect. Empty means all schemas in the realm.
 		Schemas []string
+
+		// Include defines a list of glob patterns used to filter resources for inspection.
+		// If non-empty, only resources matching at least one of the patterns are considered.
+		// After applying inclusion, the Exclude list is used to filter out resources.
+		// The syntax used by the different drivers is implemented as follows:
+		//
+		//	s       // include schema 's'.
+		//	*       // include all schemas.
+		//	s.t     // include table 't' under schema 's'.
+		//	s.*     // the last item defines the filtering; all tables under 's' are included.
+		//	*.t     // the last item defines the filtering; all tables named 't' are included in all schemas.
+		//	*.*     // the last item defines the filtering; all tables under all schemas are included.
+		//	*.*.c   // the last item defines the filtering; all resources named 'c' are included in all tables.
+		//	*.*.*   // the last item defines the filtering; all resources are included in all tables.
+		//
+		// If Include is empty, all resources are considered unless excluded.
+		Include []string
 
 		// Exclude defines a list of glob patterns used to filter resources from inspection.
 		// The syntax used by the different drivers is implemented as follows:
