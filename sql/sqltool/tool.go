@@ -120,9 +120,6 @@ func (d *GolangMigrateDir) Files() ([]migrate.File, error) {
 
 // Checksum implements Dir.Checksum. By default, it calls Files() and creates a checksum from them.
 func (d *GolangMigrateDir) Checksum() (migrate.HashFile, error) {
-	if d, ok := d.FS.(migrate.Dir); ok {
-		return d.Checksum()
-	}
 	files, err := d.Files()
 	if err != nil {
 		return nil, err
@@ -396,9 +393,6 @@ func (d *FlywayDir) Files() ([]migrate.File, error) {
 
 // Checksum implements Dir.Checksum. By default, it calls Files() and creates a checksum from them.
 func (d *FlywayDir) Checksum() (migrate.HashFile, error) {
-	if d, ok := d.FS.(migrate.Dir); ok {
-		return d.Checksum()
-	}
 	files, err := d.Files()
 	if err != nil {
 		return nil, err
