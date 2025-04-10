@@ -40,6 +40,7 @@ type (
 		Client, Dev *sqlclient.Client // database connections, while dev is considered a dev database, client is not
 		Schemas     []string          // schemas to work on
 		Exclude     []string          // exclude flag values
+		Include     []string          // include flag values
 		WithPos     bool              // Indicate if schema.Pos should be loaded.
 		Vars        map[string]cty.Value
 	}
@@ -108,11 +109,13 @@ func stateReaderSQL(ctx context.Context, cfg *StateReaderConfig, dir migrate.Dir
 		if cfg.Dev.URL.Schema != "" {
 			return migrate.SchemaConn(cfg.Dev, "", &schema.InspectOptions{
 				Exclude: cfg.Exclude,
+				Include: cfg.Include,
 			})
 		}
 		return migrate.RealmConn(cfg.Dev, &schema.InspectRealmOption{
 			Schemas: cfg.Schemas,
 			Exclude: cfg.Exclude,
+			Include: cfg.Include,
 		})
 	}(), optsReplay...)
 	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
@@ -220,15 +223,27 @@ func stateReaderHCL(_ context.Context, config *StateReaderConfig, paths []string
 					return nil, err
 				}
 			}
-			switch {
-			case len(config.Exclude) == 0:
-			case schemaScope != "" && len(realm.Schemas) == 1:
-				realm.Schemas[0], err = schema.ExcludeSchema(realm.Schemas[0], config.Exclude)
-			default:
-				realm, err = schema.ExcludeRealm(realm, config.Exclude)
+			if len(config.Include) > 0 {
+				switch {
+				case schemaScope != "" && len(realm.Schemas) == 1:
+					realm.Schemas[0], err = schema.IncludeSchema(realm.Schemas[0], config.Include)
+				default:
+					realm, err = schema.IncludeRealm(realm, config.Include)
+				}
+				if err != nil {
+					return nil, err
+				}
 			}
-			if err != nil {
-				return nil, err
+			if len(config.Exclude) > 0 {
+				switch {
+				case schemaScope != "" && len(realm.Schemas) == 1:
+					realm.Schemas[0], err = schema.ExcludeSchema(realm.Schemas[0], config.Exclude)
+				default:
+					realm, err = schema.ExcludeRealm(realm, config.Exclude)
+				}
+				if err != nil {
+					return nil, err
+				}
 			}
 			return realm, nil
 		}),

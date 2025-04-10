@@ -344,3 +344,13 @@ func detachObject(o Object, refs []Object) {
 		}
 	}
 }
+
+// IncludeRealm is a no-op for the community version.
+func IncludeRealm(r *Realm, _ []string) (*Realm, error) {
+	return r, nil // Unimplemented.
+}
+
+// IncludeSchema is a no-op for the community version.
+func IncludeSchema(s *Schema, _ []string) (*Schema, error) {
+	return s, nil // Unimplemented.
+}
