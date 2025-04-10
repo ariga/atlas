@@ -1650,7 +1650,7 @@ func (d *editDir) WriteFile(name string, b []byte) (err error) {
 			return err
 		}
 	}
-	return d.WriteFile(name, b)
+	return d.LocalDir.WriteFile(name, b)
 }
 
 // edit allows editing the file content using editor.
