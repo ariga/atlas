@@ -865,7 +865,11 @@ func migrateNewRun(cmd *cobra.Command, args []string, flags migrateNewFlags) err
 		return err
 	}
 	if flags.edit {
-		dir = &editDir{dir}
+		l, ok := dir.(*migrate.LocalDir)
+		if !ok {
+			return fmt.Errorf("--edit flag supports only atlas directories, but got: %T", dir)
+		}
+		dir = &editDir{l}
 	}
 	f, err := cmdmigrate.Formatter(u)
 	if err != nil {
@@ -1637,7 +1641,7 @@ func cmdEnvsRun(
 	return nil
 }
 
-type editDir struct{ migrate.Dir }
+type editDir struct{ *migrate.LocalDir }
 
 // WriteFile implements the migrate.Dir.WriteFile method.
 func (d *editDir) WriteFile(name string, b []byte) (err error) {
@@ -1646,7 +1650,7 @@ func (d *editDir) WriteFile(name string, b []byte) (err error) {
 			return err
 		}
 	}
-	return d.Dir.WriteFile(name, b)
+	return d.WriteFile(name, b)
 }
 
 // edit allows editing the file content using editor.
