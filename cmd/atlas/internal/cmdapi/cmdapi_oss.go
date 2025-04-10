@@ -240,7 +240,11 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 		return err
 	}
 	if flags.edit {
-		dir = &editDir{dir}
+		l, ok := dir.(*migrate.LocalDir)
+		if !ok {
+			return fmt.Errorf("--edit flag supports only atlas directories, but got: %T", dir)
+		}
+		dir = &editDir{l}
 	}
 	var name, indent string
 	if len(args) > 0 {
