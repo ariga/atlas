@@ -132,6 +132,10 @@ func (e *AbortError) FormatError(cmd *cobra.Command) {
 	cmd.SetErrPrefix("Abort:")
 }
 
+func (e *AbortError) Unwrap() error {
+	return e.Err
+}
+
 // RunE wraps the command cobra.Command.RunE function with additional postrun logic.
 func RunE(f func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) (err error) {
