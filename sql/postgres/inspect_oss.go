@@ -689,7 +689,7 @@ func (i *inspect) partitions(s *schema.Schema) error {
 		for i := range idxs {
 			switch idx, err := strconv.Atoi(idxs[i]); {
 			case err != nil:
-				return fmt.Errorf("postgres: faild parsing partition key index %q", idxs[i])
+				return fmt.Errorf("postgres: failed parsing partition key index %q", idxs[i])
 			// An expression.
 			case idx == 0:
 				j := sqlx.ExprLastIndex(d.exprs)

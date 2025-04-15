@@ -767,7 +767,7 @@ type (
 // Error implements the error interface.
 func (err *ChecksumError) Error() string { return ErrChecksumMismatch.Error() }
 
-// Is exists for backwards compatability reasons.
+// Is exists for backwards compatibility reasons.
 func (err *ChecksumError) Is(target error) bool {
 	return errors.Is(ErrChecksumMismatch, target)
 }

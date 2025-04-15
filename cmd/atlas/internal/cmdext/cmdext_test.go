@@ -99,7 +99,7 @@ data "aws_rds_token" "token" {
 	username = "root"
 	endpoint = "localhost:3306"
 	region = "us-east-1"
-	profile = "errorneous"
+	profile = "erroneous"
 }
 
 v = data.aws_rds_token.token
@@ -111,7 +111,7 @@ v = data.aws_rds_token.token
 		state = schemahcl.New(cmdext.SpecOptions...)
 	)
 	err := state.EvalBytes([]byte(doc), &v, nil)
-	require.EqualError(t, err, "data.aws_rds_token.token: loading aws config: failed to get shared config profile, errorneous")
+	require.EqualError(t, err, "data.aws_rds_token.token: loading aws config: failed to get shared config profile, erroneous")
 }
 
 func TestGCPToken(t *testing.T) {

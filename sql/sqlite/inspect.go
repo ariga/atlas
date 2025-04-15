@@ -457,7 +457,7 @@ func defaultExpr(x string) schema.Expr {
 	}
 }
 
-// blob literals are hex strings preceded by 'x' (or 'X).
+// blob literals are hex strings preceded by 'x' (or 'X').
 func isBlob(s string) bool {
 	if (strings.HasPrefix(s, "x'") || strings.HasPrefix(s, "X'")) && strings.HasSuffix(s, "'") {
 		_, err := strconv.ParseUint(s[2:len(s)-1], 16, 64)

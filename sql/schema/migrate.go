@@ -395,7 +395,7 @@ const (
 
 // List of diff modes.
 const (
-	DiffModeUnset         DiffMode = iota // Default, backwards compatability.
+	DiffModeUnset         DiffMode = iota // Default, backwards compatibility.
 	DiffModeNotNormalized                 // Diff objects are considered to be in not normalized state.
 	DiffModeNormalized                    // Diff objects are considered to be in normalized state.
 )
