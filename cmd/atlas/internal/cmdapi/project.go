@@ -702,8 +702,11 @@ func partialParse(path, env string) (*hclparse.Parser, error) {
 				labeled = append(labeled, b)
 			// Dynamic env selection.
 			case n == 0 && b.Body != nil && b.Body.Attributes[schemahcl.AttrName] != nil:
-				t, ok := b.Body.Attributes[schemahcl.AttrName].Expr.(*hclsyntax.ScopeTraversalExpr)
-				if ok && len(t.Traversal) == 2 && t.Traversal.RootName() == refAtlas && t.Traversal[1].(hcl.TraverseAttr).Name == blockEnv {
+				x := b.Body.Attributes[schemahcl.AttrName].Expr
+				if x != nil && schemahcl.UseTraversal(x, hcl.Traversal{
+					hcl.TraverseRoot{Name: refAtlas},
+					hcl.TraverseAttr{Name: blockEnv},
+				}) {
 					nonlabeled = append(nonlabeled, b)
 				}
 			}

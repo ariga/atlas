@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -1217,4 +1218,45 @@ materialized "users_view" {
 `)
 	)
 	require.NoError(t, New().EvalBytes(b, &doc, nil))
+}
+
+func TestUseTraversal(t *testing.T) {
+	for _, tt := range []struct {
+		x    string
+		want bool
+	}{
+		{
+			x:    "atlas.env",
+			want: true,
+		},
+		{
+			x: "\"atlas.env\"",
+		},
+		{
+			x:    "\"${atlas.env}\"",
+			want: true,
+		},
+		{
+			x:    "contains([], atlas.env)",
+			want: true,
+		},
+		{
+			x:    "contains([], 1) ? atlas.env : 1",
+			want: true,
+		},
+		{
+			x: "contains([], 1) ? atlas.dev : 1",
+		},
+	} {
+		pr := hclparse.NewParser()
+		f, diags := pr.ParseHCL([]byte(fmt.Sprintf("x = %s", tt.x)), "test.hcl")
+		require.False(t, diags.HasErrors())
+		x := f.Body.(*hclsyntax.Body).Attributes["x"]
+		require.False(t, diags.HasErrors())
+		got := UseTraversal(x.Expr, hcl.Traversal{
+			hcl.TraverseRoot{Name: "atlas"},
+			hcl.TraverseAttr{Name: "env"},
+		})
+		require.Equal(t, tt.want, got)
+	}
 }
