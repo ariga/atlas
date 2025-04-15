@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1208,4 +1209,73 @@ func typeFuncReqArgs(spec *TypeSpec) []*TypeAttr {
 		}
 	}
 	return args
+}
+
+// UseTraversal determines if the given attribute use the given traversal.
+func UseTraversal(x hclsyntax.Expression, tr hcl.Traversal) bool {
+	switch x := x.(type) {
+	case nil:
+		return false
+	case *hclsyntax.TemplateWrapExpr:
+		return UseTraversal(x.Wrapped, tr)
+	case *hclsyntax.TemplateJoinExpr:
+		return UseTraversal(x.Tuple, tr)
+	case *hclsyntax.TemplateExpr:
+		if slices.ContainsFunc(x.Parts, func(p hclsyntax.Expression) bool {
+			return UseTraversal(p, tr)
+		}) {
+			return true
+		}
+	case *hclsyntax.ConditionalExpr:
+		for _, x1 := range []hclsyntax.Expression{x.Condition, x.TrueResult, x.FalseResult} {
+			if UseTraversal(x1, tr) {
+				return true
+			}
+		}
+	case *hclsyntax.FunctionCallExpr:
+		if slices.ContainsFunc(x.Args, func(a hclsyntax.Expression) bool {
+			return UseTraversal(a, tr)
+		}) {
+			return true
+		}
+	case *hclsyntax.ScopeTraversalExpr:
+		if len(x.Traversal) != len(tr) {
+			return false
+		}
+		if len(x.Traversal) == 0 {
+			return true
+		}
+		r1, ok1 := x.Traversal[0].(hcl.TraverseRoot)
+		r2, ok2 := tr[0].(hcl.TraverseRoot)
+		if !ok1 || !ok2 || r1.Name != r2.Name {
+			return false
+		}
+		for i := 1; i < len(x.Traversal); i++ {
+			t1, ok1 := x.Traversal[i].(hcl.TraverseAttr)
+			t2, ok2 := tr[i].(hcl.TraverseAttr)
+			if !ok1 || !ok2 || t1.Name != t2.Name {
+				return false
+			}
+		}
+		return true
+	case *hclsyntax.RelativeTraversalExpr:
+		return UseTraversal(x.Source, tr)
+	case *hclsyntax.BinaryOpExpr:
+		return UseTraversal(x.LHS, tr) || UseTraversal(x.RHS, tr)
+	case *hclsyntax.UnaryOpExpr:
+		return UseTraversal(x.Val, tr)
+	case *hclsyntax.TupleConsExpr:
+		for _, e := range x.Exprs {
+			if UseTraversal(e, tr) {
+				return true
+			}
+		}
+	case *hclsyntax.ObjectConsExpr:
+		for _, item := range x.Items {
+			if UseTraversal(item.KeyExpr, tr) || UseTraversal(item.ValueExpr, tr) {
+				return true
+			}
+		}
+	}
+	return false
 }

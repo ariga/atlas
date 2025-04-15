@@ -459,6 +459,25 @@ env "dev" {
 	_, envs, err = EnvByName(&cobra.Command{}, "other", nil)
 	require.Error(t, err)
 	require.Empty(t, envs)
+
+	h = `
+env {
+  name = contains(["dev", "prod", "staging"], atlas.env) ? atlas.env : "dev"
+}
+`
+	require.NoError(t, os.WriteFile(path, []byte(h), 0600))
+	_, envs, err = EnvByName(&cobra.Command{}, "none", nil)
+	require.EqualError(t, err, `env "none" not defined in config file`)
+	require.Empty(t, envs)
+
+	h = `
+env {
+  name = contains(["dev"], atlas.env) ? atlas.env : null
+}
+`
+	require.NoError(t, os.WriteFile(path, []byte(h), 0600))
+	_, envs, err = EnvByName(&cobra.Command{}, "a8m", nil)
+	require.ErrorContains(t, err, "all envs must have names on file")
 }
 
 func TestDiff_Options(t *testing.T) {
