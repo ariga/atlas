@@ -484,6 +484,11 @@ func TestExecutor(t *testing.T) {
 		OperatorVersion: "op",
 	}, revs[len(revs)-1])
 
+	err = ex.ExecuteTo(context.Background(), "3.sql")
+	require.EqualError(t, err, `sql/migrate: migration with version "3.sql" not found. Did you mean "3"?`)
+	err = ex.ExecuteTo(context.Background(), "7")
+	require.EqualError(t, err, `sql/migrate: migration with version "7" not found`)
+
 	// Will fail if applied contents hash has changed (like when editing a partially applied file to fix an error).
 	h := revs[len(revs)-1].PartialHashes[0]
 	revs[len(revs)-1].PartialHashes[0] += h
