@@ -974,7 +974,14 @@ func (e *Executor) ExecuteTo(ctx context.Context, version string) (err error) {
 		return f.Version() == version
 	})
 	if idx == -1 {
-		return fmt.Errorf("sql/migrate: migration with version %q not found", version)
+		m := fmt.Sprintf("sql/migrate: migration with version %q not found", version)
+		if idx = FilesLastIndex(files, func(f File) bool {
+			v := f.Version()
+			return strings.Contains(version, v) || (strings.Contains(v, version) && len(v)-len(version) > 1)
+		}); version != "" && idx != -1 {
+			m += fmt.Sprintf(". Did you mean %q?", files[idx].Version())
+		}
+		return errors.New(m)
 	}
 	var pending []File
 	switch beforeCk := slices.ContainsFunc(files[idx+1:], func(f File) bool {
