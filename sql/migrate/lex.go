@@ -125,6 +125,8 @@ type (
 		// BeginEndTerminator is a T-SQL specific option that allows
 		// the scanner to terminate BEGIN/END blocks with a semicolon.
 		BeginEndTerminator bool
+		// omit delimiter from the statement
+		OmitDelimiter bool
 	}
 )
 
@@ -469,8 +471,8 @@ func (s *Scanner) emit(text string) *Stmt {
 	s.input = s.input[s.pos:]
 	s.pos = 0
 	s.comments = nil
-	// Trim custom delimiter.
-	if s.delim != delimiter {
+	// Trim delimiter if requested or is not the default one.
+	if s.OmitDelimiter || s.delim != delimiter {
 		stmt.Text = strings.TrimSuffix(stmt.Text, s.delim)
 	}
 	stmt.Text = strings.TrimSpace(stmt.Text)
