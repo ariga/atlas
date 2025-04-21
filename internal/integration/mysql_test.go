@@ -17,6 +17,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 )
@@ -45,15 +46,13 @@ func myRun(t *testing.T, fn func(*myTest)) {
 		if flagVersion == "" || flagVersion == version {
 			t.Run(version, func(t *testing.T) {
 				tt.once.Do(func() {
-					var err error
 					tt.version = version
 					tt.rrw = &rrw{}
-					tt.db, err = sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", tt.port))
+					c, err := sqlclient.Open(context.Background(), fmt.Sprintf("mysql://root:pass@localhost:%d/test?parseTime=true", tt.port))
 					require.NoError(t, err)
+					tt.drv, tt.db = c.Driver, c.DB
 					// Close connection after all tests have been run.
 					dbs = append(dbs, tt.db)
-					tt.drv, err = mysql.Open(tt.db)
-					require.NoError(t, err)
 				})
 				tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
 				fn(tt)
