@@ -441,7 +441,11 @@ func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, devURL, c
 		stderr := &bytes.Buffer{}
 		cmd.Stderr = stderr
 		cmd.Dir = workDir
-		cmd.Env = append(cmd.Env, "HOME="+ts.Getenv("HOME"))
+		cmd.Env = append(cmd.Env,
+			"HOME="+ts.Getenv("HOME"),
+			"PATH="+ts.Getenv("PATH"),
+			"DOCKER_HOST="+ts.Getenv("DOCKER_HOST"),
+		)
 		if err := cmd.Run(); err != nil && !neg {
 			ts.Fatalf("\n[stderr]\n%s", stderr)
 		}
