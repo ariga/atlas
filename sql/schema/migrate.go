@@ -249,6 +249,7 @@ type (
 	ModifyIndex struct {
 		From, To *Index
 		Change   ChangeKind
+		Extra    []Clause // Extra clauses and options.
 	}
 
 	// RenameIndex describes an index rename change.
