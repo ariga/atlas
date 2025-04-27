@@ -283,6 +283,7 @@ const (
 	flagGitDir         = "git-dir"
 	flagLatest         = "latest"
 	flagLockTimeout    = "lock-timeout"
+	flagLockName       = "lock-name"
 	flagLog            = "log"
 	flagPlan           = "plan"
 	flagRevisionSchema = "revisions-schema"
@@ -313,6 +314,10 @@ func addFlagDirFormat(set *pflag.FlagSet, target *string) {
 
 func addFlagLockTimeout(set *pflag.FlagSet, target *time.Duration) {
 	set.DurationVar(target, flagLockTimeout, 10*time.Second, "set how long to wait for the database lock")
+}
+
+func addFlagLockName(set *pflag.FlagSet, target *string, defaultVal string) {
+	set.StringVar(target, flagLockName, defaultVal, "set lock name for database lock")
 }
 
 // addFlagURL adds a URL flag. If given, args[0] override the name, args[1] the shorthand, args[2] the default value.

@@ -79,6 +79,7 @@ type (
 		Baseline        string   `spec:"baseline"`
 		ExecOrder       string   `spec:"exec_order"`
 		LockTimeout     string   `spec:"lock_timeout"`
+		LockName        string   `spec:"lock_name"`
 		RevisionsSchema string   `spec:"revisions_schema"`
 		Repo            *Repo    `spec:"repo"`
 	}
