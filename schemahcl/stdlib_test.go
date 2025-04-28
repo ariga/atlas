@@ -353,3 +353,45 @@ func Example_printFunc() {
 	// cty.ListVal([]cty.Value{cty.StringVal("hello"), cty.StringVal("world")})
 	//
 }
+
+func TestYAMLMerge(t *testing.T) {
+	got, err := yamlMergeFunc.Call([]cty.Value{
+		cty.StringVal("map:\n  zzz: true\n  foo:\n    - bar"),
+		cty.StringVal("map:\n  bar:\n    - baz\n  foo:\n    - bar"),
+		cty.StringVal("map:\n  map:\n    baz: true\n    foo: false"),
+	})
+	require.NoError(t, err)
+	require.Equal(t, cty.StringVal(`map:
+    bar:
+        - baz
+    foo:
+        - bar
+        - bar
+    map:
+        baz: true
+        foo: false
+    zzz: true
+`), got)
+
+	got, err = yamlMergeFunc.Call([]cty.Value{
+		cty.StringVal("map:\n  zzz: true\n  foo:\n    - bar"),
+	})
+	require.NoError(t, err)
+	require.Equal(t, cty.StringVal(`map:
+  zzz: true
+  foo:
+    - bar`), got)
+
+	_, err = yamlMergeFunc.Call([]cty.Value{
+		cty.StringVal("map:\n  zzz: true\n  foo:\n    - bar"),
+		cty.NullVal(cty.String),
+		cty.StringVal("map:\n  zzz:\n    - baz"),
+	})
+	require.EqualError(t, err, "yamlmerge: failed to merge yaml: key zzz is defined in both src and dst, but has a different type")
+
+	_, err = yamlMergeFunc.Call([]cty.Value{
+		cty.StringVal("map:\n  zzz: true\n  foo:\n    - bar"),
+		cty.StringVal("map:\n  zzz:\n    foo: true"),
+	})
+	require.EqualError(t, err, "yamlmerge: failed to merge yaml: key zzz is defined in both src and dst, but has a different type")
+}
