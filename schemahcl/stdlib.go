@@ -23,6 +23,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 	"github.com/zclconf/go-cty/cty/json"
+	"gopkg.in/yaml.v3"
 )
 
 func stdTypes(ctx *hcl.EvalContext) *hcl.EvalContext {
@@ -135,6 +136,7 @@ func stdFuncs() map[string]function.Function {
 		"jsonencode":      stdlib.JSONEncodeFunc,
 		"yamldecode":      ctyyaml.YAMLDecodeFunc,
 		"yamlencode":      ctyyaml.YAMLEncodeFunc,
+		"yamlmerge":       yamlMergeFunc,
 		"keys":            stdlib.KeysFunc,
 		"length":          stdlib.LengthFunc,
 		"log":             stdlib.LogFunc,
@@ -522,6 +524,53 @@ var (
 			return cty.True, nil
 		},
 	})
+
+	yamlMergeFunc = function.New(&function.Spec{
+		Description: "Merges multiple YAML documents into one.",
+		VarParam: &function.Parameter{
+			Name:      "values",
+			Type:      cty.String,
+			AllowNull: true,
+		},
+		Type:         function.StaticReturnType(cty.String),
+		RefineResult: refineNonNull,
+		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+			switch len(args) {
+			case 0:
+				return cty.NullVal(cty.String), nil
+			case 1:
+				if args[0].IsNull() {
+					return cty.NullVal(cty.String), nil
+				}
+				if args[0].Type() != cty.String {
+					return cty.NilVal, function.NewArgErrorf(0, "yamlmerge: expected string value, got %s", args[0].Type())
+				}
+				return args[0], nil
+			default:
+				dst := make(map[string]any)
+				for i, v := range args {
+					if v.IsNull() {
+						continue
+					}
+					if v.Type() != cty.String {
+						return cty.NilVal, function.NewArgErrorf(i, "yamlmerge: expected string value, got %s", v.Type())
+					}
+					var obj map[string]any
+					if err = yaml.Unmarshal([]byte(v.AsString()), &obj); err != nil {
+						return cty.NilVal, function.NewArgErrorf(i, "yamlmerge: failed to unmarshal yaml: %s", err)
+					}
+					if err = deepMerge(dst, obj); err != nil {
+						return cty.NilVal, function.NewArgErrorf(i, "yamlmerge: failed to merge yaml: %s", err)
+					}
+				}
+				out, err := yaml.Marshal(dst)
+				if err != nil {
+					return cty.NilVal, fmt.Errorf("yamlmerge: failed to marshal yaml: %s", err)
+				}
+				return cty.StringVal(string(out)), nil
+			}
+		},
+	})
 )
 
 // MakeFileFunc returns a function that reads a file
@@ -625,4 +674,34 @@ func MakeFileSetFunc(base string) function.Function {
 			}
 		},
 	})
+}
+
+func deepMerge(dst, src map[string]any) error {
+	for k, v := range src {
+		switch val := v.(type) {
+		case map[string]any:
+			if _, ok := dst[k]; !ok {
+				dst[k] = make(map[string]any)
+			}
+			d, ok := dst[k].(map[string]any)
+			if !ok {
+				return fmt.Errorf("key %s is defined in both src and dst, but has a different type", k)
+			}
+			if err := deepMerge(d, val); err != nil {
+				return err
+			}
+		case []any:
+			if _, ok := dst[k]; !ok {
+				dst[k] = []any{}
+			}
+			d, ok := dst[k].([]any)
+			if !ok {
+				return fmt.Errorf("key %s is defined in both src and dst, but has a different type", k)
+			}
+			dst[k] = append(d, val...)
+		default:
+			dst[k] = val
+		}
+	}
+	return nil
 }
