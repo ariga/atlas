@@ -153,17 +153,29 @@ func (s *Scanner) init(input string) error {
 	s.comments = nil
 	s.pos, s.total, s.width = 0, 0, 0
 	s.src, s.input, s.delim = input, input, delimiter
-	if d, ok := directive(input, directiveDelimiter, directivePrefixSQL); ok {
+	if d, input := FileDelimiter(input, directiveDelimiter); d != "" {
 		if err := s.setDelim(d); err != nil {
 			return err
 		}
-		parts := strings.SplitN(input, "\n", 2)
-		if len(parts) == 1 {
+		if input == "" {
 			return s.error(s.pos, "no input found after delimiter %q", d)
 		}
-		s.input = parts[1]
+		s.input = input
 	}
 	return nil
+}
+
+// FileDelimiter checks if the input string has a file directive
+// and returns the directive value and the rest of the input.
+func FileDelimiter(input string, d string) (string, string) {
+	if d, ok := directive(input, d, directivePrefixSQL); ok {
+		parts := strings.SplitN(input, "\n", 2)
+		if len(parts) == 1 {
+			return d, ""
+		}
+		return d, parts[1]
+	}
+	return "", input
 }
 
 const (
