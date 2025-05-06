@@ -46,19 +46,15 @@ type (
 	}
 )
 
-func init() {
-	t := template.New("")
-	t.Funcs(template.FuncMap{
-		"split": strings.Split,
-		"trim":  strings.TrimSpace,
-	})
-	tpl = template.Must(t.ParseFS(tplFS, "*.tmpl"))
-}
-
 var (
 	//go:embed *.tmpl
 	tplFS embed.FS
-	tpl   *template.Template
+	tpl   = template.Must(template.New("").
+		Funcs(template.FuncMap{
+			"split": strings.Split,
+			"trim":  strings.TrimSpace,
+		}).
+		ParseFS(tplFS, "*.tmpl"))
 
 	mysqlOptions = []string{
 		`--health-cmd "mysqladmin ping -ppass"`,
