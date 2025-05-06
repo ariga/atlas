@@ -49,12 +49,8 @@ type (
 func init() {
 	t := template.New("")
 	t.Funcs(template.FuncMap{
-		"split": func(s string, sep string) []string {
-			return strings.Split(s, sep)
-		},
-		"trim": func(s string) string {
-			return strings.TrimSpace(s)
-		},
+		"split": strings.Split,
+		"trim":  strings.TrimSpace,
 	})
 	tpl = template.Must(t.ParseFS(tplFS, "*.tmpl"))
 }
