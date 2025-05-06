@@ -53,7 +53,15 @@ jobs:
       {{- with .Steps }}
       {{- range . }}
       - name: {{ .Name }}
-        uses: {{ .Action }}
+        {{- with .Run }}
+        run: |
+          {{- range $line := split . "\n" }}
+          {{ $line | trim }}
+          {{- end }}
+        {{- end }}
+        {{- with .Action }}
+        uses:  {{ . }}
+        {{- end }}
         {{- with .With }}
         with:
           {{- range . }}
