@@ -23,6 +23,7 @@ type (
 	Step struct {
 		Name   string
 		Action string
+		Run    string
 		With   []string
 	}
 	// Credentials is used to pull images from a private registry.
@@ -45,10 +46,23 @@ type (
 	}
 )
 
+func init() {
+	t := template.New("")
+	t.Funcs(template.FuncMap{
+		"split": func(s string, sep string) []string {
+			return strings.Split(s, sep)
+		},
+		"trim": func(s string) string {
+			return strings.TrimSpace(s)
+		},
+	})
+	tpl = template.Must(t.ParseFS(tplFS, "*.tmpl"))
+}
+
 var (
 	//go:embed *.tmpl
 	tplFS embed.FS
-	tpl   = template.Must(template.ParseFS(tplFS, "*.tmpl"))
+	tpl   *template.Template
 
 	mysqlOptions = []string{
 		`--health-cmd "mysqladmin ping -ppass"`,
