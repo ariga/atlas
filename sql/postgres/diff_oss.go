@@ -303,17 +303,17 @@ type DiffOptions struct {
 }
 
 // AnnotateChanges implements the sqlx.ChangeAnnotator interface.
-func (*diff) AnnotateChanges(changes []schema.Change, opts *schema.DiffOptions) error {
+func (*diff) AnnotateChanges(changes []schema.Change, opts *schema.DiffOptions) ([]schema.Change, error) {
 	var extra DiffOptions
 	switch ex := opts.Extra.(type) {
 	case nil:
-		return nil
+		return changes, nil
 	case schemahcl.DefaultExtension:
 		if err := ex.Extra.As(&extra); err != nil {
-			return err
+			return nil, err
 		}
 	default:
-		return fmt.Errorf("postgres: unexpected DiffOptions.Extra type %T", opts.Extra)
+		return nil, fmt.Errorf("postgres: unexpected DiffOptions.Extra type %T", opts.Extra)
 	}
 	for _, c := range changes {
 		m, ok := c.(*schema.ModifyTable)
@@ -333,7 +333,7 @@ func (*diff) AnnotateChanges(changes []schema.Change, opts *schema.DiffOptions) 
 			}
 		}
 	}
-	return nil
+	return changes, nil
 }
 
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {

@@ -101,7 +101,7 @@ type (
 	// ChangesAnnotator is an optional interface allows DiffDriver to annotate
 	// changes with additional driver-specific attributes before they are returned.
 	ChangesAnnotator interface {
-		AnnotateChanges([]schema.Change, *schema.DiffOptions) error
+		AnnotateChanges([]schema.Change, *schema.DiffOptions) ([]schema.Change, error)
 	}
 
 	// ProcFuncsDiffer is an optional interface allows DiffDriver to diff
@@ -360,10 +360,10 @@ func (d *Diff) tableDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]sc
 	return changes, nil
 }
 
-func (d *Diff) mayAnnotate(changes []schema.Change, opts *schema.DiffOptions) ([]schema.Change, error) {
+func (d *Diff) mayAnnotate(changes []schema.Change, opts *schema.DiffOptions) (_ []schema.Change, err error) {
 	r, ok := d.DiffDriver.(ChangesAnnotator)
 	if ok {
-		if err := r.AnnotateChanges(changes, opts); err != nil {
+		if changes, err = r.AnnotateChanges(changes, opts); err != nil {
 			return nil, err
 		}
 	}
