@@ -447,9 +447,6 @@ func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, devURL, c
 			"DOCKER_HOST="+ts.Getenv("DOCKER_HOST"),
 		)
 		for _, env := range envs {
-			if env == "" {
-				continue
-			}
 			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env, ts.Getenv(env)))
 		}
 		if err := cmd.Run(); err != nil && !neg {
