@@ -416,7 +416,7 @@ func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
 	cmdCLI(ts, neg, args, dbURL, "sqlite://dev?mode=memory", ts.Getenv(atlasPathKey))
 }
 
-func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, devURL, cliPath string) {
+func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, devURL, cliPath string, envs ...string) {
 	var (
 		workDir = ts.Getenv("WORK")
 		r       = strings.NewReplacer("URL", dbURL, "DEV_URL", devURL, "$db", ts.Getenv("db"))
@@ -446,6 +446,12 @@ func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, devURL, c
 			"PATH="+ts.Getenv("PATH"),
 			"DOCKER_HOST="+ts.Getenv("DOCKER_HOST"),
 		)
+		for _, env := range envs {
+			if env == "" {
+				continue
+			}
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env, ts.Getenv(env)))
+		}
 		if err := cmd.Run(); err != nil && !neg {
 			ts.Fatalf("\n[stderr]\n%s", stderr)
 		}
