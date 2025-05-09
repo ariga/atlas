@@ -390,6 +390,8 @@ type SortOptions struct {
 	FuncDepV func(*schema.Func, *schema.View) bool
 	// FuncDepO reports if a function depends on the given object.
 	FuncDepO func(*schema.Func, schema.Object) bool
+	// ProcDepT reports if a procedure depends on the given table.
+	ProcDepT func(*schema.Proc, *schema.Table) bool
 	// ViewDepT reports if a view depends on the given table.
 	ViewDepT func(*schema.View, *schema.Table) bool
 	// CompareFuncArgs set to true to compare function arguments.
