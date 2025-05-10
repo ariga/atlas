@@ -449,8 +449,10 @@ func (r *Resource) Scan(ext any) error {
 	}
 	v := indirect(reflect.ValueOf(ext))
 	for _, ft := range specFields(ext) {
-		field := v.FieldByName(ft.Name)
-		switch {
+		if !ft.IsExported() {
+			continue
+		}
+		switch field := v.FieldByName(ft.Name); {
 		case ft.omitempty() && isEmpty(field):
 		case ft.isName():
 			if field.Kind() != reflect.String {
