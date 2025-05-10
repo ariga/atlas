@@ -1260,3 +1260,66 @@ func TestUseTraversal(t *testing.T) {
 		require.Equal(t, tt.want, got)
 	}
 }
+
+func TestEscapeHeredoc(t *testing.T) {
+	type (
+		Attr struct {
+			K string `spec:",name"`
+			V string `spec:"value"`
+		}
+		Block struct {
+			Attrs []*Attr `spec:"attr"`
+		}
+		doc struct {
+			Blocks []*Block `spec:"block"`
+		}
+	)
+	v := &doc{
+		Blocks: []*Block{
+			{
+				Attrs: []*Attr{
+					{
+						K: "inline",
+						V: "Hello ${username}, welcome! %{ if true }you're in%{ endif }",
+					},
+					{
+						K: "multiline",
+						V: `<<-TEXT
+ Hello ${username}, welcome! %{ if true }you're in%{ endif }
+ ${{text}}, ${{ text }}, ${{- text -}}
+ $${{text}}, %%%{text}
+TEXT`,
+					},
+				},
+			},
+		},
+	}
+	buf, err := Marshal(v)
+	require.NoError(t, err)
+	require.Equal(t, `block {
+  attr "inline" {
+    value = "Hello $${username}, welcome! %%{ if true }you're in%%{ endif }"
+  }
+  attr "multiline" {
+    value = <<-TEXT
+ Hello $${username}, welcome! %%{ if true }you're in%%{ endif }
+ $${{text}}, $${{ text }}, $${{- text -}}
+ $$${{text}}, %%%%{text}
+TEXT
+  }
+}
+`, string(buf))
+	var got doc
+	require.NoError(t, New().EvalBytes(buf, &got, nil))
+	require.Equal(t,
+		"Hello ${username}, welcome! %{ if true }you're in%{ endif }",
+		got.Blocks[0].Attrs[0].V,
+	)
+	require.Equal(t,
+		`Hello ${username}, welcome! %{ if true }you're in%{ endif }
+${{text}}, ${{ text }}, ${{- text -}}
+$${{text}}, %%%{text}
+`,
+		got.Blocks[0].Attrs[1].V,
+	)
+}
