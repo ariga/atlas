@@ -931,14 +931,16 @@ func fromDependsOn[T interface{ AddDeps(...schema.Object) T }](loc string, t T, 
 				return nil, false
 			})
 		default:
-			o, err = findT(ns, q, n, func(s *schema.Schema, name string) (schema.Object, bool) {
+			if o, err = findT(ns, q, n, func(s *schema.Schema, name string) (schema.Object, bool) {
 				return s.Object(func(o schema.Object) bool {
 					if o, ok := o.(SpecTypeNamer); ok {
 						return p[0].T == o.SpecType() && name == o.SpecName()
 					}
 					return false
 				})
-			})
+			}); err != nil {
+				continue // Custom objects might be loaded in a different pass.
+			}
 		}
 		if err != nil {
 			return fmt.Errorf("find %s reference for %s.depends_on[%d]: %w", p[0].T, loc, i, err)
