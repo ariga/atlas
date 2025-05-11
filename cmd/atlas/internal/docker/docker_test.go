@@ -6,6 +6,7 @@ package docker
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/url"
 	"testing"
@@ -18,7 +19,7 @@ func TestDockerConfig(t *testing.T) {
 
 	// invalid config
 	_, err := (&Config{}).Run(ctx)
-	require.Error(t, err)
+	require.ErrorContains(t, err, fmt.Sprintf("invalid configuration %#v", &Config{}))
 
 	// MySQL
 	cfg, err := MySQL("latest", Out(io.Discard))
@@ -468,11 +469,13 @@ func TestContainerURL(t *testing.T) {
 			driver: "postgres",
 			User:   url.UserPassword("postgres", "pass"),
 		},
-		Port: "5432",
+		HostPort: "0.0.0.0:5432",
 	}
+	// Without DOCKER_HOST
+	t.Setenv("DOCKER_HOST", "")
 	u, err := c.URL()
 	require.NoError(t, err)
-	require.Equal(t, "postgres://postgres:pass@localhost:5432/?sslmode=disable", u.String())
+	require.Equal(t, "postgres://postgres:pass@0.0.0.0:5432/?sslmode=disable", u.String())
 
 	// With DOCKER_HOST
 	t.Setenv("DOCKER_HOST", "tcp://host.docker.internal:2375")
