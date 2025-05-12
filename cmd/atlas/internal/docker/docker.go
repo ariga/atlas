@@ -50,9 +50,9 @@ type (
 	}
 	// A Container is an instance of a created container.
 	Container struct {
-		Config   // Config used to create this container
-		ID       string
-		HostPort string // Host port to connect to
+		Config // Config used to create this container
+		ID     string
+		Host   string // Host:port to connect to
 	}
 	// ConnOptions allows configuring the underlying connection pool.
 	ConnOptions struct {
@@ -396,14 +396,32 @@ func (c *Config) Run(ctx context.Context) (*Container, error) {
 	if err != nil {
 		return nil, fmt.Errorf("docker: run container: %w", err)
 	}
-	hostPort, err := c.docker(ctx, "port", id, c.Port)
+	ports, err := c.docker(ctx, "port", id, c.Port)
 	if err != nil {
 		return nil, fmt.Errorf("docker: get container port: %w", err)
 	}
+	// Ports may return multiple lines, but we only care about the first one.
+	// The format is <listener_addr>:<host_port>.
+	// We're extracting the host port from the first line.
+	hostPort := strings.SplitN(ports, "\n", 2)[0]
+	posColon := strings.LastIndexByte(hostPort, ':')
+	if posColon == -1 {
+		return nil, fmt.Errorf("docker: invalid port format: %q", hostPort)
+	}
+	host := "localhost"
+	// Check if the DOCKER_HOST env var is set.
+	// If it is, use the host from the URL.
+	if h := os.Getenv("DOCKER_HOST"); h != "" {
+		u, err := url.Parse(h)
+		if err != nil {
+			return nil, fmt.Errorf("docker: invalid DOCKER_HOST: %w", err)
+		}
+		host = u.Hostname()
+	}
 	return &Container{
-		Config:   *c,
-		ID:       id,
-		HostPort: strings.SplitN(hostPort, "\n", 2)[0],
+		Config: *c,
+		ID:     id,
+		Host:   host + hostPort[posColon:],
 	}, nil
 }
 
@@ -499,20 +517,7 @@ func (c *Container) PingURL() (string, error) {
 
 // URL returns a URL to connect to the Container.
 func (c *Container) URL() (*url.URL, error) {
-	u := &url.URL{
-		Scheme: c.driver,
-		User:   c.User,
-		Host:   c.HostPort,
-	}
-	// Check if the DOCKER_HOST env var is set.
-	// If it is, use the host from the URL.
-	if h := os.Getenv("DOCKER_HOST"); h != "" {
-		dh, err := url.Parse(h)
-		if err != nil {
-			return nil, err
-		}
-		u.Host = fmt.Sprintf("%s:%s", dh.Hostname(), u.Port())
-	}
+	u := &url.URL{Scheme: c.driver, User: c.User, Host: c.Host}
 	switch c.driver {
 	case DriverSQLServer:
 		q := u.Query()
