@@ -362,7 +362,10 @@ func setPtr(field reflect.Value, cv cty.Value) error {
 		}
 		switch t := cv.EncapsulatedValue().(type) {
 		case *RawExpr:
-			field.Set(reflect.ValueOf(&Type{T: t.X}))
+			field.Set(reflect.ValueOf(&Type{
+				T:     t.X,
+				IsRaw: true,
+			}))
 			return nil
 		case *Ref:
 			field.Set(reflect.ValueOf(&Type{
