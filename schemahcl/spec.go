@@ -93,6 +93,7 @@ type (
 		T     string
 		Attrs []*Attr
 		IsRef bool
+		IsRaw bool
 	}
 )
 
