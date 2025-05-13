@@ -48,6 +48,10 @@ type (
 		// resources on inspection.
 		Exclude []string `spec:"exclude"`
 
+		// Include defines a list of glob patterns used to keep
+		// resources on inspection.
+		Include []string `spec:"include"`
+
 		// Schema containing the schema configuration of the env.
 		Schema *Schema `spec:"schema"`
 

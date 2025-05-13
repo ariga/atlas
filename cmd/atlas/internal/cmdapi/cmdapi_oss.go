@@ -318,6 +318,8 @@ func schemaApplyRunE(cmd *cobra.Command, _ []string, flags *schemaApplyFlags) er
 		return AbortErrorf(unsupportedMessage("schema", "apply --edit"))
 	case flags.planURL != "":
 		return AbortErrorf(unsupportedMessage("schema", "apply --plan"))
+	case len(flags.include) > 0:
+		return AbortErrorf(unsupportedMessage("schema", "apply --include"))
 	case GlobalFlags.SelectedEnv == "":
 		env, err := selectEnv(cmd)
 		if err != nil {
