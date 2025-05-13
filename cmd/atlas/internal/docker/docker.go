@@ -396,17 +396,30 @@ func (c *Config) Run(ctx context.Context) (*Container, error) {
 	if err != nil {
 		return nil, fmt.Errorf("docker: run container: %w", err)
 	}
-	ports, err := c.docker(ctx, "port", id, c.Port)
-	if err != nil {
-		return nil, fmt.Errorf("docker: get container port: %w", err)
+	var port string
+	// Host port may not be available immediately after the container is started.
+	// Retry a few times to get the host port.
+	for range 5 {
+		ports, err := c.docker(ctx, "port", id, c.Port)
+		if err != nil {
+			return nil, fmt.Errorf("docker: get container port: %w", err)
+		}
+		// Ports may return multiple lines, but we only care about the first one.
+		// The format is <listener_addr>:<host_port>.
+		// We're extracting the host port from the first line.
+		if hostPort := strings.SplitN(ports, "\n", 2)[0]; hostPort != "" {
+			posColon := strings.LastIndexByte(hostPort, ':')
+			if posColon == -1 {
+				return nil, fmt.Errorf("docker: invalid port format: %q", hostPort)
+			}
+			port = hostPort[posColon+1:]
+			break
+		}
+		// If the port is not available yet, wait a bit and try again.
+		time.Sleep(100 * time.Millisecond)
 	}
-	// Ports may return multiple lines, but we only care about the first one.
-	// The format is <listener_addr>:<host_port>.
-	// We're extracting the host port from the first line.
-	hostPort := strings.SplitN(ports, "\n", 2)[0]
-	posColon := strings.LastIndexByte(hostPort, ':')
-	if posColon == -1 {
-		return nil, fmt.Errorf("docker: invalid port format: %q", hostPort)
+	if port == "" {
+		return nil, fmt.Errorf("docker: failed to get host port for container %q", id)
 	}
 	host := "localhost"
 	// Check if the DOCKER_HOST env var is set.
@@ -421,7 +434,7 @@ func (c *Config) Run(ctx context.Context) (*Container, error) {
 	return &Container{
 		Config: *c,
 		ID:     id,
-		Host:   host + hostPort[posColon:],
+		Host:   fmt.Sprintf("%s:%s", host, port),
 	}, nil
 }
 
