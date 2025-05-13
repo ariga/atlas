@@ -275,6 +275,7 @@ const (
 	flagDryRun         = "dry-run"
 	flagEnv            = "env"
 	flagExclude        = "exclude"
+	flagInclude        = "include"
 	flagFile           = "file"
 	flagFrom           = "from"
 	flagFromShort      = "f"
@@ -350,6 +351,15 @@ func addFlagExclude(set *pflag.FlagSet, target *[]string) {
 		flagExclude,
 		nil,
 		"list of glob patterns used to filter resources from applying",
+	)
+}
+
+func addFlagInclude(set *pflag.FlagSet, target *[]string) {
+	set.StringSliceVar(
+		target,
+		flagInclude,
+		nil,
+		"list of glob patterns used to select which resources to keep in inspection",
 	)
 }
 

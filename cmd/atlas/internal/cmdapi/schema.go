@@ -48,6 +48,7 @@ type schemaApplyFlags struct {
 	planURL     string        // URL to a pre-planned migration.
 	schemas     []string      // Schemas to take into account when diffing.
 	exclude     []string      // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
+	include     []string      // List of glob patterns used to include (only) resources in applying.
 	dryRun      bool          // Only show SQL on screen instead of applying it.
 	edit        bool          // Open the generated SQL in an editor.
 	autoApprove bool          // Don't prompt for approval before applying SQL.
@@ -116,6 +117,7 @@ migration.`,
 	addFlagURL(cmd.Flags(), &flags.url)
 	addFlagToURLs(cmd.Flags(), &flags.toURLs)
 	addFlagExclude(cmd.Flags(), &flags.exclude)
+	addFlagInclude(cmd.Flags(), &flags.include)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagDryRun(cmd.Flags(), &flags.dryRun)
@@ -442,6 +444,9 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 		return err
 	}
 	if err := maySetFlag(cmd, flagExclude, strings.Join(env.Exclude, ",")); err != nil {
+		return err
+	}
+	if err := maySetFlag(cmd, flagInclude, strings.Join(env.Include, ",")); err != nil {
 		return err
 	}
 	switch cmd.Name() {
