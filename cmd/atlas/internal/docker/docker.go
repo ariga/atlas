@@ -11,12 +11,10 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/url"
 	"os"
 	"os/exec"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 
@@ -53,10 +51,8 @@ type (
 	// A Container is an instance of a created container.
 	Container struct {
 		Config // Config used to create this container
-		// ID of the container.
-		ID string
-		// Port on the host this containers service is bound to.
-		Port string
+		ID     string
+		Host   string // Host:port to connect to
 	}
 	// ConnOptions allows configuring the underlying connection pool.
 	ConnOptions struct {
@@ -388,40 +384,85 @@ func Conn(s *ConnOptions) ConfigOption {
 
 // Run pulls and starts a new docker container from the Config.
 func (c *Config) Run(ctx context.Context) (*Container, error) {
-	// Make sure the configuration is not missing critical values.
-	if err := c.validate(); err != nil {
-		return nil, err
+	if c == nil || c.Image == "" || c.Port == "" || c.Out == nil {
+		return nil, fmt.Errorf("docker: invalid configuration %#v", c)
 	}
-	// Get a free host TCP port the container can bind its exposed service port on.
-	p, err := freePort()
-	if err != nil {
-		return nil, fmt.Errorf("getting open port: %w", err)
-	}
-	// Run the container.
-	args := []string{"docker", "run", "--rm", "--detach"}
+	args := []string{"run", "--rm", "--detach", "--publish", c.Port}
 	for _, e := range c.Env {
-		args = append(args, "-e", e)
+		args = append(args, "--env", e)
 	}
-	args = append(args, "-p", fmt.Sprintf("%s:%s", p, c.Port), c.Image)
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec
+	args = append(args, c.Image)
+	id, err := c.docker(ctx, args...)
+	if err != nil {
+		return nil, fmt.Errorf("docker: run container: %w", err)
+	}
+	var port string
+	// Host port may not be available immediately after the container is started.
+	// Retry a few times to get the host port.
+	for range 5 {
+		ports, err := c.docker(ctx, "port", id, c.Port)
+		if err != nil {
+			return nil, fmt.Errorf("docker: get container port: %w", err)
+		}
+		// Ports may return multiple lines, but we only care about the first one.
+		// The format is <listener_addr>:<host_port>.
+		// We're extracting the host port from the first line.
+		if hostPort := strings.SplitN(ports, "\n", 2)[0]; hostPort != "" {
+			posColon := strings.LastIndexByte(hostPort, ':')
+			if posColon == -1 {
+				return nil, fmt.Errorf("docker: invalid port format: %q", hostPort)
+			}
+			port = hostPort[posColon+1:]
+			break
+		}
+		// If the port is not available yet, wait a bit and try again.
+		time.Sleep(100 * time.Millisecond)
+	}
+	if port == "" {
+		return nil, fmt.Errorf("docker: failed to get host port for container %q", id)
+	}
+	host := "localhost"
+	// Check if the DOCKER_HOST env var is set.
+	// If it is, use the host from the URL.
+	if h := os.Getenv("DOCKER_HOST"); h != "" {
+		u, err := url.Parse(h)
+		if err != nil {
+			return nil, fmt.Errorf("docker: invalid DOCKER_HOST: %w", err)
+		}
+		host = u.Hostname()
+	}
+	return &Container{
+		Config: *c,
+		ID:     id,
+		Host:   fmt.Sprintf("%s:%s", host, port),
+	}, nil
+}
+
+// StopAndRemove stops the container with the given id.
+func (c *Config) StopAndRemove(ctx context.Context, id string) error {
+	_, err := c.docker(ctx, "kill", id)
+	if err != nil {
+		return fmt.Errorf("docker: kill container: %w", err)
+	}
+	return nil
+}
+
+func (c *Config) docker(ctx context.Context, args ...string) (string, error) {
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	cmd := exec.CommandContext(ctx, "docker", args...) //nolint:gosec
 	cmd.Stdout, cmd.Stderr = io.MultiWriter(c.Out, stdout), stderr
 	if err := cmd.Run(); err != nil {
 		if stderr.Len() > 0 {
 			err = errors.New(strings.TrimSpace(stderr.String()))
 		}
-		return nil, err
+		return "", err
 	}
-	return &Container{
-		Config: *c,
-		ID:     strings.TrimSpace(stdout.String()),
-		Port:   p,
-	}, nil
+	return strings.TrimSpace(stdout.String()), nil
 }
 
 // Close stops and removes this container.
 func (c *Container) Close() error {
-	return exec.Command("docker", "kill", c.ID).Run() //nolint:gosec
+	return c.Config.StopAndRemove(context.Background(), c.ID)
 }
 
 // Wait waits for this container to be ready.
@@ -432,20 +473,16 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 	if timeout > time.Minute {
 		timeout = time.Minute
 	}
-	var (
-		done   = time.After(timeout)
-		u, err = c.URL()
-	)
+	u, err := c.PingURL()
 	if err != nil {
 		return err
 	}
-	pingURL := c.PingURL(*u)
-	for {
+	for done := time.After(timeout); ; {
 		select {
 		case <-time.After(100 * time.Millisecond):
 			var client *sqlclient.Client
 			// Ping against the root connection.
-			client, err = sqlclient.Open(ctx, pingURL)
+			client, err = sqlclient.Open(ctx, u)
 			if err != nil {
 				continue
 			}
@@ -473,23 +510,27 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 	}
 }
 
+// PingURL returns a URL to ping the Container.
+func (c *Container) PingURL() (string, error) {
+	u, err := c.URL()
+	if err != nil {
+		return "", err
+	}
+	switch c.driver {
+	case DriverSQLServer:
+		q := u.Query()
+		q.Del("database")
+		u.RawQuery = q.Encode()
+		return u.String(), nil
+	default:
+		u.Path = "/"
+		return u.String(), nil
+	}
+}
+
 // URL returns a URL to connect to the Container.
 func (c *Container) URL() (*url.URL, error) {
-	host := "localhost"
-	// Check if the DOCKER_HOST env var is set.
-	// If it is, use the host from the URL.
-	if h := os.Getenv("DOCKER_HOST"); h != "" {
-		u, err := url.Parse(h)
-		if err != nil {
-			return nil, err
-		}
-		host = u.Hostname()
-	}
-	u := &url.URL{
-		Scheme: c.driver,
-		User:   c.User,
-		Host:   fmt.Sprintf("%s:%s", host, c.Port),
-	}
+	u := &url.URL{Scheme: c.driver, User: c.User, Host: c.Host}
 	switch c.driver {
 	case DriverSQLServer:
 		q := u.Query()
@@ -508,43 +549,6 @@ func (c *Container) URL() (*url.URL, error) {
 		return nil, fmt.Errorf("unknown driver: %q", c.driver)
 	}
 	return u, nil
-}
-
-// PingURL returns a URL to ping the Container.
-func (c *Container) PingURL(u url.URL) string {
-	switch c.driver {
-	case DriverSQLServer:
-		q := u.Query()
-		q.Del("database")
-		u.RawQuery = q.Encode()
-		return u.String()
-	default:
-		u.Path = "/"
-		return u.String()
-	}
-}
-
-// validate that no empty values are given.
-func (c *Config) validate() error {
-	if c == nil || c.Image == "" || c.Port == "" || c.Out == nil {
-		return fmt.Errorf("invalid configuration %#v", c)
-	}
-	return nil
-}
-
-func freePort() (string, error) {
-	a, err := net.ResolveTCPAddr("tcp", ":0")
-	if err != nil {
-		return "", err
-	}
-	l, err := net.ListenTCP("tcp", a)
-	if err != nil {
-		return "", err
-	}
-	if err := l.Close(); err != nil {
-		return "", err
-	}
-	return strconv.Itoa(l.Addr().(*net.TCPAddr).Port), nil
 }
 
 func init() {
