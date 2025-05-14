@@ -457,6 +457,66 @@ func applySchemaClean(cmd *cobra.Command, client *sqlclient.Client, drop []schem
 	return nil
 }
 
+func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *Env) error {
+	var (
+		ctx = cmd.Context()
+		c   *sqlclient.Client
+	)
+	if len(flags.include) > 0 {
+		return AbortErrorf(unsupportedMessage("schema", "diff --include"))
+	}
+	// We need a driver for diffing and planning. If given, dev database has precedence.
+	if flags.devURL != "" {
+		var err error
+		c, err = sqlclient.Open(ctx, flags.devURL)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+	}
+	from, err := stateReader(ctx, env, &stateReaderConfig{
+		urls:    flags.fromURL,
+		dev:     c,
+		vars:    env.Vars(),
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+	})
+	if err != nil {
+		return err
+	}
+	defer from.Close()
+	to, err := stateReader(ctx, env, &stateReaderConfig{
+		urls:    flags.toURL,
+		dev:     c,
+		vars:    env.Vars(),
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+	})
+	if err != nil {
+		return err
+	}
+	defer to.Close()
+	if c == nil {
+		// If not both states are provided by a database connection, the call to state-reader would have returned
+		// an error already. If we land in this case, we can assume both states are database connections.
+		c = to.Closer.(*sqlclient.Client)
+	}
+	format := cmdlog.SchemaDiffTemplate
+	if v := flags.format; v != "" {
+		if format, err = template.New("format").Funcs(cmdlog.SchemaDiffFuncs).Parse(v); err != nil {
+			return fmt.Errorf("parse log format: %w", err)
+		}
+	}
+	diff, err := computeDiff(ctx, c, from, to, diffOptions(cmd, env)...)
+	if err != nil {
+		return err
+	}
+	maySuggestUpgrade(cmd)
+	return format.Execute(cmd.OutOrStdout(),
+		cmdlog.NewSchemaDiff(ctx, c, diff.from, diff.to, diff.changes),
+	)
+}
+
 func summary(cmd *cobra.Command, c *sqlclient.Client, changes []schema.Change, t *template.Template) error {
 	p, err := c.PlanChanges(cmd.Context(), "", changes, planOptions(c)...)
 	if err != nil {
