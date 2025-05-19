@@ -47,6 +47,7 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 			Schemas: make([]string, 0, len(r.Schemas)),
 		}
 	)
+	name2pos := make(key2pos)
 	for _, o := range r.Objects {
 		changes = append(changes, &schema.AddObject{
 			O: o,
@@ -54,8 +55,8 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 				&schema.IfNotExists{},
 			},
 		})
+		name2pos.putObject(o)
 	}
-	name2pos := make(key2pos)
 	for _, s := range r.Schemas {
 		k, _ := name2pos.put(s.Attrs, keyS, s.Name)
 		opts.Schemas = append(opts.Schemas, s.Name)
@@ -82,6 +83,7 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 			}
 		}
 		for _, o := range s.Objects {
+			name2pos.putObject(o, k)
 			changes = append(changes, &schema.AddObject{O: o})
 		}
 		for _, f := range s.Funcs {
@@ -166,12 +168,15 @@ func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sch
 		if d.PatchObject != nil {
 			d.PatchObject(s, o)
 		}
+		name2pos.putObject(o, k)
 		changes = append(changes, &schema.AddObject{O: o})
 	}
 	for _, f := range s.Funcs {
+		name2pos.put(f.Attrs, k, keyFn, f.Name)
 		changes = append(changes, &schema.AddFunc{F: f})
 	}
 	for _, p := range s.Procs {
+		name2pos.put(p.Attrs, k, keyPr, p.Name)
 		changes = append(changes, &schema.AddProc{P: p})
 	}
 	if err := d.Driver.ApplyChanges(ctx, changes, func(opts *migrate.PlanOptions) {
@@ -254,62 +259,97 @@ func (k key2pos) put(attrs []schema.Attr, typename ...string) (string, bool) {
 	return n, false
 }
 
+func (k key2pos) putObject(o schema.Object, prefix ...string) {
+	ns, ok := o.(schema.SpecTypeNamer)
+	if !ok {
+		return
+	}
+	t, n := ns.SpecType(), ns.SpecName()
+	if t == "" || n == "" {
+		return
+	}
+	nk := poskey(append(prefix, t, n)...)
+	if ps, ok := o.(schema.PosSetter); ok && ps.Pos() != nil {
+		k[nk] = ps.Pos()
+	}
+}
+
 func (k key2pos) patchRealm(r *schema.Realm) {
+	k.patchObjects(r.Objects)
 	for _, s := range r.Schemas {
 		k.patchSchema(s)
 	}
 }
 
+func (k key2pos) patchObjects(objs []schema.Object, prefix ...string) {
+	for _, o := range objs {
+		ns, ok := o.(schema.SpecTypeNamer)
+		if !ok {
+			continue
+		}
+		t, n := ns.SpecType(), ns.SpecName()
+		if t == "" || n == "" {
+			continue
+		}
+		st, ok := o.(schema.PosSetter)
+		if !ok {
+			continue
+		}
+		k.patch(st, append(prefix, t, n)...)
+	}
+}
+
 func (k key2pos) patchSchema(s *schema.Schema) {
-	ks, _ := k.patch(&s.Attrs, keyS, s.Name)
+	ks, _ := k.patch(s, keyS, s.Name)
+	k.patchObjects(s.Objects, ks)
 	for _, t := range s.Tables {
-		tk, ok := k.patch(&t.Attrs, ks, keyT, t.Name)
+		tk, ok := k.patch(t, ks, keyT, t.Name)
 		if !ok {
 			continue
 		}
 		for _, tr := range t.Triggers {
-			k.patch(&tr.Attrs, tk, keyTg, tr.Name)
+			k.patch(tr, tk, keyTg, tr.Name)
 		}
 		for _, c := range t.Columns {
-			k.patch(&c.Attrs, tk, keyC, c.Name)
+			k.patch(c, tk, keyC, c.Name)
 		}
 		for _, i := range t.Indexes {
-			k.patch(&i.Attrs, tk, keyI, i.Name)
+			k.patch(i, tk, keyI, i.Name)
 		}
 		for _, f := range t.ForeignKeys {
-			k.patch(&f.Attrs, tk, keyF, f.Symbol)
+			k.patch(f, tk, keyF, f.Symbol)
 		}
 		for _, ck := range t.Checks() {
-			k.patch(&ck.Attrs, tk, keyK, ck.Name)
+			k.patch(ck, tk, keyK, ck.Name)
 		}
 	}
 	for _, v := range s.Views {
-		vk, ok := k.patch(&v.Attrs, ks, keyV, v.Name)
+		vk, ok := k.patch(v, ks, keyV, v.Name)
 		if !ok {
 			continue
 		}
 		for _, tr := range v.Triggers {
-			k.patch(&tr.Attrs, vk, keyTg, tr.Name)
+			k.patch(tr, vk, keyTg, tr.Name)
 		}
 		for _, c := range v.Columns {
-			k.patch(&c.Attrs, vk, keyC, c.Name)
+			k.patch(c, vk, keyC, c.Name)
 		}
 		for _, i := range v.Indexes {
-			k.patch(&i.Attrs, vk, keyI, i.Name)
+			k.patch(i, vk, keyI, i.Name)
 		}
 	}
 	for _, f := range s.Funcs {
-		k.patch(&f.Attrs, ks, keyFn, f.Name)
+		k.patch(f, ks, keyFn, f.Name)
 	}
 	for _, p := range s.Procs {
-		k.patch(&p.Attrs, ks, keyPr, p.Name)
+		k.patch(p, ks, keyPr, p.Name)
 	}
 }
 
-func (k key2pos) patch(attrs *[]schema.Attr, typename ...string) (string, bool) {
+func (k key2pos) patch(ps schema.PosSetter, typename ...string) (string, bool) {
 	n := poskey(typename...)
 	if p, ok := k[n]; ok {
-		*attrs = append(*attrs, p)
+		ps.SetPos(p)
 		return n, true
 	}
 	return n, false

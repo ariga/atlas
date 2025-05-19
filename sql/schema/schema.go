@@ -5,7 +5,9 @@
 package schema
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 )
 
 type (
@@ -243,14 +245,31 @@ func (r *Realm) Object(f func(Object) bool) (Object, bool) {
 	return nil, false
 }
 
+// PosSetter wraps the two methods for getting
+// and setting positions for schema objects.
+type PosSetter interface {
+	Pos() *Pos
+	SetPos(*Pos)
+}
+
 // Pos of the schema, if exists.
-func (s *Schema) Pos() (*Pos, bool) {
+func (s *Schema) Pos() *Pos {
 	for _, a := range s.Attrs {
 		if p, ok := a.(*Pos); ok {
-			return p, true
+			return p
 		}
 	}
-	return nil, false
+	return nil
+}
+
+// Pos of the enum, if exists.
+func (e *EnumType) Pos() *Pos {
+	for _, a := range e.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p
+		}
+	}
+	return nil
 }
 
 // Table returns the first table that matched the given name.
@@ -324,13 +343,13 @@ func (t *Table) Column(name string) (*Column, bool) {
 }
 
 // Pos of the table, if exists.
-func (t *Table) Pos() (*Pos, bool) {
+func (t *Table) Pos() *Pos {
 	for _, a := range t.Attrs {
 		if p, ok := a.(*Pos); ok {
-			return p, true
+			return p
 		}
 	}
-	return nil, false
+	return nil
 }
 
 // Index returns the first index that matched the given name.
@@ -374,13 +393,13 @@ func (t *Table) Checks() (ck []*Check) {
 }
 
 // Pos of the view, if exists.
-func (v *View) Pos() (*Pos, bool) {
+func (v *View) Pos() *Pos {
 	for _, a := range v.Attrs {
 		if p, ok := a.(*Pos); ok {
-			return p, true
+			return p
 		}
 	}
-	return nil, false
+	return nil
 }
 
 // Materialized reports if the view is materialized.
@@ -440,54 +459,129 @@ func (v *View) AsTable() *Table {
 		AddColumns(v.Columns...)
 }
 
-// Pos of the column, if exists.
-func (c *Column) Pos() (*Pos, bool) {
-	for _, a := range c.Attrs {
+// SetPos sets the position of the function.
+func (f *Func) SetPos(p *Pos) {
+	ReplaceOrAppend(&f.Attrs, p)
+}
+
+// Pos of the schema, if exists.
+func (f *Func) Pos() *Pos {
+	for _, a := range f.Attrs {
 		if p, ok := a.(*Pos); ok {
-			return p, true
+			return p
 		}
 	}
-	return nil, false
+	return nil
+}
+
+// SetPos sets the position of the schema.
+func (s *Schema) SetPos(p *Pos) {
+	ReplaceOrAppend(&s.Attrs, p)
+}
+
+// SetPos sets the position of the enum type.
+func (e *EnumType) SetPos(p *Pos) {
+	ReplaceOrAppend(&e.Attrs, p)
+}
+
+// SetPos sets the position of the table.
+func (t *Table) SetPos(p *Pos) {
+	ReplaceOrAppend(&t.Attrs, p)
+}
+
+// SetPos sets the position of the view.
+func (v *View) SetPos(p *Pos) {
+	ReplaceOrAppend(&v.Attrs, p)
+}
+
+// SetPos sets the position of the column.
+func (c *Column) SetPos(p *Pos) {
+	ReplaceOrAppend(&c.Attrs, p)
+}
+
+// SetPos sets the position of the check.
+func (c *Check) SetPos(p *Pos) {
+	ReplaceOrAppend(&c.Attrs, p)
+}
+
+// SetPos sets the position of the index.
+func (i *Index) SetPos(p *Pos) {
+	ReplaceOrAppend(&i.Attrs, p)
+}
+
+// SetPos sets the position of the index part.
+func (p *IndexPart) SetPos(p1 *Pos) {
+	ReplaceOrAppend(&p.Attrs, p1)
+}
+
+// SetPos sets the position of the foreign key.
+func (f *ForeignKey) SetPos(p *Pos) {
+	ReplaceOrAppend(&f.Attrs, p)
+}
+
+// SetPos sets the position of the procedure.
+func (p *Proc) SetPos(p1 *Pos) {
+	ReplaceOrAppend(&p.Attrs, p1)
+}
+
+// Pos of the schema, if exists.
+func (p *Proc) Pos() *Pos {
+	for _, a := range p.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p
+		}
+	}
+	return nil
+}
+
+// Pos of the column, if exists.
+func (c *Column) Pos() *Pos {
+	for _, a := range c.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p
+		}
+	}
+	return nil
 }
 
 // Pos of the index, if exists.
-func (i *Index) Pos() (*Pos, bool) {
+func (i *Index) Pos() *Pos {
 	for _, a := range i.Attrs {
 		if p, ok := a.(*Pos); ok {
-			return p, true
+			return p
 		}
 	}
-	return nil, false
+	return nil
 }
 
 // Pos of the index part, if exists.
-func (p *IndexPart) Pos() (*Pos, bool) {
+func (p *IndexPart) Pos() *Pos {
 	for _, a := range p.Attrs {
 		if p, ok := a.(*Pos); ok {
-			return p, true
+			return p
 		}
 	}
-	return nil, false
+	return nil
 }
 
 // Pos of the check, if exists.
-func (c *Check) Pos() (*Pos, bool) {
+func (c *Check) Pos() *Pos {
 	for _, a := range c.Attrs {
 		if p, ok := a.(*Pos); ok {
-			return p, true
+			return p
 		}
 	}
-	return nil, false
+	return nil
 }
 
 // Pos of the foreign-key, if exists.
-func (f *ForeignKey) Pos() (*Pos, bool) {
+func (f *ForeignKey) Pos() *Pos {
 	for _, a := range f.Attrs {
 		if p, ok := a.(*Pos); ok {
-			return p, true
+			return p
 		}
 	}
-	return nil, false
+	return nil
 }
 
 // Column returns the first column that matches the given name.
@@ -508,6 +602,21 @@ func (f *ForeignKey) RefColumn(name string) (*Column, bool) {
 		}
 	}
 	return nil, false
+}
+
+// SetPos sets the position of the trigger.
+func (t *Trigger) SetPos(p *Pos) {
+	ReplaceOrAppend(&t.Attrs, p)
+}
+
+// Pos of the schema, if exists.
+func (t *Trigger) Pos() *Pos {
+	for _, a := range t.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p
+		}
+	}
+	return nil
 }
 
 // ReferenceOption for constraint actions.
@@ -545,9 +654,10 @@ type (
 		T      string   // Optional type.
 		Values []string // Enum values.
 		Schema *Schema  // Optional schema.
+		Attrs  []Attr   // Extra attributes.
 	}
 
-	// BinaryType represents a type that stores a binary data.
+	// BinaryType represents a type that stores binary data.
 	BinaryType struct {
 		T    string
 		Size *int
@@ -725,6 +835,17 @@ type (
 		}
 	}
 )
+
+// String returns the position in editor/LSP style.
+// Format: "filename:line[:c][-end_line[:end_c]]"
+func (p *Pos) String() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s:%d", p.Filename, p.Start.Line)
+	if p.Start.Column > 0 {
+		fmt.Fprintf(&b, ":%d", p.Start.Column)
+	}
+	return b.String()
+}
 
 // A list of known view check options.
 const (

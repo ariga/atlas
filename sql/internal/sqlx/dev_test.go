@@ -46,13 +46,13 @@ func TestDriver_NormalizeRealm(t *testing.T) {
 		).
 		AddTables(
 			schema.NewTable("t1").
-				SetPos(
+				AddAttrs(
 					schema.NewFilePos("schema.hcl").
 						SetStart(hcl.Pos{Line: 2, Column: 2, Byte: 2}),
 				).
 				AddColumns(
 					schema.NewIntColumn("id", "int").
-						SetPos(
+						AddAttrs(
 							schema.NewFilePos("schema.hcl").
 								SetStart(hcl.Pos{Line: 3, Column: 3, Byte: 3}),
 						),
@@ -63,14 +63,11 @@ func TestDriver_NormalizeRealm(t *testing.T) {
 	)
 	normal, err = dev.NormalizeRealm(context.Background(), r)
 	require.NoError(t, err)
-	p, ok := normal.Schemas[0].Pos()
-	require.True(t, ok)
+	p := normal.Schemas[0].Pos()
 	require.Equal(t, schema.NewFilePos("schema.hcl").SetStart(hcl.Pos{Line: 1, Column: 1, Byte: 1}), p)
-	p, ok = normal.Schemas[0].Tables[0].Pos()
-	require.True(t, ok)
+	p = normal.Schemas[0].Tables[0].Pos()
 	require.Equal(t, schema.NewFilePos("schema.hcl").SetStart(hcl.Pos{Line: 2, Column: 2, Byte: 2}), p)
-	p, ok = normal.Schemas[0].Tables[0].Columns[0].Pos()
-	require.True(t, ok)
+	p = normal.Schemas[0].Tables[0].Columns[0].Pos()
 	require.Equal(t, schema.NewFilePos("schema.hcl").SetStart(hcl.Pos{Line: 3, Column: 3, Byte: 3}), p)
 }
 
