@@ -57,12 +57,6 @@ func (s *Schema) AddAttrs(attrs ...Attr) *Schema {
 	return s
 }
 
-// SetPos sets the position of the schema.
-func (s *Schema) SetPos(p *Pos) *Schema {
-	ReplaceOrAppend(&s.Attrs, p)
-	return s
-}
-
 // SetRealm sets the database/realm of the schema.
 func (s *Schema) SetRealm(r *Realm) *Schema {
 	s.Realm = r
@@ -258,12 +252,6 @@ func (t *Table) AddAttrs(attrs ...Attr) *Table {
 	return t
 }
 
-// SetPos sets the position of the table.
-func (t *Table) SetPos(p *Pos) *Table {
-	ReplaceOrAppend(&t.Attrs, p)
-	return t
-}
-
 // AddDeps adds the given objects as dependencies to the view.
 func (t *Table) AddDeps(objs ...Object) *Table {
 	t.Deps = append(t.Deps, objs...)
@@ -369,12 +357,6 @@ func (v *View) SetComment(c string) *View {
 // AddAttrs adds and additional attributes to the view.
 func (v *View) AddAttrs(attrs ...Attr) *View {
 	v.Attrs = append(v.Attrs, attrs...)
-	return v
-}
-
-// SetPos sets the position of the view.
-func (v *View) SetPos(p *Pos) *View {
-	ReplaceOrAppend(&v.Attrs, p)
 	return v
 }
 
@@ -745,12 +727,6 @@ func (c *Column) AddAttrs(attrs ...Attr) *Column {
 	return c
 }
 
-// SetPos sets the position of the column.
-func (c *Column) SetPos(p *Pos) *Column {
-	ReplaceOrAppend(&c.Attrs, p)
-	return c
-}
-
 // AddIndexes appends the references to the indexes this column is part of.
 func (c *Column) AddIndexes(indexes ...*Index) *Column {
 	for _, idx := range indexes {
@@ -781,12 +757,6 @@ func (c *Check) SetExpr(expr string) *Check {
 // AddAttrs adds additional attributes to the check constraint.
 func (c *Check) AddAttrs(attrs ...Attr) *Check {
 	c.Attrs = append(c.Attrs, attrs...)
-	return c
-}
-
-// SetPos sets the position of the check.
-func (c *Check) SetPos(p *Pos) *Check {
-	ReplaceOrAppend(&c.Attrs, p)
 	return c
 }
 
@@ -834,12 +804,6 @@ func (i *Index) SetComment(v string) *Index {
 // AddAttrs adds additional attributes to the index.
 func (i *Index) AddAttrs(attrs ...Attr) *Index {
 	i.Attrs = append(i.Attrs, attrs...)
-	return i
-}
-
-// SetPos sets the position of the index.
-func (i *Index) SetPos(p *Pos) *Index {
-	ReplaceOrAppend(&i.Attrs, p)
 	return i
 }
 
@@ -901,12 +865,6 @@ func (p *IndexPart) SetDesc(b bool) *IndexPart {
 // AddAttrs adds and additional attributes to the index-part.
 func (p *IndexPart) AddAttrs(attrs ...Attr) *IndexPart {
 	p.Attrs = append(p.Attrs, attrs...)
-	return p
-}
-
-// SetPos sets the position of the index part.
-func (p *IndexPart) SetPos(p1 *Pos) *IndexPart {
-	ReplaceOrAppend(&p.Attrs, p1)
 	return p
 }
 
@@ -981,12 +939,6 @@ func (f *ForeignKey) SetOnDelete(o ReferenceOption) *ForeignKey {
 // AddAttrs adds additional attributes to the schema.
 func (f *ForeignKey) AddAttrs(attrs ...Attr) *ForeignKey {
 	f.Attrs = append(f.Attrs, attrs...)
-	return f
-}
-
-// SetPos sets the position of the foreign key.
-func (f *ForeignKey) SetPos(p *Pos) *ForeignKey {
-	ReplaceOrAppend(&f.Attrs, p)
 	return f
 }
 
@@ -1070,7 +1022,7 @@ func (p *Pos) SetEnd(e struct{ Line, Column, Byte int }) *Pos {
 }
 
 // del searches an attribute of the same type as v in
-// the list and delete it.
+// the list and deletes it.
 func del(attrs *[]Attr, v Attr) {
 	t := reflect.TypeOf(v)
 	for i := range *attrs {
