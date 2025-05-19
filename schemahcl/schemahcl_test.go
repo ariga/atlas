@@ -1020,6 +1020,39 @@ attr2 = "b"
 	require.NoError(t, err)
 	require.Equal(t, 3, cv.nb)
 	require.Equal(t, 2, cv.na)
+
+}
+
+type errValidator struct{ err error }
+
+func (e *errValidator) Err() error { return e.err }
+func (*errValidator) ValidateBody(*hcl.EvalContext, *hclsyntax.Body) (func() error, error) {
+	return func() error { return nil }, nil
+}
+func (*errValidator) ValidateBlock(*hcl.EvalContext, *hclsyntax.Block) (func() error, error) {
+	return func() error { return nil }, nil
+}
+func (*errValidator) ValidateAttribute(*hcl.EvalContext, *hclsyntax.Attribute, cty.Value) error {
+	return nil
+}
+
+func TestSchemaValidator_Err(t *testing.T) {
+	var (
+		ev = &errValidator{
+			err: fmt.Errorf("validation error"),
+		}
+		doc struct {
+			DefaultExtension
+		}
+	)
+	err := New(
+		WithSchemaValidator(func() SchemaValidator {
+			return ev
+		}),
+	).EvalBytes([]byte(`
+hello = world
+`), &doc, nil)
+	require.EqualError(t, err, "validation error\n:2,9-14: Unknown variable; There is no variable named \"world\".")
 }
 
 func Test_ExtraReferences(t *testing.T) {

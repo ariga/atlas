@@ -7,6 +7,7 @@ package schemahcl
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -438,7 +439,7 @@ func (s *State) EvalOptions(parsed *hclparse.Parser, v any, opts *EvalOptions) e
 		file := files[name]
 		r, err := s.resource(ctx, opts, file, reg)
 		if err != nil {
-			return err
+			return errors.Join(vr.Err(), err)
 		}
 		spec.Children = append(spec.Children, r.Children...)
 		spec.Attrs = append(spec.Attrs, r.Attrs...)
