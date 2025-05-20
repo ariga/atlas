@@ -5,8 +5,8 @@
 package schema
 
 import (
-	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -839,10 +839,22 @@ type (
 // String returns the position in editor/LSP style.
 // Format: "filename:line[:c][-end_line[:end_c]]"
 func (p *Pos) String() string {
+	if p == nil {
+		return ""
+	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s:%d", p.Filename, p.Start.Line)
-	if p.Start.Column > 0 {
-		fmt.Fprintf(&b, ":%d", p.Start.Column)
+	if p.Filename != "" {
+		b.WriteString(p.Filename)
+	} else {
+		b.WriteByte('-')
+	}
+	if p.Start.Line > 0 {
+		b.WriteByte(':')
+		b.WriteString(strconv.Itoa(p.Start.Line))
+		if p.Start.Column > 0 {
+			b.WriteByte(':')
+			b.WriteString(strconv.Itoa(p.Start.Column))
+		}
 	}
 	return b.String()
 }
