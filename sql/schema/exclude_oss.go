@@ -148,7 +148,7 @@ func excludeS(s *Schema, glob []string) (err error) {
 		}
 		s.Views = views
 	}
-	if globF, exclude := excludeType(typeFn, glob[0]); exclude {
+	if globF, exclude := excludeType(typeFn, glob[0]); exclude && len(glob) == 1 {
 		var err error
 		s.Funcs, err = filter(s.Funcs, func(f *Func) (bool, error) {
 			if match, err := filepath.Match(globF, f.Name); !match || err != nil {
@@ -161,7 +161,7 @@ func excludeS(s *Schema, glob []string) (err error) {
 			return err
 		}
 	}
-	if globP, exclude := excludeType(typePr, glob[0]); exclude {
+	if globP, exclude := excludeType(typePr, glob[0]); exclude && len(glob) == 1 {
 		var err error
 		s.Procs, err = filter(s.Procs, func(p *Proc) (bool, error) {
 			if match, err := filepath.Match(globP, p.Name); !match || err != nil {
