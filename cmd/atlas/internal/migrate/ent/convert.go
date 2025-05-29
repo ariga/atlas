@@ -26,19 +26,19 @@ func (rc *RevisionCreate) SetRevision(rev *migrate.Revision) *RevisionCreate {
 }
 
 // AtlasRevision returns an migrate.Revision from the current Revision.
-func (r *Revision) AtlasRevision() *migrate.Revision {
+func (_m *Revision) AtlasRevision() *migrate.Revision {
 	return &migrate.Revision{
-		Version:         r.ID,
-		Description:     r.Description,
-		Type:            r.Type,
-		Applied:         r.Applied,
-		Total:           r.Total,
-		ExecutedAt:      r.ExecutedAt,
-		ExecutionTime:   r.ExecutionTime,
-		Error:           r.Error,
-		ErrorStmt:       r.ErrorStmt,
-		Hash:            r.Hash,
-		PartialHashes:   r.PartialHashes,
-		OperatorVersion: r.OperatorVersion,
+		Version:         _m.ID,
+		Description:     _m.Description,
+		Type:            _m.Type,
+		Applied:         _m.Applied,
+		Total:           _m.Total,
+		ExecutedAt:      _m.ExecutedAt,
+		ExecutionTime:   _m.ExecutionTime,
+		Error:           _m.Error,
+		ErrorStmt:       _m.ErrorStmt,
+		Hash:            _m.Hash,
+		PartialHashes:   _m.PartialHashes,
+		OperatorVersion: _m.OperatorVersion,
 	}
 }

@@ -1,6 +1,8 @@
 module ariga.io/atlas
 
-go 1.22.12
+go 1.24
+
+toolchain go1.24.3
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
@@ -10,7 +12,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/zclconf/go-cty v1.14.4
 	github.com/zclconf/go-cty-yaml v1.1.0
-	golang.org/x/mod v0.17.0
+	golang.org/x/mod v0.24.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

@@ -261,8 +261,8 @@ func (c *RevisionClient) Update() *RevisionUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *RevisionClient) UpdateOne(r *Revision) *RevisionUpdateOne {
-	mutation := newRevisionMutation(c.config, OpUpdateOne, withRevision(r))
+func (c *RevisionClient) UpdateOne(_m *Revision) *RevisionUpdateOne {
+	mutation := newRevisionMutation(c.config, OpUpdateOne, withRevision(_m))
 	return &RevisionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -279,8 +279,8 @@ func (c *RevisionClient) Delete() *RevisionDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *RevisionClient) DeleteOne(r *Revision) *RevisionDeleteOne {
-	return c.DeleteOneID(r.ID)
+func (c *RevisionClient) DeleteOne(_m *Revision) *RevisionDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
