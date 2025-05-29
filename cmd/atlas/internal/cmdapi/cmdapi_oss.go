@@ -75,7 +75,7 @@ func unsupportedCommand(cmd, sub string) *cobra.Command {
 		Short:  s,
 		Long:   s,
 		RunE: RunE(func(*cobra.Command, []string) error {
-			return AbortErrorf(s)
+			return AbortErrorf("%s", s)
 		}),
 	}
 	c.SetHelpTemplate(s + "\n")
@@ -315,11 +315,11 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags, e
 func schemaApplyRunE(cmd *cobra.Command, _ []string, flags *schemaApplyFlags) error {
 	switch {
 	case flags.edit:
-		return AbortErrorf(unsupportedMessage("schema", "apply --edit"))
+		return AbortErrorf("%s", unsupportedMessage("schema", "apply --edit"))
 	case flags.planURL != "":
-		return AbortErrorf(unsupportedMessage("schema", "apply --plan"))
+		return AbortErrorf("%s", unsupportedMessage("schema", "apply --plan"))
 	case len(flags.include) > 0:
-		return AbortErrorf(unsupportedMessage("schema", "apply --include"))
+		return AbortErrorf("%s", unsupportedMessage("schema", "apply --include"))
 	case GlobalFlags.SelectedEnv == "":
 		env, err := selectEnv(cmd)
 		if err != nil {
@@ -437,10 +437,10 @@ func schemaApplyRun(cmd *cobra.Command, flags schemaApplyFlags, env *Env) error 
 // applySchemaClean is the community-version of the 'atlas schema clean' handler.
 func applySchemaClean(cmd *cobra.Command, client *sqlclient.Client, drop []schema.Change, flags schemaCleanFlags) error {
 	if flags.dryRun {
-		return AbortErrorf(unsupportedMessage("schema", "clean --dry-run"))
+		return AbortErrorf("%s", unsupportedMessage("schema", "clean --dry-run"))
 	}
 	if flags.logFormat != "" {
-		return AbortErrorf(unsupportedMessage("schema", "clean --format"))
+		return AbortErrorf("%s", unsupportedMessage("schema", "clean --format"))
 	}
 	if len(drop) == 0 {
 		cmd.Println("Nothing to drop")
@@ -463,7 +463,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags, env *E
 		c   *sqlclient.Client
 	)
 	if len(flags.include) > 0 {
-		return AbortErrorf(unsupportedMessage("schema", "diff --include"))
+		return AbortErrorf("%s", unsupportedMessage("schema", "diff --include"))
 	}
 	// We need a driver for diffing and planning. If given, dev database has precedence.
 	if flags.devURL != "" {
