@@ -70,7 +70,7 @@ func (*Revision) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Revision fields.
-func (r *Revision) assignValues(columns []string, values []any) error {
+func (_m *Revision) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -80,67 +80,67 @@ func (r *Revision) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value.Valid {
-				r.ID = value.String
+				_m.ID = value.String
 			}
 		case revision.FieldDescription:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field description", values[i])
 			} else if value.Valid {
-				r.Description = value.String
+				_m.Description = value.String
 			}
 		case revision.FieldType:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field type", values[i])
 			} else if value.Valid {
-				r.Type = migrate.RevisionType(value.Int64)
+				_m.Type = migrate.RevisionType(value.Int64)
 			}
 		case revision.FieldApplied:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field applied", values[i])
 			} else if value.Valid {
-				r.Applied = int(value.Int64)
+				_m.Applied = int(value.Int64)
 			}
 		case revision.FieldTotal:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field total", values[i])
 			} else if value.Valid {
-				r.Total = int(value.Int64)
+				_m.Total = int(value.Int64)
 			}
 		case revision.FieldExecutedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field executed_at", values[i])
 			} else if value.Valid {
-				r.ExecutedAt = value.Time
+				_m.ExecutedAt = value.Time
 			}
 		case revision.FieldExecutionTime:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field execution_time", values[i])
 			} else if value.Valid {
-				r.ExecutionTime = time.Duration(value.Int64)
+				_m.ExecutionTime = time.Duration(value.Int64)
 			}
 		case revision.FieldError:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field error", values[i])
 			} else if value.Valid {
-				r.Error = value.String
+				_m.Error = value.String
 			}
 		case revision.FieldErrorStmt:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field error_stmt", values[i])
 			} else if value.Valid {
-				r.ErrorStmt = value.String
+				_m.ErrorStmt = value.String
 			}
 		case revision.FieldHash:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field hash", values[i])
 			} else if value.Valid {
-				r.Hash = value.String
+				_m.Hash = value.String
 			}
 		case revision.FieldPartialHashes:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field partial_hashes", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &r.PartialHashes); err != nil {
+				if err := json.Unmarshal(*value, &_m.PartialHashes); err != nil {
 					return fmt.Errorf("unmarshal field partial_hashes: %w", err)
 				}
 			}
@@ -148,10 +148,10 @@ func (r *Revision) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field operator_version", values[i])
 			} else if value.Valid {
-				r.OperatorVersion = value.String
+				_m.OperatorVersion = value.String
 			}
 		default:
-			r.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -159,65 +159,65 @@ func (r *Revision) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the Revision.
 // This includes values selected through modifiers, order, etc.
-func (r *Revision) Value(name string) (ent.Value, error) {
-	return r.selectValues.Get(name)
+func (_m *Revision) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // Update returns a builder for updating this Revision.
 // Note that you need to call Revision.Unwrap() before calling this method if this Revision
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (r *Revision) Update() *RevisionUpdateOne {
-	return NewRevisionClient(r.config).UpdateOne(r)
+func (_m *Revision) Update() *RevisionUpdateOne {
+	return NewRevisionClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the Revision entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (r *Revision) Unwrap() *Revision {
-	_tx, ok := r.config.driver.(*txDriver)
+func (_m *Revision) Unwrap() *Revision {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Revision is not a transactional entity")
 	}
-	r.config.driver = _tx.drv
-	return r
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (r *Revision) String() string {
+func (_m *Revision) String() string {
 	var builder strings.Builder
 	builder.WriteString("Revision(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", r.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("description=")
-	builder.WriteString(r.Description)
+	builder.WriteString(_m.Description)
 	builder.WriteString(", ")
 	builder.WriteString("type=")
-	builder.WriteString(fmt.Sprintf("%v", r.Type))
+	builder.WriteString(fmt.Sprintf("%v", _m.Type))
 	builder.WriteString(", ")
 	builder.WriteString("applied=")
-	builder.WriteString(fmt.Sprintf("%v", r.Applied))
+	builder.WriteString(fmt.Sprintf("%v", _m.Applied))
 	builder.WriteString(", ")
 	builder.WriteString("total=")
-	builder.WriteString(fmt.Sprintf("%v", r.Total))
+	builder.WriteString(fmt.Sprintf("%v", _m.Total))
 	builder.WriteString(", ")
 	builder.WriteString("executed_at=")
-	builder.WriteString(r.ExecutedAt.Format(time.ANSIC))
+	builder.WriteString(_m.ExecutedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("execution_time=")
-	builder.WriteString(fmt.Sprintf("%v", r.ExecutionTime))
+	builder.WriteString(fmt.Sprintf("%v", _m.ExecutionTime))
 	builder.WriteString(", ")
 	builder.WriteString("error=")
-	builder.WriteString(r.Error)
+	builder.WriteString(_m.Error)
 	builder.WriteString(", ")
 	builder.WriteString("error_stmt=")
-	builder.WriteString(r.ErrorStmt)
+	builder.WriteString(_m.ErrorStmt)
 	builder.WriteString(", ")
 	builder.WriteString("hash=")
-	builder.WriteString(r.Hash)
+	builder.WriteString(_m.Hash)
 	builder.WriteString(", ")
 	builder.WriteString("partial_hashes=")
-	builder.WriteString(fmt.Sprintf("%v", r.PartialHashes))
+	builder.WriteString(fmt.Sprintf("%v", _m.PartialHashes))
 	builder.WriteString(", ")
 	builder.WriteString("operator_version=")
-	builder.WriteString(r.OperatorVersion)
+	builder.WriteString(_m.OperatorVersion)
 	builder.WriteByte(')')
 	return builder.String()
 }

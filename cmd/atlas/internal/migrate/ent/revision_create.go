@@ -29,131 +29,131 @@ type RevisionCreate struct {
 }
 
 // SetDescription sets the "description" field.
-func (rc *RevisionCreate) SetDescription(s string) *RevisionCreate {
-	rc.mutation.SetDescription(s)
-	return rc
+func (_c *RevisionCreate) SetDescription(v string) *RevisionCreate {
+	_c.mutation.SetDescription(v)
+	return _c
 }
 
 // SetType sets the "type" field.
-func (rc *RevisionCreate) SetType(mt migrate.RevisionType) *RevisionCreate {
-	rc.mutation.SetType(mt)
-	return rc
+func (_c *RevisionCreate) SetType(v migrate.RevisionType) *RevisionCreate {
+	_c.mutation.SetType(v)
+	return _c
 }
 
 // SetNillableType sets the "type" field if the given value is not nil.
-func (rc *RevisionCreate) SetNillableType(mt *migrate.RevisionType) *RevisionCreate {
-	if mt != nil {
-		rc.SetType(*mt)
+func (_c *RevisionCreate) SetNillableType(v *migrate.RevisionType) *RevisionCreate {
+	if v != nil {
+		_c.SetType(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetApplied sets the "applied" field.
-func (rc *RevisionCreate) SetApplied(i int) *RevisionCreate {
-	rc.mutation.SetApplied(i)
-	return rc
+func (_c *RevisionCreate) SetApplied(v int) *RevisionCreate {
+	_c.mutation.SetApplied(v)
+	return _c
 }
 
 // SetNillableApplied sets the "applied" field if the given value is not nil.
-func (rc *RevisionCreate) SetNillableApplied(i *int) *RevisionCreate {
-	if i != nil {
-		rc.SetApplied(*i)
+func (_c *RevisionCreate) SetNillableApplied(v *int) *RevisionCreate {
+	if v != nil {
+		_c.SetApplied(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetTotal sets the "total" field.
-func (rc *RevisionCreate) SetTotal(i int) *RevisionCreate {
-	rc.mutation.SetTotal(i)
-	return rc
+func (_c *RevisionCreate) SetTotal(v int) *RevisionCreate {
+	_c.mutation.SetTotal(v)
+	return _c
 }
 
 // SetNillableTotal sets the "total" field if the given value is not nil.
-func (rc *RevisionCreate) SetNillableTotal(i *int) *RevisionCreate {
-	if i != nil {
-		rc.SetTotal(*i)
+func (_c *RevisionCreate) SetNillableTotal(v *int) *RevisionCreate {
+	if v != nil {
+		_c.SetTotal(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetExecutedAt sets the "executed_at" field.
-func (rc *RevisionCreate) SetExecutedAt(t time.Time) *RevisionCreate {
-	rc.mutation.SetExecutedAt(t)
-	return rc
+func (_c *RevisionCreate) SetExecutedAt(v time.Time) *RevisionCreate {
+	_c.mutation.SetExecutedAt(v)
+	return _c
 }
 
 // SetExecutionTime sets the "execution_time" field.
-func (rc *RevisionCreate) SetExecutionTime(t time.Duration) *RevisionCreate {
-	rc.mutation.SetExecutionTime(t)
-	return rc
+func (_c *RevisionCreate) SetExecutionTime(v time.Duration) *RevisionCreate {
+	_c.mutation.SetExecutionTime(v)
+	return _c
 }
 
 // SetError sets the "error" field.
-func (rc *RevisionCreate) SetError(s string) *RevisionCreate {
-	rc.mutation.SetError(s)
-	return rc
+func (_c *RevisionCreate) SetError(v string) *RevisionCreate {
+	_c.mutation.SetError(v)
+	return _c
 }
 
 // SetNillableError sets the "error" field if the given value is not nil.
-func (rc *RevisionCreate) SetNillableError(s *string) *RevisionCreate {
-	if s != nil {
-		rc.SetError(*s)
+func (_c *RevisionCreate) SetNillableError(v *string) *RevisionCreate {
+	if v != nil {
+		_c.SetError(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetErrorStmt sets the "error_stmt" field.
-func (rc *RevisionCreate) SetErrorStmt(s string) *RevisionCreate {
-	rc.mutation.SetErrorStmt(s)
-	return rc
+func (_c *RevisionCreate) SetErrorStmt(v string) *RevisionCreate {
+	_c.mutation.SetErrorStmt(v)
+	return _c
 }
 
 // SetNillableErrorStmt sets the "error_stmt" field if the given value is not nil.
-func (rc *RevisionCreate) SetNillableErrorStmt(s *string) *RevisionCreate {
-	if s != nil {
-		rc.SetErrorStmt(*s)
+func (_c *RevisionCreate) SetNillableErrorStmt(v *string) *RevisionCreate {
+	if v != nil {
+		_c.SetErrorStmt(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetHash sets the "hash" field.
-func (rc *RevisionCreate) SetHash(s string) *RevisionCreate {
-	rc.mutation.SetHash(s)
-	return rc
+func (_c *RevisionCreate) SetHash(v string) *RevisionCreate {
+	_c.mutation.SetHash(v)
+	return _c
 }
 
 // SetPartialHashes sets the "partial_hashes" field.
-func (rc *RevisionCreate) SetPartialHashes(s []string) *RevisionCreate {
-	rc.mutation.SetPartialHashes(s)
-	return rc
+func (_c *RevisionCreate) SetPartialHashes(v []string) *RevisionCreate {
+	_c.mutation.SetPartialHashes(v)
+	return _c
 }
 
 // SetOperatorVersion sets the "operator_version" field.
-func (rc *RevisionCreate) SetOperatorVersion(s string) *RevisionCreate {
-	rc.mutation.SetOperatorVersion(s)
-	return rc
+func (_c *RevisionCreate) SetOperatorVersion(v string) *RevisionCreate {
+	_c.mutation.SetOperatorVersion(v)
+	return _c
 }
 
 // SetID sets the "id" field.
-func (rc *RevisionCreate) SetID(s string) *RevisionCreate {
-	rc.mutation.SetID(s)
-	return rc
+func (_c *RevisionCreate) SetID(v string) *RevisionCreate {
+	_c.mutation.SetID(v)
+	return _c
 }
 
 // Mutation returns the RevisionMutation object of the builder.
-func (rc *RevisionCreate) Mutation() *RevisionMutation {
-	return rc.mutation
+func (_c *RevisionCreate) Mutation() *RevisionMutation {
+	return _c.mutation
 }
 
 // Save creates the Revision in the database.
-func (rc *RevisionCreate) Save(ctx context.Context) (*Revision, error) {
-	rc.defaults()
-	return withHooks(ctx, rc.sqlSave, rc.mutation, rc.hooks)
+func (_c *RevisionCreate) Save(ctx context.Context) (*Revision, error) {
+	_c.defaults()
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (rc *RevisionCreate) SaveX(ctx context.Context) *Revision {
-	v, err := rc.Save(ctx)
+func (_c *RevisionCreate) SaveX(ctx context.Context) *Revision {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -161,79 +161,79 @@ func (rc *RevisionCreate) SaveX(ctx context.Context) *Revision {
 }
 
 // Exec executes the query.
-func (rc *RevisionCreate) Exec(ctx context.Context) error {
-	_, err := rc.Save(ctx)
+func (_c *RevisionCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (rc *RevisionCreate) ExecX(ctx context.Context) {
-	if err := rc.Exec(ctx); err != nil {
+func (_c *RevisionCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (rc *RevisionCreate) defaults() {
-	if _, ok := rc.mutation.GetType(); !ok {
+func (_c *RevisionCreate) defaults() {
+	if _, ok := _c.mutation.GetType(); !ok {
 		v := revision.DefaultType
-		rc.mutation.SetType(v)
+		_c.mutation.SetType(v)
 	}
-	if _, ok := rc.mutation.Applied(); !ok {
+	if _, ok := _c.mutation.Applied(); !ok {
 		v := revision.DefaultApplied
-		rc.mutation.SetApplied(v)
+		_c.mutation.SetApplied(v)
 	}
-	if _, ok := rc.mutation.Total(); !ok {
+	if _, ok := _c.mutation.Total(); !ok {
 		v := revision.DefaultTotal
-		rc.mutation.SetTotal(v)
+		_c.mutation.SetTotal(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (rc *RevisionCreate) check() error {
-	if _, ok := rc.mutation.Description(); !ok {
+func (_c *RevisionCreate) check() error {
+	if _, ok := _c.mutation.Description(); !ok {
 		return &ValidationError{Name: "description", err: errors.New(`ent: missing required field "Revision.description"`)}
 	}
-	if _, ok := rc.mutation.GetType(); !ok {
+	if _, ok := _c.mutation.GetType(); !ok {
 		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "Revision.type"`)}
 	}
-	if _, ok := rc.mutation.Applied(); !ok {
+	if _, ok := _c.mutation.Applied(); !ok {
 		return &ValidationError{Name: "applied", err: errors.New(`ent: missing required field "Revision.applied"`)}
 	}
-	if v, ok := rc.mutation.Applied(); ok {
+	if v, ok := _c.mutation.Applied(); ok {
 		if err := revision.AppliedValidator(v); err != nil {
 			return &ValidationError{Name: "applied", err: fmt.Errorf(`ent: validator failed for field "Revision.applied": %w`, err)}
 		}
 	}
-	if _, ok := rc.mutation.Total(); !ok {
+	if _, ok := _c.mutation.Total(); !ok {
 		return &ValidationError{Name: "total", err: errors.New(`ent: missing required field "Revision.total"`)}
 	}
-	if v, ok := rc.mutation.Total(); ok {
+	if v, ok := _c.mutation.Total(); ok {
 		if err := revision.TotalValidator(v); err != nil {
 			return &ValidationError{Name: "total", err: fmt.Errorf(`ent: validator failed for field "Revision.total": %w`, err)}
 		}
 	}
-	if _, ok := rc.mutation.ExecutedAt(); !ok {
+	if _, ok := _c.mutation.ExecutedAt(); !ok {
 		return &ValidationError{Name: "executed_at", err: errors.New(`ent: missing required field "Revision.executed_at"`)}
 	}
-	if _, ok := rc.mutation.ExecutionTime(); !ok {
+	if _, ok := _c.mutation.ExecutionTime(); !ok {
 		return &ValidationError{Name: "execution_time", err: errors.New(`ent: missing required field "Revision.execution_time"`)}
 	}
-	if _, ok := rc.mutation.Hash(); !ok {
+	if _, ok := _c.mutation.Hash(); !ok {
 		return &ValidationError{Name: "hash", err: errors.New(`ent: missing required field "Revision.hash"`)}
 	}
-	if _, ok := rc.mutation.OperatorVersion(); !ok {
+	if _, ok := _c.mutation.OperatorVersion(); !ok {
 		return &ValidationError{Name: "operator_version", err: errors.New(`ent: missing required field "Revision.operator_version"`)}
 	}
 	return nil
 }
 
-func (rc *RevisionCreate) sqlSave(ctx context.Context) (*Revision, error) {
-	if err := rc.check(); err != nil {
+func (_c *RevisionCreate) sqlSave(ctx context.Context) (*Revision, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := rc.createSpec()
-	if err := sqlgraph.CreateNode(ctx, rc.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -246,63 +246,63 @@ func (rc *RevisionCreate) sqlSave(ctx context.Context) (*Revision, error) {
 			return nil, fmt.Errorf("unexpected Revision.ID type: %T", _spec.ID.Value)
 		}
 	}
-	rc.mutation.id = &_node.ID
-	rc.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (rc *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
+func (_c *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Revision{config: rc.config}
+		_node = &Revision{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(revision.Table, sqlgraph.NewFieldSpec(revision.FieldID, field.TypeString))
 	)
-	_spec.Schema = rc.schemaConfig.Revision
-	_spec.OnConflict = rc.conflict
-	if id, ok := rc.mutation.ID(); ok {
+	_spec.Schema = _c.schemaConfig.Revision
+	_spec.OnConflict = _c.conflict
+	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
 	}
-	if value, ok := rc.mutation.Description(); ok {
+	if value, ok := _c.mutation.Description(); ok {
 		_spec.SetField(revision.FieldDescription, field.TypeString, value)
 		_node.Description = value
 	}
-	if value, ok := rc.mutation.GetType(); ok {
+	if value, ok := _c.mutation.GetType(); ok {
 		_spec.SetField(revision.FieldType, field.TypeUint, value)
 		_node.Type = value
 	}
-	if value, ok := rc.mutation.Applied(); ok {
+	if value, ok := _c.mutation.Applied(); ok {
 		_spec.SetField(revision.FieldApplied, field.TypeInt, value)
 		_node.Applied = value
 	}
-	if value, ok := rc.mutation.Total(); ok {
+	if value, ok := _c.mutation.Total(); ok {
 		_spec.SetField(revision.FieldTotal, field.TypeInt, value)
 		_node.Total = value
 	}
-	if value, ok := rc.mutation.ExecutedAt(); ok {
+	if value, ok := _c.mutation.ExecutedAt(); ok {
 		_spec.SetField(revision.FieldExecutedAt, field.TypeTime, value)
 		_node.ExecutedAt = value
 	}
-	if value, ok := rc.mutation.ExecutionTime(); ok {
+	if value, ok := _c.mutation.ExecutionTime(); ok {
 		_spec.SetField(revision.FieldExecutionTime, field.TypeInt64, value)
 		_node.ExecutionTime = value
 	}
-	if value, ok := rc.mutation.Error(); ok {
+	if value, ok := _c.mutation.Error(); ok {
 		_spec.SetField(revision.FieldError, field.TypeString, value)
 		_node.Error = value
 	}
-	if value, ok := rc.mutation.ErrorStmt(); ok {
+	if value, ok := _c.mutation.ErrorStmt(); ok {
 		_spec.SetField(revision.FieldErrorStmt, field.TypeString, value)
 		_node.ErrorStmt = value
 	}
-	if value, ok := rc.mutation.Hash(); ok {
+	if value, ok := _c.mutation.Hash(); ok {
 		_spec.SetField(revision.FieldHash, field.TypeString, value)
 		_node.Hash = value
 	}
-	if value, ok := rc.mutation.PartialHashes(); ok {
+	if value, ok := _c.mutation.PartialHashes(); ok {
 		_spec.SetField(revision.FieldPartialHashes, field.TypeJSON, value)
 		_node.PartialHashes = value
 	}
-	if value, ok := rc.mutation.OperatorVersion(); ok {
+	if value, ok := _c.mutation.OperatorVersion(); ok {
 		_spec.SetField(revision.FieldOperatorVersion, field.TypeString, value)
 		_node.OperatorVersion = value
 	}
@@ -325,10 +325,10 @@ func (rc *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 //			SetDescription(v+v).
 //		}).
 //		Exec(ctx)
-func (rc *RevisionCreate) OnConflict(opts ...sql.ConflictOption) *RevisionUpsertOne {
-	rc.conflict = opts
+func (_c *RevisionCreate) OnConflict(opts ...sql.ConflictOption) *RevisionUpsertOne {
+	_c.conflict = opts
 	return &RevisionUpsertOne{
-		create: rc,
+		create: _c,
 	}
 }
 
@@ -338,10 +338,10 @@ func (rc *RevisionCreate) OnConflict(opts ...sql.ConflictOption) *RevisionUpsert
 //	client.Revision.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (rc *RevisionCreate) OnConflictColumns(columns ...string) *RevisionUpsertOne {
-	rc.conflict = append(rc.conflict, sql.ConflictColumns(columns...))
+func (_c *RevisionCreate) OnConflictColumns(columns ...string) *RevisionUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &RevisionUpsertOne{
-		create: rc,
+		create: _c,
 	}
 }
 
@@ -784,16 +784,16 @@ type RevisionCreateBulk struct {
 }
 
 // Save creates the Revision entities in the database.
-func (rcb *RevisionCreateBulk) Save(ctx context.Context) ([]*Revision, error) {
-	if rcb.err != nil {
-		return nil, rcb.err
+func (_c *RevisionCreateBulk) Save(ctx context.Context) ([]*Revision, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(rcb.builders))
-	nodes := make([]*Revision, len(rcb.builders))
-	mutators := make([]Mutator, len(rcb.builders))
-	for i := range rcb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*Revision, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := rcb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*RevisionMutation)
@@ -807,12 +807,12 @@ func (rcb *RevisionCreateBulk) Save(ctx context.Context) ([]*Revision, error) {
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, rcb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = rcb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, rcb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -832,7 +832,7 @@ func (rcb *RevisionCreateBulk) Save(ctx context.Context) ([]*Revision, error) {
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, rcb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -840,8 +840,8 @@ func (rcb *RevisionCreateBulk) Save(ctx context.Context) ([]*Revision, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (rcb *RevisionCreateBulk) SaveX(ctx context.Context) []*Revision {
-	v, err := rcb.Save(ctx)
+func (_c *RevisionCreateBulk) SaveX(ctx context.Context) []*Revision {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -849,14 +849,14 @@ func (rcb *RevisionCreateBulk) SaveX(ctx context.Context) []*Revision {
 }
 
 // Exec executes the query.
-func (rcb *RevisionCreateBulk) Exec(ctx context.Context) error {
-	_, err := rcb.Save(ctx)
+func (_c *RevisionCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (rcb *RevisionCreateBulk) ExecX(ctx context.Context) {
-	if err := rcb.Exec(ctx); err != nil {
+func (_c *RevisionCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -876,10 +876,10 @@ func (rcb *RevisionCreateBulk) ExecX(ctx context.Context) {
 //			SetDescription(v+v).
 //		}).
 //		Exec(ctx)
-func (rcb *RevisionCreateBulk) OnConflict(opts ...sql.ConflictOption) *RevisionUpsertBulk {
-	rcb.conflict = opts
+func (_c *RevisionCreateBulk) OnConflict(opts ...sql.ConflictOption) *RevisionUpsertBulk {
+	_c.conflict = opts
 	return &RevisionUpsertBulk{
-		create: rcb,
+		create: _c,
 	}
 }
 
@@ -889,10 +889,10 @@ func (rcb *RevisionCreateBulk) OnConflict(opts ...sql.ConflictOption) *RevisionU
 //	client.Revision.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (rcb *RevisionCreateBulk) OnConflictColumns(columns ...string) *RevisionUpsertBulk {
-	rcb.conflict = append(rcb.conflict, sql.ConflictColumns(columns...))
+func (_c *RevisionCreateBulk) OnConflictColumns(columns ...string) *RevisionUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &RevisionUpsertBulk{
-		create: rcb,
+		create: _c,
 	}
 }
 

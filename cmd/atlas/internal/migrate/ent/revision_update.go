@@ -30,194 +30,194 @@ type RevisionUpdate struct {
 }
 
 // Where appends a list predicates to the RevisionUpdate builder.
-func (ru *RevisionUpdate) Where(ps ...predicate.Revision) *RevisionUpdate {
-	ru.mutation.Where(ps...)
-	return ru
+func (_u *RevisionUpdate) Where(ps ...predicate.Revision) *RevisionUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetType sets the "type" field.
-func (ru *RevisionUpdate) SetType(mt migrate.RevisionType) *RevisionUpdate {
-	ru.mutation.ResetType()
-	ru.mutation.SetType(mt)
-	return ru
+func (_u *RevisionUpdate) SetType(v migrate.RevisionType) *RevisionUpdate {
+	_u.mutation.ResetType()
+	_u.mutation.SetType(v)
+	return _u
 }
 
 // SetNillableType sets the "type" field if the given value is not nil.
-func (ru *RevisionUpdate) SetNillableType(mt *migrate.RevisionType) *RevisionUpdate {
-	if mt != nil {
-		ru.SetType(*mt)
+func (_u *RevisionUpdate) SetNillableType(v *migrate.RevisionType) *RevisionUpdate {
+	if v != nil {
+		_u.SetType(*v)
 	}
-	return ru
+	return _u
 }
 
-// AddType adds mt to the "type" field.
-func (ru *RevisionUpdate) AddType(mt migrate.RevisionType) *RevisionUpdate {
-	ru.mutation.AddType(mt)
-	return ru
+// AddType adds value to the "type" field.
+func (_u *RevisionUpdate) AddType(v migrate.RevisionType) *RevisionUpdate {
+	_u.mutation.AddType(v)
+	return _u
 }
 
 // SetApplied sets the "applied" field.
-func (ru *RevisionUpdate) SetApplied(i int) *RevisionUpdate {
-	ru.mutation.ResetApplied()
-	ru.mutation.SetApplied(i)
-	return ru
+func (_u *RevisionUpdate) SetApplied(v int) *RevisionUpdate {
+	_u.mutation.ResetApplied()
+	_u.mutation.SetApplied(v)
+	return _u
 }
 
 // SetNillableApplied sets the "applied" field if the given value is not nil.
-func (ru *RevisionUpdate) SetNillableApplied(i *int) *RevisionUpdate {
-	if i != nil {
-		ru.SetApplied(*i)
+func (_u *RevisionUpdate) SetNillableApplied(v *int) *RevisionUpdate {
+	if v != nil {
+		_u.SetApplied(*v)
 	}
-	return ru
+	return _u
 }
 
-// AddApplied adds i to the "applied" field.
-func (ru *RevisionUpdate) AddApplied(i int) *RevisionUpdate {
-	ru.mutation.AddApplied(i)
-	return ru
+// AddApplied adds value to the "applied" field.
+func (_u *RevisionUpdate) AddApplied(v int) *RevisionUpdate {
+	_u.mutation.AddApplied(v)
+	return _u
 }
 
 // SetTotal sets the "total" field.
-func (ru *RevisionUpdate) SetTotal(i int) *RevisionUpdate {
-	ru.mutation.ResetTotal()
-	ru.mutation.SetTotal(i)
-	return ru
+func (_u *RevisionUpdate) SetTotal(v int) *RevisionUpdate {
+	_u.mutation.ResetTotal()
+	_u.mutation.SetTotal(v)
+	return _u
 }
 
 // SetNillableTotal sets the "total" field if the given value is not nil.
-func (ru *RevisionUpdate) SetNillableTotal(i *int) *RevisionUpdate {
-	if i != nil {
-		ru.SetTotal(*i)
+func (_u *RevisionUpdate) SetNillableTotal(v *int) *RevisionUpdate {
+	if v != nil {
+		_u.SetTotal(*v)
 	}
-	return ru
+	return _u
 }
 
-// AddTotal adds i to the "total" field.
-func (ru *RevisionUpdate) AddTotal(i int) *RevisionUpdate {
-	ru.mutation.AddTotal(i)
-	return ru
+// AddTotal adds value to the "total" field.
+func (_u *RevisionUpdate) AddTotal(v int) *RevisionUpdate {
+	_u.mutation.AddTotal(v)
+	return _u
 }
 
 // SetExecutionTime sets the "execution_time" field.
-func (ru *RevisionUpdate) SetExecutionTime(t time.Duration) *RevisionUpdate {
-	ru.mutation.ResetExecutionTime()
-	ru.mutation.SetExecutionTime(t)
-	return ru
+func (_u *RevisionUpdate) SetExecutionTime(v time.Duration) *RevisionUpdate {
+	_u.mutation.ResetExecutionTime()
+	_u.mutation.SetExecutionTime(v)
+	return _u
 }
 
 // SetNillableExecutionTime sets the "execution_time" field if the given value is not nil.
-func (ru *RevisionUpdate) SetNillableExecutionTime(t *time.Duration) *RevisionUpdate {
-	if t != nil {
-		ru.SetExecutionTime(*t)
+func (_u *RevisionUpdate) SetNillableExecutionTime(v *time.Duration) *RevisionUpdate {
+	if v != nil {
+		_u.SetExecutionTime(*v)
 	}
-	return ru
+	return _u
 }
 
-// AddExecutionTime adds t to the "execution_time" field.
-func (ru *RevisionUpdate) AddExecutionTime(t time.Duration) *RevisionUpdate {
-	ru.mutation.AddExecutionTime(t)
-	return ru
+// AddExecutionTime adds value to the "execution_time" field.
+func (_u *RevisionUpdate) AddExecutionTime(v time.Duration) *RevisionUpdate {
+	_u.mutation.AddExecutionTime(v)
+	return _u
 }
 
 // SetError sets the "error" field.
-func (ru *RevisionUpdate) SetError(s string) *RevisionUpdate {
-	ru.mutation.SetError(s)
-	return ru
+func (_u *RevisionUpdate) SetError(v string) *RevisionUpdate {
+	_u.mutation.SetError(v)
+	return _u
 }
 
 // SetNillableError sets the "error" field if the given value is not nil.
-func (ru *RevisionUpdate) SetNillableError(s *string) *RevisionUpdate {
-	if s != nil {
-		ru.SetError(*s)
+func (_u *RevisionUpdate) SetNillableError(v *string) *RevisionUpdate {
+	if v != nil {
+		_u.SetError(*v)
 	}
-	return ru
+	return _u
 }
 
 // ClearError clears the value of the "error" field.
-func (ru *RevisionUpdate) ClearError() *RevisionUpdate {
-	ru.mutation.ClearError()
-	return ru
+func (_u *RevisionUpdate) ClearError() *RevisionUpdate {
+	_u.mutation.ClearError()
+	return _u
 }
 
 // SetErrorStmt sets the "error_stmt" field.
-func (ru *RevisionUpdate) SetErrorStmt(s string) *RevisionUpdate {
-	ru.mutation.SetErrorStmt(s)
-	return ru
+func (_u *RevisionUpdate) SetErrorStmt(v string) *RevisionUpdate {
+	_u.mutation.SetErrorStmt(v)
+	return _u
 }
 
 // SetNillableErrorStmt sets the "error_stmt" field if the given value is not nil.
-func (ru *RevisionUpdate) SetNillableErrorStmt(s *string) *RevisionUpdate {
-	if s != nil {
-		ru.SetErrorStmt(*s)
+func (_u *RevisionUpdate) SetNillableErrorStmt(v *string) *RevisionUpdate {
+	if v != nil {
+		_u.SetErrorStmt(*v)
 	}
-	return ru
+	return _u
 }
 
 // ClearErrorStmt clears the value of the "error_stmt" field.
-func (ru *RevisionUpdate) ClearErrorStmt() *RevisionUpdate {
-	ru.mutation.ClearErrorStmt()
-	return ru
+func (_u *RevisionUpdate) ClearErrorStmt() *RevisionUpdate {
+	_u.mutation.ClearErrorStmt()
+	return _u
 }
 
 // SetHash sets the "hash" field.
-func (ru *RevisionUpdate) SetHash(s string) *RevisionUpdate {
-	ru.mutation.SetHash(s)
-	return ru
+func (_u *RevisionUpdate) SetHash(v string) *RevisionUpdate {
+	_u.mutation.SetHash(v)
+	return _u
 }
 
 // SetNillableHash sets the "hash" field if the given value is not nil.
-func (ru *RevisionUpdate) SetNillableHash(s *string) *RevisionUpdate {
-	if s != nil {
-		ru.SetHash(*s)
+func (_u *RevisionUpdate) SetNillableHash(v *string) *RevisionUpdate {
+	if v != nil {
+		_u.SetHash(*v)
 	}
-	return ru
+	return _u
 }
 
 // SetPartialHashes sets the "partial_hashes" field.
-func (ru *RevisionUpdate) SetPartialHashes(s []string) *RevisionUpdate {
-	ru.mutation.SetPartialHashes(s)
-	return ru
+func (_u *RevisionUpdate) SetPartialHashes(v []string) *RevisionUpdate {
+	_u.mutation.SetPartialHashes(v)
+	return _u
 }
 
-// AppendPartialHashes appends s to the "partial_hashes" field.
-func (ru *RevisionUpdate) AppendPartialHashes(s []string) *RevisionUpdate {
-	ru.mutation.AppendPartialHashes(s)
-	return ru
+// AppendPartialHashes appends value to the "partial_hashes" field.
+func (_u *RevisionUpdate) AppendPartialHashes(v []string) *RevisionUpdate {
+	_u.mutation.AppendPartialHashes(v)
+	return _u
 }
 
 // ClearPartialHashes clears the value of the "partial_hashes" field.
-func (ru *RevisionUpdate) ClearPartialHashes() *RevisionUpdate {
-	ru.mutation.ClearPartialHashes()
-	return ru
+func (_u *RevisionUpdate) ClearPartialHashes() *RevisionUpdate {
+	_u.mutation.ClearPartialHashes()
+	return _u
 }
 
 // SetOperatorVersion sets the "operator_version" field.
-func (ru *RevisionUpdate) SetOperatorVersion(s string) *RevisionUpdate {
-	ru.mutation.SetOperatorVersion(s)
-	return ru
+func (_u *RevisionUpdate) SetOperatorVersion(v string) *RevisionUpdate {
+	_u.mutation.SetOperatorVersion(v)
+	return _u
 }
 
 // SetNillableOperatorVersion sets the "operator_version" field if the given value is not nil.
-func (ru *RevisionUpdate) SetNillableOperatorVersion(s *string) *RevisionUpdate {
-	if s != nil {
-		ru.SetOperatorVersion(*s)
+func (_u *RevisionUpdate) SetNillableOperatorVersion(v *string) *RevisionUpdate {
+	if v != nil {
+		_u.SetOperatorVersion(*v)
 	}
-	return ru
+	return _u
 }
 
 // Mutation returns the RevisionMutation object of the builder.
-func (ru *RevisionUpdate) Mutation() *RevisionMutation {
-	return ru.mutation
+func (_u *RevisionUpdate) Mutation() *RevisionMutation {
+	return _u.mutation
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (ru *RevisionUpdate) Save(ctx context.Context) (int, error) {
-	return withHooks(ctx, ru.sqlSave, ru.mutation, ru.hooks)
+func (_u *RevisionUpdate) Save(ctx context.Context) (int, error) {
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (ru *RevisionUpdate) SaveX(ctx context.Context) int {
-	affected, err := ru.Save(ctx)
+func (_u *RevisionUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -225,26 +225,26 @@ func (ru *RevisionUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (ru *RevisionUpdate) Exec(ctx context.Context) error {
-	_, err := ru.Save(ctx)
+func (_u *RevisionUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ru *RevisionUpdate) ExecX(ctx context.Context) {
-	if err := ru.Exec(ctx); err != nil {
+func (_u *RevisionUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (ru *RevisionUpdate) check() error {
-	if v, ok := ru.mutation.Applied(); ok {
+func (_u *RevisionUpdate) check() error {
+	if v, ok := _u.mutation.Applied(); ok {
 		if err := revision.AppliedValidator(v); err != nil {
 			return &ValidationError{Name: "applied", err: fmt.Errorf(`ent: validator failed for field "Revision.applied": %w`, err)}
 		}
 	}
-	if v, ok := ru.mutation.Total(); ok {
+	if v, ok := _u.mutation.Total(); ok {
 		if err := revision.TotalValidator(v); err != nil {
 			return &ValidationError{Name: "total", err: fmt.Errorf(`ent: validator failed for field "Revision.total": %w`, err)}
 		}
@@ -252,74 +252,74 @@ func (ru *RevisionUpdate) check() error {
 	return nil
 }
 
-func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	if err := ru.check(); err != nil {
-		return n, err
+func (_u *RevisionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(revision.Table, revision.Columns, sqlgraph.NewFieldSpec(revision.FieldID, field.TypeString))
-	if ps := ru.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := ru.mutation.GetType(); ok {
+	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(revision.FieldType, field.TypeUint, value)
 	}
-	if value, ok := ru.mutation.AddedType(); ok {
+	if value, ok := _u.mutation.AddedType(); ok {
 		_spec.AddField(revision.FieldType, field.TypeUint, value)
 	}
-	if value, ok := ru.mutation.Applied(); ok {
+	if value, ok := _u.mutation.Applied(); ok {
 		_spec.SetField(revision.FieldApplied, field.TypeInt, value)
 	}
-	if value, ok := ru.mutation.AddedApplied(); ok {
+	if value, ok := _u.mutation.AddedApplied(); ok {
 		_spec.AddField(revision.FieldApplied, field.TypeInt, value)
 	}
-	if value, ok := ru.mutation.Total(); ok {
+	if value, ok := _u.mutation.Total(); ok {
 		_spec.SetField(revision.FieldTotal, field.TypeInt, value)
 	}
-	if value, ok := ru.mutation.AddedTotal(); ok {
+	if value, ok := _u.mutation.AddedTotal(); ok {
 		_spec.AddField(revision.FieldTotal, field.TypeInt, value)
 	}
-	if value, ok := ru.mutation.ExecutionTime(); ok {
+	if value, ok := _u.mutation.ExecutionTime(); ok {
 		_spec.SetField(revision.FieldExecutionTime, field.TypeInt64, value)
 	}
-	if value, ok := ru.mutation.AddedExecutionTime(); ok {
+	if value, ok := _u.mutation.AddedExecutionTime(); ok {
 		_spec.AddField(revision.FieldExecutionTime, field.TypeInt64, value)
 	}
-	if value, ok := ru.mutation.Error(); ok {
+	if value, ok := _u.mutation.Error(); ok {
 		_spec.SetField(revision.FieldError, field.TypeString, value)
 	}
-	if ru.mutation.ErrorCleared() {
+	if _u.mutation.ErrorCleared() {
 		_spec.ClearField(revision.FieldError, field.TypeString)
 	}
-	if value, ok := ru.mutation.ErrorStmt(); ok {
+	if value, ok := _u.mutation.ErrorStmt(); ok {
 		_spec.SetField(revision.FieldErrorStmt, field.TypeString, value)
 	}
-	if ru.mutation.ErrorStmtCleared() {
+	if _u.mutation.ErrorStmtCleared() {
 		_spec.ClearField(revision.FieldErrorStmt, field.TypeString)
 	}
-	if value, ok := ru.mutation.Hash(); ok {
+	if value, ok := _u.mutation.Hash(); ok {
 		_spec.SetField(revision.FieldHash, field.TypeString, value)
 	}
-	if value, ok := ru.mutation.PartialHashes(); ok {
+	if value, ok := _u.mutation.PartialHashes(); ok {
 		_spec.SetField(revision.FieldPartialHashes, field.TypeJSON, value)
 	}
-	if value, ok := ru.mutation.AppendedPartialHashes(); ok {
+	if value, ok := _u.mutation.AppendedPartialHashes(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, revision.FieldPartialHashes, value)
 		})
 	}
-	if ru.mutation.PartialHashesCleared() {
+	if _u.mutation.PartialHashesCleared() {
 		_spec.ClearField(revision.FieldPartialHashes, field.TypeJSON)
 	}
-	if value, ok := ru.mutation.OperatorVersion(); ok {
+	if value, ok := _u.mutation.OperatorVersion(); ok {
 		_spec.SetField(revision.FieldOperatorVersion, field.TypeString, value)
 	}
-	_spec.Node.Schema = ru.schemaConfig.Revision
-	ctx = internal.NewSchemaConfigContext(ctx, ru.schemaConfig)
-	if n, err = sqlgraph.UpdateNodes(ctx, ru.driver, _spec); err != nil {
+	_spec.Node.Schema = _u.schemaConfig.Revision
+	ctx = internal.NewSchemaConfigContext(ctx, _u.schemaConfig)
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{revision.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -327,8 +327,8 @@ func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	ru.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // RevisionUpdateOne is the builder for updating a single Revision entity.
@@ -340,201 +340,201 @@ type RevisionUpdateOne struct {
 }
 
 // SetType sets the "type" field.
-func (ruo *RevisionUpdateOne) SetType(mt migrate.RevisionType) *RevisionUpdateOne {
-	ruo.mutation.ResetType()
-	ruo.mutation.SetType(mt)
-	return ruo
+func (_u *RevisionUpdateOne) SetType(v migrate.RevisionType) *RevisionUpdateOne {
+	_u.mutation.ResetType()
+	_u.mutation.SetType(v)
+	return _u
 }
 
 // SetNillableType sets the "type" field if the given value is not nil.
-func (ruo *RevisionUpdateOne) SetNillableType(mt *migrate.RevisionType) *RevisionUpdateOne {
-	if mt != nil {
-		ruo.SetType(*mt)
+func (_u *RevisionUpdateOne) SetNillableType(v *migrate.RevisionType) *RevisionUpdateOne {
+	if v != nil {
+		_u.SetType(*v)
 	}
-	return ruo
+	return _u
 }
 
-// AddType adds mt to the "type" field.
-func (ruo *RevisionUpdateOne) AddType(mt migrate.RevisionType) *RevisionUpdateOne {
-	ruo.mutation.AddType(mt)
-	return ruo
+// AddType adds value to the "type" field.
+func (_u *RevisionUpdateOne) AddType(v migrate.RevisionType) *RevisionUpdateOne {
+	_u.mutation.AddType(v)
+	return _u
 }
 
 // SetApplied sets the "applied" field.
-func (ruo *RevisionUpdateOne) SetApplied(i int) *RevisionUpdateOne {
-	ruo.mutation.ResetApplied()
-	ruo.mutation.SetApplied(i)
-	return ruo
+func (_u *RevisionUpdateOne) SetApplied(v int) *RevisionUpdateOne {
+	_u.mutation.ResetApplied()
+	_u.mutation.SetApplied(v)
+	return _u
 }
 
 // SetNillableApplied sets the "applied" field if the given value is not nil.
-func (ruo *RevisionUpdateOne) SetNillableApplied(i *int) *RevisionUpdateOne {
-	if i != nil {
-		ruo.SetApplied(*i)
+func (_u *RevisionUpdateOne) SetNillableApplied(v *int) *RevisionUpdateOne {
+	if v != nil {
+		_u.SetApplied(*v)
 	}
-	return ruo
+	return _u
 }
 
-// AddApplied adds i to the "applied" field.
-func (ruo *RevisionUpdateOne) AddApplied(i int) *RevisionUpdateOne {
-	ruo.mutation.AddApplied(i)
-	return ruo
+// AddApplied adds value to the "applied" field.
+func (_u *RevisionUpdateOne) AddApplied(v int) *RevisionUpdateOne {
+	_u.mutation.AddApplied(v)
+	return _u
 }
 
 // SetTotal sets the "total" field.
-func (ruo *RevisionUpdateOne) SetTotal(i int) *RevisionUpdateOne {
-	ruo.mutation.ResetTotal()
-	ruo.mutation.SetTotal(i)
-	return ruo
+func (_u *RevisionUpdateOne) SetTotal(v int) *RevisionUpdateOne {
+	_u.mutation.ResetTotal()
+	_u.mutation.SetTotal(v)
+	return _u
 }
 
 // SetNillableTotal sets the "total" field if the given value is not nil.
-func (ruo *RevisionUpdateOne) SetNillableTotal(i *int) *RevisionUpdateOne {
-	if i != nil {
-		ruo.SetTotal(*i)
+func (_u *RevisionUpdateOne) SetNillableTotal(v *int) *RevisionUpdateOne {
+	if v != nil {
+		_u.SetTotal(*v)
 	}
-	return ruo
+	return _u
 }
 
-// AddTotal adds i to the "total" field.
-func (ruo *RevisionUpdateOne) AddTotal(i int) *RevisionUpdateOne {
-	ruo.mutation.AddTotal(i)
-	return ruo
+// AddTotal adds value to the "total" field.
+func (_u *RevisionUpdateOne) AddTotal(v int) *RevisionUpdateOne {
+	_u.mutation.AddTotal(v)
+	return _u
 }
 
 // SetExecutionTime sets the "execution_time" field.
-func (ruo *RevisionUpdateOne) SetExecutionTime(t time.Duration) *RevisionUpdateOne {
-	ruo.mutation.ResetExecutionTime()
-	ruo.mutation.SetExecutionTime(t)
-	return ruo
+func (_u *RevisionUpdateOne) SetExecutionTime(v time.Duration) *RevisionUpdateOne {
+	_u.mutation.ResetExecutionTime()
+	_u.mutation.SetExecutionTime(v)
+	return _u
 }
 
 // SetNillableExecutionTime sets the "execution_time" field if the given value is not nil.
-func (ruo *RevisionUpdateOne) SetNillableExecutionTime(t *time.Duration) *RevisionUpdateOne {
-	if t != nil {
-		ruo.SetExecutionTime(*t)
+func (_u *RevisionUpdateOne) SetNillableExecutionTime(v *time.Duration) *RevisionUpdateOne {
+	if v != nil {
+		_u.SetExecutionTime(*v)
 	}
-	return ruo
+	return _u
 }
 
-// AddExecutionTime adds t to the "execution_time" field.
-func (ruo *RevisionUpdateOne) AddExecutionTime(t time.Duration) *RevisionUpdateOne {
-	ruo.mutation.AddExecutionTime(t)
-	return ruo
+// AddExecutionTime adds value to the "execution_time" field.
+func (_u *RevisionUpdateOne) AddExecutionTime(v time.Duration) *RevisionUpdateOne {
+	_u.mutation.AddExecutionTime(v)
+	return _u
 }
 
 // SetError sets the "error" field.
-func (ruo *RevisionUpdateOne) SetError(s string) *RevisionUpdateOne {
-	ruo.mutation.SetError(s)
-	return ruo
+func (_u *RevisionUpdateOne) SetError(v string) *RevisionUpdateOne {
+	_u.mutation.SetError(v)
+	return _u
 }
 
 // SetNillableError sets the "error" field if the given value is not nil.
-func (ruo *RevisionUpdateOne) SetNillableError(s *string) *RevisionUpdateOne {
-	if s != nil {
-		ruo.SetError(*s)
+func (_u *RevisionUpdateOne) SetNillableError(v *string) *RevisionUpdateOne {
+	if v != nil {
+		_u.SetError(*v)
 	}
-	return ruo
+	return _u
 }
 
 // ClearError clears the value of the "error" field.
-func (ruo *RevisionUpdateOne) ClearError() *RevisionUpdateOne {
-	ruo.mutation.ClearError()
-	return ruo
+func (_u *RevisionUpdateOne) ClearError() *RevisionUpdateOne {
+	_u.mutation.ClearError()
+	return _u
 }
 
 // SetErrorStmt sets the "error_stmt" field.
-func (ruo *RevisionUpdateOne) SetErrorStmt(s string) *RevisionUpdateOne {
-	ruo.mutation.SetErrorStmt(s)
-	return ruo
+func (_u *RevisionUpdateOne) SetErrorStmt(v string) *RevisionUpdateOne {
+	_u.mutation.SetErrorStmt(v)
+	return _u
 }
 
 // SetNillableErrorStmt sets the "error_stmt" field if the given value is not nil.
-func (ruo *RevisionUpdateOne) SetNillableErrorStmt(s *string) *RevisionUpdateOne {
-	if s != nil {
-		ruo.SetErrorStmt(*s)
+func (_u *RevisionUpdateOne) SetNillableErrorStmt(v *string) *RevisionUpdateOne {
+	if v != nil {
+		_u.SetErrorStmt(*v)
 	}
-	return ruo
+	return _u
 }
 
 // ClearErrorStmt clears the value of the "error_stmt" field.
-func (ruo *RevisionUpdateOne) ClearErrorStmt() *RevisionUpdateOne {
-	ruo.mutation.ClearErrorStmt()
-	return ruo
+func (_u *RevisionUpdateOne) ClearErrorStmt() *RevisionUpdateOne {
+	_u.mutation.ClearErrorStmt()
+	return _u
 }
 
 // SetHash sets the "hash" field.
-func (ruo *RevisionUpdateOne) SetHash(s string) *RevisionUpdateOne {
-	ruo.mutation.SetHash(s)
-	return ruo
+func (_u *RevisionUpdateOne) SetHash(v string) *RevisionUpdateOne {
+	_u.mutation.SetHash(v)
+	return _u
 }
 
 // SetNillableHash sets the "hash" field if the given value is not nil.
-func (ruo *RevisionUpdateOne) SetNillableHash(s *string) *RevisionUpdateOne {
-	if s != nil {
-		ruo.SetHash(*s)
+func (_u *RevisionUpdateOne) SetNillableHash(v *string) *RevisionUpdateOne {
+	if v != nil {
+		_u.SetHash(*v)
 	}
-	return ruo
+	return _u
 }
 
 // SetPartialHashes sets the "partial_hashes" field.
-func (ruo *RevisionUpdateOne) SetPartialHashes(s []string) *RevisionUpdateOne {
-	ruo.mutation.SetPartialHashes(s)
-	return ruo
+func (_u *RevisionUpdateOne) SetPartialHashes(v []string) *RevisionUpdateOne {
+	_u.mutation.SetPartialHashes(v)
+	return _u
 }
 
-// AppendPartialHashes appends s to the "partial_hashes" field.
-func (ruo *RevisionUpdateOne) AppendPartialHashes(s []string) *RevisionUpdateOne {
-	ruo.mutation.AppendPartialHashes(s)
-	return ruo
+// AppendPartialHashes appends value to the "partial_hashes" field.
+func (_u *RevisionUpdateOne) AppendPartialHashes(v []string) *RevisionUpdateOne {
+	_u.mutation.AppendPartialHashes(v)
+	return _u
 }
 
 // ClearPartialHashes clears the value of the "partial_hashes" field.
-func (ruo *RevisionUpdateOne) ClearPartialHashes() *RevisionUpdateOne {
-	ruo.mutation.ClearPartialHashes()
-	return ruo
+func (_u *RevisionUpdateOne) ClearPartialHashes() *RevisionUpdateOne {
+	_u.mutation.ClearPartialHashes()
+	return _u
 }
 
 // SetOperatorVersion sets the "operator_version" field.
-func (ruo *RevisionUpdateOne) SetOperatorVersion(s string) *RevisionUpdateOne {
-	ruo.mutation.SetOperatorVersion(s)
-	return ruo
+func (_u *RevisionUpdateOne) SetOperatorVersion(v string) *RevisionUpdateOne {
+	_u.mutation.SetOperatorVersion(v)
+	return _u
 }
 
 // SetNillableOperatorVersion sets the "operator_version" field if the given value is not nil.
-func (ruo *RevisionUpdateOne) SetNillableOperatorVersion(s *string) *RevisionUpdateOne {
-	if s != nil {
-		ruo.SetOperatorVersion(*s)
+func (_u *RevisionUpdateOne) SetNillableOperatorVersion(v *string) *RevisionUpdateOne {
+	if v != nil {
+		_u.SetOperatorVersion(*v)
 	}
-	return ruo
+	return _u
 }
 
 // Mutation returns the RevisionMutation object of the builder.
-func (ruo *RevisionUpdateOne) Mutation() *RevisionMutation {
-	return ruo.mutation
+func (_u *RevisionUpdateOne) Mutation() *RevisionMutation {
+	return _u.mutation
 }
 
 // Where appends a list predicates to the RevisionUpdate builder.
-func (ruo *RevisionUpdateOne) Where(ps ...predicate.Revision) *RevisionUpdateOne {
-	ruo.mutation.Where(ps...)
-	return ruo
+func (_u *RevisionUpdateOne) Where(ps ...predicate.Revision) *RevisionUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (ruo *RevisionUpdateOne) Select(field string, fields ...string) *RevisionUpdateOne {
-	ruo.fields = append([]string{field}, fields...)
-	return ruo
+func (_u *RevisionUpdateOne) Select(field string, fields ...string) *RevisionUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated Revision entity.
-func (ruo *RevisionUpdateOne) Save(ctx context.Context) (*Revision, error) {
-	return withHooks(ctx, ruo.sqlSave, ruo.mutation, ruo.hooks)
+func (_u *RevisionUpdateOne) Save(ctx context.Context) (*Revision, error) {
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (ruo *RevisionUpdateOne) SaveX(ctx context.Context) *Revision {
-	node, err := ruo.Save(ctx)
+func (_u *RevisionUpdateOne) SaveX(ctx context.Context) *Revision {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -542,26 +542,26 @@ func (ruo *RevisionUpdateOne) SaveX(ctx context.Context) *Revision {
 }
 
 // Exec executes the query on the entity.
-func (ruo *RevisionUpdateOne) Exec(ctx context.Context) error {
-	_, err := ruo.Save(ctx)
+func (_u *RevisionUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ruo *RevisionUpdateOne) ExecX(ctx context.Context) {
-	if err := ruo.Exec(ctx); err != nil {
+func (_u *RevisionUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (ruo *RevisionUpdateOne) check() error {
-	if v, ok := ruo.mutation.Applied(); ok {
+func (_u *RevisionUpdateOne) check() error {
+	if v, ok := _u.mutation.Applied(); ok {
 		if err := revision.AppliedValidator(v); err != nil {
 			return &ValidationError{Name: "applied", err: fmt.Errorf(`ent: validator failed for field "Revision.applied": %w`, err)}
 		}
 	}
-	if v, ok := ruo.mutation.Total(); ok {
+	if v, ok := _u.mutation.Total(); ok {
 		if err := revision.TotalValidator(v); err != nil {
 			return &ValidationError{Name: "total", err: fmt.Errorf(`ent: validator failed for field "Revision.total": %w`, err)}
 		}
@@ -569,17 +569,17 @@ func (ruo *RevisionUpdateOne) check() error {
 	return nil
 }
 
-func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err error) {
-	if err := ruo.check(); err != nil {
+func (_u *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err error) {
+	if err := _u.check(); err != nil {
 		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(revision.Table, revision.Columns, sqlgraph.NewFieldSpec(revision.FieldID, field.TypeString))
-	id, ok := ruo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Revision.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := ruo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, revision.FieldID)
 		for _, f := range fields {
@@ -591,72 +591,72 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 			}
 		}
 	}
-	if ps := ruo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := ruo.mutation.GetType(); ok {
+	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(revision.FieldType, field.TypeUint, value)
 	}
-	if value, ok := ruo.mutation.AddedType(); ok {
+	if value, ok := _u.mutation.AddedType(); ok {
 		_spec.AddField(revision.FieldType, field.TypeUint, value)
 	}
-	if value, ok := ruo.mutation.Applied(); ok {
+	if value, ok := _u.mutation.Applied(); ok {
 		_spec.SetField(revision.FieldApplied, field.TypeInt, value)
 	}
-	if value, ok := ruo.mutation.AddedApplied(); ok {
+	if value, ok := _u.mutation.AddedApplied(); ok {
 		_spec.AddField(revision.FieldApplied, field.TypeInt, value)
 	}
-	if value, ok := ruo.mutation.Total(); ok {
+	if value, ok := _u.mutation.Total(); ok {
 		_spec.SetField(revision.FieldTotal, field.TypeInt, value)
 	}
-	if value, ok := ruo.mutation.AddedTotal(); ok {
+	if value, ok := _u.mutation.AddedTotal(); ok {
 		_spec.AddField(revision.FieldTotal, field.TypeInt, value)
 	}
-	if value, ok := ruo.mutation.ExecutionTime(); ok {
+	if value, ok := _u.mutation.ExecutionTime(); ok {
 		_spec.SetField(revision.FieldExecutionTime, field.TypeInt64, value)
 	}
-	if value, ok := ruo.mutation.AddedExecutionTime(); ok {
+	if value, ok := _u.mutation.AddedExecutionTime(); ok {
 		_spec.AddField(revision.FieldExecutionTime, field.TypeInt64, value)
 	}
-	if value, ok := ruo.mutation.Error(); ok {
+	if value, ok := _u.mutation.Error(); ok {
 		_spec.SetField(revision.FieldError, field.TypeString, value)
 	}
-	if ruo.mutation.ErrorCleared() {
+	if _u.mutation.ErrorCleared() {
 		_spec.ClearField(revision.FieldError, field.TypeString)
 	}
-	if value, ok := ruo.mutation.ErrorStmt(); ok {
+	if value, ok := _u.mutation.ErrorStmt(); ok {
 		_spec.SetField(revision.FieldErrorStmt, field.TypeString, value)
 	}
-	if ruo.mutation.ErrorStmtCleared() {
+	if _u.mutation.ErrorStmtCleared() {
 		_spec.ClearField(revision.FieldErrorStmt, field.TypeString)
 	}
-	if value, ok := ruo.mutation.Hash(); ok {
+	if value, ok := _u.mutation.Hash(); ok {
 		_spec.SetField(revision.FieldHash, field.TypeString, value)
 	}
-	if value, ok := ruo.mutation.PartialHashes(); ok {
+	if value, ok := _u.mutation.PartialHashes(); ok {
 		_spec.SetField(revision.FieldPartialHashes, field.TypeJSON, value)
 	}
-	if value, ok := ruo.mutation.AppendedPartialHashes(); ok {
+	if value, ok := _u.mutation.AppendedPartialHashes(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, revision.FieldPartialHashes, value)
 		})
 	}
-	if ruo.mutation.PartialHashesCleared() {
+	if _u.mutation.PartialHashesCleared() {
 		_spec.ClearField(revision.FieldPartialHashes, field.TypeJSON)
 	}
-	if value, ok := ruo.mutation.OperatorVersion(); ok {
+	if value, ok := _u.mutation.OperatorVersion(); ok {
 		_spec.SetField(revision.FieldOperatorVersion, field.TypeString, value)
 	}
-	_spec.Node.Schema = ruo.schemaConfig.Revision
-	ctx = internal.NewSchemaConfigContext(ctx, ruo.schemaConfig)
-	_node = &Revision{config: ruo.config}
+	_spec.Node.Schema = _u.schemaConfig.Revision
+	ctx = internal.NewSchemaConfigContext(ctx, _u.schemaConfig)
+	_node = &Revision{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, ruo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{revision.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -664,6 +664,6 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 		}
 		return nil, err
 	}
-	ruo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

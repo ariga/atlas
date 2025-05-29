@@ -22,11 +22,11 @@ import "ariga.io/atlas/sql/migrate"
         }
 
         // AtlasRevision returns an migrate.Revision from the current Revision.
-        func({{ $n.Receiver}} *Revision) AtlasRevision() *migrate.Revision {
+        func({{ $n.Receiver }} *Revision) AtlasRevision() *migrate.Revision {
             return &migrate.Revision{
-                Version: r.ID,
+                Version: {{ $n.Receiver }}.ID,
                 {{- range $f := $n.Fields }}
-                    {{ $f.StructField }}: r.{{ $f.StructField }},
+                    {{ $f.StructField }}: {{ $n.Receiver }}.{{ $f.StructField }},
                 {{- end }}
             }
         }
