@@ -27,22 +27,22 @@ var specOptions []schemahcl.Option
 
 // RemoteSchema is a data source that for reading remote schemas.
 func RemoteSchema(context.Context, *hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
-	return cty.Zero, unsupportedError("data.remote_schema")
+	return cty.Zero, UnsupportedErr("data.remote_schema")
 }
 
 // RemoteDir is a data source that reads a remote migration directory.
 func RemoteDir(context.Context, *hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
-	return cty.Zero, unsupportedError("data.remote_dir")
+	return cty.Zero, UnsupportedErr("data.remote_dir")
 }
 
 // StateReaderAtlas returns a migrate.StateReader from an Atlas Cloud schema.
 func StateReaderAtlas(context.Context, *StateReaderConfig) (*StateReadCloser, error) {
-	return nil, unsupportedError("atlas remote state")
+	return nil, UnsupportedErr("atlas remote state")
 }
 
 // SchemaExternal is a data source that for reading external schemas.
 func SchemaExternal(context.Context, *hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
-	return cty.Zero, unsupportedError("data.external_schema")
+	return cty.Zero, UnsupportedErr("data.external_schema")
 }
 
 // EntLoader is a StateLoader for loading ent.Schema's as StateReader's.
@@ -50,18 +50,18 @@ type EntLoader struct{}
 
 // LoadState returns a migrate.StateReader that reads the schema from an ent.Schema.
 func (l EntLoader) LoadState(context.Context, *StateReaderConfig) (*StateReadCloser, error) {
-	return nil, unsupportedError("ent:// scheme")
+	return nil, UnsupportedErr("ent:// scheme")
 }
 
 // MigrateDiff returns the diff between ent.Schema and a directory.
 func (l EntLoader) MigrateDiff(context.Context, *MigrateDiffOptions) error {
-	return unsupportedError("ent:// scheme")
+	return UnsupportedErr("ent:// scheme")
 }
 
 // InitBlock returns the handler for the "atlas" init block.
 func (c *AtlasConfig) InitBlock() schemahcl.Option {
 	return schemahcl.WithInitBlock("atlas", func(_ context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error) {
-		return cty.Zero, unsupportedError("atlas block")
+		return cty.Zero, UnsupportedErr("atlas block")
 	})
 }
 
@@ -84,7 +84,7 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 			return nil, err
 		}
 		if bytes.Contains(b, []byte("-- atlas:import ")) {
-			return nil, unsupportedError("atlas:import directive")
+			return nil, UnsupportedErr("atlas:import directive")
 		}
 		if dir, err = FilesAsDir(migrate.NewLocalFile(fi.Name(), b)); err != nil {
 			return nil, err
@@ -103,7 +103,7 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 				return nil, err
 			}
 			if bytes.Contains(b, []byte("-- atlas:import ")) {
-				return nil, unsupportedError("atlas:import directive")
+				return nil, UnsupportedErr("atlas:import directive")
 			}
 			files = append(files, migrate.NewLocalFile(d.Name(), b))
 		}
@@ -124,7 +124,16 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 	}
 }
 
-func unsupportedError(feature string) error {
+// UnsupportedError wraps the standard message
+// used to present an unsupported feature error.
+type UnsupportedError struct {
+	Err error
+}
+
+// IsAbort implements the cmdapi.Aborter interface.
+func (*UnsupportedError) IsAbort() {}
+
+func UnsupportedErr(feature string) error {
 	switch runtime.GOOS {
 	case "windows":
 		return fmt.Errorf(`%s is not supported by the community version of Atlas.
