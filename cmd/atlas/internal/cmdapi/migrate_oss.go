@@ -60,7 +60,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 	// Prevent usage printing after input validation.
 	cmd.SilenceUsage = true
 	// Acquire a lock.
-	unlock, err := client.Driver.Lock(ctx, applyLockValue, flags.lockTimeout)
+	unlock, err := client.Driver.Lock(ctx, flags.lockName, flags.lockTimeout)
 	if err != nil {
 		return fmt.Errorf("acquiring database lock: %w", err)
 	}
