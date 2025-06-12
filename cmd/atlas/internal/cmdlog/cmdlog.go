@@ -21,6 +21,7 @@ import (
 	"text/template"
 	"time"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
@@ -766,6 +767,15 @@ var (
 		"sql":       sqlInspect,
 		"json":      jsonEncode,
 		"mermaid":   mermaid,
+		"split": func(...any) (string, error) {
+			return "", cmdext.UnsupportedErr("\n'atlas schema inspect' with 'split' function")
+		},
+		"write": func(...any) (string, error) {
+			return "", cmdext.UnsupportedErr("\n'atlas schema inspect' with 'write' function")
+		},
+		"hcl": func(...any) (string, error) {
+			return "", cmdext.UnsupportedErr("\n'atlas schema inspect' with 'hcl' function")
+		},
 	}
 
 	// SchemaInspectTemplate holds the default template of the 'schema inspect' command.
