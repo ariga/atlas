@@ -1,0 +1,73 @@
+name: Go SDK CI
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+jobs:
+  golangci-lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: ["atlasexec", "sdk"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+      - name: Run Go linters
+        uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: ${{ matrix.module }}
+          args: --verbose --timeout 15m
+  
+  unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: ["atlasexec", "sdk"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_TOKEN }}
+        env:
+          ATLAS_DEBUG: "true"
+      - name: Run tests
+        run: go test -race ./...
+        working-directory: ${{ matrix.module }}
+  
+  e2e-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_TOKEN }}
+        env:
+          ATLAS_DEBUG: "true"
+      - name: Run e2e tests
+        run: go test ./internal/e2e
+        working-directory: atlasexec
+        env:
+          ATLASEXEC_E2ETEST: "1"
+          ATLASEXEC_E2ETEST_ATLAS_PATH: atlas
+          ATLASEXEC_E2ETEST_POSTGRES_URL: "postgres://postgres:pass@localhost:5432/postgres?search_path=public&sslmode=disable" 
