@@ -1,0 +1,11 @@
+package main
+
+import (
+  "fmt"
+
+  "ariga.io/atlas/sdk/tmplrun/testdata"
+)
+
+func main() {
+  fmt.Println("{{ .Message }}", testdata.Foo())
+}
