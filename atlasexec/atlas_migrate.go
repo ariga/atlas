@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package atlasexec
 
 import (
@@ -173,6 +177,7 @@ type (
 		Format      string
 		Qualifier   string
 	}
+	// MigrateDiff contains the result of the `migrate diff` command.
 	MigrateDiff struct {
 		Files []File `json:"Files,omitempty"` // Generated migration files
 		Dir   string `json:"Dir,omitempty"`   // Path to migration directory
@@ -700,7 +705,7 @@ func (r MigrateStatus) Amount(version string) (amount uint64, ok bool) {
 	}
 	for idx, v := range r.Pending {
 		if v.Version == version {
-			amount = uint64(idx + 1)
+			amount = uint64(idx + 1) //nolint:gosec //G115: Safe conversion as idx is from range
 			break
 		}
 	}

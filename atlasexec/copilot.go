@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package atlasexec
 
 import (
@@ -6,6 +10,8 @@ import (
 	"strings"
 )
 
+// CopilotTypeMessage, CopilotTypeToolCall, and CopilotTypeToolOutput are the
+// types of messages that can be emitted by the Copilot execution.
 const (
 	CopilotTypeMessage    = "message"
 	CopilotTypeToolCall   = "tool_call"
@@ -13,6 +19,7 @@ const (
 )
 
 type (
+	// CopilotParams are the parameters for the Copilot execution.
 	CopilotParams struct {
 		Prompt, Session string
 		// FSWrite and FSDelete glob patterns to specify file permissions.
@@ -33,6 +40,7 @@ type (
 		ToolCall   *ToolCallMessage   `json:"toolCall,omitempty"`
 		ToolOutput *ToolOutputMessage `json:"toolOutput,omitempty"`
 	}
+	// ToolCallMessage is the input to a tool call.
 	ToolCallMessage struct {
 		CallID    string `json:"callID"`
 		Function  string `json:"function"`

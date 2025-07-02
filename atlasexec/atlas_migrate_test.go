@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package atlasexec_test
 
 import (
@@ -380,7 +384,7 @@ func TestAtlasMigrate_ApplyWithRemote(t *testing.T) {
 	)
 	token := "123456789"
 	handler := func(payloads *[]graphQLQuery) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
+		return func(_ http.ResponseWriter, r *http.Request) {
 			require.Equal(t, "Bearer "+token, r.Header.Get("Authorization"))
 			var query graphQLQuery
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&query))

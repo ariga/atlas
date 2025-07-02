@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package atlasexec
 
 import (
@@ -293,6 +297,7 @@ func (c *Client) runCommand(ctx context.Context, args []string) (io.Reader, erro
 	return &stdout, nil
 }
 
+// Stream is an interface for reading a stream of items.
 type Stream[T any] interface {
 	// Next reads the next item from the stream, making it available by calling Current.
 	// It returns false if there are no more items and the stream is closed.
@@ -336,7 +341,7 @@ func (c *Client) runCommandStream(ctx context.Context, args []string) (Stream[st
 }
 
 func (c *Client) cmd(ctx context.Context, args []string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, c.execPath, args...)
+	cmd := exec.CommandContext(ctx, c.execPath, args...) //nolint:gosec
 	cmd.Dir = c.workingDir
 	var env Environ
 	if c.env == nil {

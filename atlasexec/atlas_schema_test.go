@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package atlasexec_test
 
 import (
@@ -812,7 +816,7 @@ func TestAtlasSchema_Lint(t *testing.T) {
 	})
 	var (
 		atlashcl = filepath.Join(t.TempDir(), "atlas.hcl")
-		srv      = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv      = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprintln(w, `{"data": {"me":{ "name": "p", "org": "life"}}}`)
 		}))
 	)

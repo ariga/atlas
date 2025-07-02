@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package atlasexec
 
 import (
@@ -138,8 +142,8 @@ func (ce *WorkingDir) CreateFile(name string, fn func(w io.Writer) error) error 
 // CopyFS copies all files from source FileSystem to the destination directory
 // in the temporary directory.
 // If source is nil, an error is returned.
-func (cs *WorkingDir) CopyFS(name string, src fs.FS) error {
-	dst := cs.Path(name)
+func (ce *WorkingDir) CopyFS(name string, src fs.FS) error {
+	dst := ce.Path(name)
 	// Ensure destination directory exists.
 	if err := os.MkdirAll(dst, 0700); err != nil {
 		return err
@@ -157,7 +161,7 @@ func (cs *WorkingDir) CopyFS(name string, src fs.FS) error {
 		}
 		for _, f := range files {
 			name := filepath.Join(dst, f.Name())
-			if err := os.WriteFile(name, f.Bytes(), 0644); err != nil {
+			if err := os.WriteFile(name, f.Bytes(), 0644); err != nil { //nolint:gosec
 				return err
 			}
 		}
@@ -168,7 +172,7 @@ func (cs *WorkingDir) CopyFS(name string, src fs.FS) error {
 				return err
 			}
 			name := filepath.Join(dst, migrate.HashFileName)
-			if err := os.WriteFile(name, data, 0644); err != nil {
+			if err := os.WriteFile(name, data, 0644); err != nil { //nolint:gosec
 				return err
 			}
 		}
@@ -186,7 +190,7 @@ func (cs *WorkingDir) CopyFS(name string, src fs.FS) error {
 			if err != nil {
 				return err
 			}
-			return os.WriteFile(name, data, 0644)
+			return os.WriteFile(name, data, 0644) //nolint:gosec
 		})
 	}
 }

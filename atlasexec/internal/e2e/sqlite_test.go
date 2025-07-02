@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package e2etest
 
 import (
@@ -15,7 +19,7 @@ import (
 )
 
 func Test_SQLite(t *testing.T) {
-	runTestWithVersions(t, []string{"latest"}, "versioned-basic", func(t *testing.T, ver *atlasexec.Version, wd *atlasexec.WorkingDir, c *atlasexec.Client) {
+	runTestWithVersions(t, []string{"latest"}, "versioned-basic", func(t *testing.T, _ *atlasexec.Version, _ *atlasexec.WorkingDir, c *atlasexec.Client) {
 		url := "sqlite://file.db?_fk=1"
 		ctx := context.Background()
 		s, err := c.MigrateStatus(ctx, &atlasexec.MigrateStatusParams{
@@ -49,7 +53,7 @@ func Test_PostgreSQL(t *testing.T) {
 	if u == "" {
 		t.Skip("ATLASEXEC_E2ETEST_POSTGRES_URL not set")
 	}
-	runTestWithVersions(t, []string{"latest"}, "versioned-basic", func(t *testing.T, ver *atlasexec.Version, wd *atlasexec.WorkingDir, c *atlasexec.Client) {
+	runTestWithVersions(t, []string{"latest"}, "versioned-basic", func(t *testing.T, _ *atlasexec.Version, _ *atlasexec.WorkingDir, c *atlasexec.Client) {
 		url := u
 		ctx := context.Background()
 		s, err := c.MigrateStatus(ctx, &atlasexec.MigrateStatusParams{
@@ -80,7 +84,7 @@ func Test_PostgreSQL(t *testing.T) {
 
 func Test_MultiTenants(t *testing.T) {
 	t.Setenv("ATLASEXEC_E2ETEST_ATLAS_PATH", "atlas")
-	runTestWithVersions(t, []string{"latest"}, "multi-tenants", func(t *testing.T, ver *atlasexec.Version, wd *atlasexec.WorkingDir, c *atlasexec.Client) {
+	runTestWithVersions(t, []string{"latest"}, "multi-tenants", func(t *testing.T, _ *atlasexec.Version, wd *atlasexec.WorkingDir, c *atlasexec.Client) {
 		ctx := context.Background()
 		r, err := c.MigrateApplySlice(ctx, &atlasexec.MigrateApplyParams{
 			Env:    "local",
@@ -129,7 +133,7 @@ func Test_MultiTenants(t *testing.T) {
 }
 
 func Test_SchemaPlan(t *testing.T) {
-	runTestWithVersions(t, []string{"latest"}, "schema-plan", func(t *testing.T, ver *atlasexec.Version, wd *atlasexec.WorkingDir, c *atlasexec.Client) {
+	runTestWithVersions(t, []string{"latest"}, "schema-plan", func(t *testing.T, _ *atlasexec.Version, _ *atlasexec.WorkingDir, c *atlasexec.Client) {
 		ctx := context.Background()
 		plan, err := c.SchemaPlan(ctx, &atlasexec.SchemaPlanParams{
 			From:   []string{"file://schema-1.lt.hcl"},
@@ -143,7 +147,7 @@ func Test_SchemaPlan(t *testing.T) {
 		require.Equal(t, "-- Add column \"c2\" to table: \"t1\"\nALTER TABLE `t1` ADD COLUMN `c2` text NOT NULL;\n", f.Migration, "Should be the correct migration")
 		require.Empty(t, f.URL, "Should be no URL")
 	})
-	runTestWithVersions(t, []string{"latest"}, "schema-plan", func(t *testing.T, ver *atlasexec.Version, wd *atlasexec.WorkingDir, c *atlasexec.Client) {
+	runTestWithVersions(t, []string{"latest"}, "schema-plan", func(t *testing.T, _ *atlasexec.Version, _ *atlasexec.WorkingDir, c *atlasexec.Client) {
 		ctx := context.Background()
 		plan, err := c.SchemaPlan(ctx, &atlasexec.SchemaPlanParams{
 			From:   []string{"file://schema-1.lt.hcl"},
