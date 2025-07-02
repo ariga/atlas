@@ -70,4 +70,4 @@ jobs:
         env:
           ATLASEXEC_E2ETEST: "1"
           ATLASEXEC_E2ETEST_ATLAS_PATH: atlas
-          ATLASEXEC_E2ETEST_POSTGRES_URL: "postgres://postgres:pass@localhost:5432/postgres?search_path=public&sslmode=disable" 
+          ATLASEXEC_E2ETEST_POSTGRES_URL: "postgres://postgres:pass@localhost:5432/postgres?search_path=public&sslmode=disable"
