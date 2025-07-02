@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package recordriver
 
 import (
@@ -29,7 +33,7 @@ func TestDriver(t *testing.T) {
 			require.Equal(t, "3.30.1", version)
 		}
 		require.Len(t, rows, 1)
-		hi, ok := Session("t1")
+		hi, ok := GetSession("t1")
 		require.True(t, ok)
 		require.Len(t, hi.Queries, i+1)
 

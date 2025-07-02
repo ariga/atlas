@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 // package recordriver provides a driver for database/sql which records queries and statements
 // and allows you to set responses for queries. It is used for testing or providing a runtime replacement
 // for a real database in cases where you want to learn the queries and statements that are executed.
@@ -17,13 +21,13 @@ func init() {
 }
 
 var (
-	sessions = map[string]*session{}
+	sessions = map[string]*Session{}
 	mu       sync.Mutex
 )
 
 type (
-	// session is a session of recordriver which records queries and statements.
-	session struct {
+	// Session is a session of recordriver which records queries and statements.
+	Session struct {
 		Queries    []string
 		Statements []string
 		responses  map[string]*Response
@@ -46,7 +50,7 @@ type (
 )
 
 // Stmts returns the statements as a string, separated by semicolons and newlines.
-func (s *session) Stmts() string {
+func (s *Session) Stmts() string {
 	var sb strings.Builder
 	for _, stmt := range s.Statements {
 		sb.WriteString(stmt)
@@ -55,8 +59,8 @@ func (s *session) Stmts() string {
 	return sb.String()
 }
 
-// Session returns the session with the given name and reports whether it exists.
-func Session(name string) (*session, bool) {
+// GetSession returns the session with the given name and reports whether it exists.
+func GetSession(name string) (*Session, bool) {
 	mu.Lock()
 	defer mu.Unlock()
 	h, ok := sessions[name]
@@ -68,7 +72,7 @@ func SetResponse(s string, query string, resp *Response) {
 	mu.Lock()
 	defer mu.Unlock()
 	if _, ok := sessions[s]; !ok {
-		sessions[s] = &session{
+		sessions[s] = &Session{
 			responses: make(map[string]*Response),
 		}
 	}
@@ -80,7 +84,7 @@ func (d *drv) Open(name string) (driver.Conn, error) {
 	mu.Lock()
 	defer mu.Unlock()
 	if _, ok := sessions[name]; !ok {
-		sessions[name] = &session{
+		sessions[name] = &Session{
 			responses: make(map[string]*Response),
 		}
 	}

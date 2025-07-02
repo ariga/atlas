@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 // package tmplrun provides a Runner for templated go programs. It is commonly used
 // by Go Atlas providers to compile ad-hoc programs that emit the desired SQL schema for
 // data models defined for Go ORMs.
@@ -64,7 +68,7 @@ func (r *Runner) goRun(src []byte) (string, error) {
 	}
 	defer os.RemoveAll(dir)
 	target := fmt.Sprintf("%s/%s.go", dir, r.filename(r.name))
-	if err := os.WriteFile(target, src, 0644); err != nil {
+	if err := os.WriteFile(target, src, 0600); err != nil {
 		return "", fmt.Errorf("%s: write file %s: %w", r.name, target, err)
 	}
 	return goRun(target, r.buildTags)
