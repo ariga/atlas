@@ -23,6 +23,9 @@ import (
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqlspec"
+
+	// import pgx so we can use it as a DB driver
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type (
@@ -61,15 +64,21 @@ func init() {
 		DriverName,
 		sqlclient.OpenerFunc(opener),
 		sqlclient.RegisterDriverOpener(Open),
-		sqlclient.RegisterFlavours("postgresql"),
+		sqlclient.RegisterFlavours("postgresql", "postgresql+pgx"),
 		sqlclient.RegisterCodec(codec, codec),
 		sqlclient.RegisterURLParser(parser{}),
 	)
 }
 
 func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
+	sqlDriver := "postgres"
+	if u.Scheme == "postgresql+pgx" {
+		sqlDriver = "pgx"
+	}
+	u.Scheme = "postgresql"
+
 	ur := parser{}.ParseURL(u)
-	db, err := sql.Open(DriverName, ur.DSN)
+	db, err := sql.Open(sqlDriver, ur.DSN)
 	if err != nil {
 		return nil, err
 	}
