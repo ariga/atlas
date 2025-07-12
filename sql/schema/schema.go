@@ -866,13 +866,134 @@ const (
 	ViewCheckOptionCascaded = "CASCADED"
 )
 
+// A Tablespace represents a database tablespace definition.
+type Tablespace struct {
+	Name     string   // Tablespace name
+	Schema   *Schema  // Optional schema
+	Owner    string   // Optional owner (e.g., role or user)
+	Location string   // Physical location for the tablespace
+	Attrs    []Attr   // Extra attributes
+	Tables   []*Table // Tables using this tablespace
+	Indexes  []*Index // Indexes using this tablespace
+	Deps     []Object // Objects this tablespace depends on
+	Refs     []Object // Objects that depend on this tablespace
+}
+
+// Tablespace returns the first tablespace that matched the given name.
+func (s *Schema) Tablespace(name string) (*Tablespace, bool) {
+	for _, o := range s.Objects {
+		if t, ok := o.(*Tablespace); ok && t.Name == name {
+			return t, true
+		}
+	}
+	return nil, false
+}
+
+// Tablespace returns the first tablespace that matched the given name.
+func (r *Realm) Tablespace(name string) (*Tablespace, bool) {
+	for _, o := range r.Objects {
+		if t, ok := o.(*Tablespace); ok && t.Name == name {
+			return t, true
+		}
+	}
+	return nil, false
+}
+
+// TablespaceOf returns the tablespace associated with this table, if any.
+func (t *Table) TablespaceOf() (*Tablespace, bool) {
+	for _, attr := range t.Attrs {
+		if ts, ok := attr.(*TablespaceAttr); ok {
+			// First look in schema objects
+			if t.Schema != nil {
+				if tablespace, found := t.Schema.Tablespace(ts.N); found {
+					return tablespace, true
+				}
+			}
+			// Then look in realm objects
+			if t.Schema != nil && t.Schema.Realm != nil {
+				if tablespace, found := t.Schema.Realm.Tablespace(ts.N); found {
+					return tablespace, true
+				}
+			}
+		}
+	}
+	return nil, false
+}
+
+// TablespaceOf returns the tablespace associated with this index, if any.
+func (i *Index) TablespaceOf() (*Tablespace, bool) {
+	for _, attr := range i.Attrs {
+		if ts, ok := attr.(*TablespaceAttr); ok {
+			// First check table schema objects
+			if i.Table != nil && i.Table.Schema != nil {
+				if tablespace, found := i.Table.Schema.Tablespace(ts.N); found {
+					return tablespace, true
+				}
+			}
+			// Then check view schema objects
+			if i.View != nil && i.View.Schema != nil {
+				if tablespace, found := i.View.Schema.Tablespace(ts.N); found {
+					return tablespace, true
+				}
+			}
+			// Finally check realm objects
+			if i.Table != nil && i.Table.Schema != nil && i.Table.Schema.Realm != nil {
+				if tablespace, found := i.Table.Schema.Realm.Tablespace(ts.N); found {
+					return tablespace, true
+				}
+			}
+			if i.View != nil && i.View.Schema != nil && i.View.Schema.Realm != nil {
+				if tablespace, found := i.View.Schema.Realm.Tablespace(ts.N); found {
+					return tablespace, true
+				}
+			}
+		}
+	}
+	return nil, false
+}
+
+// SetTablespace sets the tablespace for a table.
+func (t *Table) SetTablespace(name string) *Table {
+	ReplaceOrAppend(&t.Attrs, &TablespaceAttr{N: name})
+	return t
+}
+
+// SetTablespace sets the tablespace for an index.
+func (i *Index) SetTablespace(name string) *Index {
+	ReplaceOrAppend(&i.Attrs, &TablespaceAttr{N: name})
+	return i
+}
+
+// Pos of the tablespace, if exists.
+func (t *Tablespace) Pos() *Pos {
+	for _, a := range t.Attrs {
+		if p, ok := a.(*Pos); ok {
+			return p
+		}
+	}
+	return nil
+}
+
+// SetPos sets the position of the tablespace.
+func (t *Tablespace) SetPos(p *Pos) {
+	ReplaceOrAppend(&t.Attrs, p)
+}
+
+// TablespaceAttr is an attribute that indicates a schema element is stored
+// in a specific tablespace.
+type TablespaceAttr struct {
+	N string // Tablespace name
+}
+
+
 // objects.
-func (*Table) obj()    {}
-func (*View) obj()     {}
-func (*Func) obj()     {}
-func (*Proc) obj()     {}
-func (*Trigger) obj()  {}
-func (*EnumType) obj() {}
+func (*Table) obj()      {}
+func (*View) obj()       {}
+func (*Func) obj()       {}
+func (*Proc) obj()       {}
+func (*Trigger) obj()    {}
+func (*EnumType) obj()   {}
+func (*Tablespace) obj() {}
 
 // constraints are objects.
 func (*Index) obj()        {}
@@ -906,6 +1027,7 @@ func (*Charset) attr()         {}
 func (*Collation) attr()       {}
 func (*GeneratedExpr) attr()   {}
 func (*ViewCheckOption) attr() {}
+func (*TablespaceAttr) attr()  {}
 
 // SpecType returns the type of the spec.
 func (e *EnumType) SpecType() string { return "enum" }
