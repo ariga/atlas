@@ -112,6 +112,8 @@ type (
 		Context   *RunContext
 		Format    string
 		DevURL    string
+		GitBase   string
+		GitDir    string
 
 		DirURL string
 		Latest uint64
@@ -585,6 +587,12 @@ func (p *MigrateLintParams) AsArgs() ([]string, error) {
 	}
 	if p.Latest > 0 {
 		args = append(args, "--latest", strconv.FormatUint(p.Latest, 10))
+	}
+	if p.GitBase != "" {
+		args = append(args, "--git-base", p.GitBase)
+	}
+	if p.GitDir != "" {
+		args = append(args, "--git-dir", p.GitDir)
 	}
 	if p.Vars != nil {
 		args = append(args, p.Vars.AsArgs()...)
