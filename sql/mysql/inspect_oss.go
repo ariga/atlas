@@ -900,6 +900,11 @@ type (
 	}
 )
 
+// NewAutoIncrement returns an "auto increment" attribute.
+func NewAutoIncrement(v uint64) *AutoIncrement {
+	return &AutoIncrement{V: max(0, int64(v))} // Keep BC with old ent versions.
+}
+
 // addIndex adds an index to the list of indexes
 // that needs further processing.
 func (s *showTable) addFullText(idx *schema.Index) {

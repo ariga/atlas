@@ -15,6 +15,9 @@ issues:
     - path: sql/migrate/dir.go
       linters:
         - gosec
+    - path: sql/mysql/inspect_oss.go
+      linters:
+        - gosec
     - path: sql/migrate/lex.go
       linters:
         - revive
