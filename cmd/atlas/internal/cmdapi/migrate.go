@@ -55,6 +55,7 @@ type migrateApplyFlags struct {
 	dryRun          bool
 	logFormat       string
 	lockTimeout     time.Duration
+	lockName        string
 	allowDirty      bool   // allow working on a database that already has resources
 	baselineVersion string // apply with this version as baseline
 	txMode          string // (none, file, all)
@@ -149,6 +150,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)
 	addFlagDryRun(cmd.Flags(), &flags.dryRun)
 	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
+	addFlagLockName(cmd.Flags(), &flags.lockName, applyLockValue)
 	cmd.Flags().StringVarP(&flags.baselineVersion, flagBaseline, "", "", "start the first migration after the given baseline version")
 	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file, all]")
 	cmd.Flags().StringVarP(&flags.execOrder, flagExecOrder, "", execOrderLinear, "set file execution order [linear, linear-skip, non-linear]")
@@ -886,6 +888,7 @@ type migrateSetFlags struct {
 	url               string
 	dirURL, dirFormat string
 	revisionSchema    string
+	lockName          string
 }
 
 // migrateSetCmd represents the 'atlas migrate set' subcommand.
@@ -919,6 +922,7 @@ to be applied. This command is usually used after manually making changes to the
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
 	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
 	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)
+	addFlagLockName(cmd.Flags(), &flags.lockName, applyLockValue)
 	return cmd
 }
 
@@ -934,7 +938,7 @@ func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) (re
 	}
 	defer client.Close()
 	// Acquire a lock.
-	unlock, err := client.Driver.Lock(ctx, applyLockValue, 0)
+	unlock, err := client.Driver.Lock(ctx, flags.lockName, 0)
 	if err != nil {
 		return fmt.Errorf("acquiring database lock: %w", err)
 	}
