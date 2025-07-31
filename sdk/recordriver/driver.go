@@ -21,13 +21,13 @@ func init() {
 }
 
 var (
-	sessions = map[string]*Session{}
+	sessions = map[string]*session{}
 	mu       sync.Mutex
 )
 
 type (
-	// Session is a session of recordriver which records queries and statements.
-	Session struct {
+	// session is a session of recordriver which records queries and statements.
+	session struct {
 		Queries    []string
 		Statements []string
 		responses  map[string]*Response
@@ -50,7 +50,7 @@ type (
 )
 
 // Stmts returns the statements as a string, separated by semicolons and newlines.
-func (s *Session) Stmts() string {
+func (s *session) Stmts() string {
 	var sb strings.Builder
 	for _, stmt := range s.Statements {
 		sb.WriteString(stmt)
@@ -59,8 +59,9 @@ func (s *Session) Stmts() string {
 	return sb.String()
 }
 
-// GetSession returns the session with the given name and reports whether it exists.
-func GetSession(name string) (*Session, bool) {
+// Session returns the session with the given name and reports whether it exists.
+// revive:disable-next-line unexported-return
+func Session(name string) (*session, bool) {
 	mu.Lock()
 	defer mu.Unlock()
 	h, ok := sessions[name]
@@ -72,7 +73,7 @@ func SetResponse(s string, query string, resp *Response) {
 	mu.Lock()
 	defer mu.Unlock()
 	if _, ok := sessions[s]; !ok {
-		sessions[s] = &Session{
+		sessions[s] = &session{
 			responses: make(map[string]*Response),
 		}
 	}
@@ -84,7 +85,7 @@ func (d *drv) Open(name string) (driver.Conn, error) {
 	mu.Lock()
 	defer mu.Unlock()
 	if _, ok := sessions[name]; !ok {
-		sessions[name] = &Session{
+		sessions[name] = &session{
 			responses: make(map[string]*Response),
 		}
 	}

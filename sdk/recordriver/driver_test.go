@@ -33,7 +33,7 @@ func TestDriver(t *testing.T) {
 			require.Equal(t, "3.30.1", version)
 		}
 		require.Len(t, rows, 1)
-		hi, ok := GetSession("t1")
+		hi, ok := Session("t1")
 		require.True(t, ok)
 		require.Len(t, hi.Queries, i+1)
 
