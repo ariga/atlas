@@ -30,6 +30,7 @@ type (
 		TxMode          string
 		ExecOrder       MigrateExecOrder
 		Amount          uint64
+		ToVersion       string
 		AllowDirty      bool
 		DryRun          bool
 	}
@@ -287,6 +288,9 @@ func (c *Client) MigrateApplySlice(ctx context.Context, params *MigrateApplyPara
 	}
 	if params.ExecOrder != "" {
 		args = append(args, "--exec-order", string(params.ExecOrder))
+	}
+	if params.ToVersion != "" {
+		args = append(args, "--to-version", params.ToVersion)
 	}
 	if params.Amount > 0 {
 		args = append(args, strconv.FormatUint(params.Amount, 10))
