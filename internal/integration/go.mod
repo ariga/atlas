@@ -1,8 +1,6 @@
 module ariga.io/atlas/internal/integration
 
-go 1.24
-
-toolchain go1.24.3
+go 1.24.6
 
 replace ariga.io/atlas => ../../
 
