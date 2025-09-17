@@ -52,6 +52,7 @@ type (
 		DryRun      bool   // If true, --dry-run is set.
 		AutoApprove bool   // If true, --auto-approve is set.
 		PlanURL     string // URL of the plan in Atlas format (atlas://<repo>/plans/<id>). (optional)
+		LockName    string
 	}
 	// SchemaApply represents the result of a 'schema apply' command.
 	SchemaApply struct {
@@ -346,6 +347,9 @@ func (c *Client) SchemaApplySlice(ctx context.Context, params *SchemaApplyParams
 	}
 	if params.PlanURL != "" {
 		args = append(args, "--plan", params.PlanURL)
+	}
+	if params.LockName != "" {
+		args = append(args, "--lock-name", params.LockName)
 	}
 	switch {
 	case params.DryRun:

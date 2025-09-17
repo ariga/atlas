@@ -33,6 +33,7 @@ type (
 		ToVersion       string
 		AllowDirty      bool
 		DryRun          bool
+		LockName        string
 	}
 	// MigrateApply contains a summary of a migration applying attempt on a database.
 	MigrateApply struct {
@@ -294,6 +295,9 @@ func (c *Client) MigrateApplySlice(ctx context.Context, params *MigrateApplyPara
 	}
 	if params.Amount > 0 {
 		args = append(args, strconv.FormatUint(params.Amount, 10))
+	}
+	if params.LockName != "" {
+		args = append(args, "--lock-name", params.LockName)
 	}
 	if params.Vars != nil {
 		args = append(args, params.Vars.AsArgs()...)
