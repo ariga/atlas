@@ -347,7 +347,7 @@ func TestAtlasMigrate_Apply(t *testing.T) {
 		Env: "test",
 	})
 	require.NoError(t, err)
-	require.Equal(t, "sqlite3", got.Env.Driver)
+	require.Equal(t, "sqlite", got.Env.Driver)
 	require.Equal(t, "file://migrations", got.Env.Dir)
 	require.Equal(t, "sqlite://file?_fk=1&cache=shared&mode=memory", got.Env.URL.String())
 	require.Equal(t, "20230926085734", got.Target)
@@ -668,7 +668,7 @@ func TestAtlasMigrate_Lint(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.GreaterOrEqual(t, 4, len(got.Steps))
-		require.Equal(t, "sqlite3", got.Env.Driver)
+		require.Equal(t, "sqlite", got.Env.Driver)
 		require.Equal(t, "testdata/migrations", got.Env.Dir)
 		require.Equal(t, "sqlite://file?mode=memory", got.Env.URL.String())
 		require.Equal(t, 1, len(got.Files))

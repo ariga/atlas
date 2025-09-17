@@ -716,10 +716,10 @@ func TestSchema_Apply(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("TEST_ARGS", tt.args)
-			t.Setenv("TEST_STDOUT", `{"Driver":"sqlite3"}`)
+			t.Setenv("TEST_STDOUT", `{"Driver":"sqlite"}`)
 			result, err := c.SchemaApply(context.Background(), tt.params)
 			require.NoError(t, err)
-			require.Equal(t, "sqlite3", result.Driver)
+			require.Equal(t, "sqlite", result.Driver)
 		})
 	}
 }
@@ -771,9 +771,9 @@ func TestSchema_ApplyEnvs(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, c.SetEnv(map[string]string{
 		"TEST_ARGS": "schema apply --format {{ json . }} --env test",
-		"TEST_STDOUT": `{"Driver":"sqlite3","URL":{"Scheme":"sqlite","Host":"local-su.db"}}
-{"Driver":"sqlite3","URL":{"Scheme":"sqlite","Host":"local-pi.db"}}
-{"Driver":"sqlite3","URL":{"Scheme":"sqlite","Host":"local-bu.db"}}`,
+		"TEST_STDOUT": `{"Driver":"sqlite","URL":{"Scheme":"sqlite","Host":"local-su.db"}}
+{"Driver":"sqlite","URL":{"Scheme":"sqlite","Host":"local-pi.db"}}
+{"Driver":"sqlite","URL":{"Scheme":"sqlite","Host":"local-bu.db"}}`,
 		"TEST_STDERR": `Abort: The plan "From" hash does not match the current state hash (passed with --from):
 
   [31m- iHZMQ1EoarAXt/KU0KQbBljbbGs8gVqX2ZBXefePSGE=[0m[90m (plan value)[0m

@@ -46,7 +46,7 @@ var _ interface {
 } = (*Driver)(nil)
 
 // DriverName holds the name used for registration.
-const DriverName = "sqlite3"
+const DriverName = "sqlite"
 
 func init() {
 	sqlclient.Register(
@@ -55,7 +55,7 @@ func init() {
 		sqlclient.RegisterDriverOpener(Open),
 		sqlclient.RegisterTxOpener(OpenTx),
 		sqlclient.RegisterCodec(codec, codec),
-		sqlclient.RegisterFlavours("sqlite"),
+		sqlclient.RegisterFlavours("sqlite3"),
 		sqlclient.RegisterURLParser(urlparse{}),
 	)
 	sqlclient.Register(
@@ -88,7 +88,7 @@ func (urlparse) ParseURL(u *url.URL) *sqlclient.URL {
 
 func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
 	ur := urlparse{}.ParseURL(u)
-	db, err := sql.Open(DriverName, ur.DSN)
+	db, err := sql.Open("sqlite3", ur.DSN)
 	if err != nil {
 		return nil, err
 	}
