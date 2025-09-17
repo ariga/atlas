@@ -63,9 +63,11 @@ func (r *EntRevisions) Dialect() string {
 func EntDialect(d string) string {
 	switch {
 	case d == mysql.DriverMaria:
-		return mysql.DriverName // Ent does not support "mariadb" as dialect.
+		return dialect.MySQL // Ent does not support "mariadb" as dialect.
 	case strings.HasPrefix(d, "libsql"):
-		return sqlite.DriverName // Ent does not support "libsql" as dialect.
+		return dialect.SQLite // Ent does not support "libsql" as dialect.
+	case d == sqlite.DriverName:
+		return dialect.SQLite // Ent does not support "sqlite" as dialect.
 	default:
 		return d
 	}
@@ -97,7 +99,7 @@ func NewEntRevisions(ctx context.Context, ac *sqlclient.Client, opts ...Option) 
 			return nil, err
 		}
 	}
-	if r.Dialect() == sqlite.DriverName && r.schema != "" && r.schema != "main" {
+	if r.Dialect() == dialect.SQLite && r.schema != "" && r.schema != "main" {
 		return nil, fmt.Errorf("cannot store revisions-table in a separate schema (%q) with SQLite driver", r.schema)
 	}
 	// Create the connection with the underlying migrate.Driver to have it inside a possible transaction.

@@ -520,7 +520,7 @@ env "local" {
 			require.Empty(t, r.Pending)
 			require.Empty(t, r.Applied)
 			require.NotEmpty(t, r.Tenant)
-			require.Equal(t, "sqlite3", r.Driver)
+			require.Equal(t, "sqlite", r.Driver)
 		}
 		_, err = db.Exec("INSERT INTO `tenants` (`name`) VALUES (NULL)")
 		require.NoError(t, err)
@@ -1261,7 +1261,7 @@ func TestMigrate_StatusJSON(t *testing.T) {
 		"--format", "{{ json .Env.Driver }}",
 	)
 	require.NoError(t, err)
-	require.Equal(t, `"sqlite3"`, s)
+	require.Equal(t, `"sqlite"`, s)
 }
 
 func TestMigrate_Set(t *testing.T) {
