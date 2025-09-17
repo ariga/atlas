@@ -712,6 +712,13 @@ func TestSchema_Apply(t *testing.T) {
 			},
 			args: "schema apply --format {{ json . }} --auto-approve",
 		},
+		{
+			name: "with lock name",
+			params: &atlasexec.SchemaApplyParams{
+				LockName: "custom_schema_lock",
+			},
+			args: "schema apply --format {{ json . }} --lock-name custom_schema_lock",
+		},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {

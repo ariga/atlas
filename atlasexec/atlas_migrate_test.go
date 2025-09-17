@@ -109,6 +109,14 @@ func TestMigrate_Apply(t *testing.T) {
 			args:   "migrate apply --format {{ json . }} --exec-order linear",
 			stdout: `{"Driver":"mysql"}`,
 		},
+		{
+			name: "with lock name",
+			params: &atlasexec.MigrateApplyParams{
+				LockName: "custom_lock",
+			},
+			args:   "migrate apply --format {{ json . }} --lock-name custom_lock",
+			stdout: `{"Driver":"mysql"}`,
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("TEST_ARGS", tt.args)
