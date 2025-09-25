@@ -483,7 +483,12 @@ func (c *Container) URL() (*url.URL, error) {
 		if err != nil {
 			return nil, err
 		}
-		host = u.Hostname()
+		// Only use the hostname if the scheme is tcp or ssh.
+		// For unix sockets, the hostname is localhost.
+		// See https://docs.docker.com/reference/cli/docker/#host
+		if u.Scheme == "tcp" || u.Scheme == "ssh" {
+			host = u.Hostname()
+		}
 	}
 	u := &url.URL{
 		Scheme: c.driver,
