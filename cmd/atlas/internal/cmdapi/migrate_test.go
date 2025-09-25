@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -137,6 +138,7 @@ func TestMigrate_Apply(t *testing.T) {
 	))
 
 	// A lock will prevent execution.
+	var lockDriver *sqliteLockerDriver
 	sqlclient.Register(
 		"sqlitelockapply",
 		sqlclient.OpenerFunc(func(ctx context.Context, u *url.URL) (*sqlclient.Client, error) {
@@ -144,7 +146,8 @@ func TestMigrate_Apply(t *testing.T) {
 			if err != nil {
 				return nil, err
 			}
-			client.Driver = &sqliteLockerDriver{client.Driver}
+			lockDriver = newTestSqlLockerDriver(client.Driver, errLock)
+			client.Driver = lockDriver
 			return client, nil
 		}),
 		sqlclient.RegisterDriverOpener(func(db schema.ExecQuerier) (migrate.Driver, error) {
@@ -152,7 +155,7 @@ func TestMigrate_Apply(t *testing.T) {
 			if err != nil {
 				return nil, err
 			}
-			return &sqliteLockerDriver{drv}, nil
+			return newTestSqlLockerDriver(drv, errLock), nil
 		}),
 	)
 	f, err := os.Create(filepath.Join(p, "test.db"))
@@ -163,9 +166,11 @@ func TestMigrate_Apply(t *testing.T) {
 		migrateApplyCmd(),
 		"--dir", "file://testdata/sqlite",
 		"--url", fmt.Sprintf("sqlitelockapply://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+		"--lock-name", "testLock",
 	)
 	require.ErrorIs(t, err, errLock)
 	require.True(t, strings.HasPrefix(s, "Error: acquiring database lock: "+errLock.Error()))
+	require.True(t, slices.Index(lockDriver.recordedLockNames, "testLock") >= 0)
 
 	// Apply zero throws error.
 	for _, n := range []string{"-1", "0"} {
@@ -182,6 +187,7 @@ func TestMigrate_Apply(t *testing.T) {
 	s, err = runCmd(
 		migrateApplyCmd(),
 		"--dir", "file://testdata/sqlite",
+		"--lock-name", "testMigrateLock",
 		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
 		"1",
 	)
@@ -923,7 +929,7 @@ func TestMigrate_Diff(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
-		client.Driver = &sqliteLockerDriver{Driver: client.Driver}
+		client.Driver = newTestSqlLockerDriver(client.Driver, errLock)
 		return client, nil
 	}))
 	f, err := os.Create(filepath.Join(p, "test.db"))
@@ -1771,12 +1777,21 @@ func copyFile(src, dst string) error {
 	return err
 }
 
-type sqliteLockerDriver struct{ migrate.Driver }
+type sqliteLockerDriver struct {
+	migrate.Driver
+	lockingError      error
+	recordedLockNames []string
+}
+
+func newTestSqlLockerDriver(d migrate.Driver, err error) *sqliteLockerDriver {
+	return &sqliteLockerDriver{d, err, nil}
+}
 
 var errLock = errors.New("lockErr")
 
-func (d *sqliteLockerDriver) Lock(context.Context, string, time.Duration) (schema.UnlockFunc, error) {
-	return func() error { return nil }, errLock
+func (d *sqliteLockerDriver) Lock(ctx context.Context, lockName string, lockWait time.Duration) (schema.UnlockFunc, error) {
+	d.recordedLockNames = append(d.recordedLockNames, lockName)
+	return func() error { return nil }, d.lockingError
 }
 
 func countFiles(t *testing.T, p string) int {
