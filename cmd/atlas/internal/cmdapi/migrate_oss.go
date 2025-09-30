@@ -35,6 +35,9 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags,
 			return fmt.Errorf("cannot apply '%d' migration files", count)
 		}
 	}
+	if err := dirFormatBC(flags.dirFormat, &flags.dirURL); err != nil {
+		return err
+	}
 	dirURL, err := url.Parse(flags.dirURL)
 	if err != nil {
 		return fmt.Errorf("parse dir-url: %w", err)

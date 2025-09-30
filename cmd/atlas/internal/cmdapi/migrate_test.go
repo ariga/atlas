@@ -1797,3 +1797,85 @@ func sed(t *testing.T, r, p string) {
 func lines(f migrate.File) []string {
 	return strings.Split(strings.TrimSpace(string(f.Bytes())), "\n")
 }
+
+func TestMigrate_ApplyDirFormat(t *testing.T) {
+	folder := func(t *testing.T) string {
+		p := t.TempDir()
+		upFile := filepath.Join(p, "1_initial.up.sql")
+		downFile := filepath.Join(p, "1_initial.down.sql")
+		require.NoError(t, os.WriteFile(upFile, []byte("CREATE TABLE users (id INT PRIMARY KEY);"), 0644))
+		require.NoError(t, os.WriteFile(downFile, []byte("DROP TABLE users;"), 0644))
+		_, err := runCmd(migrateHashCmd(), "--dir", "file://"+p+"?format=golang-migrate")
+		require.NoError(t, err)
+		return p
+	}
+	t.Run("golang-migrate dir-format flag", func(t *testing.T) {
+		p := folder(t)
+		s, err := runCmd(
+			migrateApplyCmd(),
+			"--dir", "file://"+p,
+			"--dir-format", "golang-migrate",
+			"--url", openSQLite(t, ""),
+			"--dry-run",
+		)
+		require.NoError(t, err)
+		require.Contains(t, s, "CREATE TABLE users (id INT PRIMARY KEY);")
+		require.NotContains(t, s, "DROP TABLE users;")
+		require.Contains(t, s, "1 migrations in total")
+	})
+	t.Run("golang-migrate atlas.hcl migration format", func(t *testing.T) {
+		p := folder(t)
+		// Create atlas.hcl config file with golang-migrate format
+		configPath := filepath.Join(p, "atlas.hcl")
+		config := fmt.Sprintf(`
+env "test" {
+  url = "%s"
+  migration {
+    dir = "file://%s"
+    format = "golang-migrate"
+  }
+}`, openSQLite(t, ""), p)
+		require.NoError(t, os.WriteFile(configPath, []byte(config), 0644))
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+configPath,
+			"--env", "test",
+			"--dry-run",
+		)
+		require.NoError(t, err)
+
+		// Should only contain the up migration, not the down
+		require.Contains(t, s, "CREATE TABLE users (id INT PRIMARY KEY);")
+		require.NotContains(t, s, "DROP TABLE users;")
+		require.Contains(t, s, "1 migrations in total")
+	})
+	t.Run("golang-migrate atlas.hcl migration format from query parameter", func(t *testing.T) {
+		p := folder(t)
+		// Create atlas.hcl config file with golang-migrate format
+		configPath := filepath.Join(p, "atlas.hcl")
+		config := fmt.Sprintf(`
+env "test" {
+  url = "%s"
+  migration {
+    dir = "file://%s?format=golang-migrate"
+  }
+}`, openSQLite(t, ""), p)
+		require.NoError(t, os.WriteFile(configPath, []byte(config), 0644))
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+configPath,
+			"--env", "test",
+			"--dry-run",
+		)
+		require.NoError(t, err)
+
+		// Should only contain the up migration, not the down
+		require.Contains(t, s, "CREATE TABLE users (id INT PRIMARY KEY);")
+		require.NotContains(t, s, "DROP TABLE users;")
+		require.Contains(t, s, "1 migrations in total")
+	})
+}

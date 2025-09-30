@@ -51,6 +51,7 @@ func migrateCmd() *cobra.Command {
 type migrateApplyFlags struct {
 	url             string
 	dirURL          string
+	dirFormat       string
 	revisionSchema  string
 	dryRun          bool
 	logFormat       string
@@ -144,6 +145,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	cmd.Flags().SortFlags = false
 	addFlagURL(cmd.Flags(), &flags.url)
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
+	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
 	addFlagLog(cmd.Flags(), &flags.logFormat)
 	addFlagFormat(cmd.Flags(), &flags.logFormat)
 	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)
