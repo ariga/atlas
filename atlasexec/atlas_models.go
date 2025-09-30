@@ -150,6 +150,9 @@ type (
 	}
 )
 
+// MetricTableSizeBytes is the name of the table size metric in bytes.
+const MetricTableSizeBytes = "atlas_table_size_bytes"
+
 // DiagnosticsCount returns the total number of diagnostics in the report.
 func (r *SummaryReport) DiagnosticsCount() int {
 	var n int
@@ -184,7 +187,7 @@ func ParsePrometheusMetrics(data string) ([]TableSizeMetric, error) {
 		return nil, fmt.Errorf("failed to parse prometheus metrics: %w", err)
 	}
 	for _, mf := range metricFamilies {
-		if mf.GetName() == "atlas_table_size_bytes" {
+		if mf.GetName() == MetricTableSizeBytes {
 			for _, metric := range mf.GetMetric() {
 				var schema, table string
 				for _, label := range metric.GetLabel() {
