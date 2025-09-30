@@ -915,7 +915,7 @@ func TestSchema_Lint(t *testing.T) {
 	}
 }
 
-func TestSchema_Stats(t *testing.T) {
+func TestSchema_StatsInspect(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 	c, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
@@ -928,12 +928,12 @@ atlas_table_size_bytes{schema="test",table="test"} 16384.0
 atlas_table_size_bytes{schema="test",table="users"} 6.832128e+06
 `
 	t.Run("basic stats with prometheus metrics", func(t *testing.T) {
-		params := &atlasexec.SchemaStatsParams{
+		params := &atlasexec.SchemaStatsInspectParams{
 			URL: "sqlite://test.db",
 		}
-		t.Setenv("TEST_ARGS", "schema stats --url sqlite://test.db")
+		t.Setenv("TEST_ARGS", "schema stats inspect --url sqlite://test.db")
 		t.Setenv("TEST_STDOUT", prometheusOutput)
-		result, err := c.SchemaStats(context.Background(), params)
+		result, err := c.SchemaStatsInspect(context.Background(), params)
 
 		require.NoError(t, err)
 		require.Len(t, result, 2)

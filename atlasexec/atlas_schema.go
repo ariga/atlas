@@ -260,8 +260,8 @@ type (
 		Steps []Report `json:"Steps,omitempty"`
 	}
 
-	// SchemaStatsParams are the parameters for the `schema stats` command.
-	SchemaStatsParams struct {
+	// SchemaStatsInspectParams are the parameters for the `schema stat inspect` command.
+	SchemaStatsInspectParams struct {
 		ConfigURL string
 		Env       string
 		Vars      VarArgs
@@ -802,9 +802,9 @@ func (c *Client) SchemaLint(ctx context.Context, params *SchemaLintParams) (*Sch
 	return firstResult(jsonDecode[SchemaLintReport](c.runCommand(ctx, args)))
 }
 
-// SchemaStats runs the 'schema stats' command.
-func (c *Client) SchemaStats(ctx context.Context, params *SchemaStatsParams) ([]TableSizeMetric, error) {
-	args := []string{"schema", "stats"}
+// SchemaStatsInspect runs the 'schema stats inspect' command.
+func (c *Client) SchemaStatsInspect(ctx context.Context, params *SchemaStatsInspectParams) ([]TableSizeMetric, error) {
+	args := []string{"schema", "stats", "inspect"}
 	if params.Env != "" {
 		args = append(args, "--env", params.Env)
 	}
