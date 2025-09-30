@@ -802,6 +802,7 @@ func (c *Client) SchemaLint(ctx context.Context, params *SchemaLintParams) (*Sch
 	return firstResult(jsonDecode[SchemaLintReport](c.runCommand(ctx, args)))
 }
 
+// SchemaStats runs the 'schema stats' command.
 func (c *Client) SchemaStats(ctx context.Context, params *SchemaStatsParams) ([]TableSizeMetric, error) {
 	args := []string{"schema", "stats"}
 	if params.Env != "" {

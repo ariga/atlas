@@ -15,6 +15,7 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 )
 
 type (
@@ -177,7 +178,7 @@ func (r *SummaryReport) Errors() []error {
 // atlas_table_size_bytes{schema="public",table="orders"} 789012
 func ParsePrometheusMetrics(data string) ([]TableSizeMetric, error) {
 	var metrics []TableSizeMetric
-	parser := expfmt.TextParser{}
+	parser := expfmt.NewTextParser(model.LegacyValidation)
 	metricFamilies, err := parser.TextToMetricFamilies(strings.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse prometheus metrics: %w", err)

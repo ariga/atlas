@@ -914,3 +914,35 @@ func TestSchema_Lint(t *testing.T) {
 		})
 	}
 }
+
+func TestSchema_Stats(t *testing.T) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	c, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
+	require.NoError(t, err)
+
+	// Test case with Prometheus metrics output
+	prometheusOutput := `# HELP atlas_table_size_bytes Size of the table in bytes.
+# TYPE atlas_table_size_bytes gauge
+atlas_table_size_bytes{schema="test",table="test"} 16384.0
+atlas_table_size_bytes{schema="test",table="users"} 6.832128e+06
+`
+	t.Run("basic stats with prometheus metrics", func(t *testing.T) {
+		params := &atlasexec.SchemaStatsParams{
+			URL: "sqlite://test.db",
+		}
+		t.Setenv("TEST_ARGS", "schema stats --url sqlite://test.db")
+		t.Setenv("TEST_STDOUT", prometheusOutput)
+		result, err := c.SchemaStats(context.Background(), params)
+
+		require.NoError(t, err)
+		require.Len(t, result, 2)
+		// Verify metrics
+		require.Equal(t, "test", result[0].Schema)
+		require.Equal(t, "test", result[0].Table)
+		require.Equal(t, 16384.0, result[0].Value)
+		require.Equal(t, "test", result[1].Schema)
+		require.Equal(t, "users", result[1].Table)
+		require.Equal(t, 6832128.0, result[1].Value)
+	})
+}
