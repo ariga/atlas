@@ -6,11 +6,15 @@ package atlasexec
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
+
+	"github.com/prometheus/common/expfmt"
 )
 
 type (
@@ -137,6 +141,12 @@ type (
 		Text string      `json:"Text"`           // Diagnostic text.
 		Code string      `json:"Code,omitempty"` // Code describes the check (optional).
 	}
+	// TableSizeMetric represents a table size metric from schema stats
+	TableSizeMetric struct {
+		Schema string  `json:"schema"`
+		Table  string  `json:"table"`
+		Value  float64 `json:"value"`
+	}
 )
 
 // DiagnosticsCount returns the total number of diagnostics in the report.
@@ -159,4 +169,42 @@ func (r *SummaryReport) Errors() []error {
 		}
 	}
 	return errs
+}
+
+// ParsePrometheusMetrics parses Prometheus format metrics and extract table size metrics
+// data is expected to be of this format:
+// atlas_table_size_bytes{schema="public",table="users"} 123456
+// atlas_table_size_bytes{schema="public",table="orders"} 789012
+func ParsePrometheusMetrics(data string) ([]TableSizeMetric, error) {
+	var metrics []TableSizeMetric
+	parser := expfmt.TextParser{}
+	metricFamilies, err := parser.TextToMetricFamilies(strings.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse prometheus metrics: %w", err)
+	}
+	for _, mf := range metricFamilies {
+		if mf.GetName() == "atlas_table_size_bytes" {
+			for _, metric := range mf.GetMetric() {
+				var schema, table string
+				for _, label := range metric.GetLabel() {
+					switch label.GetName() {
+					case "schema":
+						schema = label.GetValue()
+					case "table":
+						table = label.GetValue()
+					}
+				}
+				var value float64
+				if gauge := metric.GetGauge(); gauge != nil {
+					value = gauge.GetValue()
+				}
+				metrics = append(metrics, TableSizeMetric{
+					Schema: schema,
+					Table:  table,
+					Value:  value,
+				})
+			}
+		}
+	}
+	return metrics, nil
 }
