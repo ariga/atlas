@@ -267,6 +267,7 @@ type (
 		Vars      VarArgs
 
 		URL     string
+		Format  string
 		Exclude []string
 		Include []string
 		Schema  []string
@@ -813,6 +814,9 @@ func (c *Client) SchemaStatsInspect(ctx context.Context, params *SchemaStatsInsp
 	}
 	if params.URL != "" {
 		args = append(args, "--url", params.URL)
+	}
+	if params.Format != "" {
+		args = append(args, "--format", params.Format)
 	}
 	if len(params.Schema) > 0 {
 		args = append(args, "--schema", listString(params.Schema))
