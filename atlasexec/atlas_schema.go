@@ -259,6 +259,18 @@ type (
 	SchemaLintReport struct {
 		Steps []Report `json:"Steps,omitempty"`
 	}
+
+	// SchemaStatsInspectParams are the parameters for the `schema stat inspect` command.
+	SchemaStatsInspectParams struct {
+		ConfigURL string
+		Env       string
+		Vars      VarArgs
+
+		URL     string
+		Exclude []string
+		Include []string
+		Schema  []string
+	}
 )
 
 // SchemaPush runs the 'schema push' command.
@@ -788,6 +800,37 @@ func (c *Client) SchemaLint(ctx context.Context, params *SchemaLintParams) (*Sch
 		return nil, err
 	}
 	return firstResult(jsonDecode[SchemaLintReport](c.runCommand(ctx, args)))
+}
+
+// SchemaStatsInspect runs the 'schema stats inspect' command.
+func (c *Client) SchemaStatsInspect(ctx context.Context, params *SchemaStatsInspectParams) ([]TableSizeMetric, error) {
+	args := []string{"schema", "stats", "inspect"}
+	if params.Env != "" {
+		args = append(args, "--env", params.Env)
+	}
+	if params.ConfigURL != "" {
+		args = append(args, "--config", params.ConfigURL)
+	}
+	if params.URL != "" {
+		args = append(args, "--url", params.URL)
+	}
+	if len(params.Schema) > 0 {
+		args = append(args, "--schema", listString(params.Schema))
+	}
+	if len(params.Exclude) > 0 {
+		args = append(args, "--exclude", listString(params.Exclude))
+	}
+	if len(params.Include) > 0 {
+		args = append(args, "--include", listString(params.Include))
+	}
+	if params.Vars != nil {
+		args = append(args, params.Vars.AsArgs()...)
+	}
+	output, err := stringVal(c.runCommand(ctx, args))
+	if err != nil {
+		return nil, err
+	}
+	return ParsePrometheusMetrics(output)
 }
 
 // AsArgs returns the parameters as arguments.
