@@ -1,6 +1,6 @@
 module ariga.io/atlas/internal/integration
 
-go 1.24.9
+go 1.25.4
 
 replace ariga.io/atlas => ../../
 
