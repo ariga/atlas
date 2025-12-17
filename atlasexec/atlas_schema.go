@@ -267,7 +267,6 @@ type (
 		Vars      VarArgs
 
 		URL     string
-		Format  string
 		Exclude []string
 		Include []string
 		Schema  []string
@@ -804,8 +803,8 @@ func (c *Client) SchemaLint(ctx context.Context, params *SchemaLintParams) (*Sch
 }
 
 // SchemaStatsInspect runs the 'schema stats inspect' command.
-func (c *Client) SchemaStatsInspect(ctx context.Context, params *SchemaStatsInspectParams) ([]TableSizeMetric, error) {
-	args := []string{"schema", "stats", "inspect"}
+func (c *Client) SchemaStatsInspect(ctx context.Context, params *SchemaStatsInspectParams) (string, error) {
+	args := []string{"schema", "stats", "inspect", "--format", "{{ json .Realm }}"}
 	if params.Env != "" {
 		args = append(args, "--env", params.Env)
 	}
@@ -814,9 +813,6 @@ func (c *Client) SchemaStatsInspect(ctx context.Context, params *SchemaStatsInsp
 	}
 	if params.URL != "" {
 		args = append(args, "--url", params.URL)
-	}
-	if params.Format != "" {
-		args = append(args, "--format", params.Format)
 	}
 	if len(params.Schema) > 0 {
 		args = append(args, "--schema", listString(params.Schema))
@@ -830,11 +826,7 @@ func (c *Client) SchemaStatsInspect(ctx context.Context, params *SchemaStatsInsp
 	if params.Vars != nil {
 		args = append(args, params.Vars.AsArgs()...)
 	}
-	output, err := stringVal(c.runCommand(ctx, args))
-	if err != nil {
-		return nil, err
-	}
-	return ParsePrometheusMetrics(output)
+	return stringVal(c.runCommand(ctx, args))
 }
 
 // AsArgs returns the parameters as arguments.
