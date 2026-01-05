@@ -231,7 +231,9 @@ func (r *StatusReporter) Report(ctx context.Context) (*MigrateStatus, error) {
 		if err := rrw.Migrate(ctx); err != nil {
 			return nil, err
 		}
-		ex, err := migrate.NewExecutor(r.Client.Driver, r.Dir, rrw)
+		// Status is read-only, so allow dirty databases. The dirty check
+		// is designed to prevent data loss during modifications, not reads.
+		ex, err := migrate.NewExecutor(r.Client.Driver, r.Dir, rrw, migrate.WithAllowDirty(true))
 		if err != nil {
 			return nil, err
 		}
