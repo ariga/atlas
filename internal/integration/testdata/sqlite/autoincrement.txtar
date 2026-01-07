@@ -17,4 +17,4 @@ table "users" {
 }
 
 -- 1.sql --
-CREATE TABLE `users` (`id` integer NOT NULL PRIMARY KEY AUTOINCREMENT)
+CREATE TABLE `userz` (`id` integer NOT NULL PRIMARY KEY AUTOINCREMENT)

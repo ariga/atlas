@@ -34,7 +34,7 @@ import (
 
 func TestMySQL_Script(t *testing.T) {
 	myRun(t, func(t *myTest) {
-		testscript.Run(t.T, testscript.Params{
+		testscript.RunT(&ciT{T: t.T}, testscript.Params{
 			Dir:   "testdata/mysql",
 			Setup: t.setupScript,
 			Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
@@ -56,7 +56,7 @@ func TestMySQL_Script(t *testing.T) {
 
 func TestPostgres_Script(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
-		testscript.Run(t.T, testscript.Params{
+		testscript.RunT(&ciT{T: t.T}, testscript.Params{
 			Dir:   "testdata/postgres",
 			Setup: t.setupScript,
 			Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
@@ -77,7 +77,7 @@ func TestPostgres_Script(t *testing.T) {
 
 func TestSQLite_Script(t *testing.T) {
 	tt := &liteTest{T: t}
-	testscript.Run(t, testscript.Params{
+	testscript.RunT(&ciT{T: t}, testscript.Params{
 		Dir:   "testdata/sqlite",
 		Setup: tt.setupScript,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
@@ -95,6 +95,28 @@ func TestSQLite_Script(t *testing.T) {
 }
 
 var keyT struct{}
+
+// ciT wraps testing.T to emit GitHub Actions annotations for errors.
+type ciT struct {
+	*testing.T
+}
+
+func (c *ciT) Skip(args ...any)  { c.T.Skip(args...) }
+func (c *ciT) Parallel()         { c.T.Parallel() }
+func (c *ciT) FailNow()          { c.T.FailNow() }
+func (c *ciT) Verbose() bool     { return testing.Verbose() }
+func (c *ciT) Log(args ...any)   { c.T.Log(args...) }
+
+func (c *ciT) Fatal(args ...any) {
+	c.T.Log("::error::" + fmt.Sprint(args...))
+	c.T.FailNow()
+}
+
+func (c *ciT) Run(name string, f func(testscript.T)) {
+	c.T.Run(name, func(t *testing.T) {
+		f(&ciT{T: t})
+	})
+}
 
 func (t *myTest) setupScript(env *testscript.Env) error {
 	attrs := t.defaultAttrs()
