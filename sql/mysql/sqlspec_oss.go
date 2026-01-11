@@ -401,6 +401,13 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("auto_increment", true))
 	}
+	if ar := (&AutoRandom{}); sqlx.Has(c.Attrs, ar) {
+		if ar.V != 5 {
+			spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.IntAttr("auto_random", ar.V))
+		} else {
+			spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("auto_random", true))
+		}
+	}
 	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
 		spec.Extra.Children = append(spec.Extra.Children, specutil.FromGenExpr(x, storedOrVirtual))
 	}

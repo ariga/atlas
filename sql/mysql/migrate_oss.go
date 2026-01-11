@@ -576,6 +576,12 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 			if a.V > 0 && !sqlx.Has(t.Attrs, &AutoIncrement{}) {
 				t.Attrs = append(t.Attrs, a)
 			}
+		case *AutoRandom:
+			if a.V != 5 {
+				b.P(fmt.Sprintf("AUTO_RANDOM(%d)", a.V))
+			} else {
+				b.P("AUTO_RANDOM")
+			}
 		default:
 			s.attr(b, a)
 		}
