@@ -188,9 +188,9 @@ func TestConvert_ParseType(t *testing.T) {
 		{name: "tztimestamp64", input: TypeTzTimestamp64, expected: &schema.TimeType{T: TypeTzTimestamp64}},
 
 		// Optional types
-		{name: "optional_int32", input: "Optional<int32>", expected: &OptionalType{T: "Optional<int32>", InnerType: &schema.IntegerType{T: TypeInt32, Unsigned: false}}},
-		{name: "optional_utf8", input: "Optional<utf8>", expected: &OptionalType{T: "Optional<utf8>", InnerType: &schema.StringType{T: TypeUtf8}}},
-		{name: "optional_bool", input: "Optional<bool>", expected: &OptionalType{T: "Optional<bool>", InnerType: &schema.BoolType{T: TypeBool}}},
+		{name: "optional_int32", input: "Optional<int32>", expected: &OptionalType{T: "optional<int32>", InnerType: &schema.IntegerType{T: TypeInt32, Unsigned: false}}},
+		{name: "optional_utf8", input: "Optional<utf8>", expected: &OptionalType{T: "optional<utf8>", InnerType: &schema.StringType{T: TypeUtf8}}},
+		{name: "optional_bool", input: "Optional<bool>", expected: &OptionalType{T: "optional<bool>", InnerType: &schema.BoolType{T: TypeBool}}},
 
 		// Unsupported/unknown types
 		{name: "unknown_type", input: "unknown", expected: &schema.UnsupportedType{T: "unknown"}},

@@ -81,7 +81,7 @@ func opener(ctx context.Context, dsn *url.URL) (*sqlclient.Client, error) {
 	}
 
 	sqlDriver := sql.OpenDB(conn)
-	drv, err := open(nativeDriver, sqlDriver)
+	drv, err := Open(nativeDriver, sqlDriver)
 	if err != nil {
 		if cerr := sqlDriver.Close(); cerr != nil {
 			err = fmt.Errorf("%w: %v", err, cerr)
@@ -102,7 +102,7 @@ func opener(ctx context.Context, dsn *url.URL) (*sqlclient.Client, error) {
 }
 
 // Open opens a new YDB driver.
-func open(nativeDriver *ydbSdk.Driver, sqlDriver *sql.DB) (migrate.Driver, error) {
+func Open(nativeDriver *ydbSdk.Driver, sqlDriver *sql.DB) (migrate.Driver, error) {
 	c := &conn{
 		ExecQuerier:  sqlDriver,
 		nativeDriver: nativeDriver,
