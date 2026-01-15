@@ -21,6 +21,7 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
+	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqlite"
@@ -68,6 +69,8 @@ func EntDialect(d string) string {
 		return dialect.SQLite // Ent does not support "libsql" as dialect.
 	case d == sqlite.DriverName:
 		return dialect.SQLite // Ent does not support "sqlite" as dialect.
+	case d == postgres.DriverNameDSQL:
+		return dialect.Postgres // Ent does not support "auroradsql" as dialect.
 	default:
 		return d
 	}
