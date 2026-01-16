@@ -164,8 +164,11 @@ func (r *dsqlRevisionReadWriter) ReadRevision(ctx context.Context, version strin
 
 // WriteRevision saves the revision to the storage.
 func (r *dsqlRevisionReadWriter) WriteRevision(ctx context.Context, rev *migrate.Revision) error {
-	partialHashes, _ := json.Marshal(rev.PartialHashes)
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(
+	partialHashes, err := json.Marshal(rev.PartialHashes)
+	if err != nil {
+		return fmt.Errorf("marshaling partial hashes: %w", err)
+	}
+	_, err = r.db.ExecContext(ctx, fmt.Sprintf(
 		`INSERT INTO %s (version, description, type, applied, total, executed_at, execution_time, error, error_stmt, hash, partial_hashes, operator_version)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		 ON CONFLICT (version) DO UPDATE SET
