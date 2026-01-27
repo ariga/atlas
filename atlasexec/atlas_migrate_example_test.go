@@ -41,3 +41,33 @@ func ExampleClient_MigrateApply() {
 	}
 	fmt.Printf("Applied %d migrations\n", len(res.Applied))
 }
+
+func ExampleClient_MigrateSet() {
+	// Define the execution context, supplying a migration directory
+	// and potentially an `atlas.hcl` configuration file using `atlasexec.WithHCL`.
+	workdir, err := atlasexec.NewWorkingDir(
+		atlasexec.WithMigrations(
+			os.DirFS("./migrations"),
+		),
+	)
+	if err != nil {
+		log.Fatalf("failed to load working directory: %v", err)
+	}
+	// atlasexec works on a temporary directory, so we need to close it
+	defer workdir.Close()
+
+	// Initialize the client.
+	client, err := atlasexec.NewClient(workdir.Path(), "atlas")
+	if err != nil {
+		log.Fatalf("failed to initialize client: %v", err)
+	}
+	// Run `atlas migrate set` to mark migrations as applied up to version "3".
+	err = client.MigrateSet(context.Background(), &atlasexec.MigrateSetParams{
+		URL:     "sqlite:///tmp/demo.db?_fk=1&cache=shared",
+		Version: "3",
+	})
+	if err != nil {
+		log.Fatalf("failed to set migrations: %v", err)
+	}
+	fmt.Println("Migration version set successfully")
+}

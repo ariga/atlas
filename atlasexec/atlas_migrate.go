@@ -165,6 +165,17 @@ type (
 		URL             string
 		RevisionsSchema string
 	}
+	// MigrateSetParams are the parameters for the `migrate set` command.
+	MigrateSetParams struct {
+		ConfigURL string
+		Env       string
+		Vars      VarArgs
+
+		DirURL          string
+		URL             string
+		RevisionsSchema string
+		Version         string
+	}
 	// MigrateDiffParams are the parameters for the `migrate diff` command.
 	MigrateDiffParams struct {
 		ConfigURL string
@@ -417,6 +428,34 @@ func (c *Client) MigrateStatus(ctx context.Context, params *MigrateStatusParams)
 	}
 	// NOTE: This command only support one result.
 	return firstResult(jsonDecode[MigrateStatus](c.runCommand(ctx, args)))
+}
+
+// MigrateSet runs the 'migrate set' command.
+func (c *Client) MigrateSet(ctx context.Context, params *MigrateSetParams) error {
+	args := []string{"migrate", "set"}
+	if params.Env != "" {
+		args = append(args, "--env", params.Env)
+	}
+	if params.ConfigURL != "" {
+		args = append(args, "--config", params.ConfigURL)
+	}
+	if params.URL != "" {
+		args = append(args, "--url", params.URL)
+	}
+	if params.DirURL != "" {
+		args = append(args, "--dir", params.DirURL)
+	}
+	if params.RevisionsSchema != "" {
+		args = append(args, "--revisions-schema", params.RevisionsSchema)
+	}
+	if params.Vars != nil {
+		args = append(args, params.Vars.AsArgs()...)
+	}
+	if params.Version != "" {
+		args = append(args, params.Version)
+	}
+	_, err := c.runCommand(ctx, args)
+	return err
 }
 
 // MigrateDiff runs the 'migrate diff --dry-run' command and returns the generated migration files without changing the filesystem.

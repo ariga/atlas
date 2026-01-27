@@ -129,6 +129,77 @@ func TestMigrate_Apply(t *testing.T) {
 	}
 }
 
+func TestMigrate_Set(t *testing.T) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	c, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
+	require.NoError(t, err)
+
+	for _, tt := range []struct {
+		name   string
+		params *atlasexec.MigrateSetParams
+		args   string
+	}{
+		{
+			name:   "no params",
+			params: &atlasexec.MigrateSetParams{},
+			args:   "migrate set",
+		},
+		{
+			name: "with env",
+			params: &atlasexec.MigrateSetParams{
+				Env: "test",
+			},
+			args: "migrate set --env test",
+		},
+		{
+			name: "with url",
+			params: &atlasexec.MigrateSetParams{
+				URL: "sqlite://file?_fk=1&cache=shared&mode=memory",
+			},
+			args: "migrate set --url sqlite://file?_fk=1&cache=shared&mode=memory",
+		},
+		{
+			name: "with dir",
+			params: &atlasexec.MigrateSetParams{
+				DirURL: "file://migrations",
+			},
+			args: "migrate set --dir file://migrations",
+		},
+		{
+			name: "with revisions-schema",
+			params: &atlasexec.MigrateSetParams{
+				RevisionsSchema: "my_revisions",
+			},
+			args: "migrate set --revisions-schema my_revisions",
+		},
+		{
+			name: "with version",
+			params: &atlasexec.MigrateSetParams{
+				Version: "3",
+			},
+			args: "migrate set 3",
+		},
+		{
+			name: "with all params",
+			params: &atlasexec.MigrateSetParams{
+				URL:             "sqlite://file?_fk=1&cache=shared&mode=memory",
+				DirURL:          "file://migrations",
+				RevisionsSchema: "my_revisions",
+				Version:         "1.2.4",
+			},
+			args: "migrate set --url sqlite://file?_fk=1&cache=shared&mode=memory --dir file://migrations --revisions-schema my_revisions 1.2.4",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("TEST_ARGS", tt.args)
+			t.Setenv("TEST_STDOUT", "ok")
+			err := c.MigrateSet(context.Background(), tt.params)
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestMigrate_Down(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
