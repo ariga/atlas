@@ -7,6 +7,8 @@
 package ydb
 
 import (
+	"errors"
+
 	"ariga.io/atlas/sql/schema"
 )
 
@@ -81,10 +83,15 @@ type (
 )
 
 // Creates [SerialType] from corresponding [schema.IntegerType]
-func SerialFromInt(intType *schema.IntegerType) *SerialType {
+func SerialFromInt(intType *schema.IntegerType) (*SerialType, error) {
 	serialType := &SerialType{}
-	serialType.SetType(intType)
-	return serialType
+
+	err := serialType.SetType(intType)
+	if err != nil {
+		return nil, err
+	}
+
+	return serialType, nil
 }
 
 // Converts [SerialType] to corresponding [schema.IntegerType]
@@ -102,7 +109,7 @@ func (s *SerialType) IntegerType() *schema.IntegerType {
 }
 
 // Sets [schema.IntegerType] as base underlying type for [SerialType]
-func (s *SerialType) SetType(t *schema.IntegerType) {
+func (s *SerialType) SetType(t *schema.IntegerType) error {
 	switch t.T {
 	case TypeInt8, TypeInt16:
 		s.T = TypeSerial2
@@ -110,5 +117,8 @@ func (s *SerialType) SetType(t *schema.IntegerType) {
 		s.T = TypeSerial4
 	case TypeInt64:
 		s.T = TypeSerial8
+	default:
+		return errors.New("ydb: auto increment only supports signed integers")
 	}
+	return nil
 }

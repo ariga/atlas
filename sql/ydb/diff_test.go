@@ -241,6 +241,70 @@ func TestDiff_TableDiff(t *testing.T) {
 				},
 			}
 		}(),
+		func() testcase {
+			var (
+				from = &schema.Table{
+					Name:   "users",
+					Schema: &schema.Schema{Name: "local"},
+					Columns: []*schema.Column{
+						{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: TypeInt32}}},
+					},
+				}
+				to = &schema.Table{
+					Name: "users",
+					Columns: []*schema.Column{
+						{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: TypeInt32}}},
+					},
+				}
+			)
+			from.Indexes = []*schema.Index{
+				{Name: "idx_id", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}, Attrs: []schema.Attr{&IndexAttributes{Async: false}}},
+			}
+			to.Indexes = []*schema.Index{
+				{Name: "idx_id", Table: to, Parts: []*schema.IndexPart{{SeqNo: 1, C: to.Columns[0]}}, Attrs: []schema.Attr{&IndexAttributes{Async: true}}},
+			}
+			return testcase{
+				name: "modify index async",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyIndex{From: from.Indexes[0], To: to.Indexes[0], Change: schema.ChangeAttr},
+				},
+			}
+		}(),
+		func() testcase {
+			var (
+				from = &schema.Table{
+					Name:   "users",
+					Schema: &schema.Schema{Name: "local"},
+					Columns: []*schema.Column{
+						{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: TypeInt32}}},
+						{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: TypeUtf8}}},
+					},
+				}
+				to = &schema.Table{
+					Name: "users",
+					Columns: []*schema.Column{
+						{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: TypeInt32}}},
+						{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: TypeUtf8}}},
+					},
+				}
+			)
+			from.Indexes = []*schema.Index{
+				{Name: "idx_id", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
+			}
+			to.Indexes = []*schema.Index{
+				{Name: "idx_id", Table: to, Parts: []*schema.IndexPart{{SeqNo: 1, C: to.Columns[0]}}, Attrs: []schema.Attr{&IndexAttributes{CoverColumns: []*schema.Column{to.Columns[1]}}}},
+			}
+			return testcase{
+				name: "modify index add cover columns",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyIndex{From: from.Indexes[0], To: to.Indexes[0], Change: schema.ChangeAttr},
+				},
+			}
+		}(),
 	}
 
 	for _, tt := range tests {
@@ -402,6 +466,107 @@ func TestDiff_DefaultChanged(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			changed := d.defaultChanged(tt.from, tt.to)
+			require.Equal(t, tt.changed, changed)
+		})
+	}
+}
+
+func TestDiff_IndexAttrChanged(t *testing.T) {
+	d := &diff{conn: &conn{}}
+
+	col1 := &schema.Column{Name: "name"}
+	col2 := &schema.Column{Name: "email"}
+
+	tests := []struct {
+		name    string
+		from    []schema.Attr
+		to      []schema.Attr
+		changed bool
+	}{
+		{
+			name: "no attributes",
+			from: nil,
+			to:   nil,
+		},
+		{
+			name:    "add async attribute",
+			from:    nil,
+			to:      []schema.Attr{&IndexAttributes{Async: true}},
+			changed: true,
+		},
+		{
+			name:    "remove async attribute",
+			from:    []schema.Attr{&IndexAttributes{Async: true}},
+			to:      nil,
+			changed: true,
+		},
+		{
+			name: "same async false",
+			from: []schema.Attr{&IndexAttributes{Async: false}},
+			to:   []schema.Attr{&IndexAttributes{Async: false}},
+		},
+		{
+			name: "same async true",
+			from: []schema.Attr{&IndexAttributes{Async: true}},
+			to:   []schema.Attr{&IndexAttributes{Async: true}},
+		},
+		{
+			name:    "change async false to true",
+			from:    []schema.Attr{&IndexAttributes{Async: false}},
+			to:      []schema.Attr{&IndexAttributes{Async: true}},
+			changed: true,
+		},
+		{
+			name:    "change async true to false",
+			from:    []schema.Attr{&IndexAttributes{Async: true}},
+			to:      []schema.Attr{&IndexAttributes{Async: false}},
+			changed: true,
+		},
+		{
+			name: "same cover columns",
+			from: []schema.Attr{&IndexAttributes{CoverColumns: []*schema.Column{col1}}},
+			to:   []schema.Attr{&IndexAttributes{CoverColumns: []*schema.Column{col1}}},
+		},
+		{
+			name:    "add cover columns",
+			from:    []schema.Attr{&IndexAttributes{}},
+			to:      []schema.Attr{&IndexAttributes{CoverColumns: []*schema.Column{col1}}},
+			changed: true,
+		},
+		{
+			name:    "remove cover columns",
+			from:    []schema.Attr{&IndexAttributes{CoverColumns: []*schema.Column{col1}}},
+			to:      []schema.Attr{&IndexAttributes{}},
+			changed: true,
+		},
+		{
+			name:    "different cover columns count",
+			from:    []schema.Attr{&IndexAttributes{CoverColumns: []*schema.Column{col1}}},
+			to:      []schema.Attr{&IndexAttributes{CoverColumns: []*schema.Column{col1, col2}}},
+			changed: true,
+		},
+		{
+			name:    "different cover column names",
+			from:    []schema.Attr{&IndexAttributes{CoverColumns: []*schema.Column{col1}}},
+			to:      []schema.Attr{&IndexAttributes{CoverColumns: []*schema.Column{col2}}},
+			changed: true,
+		},
+		{
+			name: "same async and cover columns",
+			from: []schema.Attr{&IndexAttributes{Async: true, CoverColumns: []*schema.Column{col1, col2}}},
+			to:   []schema.Attr{&IndexAttributes{Async: true, CoverColumns: []*schema.Column{col1, col2}}},
+		},
+		{
+			name:    "same cover columns different async",
+			from:    []schema.Attr{&IndexAttributes{Async: false, CoverColumns: []*schema.Column{col1}}},
+			to:      []schema.Attr{&IndexAttributes{Async: true, CoverColumns: []*schema.Column{col1}}},
+			changed: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			changed := d.IndexAttrChanged(tt.from, tt.to)
 			require.Equal(t, tt.changed, changed)
 		})
 	}

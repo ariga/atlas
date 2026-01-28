@@ -106,7 +106,7 @@ func newTestInspect(
 	tableClient table.Client,
 ) *inspect {
 	return &inspect{
-		database:     database,
+		conn:         &conn{database: database},
 		schemeClient: schemeClient,
 		tableClient:  tableClient,
 	}
@@ -144,7 +144,7 @@ func TestInspect_InspectSchema_Simple(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "/local", s.Name)
 	require.Len(t, s.Tables, 1)
-	require.Equal(t, "/local/users", s.Tables[0].Name)
+	require.Equal(t, "users", s.Tables[0].Name)
 	require.Len(t, s.Tables[0].Columns, 2)
 	require.NotNil(t, s.Tables[0].PrimaryKey)
 	require.Equal(t, "PRIMARY", s.Tables[0].PrimaryKey.Name)
@@ -337,8 +337,8 @@ func TestInspect_InspectSchema_NestedDirectories(t *testing.T) {
 	require.Len(t, s.Tables, 2)
 
 	tableNames := []string{s.Tables[0].Name, s.Tables[1].Name}
-	require.Contains(t, tableNames, "/local/users")
-	require.Contains(t, tableNames, "/local/app/settings")
+	require.Contains(t, tableNames, "users")
+	require.Contains(t, tableNames, "app/settings")
 }
 
 func TestInspect_InspectRealm(t *testing.T) {
@@ -564,15 +564,15 @@ func TestInspect_TableFilter(t *testing.T) {
 	ctx := context.Background()
 
 	s, err := insp.InspectSchema(ctx, "/local", &schema.InspectOptions{
-		Tables: []string{"/local/users", "/local/orders"},
+		Tables: []string{"users", "orders"},
 	})
 	require.NoError(t, err)
 	require.Len(t, s.Tables, 2)
 
 	tableNames := []string{s.Tables[0].Name, s.Tables[1].Name}
-	require.Contains(t, tableNames, "/local/users")
-	require.Contains(t, tableNames, "/local/orders")
-	require.NotContains(t, tableNames, "/local/products")
+	require.Contains(t, tableNames, "users")
+	require.Contains(t, tableNames, "orders")
+	require.NotContains(t, tableNames, "products")
 }
 
 func TestInspect_EmptySchema(t *testing.T) {
@@ -695,7 +695,7 @@ func TestInspect_DeeplyNestedDirectories(t *testing.T) {
 	s, err := insp.InspectSchema(ctx, "/local", nil)
 	require.NoError(t, err)
 	require.Len(t, s.Tables, 1)
-	require.Equal(t, "/local/level1/level2/deep_table", s.Tables[0].Name)
+	require.Equal(t, "level1/level2/deep_table", s.Tables[0].Name)
 }
 
 func TestInspect_MixedEntryTypes(t *testing.T) {
@@ -742,8 +742,8 @@ func TestInspect_MixedEntryTypes(t *testing.T) {
 	require.Len(t, s.Tables, 2)
 
 	tableNames := []string{s.Tables[0].Name, s.Tables[1].Name}
-	require.Contains(t, tableNames, "/local/users")
-	require.Contains(t, tableNames, "/local/subdir/orders")
+	require.Contains(t, tableNames, "users")
+	require.Contains(t, tableNames, "subdir/orders")
 }
 
 func TestInspect_ColumnTypeRawValue(t *testing.T) {

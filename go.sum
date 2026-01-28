@@ -107,8 +107,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/ydb-platform/ydb-go-genproto v0.0.0-20251222105147-0bf751469a4a h1:nRqONRrMFulP2bTWM2RRnPM1VDhWuBZg4ULXkG4xXdk=
 github.com/ydb-platform/ydb-go-genproto v0.0.0-20251222105147-0bf751469a4a/go.mod h1:Er+FePu1dNUieD+XTMDduGpQuCPssK5Q4BjF+IIXJ3I=
-github.com/ydb-platform/ydb-go-sdk/v3 v3.125.0 h1:KPnGV2diuX1A4/1zXLO1UWHJokWC8yICzEfjdkSUWKo=
-github.com/ydb-platform/ydb-go-sdk/v3 v3.125.0/go.mod h1:/LjMxb/rXmoGAAnImoqAFIlhO5ampHacbvDetQitCk4=
+github.com/ydb-platform/ydb-go-sdk/v3 v3.125.4 h1:GAC7qeNgsibEJkUVzV4z06aBnHR4jqfXsFiQtrY40gI=
+github.com/ydb-platform/ydb-go-sdk/v3 v3.125.4/go.mod h1:stS1mQYjbJvwwYaYzKyFY9eMiuVXWWXQA6T+SpOLg9c=
 github.com/zclconf/go-cty v1.14.4 h1:uXXczd9QDGsgu0i/QFR/hzI5NYCHLf6NQw/atrbnhq8=
 github.com/zclconf/go-cty v1.14.4/go.mod h1:VvMs5i0vgZdhYawQNq5kePSpLAoz8u1xvZgrPIxfnZE=
 github.com/zclconf/go-cty-yaml v1.1.0 h1:nP+jp0qPHv2IhUVqmQSzjvqAWcObN0KBkUl2rWBdig0=

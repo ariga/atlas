@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
@@ -21,7 +22,8 @@ import (
 
 // inspect provides a YDB implementation for schema.Inspector.
 type inspect struct {
-	database     string
+	*conn
+
 	schemeClient scheme.Client
 	tableClient  table.Client
 }
@@ -29,7 +31,7 @@ type inspect struct {
 // newInspect creates a new inspect from conn.
 func newInspect(c *conn) *inspect {
 	return &inspect{
-		database:     c.database,
+		conn:         c,
 		schemeClient: c.nativeDriver.Scheme(),
 		tableClient:  c.nativeDriver.Table(),
 	}
@@ -38,7 +40,10 @@ func newInspect(c *conn) *inspect {
 var _ schema.Inspector = (*inspect)(nil)
 
 // InspectRealm returns schema descriptions of all resources in the given realm.
-func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
+func (i *inspect) InspectRealm(
+	ctx context.Context,
+	opts *schema.InspectRealmOption,
+) (*schema.Realm, error) {
 	schemas, err := i.schemas(ctx, opts)
 	if err != nil {
 		return nil, err
@@ -102,7 +107,10 @@ func (i *inspect) InspectSchema(
 }
 
 // schemas returns the list of schemas in the database.
-func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
+func (i *inspect) schemas(
+	ctx context.Context,
+	opts *schema.InspectRealmOption,
+) ([]*schema.Schema, error) {
 	var names []string
 	if opts != nil && len(opts.Schemas) > 0 && opts.Schemas[0] != "" {
 		names = opts.Schemas
@@ -137,7 +145,9 @@ func (i *inspect) inspectTables(
 			return err
 		}
 		for _, table := range schema.Tables {
-			tableDesc, err := i.tableClient.DescribeTable(ctx, table.Name)
+			fullPath := schema.Name + "/" + table.Name
+
+			tableDesc, err := i.tableClient.DescribeTable(ctx, fullPath)
 			if err != nil {
 				return fmt.Errorf("ydb: failed describe table: %v", err)
 			}
@@ -159,8 +169,12 @@ type entryWithPath struct {
 }
 
 // tables queries and populates the tables in the schema.
-func (i *inspect) tables(ctx context.Context, s *schema.Schema, opts *schema.InspectOptions) error {
-	rootPath := s.Name
+func (i *inspect) tables(
+	ctx context.Context,
+	schem *schema.Schema,
+	opts *schema.InspectOptions,
+) error {
+	rootPath := schem.Name
 	rootDir, err := i.schemeClient.ListDirectory(ctx, rootPath)
 	if err != nil {
 		return fmt.Errorf("ydb: failed list directory: %v", err)
@@ -181,13 +195,16 @@ func (i *inspect) tables(ctx context.Context, s *schema.Schema, opts *schema.Ins
 
 		switch currEntry.Type {
 		case scheme.EntryTable:
+			relativePath := strings.TrimPrefix(currEntry.fullPath, rootPath+"/")
+
 			shouldAdd := opts == nil ||
 				len(opts.Tables) == 0 ||
+				slices.Contains(opts.Tables, relativePath) ||
 				slices.Contains(opts.Tables, currEntry.fullPath)
 
 			if shouldAdd {
-				t := schema.NewTable(currEntry.fullPath)
-				s.AddTables(t)
+				t := schema.NewTable(relativePath)
+				schem.AddTables(t)
 			}
 
 		case scheme.EntryDirectory:
@@ -276,8 +293,9 @@ func (i *inspect) indexes(
 	// secondary indexes
 	for _, idx := range tableDesc.Indexes {
 		atlasIdx := &schema.Index{
-			Name:  idx.Name,
-			Table: table,
+			Name:   idx.Name,
+			Table:  table,
+			Unique: idx.Type == options.GlobalUniqueIndex(),
 		}
 
 		for _, columnName := range idx.IndexColumns {
@@ -290,6 +308,20 @@ func (i *inspect) indexes(
 				C:     column,
 			})
 		}
+
+		indexAttrs := &IndexAttributes{
+			Async: idx.Type == options.GlobalAsyncIndex(),
+		}
+
+		for _, dataCol := range idx.DataColumns {
+			column, ok := table.Column(dataCol)
+			if !ok {
+				return fmt.Errorf("ydb: cover column %q not found in table %q", dataCol, table.Name)
+			}
+			indexAttrs.CoverColumns = append(indexAttrs.CoverColumns, column)
+		}
+
+		atlasIdx.Attrs = append(atlasIdx.Attrs, indexAttrs)
 
 		table.AddIndexes(atlasIdx)
 	}

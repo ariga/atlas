@@ -8,9 +8,9 @@ package ydb
 
 import "ariga.io/atlas/sql/schema"
 
-//[IndexAttributes] represents YDB-specific index attributes.
+// [IndexAttributes] represents YDB-specific index attributes.
 type IndexAttributes struct {
 	schema.Attr
-	Global bool // GLOBAL, LOCAL
-	Sync   bool // SYNC, ASYNC
+	Async        bool
+	CoverColumns []*schema.Column
 }

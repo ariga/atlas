@@ -23,7 +23,7 @@ func FormatType(typ schema.Type) (string, error) {
 	)
 
 	switch t := typ.(type) {
-	case OptionalType:
+	case *OptionalType:
 		formatted = t.T
 	case *schema.BoolType:
 		formatted = TypeBool
@@ -41,7 +41,7 @@ func FormatType(typ schema.Type) (string, error) {
 		formatted = TypeUtf8
 	case *schema.JSONType:
 		formatted, err = formatJSONType(t)
-	case YsonType:
+	case *YsonType:
 		formatted = t.T
 	case *schema.UUIDType:
 		formatted = TypeUUID
@@ -61,69 +61,67 @@ func FormatType(typ schema.Type) (string, error) {
 	return formatted, nil
 }
 
-func formatIntegerType(t *schema.IntegerType) (string, error) {
-	typ := strings.ToLower(t.T)
-	switch typ {
+func formatIntegerType(intType *schema.IntegerType) (string, error) {
+	switch typ := strings.ToLower(intType.T); typ {
 	case TypeInt8:
-		if t.Unsigned {
+		if intType.Unsigned {
 			return TypeUint8, nil
 		}
 		return TypeInt8, nil
 	case TypeInt16:
-		if t.Unsigned {
+		if intType.Unsigned {
 			return TypeUint16, nil
 		}
 		return TypeInt16, nil
 	case TypeInt32:
-		if t.Unsigned {
+		if intType.Unsigned {
 			return TypeUint32, nil
 		}
 		return TypeInt32, nil
 	case TypeInt64:
-		if t.Unsigned {
+		if intType.Unsigned {
 			return TypeUint64, nil
 		}
 		return TypeInt64, nil
 	case TypeUint8, TypeUint16, TypeUint32, TypeUint64:
 		return typ, nil
 	default:
-		return "", fmt.Errorf("ydb: unsupported object identifier type: %q", t.T)
+		return "", fmt.Errorf("ydb: unsupported object identifier type: %q", intType.T)
 	}
 }
 
-func formatFloatType(t *schema.FloatType) (string, error) {
-	typ := strings.ToLower(t.T)
-	switch typ {
+func formatFloatType(floatType *schema.FloatType) (string, error) {
+	switch typ := strings.ToLower(floatType.T); typ {
 	case TypeFloat, TypeDouble:
 		return typ, nil
 	default:
-		return "", fmt.Errorf("ydb: unsupported object identifier type: %q", t.T)
+		return "", fmt.Errorf("ydb: unsupported object identifier type: %q", floatType.T)
 	}
 }
 
-func formatDecimalType(t *schema.DecimalType) (string, error) {
-	if t.Precision < 1 || t.Precision > 35 {
-		return "", fmt.Errorf("ydb: DECIMAL precision must be in [1, 35] range, but was %q", t.Precision)
+func formatDecimalType(decType *schema.DecimalType) (string, error) {
+	if decType.Precision < 1 || decType.Precision > 35 {
+		return "", fmt.Errorf("ydb: DECIMAL precision must be in [1, 35] range, but was %q", decType.Precision)
 	}
-	if t.Scale < 0 || t.Scale > t.Precision {
-		return "", fmt.Errorf("ydb: DECIMAL scale must be in [1, precision] range, but was %q", t.Precision)
+	if decType.Scale < 0 || decType.Scale > decType.Precision {
+		return "", fmt.Errorf("ydb: DECIMAL scale must be in [1, precision] range, but was %q", decType.Precision)
 	}
 
-	return fmt.Sprintf("%s(%d,%d)", TypeDecimal, t.Precision, t.Scale), nil
+	return fmt.Sprintf("%s(%d,%d)", TypeDecimal, decType.Precision, decType.Scale), nil
 }
 
-func formatJSONType(t *schema.JSONType) (string, error) {
-	typ := strings.ToLower(t.T)
+func formatJSONType(jsonType *schema.JSONType) (string, error) {
+	typ := strings.ToLower(jsonType.T)
 	switch typ {
 	case TypeJSONDocument, TypeJSON:
 		return typ, nil
 	default:
-		return "", fmt.Errorf("ydb: unsupported object identifier type: %q", t.T)
+		return "", fmt.Errorf("ydb: unsupported object identifier type: %q", jsonType.T)
 	}
 }
 
-func formatTimeType(t *schema.TimeType) (string, error) {
-	switch typ := strings.ToLower(t.T); typ {
+func formatTimeType(timeType *schema.TimeType) (string, error) {
+	switch typ := strings.ToLower(timeType.T); typ {
 	case TypeDate,
 		TypeDate32,
 		TypeDateTime,
@@ -140,7 +138,7 @@ func formatTimeType(t *schema.TimeType) (string, error) {
 		TypeTzTimestamp64:
 		return typ, nil
 	default:
-		return "", fmt.Errorf("ydb: unsupported object identifier type: %q", t.T)
+		return "", fmt.Errorf("ydb: unsupported object identifier type: %q", timeType.T)
 	}
 }
 

@@ -69,7 +69,7 @@ func TestConvert_FormatType(t *testing.T) {
 		{name: "jsondocument", typ: &schema.JSONType{T: TypeJSONDocument}, expected: TypeJSONDocument},
 
 		// YSON type
-		{name: "yson", typ: YsonType{T: TypeYson}, expected: TypeYson},
+		{name: "yson", typ: &YsonType{T: TypeYson}, expected: TypeYson},
 
 		// UUID type
 		{name: "uuid", typ: &schema.UUIDType{T: TypeUUID}, expected: TypeUUID},
@@ -93,7 +93,7 @@ func TestConvert_FormatType(t *testing.T) {
 		{name: "tztimestamp64", typ: &schema.TimeType{T: TypeTzTimestamp64}, expected: TypeTzTimestamp64},
 
 		// Optional type
-		{name: "optional_int32", typ: OptionalType{T: "Optional<int32>", InnerType: &schema.IntegerType{T: TypeInt32}}, expected: "Optional<int32>"},
+		{name: "optional_int32", typ: &OptionalType{T: "Optional<int32>", InnerType: &schema.IntegerType{T: TypeInt32}}, expected: "Optional<int32>"},
 
 		// Error cases
 		{name: "unsupported_type", typ: &schema.UnsupportedType{T: "unknown"}, wantErr: true},

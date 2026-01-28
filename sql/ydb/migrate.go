@@ -19,7 +19,9 @@ import (
 // DefaultPlan provides basic planning capabilities for YDB dialect.
 // Note, it is recommended to call Open, create a new Driver and use its
 // migrate.PlanApplier when a database connection is available.
-var DefaultPlan migrate.PlanApplier = &planApply{conn: &conn{ExecQuerier: sqlx.NoRows}}
+var DefaultPlan migrate.PlanApplier = &planApply{
+	conn: &conn{ExecQuerier: sqlx.NoRows},
+}
 
 // A planApply provides migration capabilities for schema elements.
 type planApply struct{ *conn }
@@ -35,7 +37,7 @@ func (p *planApply) PlanChanges(
 		conn: p.conn,
 		Plan: migrate.Plan{
 			Name:          name,
-			Transactional: true,
+			Transactional: false,
 		},
 	}
 	for _, opt := range opts {
@@ -95,24 +97,41 @@ func (s *state) plan(changes []schema.Change) error {
 	return nil
 }
 
+// tablePath returns the full YDB path for a table.
+func (s *state) tablePath(table *schema.Table) string {
+	if s.database == "" {
+		return table.Name
+	}
+	return s.database + "/" + table.Name
+}
+
 // addTable builds and executes the query for creating a table in a schema.
 func (s *state) addTable(addTable *schema.AddTable) error {
 	var errs []string
 	builder := s.Build("CREATE TABLE")
 
-	builder.Table(addTable.T)
+	if sqlx.Has(addTable.Extra, &schema.IfNotExists{}) {
+		builder.P("IF NOT EXISTS")
+	}
+
+	builder.Ident(s.tablePath(addTable.T))
 	builder.WrapIndent(func(b *sqlx.Builder) {
-		b.MapIndent(addTable.T.Columns, func(i int, b *sqlx.Builder) {
-			if err := s.column(b, addTable.T.Columns[i]); err != nil {
-				errs = append(errs, err.Error())
-			}
-		})
+		b.MapIndent(
+			addTable.T.Columns,
+			func(i int, b *sqlx.Builder) {
+				if err := s.column(b, addTable.T.Columns[i]); err != nil {
+					errs = append(errs, err.Error())
+				}
+			},
+		)
+
 		if primaryKey := addTable.T.PrimaryKey; primaryKey != nil {
 			b.Comma().NL().P("PRIMARY KEY")
 			s.indexParts(b, primaryKey.Parts)
 		} else {
 			errs = append(errs, "ydb: primary key is mandatory")
 		}
+
 		// inline secondary indexes
 		for _, idx := range addTable.T.Indexes {
 			b.Comma().NL()
@@ -125,7 +144,7 @@ func (s *state) addTable(addTable *schema.AddTable) error {
 	}
 
 	reverse := s.Build("DROP TABLE").
-		Table(addTable.T).
+		Ident(s.tablePath(addTable.T)).
 		String()
 
 	s.append(&migrate.Change{
@@ -152,7 +171,7 @@ func (s *state) dropTable(drop *schema.DropTable) error {
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		builder.P("IF EXISTS")
 	}
-	builder.Table(drop.T)
+	builder.Ident(s.tablePath(drop.T))
 
 	// The reverse of 'DROP TABLE' might be a multi-statement operation
 	reverse := func() any {
@@ -229,114 +248,100 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 }
 
 // alterTable modifies the given table by executing on it a list of changes in one SQL statement.
-func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
+func (s *state) alterTable(table *schema.Table, changes []schema.Change) error {
 	var reverse []schema.Change
 
 	buildFunc := func(changes []schema.Change) (string, error) {
-		b := s.Build("ALTER TABLE").Table(t)
+		builder := s.Build("ALTER TABLE").Ident(s.tablePath(table))
 
-		err := b.MapCommaErr(changes, func(i int, builder *sqlx.Builder) error {
-			switch change := changes[i].(type) {
-			case *schema.AddColumn:
-				builder.P("ADD COLUMN")
-				if err := s.column(builder, change.C); err != nil {
-					return err
+		err := builder.MapCommaErr(
+			changes,
+			func(i int, builder *sqlx.Builder) error {
+				switch change := changes[i].(type) {
+				case *schema.AddColumn:
+					builder.P("ADD COLUMN")
+					if err := s.column(builder, change.C); err != nil {
+						return err
+					}
+					reverse = append(reverse, &schema.DropColumn{C: change.C})
+
+				case *schema.DropColumn:
+					builder.P("DROP COLUMN").Ident(change.C.Name)
+					reverse = append(reverse, &schema.AddColumn{C: change.C})
 				}
-				reverse = append(reverse, &schema.DropColumn{C: change.C})
 
-			case *schema.DropColumn:
-				builder.P("DROP COLUMN").Ident(change.C.Name)
-				reverse = append(reverse, &schema.AddColumn{C: change.C})
-			}
-
-			return nil
-		})
+				return nil
+			},
+		)
 		if err != nil {
 			return "", err
 		}
 
-		return b.String(), nil
+		return builder.String(), nil
 	}
 
-	stmt, err := buildFunc(changes)
+	query, err := buildFunc(changes)
 	if err != nil {
-		return fmt.Errorf("alter table %q: %v", t.Name, err)
+		return fmt.Errorf("alter table %q: %v", table.Name, err)
 	}
 
 	cmd := &migrate.Change{
-		Cmd: stmt,
+		Cmd: query,
 		Source: &schema.ModifyTable{
-			T:       t,
+			T:       table,
 			Changes: changes,
 		},
-		Comment: fmt.Sprintf("modify %q table", t.Name),
+		Comment: fmt.Sprintf("modify %q table", table.Name),
 	}
 
 	// Changes should be reverted in a reversed order they were created.
 	sqlx.ReverseChanges(reverse)
 	if cmd.Reverse, err = buildFunc(reverse); err != nil {
-		return fmt.Errorf("reverse alter table %q: %v", t.Name, err)
+		return fmt.Errorf("reverse alter table %q: %v", table.Name, err)
 	}
 
 	s.append(cmd)
 	return nil
 }
 
-func (s *state) addIndexes(src schema.Change, t *schema.Table, indexes ...*schema.AddIndex) error {
+func (s *state) addIndexes(src schema.Change, table *schema.Table, indexes ...*schema.AddIndex) error {
 	for _, add := range indexes {
 		index := add.I
-		indexAttrs := IndexAttributes{}
-		hasAttrs := sqlx.Has(index.Attrs, &indexAttrs)
 
-		b := s.Build("ALTER TABLE").
-			Table(t).
+		builder := s.Build("ALTER TABLE").
+			Ident(s.tablePath(table)).
 			P("ADD INDEX").
 			Ident(index.Name)
 
-		if hasAttrs && !indexAttrs.Global {
-			b.P("LOCAL")
-		} else {
-			b.P("GLOBAL")
-		}
-
-		if index.Unique {
-			b.P("UNIQUE")
-		}
-
-		if hasAttrs && !indexAttrs.Sync {
-			b.P("ASYNC")
-		} else {
-			b.P("SYNC")
-		}
-
-		b.P("ON")
-
-		s.indexParts(b, index.Parts)
+		s.buildIndexSpec(builder, index)
 
 		reverseOp := s.Build("ALTER TABLE").
-			Table(t).
+			Ident(s.tablePath(table)).
 			P("DROP INDEX").
 			Ident(index.Name).
 			String()
 
 		s.append(&migrate.Change{
-			Cmd:     b.String(),
+			Cmd:     builder.String(),
 			Source:  src,
-			Comment: fmt.Sprintf("create index %q to table: %q", index.Name, t.Name),
+			Comment: fmt.Sprintf("create index %q to table: %q", index.Name, table.Name),
 			Reverse: reverseOp,
 		})
 	}
 	return nil
 }
 
-func (s *state) dropIndexes(src schema.Change, t *schema.Table, drops ...*schema.DropIndex) error {
+func (s *state) dropIndexes(src schema.Change, table *schema.Table, drops ...*schema.DropIndex) error {
 	adds := make([]*schema.AddIndex, len(drops))
-	for i, d := range drops {
-		adds[i] = &schema.AddIndex{I: d.I, Extra: d.Extra}
+	for i, drop := range drops {
+		adds[i] = &schema.AddIndex{
+			I:     drop.I,
+			Extra: drop.Extra,
+		}
 	}
 
 	reverseState := &state{conn: s.conn, PlanOptions: s.PlanOptions}
-	if err := reverseState.addIndexes(src, t, adds...); err != nil {
+	if err := reverseState.addIndexes(src, table, adds...); err != nil {
 		return err
 	}
 
@@ -344,7 +349,7 @@ func (s *state) dropIndexes(src schema.Change, t *schema.Table, drops ...*schema
 		s.append(&migrate.Change{
 			Cmd:     reverseState.Changes[i].Reverse.(string),
 			Source:  src,
-			Comment: fmt.Sprintf("drop index %q from table: %q", add.I.Name, t.Name),
+			Comment: fmt.Sprintf("drop index %q from table: %q", add.I.Name, table.Name),
 			Reverse: reverseState.Changes[i].Cmd,
 		})
 	}
@@ -353,57 +358,96 @@ func (s *state) dropIndexes(src schema.Change, t *schema.Table, drops ...*schema
 }
 
 // renameTable builds and appends the statement for renaming a table.
-func (s *state) renameTable(c *schema.RenameTable) {
+func (s *state) renameTable(rename *schema.RenameTable) {
 	s.append(&migrate.Change{
-		Source:  c,
-		Comment: fmt.Sprintf("rename a table from %q to %q", c.From.Name, c.To.Name),
-		Cmd:     s.Build("ALTER TABLE").Table(c.From).P("RENAME TO").Table(c.To).String(),
-		Reverse: s.Build("ALTER TABLE").Table(c.To).P("RENAME TO").Table(c.From).String(),
+		Source:  rename,
+		Comment: fmt.Sprintf("rename a table from %q to %q", rename.From.Name, rename.To.Name),
+		Cmd:     s.Build("ALTER TABLE").Ident(s.tablePath(rename.From)).P("RENAME TO").Ident(s.tablePath(rename.To)).String(),
+		Reverse: s.Build("ALTER TABLE").Ident(s.tablePath(rename.To)).P("RENAME TO").Ident(s.tablePath(rename.From)).String(),
 	})
 }
 
 // renameIndex builds and appends the statement for renaming an index.
-func (s *state) renameIndex(modify *schema.ModifyTable, c *schema.RenameIndex) {
+func (s *state) renameIndex(modify *schema.ModifyTable, rename *schema.RenameIndex) {
 	s.append(&migrate.Change{
-		Source:  c,
-		Comment: fmt.Sprintf("rename an index from %q to %q", c.From.Name, c.To.Name),
-		Cmd:     s.Build("ALTER TABLE").Table(modify.T).P("RENAME INDEX").Ident(c.From.Name).P("TO").Ident(c.To.Name).String(),
-		Reverse: s.Build("ALTER TABLE").Table(modify.T).P("RENAME INDEX").Ident(c.To.Name).P("TO").Ident(c.From.Name).String(),
+		Source:  rename,
+		Comment: fmt.Sprintf("rename an index from %q to %q", rename.From.Name, rename.To.Name),
+		Cmd:     s.Build("ALTER TABLE").Ident(s.tablePath(modify.T)).P("RENAME INDEX").Ident(rename.From.Name).P("TO").Ident(rename.To.Name).String(),
+		Reverse: s.Build("ALTER TABLE").Ident(s.tablePath(modify.T)).P("RENAME INDEX").Ident(rename.To.Name).P("TO").Ident(rename.From.Name).String(),
 	})
 }
 
 // column writes the column definition to the builder.
-func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
-	t, err := FormatType(c.Type.Type)
+func (s *state) column(builder *sqlx.Builder, column *schema.Column) error {
+	t, err := FormatType(column.Type.Type)
 	if err != nil {
 		return err
 	}
 
-	b.Ident(c.Name).P(t)
+	builder.Ident(column.Name).P(t)
 
-	if !c.Type.Null {
-		b.P("NOT NULL")
+	if !column.Type.Null {
+		builder.P("NOT NULL")
 	}
 	return nil
 }
 
 // indexDef writes an inline index definition for CREATE TABLE.
-func (s *state) indexDef(b *sqlx.Builder, idx *schema.Index) {
-	b.P("INDEX").Ident(idx.Name).P("GLOBAL ON")
-	s.indexParts(b, idx.Parts)
+func (s *state) indexDef(builder *sqlx.Builder, index *schema.Index) {
+	builder.P("INDEX").Ident(index.Name)
+	s.buildIndexSpec(builder, index)
+}
+
+// buildIndexSpec writes the common index specification:
+// GLOBAL [UNIQUE] [SYNC|ASYNC] ON (columns) [COVER (columns)].
+func (s *state) buildIndexSpec(builder *sqlx.Builder, idx *schema.Index) {
+	indexAttrs := IndexAttributes{}
+	hasAttrs := sqlx.Has(idx.Attrs, &indexAttrs)
+
+	builder.P("GLOBAL")
+
+	if idx.Unique {
+		builder.P("UNIQUE")
+	}
+
+	if hasAttrs && indexAttrs.Async {
+		builder.P("ASYNC")
+	} else {
+		builder.P("SYNC")
+	}
+
+	builder.P("ON")
+	s.indexParts(builder, idx.Parts)
+
+	if hasAttrs && len(indexAttrs.CoverColumns) > 0 {
+		builder.P("COVER")
+		s.indexCoverColumns(builder, indexAttrs.CoverColumns)
+	}
 }
 
 // indexParts writes the index parts (columns) to the builder.
-func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
-	b.Wrap(func(b *sqlx.Builder) {
-		b.MapComma(parts, func(i int, b *sqlx.Builder) {
-			switch part := parts[i]; {
-			case part.C != nil:
-				b.Ident(part.C.Name)
-			case part.X != nil:
-				b.WriteString(part.X.(*schema.RawExpr).X)
-			}
-		})
+func (s *state) indexParts(builder *sqlx.Builder, parts []*schema.IndexPart) {
+	builder.Wrap(func(b *sqlx.Builder) {
+		b.MapComma(
+			parts,
+			func(i int, builder *sqlx.Builder) {
+				if parts[i].C != nil {
+					builder.Ident(parts[i].C.Name)
+				}
+			},
+		)
+	})
+}
+
+// indexCoverColumns writes the cover columns to the builder.
+func (s *state) indexCoverColumns(builder *sqlx.Builder, coverColumns []*schema.Column) {
+	builder.Wrap(func(b *sqlx.Builder) {
+		b.MapComma(
+			coverColumns,
+			func(i int, builder *sqlx.Builder) {
+				builder.Ident(coverColumns[i].Name)
+			},
+		)
 	})
 }
 
