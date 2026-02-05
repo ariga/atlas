@@ -8,6 +8,7 @@ require (
 	github.com/go-openapi/inflect v0.19.0
 	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/mattn/go-sqlite3 v1.14.28
+	github.com/samber/lo v1.52.0
 	github.com/stretchr/testify v1.11.1
 	github.com/zclconf/go-cty v1.14.4
 	github.com/zclconf/go-cty-yaml v1.1.0

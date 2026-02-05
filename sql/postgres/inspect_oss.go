@@ -473,6 +473,190 @@ func (i *inspect) inspectEnums(ctx context.Context, r *schema.Realm) error {
 	return nil
 }
 
+// inspectFuncs queries and appends the functions in the realm schemas.
+func (i *inspect) inspectFuncs(ctx context.Context, r *schema.Realm, opts *schema.InspectOptions) error {
+	args := make([]any, 0, len(r.Schemas))
+	for _, s := range r.Schemas {
+		args = append(args, s.Name)
+	}
+	if len(args) == 0 {
+		return nil
+	}
+
+	rows, err := i.QueryContext(ctx, fmt.Sprintf(functionsQuery, nArgs(0, len(args))), args...)
+	if err != nil {
+		return fmt.Errorf("postgres: querying functions: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		// functionsQuery returns: nspname, proname, lanname, identity_arguments, functiondef, rettype, extname
+		var schemaName, name, lang, argsStr, body, ret, extName sql.NullString
+		if err := rows.Scan(&schemaName, &name, &lang, &argsStr, &body, &ret, &extName); err != nil {
+			return fmt.Errorf("postgres: scanning function row: %w", err)
+		}
+		if !sqlx.ValidString(schemaName) || !sqlx.ValidString(name) {
+			continue
+		}
+		s, ok := r.Schema(schemaName.String)
+		if !ok {
+			return fmt.Errorf("postgres: schema %q for function %q was not found in realm", schemaName.String, name.String)
+		}
+		f := &schema.Func{
+			Name: name.String,
+			Lang: lang.String,
+		}
+		f.Schema = s
+		if sqlx.ValidString(ret) {
+			retType, err := i.parseType(s, ret.String)
+			if err != nil {
+				return fmt.Errorf("postgres: parsing return type %q for function %s: %w", ret.String, name.String, err)
+			}
+			f.Ret = retType
+		}
+		if sqlx.ValidString(argsStr) {
+			fargs, err := parseFuncArgs(argsStr.String, s, i)
+			if err != nil {
+				return fmt.Errorf("postgres: parsing arguments for function %s: %w", name.String, err)
+			}
+			f.Args = fargs
+		}
+		if sqlx.ValidString(body) {
+			f.Body = extractFuncBody(body.String)
+		}
+		if sqlx.ValidString(extName) {
+			f.Attrs = append(f.Attrs, &ExtensionOwner{Name: extName.String})
+		}
+		s.Funcs = append(s.Funcs, f)
+	}
+	return rows.Err()
+}
+
+// parseFuncArgs parses a PostgreSQL function argument list (e.g. from pg_get_function_arguments)
+// into schema.FuncArg values. Format: [argmode ] [argname ] argtype [ DEFAULT expr ] [, ...].
+func parseFuncArgs(s string, sc *schema.Schema, i *inspect) ([]*schema.FuncArg, error) {
+	segments := splitFuncArgList(s)
+	out := make([]*schema.FuncArg, 0, len(segments))
+	for _, seg := range segments {
+		seg = strings.TrimSpace(seg)
+		if seg == "" {
+			continue
+		}
+		var mode schema.FuncArgMode
+		upper := strings.ToUpper(seg)
+		for _, m := range []struct {
+			prefix string
+			mode   schema.FuncArgMode
+		}{
+			{"VARIADIC ", schema.FuncArgModeVariadic},
+			{"INOUT ", schema.FuncArgModeInOut},
+			{"OUT ", schema.FuncArgModeOut},
+			{"IN ", schema.FuncArgModeIn},
+		} {
+			if strings.HasPrefix(upper, m.prefix) {
+				mode = m.mode
+				seg = strings.TrimSpace(seg[len(m.prefix):])
+				upper = strings.ToUpper(seg)
+				break
+			}
+		}
+		// Split off DEFAULT expr.
+		defaultExpr := ""
+		if idx := strings.Index(strings.ToUpper(seg), " DEFAULT "); idx >= 0 {
+			defaultExpr = strings.TrimSpace(seg[idx+9:])
+			seg = strings.TrimSpace(seg[:idx])
+		}
+		// seg is "[name] type". Find type by trying ParseType from the end.
+		words := strings.Fields(seg)
+		var argName string
+		var typ schema.Type
+		var err error
+		for j := 0; j <= len(words); j++ {
+			typeStr := strings.Join(words[j:], " ")
+			if typeStr == "" {
+				continue
+			}
+			typ, err = i.parseType(sc, typeStr)
+			if err == nil {
+				if j > 0 {
+					argName = strings.Join(words[:j], " ")
+				}
+				break
+			}
+		}
+		if typ == nil {
+			return nil, fmt.Errorf("invalid argument segment %q: %w", seg, err)
+		}
+		fa := &schema.FuncArg{
+			Name: argName,
+			Type: typ,
+			Mode: mode,
+		}
+		if mode == "" {
+			fa.Mode = schema.FuncArgModeIn
+		}
+		if defaultExpr != "" {
+			fa.Default = &schema.RawExpr{X: defaultExpr}
+		}
+		out = append(out, fa)
+	}
+	return out, nil
+}
+
+// extractFuncBody returns the function body from the full output of pg_get_functiondef.
+// pg_get_functiondef returns "CREATE OR REPLACE FUNCTION ... AS $tag$ body $tag$"; we need only "body".
+func extractFuncBody(def string) string {
+	// Find "AS " (case insensitive), then dollar-quoted string ($$ or $tag$).
+	upper := strings.ToUpper(def)
+	i := strings.Index(upper, "AS ")
+	if i < 0 {
+		return def
+	}
+	def = def[i+3:]
+	def = strings.TrimLeft(def, " \t\n\r")
+	if len(def) < 2 || def[0] != '$' {
+		return def
+	}
+	// Find end of opening delimiter: $$ or $tag$
+	closeIdx := 1
+	for closeIdx < len(def) && def[closeIdx] != '$' {
+		closeIdx++
+	}
+	if closeIdx >= len(def) {
+		return def
+	}
+	openDelim := def[:closeIdx+1]
+	bodyStart := closeIdx + 1
+	bodyEnd := strings.Index(def[bodyStart:], openDelim)
+	if bodyEnd < 0 {
+		return def
+	}
+	return strings.TrimSpace(def[bodyStart : bodyStart+bodyEnd])
+}
+
+// splitFuncArgList splits a function argument list by comma, respecting parentheses.
+func splitFuncArgList(s string) []string {
+	var parts []string
+	var depth int
+	var start int
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+		case ',':
+			if depth == 0 {
+				parts = append(parts, s[start:i])
+				start = i + 1
+			}
+		}
+	}
+	if start < len(s) {
+		parts = append(parts, s[start:])
+	}
+	return parts
+}
+
 // indexes queries and appends the indexes of the given table.
 func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
 	if i.crdb {
@@ -1178,6 +1362,14 @@ type (
 		schema.Attr
 	}
 
+	// ExtensionOwner marks a function (or other object) as owned by a PostgreSQL
+	// extension. Drop changes for such functions are skipped to avoid "cannot drop
+	// function ... because extension X requires it" errors.
+	ExtensionOwner struct {
+		schema.Attr
+		Name string
+	}
+
 	// CheckColumns attribute hold the column named used by the CHECK constraints.
 	// This attribute is added on inspection for internal usage and has no meaning
 	// on migration.
@@ -1217,6 +1409,9 @@ type (
 	// ReferenceOption describes the ON DELETE and ON UPDATE options for foreign keys.
 	ReferenceOption schema.ReferenceOption
 )
+
+// attr implements schema.Attr so ExtensionOwner can be stored in Func.Attrs.
+func (*ExtensionOwner) attr() {}
 
 var _ specutil.RefNamer = (*DomainType)(nil)
 
@@ -1587,6 +1782,29 @@ WHERE
     n.nspname IN (%s)
 ORDER BY
     n.nspname, e.enumtypid, e.enumsortorder
+`
+	// Query to list functions only (prokind 'f'; procedures 'p' are inspected separately).
+	// extname is non-null when the function is part of an extension (e.g. uuid-ossp).
+	functionsQuery = `
+SELECT
+	n.nspname,
+	p.proname,
+	l.lanname,
+	pg_catalog.pg_get_function_identity_arguments(p.oid),
+	pg_catalog.pg_get_functiondef(p.oid),
+	pg_catalog.format_type(p.prorettype, NULL),
+	ext.extname
+FROM
+	pg_catalog.pg_proc p
+	JOIN pg_catalog.pg_namespace n ON p.pronamespace = n.oid
+	JOIN pg_catalog.pg_language l ON p.prolang = l.oid
+	LEFT JOIN pg_catalog.pg_depend dep ON dep.objid = p.oid AND dep.deptype = 'e' AND dep.classid = 'pg_catalog.pg_proc'::regclass
+	LEFT JOIN pg_catalog.pg_extension ext ON ext.oid = dep.refobjid
+WHERE
+	n.nspname IN (%s)
+	AND p.prokind = 'f'
+ORDER BY
+	n.nspname, p.proname
 `
 	// Query to list foreign-keys.
 	fksQuery = `

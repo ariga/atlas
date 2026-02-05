@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -661,4 +662,148 @@ concurrent_index {
 	require.Equal(t, `CREATE INDEX CONCURRENTLY "users_pkey_old" ON "public"."users" ("id")`, plan.Changes[0].Reverse)
 	require.Equal(t, `CREATE INDEX CONCURRENTLY "users_pkey_new" ON "public"."users" ("id")`, plan.Changes[1].Cmd)
 	require.Equal(t, `DROP INDEX CONCURRENTLY "public"."users_pkey_new"`, plan.Changes[1].Reverse)
+}
+
+func TestDiff_ProcFuncsDiff(t *testing.T) {
+	d := &diff{&conn{ExecQuerier: sqlx.NoRows}}
+	opts := schema.NewDiffOptions()
+
+	intType := &schema.IntegerType{T: "int"}
+	bigintType := &schema.IntegerType{T: "bigint"}
+
+	t.Run("no functions", func(t *testing.T) {
+		from := schema.New("public")
+		to := schema.New("public")
+		changes, err := d.ProcFuncsDiff(from, to, opts)
+		require.NoError(t, err)
+		require.Empty(t, changes)
+	})
+
+	t.Run("same function in both", func(t *testing.T) {
+		from := schema.New("public")
+		to := schema.New("public")
+		f := &schema.Func{
+			Name: "add_one",
+			Schema: from,
+			Lang: "sql",
+			Body: "SELECT $1 + 1",
+			Args:  []*schema.FuncArg{{Type: intType}},
+			Ret:   intType,
+		}
+		from.Funcs = []*schema.Func{f}
+		to.Funcs = []*schema.Func{
+			{Name: "add_one", Schema: to, Lang: "sql", Body: "SELECT $1 + 1", Args: []*schema.FuncArg{{Type: intType}}, Ret: intType},
+		}
+		changes, err := d.ProcFuncsDiff(from, to, opts)
+		require.NoError(t, err)
+		require.Empty(t, changes)
+	})
+
+	// from = current state, to = desired state. We add funcs in to, drop funcs in from.
+	t.Run("function only in from (current) — drop", func(t *testing.T) {
+		from := schema.New("public")
+		to := schema.New("public")
+		f := &schema.Func{
+			Name: "old_func", Schema: from, Lang: "sql", Body: "SELECT 1",
+			Args: []*schema.FuncArg{}, Ret: intType,
+		}
+		from.Funcs = []*schema.Func{f}
+		changes, err := d.ProcFuncsDiff(from, to, opts)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		require.IsType(t, &schema.DropFunc{}, changes[0])
+		require.Equal(t, "old_func", changes[0].(*schema.DropFunc).F.Name)
+	})
+
+	t.Run("function only in to (desired) — add", func(t *testing.T) {
+		from := schema.New("public")
+		to := schema.New("public")
+		f := &schema.Func{
+			Name: "new_func", Schema: to, Lang: "sql", Body: "SELECT 1",
+			Args: []*schema.FuncArg{}, Ret: intType,
+		}
+		to.Funcs = []*schema.Func{f}
+		changes, err := d.ProcFuncsDiff(from, to, opts)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		require.IsType(t, &schema.AddFunc{}, changes[0])
+		require.Equal(t, "new_func", changes[0].(*schema.AddFunc).F.Name)
+	})
+
+	t.Run("multiple add and drop", func(t *testing.T) {
+		from := schema.New("public")
+		to := schema.New("public")
+		// current (from) has add_a, add_b; desired (to) has drop_x, drop_y → add drop_x, drop_y; drop add_a, add_b
+		inCurrent1 := &schema.Func{Name: "add_a", Schema: from, Lang: "sql", Body: "1", Args: nil, Ret: intType}
+		inCurrent2 := &schema.Func{Name: "add_b", Schema: from, Lang: "sql", Body: "2", Args: nil, Ret: intType}
+		from.Funcs = []*schema.Func{inCurrent1, inCurrent2}
+		inDesired1 := &schema.Func{Name: "drop_x", Schema: to, Lang: "sql", Body: "1", Args: nil, Ret: intType}
+		inDesired2 := &schema.Func{Name: "drop_y", Schema: to, Lang: "sql", Body: "2", Args: nil, Ret: intType}
+		to.Funcs = []*schema.Func{inDesired1, inDesired2}
+		changes, err := d.ProcFuncsDiff(from, to, opts)
+		require.NoError(t, err)
+		require.Len(t, changes, 4)
+		var addCount, dropCount int
+		for _, c := range changes {
+			switch c.(type) {
+			case *schema.AddFunc:
+				addCount++
+			case *schema.DropFunc:
+				dropCount++
+			}
+		}
+		require.Equal(t, 2, addCount)
+		require.Equal(t, 2, dropCount)
+	})
+
+	t.Run("same name different signature", func(t *testing.T) {
+		from := schema.New("public")
+		to := schema.New("public")
+		// current: add_one(int), desired: add_one(bigint) — add bigint version, drop int version
+		fFrom := &schema.Func{
+			Name: "add_one", Schema: from, Lang: "sql", Body: "SELECT $1 + 1",
+			Args: []*schema.FuncArg{{Type: intType}}, Ret: intType,
+		}
+		fTo := &schema.Func{
+			Name: "add_one", Schema: to, Lang: "sql", Body: "SELECT $1 + 1",
+			Args: []*schema.FuncArg{{Type: bigintType}}, Ret: bigintType,
+		}
+		from.Funcs = []*schema.Func{fFrom}
+		to.Funcs = []*schema.Func{fTo}
+		changes, err := d.ProcFuncsDiff(from, to, opts)
+		require.NoError(t, err)
+		require.Len(t, changes, 2) // Add add_one(bigint), Drop add_one(int)
+		var hasAdd, hasDrop bool
+		for _, c := range changes {
+			switch ch := c.(type) {
+			case *schema.AddFunc:
+				hasAdd = true
+				require.Len(t, ch.F.Args, 1)
+				require.Equal(t, "bigint", ch.F.Args[0].Type.(*schema.IntegerType).T)
+			case *schema.DropFunc:
+				hasDrop = true
+				require.Len(t, ch.F.Args, 1)
+				require.Equal(t, "int", ch.F.Args[0].Type.(*schema.IntegerType).T)
+			}
+		}
+		require.True(t, hasAdd)
+		require.True(t, hasDrop)
+	})
+
+	// Regression: migrate diff uses SchemaDiff(current, desired). Desired state (e.g. from
+	// schema.sql) may add a new function; we must produce AddFunc for it, not DropFunc.
+	t.Run("migrate diff semantics — desired adds function", func(t *testing.T) {
+		current := schema.New("public")
+		desired := schema.New("public")
+		returnOne := &schema.Func{
+			Name: "return_one", Schema: desired, Lang: "plpgsql", Body: "BEGIN\n    RETURN 1;\nEND;",
+			Args: []*schema.FuncArg{}, Ret: intType,
+		}
+		desired.Funcs = []*schema.Func{returnOne}
+		changes, err := d.ProcFuncsDiff(current, desired, opts)
+		require.NoError(t, err)
+		require.Len(t, changes, 1, "should add return_one to reach desired state")
+		require.IsType(t, &schema.AddFunc{}, changes[0])
+		require.Equal(t, "return_one", changes[0].(*schema.AddFunc).F.Name)
+	})
 }

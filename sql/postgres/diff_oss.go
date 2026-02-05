@@ -582,3 +582,56 @@ func trimCast(s string) string {
 	}
 	return s[:i]
 }
+
+// funcSign returns a comparable key for a function: name plus argument type list.
+// Used to match functions by signature (Postgres identifies functions by name + arg types).
+func funcSign(f *schema.Func) (string, error) {
+	parts := make([]string, 0, len(f.Args)+1)
+	parts = append(parts, f.Name)
+	for _, a := range f.Args {
+		t, err := FormatType(a.Type)
+		if err != nil {
+			return "", fmt.Errorf("format func %q arg type: %w", f.Name, err)
+		}
+		parts = append(parts, t)
+	}
+	return strings.Join(parts, "\x00"), nil
+}
+
+// findFunc returns the function in s with the same signature as f (name + arg types), or false.
+func findFunc(s *schema.Schema, f *schema.Func) (*schema.Func, bool) {
+	sig, err := funcSign(f)
+	if err != nil {
+		return nil, false
+	}
+	for _, g := range s.Funcs {
+		gsig, err := funcSign(g)
+		if err != nil {
+			continue
+		}
+		if sig == gsig {
+			return g, true
+		}
+	}
+	return nil, false
+}
+
+// ProcFuncsDiff implements the sqlx.ProcFuncsDiffer interface.
+// It returns changes to migrate functions from "from" (current) to "to" (desired) state.
+// Add functions that exist in "to" but not in "from"; drop functions that exist in "from" but not in "to".
+func (d *diff) ProcFuncsDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]schema.Change, error) {
+	var changes []schema.Change
+	// Add: functions in "to" (desired) that are missing in "from" (current).
+	for _, toFunc := range to.Funcs {
+		if _, ok := findFunc(from, toFunc); !ok {
+			changes = opts.AddOrSkip(changes, &schema.AddFunc{F: toFunc})
+		}
+	}
+	// Drop: functions in "from" (current) that are not in "to" (desired).
+	for _, fromFunc := range from.Funcs {
+		if _, ok := findFunc(to, fromFunc); !ok {
+			changes = opts.AddOrSkip(changes, &schema.DropFunc{F: fromFunc})
+		}
+	}
+	return changes, nil
+}

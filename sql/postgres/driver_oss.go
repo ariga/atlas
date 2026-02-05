@@ -14,6 +14,7 @@ import (
 	"math/rand"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"ariga.io/atlas/schemahcl"
@@ -644,10 +645,6 @@ func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOpti
 	return nil // unimplemented.
 }
 
-func (*inspect) inspectFuncs(context.Context, *schema.Realm, *schema.InspectOptions) error {
-	return nil // unimplemented.
-}
-
 func (*inspect) inspectTypes(context.Context, *schema.Realm, *schema.InspectOptions) error {
 	return nil // unimplemented.
 }
@@ -684,16 +681,168 @@ func (*state) renameView(*schema.RenameView) {
 	// unimplemented.
 }
 
-func (s *state) addFunc(*schema.AddFunc) error {
-	return nil // unimplemented.
+// funcArgTypes returns the argument type list for DROP FUNCTION, e.g. "(integer, text)".
+func (s *state) funcArgTypes(f *schema.Func) (string, error) {
+	if len(f.Args) == 0 {
+		return "()", nil
+	}
+	parts := make([]string, 0, len(f.Args))
+	for _, a := range f.Args {
+		t, err := s.formatType(a.Type)
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, t)
+	}
+	return "(" + strings.Join(parts, ", ") + ")", nil
 }
 
-func (s *state) dropFunc(*schema.DropFunc) error {
-	return nil // unimplemented.
+// funcParams returns the parameter list for CREATE FUNCTION, e.g. "a integer, b text DEFAULT 1".
+func (s *state) funcParams(f *schema.Func) (string, error) {
+	parts := make([]string, 0, len(f.Args))
+	for _, a := range f.Args {
+		t, err := s.formatType(a.Type)
+		if err != nil {
+			return "", err
+		}
+		var p string
+		if a.Mode != "" && a.Mode != schema.FuncArgModeIn {
+			p = string(a.Mode) + " "
+		}
+		if a.Name != "" {
+			p += fmt.Sprintf("%q ", a.Name)
+		}
+		p += t
+		if a.Default != nil {
+			if r, ok := a.Default.(*schema.RawExpr); ok {
+				p += " DEFAULT " + r.X
+			}
+		}
+		parts = append(parts, p)
+	}
+	return strings.Join(parts, ", "), nil
 }
 
-func (s *state) modifyFunc(*schema.ModifyFunc) error {
-	return nil // unimplemented.
+// funcBodyQuote returns the body quoted for AS $$ body $$, using a tag that does not appear in body.
+func funcBodyQuote(body string) string {
+	const tag = "$atlas$"
+	if strings.Contains(body, "$$") && !strings.Contains(body, tag) {
+		return tag + body + tag
+	}
+	return "$$" + body + "$$"
+}
+
+func (s *state) addFunc(add *schema.AddFunc) error {
+	f := add.F
+	params, err := s.funcParams(f)
+	if err != nil {
+		return err
+	}
+	retType := "void"
+	if f.Ret != nil {
+		retType, err = s.formatType(f.Ret)
+		if err != nil {
+			return err
+		}
+	}
+	argTypes, err := s.funcArgTypes(f)
+	if err != nil {
+		return err
+	}
+	// CREATE OR REPLACE FUNCTION name(params) RETURNS rettype LANGUAGE lang AS $$ body $$
+	b := s.Build("CREATE OR REPLACE FUNCTION")
+	b.Func(f).P("(").P(params).P(")")
+	b.P("RETURNS").P(retType)
+	b.P("LANGUAGE").P(f.Lang)
+	if f.Body != "" {
+		b.P("AS").P(funcBodyQuote(f.Body))
+	}
+	createCmd := b.String()
+	// Reverse: DROP FUNCTION IF EXISTS name(argtypes) CASCADE
+	dropB := s.Build("DROP FUNCTION IF EXISTS")
+	dropB.Func(f).P(argTypes).P("CASCADE")
+	s.append(&migrate.Change{
+		Source:  add,
+		Cmd:     createCmd,
+		Reverse: dropB.String(),
+		Comment: fmt.Sprintf("create function %q", f.Name),
+	})
+	return nil
+}
+
+func (s *state) dropFunc(drop *schema.DropFunc) error {
+	f := drop.F
+	// Skip dropping functions that belong to an extension (e.g. uuid-ossp);
+	// PostgreSQL rejects "cannot drop function ... because extension X requires it".
+	if ext := (ExtensionOwner{}); sqlx.Has(f.Attrs, &ext) {
+		return nil
+	}
+	argTypes, err := s.funcArgTypes(f)
+	if err != nil {
+		return err
+	}
+	b := s.Build("DROP FUNCTION IF EXISTS")
+	b.Func(f).P(argTypes)
+	if sqlx.Has(drop.Extra, &Cascade{}) {
+		b.P("CASCADE")
+	}
+	dropCmd := b.String()
+	// Reverse: recreate the function
+	rs := &state{conn: s.conn, PlanOptions: s.PlanOptions}
+	if err := rs.addFunc(&schema.AddFunc{F: f}); err != nil {
+		return fmt.Errorf("reverse of drop function %q: %w", f.Name, err)
+	}
+	if len(rs.Changes) != 1 {
+		return fmt.Errorf("unexpected addFunc reverse changes: %d", len(rs.Changes))
+	}
+	s.append(&migrate.Change{
+		Source:  drop,
+		Cmd:     dropCmd,
+		Reverse: rs.Changes[0].Cmd,
+		Comment: fmt.Sprintf("drop function %q", f.Name),
+	})
+	return nil
+}
+
+func (s *state) modifyFunc(modify *schema.ModifyFunc) error {
+	// Option A: treat as DROP From + CREATE To. Reverse: DROP To + CREATE From.
+	dropFromB := s.Build("DROP FUNCTION IF EXISTS")
+	argTypesFrom, err := s.funcArgTypes(modify.From)
+	if err != nil {
+		return err
+	}
+	dropFromB.Func(modify.From).P(argTypesFrom).P("CASCADE")
+	dropFromCmd := dropFromB.String()
+	rsAdd := &state{conn: s.conn, PlanOptions: s.PlanOptions}
+	if err := rsAdd.addFunc(&schema.AddFunc{F: modify.To}); err != nil {
+		return err
+	}
+	if len(rsAdd.Changes) != 1 {
+		return fmt.Errorf("unexpected addFunc changes: %d", len(rsAdd.Changes))
+	}
+	createToCmd := rsAdd.Changes[0].Cmd
+	// Reverse: drop To, create From
+	dropToB := s.Build("DROP FUNCTION IF EXISTS")
+	argTypesTo, err := s.funcArgTypes(modify.To)
+	if err != nil {
+		return err
+	}
+	dropToB.Func(modify.To).P(argTypesTo).P("CASCADE")
+	rsRev := &state{conn: s.conn, PlanOptions: s.PlanOptions}
+	if err := rsRev.addFunc(&schema.AddFunc{F: modify.From}); err != nil {
+		return err
+	}
+	if len(rsRev.Changes) != 1 {
+		return fmt.Errorf("unexpected addFunc reverse changes: %d", len(rsRev.Changes))
+	}
+	reverseCmd := dropToB.String() + ";\n" + rsRev.Changes[0].Cmd
+	s.append(&migrate.Change{
+		Source:  modify,
+		Cmd:     dropFromCmd + ";\n" + createToCmd,
+		Reverse: reverseCmd,
+		Comment: fmt.Sprintf("modify function %q", modify.To.Name),
+	})
+	return nil
 }
 
 func (s *state) renameFunc(*schema.RenameFunc) error {

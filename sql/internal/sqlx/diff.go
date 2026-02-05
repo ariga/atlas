@@ -272,7 +272,8 @@ func (d *Diff) schemaDiff(from, to *schema.Schema, opts *schema.DiffOptions) ([]
 		}
 	}
 	// Add, drop and modify functions and procedures.
-	if pf, ok := d.DiffDriver.(ProcFuncsDiffer); ok {
+	pf, ok := d.DiffDriver.(ProcFuncsDiffer)
+	if ok {
 		change, err := pf.ProcFuncsDiff(from, to, opts)
 		if err != nil {
 			return nil, err

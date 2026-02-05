@@ -419,6 +419,7 @@ func (p *Planner) plan(ctx context.Context, name string, to StateReader, realmSc
 	if err != nil {
 		return nil, err
 	}
+
 	var changes []schema.Change
 	switch {
 	case realmScope:

@@ -2011,3 +2011,77 @@ func TestIndentedPlan(t *testing.T) {
 		})
 	}
 }
+
+func TestPlan_FuncChanges(t *testing.T) {
+	db, mk, err := sqlmock.New()
+	require.NoError(t, err)
+	mock{mk}.version("130000")
+	drv, err := Open(db)
+	require.NoError(t, err)
+
+	s := schema.New("public")
+	addF := &schema.Func{
+		Name:   "return_one",
+		Schema: s,
+		Lang:   "sql",
+		Body:   "SELECT 1",
+		Args:   nil,
+		Ret:    &schema.IntegerType{T: "integer"},
+	}
+	addF.Schema = s
+
+	t.Run("AddFunc", func(t *testing.T) {
+		plan, err := drv.PlanChanges(context.Background(), "add_func", []schema.Change{
+			&schema.AddFunc{F: addF},
+		})
+		require.NoError(t, err)
+		require.Len(t, plan.Changes, 1)
+		require.Contains(t, plan.Changes[0].Cmd, "CREATE OR REPLACE FUNCTION")
+		require.Contains(t, plan.Changes[0].Cmd, "return_one")
+		require.Contains(t, plan.Changes[0].Cmd, "RETURNS integer")
+		require.Contains(t, plan.Changes[0].Cmd, "LANGUAGE sql")
+		require.Contains(t, plan.Changes[0].Reverse, "DROP FUNCTION")
+		require.Contains(t, plan.Changes[0].Reverse, "return_one")
+	})
+
+	dropF := &schema.Func{
+		Name:   "return_one",
+		Schema: s,
+		Lang:   "sql",
+		Body:   "SELECT 1",
+		Args:   nil,
+		Ret:    &schema.IntegerType{T: "integer"},
+	}
+	dropF.Schema = s
+
+	t.Run("DropFunc", func(t *testing.T) {
+		plan, err := drv.PlanChanges(context.Background(), "drop_func", []schema.Change{
+			&schema.DropFunc{F: dropF},
+		})
+		require.NoError(t, err)
+		require.Len(t, plan.Changes, 1)
+		require.Contains(t, plan.Changes[0].Cmd, "DROP FUNCTION")
+		require.Contains(t, plan.Changes[0].Cmd, "return_one")
+		require.Contains(t, plan.Changes[0].Reverse, "CREATE OR REPLACE FUNCTION")
+		require.Contains(t, plan.Changes[0].Reverse, "return_one")
+	})
+
+	// Extension-owned functions must not produce a DROP in the plan (PostgreSQL rejects it).
+	dropExtFunc := &schema.Func{
+		Name:   "uuid_generate_v4",
+		Schema: s,
+		Lang:   "c",
+		Body:   "",
+		Args:   nil,
+		Ret:    &schema.UUIDType{T: "uuid"},
+		Attrs:  []schema.Attr{&ExtensionOwner{Name: "uuid-ossp"}},
+	}
+	dropExtFunc.Schema = s
+	t.Run("DropFunc_extension_owned_skipped", func(t *testing.T) {
+		plan, err := drv.PlanChanges(context.Background(), "drop_ext_func", []schema.Change{
+			&schema.DropFunc{F: dropExtFunc},
+		})
+		require.NoError(t, err)
+		require.Empty(t, plan.Changes, "extension-owned function should not produce DROP in plan")
+	})
+}

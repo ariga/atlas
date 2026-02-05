@@ -30,6 +30,7 @@ var (
 	queryCRDBColumns = sqltest.Escape(fmt.Sprintf(crdbColumnsQuery, "$2"))
 	queryIndexes     = sqltest.Escape(fmt.Sprintf(indexesAbove15, "$2"))
 	queryCRDBIndexes = sqltest.Escape(fmt.Sprintf(crdbIndexesQuery, "$2"))
+	queryFuncs       = sqltest.Escape(fmt.Sprintf(functionsQuery, "$1"))
 )
 
 func TestDriver_InspectTable(t *testing.T) {
@@ -432,6 +433,123 @@ logs3      | c5         | integer   | integer   | NO          |                |
 		{X: &schema.RawExpr{X: "(a + b)"}},
 		{X: &schema.RawExpr{X: "(a + (b * 2))"}},
 	}, key.Parts)
+}
+
+func TestExtractFuncBody(t *testing.T) {
+	tests := []struct {
+		name string
+		def  string
+		want string
+	}{
+		{
+			name: "pg_get_functiondef with $function$",
+			def: `CREATE OR REPLACE FUNCTION public.return_one()
+ RETURNS integer
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    RETURN 1;
+END;
+$function$`,
+			want: "BEGIN\n    RETURN 1;\nEND;",
+		},
+		{
+			name: "simple $$ body $$",
+			def:  "CREATE FUNCTION add_two(a integer, b integer) RETURNS integer LANGUAGE sql AS $$ SELECT a + b $$",
+			want: "SELECT a + b",
+		},
+		{
+			name: "no AS",
+			def:  "SELECT 1",
+			want: "SELECT 1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractFuncBody(tt.def)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestDriver_InspectFuncs(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mk := mock{m}
+	mk.version("150000")
+	drv, err := Open(db)
+	require.NoError(t, err)
+	drv.(*Driver).schema = "public"
+
+	// InspectSchema with InspectFuncs: schemas query then functions query.
+	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
+		WithArgs("public").
+		WillReturnRows(sqltest.Rows(`
+ schema_name | comment 
+-------------+---------
+ public      |
+`))
+	// functionsQuery returns: nspname, proname, lanname, identity_arguments, functiondef, rettype, extname
+	funcRows := sqlmock.NewRows([]string{"nspname", "proname", "lanname", "identity_arguments", "functiondef", "prorettype", "extname"}).
+		AddRow("public", "add_two", "sql", "integer, integer", "CREATE FUNCTION add_two(a integer, b integer) RETURNS integer LANGUAGE sql AS $$ SELECT a + b $$", "integer", nil).
+		AddRow("public", "greet", "sql", "text", "CREATE FUNCTION greet(name text) RETURNS text LANGUAGE sql AS $$ SELECT 'Hello ' || name $$", "text", nil)
+	m.ExpectQuery(queryFuncs).
+		WithArgs("public").
+		WillReturnRows(funcRows)
+	s, err := drv.InspectSchema(context.Background(), "public", &schema.InspectOptions{
+		Mode: schema.InspectSchemas | schema.InspectFuncs,
+	})
+	require.NoError(t, err)
+	require.Len(t, s.Funcs, 2)
+
+	// add_two(integer, integer) returns integer
+	addTwo, ok := s.Func("add_two")
+	require.True(t, ok)
+	require.Equal(t, "add_two", addTwo.Name)
+	require.Equal(t, "sql", addTwo.Lang)
+	require.Contains(t, addTwo.Body, "SELECT a + b")
+	require.Len(t, addTwo.Args, 2)
+	require.Equal(t, "", addTwo.Args[0].Name)
+	require.Equal(t, "", addTwo.Args[1].Name)
+	require.Equal(t, schema.FuncArgModeIn, addTwo.Args[0].Mode)
+	require.IsType(t, (*schema.IntegerType)(nil), addTwo.Args[0].Type)
+	require.IsType(t, (*schema.IntegerType)(nil), addTwo.Args[1].Type)
+	require.IsType(t, (*schema.IntegerType)(nil), addTwo.Ret)
+
+	// greet(text) returns text
+	greet, ok := s.Func("greet")
+	require.True(t, ok)
+	require.Equal(t, "greet", greet.Name)
+	require.Equal(t, "sql", greet.Lang)
+	require.Len(t, greet.Args, 1)
+	require.IsType(t, (*schema.StringType)(nil), greet.Args[0].Type)
+	require.IsType(t, (*schema.StringType)(nil), greet.Ret)
+}
+
+func TestDriver_InspectFuncs_empty(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mk := mock{m}
+	mk.version("150000")
+	drv, err := Open(db)
+	require.NoError(t, err)
+	drv.(*Driver).schema = "public"
+
+	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
+		WithArgs("public").
+		WillReturnRows(sqltest.Rows(`
+ schema_name | comment 
+-------------+---------
+ public      |
+`))
+	m.ExpectQuery(queryFuncs).
+		WithArgs("public").
+		WillReturnRows(sqlmock.NewRows([]string{"nspname", "proname", "lanname", "identity_arguments", "functiondef", "prorettype", "extname"}))
+	s, err := drv.InspectSchema(context.Background(), "public", &schema.InspectOptions{
+		Mode: schema.InspectSchemas | schema.InspectFuncs,
+	})
+	require.NoError(t, err)
+	require.Empty(t, s.Funcs)
 }
 
 func TestDriver_InspectCRDBSchema(t *testing.T) {
