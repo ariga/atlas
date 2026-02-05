@@ -267,6 +267,11 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 		}
 		c.AddAttrs(&OnUpdate{A: x.X})
 	}
+	_, hasAutoInc := spec.Attr("auto_increment")
+	_, hasAutoRand := spec.Attr("auto_random")
+	if hasAutoInc && hasAutoRand {
+		return nil, fmt.Errorf("column %q cannot have both auto_increment and auto_random", c.Name)
+	}
 	if attr, ok := spec.Attr("auto_increment"); ok {
 		b, err := attr.Bool()
 		if err != nil {
@@ -275,6 +280,34 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 		if b {
 			c.AddAttrs(&AutoIncrement{})
 		}
+	}
+	if attr, ok := spec.Attr("auto_random"); ok {
+		v, err := attr.Int()
+		if err != nil {
+			return nil, err
+		}
+		if v < 1 || v > 15 {
+			return nil, fmt.Errorf("auto_random shard bits for column %q must be between 1 and 15, got %d", c.Name, v)
+		}
+		ar := &AutoRandom{ShardBits: v}
+		if rangeAttr, ok := spec.Attr("auto_random_range"); ok {
+			r, err := rangeAttr.Int()
+			if err != nil {
+				return nil, err
+			}
+			if r < 32 || r > 64 {
+				return nil, fmt.Errorf("auto_random_range for column %q must be between 32 and 64, got %d", c.Name, r)
+			}
+			// Normalize the default range (64) to 0 so that diffs between
+			// the inspected state (which also normalizes 64→0) and the
+			// desired state from HCL are consistent.
+			if r != 64 {
+				ar.RangeBits = r
+			}
+		}
+		c.AddAttrs(ar)
+	} else if _, ok := spec.Attr("auto_random_range"); ok {
+		return nil, fmt.Errorf("column %q has auto_random_range but no auto_random", c.Name)
 	}
 	if err := specutil.ConvertGenExpr(spec.Remain(), c, storedOrVirtual); err != nil {
 		return nil, err
@@ -400,6 +433,12 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	}
 	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("auto_increment", true))
+	}
+	if ar := (&AutoRandom{}); sqlx.Has(c.Attrs, ar) && ar.ShardBits > 0 {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.IntAttr("auto_random", ar.ShardBits))
+		if ar.RangeBits > 0 && ar.RangeBits != 64 {
+			spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.IntAttr("auto_random_range", ar.RangeBits))
+		}
 	}
 	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
 		spec.Extra.Children = append(spec.Extra.Children, specutil.FromGenExpr(x, storedOrVirtual))

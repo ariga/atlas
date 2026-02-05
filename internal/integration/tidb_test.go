@@ -21,6 +21,7 @@ import (
 var tidbTests = map[string]*myTest{
 	"tidb5": {port: 4309},
 	"tidb6": {port: 4310},
+	"tidb8": {port: 4311},
 }
 
 func tidbRun(t *testing.T, fn func(*myTest)) {
@@ -1037,4 +1038,75 @@ create table atlas_types_sanity
 			rmCreateStmt(tbl)
 		})
 	})
+}
+
+func TestTiDB_AutoRandom(t *testing.T) {
+	t.Run("CreateAndInspect", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			t.dropTables("ar_test")
+			_, err := t.db.Exec("CREATE TABLE ar_test (id bigint NOT NULL AUTO_RANDOM(5), PRIMARY KEY (id) CLUSTERED)")
+			require.NoError(t, err)
+			tbl := t.loadTable("ar_test")
+			require.NotNil(t, tbl)
+			col, ok := tbl.Column("id")
+			require.True(t, ok)
+			ar := findAutoRandom(t, col)
+			require.Equal(t, 5, ar.ShardBits)
+		})
+	})
+	t.Run("CreateAndInspectWithRange", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			t.dropTables("ar_range")
+			_, err := t.db.Exec("CREATE TABLE ar_range (id bigint NOT NULL AUTO_RANDOM(3, 32), PRIMARY KEY (id) CLUSTERED)")
+			require.NoError(t, err)
+			tbl := t.loadTable("ar_range")
+			require.NotNil(t, tbl)
+			col, ok := tbl.Column("id")
+			require.True(t, ok)
+			ar := findAutoRandom(t, col)
+			require.Equal(t, 3, ar.ShardBits)
+			require.Equal(t, 32, ar.RangeBits)
+		})
+	})
+	t.Run("NoDrift", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			t.dropTables("ar_nodrift")
+			_, err := t.db.Exec("CREATE TABLE ar_nodrift (id bigint NOT NULL AUTO_RANDOM(5), PRIMARY KEY (id) CLUSTERED)")
+			require.NoError(t, err)
+			tbl := t.loadTable("ar_nodrift")
+			ensureNoChange(t, tbl)
+		})
+	})
+	t.Run("HCLRoundTrip", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			t.dropTables("ar_hcl")
+			_, err := t.db.Exec("CREATE TABLE ar_hcl (id bigint NOT NULL AUTO_RANDOM(5), PRIMARY KEY (id) CLUSTERED)")
+			require.NoError(t, err)
+			realm := t.loadRealm()
+			spec, err := mysql.MarshalHCL(realm.Schemas[0])
+			require.NoError(t, err)
+			require.Contains(t, string(spec), "auto_random")
+			var s schema.Realm
+			err = mysql.EvalHCLBytes(spec, &s, nil)
+			require.NoError(t, err)
+			tbl, ok := s.Schemas[0].Table("ar_hcl")
+			require.True(t, ok)
+			col, ok := tbl.Column("id")
+			require.True(t, ok)
+			ar := findAutoRandom(t, col)
+			require.Equal(t, 5, ar.ShardBits)
+		})
+	})
+}
+
+// findAutoRandom returns the AutoRandom attribute from the column or fails the test.
+func findAutoRandom(t testing.TB, col *schema.Column) *mysql.AutoRandom {
+	t.Helper()
+	for _, a := range col.Attrs {
+		if ar, ok := a.(*mysql.AutoRandom); ok {
+			return ar
+		}
+	}
+	t.Fatal("AutoRandom attribute not found on column")
+	return nil
 }

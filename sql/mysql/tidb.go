@@ -118,6 +118,39 @@ func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change, 
 	return sqlx.ApplyChanges(ctx, changes, p, opts...)
 }
 
+// ColumnChange returns the schema changes (if any) for migrating one column to the other,
+// including AUTO_RANDOM attribute changes specific to TiDB.
+func (d *tdiff) ColumnChange(fromT *schema.Table, from, to *schema.Column, opts *schema.DiffOptions) (schema.Change, error) {
+	change, err := d.diff.ColumnChange(fromT, from, to, opts)
+	if err != nil {
+		return sqlx.NoChange, err
+	}
+	var fromAR, toAR AutoRandom
+	fromHas, toHas := sqlx.Has(from.Attrs, &fromAR), sqlx.Has(to.Attrs, &toAR)
+	switch {
+	case !fromHas && toHas:
+		// AUTO_RANDOM was added.
+	case fromHas && toHas && (fromAR.ShardBits != toAR.ShardBits || fromAR.RangeBits != toAR.RangeBits):
+		// AUTO_RANDOM parameters changed.
+	default:
+		// No AUTO_RANDOM change detected. Note that we intentionally
+		// skip the case where AUTO_RANDOM is removed (fromHas && !toHas),
+		// because TiDB does not support dropping AUTO_RANDOM from a column.
+		return change, nil
+	}
+	if change == sqlx.NoChange {
+		return &schema.ModifyColumn{
+			Change: schema.ChangeAttr,
+			From:   from,
+			To:     to,
+		}, nil
+	}
+	if mc, ok := change.(*schema.ModifyColumn); ok {
+		mc.Change |= schema.ChangeAttr
+	}
+	return change, nil
+}
+
 func (i *tinspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
 	s, err := i.inspect.InspectSchema(ctx, name, opts)
 	if err != nil {
@@ -151,6 +184,9 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 			return nil, err
 		}
 		if err := i.setAutoIncrement(t); err != nil {
+			return nil, err
+		}
+		if err := i.setAutoRandom(t); err != nil {
 			return nil, err
 		}
 		for _, c := range t.Columns {
@@ -201,7 +237,56 @@ func (i *tinspect) setCollate(t *schema.Table) error {
 	return nil
 }
 
-// setCollate extracts the updated Collation from CREATE TABLE statement.
+// reAutoRandom matches AUTO_RANDOM(S) or AUTO_RANDOM(S, R) in a CREATE TABLE column
+// definition and captures the column name. TiDB wraps this in a special comment:
+//
+//	`id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5) */
+//
+// The [^`]* ensures we match the column name closest to AUTO_RANDOM (not the table name).
+// Group 1: column name, Group 2: shard bits, Group 3: optional range bits.
+var reAutoRandom = regexp.MustCompile("`([^`]+)`[^`]*AUTO_RANDOM\\((\\d+)(?:\\s*,\\s*(\\d+))?\\)")
+
+// setAutoRandom extracts the shard and range bits from CREATE TABLE statement.
+// TiDB allows at most one AUTO_RANDOM column per table. Unlike older TiDB versions
+// (v5/v6) which set "auto_random" in the EXTRA column of INFORMATION_SCHEMA, newer
+// versions (v8+) leave EXTRA empty. Therefore, this function identifies the column
+// directly from the CREATE TABLE statement rather than relying on a placeholder.
+func (i *tinspect) setAutoRandom(t *schema.Table) error {
+	var c CreateStmt
+	if !sqlx.Has(t.Attrs, &c) {
+		return nil
+	}
+	matches := reAutoRandom.FindStringSubmatch(c.S)
+	if matches == nil {
+		return nil
+	}
+	colName := matches[1]
+	target, ok := t.Column(colName)
+	if !ok {
+		return fmt.Errorf("column %q referenced by AUTO_RANDOM not found in table %q", colName, t.Name)
+	}
+	shard, err := strconv.Atoi(matches[2])
+	if err != nil {
+		return err
+	}
+	ar := &AutoRandom{ShardBits: shard}
+	if matches[3] != "" {
+		rangeBits, err := strconv.Atoi(matches[3])
+		if err != nil {
+			return err
+		}
+		// Normalize the default range (64) to 0 so that HCL round-trips
+		// are lossless: columnSpec omits auto_random_range when it equals
+		// the default, and convertColumn reads the absence as 0.
+		if rangeBits != 64 {
+			ar.RangeBits = rangeBits
+		}
+	}
+	schema.ReplaceOrAppend(&target.Attrs, ar)
+	return nil
+}
+
+// setAutoIncrement extracts the actual AUTO_INCREMENT value from the CREATE TABLE statement.
 func (i *tinspect) setAutoIncrement(t *schema.Table) error {
 	// patch only it is set (set falsely to '1' due to this bug:https://github.com/pingcap/tidb/issues/24702).
 	ai := &AutoIncrement{}
