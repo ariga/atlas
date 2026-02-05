@@ -63,6 +63,10 @@ func init() {
 		unsupportedCommand("migrate", "test"),
 	)
 	Root.AddCommand(migrateCmd)
+	// whoami command needs --format flag for atlasexec compatibility
+	whoami := unsupportedCommand("", "whoami")
+	whoami.Flags().String("format", "", "")
+	Root.AddCommand(whoami)
 }
 
 // unsupportedCommand create a stub command that reports
