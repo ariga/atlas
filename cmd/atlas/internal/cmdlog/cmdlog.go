@@ -7,6 +7,8 @@ package cmdlog
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -942,6 +944,17 @@ func (s *SchemaInspect) MarshalJSON() ([]byte, error) {
 // MarshalSQL returns the default SQL representation of the schema.
 func (s *SchemaInspect) MarshalSQL(indent ...string) (string, error) {
 	return sqlInspect(s, indent...)
+}
+
+// Hash returns a SHA256 hash of the schema's HCL representation.
+// Used by the atlas-operator to detect schema changes.
+func (s *SchemaInspect) Hash() (string, error) {
+	hcl, err := s.MarshalHCL()
+	if err != nil {
+		return "", err
+	}
+	h := sha256.Sum256([]byte(hcl))
+	return hex.EncodeToString(h[:]), nil
 }
 
 func sqlInspect(report *SchemaInspect, indent ...string) (string, error) {
