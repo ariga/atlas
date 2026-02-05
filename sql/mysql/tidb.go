@@ -153,6 +153,9 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 		if err := i.setAutoIncrement(t); err != nil {
 			return nil, err
 		}
+		if err := i.setAutoRandom(t); err != nil {
+			return nil, err
+		}
 		for _, c := range t.Columns {
 			i.patchColumn(ctx, c)
 		}
@@ -222,5 +225,40 @@ func (i *tinspect) setAutoIncrement(t *schema.Table) error {
 	}
 	ai.V = v
 	schema.ReplaceOrAppend(&t.Attrs, ai)
+	return nil
+}
+
+// setAutoRandom extracts AUTO_RANDOM attributes from CREATE TABLE statement.
+func (i *tinspect) setAutoRandom(t *schema.Table) error {
+	var c CreateStmt
+	if !sqlx.Has(t.Attrs, &c) {
+		return nil
+	}
+	// Check if CREATE TABLE has AUTO_RANDOM
+	upper := strings.ToUpper(c.S)
+	if !strings.Contains(upper, "AUTO_RANDOM") {
+		return nil
+	}
+	// Find which column has AUTO_RANDOM
+	for _, col := range t.Columns {
+		if col.Type.Raw != "bigint" {
+			continue
+		}
+		// Check if this column's definition has AUTO_RANDOM
+		colPattern := regexp.MustCompile(fmt.Sprintf("(?i)`?%s`?\\s+bigint.*AUTO_RANDOM", regexp.QuoteMeta(col.Name)))
+		if !colPattern.MatchString(c.S) {
+			continue
+		}
+		// Extract shard bits if specified
+		matches := reAutoRandom.FindStringSubmatch(c.S)
+		shardBits := 5 // TiDB default
+		if len(matches) == 2 && matches[1] != "" {
+			if v, err := strconv.Atoi(matches[1]); err == nil {
+				shardBits = v
+			}
+		}
+		schema.ReplaceOrAppend(&col.Attrs, &AutoRandom{V: shardBits})
+		break
+	}
 	return nil
 }

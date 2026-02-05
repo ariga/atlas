@@ -529,6 +529,7 @@ func (i *inspect) showCreate(ctx context.Context, s *schema.Schema) error {
 }
 
 var reAutoinc = regexp.MustCompile(`(?i)\s*AUTO_INCREMENT\s*=\s*(\d+)\s*`)
+var reAutoRandom = regexp.MustCompile(`(?i)AUTO_RANDOM(?:\((\d+)\))?`)
 
 // createStmt loads the CREATE TABLE statement for the table.
 func (i *inspect) createStmt(ctx context.Context, t *schema.Table) (*CreateStmt, error) {
@@ -798,6 +799,13 @@ type (
 	AutoIncrement struct {
 		schema.Attr
 		V int64
+	}
+
+	// AutoRandom attribute for TiDB columns with AUTO_RANDOM.
+	// V represents the number of shard bits (1-16, default 5).
+	AutoRandom struct {
+		schema.Attr
+		V int // Shard bits
 	}
 
 	// CreateOptions attribute for describing extra options used with CREATE TABLE.
