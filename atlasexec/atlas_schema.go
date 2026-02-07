@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
@@ -875,8 +876,14 @@ func newSchemaApplyError(r []*SchemaApply, stderr string) error {
 
 // Error implements the error interface.
 func (e *SchemaApplyError) Error() string {
-	if e.Stderr != "" {
-		return e.Stderr
+	var errs []string
+	for _, r := range e.Result {
+		if r.Error != "" {
+			errs = append(errs, r.Error)
+		}
 	}
-	return last(e.Result).Error
+	if e.Stderr != "" {
+		errs = append(errs, e.Stderr)
+	}
+	return strings.Join(errs, "\n")
 }

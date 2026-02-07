@@ -734,10 +734,16 @@ func newMigrateApplyError(r []*MigrateApply, stderr string) error {
 
 // Error implements the error interface.
 func (e *MigrateApplyError) Error() string {
-	if e.Stderr != "" {
-		return e.Stderr
+	var errs []string
+	for _, r := range e.Result {
+		if r.Error != "" {
+			errs = append(errs, r.Error)
+		}
 	}
-	return last(e.Result).Error
+	if e.Stderr != "" {
+		errs = append(errs, e.Stderr)
+	}
+	return strings.Join(errs, "\n")
 }
 
 func plural(n int) (s string) {
