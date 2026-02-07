@@ -803,6 +803,73 @@ func TestSchema_ApplyEnvs(t *testing.T) {
 	require.Equal(t, "sqlite://local-bu.db", err2.Result[2].URL.String())
 }
 
+func TestSchemaApplyError_Error(t *testing.T) {
+	t.Run("single result error only", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Result: []*atlasexec.SchemaApply{
+				{Error: "schema apply failed"},
+			},
+		}
+		require.Equal(t, "schema apply failed", e.Error())
+	})
+
+	t.Run("stderr only", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Stderr: "Error: unable to acquire lock",
+		}
+		require.Equal(t, "Error: unable to acquire lock", e.Error())
+	})
+
+	t.Run("single result error and stderr", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Result: []*atlasexec.SchemaApply{
+				{Error: "schema apply failed"},
+			},
+			Stderr: "Error: unable to acquire lock",
+		}
+		require.Equal(t, "schema apply failed\nError: unable to acquire lock", e.Error())
+	})
+
+	t.Run("multiple result errors and stderr", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Result: []*atlasexec.SchemaApply{
+				{Error: "error on target 1"},
+				{Error: "error on target 2"},
+			},
+			Stderr: "Error: unable to acquire lock",
+		}
+		require.Equal(t, "error on target 1\nerror on target 2\nError: unable to acquire lock", e.Error())
+	})
+
+	t.Run("multiple results with some having no error", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Result: []*atlasexec.SchemaApply{
+				{Error: ""},
+				{Error: "error on target 2"},
+				{Error: ""},
+			},
+			Stderr: "Error: unable to acquire lock",
+		}
+		require.Equal(t, "error on target 2\nError: unable to acquire lock", e.Error())
+	})
+
+	t.Run("no errors at all", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Result: []*atlasexec.SchemaApply{
+				{Error: ""},
+			},
+		}
+		require.Equal(t, "", e.Error())
+	})
+
+	t.Run("nil result with stderr", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Stderr: "Error: connection refused",
+		}
+		require.Equal(t, "Error: connection refused", e.Error())
+	})
+}
+
 func TestAtlasSchema_Lint(t *testing.T) {
 	t.Run("with broken config", func(t *testing.T) {
 		c, err := atlasexec.NewClient(".", "atlas")
