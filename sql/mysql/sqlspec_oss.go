@@ -286,8 +286,8 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 		if err != nil {
 			return nil, err
 		}
-		if v < 1 || v > 15 {
-			return nil, fmt.Errorf("auto_random shard bits for column %q must be between 1 and 15, got %d", c.Name, v)
+		if v < AutoRandomShardBitsMin || v > AutoRandomShardBitsMax {
+			return nil, fmt.Errorf("auto_random shard bits for column %q must be between %d and %d, got %d", c.Name, AutoRandomShardBitsMin, AutoRandomShardBitsMax, v)
 		}
 		ar := &AutoRandom{ShardBits: v}
 		if rangeAttr, ok := spec.Attr("auto_random_range"); ok {
@@ -295,13 +295,13 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 			if err != nil {
 				return nil, err
 			}
-			if r < 32 || r > 64 {
-				return nil, fmt.Errorf("auto_random_range for column %q must be between 32 and 64, got %d", c.Name, r)
+			if r < AutoRandomRangeBitsMin || r > AutoRandomRangeBitsMax {
+				return nil, fmt.Errorf("auto_random_range for column %q must be between %d and %d, got %d", c.Name, AutoRandomRangeBitsMin, AutoRandomRangeBitsMax, r)
 			}
 			// Normalize the default range (64) to 0 so that diffs between
 			// the inspected state (which also normalizes 64→0) and the
 			// desired state from HCL are consistent.
-			if r != 64 {
+			if r != AutoRandomRangeBitsMax {
 				ar.RangeBits = r
 			}
 		}
@@ -436,7 +436,7 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	}
 	if ar := (&AutoRandom{}); sqlx.Has(c.Attrs, ar) && ar.ShardBits > 0 {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.IntAttr("auto_random", ar.ShardBits))
-		if ar.RangeBits > 0 && ar.RangeBits != 64 {
+		if ar.RangeBits > 0 && ar.RangeBits != AutoRandomRangeBitsMax {
 			spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.IntAttr("auto_random_range", ar.RangeBits))
 		}
 	}

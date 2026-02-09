@@ -1074,7 +1074,9 @@ func TestTiDB_AutoRandom(t *testing.T) {
 			_, err := t.db.Exec("CREATE TABLE ar_nodrift (id bigint NOT NULL AUTO_RANDOM(5), PRIMARY KEY (id) CLUSTERED)")
 			require.NoError(t, err)
 			tbl := t.loadTable("ar_nodrift")
-			ensureNoChange(t, tbl)
+			// Compare with freshly loaded table to ensure no drift.
+			changes := t.diff(t.loadTable("ar_nodrift"), tbl)
+			require.Emptyf(t, changes, "expected no changes, got: %#v", changes)
 		})
 	})
 	t.Run("HCLRoundTrip", func(t *testing.T) {

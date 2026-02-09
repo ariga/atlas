@@ -18,6 +18,18 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
+// TiDB AUTO_RANDOM constraints.
+const (
+	// AutoRandomShardBitsMin is the minimum value for AUTO_RANDOM shard bits.
+	AutoRandomShardBitsMin = 1
+	// AutoRandomShardBitsMax is the maximum value for AUTO_RANDOM shard bits.
+	AutoRandomShardBitsMax = 15
+	// AutoRandomRangeBitsMin is the minimum value for AUTO_RANDOM range bits.
+	AutoRandomRangeBitsMin = 32
+	// AutoRandomRangeBitsMax is the maximum/default value for AUTO_RANDOM range bits.
+	AutoRandomRangeBitsMax = 64
+)
+
 type (
 	// tplanApply decorates MySQL planApply.
 	tplanApply struct{ planApply }
@@ -36,10 +48,18 @@ type (
 func priority(change schema.Change) int {
 	switch c := change.(type) {
 	case *schema.ModifyTable:
-		// each modifyTable should have a single change since we apply `flat` before we sort.
+		// Each ModifyTable should have a single change since we apply `flat` before we sort.
+		// Defensive check: if Changes is empty, return default priority.
+		if len(c.Changes) == 0 {
+			return 4
+		}
 		return priority(c.Changes[0])
 	case *schema.ModifySchema:
-		// each modifyTable should have a single change since we apply `flat` before we sort.
+		// Each ModifySchema should have a single change since we apply `flat` before we sort.
+		// Defensive check: if Changes is empty, return default priority.
+		if len(c.Changes) == 0 {
+			return 4
+		}
 		return priority(c.Changes[0])
 	case *schema.AddColumn:
 		return 1
@@ -56,34 +76,38 @@ func priority(change schema.Change) int {
 // with multiple AddColumn inside it). Note that, the only "changes" that include sub-changes are
 // `ModifyTable` and `ModifySchema`.
 func flat(changes []schema.Change) []schema.Change {
-	var flat []schema.Change
+	var result []schema.Change
 	for _, change := range changes {
 		switch m := change.(type) {
 		case *schema.ModifyTable:
 			for _, c := range m.Changes {
-				flat = append(flat, &schema.ModifyTable{
+				result = append(result, &schema.ModifyTable{
 					T:       m.T,
 					Changes: []schema.Change{c},
 				})
 			}
 		case *schema.ModifySchema:
 			for _, c := range m.Changes {
-				flat = append(flat, &schema.ModifySchema{
+				result = append(result, &schema.ModifySchema{
 					S:       m.S,
 					Changes: []schema.Change{c},
 				})
 			}
 		default:
-			flat = append(flat, change)
+			result = append(result, change)
 		}
 	}
-	return flat
+	return result
 }
 
 // PlanChanges returns a migration plan for the given schema changes.
 func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	planned, err := sqlx.DetachCycles(changes)
 	if err != nil {
+		return nil, err
+	}
+	// Check for unsupported TiDB-specific changes before planning.
+	if err := checkUnsupportedChanges(planned); err != nil {
 		return nil, err
 	}
 	planned = flat(planned)
@@ -114,6 +138,79 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 	return &s.Plan, nil
 }
 
+// checkUnsupportedChanges checks for TiDB-specific changes that cannot be
+// applied via ALTER TABLE and returns an error with guidance.
+func checkUnsupportedChanges(changes []schema.Change) error {
+	for _, c := range changes {
+		switch c := c.(type) {
+		case *schema.ModifyTable:
+			for _, tc := range c.Changes {
+				if err := checkUnsupportedTableChange(c.T.Name, tc); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func checkUnsupportedTableChange(tableName string, c schema.Change) error {
+	switch c := c.(type) {
+	case *schema.ModifyColumn:
+		// Check for AUTO_RANDOM modifications (not additions).
+		if c.From == nil || c.To == nil {
+			break
+		}
+		var fromAR, toAR AutoRandom
+		fromHas, toHas := sqlx.Has(c.From.Attrs, &fromAR), sqlx.Has(c.To.Attrs, &toAR)
+		// Adding AUTO_RANDOM requires BIGINT column type.
+		if !fromHas && toHas {
+			if !isBigIntColumn(c.To) {
+				return fmt.Errorf(
+					"cannot add AUTO_RANDOM to column %q in table %q: "+
+						"AUTO_RANDOM is only supported on BIGINT columns",
+					c.To.Name, tableName,
+				)
+			}
+		}
+		// Modifying existing AUTO_RANDOM parameters is not supported.
+		if fromHas && toHas && (fromAR.ShardBits != toAR.ShardBits || fromAR.RangeBits != toAR.RangeBits) {
+			return fmt.Errorf(
+				"cannot modify AUTO_RANDOM for column %q in table %q: "+
+					"TiDB does not support changing AUTO_RANDOM shard bits or range bits after column creation; "+
+					"you must recreate the table to change this setting",
+				c.From.Name, tableName,
+			)
+		}
+		// Removing AUTO_RANDOM is not supported.
+		if fromHas && !toHas {
+			return fmt.Errorf(
+				"cannot remove AUTO_RANDOM from column %q in table %q: "+
+					"TiDB does not support removing AUTO_RANDOM after it has been set; "+
+					"you must recreate the table to remove this setting",
+				c.From.Name, tableName,
+			)
+		}
+	}
+	return nil
+}
+
+// isBigIntColumn checks if the column is a BIGINT type.
+// TiDB's AUTO_RANDOM only supports BIGINT columns (signed or unsigned).
+// The IntegerType.T field contains the base type name (e.g., "bigint"),
+// while the Unsigned field indicates if it's unsigned.
+func isBigIntColumn(c *schema.Column) bool {
+	if c == nil || c.Type == nil || c.Type.Type == nil {
+		return false
+	}
+	it, ok := c.Type.Type.(*schema.IntegerType)
+	if !ok {
+		return false
+	}
+	// Case-insensitive comparison to handle variations like "BIGINT", "bigint", etc.
+	return strings.EqualFold(it.T, "bigint")
+}
+
 func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {
 	return sqlx.ApplyChanges(ctx, changes, p, opts...)
 }
@@ -127,15 +224,20 @@ func (d *tdiff) ColumnChange(fromT *schema.Table, from, to *schema.Column, opts 
 	}
 	var fromAR, toAR AutoRandom
 	fromHas, toHas := sqlx.Has(from.Attrs, &fromAR), sqlx.Has(to.Attrs, &toAR)
+	// Check if AUTO_RANDOM attribute changed.
+	autoRandomChanged := false
 	switch {
 	case !fromHas && toHas:
 		// AUTO_RANDOM was added.
+		autoRandomChanged = true
 	case fromHas && toHas && (fromAR.ShardBits != toAR.ShardBits || fromAR.RangeBits != toAR.RangeBits):
-		// AUTO_RANDOM parameters changed.
-	default:
-		// No AUTO_RANDOM change detected. Note that we intentionally
-		// skip the case where AUTO_RANDOM is removed (fromHas && !toHas),
-		// because TiDB does not support dropping AUTO_RANDOM from a column.
+		// AUTO_RANDOM parameters changed (not supported by TiDB, will be caught by checkUnsupportedChanges).
+		autoRandomChanged = true
+	case fromHas && !toHas:
+		// AUTO_RANDOM was removed (not supported by TiDB, will be caught by checkUnsupportedChanges).
+		autoRandomChanged = true
+	}
+	if !autoRandomChanged {
 		return change, nil
 	}
 	if change == sqlx.NoChange {
@@ -197,6 +299,9 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 }
 
 func (i *tinspect) patchColumn(_ context.Context, c *schema.Column) {
+	if c == nil || c.Type == nil || c.Type.Type == nil {
+		return
+	}
 	_, ok := c.Type.Type.(*BitType)
 	if !ok {
 		return
@@ -211,11 +316,14 @@ func (i *tinspect) patchColumn(_ context.Context, c *schema.Column) {
 // e.g. []byte{4} -> b'100', []byte{2,1} -> b'1000000001'.
 // See: https://github.com/pingcap/tidb/issues/32655.
 func bytesToBitLiteral(b []byte) string {
-	bytes := make([]byte, 8)
-	for i := 0; i < len(b); i++ {
-		bytes[8-len(b)+i] = b[i]
+	// MySQL BIT type supports up to 64 bits (8 bytes).
+	// If input exceeds 8 bytes, truncate to the last 8 bytes.
+	if len(b) > 8 {
+		b = b[len(b)-8:]
 	}
-	val := binary.BigEndian.Uint64(bytes)
+	buf := make([]byte, 8)
+	copy(buf[8-len(b):], b)
+	val := binary.BigEndian.Uint64(buf)
 	return fmt.Sprintf("b'%b'", val)
 }
 
@@ -226,11 +334,13 @@ var reColl = regexp.MustCompile(`(?i)CHARSET\s*=\s*(\w+)\s*COLLATE\s*=\s*(\w+)`)
 func (i *tinspect) setCollate(t *schema.Table) error {
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE TABLE statement in attributes for %q", t.Name)
+		return fmt.Errorf("mysql: missing CREATE TABLE statement in attributes for table %q; "+
+			"this may indicate an internal error during schema inspection", t.Name)
 	}
 	matches := reColl.FindStringSubmatch(c.S)
 	if len(matches) != 3 {
-		return fmt.Errorf("missing COLLATE and/or CHARSET information on CREATE TABLE statement for %q", t.Name)
+		return fmt.Errorf("mysql: could not extract CHARSET and COLLATE from CREATE TABLE statement for table %q; "+
+			"expected format 'CHARSET=... COLLATE=...' but got: %s", t.Name, c.S)
 	}
 	t.SetCharset(matches[1])
 	t.SetCollation(matches[2])
@@ -241,10 +351,20 @@ func (i *tinspect) setCollate(t *schema.Table) error {
 // definition and captures the column name. TiDB wraps this in a special comment:
 //
 //	`id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5) */
+//	`id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5, 64) */
 //
-// The [^`]* ensures we match the column name closest to AUTO_RANDOM (not the table name).
+// Pattern breakdown:
+//   - `([^`]+)` captures the column name (any chars except backtick)
+//   - [^`]*/\*T!\[auto_rand\] matches the TiDB-specific comment marker
+//     This ensures we only match AUTO_RANDOM in TiDB comments, not in SQL comments
+//   - \s*AUTO_RANDOM\((\d+) captures the shard bits (required, 1-15)
+//   - (?:\s*,\s*(\d+))? optionally captures range bits (32-64, default 64)
+//
 // Group 1: column name, Group 2: shard bits, Group 3: optional range bits.
-var reAutoRandom = regexp.MustCompile("`([^`]+)`[^`]*AUTO_RANDOM\\((\\d+)(?:\\s*,\\s*(\\d+))?\\)")
+//
+// Note: Column names with escaped backticks are extremely rare
+// and not supported by this pattern.
+var reAutoRandom = regexp.MustCompile("`([^`]+)`[^`]*/\\*T!\\[auto_rand\\]\\s*AUTO_RANDOM\\((\\d+)(?:\\s*,\\s*(\\d+))?\\)")
 
 // setAutoRandom extracts the shard and range bits from CREATE TABLE statement.
 // TiDB allows at most one AUTO_RANDOM column per table. Unlike older TiDB versions
@@ -267,18 +387,18 @@ func (i *tinspect) setAutoRandom(t *schema.Table) error {
 	}
 	shard, err := strconv.Atoi(matches[2])
 	if err != nil {
-		return err
+		return fmt.Errorf("parsing AUTO_RANDOM shard bits for column %q in table %q: %w", colName, t.Name, err)
 	}
 	ar := &AutoRandom{ShardBits: shard}
 	if matches[3] != "" {
 		rangeBits, err := strconv.Atoi(matches[3])
 		if err != nil {
-			return err
+			return fmt.Errorf("parsing AUTO_RANDOM range bits for column %q in table %q: %w", colName, t.Name, err)
 		}
 		// Normalize the default range (64) to 0 so that HCL round-trips
 		// are lossless: columnSpec omits auto_random_range when it equals
 		// the default, and convertColumn reads the absence as 0.
-		if rangeBits != 64 {
+		if rangeBits != AutoRandomRangeBitsMax {
 			ar.RangeBits = rangeBits
 		}
 	}
@@ -288,14 +408,14 @@ func (i *tinspect) setAutoRandom(t *schema.Table) error {
 
 // setAutoIncrement extracts the actual AUTO_INCREMENT value from the CREATE TABLE statement.
 func (i *tinspect) setAutoIncrement(t *schema.Table) error {
-	// patch only it is set (set falsely to '1' due to this bug:https://github.com/pingcap/tidb/issues/24702).
+	// patch only it is set (set falsely to '1' due to this bug: https://github.com/pingcap/tidb/issues/24702).
 	ai := &AutoIncrement{}
 	if !sqlx.Has(t.Attrs, ai) {
 		return nil
 	}
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE TABLE statement in attributes for %q", t.Name)
+		return fmt.Errorf("mysql: missing CREATE TABLE statement in attributes for table %q", t.Name)
 	}
 	matches := reAutoinc.FindStringSubmatch(c.S)
 	if len(matches) != 2 {
@@ -303,7 +423,7 @@ func (i *tinspect) setAutoIncrement(t *schema.Table) error {
 	}
 	v, err := strconv.ParseInt(matches[1], 10, 64)
 	if err != nil {
-		return err
+		return fmt.Errorf("parsing AUTO_INCREMENT for table %q: %w", t.Name, err)
 	}
 	ai.V = v
 	schema.ReplaceOrAppend(&t.Attrs, ai)

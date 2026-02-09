@@ -581,7 +581,8 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 				// ShardBits=0 is a zero-value placeholder; skip SQL generation.
 				break
 			}
-			if a.RangeBits > 0 && a.RangeBits != 64 {
+			// Only include range bits if explicitly set and not the default (64).
+		if a.RangeBits > 0 && a.RangeBits != AutoRandomRangeBitsMax {
 				b.P(fmt.Sprintf("AUTO_RANDOM(%d, %d)", a.ShardBits, a.RangeBits))
 			} else {
 				b.P(fmt.Sprintf("AUTO_RANDOM(%d)", a.ShardBits))

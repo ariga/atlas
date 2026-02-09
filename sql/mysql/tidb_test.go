@@ -257,7 +257,8 @@ func TestAutoRandom_ColumnDiffNoChange(t *testing.T) {
 	require.Empty(t, changes)
 }
 
-func TestAutoRandom_ColumnDiffRemovalIgnored(t *testing.T) {
+func TestAutoRandom_ColumnDiffRemovalDetected(t *testing.T) {
+	// Now that we detect AUTO_RANDOM removal, verify the diff is generated.
 	differ := newTiDBDiffer()
 	fromT := &schema.Table{
 		Name:   "t",
@@ -272,10 +273,12 @@ func TestAutoRandom_ColumnDiffRemovalIgnored(t *testing.T) {
 			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
 		},
 	}
-	// TiDB does not support dropping AUTO_RANDOM, so no diff should be reported.
 	changes, err := differ.TableDiff(fromT, toT)
 	require.NoError(t, err)
-	require.Empty(t, changes)
+	require.Len(t, changes, 1)
+	mc, ok := changes[0].(*schema.ModifyColumn)
+	require.True(t, ok)
+	require.True(t, mc.Change.Is(schema.ChangeAttr))
 }
 
 func TestAutoRandom_ColumnDiffRangeChange(t *testing.T) {
@@ -313,9 +316,170 @@ func TestAutoRandom_ParseExtra(t *testing.T) {
 	require.True(t, attr.autorandom)
 }
 
+func TestAutoRandom_RegexOnlyMatchesTiDBComment(t *testing.T) {
+	// The regex should only match AUTO_RANDOM in TiDB's special comment format,
+	// not in regular SQL comments or other contexts.
+	tests := []struct {
+		name    string
+		input   string
+		matches bool
+	}{
+		{
+			name:    "valid TiDB comment",
+			input:   "`id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5) */",
+			matches: true,
+		},
+		{
+			name:    "valid TiDB comment with range",
+			input:   "`id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5, 32) */",
+			matches: true,
+		},
+		{
+			name:    "SQL line comment should not match",
+			input:   "-- This table uses AUTO_RANDOM(5)\n`id` bigint NOT NULL",
+			matches: false,
+		},
+		{
+			name:    "SQL block comment should not match",
+			input:   "/* AUTO_RANDOM(5) */ `id` bigint NOT NULL",
+			matches: false,
+		},
+		{
+			name:    "plain text AUTO_RANDOM should not match",
+			input:   "`id` bigint NOT NULL AUTO_RANDOM(5)",
+			matches: false,
+		},
+		{
+			name:    "different TiDB comment feature should not match",
+			input:   "`id` bigint NOT NULL /*T![other_feature] AUTO_RANDOM(5) */",
+			matches: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			matches := reAutoRandom.FindStringSubmatch(tt.input)
+			if tt.matches {
+				require.NotNil(t, matches, "expected regex to match")
+			} else {
+				require.Nil(t, matches, "expected regex NOT to match")
+			}
+		})
+	}
+}
+
 func mustAtoi(t *testing.T, s string) int {
 	t.Helper()
 	n, err := strconv.Atoi(s)
 	require.NoError(t, err, "failed to parse %q as int", s)
 	return n
+}
+
+func TestCheckUnsupportedChanges_AutoRandom(t *testing.T) {
+	t.Run("AutoRandomModificationBlocked", func(t *testing.T) {
+		fromCol := &schema.Column{
+			Name: "id",
+			Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+		}
+		fromCol.AddAttrs(&AutoRandom{ShardBits: 5})
+		toCol := &schema.Column{
+			Name: "id",
+			Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+		}
+		toCol.AddAttrs(&AutoRandom{ShardBits: 10})
+		changes := []schema.Change{
+			&schema.ModifyTable{
+				T: schema.NewTable("users"),
+				Changes: []schema.Change{
+					&schema.ModifyColumn{
+						From:   fromCol,
+						To:     toCol,
+						Change: schema.ChangeAttr,
+					},
+				},
+			},
+		}
+		err := checkUnsupportedChanges(changes)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cannot modify AUTO_RANDOM")
+	})
+
+	t.Run("AutoRandomRemovalBlocked", func(t *testing.T) {
+		fromCol := &schema.Column{
+			Name: "id",
+			Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+		}
+		fromCol.AddAttrs(&AutoRandom{ShardBits: 5})
+		toCol := &schema.Column{
+			Name: "id",
+			Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+		}
+		changes := []schema.Change{
+			&schema.ModifyTable{
+				T: schema.NewTable("users"),
+				Changes: []schema.Change{
+					&schema.ModifyColumn{
+						From:   fromCol,
+						To:     toCol,
+						Change: schema.ChangeAttr,
+					},
+				},
+			},
+		}
+		err := checkUnsupportedChanges(changes)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cannot remove AUTO_RANDOM")
+	})
+
+	t.Run("AutoRandomAdditionAllowed", func(t *testing.T) {
+		fromCol := &schema.Column{
+			Name: "id",
+			Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+		}
+		toCol := &schema.Column{
+			Name: "id",
+			Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+		}
+		toCol.AddAttrs(&AutoRandom{ShardBits: 5})
+		changes := []schema.Change{
+			&schema.ModifyTable{
+				T: schema.NewTable("users"),
+				Changes: []schema.Change{
+					&schema.ModifyColumn{
+						From:   fromCol,
+						To:     toCol,
+						Change: schema.ChangeAttr,
+					},
+				},
+			},
+		}
+		err := checkUnsupportedChanges(changes)
+		require.NoError(t, err)
+	})
+
+	t.Run("AutoRandomRequiresBigInt", func(t *testing.T) {
+		fromCol := &schema.Column{
+			Name: "id",
+			Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+		}
+		toCol := &schema.Column{
+			Name: "id",
+			Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+		}
+		toCol.AddAttrs(&AutoRandom{ShardBits: 5})
+		changes := []schema.Change{
+			&schema.ModifyTable{
+				T: schema.NewTable("users"),
+				Changes: []schema.Change{
+					&schema.ModifyColumn{
+						From:   fromCol,
+						To:     toCol,
+						Change: schema.ChangeAttr,
+					},
+				},
+			},
+		}
+		err := checkUnsupportedChanges(changes)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "only supported on BIGINT columns")
+	})
 }

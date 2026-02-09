@@ -1298,7 +1298,7 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
-		// ALTER TABLE: change AUTO_RANDOM shard bits.
+		// ALTER TABLE: change AUTO_RANDOM shard bits (not supported by TiDB).
 		{
 			version: "5.7.25-TiDB-v6.1.0",
 			changes: []schema.Change{
@@ -1318,16 +1318,7 @@ func TestPlanChanges(t *testing.T) {
 					},
 				},
 			},
-			wantPlan: &migrate.Plan{
-				Reversible:    true,
-				Transactional: false,
-				Changes: []*migrate.Change{
-					{
-						Cmd:     "ALTER TABLE `users` MODIFY COLUMN `id` bigint NOT NULL AUTO_RANDOM(10)",
-						Reverse: "ALTER TABLE `users` MODIFY COLUMN `id` bigint NOT NULL AUTO_RANDOM(5)",
-					},
-				},
-			},
+			wantErr: true, // TiDB does not support changing AUTO_RANDOM shard bits.
 		},
 	}
 	for i, tt := range tests {
