@@ -825,6 +825,36 @@ type (
 		RangeBits int
 	}
 
+	// ShardRowIDBits is a TiDB-specific table attribute that distributes
+	// implicit _tidb_rowid values across multiple shards to reduce write hotspots.
+	//
+	// Applicable to tables with NONCLUSTERED primary keys or no primary key.
+	// Value range: 0-15 (0 means no sharding).
+	ShardRowIDBits struct {
+		schema.Attr
+		N int
+	}
+
+	// PreSplitRegions is a TiDB-specific table attribute that pre-splits
+	// the table into 2^N regions when the table is created.
+	//
+	// Must be used with ShardRowIDBits or AutoRandom.
+	// Value must be <= ShardRowIDBits (or AUTO_RANDOM shard bits).
+	PreSplitRegions struct {
+		schema.Attr
+		N int
+	}
+
+	// ClusteredIndex is a TiDB-specific index attribute indicating whether
+	// the primary key is CLUSTERED or NONCLUSTERED.
+	//
+	// CLUSTERED: PK values are stored directly in the index (default for INT PKs).
+	// NONCLUSTERED: Uses implicit _tidb_rowid; enables SHARD_ROW_ID_BITS.
+	ClusteredIndex struct {
+		schema.Attr
+		Clustered bool
+	}
+
 	// CreateOptions attribute for describing extra options used with CREATE TABLE.
 	CreateOptions struct {
 		schema.Attr

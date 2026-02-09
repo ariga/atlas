@@ -2124,3 +2124,284 @@ schema "test" {
 	require.NoError(t, err)
 	require.Equal(t, f, string(buf))
 }
+
+func TestMarshalSpec_ShardRowIDBits(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					},
+				},
+				Attrs: []schema.Attr{
+					&ShardRowIDBits{N: 4},
+					&PreSplitRegions{N: 2},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	require.Contains(t, string(buf), "shard_row_id_bits = 4")
+	require.Contains(t, string(buf), "pre_split_regions = 2")
+}
+
+func TestUnmarshalSpec_ShardRowIDBits(t *testing.T) {
+	var s schema.Schema
+	f := `
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = int
+  }
+  primary_key {
+    columns = [column.id]
+    type    = NONCLUSTERED
+  }
+  shard_row_id_bits = 4
+  pre_split_regions = 2
+}
+`
+	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+	require.Len(t, s.Tables, 1)
+	shard := &ShardRowIDBits{}
+	require.True(t, sqlx.Has(s.Tables[0].Attrs, shard))
+	require.Equal(t, 4, shard.N)
+	preSplit := &PreSplitRegions{}
+	require.True(t, sqlx.Has(s.Tables[0].Attrs, preSplit))
+	require.Equal(t, 2, preSplit.N)
+	// Check NONCLUSTERED PK.
+	require.NotNil(t, s.Tables[0].PrimaryKey)
+	ci := &ClusteredIndex{}
+	require.True(t, sqlx.Has(s.Tables[0].PrimaryKey.Attrs, ci))
+	require.False(t, ci.Clustered)
+}
+
+func TestUnmarshalSpec_ClusteredPK(t *testing.T) {
+	var s schema.Schema
+	f := `
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = bigint
+  }
+  primary_key {
+    columns = [column.id]
+    type    = CLUSTERED
+  }
+}
+`
+	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+	require.Len(t, s.Tables, 1)
+	require.NotNil(t, s.Tables[0].PrimaryKey)
+	ci := &ClusteredIndex{}
+	require.True(t, sqlx.Has(s.Tables[0].PrimaryKey.Attrs, ci))
+	require.True(t, ci.Clustered)
+}
+
+func TestMarshalSpec_ClusteredPK(t *testing.T) {
+	pk := schema.NewIndex("PRIMARY").AddColumns(&schema.Column{Name: "id"})
+	pk.AddAttrs(&ClusteredIndex{Clustered: false})
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					},
+				},
+				PrimaryKey: pk,
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[0].PrimaryKey.Parts[0].C = s.Tables[0].Columns[0]
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	require.Contains(t, string(buf), "NONCLUSTERED")
+}
+
+// TestUnmarshalSpec_TiDBValidation tests TiDB-specific validation rules.
+func TestUnmarshalSpec_TiDBValidation(t *testing.T) {
+	t.Run("PreSplitRegionsWithoutShardRowIDBits", func(t *testing.T) {
+		var s schema.Schema
+		err := EvalHCLBytes([]byte(`table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+  pre_split_regions = 4
+}
+schema "test" {
+}`), &s, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "pre_split_regions")
+		require.Contains(t, err.Error(), "requires shard_row_id_bits")
+	})
+
+	t.Run("PreSplitRegionsExceedsShardRowIDBits", func(t *testing.T) {
+		var s schema.Schema
+		err := EvalHCLBytes([]byte(`table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+  shard_row_id_bits = 2
+  pre_split_regions = 4
+}
+schema "test" {
+}`), &s, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "must be <=")
+	})
+
+	t.Run("AutoRandomWithNonclustered", func(t *testing.T) {
+		var s schema.Schema
+		err := EvalHCLBytes([]byte(`table "users" {
+  schema = schema.test
+  column "id" {
+    type = bigint
+    auto_random = 5
+  }
+  primary_key {
+    columns = [column.id]
+    type = NONCLUSTERED
+  }
+}
+schema "test" {
+}`), &s, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "auto_random")
+		require.Contains(t, err.Error(), "CLUSTERED")
+	})
+
+	t.Run("ShardRowIDBitsWithClustered", func(t *testing.T) {
+		var s schema.Schema
+		err := EvalHCLBytes([]byte(`table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+  primary_key {
+    columns = [column.id]
+    type = CLUSTERED
+  }
+  shard_row_id_bits = 4
+}
+schema "test" {
+}`), &s, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "shard_row_id_bits")
+		require.Contains(t, err.Error(), "NONCLUSTERED")
+	})
+
+	t.Run("InvalidPrimaryKeyType", func(t *testing.T) {
+		var s schema.Schema
+		err := EvalHCLBytes([]byte(`table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+  primary_key {
+    columns = [column.id]
+    type = "INVALID"
+  }
+}
+schema "test" {
+}`), &s, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid primary key type")
+	})
+
+	t.Run("ValidConfiguration", func(t *testing.T) {
+		var s schema.Schema
+		err := EvalHCLBytes([]byte(`table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+  primary_key {
+    columns = [column.id]
+    type = NONCLUSTERED
+  }
+  shard_row_id_bits = 4
+  pre_split_regions = 2
+}
+schema "test" {
+}`), &s, nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("PreSplitRegionsWithAutoRandom", func(t *testing.T) {
+		var s schema.Schema
+		err := EvalHCLBytes([]byte(`table "users" {
+  schema = schema.test
+  column "id" {
+    type = bigint
+    auto_random = 5
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  pre_split_regions = 4
+}
+schema "test" {
+}`), &s, nil)
+		require.NoError(t, err)
+		require.Len(t, s.Tables, 1)
+		// Verify PRE_SPLIT_REGIONS is set
+		psr := &PreSplitRegions{}
+		require.True(t, sqlx.Has(s.Tables[0].Attrs, psr))
+		require.Equal(t, 4, psr.N)
+	})
+
+	t.Run("PreSplitRegionsExceedsAutoRandomShardBits", func(t *testing.T) {
+		var s schema.Schema
+		err := EvalHCLBytes([]byte(`table "users" {
+  schema = schema.test
+  column "id" {
+    type = bigint
+    auto_random = 3
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  pre_split_regions = 5
+}
+schema "test" {
+}`), &s, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "must be <=")
+	})
+
+	t.Run("ShardRowIDBitsAndAutoRandomMutualExclusion", func(t *testing.T) {
+		var s schema.Schema
+		err := EvalHCLBytes([]byte(`table "users" {
+  schema = schema.test
+  column "id" {
+    type = bigint
+    auto_random = 5
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  shard_row_id_bits = 4
+}
+schema "test" {
+}`), &s, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cannot have both shard_row_id_bits and auto_random")
+	})
+}

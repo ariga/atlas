@@ -257,29 +257,6 @@ func TestAutoRandom_ColumnDiffNoChange(t *testing.T) {
 	require.Empty(t, changes)
 }
 
-func TestAutoRandom_ColumnDiffRemovalDetected(t *testing.T) {
-	// Now that we detect AUTO_RANDOM removal, verify the diff is generated.
-	differ := newTiDBDiffer()
-	fromT := &schema.Table{
-		Name:   "t",
-		Schema: &schema.Schema{Name: "test"},
-		Columns: []*schema.Column{
-			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoRandom{ShardBits: 5}}},
-		},
-	}
-	toT := &schema.Table{
-		Name: "t",
-		Columns: []*schema.Column{
-			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
-		},
-	}
-	changes, err := differ.TableDiff(fromT, toT)
-	require.NoError(t, err)
-	require.Len(t, changes, 1)
-	mc, ok := changes[0].(*schema.ModifyColumn)
-	require.True(t, ok)
-	require.True(t, mc.Change.Is(schema.ChangeAttr))
-}
 
 func TestAutoRandom_ColumnDiffRangeChange(t *testing.T) {
 	differ := newTiDBDiffer()
@@ -374,7 +351,293 @@ func mustAtoi(t *testing.T, s string) int {
 	return n
 }
 
-func TestCheckUnsupportedChanges_AutoRandom(t *testing.T) {
+func TestShardRowIDBits_ParseCreateTable(t *testing.T) {
+	tests := []struct {
+		name          string
+		create        string
+		wantShard     int
+		wantPreSplit  int
+		wantClustered *bool // nil = not present
+	}{
+		{
+			name:         "shard bits only",
+			create:       "CREATE TABLE `t` (`id` int NOT NULL, PRIMARY KEY (`id`) /*T![clustered_index] NONCLUSTERED */) /*T! SHARD_ROW_ID_BITS=4 */",
+			wantShard:    4,
+			wantPreSplit: 0,
+		},
+		{
+			name:         "shard and pre-split",
+			create:       "CREATE TABLE `t` (`id` int NOT NULL, PRIMARY KEY (`id`) /*T![clustered_index] NONCLUSTERED */) /*T! SHARD_ROW_ID_BITS=4 PRE_SPLIT_REGIONS=2 */",
+			wantShard:    4,
+			wantPreSplit: 2,
+		},
+		{
+			name:      "clustered",
+			create:    "CREATE TABLE `t` (`id` bigint NOT NULL, PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */)",
+			wantShard: 0,
+		},
+		{
+			name:      "nonclustered",
+			create:    "CREATE TABLE `t` (`id` int NOT NULL, PRIMARY KEY (`id`) /*T![clustered_index] NONCLUSTERED */)",
+			wantShard: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.wantShard > 0 {
+				matches := reShardRowID.FindStringSubmatch(tt.create)
+				require.NotNil(t, matches)
+				require.Equal(t, tt.wantShard, mustAtoi(t, matches[1]))
+			}
+			if tt.wantPreSplit > 0 {
+				matches := rePreSplitRegions.FindStringSubmatch(tt.create)
+				require.NotNil(t, matches)
+				require.Equal(t, tt.wantPreSplit, mustAtoi(t, matches[1]))
+			}
+		})
+	}
+}
+
+func TestShardRowIDBits_RegexOnlyMatchesTiDBComment(t *testing.T) {
+	// The regex should only match SHARD_ROW_ID_BITS in TiDB's special comment format,
+	// not in regular SQL comments or other contexts.
+	tests := []struct {
+		name    string
+		input   string
+		matches bool
+	}{
+		{
+			name:    "valid TiDB comment",
+			input:   ") /*T! SHARD_ROW_ID_BITS=4 */",
+			matches: true,
+		},
+		{
+			name:    "valid TiDB comment with PRE_SPLIT_REGIONS",
+			input:   ") /*T! SHARD_ROW_ID_BITS=4 PRE_SPLIT_REGIONS=2 */",
+			matches: true,
+		},
+		{
+			name:    "SQL line comment should not match",
+			input:   "-- SHARD_ROW_ID_BITS=4\n`id` int NOT NULL",
+			matches: false,
+		},
+		{
+			name:    "SQL block comment should not match",
+			input:   "/* SHARD_ROW_ID_BITS=4 */ `id` int NOT NULL",
+			matches: false,
+		},
+		{
+			name:    "plain text should not match",
+			input:   ") SHARD_ROW_ID_BITS=4",
+			matches: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			matches := reShardRowID.FindStringSubmatch(tt.input)
+			if tt.matches {
+				require.NotNil(t, matches, "expected regex to match")
+			} else {
+				require.Nil(t, matches, "expected regex NOT to match")
+			}
+		})
+	}
+}
+
+func TestPreSplitRegions_RegexOnlyMatchesTiDBComment(t *testing.T) {
+	// The regex should only match PRE_SPLIT_REGIONS in TiDB's special comment format.
+	tests := []struct {
+		name    string
+		input   string
+		matches bool
+	}{
+		{
+			name:    "valid TiDB comment",
+			input:   ") /*T! SHARD_ROW_ID_BITS=4 PRE_SPLIT_REGIONS=2 */",
+			matches: true,
+		},
+		{
+			name:    "valid TiDB comment PRE_SPLIT only",
+			input:   ") /*T! PRE_SPLIT_REGIONS=3 */",
+			matches: true,
+		},
+		{
+			name:    "SQL line comment should not match",
+			input:   "-- PRE_SPLIT_REGIONS=2\n`id` int NOT NULL",
+			matches: false,
+		},
+		{
+			name:    "SQL block comment should not match",
+			input:   "/* PRE_SPLIT_REGIONS=2 */ `id` int NOT NULL",
+			matches: false,
+		},
+		{
+			name:    "plain text should not match",
+			input:   ") PRE_SPLIT_REGIONS=2",
+			matches: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			matches := rePreSplitRegions.FindStringSubmatch(tt.input)
+			if tt.matches {
+				require.NotNil(t, matches, "expected regex to match")
+			} else {
+				require.Nil(t, matches, "expected regex NOT to match")
+			}
+		})
+	}
+}
+
+func TestShardRowIDBits_PatchSchema(t *testing.T) {
+	tbl := schema.NewTable("t")
+	tbl.AddAttrs(&CreateStmt{
+		S: "CREATE TABLE `t` (`id` int NOT NULL, PRIMARY KEY (`id`) /*T![clustered_index] NONCLUSTERED */) /*T! SHARD_ROW_ID_BITS=4 PRE_SPLIT_REGIONS=2 */",
+	})
+	i := &tinspect{}
+	err := i.setShardRowIDBits(tbl)
+	require.NoError(t, err)
+	shard := &ShardRowIDBits{}
+	require.True(t, sqlx.Has(tbl.Attrs, shard))
+	require.Equal(t, 4, shard.N)
+	preSplit := &PreSplitRegions{}
+	require.True(t, sqlx.Has(tbl.Attrs, preSplit))
+	require.Equal(t, 2, preSplit.N)
+}
+
+func TestClusteredIndex_PatchSchema(t *testing.T) {
+	tests := []struct {
+		name        string
+		create      string
+		wantPresent bool
+		wantValue   bool
+	}{
+		{
+			name:        "clustered",
+			create:      "CREATE TABLE `t` (`id` bigint NOT NULL, PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */)",
+			wantPresent: true,
+			wantValue:   true,
+		},
+		{
+			name:        "nonclustered",
+			create:      "CREATE TABLE `t` (`id` int NOT NULL, PRIMARY KEY (`id`) /*T![clustered_index] NONCLUSTERED */)",
+			wantPresent: true,
+			wantValue:   false,
+		},
+		{
+			name:        "no annotation",
+			create:      "CREATE TABLE `t` (`id` int NOT NULL, PRIMARY KEY (`id`))",
+			wantPresent: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			col := &schema.Column{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}}
+			tbl := schema.NewTable("t").AddColumns(col)
+			tbl.PrimaryKey = schema.NewIndex("PRIMARY").AddColumns(col)
+			tbl.AddAttrs(&CreateStmt{S: tt.create})
+			i := &tinspect{}
+			err := i.setClusteredIndex(tbl)
+			require.NoError(t, err)
+			ci := &ClusteredIndex{}
+			if tt.wantPresent {
+				require.True(t, sqlx.Has(tbl.PrimaryKey.Attrs, ci))
+				require.Equal(t, tt.wantValue, ci.Clustered)
+			} else {
+				require.False(t, sqlx.Has(tbl.PrimaryKey.Attrs, ci))
+			}
+		})
+	}
+}
+
+func TestCheckUnsupportedChanges_TiDBSpecific(t *testing.T) {
+	t.Run("ModifyPreSplitRegions", func(t *testing.T) {
+		changes := []schema.Change{
+			&schema.ModifyTable{
+				T: schema.NewTable("users"),
+				Changes: []schema.Change{
+					&schema.ModifyAttr{
+						From: &PreSplitRegions{N: 2},
+						To:   &PreSplitRegions{N: 4},
+					},
+				},
+			},
+		}
+		err := checkUnsupportedChanges(changes)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cannot modify pre_split_regions")
+		require.Contains(t, err.Error(), "users")
+	})
+
+	t.Run("AddPreSplitRegions", func(t *testing.T) {
+		changes := []schema.Change{
+			&schema.ModifyTable{
+				T: schema.NewTable("users"),
+				Changes: []schema.Change{
+					&schema.AddAttr{
+						A: &PreSplitRegions{N: 4},
+					},
+				},
+			},
+		}
+		err := checkUnsupportedChanges(changes)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cannot add pre_split_regions")
+	})
+
+	t.Run("DropPreSplitRegions", func(t *testing.T) {
+		changes := []schema.Change{
+			&schema.ModifyTable{
+				T: schema.NewTable("users"),
+				Changes: []schema.Change{
+					&schema.DropAttr{
+						A: &PreSplitRegions{N: 4},
+					},
+				},
+			},
+		}
+		err := checkUnsupportedChanges(changes)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cannot drop pre_split_regions")
+	})
+
+	t.Run("ShardRowIDBitsChangeAllowed", func(t *testing.T) {
+		changes := []schema.Change{
+			&schema.ModifyTable{
+				T: schema.NewTable("users"),
+				Changes: []schema.Change{
+					&schema.ModifyAttr{
+						From: &ShardRowIDBits{N: 2},
+						To:   &ShardRowIDBits{N: 4},
+					},
+				},
+			},
+		}
+		err := checkUnsupportedChanges(changes)
+		require.NoError(t, err)
+	})
+
+	t.Run("ClusteredIndexChangeBlocked", func(t *testing.T) {
+		fromIdx := schema.NewIndex("PRIMARY").AddColumns(&schema.Column{Name: "id"})
+		fromIdx.AddAttrs(&ClusteredIndex{Clustered: true})
+		toIdx := schema.NewIndex("PRIMARY").AddColumns(&schema.Column{Name: "id"})
+		toIdx.AddAttrs(&ClusteredIndex{Clustered: false})
+		changes := []schema.Change{
+			&schema.ModifyTable{
+				T: schema.NewTable("users"),
+				Changes: []schema.Change{
+					&schema.ModifyIndex{
+						From: fromIdx,
+						To:   toIdx,
+					},
+				},
+			},
+		}
+		err := checkUnsupportedChanges(changes)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cannot change primary key clustering mode")
+	})
+
 	t.Run("AutoRandomModificationBlocked", func(t *testing.T) {
 		fromCol := &schema.Column{
 			Name: "id",
@@ -482,4 +745,126 @@ func TestCheckUnsupportedChanges_AutoRandom(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "only supported on BIGINT columns")
 	})
+}
+
+func TestTableAttrDiff_ShardRowIDBits(t *testing.T) {
+	differ := newTiDBDiffer()
+	testSchema := &schema.Schema{Name: "test"}
+
+	t.Run("AddShardRowIDBits", func(t *testing.T) {
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		to.AddAttrs(&ShardRowIDBits{N: 4})
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		addAttr, ok := changes[0].(*schema.AddAttr)
+		require.True(t, ok, "expected AddAttr, got %T", changes[0])
+		shard, ok := addAttr.A.(*ShardRowIDBits)
+		require.True(t, ok)
+		require.Equal(t, 4, shard.N)
+	})
+
+	t.Run("ModifyShardRowIDBits", func(t *testing.T) {
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		from.AddAttrs(&ShardRowIDBits{N: 2})
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		to.AddAttrs(&ShardRowIDBits{N: 4})
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		modAttr, ok := changes[0].(*schema.ModifyAttr)
+		require.True(t, ok, "expected ModifyAttr, got %T", changes[0])
+		fromS, ok := modAttr.From.(*ShardRowIDBits)
+		require.True(t, ok)
+		require.Equal(t, 2, fromS.N)
+		toS, ok := modAttr.To.(*ShardRowIDBits)
+		require.True(t, ok)
+		require.Equal(t, 4, toS.N)
+	})
+
+	t.Run("DropShardRowIDBits", func(t *testing.T) {
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		from.AddAttrs(&ShardRowIDBits{N: 4})
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		// Dropping is represented as ModifyAttr with To.N=0
+		modAttr, ok := changes[0].(*schema.ModifyAttr)
+		require.True(t, ok, "expected ModifyAttr, got %T", changes[0])
+		fromS, ok := modAttr.From.(*ShardRowIDBits)
+		require.True(t, ok)
+		require.Equal(t, 4, fromS.N)
+		toS, ok := modAttr.To.(*ShardRowIDBits)
+		require.True(t, ok)
+		require.Equal(t, 0, toS.N)
+	})
+}
+
+func TestTableAttrDiff_PreSplitRegions(t *testing.T) {
+	differ := newTiDBDiffer()
+	testSchema := &schema.Schema{Name: "test"}
+
+	t.Run("AddPreSplitRegions", func(t *testing.T) {
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		to.AddAttrs(&PreSplitRegions{N: 4})
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		addAttr, ok := changes[0].(*schema.AddAttr)
+		require.True(t, ok, "expected AddAttr, got %T", changes[0])
+		psr, ok := addAttr.A.(*PreSplitRegions)
+		require.True(t, ok)
+		require.Equal(t, 4, psr.N)
+	})
+
+	t.Run("DropPreSplitRegions", func(t *testing.T) {
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		from.AddAttrs(&PreSplitRegions{N: 4})
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		dropAttr, ok := changes[0].(*schema.DropAttr)
+		require.True(t, ok, "expected DropAttr, got %T", changes[0])
+		psr, ok := dropAttr.A.(*PreSplitRegions)
+		require.True(t, ok)
+		require.Equal(t, 4, psr.N)
+	})
+}
+
+func TestAutoRandom_ColumnDiffRemovalDetected(t *testing.T) {
+	// Now that we detect AUTO_RANDOM removal, verify the diff is generated.
+	differ := newTiDBDiffer()
+	fromT := &schema.Table{
+		Name:   "t",
+		Schema: &schema.Schema{Name: "test"},
+		Columns: []*schema.Column{
+			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoRandom{ShardBits: 5}}},
+		},
+	}
+	toT := &schema.Table{
+		Name: "t",
+		Columns: []*schema.Column{
+			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+		},
+	}
+	changes, err := differ.TableDiff(fromT, toT)
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	mc, ok := changes[0].(*schema.ModifyColumn)
+	require.True(t, ok)
+	require.True(t, mc.Change.Is(schema.ChangeAttr))
 }

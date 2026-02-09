@@ -28,6 +28,8 @@ const (
 	AutoRandomRangeBitsMin = 32
 	// AutoRandomRangeBitsMax is the maximum/default value for AUTO_RANDOM range bits.
 	AutoRandomRangeBitsMax = 64
+	// ShardRowIDBitsMax is the maximum value for SHARD_ROW_ID_BITS.
+	ShardRowIDBitsMax = 15
 )
 
 type (
@@ -156,6 +158,52 @@ func checkUnsupportedChanges(changes []schema.Change) error {
 
 func checkUnsupportedTableChange(tableName string, c schema.Change) error {
 	switch c := c.(type) {
+	case *schema.ModifyAttr:
+		// PRE_SPLIT_REGIONS cannot be changed after table creation.
+		// ModifyAttr.From and .To are always the same type, so checking either suffices.
+		if _, ok := c.From.(*PreSplitRegions); ok {
+			return fmt.Errorf(
+				"cannot modify pre_split_regions for table %q: "+
+					"TiDB does not support changing PRE_SPLIT_REGIONS after table creation; "+
+					"you must recreate the table to change this setting",
+				tableName,
+			)
+		}
+	case *schema.AddAttr:
+		// PRE_SPLIT_REGIONS cannot be added after table creation.
+		if _, ok := c.A.(*PreSplitRegions); ok {
+			return fmt.Errorf(
+				"cannot add pre_split_regions to table %q: "+
+					"TiDB does not support adding PRE_SPLIT_REGIONS after table creation; "+
+					"you must recreate the table to add this setting",
+				tableName,
+			)
+		}
+	case *schema.DropAttr:
+		// PRE_SPLIT_REGIONS cannot be dropped after table creation.
+		if _, ok := c.A.(*PreSplitRegions); ok {
+			return fmt.Errorf(
+				"cannot drop pre_split_regions from table %q: "+
+					"TiDB does not support removing PRE_SPLIT_REGIONS after table creation; "+
+					"you must recreate the table to remove this setting",
+				tableName,
+			)
+		}
+	case *schema.ModifyIndex:
+		// Check if ClusteredIndex attribute is being changed.
+		if c.From == nil || c.To == nil {
+			break
+		}
+		var fromCI, toCI ClusteredIndex
+		fromHas, toHas := sqlx.Has(c.From.Attrs, &fromCI), sqlx.Has(c.To.Attrs, &toCI)
+		if fromHas && toHas && fromCI.Clustered != toCI.Clustered {
+			return fmt.Errorf(
+				"cannot change primary key clustering mode for table %q: "+
+					"TiDB does not support changing between CLUSTERED and NONCLUSTERED after table creation; "+
+					"you must recreate the table to change this setting",
+				tableName,
+			)
+		}
 	case *schema.ModifyColumn:
 		// Check for AUTO_RANDOM modifications (not additions).
 		if c.From == nil || c.To == nil {
@@ -213,6 +261,82 @@ func isBigIntColumn(c *schema.Column) bool {
 
 func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {
 	return sqlx.ApplyChanges(ctx, changes, p, opts...)
+}
+
+// TableAttrDiff returns a changeset for migrating table attributes from one state to the other,
+// including TiDB-specific attributes like SHARD_ROW_ID_BITS and PRE_SPLIT_REGIONS.
+func (d *tdiff) TableAttrDiff(from, to *schema.Table, opts *schema.DiffOptions) ([]schema.Change, error) {
+	changes, err := d.diff.TableAttrDiff(from, to, opts)
+	if err != nil {
+		return nil, err
+	}
+	// Compare ShardRowIDBits.
+	var fromS, toS ShardRowIDBits
+	fromHasS, toHasS := sqlx.Has(from.Attrs, &fromS), sqlx.Has(to.Attrs, &toS)
+	switch {
+	case !fromHasS && toHasS && toS.N > 0:
+		// Adding SHARD_ROW_ID_BITS.
+		changes = append(changes, &schema.AddAttr{A: &ShardRowIDBits{N: toS.N}})
+	case fromHasS && !toHasS && fromS.N > 0:
+		// Dropping SHARD_ROW_ID_BITS (setting to 0).
+		changes = append(changes, &schema.ModifyAttr{
+			From: &ShardRowIDBits{N: fromS.N},
+			To:   &ShardRowIDBits{N: 0},
+		})
+	case fromHasS && toHasS && fromS.N != toS.N:
+		// Modifying SHARD_ROW_ID_BITS value.
+		changes = append(changes, &schema.ModifyAttr{
+			From: &ShardRowIDBits{N: fromS.N},
+			To:   &ShardRowIDBits{N: toS.N},
+		})
+	}
+	// Compare PreSplitRegions.
+	// Note: PRE_SPLIT_REGIONS can only be set at table creation time in TiDB,
+	// so changes to it after creation are not supported. We generate the appropriate
+	// change type so that checkUnsupportedChanges can provide a helpful error message.
+	var fromP, toP PreSplitRegions
+	fromHasP, toHasP := sqlx.Has(from.Attrs, &fromP), sqlx.Has(to.Attrs, &toP)
+	switch {
+	case !fromHasP && toHasP && toP.N > 0:
+		// Adding PRE_SPLIT_REGIONS (not supported by TiDB after table creation).
+		changes = append(changes, &schema.AddAttr{A: &PreSplitRegions{N: toP.N}})
+	case fromHasP && !toHasP && fromP.N > 0:
+		// Dropping PRE_SPLIT_REGIONS (not supported by TiDB).
+		changes = append(changes, &schema.DropAttr{A: &PreSplitRegions{N: fromP.N}})
+	case fromHasP && toHasP && fromP.N != toP.N:
+		// Modifying PRE_SPLIT_REGIONS (not supported by TiDB).
+		changes = append(changes, &schema.ModifyAttr{
+			From: &PreSplitRegions{N: fromP.N},
+			To:   &PreSplitRegions{N: toP.N},
+		})
+	}
+	return changes, nil
+}
+
+// IndexAttrChanged reports if the index attributes were changed.
+// For TiDB, we also compare the ClusteredIndex attribute.
+//
+// Note: We intentionally do NOT report a change when ClusteredIndex is added
+// or dropped (i.e., when one side has the attribute and the other doesn't).
+// This is because:
+//  1. TiDB's default clustering mode depends on @@tidb_enable_clustered_index,
+//     column types, and TiDB version. The inspected schema may not have the
+//     attribute if the default is used.
+//  2. TiDB does not support changing clustering mode after table creation,
+//     so reporting such a change would only produce an unsupported migration.
+//  3. Comparing explicit CLUSTERED/NONCLUSTERED against the absence of the
+//     attribute could cause false positives across different environments.
+func (d *tdiff) IndexAttrChanged(from, to []schema.Attr) bool {
+	if d.diff.IndexAttrChanged(from, to) {
+		return true
+	}
+	var fromCI, toCI ClusteredIndex
+	fromHas, toHas := sqlx.Has(from, &fromCI), sqlx.Has(to, &toCI)
+	// Only report a change if both sides have the attribute and they differ.
+	if !fromHas || !toHas {
+		return false
+	}
+	return fromCI.Clustered != toCI.Clustered
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other,
@@ -289,6 +413,12 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 			return nil, err
 		}
 		if err := i.setAutoRandom(t); err != nil {
+			return nil, err
+		}
+		if err := i.setShardRowIDBits(t); err != nil {
+			return nil, err
+		}
+		if err := i.setClusteredIndex(t); err != nil {
 			return nil, err
 		}
 		for _, c := range t.Columns {
@@ -427,5 +557,84 @@ func (i *tinspect) setAutoIncrement(t *schema.Table) error {
 	}
 	ai.V = v
 	schema.ReplaceOrAppend(&t.Attrs, ai)
+	return nil
+}
+
+// reShardRowID matches SHARD_ROW_ID_BITS=N in CREATE TABLE statement.
+// TiDB wraps these in a special comment block:
+//
+//	) /*T! SHARD_ROW_ID_BITS=4 PRE_SPLIT_REGIONS=2 */
+//
+// The pattern requires the TiDB comment marker /*T! to ensure we only match
+// TiDB-specific attributes, not values in SQL comments or other contexts.
+// Valid range: 0-15 (0 means disabled).
+var reShardRowID = regexp.MustCompile(`/\*T![^*]*SHARD_ROW_ID_BITS\s*=\s*(\d+)`)
+
+// rePreSplitRegions matches PRE_SPLIT_REGIONS=N in CREATE TABLE statement.
+// TiDB wraps these in a special comment block:
+//
+//	) /*T! SHARD_ROW_ID_BITS=4 PRE_SPLIT_REGIONS=2 */
+//
+// The pattern requires the TiDB comment marker /*T! to ensure we only match
+// TiDB-specific attributes. Must be used together with SHARD_ROW_ID_BITS or AUTO_RANDOM.
+// The value must be <= SHARD_ROW_ID_BITS (or AUTO_RANDOM shard bits).
+// Creates 2^N regions at table creation time.
+var rePreSplitRegions = regexp.MustCompile(`/\*T![^*]*PRE_SPLIT_REGIONS\s*=\s*(\d+)`)
+
+// reClustered matches CLUSTERED or NONCLUSTERED in PRIMARY KEY definition.
+// TiDB wraps this in a special comment:
+//
+//	PRIMARY KEY (`id`) /*T![clustered_index] NONCLUSTERED */
+//	PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */
+//
+// Pattern captures "NONCLUSTERED" first (if present), otherwise "CLUSTERED".
+// This is important because "NONCLUSTERED" contains "CLUSTERED" as a substring.
+// The pattern explicitly matches the TiDB comment format /*T![...] ... */.
+var reClustered = regexp.MustCompile(`PRIMARY\s+KEY\s*\([^)]+\)\s*/\*T!\[clustered_index\]\s*(NONCLUSTERED|CLUSTERED)\s*\*/`)
+
+// setShardRowIDBits extracts SHARD_ROW_ID_BITS and PRE_SPLIT_REGIONS from CREATE TABLE.
+func (i *tinspect) setShardRowIDBits(t *schema.Table) error {
+	var c CreateStmt
+	if !sqlx.Has(t.Attrs, &c) {
+		return nil
+	}
+	// Extract SHARD_ROW_ID_BITS.
+	if matches := reShardRowID.FindStringSubmatch(c.S); matches != nil {
+		n, err := strconv.Atoi(matches[1])
+		if err != nil {
+			return fmt.Errorf("parsing SHARD_ROW_ID_BITS for table %q: %w", t.Name, err)
+		}
+		if n > 0 {
+			t.AddAttrs(&ShardRowIDBits{N: n})
+		}
+	}
+	// Extract PRE_SPLIT_REGIONS.
+	if matches := rePreSplitRegions.FindStringSubmatch(c.S); matches != nil {
+		n, err := strconv.Atoi(matches[1])
+		if err != nil {
+			return fmt.Errorf("parsing PRE_SPLIT_REGIONS for table %q: %w", t.Name, err)
+		}
+		if n > 0 {
+			t.AddAttrs(&PreSplitRegions{N: n})
+		}
+	}
+	return nil
+}
+
+// setClusteredIndex extracts CLUSTERED/NONCLUSTERED from PRIMARY KEY definition.
+func (i *tinspect) setClusteredIndex(t *schema.Table) error {
+	if t.PrimaryKey == nil {
+		return nil
+	}
+	var c CreateStmt
+	if !sqlx.Has(t.Attrs, &c) {
+		return nil
+	}
+	matches := reClustered.FindStringSubmatch(c.S)
+	if matches == nil {
+		return nil
+	}
+	clustered := matches[1] == "CLUSTERED"
+	t.PrimaryKey.AddAttrs(&ClusteredIndex{Clustered: clustered})
 	return nil
 }

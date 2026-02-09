@@ -103,7 +103,7 @@ var (
 		schemahcl.WithScopedEnums("table.engine", EngineInnoDB, EngineMyISAM, EngineMemory, EngineCSV, EngineNDB),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
 		schemahcl.WithScopedEnums("table.index.parser", IndexParserNGram, IndexParserMeCab),
-		schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
+		schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial, "CLUSTERED", "NONCLUSTERED"),
 		schemahcl.WithScopedEnums("table.column.as.type", stored, persistent, virtual),
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
@@ -172,16 +172,148 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 		}
 		t.AddAttrs(&Engine{V: v})
 	}
+	// TiDB-specific table attributes.
+	var shardBits, preSplitRegions int
+	if attr, ok := spec.Attr("shard_row_id_bits"); ok {
+		v, err := attr.Int()
+		if err != nil {
+			return nil, err
+		}
+		if v < 0 || v > ShardRowIDBitsMax {
+			return nil, fmt.Errorf("shard_row_id_bits for table %q must be between 0 and %d, got %d", t.Name, ShardRowIDBitsMax, v)
+		}
+		shardBits = v
+		if v > 0 {
+			t.AddAttrs(&ShardRowIDBits{N: v})
+		}
+	}
+	if attr, ok := spec.Attr("pre_split_regions"); ok {
+		v, err := attr.Int()
+		if err != nil {
+			return nil, err
+		}
+		if v < 0 {
+			return nil, fmt.Errorf("pre_split_regions for table %q must be non-negative, got %d", t.Name, v)
+		}
+		preSplitRegions = v
+		if v > 0 {
+			t.AddAttrs(&PreSplitRegions{N: v})
+		}
+	}
+	// Validate TiDB constraints with cross-reference checking.
+	if err := validateTiDBTableConstraints(t, shardBits, preSplitRegions); err != nil {
+		return nil, err
+	}
 	return t, nil
+}
+
+// validateTiDBTableConstraints validates TiDB-specific constraints that require
+// cross-referencing between columns and primary key attributes.
+func validateTiDBTableConstraints(t *schema.Table, shardBits, preSplitRegions int) error {
+	// Check if the primary key is explicitly NONCLUSTERED.
+	var isNonClustered bool
+	if t.PrimaryKey != nil {
+		if ci := (&ClusteredIndex{}); sqlx.Has(t.PrimaryKey.Attrs, ci) {
+			isNonClustered = !ci.Clustered
+		}
+	}
+	// Check if any column has AUTO_RANDOM and get its shard bits.
+	var autoRandomCol string
+	var autoRandomShardBits int
+	for _, c := range t.Columns {
+		ar := &AutoRandom{}
+		if sqlx.Has(c.Attrs, ar) {
+			autoRandomCol = c.Name
+			autoRandomShardBits = ar.ShardBits
+			break
+		}
+	}
+	// AUTO_RANDOM requires CLUSTERED primary key.
+	if autoRandomCol != "" && isNonClustered {
+		return fmt.Errorf(
+			"column %q in table %q has auto_random but primary key is NONCLUSTERED; "+
+				"auto_random requires a CLUSTERED primary key",
+			autoRandomCol, t.Name,
+		)
+	}
+	// SHARD_ROW_ID_BITS requires NONCLUSTERED primary key or no primary key.
+	// (It distributes the implicit _tidb_rowid, which only exists for NONCLUSTERED tables.)
+	if shardBits > 0 && t.PrimaryKey != nil && !isNonClustered {
+		// Check if CLUSTERED is explicitly set (if not set, TiDB uses default behavior).
+		if ci := (&ClusteredIndex{}); sqlx.Has(t.PrimaryKey.Attrs, ci) && ci.Clustered {
+			return fmt.Errorf(
+				"table %q has shard_row_id_bits but primary key is CLUSTERED; "+
+					"shard_row_id_bits requires a NONCLUSTERED primary key or no primary key",
+				t.Name,
+			)
+		}
+	}
+	// SHARD_ROW_ID_BITS and AUTO_RANDOM are mutually exclusive.
+	// SHARD_ROW_ID_BITS distributes the implicit _tidb_rowid, while AUTO_RANDOM
+	// distributes the primary key column. They cannot be used together.
+	if shardBits > 0 && autoRandomShardBits > 0 {
+		return fmt.Errorf(
+			"table %q cannot have both shard_row_id_bits and auto_random; "+
+				"these features are mutually exclusive",
+			t.Name,
+		)
+	}
+	// PRE_SPLIT_REGIONS validation:
+	// - Requires either SHARD_ROW_ID_BITS or AUTO_RANDOM to be set.
+	// - Value must be <= the shard bits of either SHARD_ROW_ID_BITS or AUTO_RANDOM.
+	if preSplitRegions > 0 {
+		effectiveShardBits := shardBits
+		if autoRandomShardBits > 0 {
+			effectiveShardBits = autoRandomShardBits
+		}
+		if effectiveShardBits == 0 {
+			return fmt.Errorf(
+				"pre_split_regions for table %q requires shard_row_id_bits or auto_random to be set",
+				t.Name,
+			)
+		}
+		if preSplitRegions > effectiveShardBits {
+			return fmt.Errorf(
+				"pre_split_regions (%d) for table %q must be <= shard bits (%d)",
+				preSplitRegions, t.Name, effectiveShardBits,
+			)
+		}
+	}
+	return nil
 }
 
 // convertPK converts a sqlspec.PrimaryKey into a schema.Index.
 func convertPK(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
-	return convertIndex(&sqlspec.Index{
+	// Create index without the "type" attribute to process it separately.
+	idx, err := specutil.Index(&sqlspec.Index{
 		Parts:            spec.Parts,
 		Columns:          spec.Columns,
 		DefaultExtension: spec.DefaultExtension,
-	}, parent)
+	}, parent, convertPart)
+	if err != nil {
+		return nil, err
+	}
+	// The "type" attribute on primary keys can be:
+	// - MySQL index type: BTREE, HASH
+	// - TiDB clustered mode: CLUSTERED, NONCLUSTERED
+	if attr, ok := spec.Attr("type"); ok {
+		v, err := attr.String()
+		if err != nil {
+			return nil, err
+		}
+		switch strings.ToUpper(v) {
+		case "CLUSTERED":
+			idx.AddAttrs(&ClusteredIndex{Clustered: true})
+		case "NONCLUSTERED":
+			idx.AddAttrs(&ClusteredIndex{Clustered: false})
+		case IndexTypeBTree, IndexTypeHash:
+			// Standard MySQL index type.
+			idx.AddAttrs(&IndexType{T: v})
+		default:
+			return nil, fmt.Errorf("invalid primary key type %q: expected BTREE, HASH, CLUSTERED, or NONCLUSTERED", v)
+		}
+	}
+	return idx, nil
 }
 
 // convertIndex converts a sqlspec.Index into a schema.Index.
@@ -365,6 +497,13 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 		}
 		ts.Extra.Attrs = append(ts.Extra.Attrs, attr)
 	}
+	// TiDB-specific table attributes.
+	if s := (&ShardRowIDBits{}); sqlx.Has(t.Attrs, s) && s.N > 0 {
+		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.IntAttr("shard_row_id_bits", s.N))
+	}
+	if p := (&PreSplitRegions{}); sqlx.Has(t.Attrs, p) && p.N > 0 {
+		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.IntAttr("pre_split_regions", p.N))
+	}
 	return ts, nil
 }
 
@@ -378,7 +517,16 @@ func pkSpec(idx *schema.Index) (*sqlspec.PrimaryKey, error) {
 			return nil, fmt.Errorf("primary key %q cannot have functional part", idx.Name)
 		}
 	}
-	return &sqlspec.PrimaryKey{Parts: spec.Parts, Columns: spec.Columns, DefaultExtension: spec.DefaultExtension}, nil
+	pk := &sqlspec.PrimaryKey{Parts: spec.Parts, Columns: spec.Columns, DefaultExtension: spec.DefaultExtension}
+	// TiDB CLUSTERED/NONCLUSTERED attribute.
+	if ci := (&ClusteredIndex{}); sqlx.Has(idx.Attrs, ci) {
+		if ci.Clustered {
+			pk.Extra.Attrs = append(pk.Extra.Attrs, specutil.VarAttr("type", "CLUSTERED"))
+		} else {
+			pk.Extra.Attrs = append(pk.Extra.Attrs, specutil.VarAttr("type", "NONCLUSTERED"))
+		}
+	}
+	return pk, nil
 }
 
 func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {

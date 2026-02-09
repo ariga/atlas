@@ -1112,3 +1112,82 @@ func findAutoRandom(t testing.TB, col *schema.Column) *mysql.AutoRandom {
 	t.Fatal("AutoRandom attribute not found on column")
 	return nil
 }
+
+func TestTiDB_ShardRowIDBits(t *testing.T) {
+	t.Run("CreateAndInspect", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			t.dropTables("shard_test")
+			_, err := t.db.Exec("CREATE TABLE shard_test (id INT PRIMARY KEY NONCLUSTERED) SHARD_ROW_ID_BITS = 4 PRE_SPLIT_REGIONS = 2")
+			require.NoError(t, err)
+			tbl := t.loadTable("shard_test")
+			require.NotNil(t, tbl)
+			// Check SHARD_ROW_ID_BITS.
+			shard := findShardRowIDBits(t, tbl)
+			require.Equal(t, 4, shard.N)
+			// Check PRE_SPLIT_REGIONS.
+			preSplit := findPreSplitRegions(t, tbl)
+			require.Equal(t, 2, preSplit.N)
+			// Check NONCLUSTERED.
+			require.NotNil(t, tbl.PrimaryKey)
+			ci := findClusteredIndex(t, tbl.PrimaryKey)
+			require.False(t, ci.Clustered)
+		})
+	})
+	t.Run("NoDrift", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			t.dropTables("shard_nodrift")
+			_, err := t.db.Exec("CREATE TABLE shard_nodrift (id INT PRIMARY KEY NONCLUSTERED) SHARD_ROW_ID_BITS = 4")
+			require.NoError(t, err)
+			tbl := t.loadTable("shard_nodrift")
+			// Compare with freshly loaded table to ensure no drift.
+			changes := t.diff(t.loadTable("shard_nodrift"), tbl)
+			require.Emptyf(t, changes, "expected no changes, got: %#v", changes)
+		})
+	})
+	t.Run("HCLRoundTrip", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			t.dropTables("shard_hcl")
+			_, err := t.db.Exec("CREATE TABLE shard_hcl (id INT PRIMARY KEY NONCLUSTERED) SHARD_ROW_ID_BITS = 4 PRE_SPLIT_REGIONS = 2")
+			require.NoError(t, err)
+			realm := t.loadRealm()
+			spec, err := mysql.MarshalHCL(realm.Schemas[0])
+			require.NoError(t, err)
+			require.Contains(t, string(spec), "shard_row_id_bits")
+			require.Contains(t, string(spec), "pre_split_regions")
+			require.Contains(t, string(spec), "NONCLUSTERED")
+		})
+	})
+}
+
+func findShardRowIDBits(t testing.TB, tbl *schema.Table) *mysql.ShardRowIDBits {
+	t.Helper()
+	for _, a := range tbl.Attrs {
+		if s, ok := a.(*mysql.ShardRowIDBits); ok {
+			return s
+		}
+	}
+	t.Fatal("ShardRowIDBits attribute not found on table")
+	return nil
+}
+
+func findPreSplitRegions(t testing.TB, tbl *schema.Table) *mysql.PreSplitRegions {
+	t.Helper()
+	for _, a := range tbl.Attrs {
+		if p, ok := a.(*mysql.PreSplitRegions); ok {
+			return p
+		}
+	}
+	t.Fatal("PreSplitRegions attribute not found on table")
+	return nil
+}
+
+func findClusteredIndex(t testing.TB, idx *schema.Index) *mysql.ClusteredIndex {
+	t.Helper()
+	for _, a := range idx.Attrs {
+		if ci, ok := a.(*mysql.ClusteredIndex); ok {
+			return ci
+		}
+	}
+	t.Fatal("ClusteredIndex attribute not found on index")
+	return nil
+}
