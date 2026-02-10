@@ -81,6 +81,7 @@ env "local" {
     dir = "file://migrations"
     format = atlas
     lock_timeout = "1s"
+	lock_name = "migrate_lock"
     revisions_schema = "revisions"
     exec_order = LINEAR_SKIP
   }
@@ -158,6 +159,7 @@ env "multi" {
 				Dir:             "file://migrations",
 				Format:          cmdmigrate.FormatAtlas,
 				LockTimeout:     "1s",
+				LockName:        "migrate_lock",
 				RevisionsSchema: "revisions",
 				ExecOrder:       "LINEAR_SKIP",
 			},
