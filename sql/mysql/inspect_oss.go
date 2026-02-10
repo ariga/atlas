@@ -668,7 +668,7 @@ const (
 	variablesQuery = "SELECT @@version, @@collation_server, @@character_set_server, @@lower_case_table_names"
 
 	// Query to list database schemas.
-	schemasQuery = "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA` WHERE `SCHEMA_NAME` NOT IN ('information_schema','innodb','mysql','performance_schema','sys') ORDER BY `SCHEMA_NAME`"
+	schemasQuery = "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA` WHERE LOWER(`SCHEMA_NAME`) NOT IN ('information_schema','innodb','mysql','performance_schema','metrics_schema','sys','test') ORDER BY `SCHEMA_NAME`"
 
 	// Query to list specific database schemas.
 	schemasQueryArgs = "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA` WHERE `SCHEMA_NAME` %s ORDER BY `SCHEMA_NAME`"
