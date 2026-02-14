@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/internal/spectest"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"github.com/stretchr/testify/require"
 )
@@ -1795,4 +1796,331 @@ schema "a8m.schema" {
 schema "nati.schema" {
 }
 `, string(got))
+}
+
+func TestMarshalSpec_AutoRandom(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+						Attrs: []schema.Attr{
+							&AutoRandom{ShardBits: 5},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null        = false
+    type        = bigint
+    auto_random = 5
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_AutoRandomWithRange(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+						Attrs: []schema.Attr{
+							&AutoRandom{ShardBits: 5, RangeBits: 32},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null              = false
+    type              = bigint
+    auto_random       = 5
+    auto_random_range = 32
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_AutoRandomDefaultRange(t *testing.T) {
+	// RangeBits=64 is the default and should not be emitted.
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+						Attrs: []schema.Attr{
+							&AutoRandom{ShardBits: 5, RangeBits: 64},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null        = false
+    type        = bigint
+    auto_random = 5
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestUnmarshalSpec_AutoRandom(t *testing.T) {
+	var (
+		s schema.Schema
+		f = `
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null        = false
+    type        = bigint
+    auto_random = 5
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+`
+	)
+	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+	require.Len(t, s.Tables, 1)
+	require.Len(t, s.Tables[0].Columns, 1)
+	ar := &AutoRandom{}
+	require.True(t, sqlx.Has(s.Tables[0].Columns[0].Attrs, ar))
+	require.Equal(t, 5, ar.ShardBits)
+	require.Equal(t, 0, ar.RangeBits)
+}
+
+func TestUnmarshalSpec_AutoRandomWithRange(t *testing.T) {
+	var (
+		s schema.Schema
+		f = `
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null              = false
+    type              = bigint
+    auto_random       = 5
+    auto_random_range = 32
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+`
+	)
+	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+	require.Len(t, s.Tables, 1)
+	require.Len(t, s.Tables[0].Columns, 1)
+	ar := &AutoRandom{}
+	require.True(t, sqlx.Has(s.Tables[0].Columns[0].Attrs, ar))
+	require.Equal(t, 5, ar.ShardBits)
+	require.Equal(t, 32, ar.RangeBits)
+}
+
+func TestUnmarshalSpec_AutoRandomMutualExclusion(t *testing.T) {
+	var s schema.Schema
+	f := `
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null           = false
+    type           = bigint
+    auto_increment = true
+    auto_random    = 5
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+`
+	err := EvalHCLBytes([]byte(f), &s, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot have both auto_increment and auto_random")
+}
+
+func TestUnmarshalSpec_AutoRandomInvalidShardBits(t *testing.T) {
+	for _, v := range []int{0, -1, 16, 100} {
+		t.Run(fmt.Sprintf("shard=%d", v), func(t *testing.T) {
+			var s schema.Schema
+			f := fmt.Sprintf(`
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null        = false
+    type        = bigint
+    auto_random = %d
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+`, v)
+			err := EvalHCLBytes([]byte(f), &s, nil)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "shard bits")
+		})
+	}
+}
+
+func TestUnmarshalSpec_AutoRandomInvalidRangeBits(t *testing.T) {
+	for _, v := range []int{10, 31, 65, 100} {
+		t.Run(fmt.Sprintf("range=%d", v), func(t *testing.T) {
+			var s schema.Schema
+			f := fmt.Sprintf(`
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null              = false
+    type              = bigint
+    auto_random       = 5
+    auto_random_range = %d
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+`, v)
+			err := EvalHCLBytes([]byte(f), &s, nil)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "auto_random_range")
+		})
+	}
+}
+
+func TestUnmarshalSpec_AutoRandomBoundaryValues(t *testing.T) {
+	// Valid boundary values should succeed.
+	tests := []struct {
+		name      string
+		shard     int
+		hclRange  string
+		wantRange int
+	}{
+		{"min shard", 1, "", 0},
+		{"max shard", 15, "", 0},
+		{"min range", 5, "auto_random_range = 32", 32},
+		{"max range (normalized)", 5, "auto_random_range = 64", 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var s schema.Schema
+			rangeAttr := ""
+			if tt.hclRange != "" {
+				rangeAttr = "\n    " + tt.hclRange
+			}
+			f := fmt.Sprintf(`
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null        = false
+    type        = bigint
+    auto_random = %d%s
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+`, tt.shard, rangeAttr)
+			require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+			ar := &AutoRandom{}
+			require.True(t, sqlx.Has(s.Tables[0].Columns[0].Attrs, ar))
+			require.Equal(t, tt.shard, ar.ShardBits)
+			require.Equal(t, tt.wantRange, ar.RangeBits)
+		})
+	}
+}
+
+func TestUnmarshalSpec_AutoRandomRangeWithoutShard(t *testing.T) {
+	var s schema.Schema
+	f := `
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null              = false
+    type              = bigint
+    auto_random_range = 32
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+`
+	err := EvalHCLBytes([]byte(f), &s, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "auto_random_range but no auto_random")
+}
+
+func TestAutoRandom_HCLRoundTrip(t *testing.T) {
+	// Unmarshal HCL -> schema -> Marshal HCL and verify round-trip.
+	f := `table "users" {
+  schema = schema.test
+  column "id" {
+    null              = false
+    type              = bigint
+    auto_random       = 5
+    auto_random_range = 32
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+schema "test" {
+}
+`
+	var s schema.Schema
+	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+	ar := &AutoRandom{}
+	require.True(t, sqlx.Has(s.Tables[0].Columns[0].Attrs, ar))
+	require.Equal(t, 5, ar.ShardBits)
+	require.Equal(t, 32, ar.RangeBits)
+	buf, err := MarshalHCL(&s)
+	require.NoError(t, err)
+	require.Equal(t, f, string(buf))
 }
