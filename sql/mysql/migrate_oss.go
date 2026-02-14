@@ -582,7 +582,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 				break
 			}
 			// Only include range bits if explicitly set and not the default (64).
-		if a.RangeBits > 0 && a.RangeBits != AutoRandomRangeBitsMax {
+			if a.RangeBits > 0 && a.RangeBits != AutoRandomRangeBitsMax {
 				b.P(fmt.Sprintf("AUTO_RANDOM(%d, %d)", a.ShardBits, a.RangeBits))
 			} else {
 				b.P(fmt.Sprintf("AUTO_RANDOM(%d)", a.ShardBits))
