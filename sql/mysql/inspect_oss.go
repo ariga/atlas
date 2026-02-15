@@ -845,6 +845,16 @@ type (
 		N int
 	}
 
+	// AutoIDCache is a TiDB-specific table attribute that controls the cache
+	// size for auto-increment ID allocation. The default is 30000 (AutoIDCacheDefault).
+	// Setting it to 1 enables MySQL-compatible strictly increasing IDs.
+	//
+	// Value range: >= 1 (minimum 1, default 30000).
+	AutoIDCache struct {
+		schema.Attr
+		N int
+	}
+
 	// ClusteredIndex is a TiDB-specific index attribute indicating whether
 	// the primary key is CLUSTERED or NONCLUSTERED.
 	//

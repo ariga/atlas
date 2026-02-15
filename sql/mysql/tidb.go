@@ -18,7 +18,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-// TiDB AUTO_RANDOM constraints.
+// TiDB-specific constraints and defaults.
 const (
 	// AutoRandomShardBitsMin is the minimum value for AUTO_RANDOM shard bits.
 	AutoRandomShardBitsMin = 1
@@ -30,6 +30,8 @@ const (
 	AutoRandomRangeBitsMax = 64
 	// ShardRowIDBitsMax is the maximum value for SHARD_ROW_ID_BITS.
 	ShardRowIDBitsMax = 15
+	// AutoIDCacheDefault is the default value for AUTO_ID_CACHE in TiDB.
+	AutoIDCacheDefault = 30000
 )
 
 type (
@@ -275,8 +277,12 @@ func (d *tdiff) TableAttrDiff(from, to *schema.Table, opts *schema.DiffOptions) 
 	fromHasS, toHasS := sqlx.Has(from.Attrs, &fromS), sqlx.Has(to.Attrs, &toS)
 	switch {
 	case !fromHasS && toHasS && toS.N > 0:
-		// Adding SHARD_ROW_ID_BITS.
-		changes = append(changes, &schema.AddAttr{A: &ShardRowIDBits{N: toS.N}})
+		// Adding SHARD_ROW_ID_BITS. Use ModifyAttr (from 0 → desired) instead of
+		// AddAttr so that the reverse SQL is correctly generated as SHARD_ROW_ID_BITS = 0.
+		changes = append(changes, &schema.ModifyAttr{
+			From: &ShardRowIDBits{N: 0},
+			To:   &ShardRowIDBits{N: toS.N},
+		})
 	case fromHasS && !toHasS && fromS.N > 0:
 		// Dropping SHARD_ROW_ID_BITS (setting to 0).
 		changes = append(changes, &schema.ModifyAttr{
@@ -288,6 +294,33 @@ func (d *tdiff) TableAttrDiff(from, to *schema.Table, opts *schema.DiffOptions) 
 		changes = append(changes, &schema.ModifyAttr{
 			From: &ShardRowIDBits{N: fromS.N},
 			To:   &ShardRowIDBits{N: toS.N},
+		})
+	}
+	// Compare AutoIDCache.
+	var fromAIC, toAIC AutoIDCache
+	fromHasAIC, toHasAIC := sqlx.Has(from.Attrs, &fromAIC), sqlx.Has(to.Attrs, &toAIC)
+	switch {
+	case !fromHasAIC && toHasAIC && toAIC.N > 0 && toAIC.N != AutoIDCacheDefault:
+		// Adding AUTO_ID_CACHE. Use ModifyAttr (from default → desired) instead of
+		// AddAttr so that the reverse SQL is correctly generated as a restore to default.
+		changes = append(changes, &schema.ModifyAttr{
+			From: &AutoIDCache{N: AutoIDCacheDefault},
+			To:   &AutoIDCache{N: toAIC.N},
+		})
+	case fromHasAIC && !toHasAIC && fromAIC.N > 0 && fromAIC.N != AutoIDCacheDefault:
+		// Dropping AUTO_ID_CACHE (restoring to TiDB default).
+		// Unlike SHARD_ROW_ID_BITS (which can be set to 0), AUTO_ID_CACHE
+		// requires a minimum value of 1, so we restore the default (30000).
+		// Skip if the current value is already the default to avoid no-op ALTERs.
+		changes = append(changes, &schema.ModifyAttr{
+			From: &AutoIDCache{N: fromAIC.N},
+			To:   &AutoIDCache{N: AutoIDCacheDefault},
+		})
+	case fromHasAIC && toHasAIC && fromAIC.N != toAIC.N:
+		// Modifying AUTO_ID_CACHE value.
+		changes = append(changes, &schema.ModifyAttr{
+			From: &AutoIDCache{N: fromAIC.N},
+			To:   &AutoIDCache{N: toAIC.N},
 		})
 	}
 	// Compare PreSplitRegions.
@@ -419,6 +452,9 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 			return nil, err
 		}
 		if err := i.setClusteredIndex(t); err != nil {
+			return nil, err
+		}
+		if err := i.setAutoIDCache(t); err != nil {
 			return nil, err
 		}
 		for _, c := range t.Columns {
@@ -581,6 +617,16 @@ var reShardRowID = regexp.MustCompile(`/\*T![^*]*SHARD_ROW_ID_BITS\s*=\s*(\d+)`)
 // Creates 2^N regions at table creation time.
 var rePreSplitRegions = regexp.MustCompile(`/\*T![^*]*PRE_SPLIT_REGIONS\s*=\s*(\d+)`)
 
+// reAutoIDCache matches AUTO_ID_CACHE=N in CREATE TABLE statement.
+// TiDB wraps this in a feature-tagged comment block:
+//
+//	/*T![auto_id_cache] AUTO_ID_CACHE=100 */
+//
+// Note: Unlike SHARD_ROW_ID_BITS/PRE_SPLIT_REGIONS which use the generic /*T! ... */
+// format, AUTO_ID_CACHE uses the feature-tagged /*T![feature_name] ... */ format.
+// The pattern matches the specific tag to avoid false positives.
+var reAutoIDCache = regexp.MustCompile(`/\*T!\[auto_id_cache\]\s*AUTO_ID_CACHE\s*=\s*(\d+)`)
+
 // reClustered matches CLUSTERED or NONCLUSTERED in PRIMARY KEY definition.
 // TiDB wraps this in a special comment:
 //
@@ -617,6 +663,26 @@ func (i *tinspect) setShardRowIDBits(t *schema.Table) error {
 		if n > 0 {
 			t.AddAttrs(&PreSplitRegions{N: n})
 		}
+	}
+	return nil
+}
+
+// setAutoIDCache extracts AUTO_ID_CACHE from CREATE TABLE statement.
+func (i *tinspect) setAutoIDCache(t *schema.Table) error {
+	var c CreateStmt
+	if !sqlx.Has(t.Attrs, &c) {
+		return nil
+	}
+	matches := reAutoIDCache.FindStringSubmatch(c.S)
+	if matches == nil {
+		return nil
+	}
+	n, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return fmt.Errorf("parsing AUTO_ID_CACHE for table %q: %w", t.Name, err)
+	}
+	if n > 0 {
+		t.AddAttrs(&AutoIDCache{N: n})
 	}
 	return nil
 }

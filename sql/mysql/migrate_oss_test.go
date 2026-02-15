@@ -1320,6 +1320,164 @@ func TestPlanChanges(t *testing.T) {
 			},
 			wantErr: true, // TiDB does not support changing AUTO_RANDOM shard bits.
 		},
+		// AUTO_ID_CACHE on CREATE TABLE.
+		{
+			version: "5.7.25-TiDB-v6.1.0",
+			changes: []schema.Change{
+				func() *schema.AddTable {
+					t := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
+						},
+						Attrs: []schema.Attr{&AutoIDCache{N: 1}},
+					}
+					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
+					return &schema.AddTable{T: t}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) /*T![auto_id_cache] AUTO_ID_CACHE=1 */", Reverse: "DROP TABLE `users`"}},
+			},
+		},
+		// CREATE TABLE with both SHARD_ROW_ID_BITS and AUTO_ID_CACHE.
+		// They produce separate TiDB comment blocks.
+		{
+			version: "5.7.25-TiDB-v6.1.0",
+			changes: []schema.Change{
+				func() *schema.AddTable {
+					t := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+						},
+						Attrs: []schema.Attr{&ShardRowIDBits{N: 4}, &AutoIDCache{N: 1}},
+					}
+					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
+					return &schema.AddTable{T: t}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{{
+					Cmd:     "CREATE TABLE `users` (`id` int NOT NULL, PRIMARY KEY (`id`)) /*T! SHARD_ROW_ID_BITS=4 */ /*T![auto_id_cache] AUTO_ID_CACHE=1 */",
+					Reverse: "DROP TABLE `users`",
+				}},
+			},
+		},
+		// AUTO_ID_CACHE on CREATE TABLE with larger value.
+		{
+			version: "5.7.25-TiDB-v6.1.0",
+			changes: []schema.Change{
+				func() *schema.AddTable {
+					t := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
+						},
+						Attrs: []schema.Attr{&AutoIDCache{N: 100}},
+					}
+					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
+					return &schema.AddTable{T: t}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) /*T![auto_id_cache] AUTO_ID_CACHE=100 */", Reverse: "DROP TABLE `users`"}},
+			},
+		},
+		// ALTER TABLE: add AUTO_ID_CACHE (from default to desired value).
+		// The diff generates ModifyAttr (from default → desired) so the reverse is correct.
+		{
+			version: "5.7.25-TiDB-v6.1.0",
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+						},
+					},
+					Changes: []schema.Change{
+						&schema.ModifyAttr{
+							From: &AutoIDCache{N: AutoIDCacheDefault},
+							To:   &AutoIDCache{N: 1},
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: false,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` AUTO_ID_CACHE = 1",
+						Reverse: "ALTER TABLE `users` AUTO_ID_CACHE = 30000",
+					},
+				},
+			},
+		},
+		// ALTER TABLE: modify AUTO_ID_CACHE.
+		{
+			version: "5.7.25-TiDB-v6.1.0",
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+						},
+					},
+					Changes: []schema.Change{
+						&schema.ModifyAttr{
+							From: &AutoIDCache{N: 1},
+							To:   &AutoIDCache{N: 100},
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: false,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` AUTO_ID_CACHE = 100",
+						Reverse: "ALTER TABLE `users` AUTO_ID_CACHE = 1",
+					},
+				},
+			},
+		},
+		// ALTER TABLE: drop AUTO_ID_CACHE (restore to AutoIDCacheDefault=30000).
+		{
+			version: "5.7.25-TiDB-v6.1.0",
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+						},
+					},
+					Changes: []schema.Change{
+						&schema.ModifyAttr{
+							From: &AutoIDCache{N: 1},
+							To:   &AutoIDCache{N: AutoIDCacheDefault},
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: false,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` AUTO_ID_CACHE = 30000",
+						Reverse: "ALTER TABLE `users` AUTO_ID_CACHE = 1",
+					},
+				},
+			},
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {

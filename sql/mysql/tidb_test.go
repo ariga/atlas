@@ -760,11 +760,16 @@ func TestTableAttrDiff_ShardRowIDBits(t *testing.T) {
 		changes, err := differ.TableDiff(from, to)
 		require.NoError(t, err)
 		require.Len(t, changes, 1)
-		addAttr, ok := changes[0].(*schema.AddAttr)
-		require.True(t, ok, "expected AddAttr, got %T", changes[0])
-		shard, ok := addAttr.A.(*ShardRowIDBits)
+		// Adding SHARD_ROW_ID_BITS generates a ModifyAttr (from 0 → desired)
+		// so that the reverse SQL is correctly produced as SHARD_ROW_ID_BITS = 0.
+		modAttr, ok := changes[0].(*schema.ModifyAttr)
+		require.True(t, ok, "expected ModifyAttr, got %T", changes[0])
+		fromS, ok := modAttr.From.(*ShardRowIDBits)
 		require.True(t, ok)
-		require.Equal(t, 4, shard.N)
+		require.Equal(t, 0, fromS.N)
+		toS, ok := modAttr.To.(*ShardRowIDBits)
+		require.True(t, ok)
+		require.Equal(t, 4, toS.N)
 	})
 
 	t.Run("ModifyShardRowIDBits", func(t *testing.T) {
@@ -843,6 +848,334 @@ func TestTableAttrDiff_PreSplitRegions(t *testing.T) {
 		require.True(t, ok)
 		require.Equal(t, 4, psr.N)
 	})
+}
+
+func TestAutoIDCache_ParseCreateTable(t *testing.T) {
+	tests := []struct {
+		name    string
+		create  string
+		wantN   int
+		wantNil bool
+	}{
+		{
+			name:   "auto_id_cache=1",
+			create: "CREATE TABLE `t` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) /*T![auto_id_cache] AUTO_ID_CACHE=1 */ CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+			wantN:  1,
+		},
+		{
+			name:   "auto_id_cache=100",
+			create: "CREATE TABLE `t` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) /*T![auto_id_cache] AUTO_ID_CACHE=100 */ CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+			wantN:  100,
+		},
+		{
+			name:    "no auto_id_cache",
+			create:  "CREATE TABLE `t` (`id` bigint NOT NULL, PRIMARY KEY (`id`)) CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+			wantNil: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			matches := reAutoIDCache.FindStringSubmatch(tt.create)
+			if tt.wantNil {
+				require.Nil(t, matches)
+			} else {
+				require.NotNil(t, matches)
+				require.Equal(t, tt.wantN, mustAtoi(t, matches[1]))
+			}
+		})
+	}
+}
+
+func TestAutoIDCache_RegexOnlyMatchesTiDBComment(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		matches bool
+	}{
+		{
+			name:    "valid TiDB comment",
+			input:   "/*T![auto_id_cache] AUTO_ID_CACHE=1 */",
+			matches: true,
+		},
+		{
+			name:    "valid TiDB comment with spaces",
+			input:   "/*T![auto_id_cache]  AUTO_ID_CACHE = 100 */",
+			matches: true,
+		},
+		{
+			name:    "SQL block comment should not match",
+			input:   "/* AUTO_ID_CACHE=1 */",
+			matches: false,
+		},
+		{
+			name:    "plain text should not match",
+			input:   "AUTO_ID_CACHE=1",
+			matches: false,
+		},
+		{
+			name:    "different TiDB feature tag should not match",
+			input:   "/*T![other_feature] AUTO_ID_CACHE=1 */",
+			matches: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			matches := reAutoIDCache.FindStringSubmatch(tt.input)
+			if tt.matches {
+				require.NotNil(t, matches, "expected regex to match")
+			} else {
+				require.Nil(t, matches, "expected regex NOT to match")
+			}
+		})
+	}
+}
+
+func TestAutoIDCache_PatchSchema(t *testing.T) {
+	tbl := schema.NewTable("t")
+	tbl.AddAttrs(&CreateStmt{
+		S: "CREATE TABLE `t` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) /*T![auto_id_cache] AUTO_ID_CACHE=1 */ CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+	})
+	i := &tinspect{}
+	err := i.setAutoIDCache(tbl)
+	require.NoError(t, err)
+	aic := &AutoIDCache{}
+	require.True(t, sqlx.Has(tbl.Attrs, aic))
+	require.Equal(t, 1, aic.N)
+}
+
+func TestAutoIDCache_PatchSchemaDefault(t *testing.T) {
+	// When TiDB outputs AUTO_ID_CACHE=30000 (the default), setAutoIDCache
+	// should still add the attribute so that round-trips are consistent.
+	tbl := schema.NewTable("t")
+	tbl.AddAttrs(&CreateStmt{
+		S: "CREATE TABLE `t` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) /*T![auto_id_cache] AUTO_ID_CACHE=30000 */ CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+	})
+	i := &tinspect{}
+	err := i.setAutoIDCache(tbl)
+	require.NoError(t, err)
+	aic := &AutoIDCache{}
+	require.True(t, sqlx.Has(tbl.Attrs, aic))
+	require.Equal(t, AutoIDCacheDefault, aic.N)
+}
+
+func TestAutoIDCache_PatchSchemaNoAutoIDCache(t *testing.T) {
+	tbl := schema.NewTable("t")
+	tbl.AddAttrs(&CreateStmt{
+		S: "CREATE TABLE `t` (`id` bigint NOT NULL, PRIMARY KEY (`id`)) CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+	})
+	i := &tinspect{}
+	err := i.setAutoIDCache(tbl)
+	require.NoError(t, err)
+	require.False(t, sqlx.Has(tbl.Attrs, &AutoIDCache{}))
+}
+
+func TestTableAttrDiff_AutoIDCache(t *testing.T) {
+	differ := newTiDBDiffer()
+	testSchema := &schema.Schema{Name: "test"}
+
+	t.Run("AddAutoIDCache", func(t *testing.T) {
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		to.AddAttrs(&AutoIDCache{N: 1})
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		// Adding AUTO_ID_CACHE generates a ModifyAttr (from default → desired)
+		// so that the reverse SQL is correctly produced.
+		modAttr, ok := changes[0].(*schema.ModifyAttr)
+		require.True(t, ok, "expected ModifyAttr, got %T", changes[0])
+		fromAIC, ok := modAttr.From.(*AutoIDCache)
+		require.True(t, ok)
+		require.Equal(t, AutoIDCacheDefault, fromAIC.N)
+		toAIC, ok := modAttr.To.(*AutoIDCache)
+		require.True(t, ok)
+		require.Equal(t, 1, toAIC.N)
+	})
+
+	t.Run("ModifyAutoIDCache", func(t *testing.T) {
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		from.AddAttrs(&AutoIDCache{N: 1})
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		to.AddAttrs(&AutoIDCache{N: 100})
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		modAttr, ok := changes[0].(*schema.ModifyAttr)
+		require.True(t, ok, "expected ModifyAttr, got %T", changes[0])
+		fromAIC, ok := modAttr.From.(*AutoIDCache)
+		require.True(t, ok)
+		require.Equal(t, 1, fromAIC.N)
+		toAIC, ok := modAttr.To.(*AutoIDCache)
+		require.True(t, ok)
+		require.Equal(t, 100, toAIC.N)
+	})
+
+	t.Run("DropAutoIDCache", func(t *testing.T) {
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		from.AddAttrs(&AutoIDCache{N: 100})
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		modAttr, ok := changes[0].(*schema.ModifyAttr)
+		require.True(t, ok, "expected ModifyAttr, got %T", changes[0])
+		fromAIC, ok := modAttr.From.(*AutoIDCache)
+		require.True(t, ok)
+		require.Equal(t, 100, fromAIC.N)
+		// Drop restores to TiDB default (30000), not 0,
+		// because AUTO_ID_CACHE requires a minimum value of 1.
+		toAIC, ok := modAttr.To.(*AutoIDCache)
+		require.True(t, ok)
+		require.Equal(t, AutoIDCacheDefault, toAIC.N)
+	})
+
+	t.Run("AddAutoIDCacheDefaultNoOp", func(t *testing.T) {
+		// Setting AUTO_ID_CACHE to the default value (30000) should not
+		// generate any change, since the table already uses that default.
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		to.AddAttrs(&AutoIDCache{N: AutoIDCacheDefault})
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Empty(t, changes)
+	})
+
+	t.Run("DropAutoIDCacheNoOpWhenDefault", func(t *testing.T) {
+		// If the current value is already the default, dropping it
+		// should not generate any change (no-op).
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		from.AddAttrs(&AutoIDCache{N: AutoIDCacheDefault})
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Empty(t, changes)
+	})
+
+	t.Run("NoChangeAutoIDCache", func(t *testing.T) {
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		from.AddAttrs(&AutoIDCache{N: 100})
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		to.AddAttrs(&AutoIDCache{N: 100})
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Empty(t, changes)
+	})
+
+	t.Run("ModifyFromDefaultToNonDefault", func(t *testing.T) {
+		// Both sides have the attribute, but from is the default value.
+		// This exercises the fromHasAIC && toHasAIC branch with the default on from.
+		from := schema.NewTable("t")
+		from.Schema = testSchema
+		from.AddAttrs(&AutoIDCache{N: AutoIDCacheDefault})
+		to := schema.NewTable("t")
+		to.Schema = testSchema
+		to.AddAttrs(&AutoIDCache{N: 1})
+		changes, err := differ.TableDiff(from, to)
+		require.NoError(t, err)
+		require.Len(t, changes, 1)
+		modAttr, ok := changes[0].(*schema.ModifyAttr)
+		require.True(t, ok, "expected ModifyAttr, got %T", changes[0])
+		fromAIC, ok := modAttr.From.(*AutoIDCache)
+		require.True(t, ok)
+		require.Equal(t, AutoIDCacheDefault, fromAIC.N)
+		toAIC, ok := modAttr.To.(*AutoIDCache)
+		require.True(t, ok)
+		require.Equal(t, 1, toAIC.N)
+	})
+}
+
+func TestAutoIDCache_PatchSchemaNoCreateStmt(t *testing.T) {
+	// setAutoIDCache should be a no-op when CreateStmt is absent.
+	tbl := schema.NewTable("t")
+	i := &tinspect{}
+	err := i.setAutoIDCache(tbl)
+	require.NoError(t, err)
+	require.False(t, sqlx.Has(tbl.Attrs, &AutoIDCache{}))
+}
+
+func TestAutoIDCache_CombinedInspection(t *testing.T) {
+	// Verify patchSchema correctly extracts both SHARD_ROW_ID_BITS and
+	// AUTO_ID_CACHE from the same CREATE TABLE statement.
+	tbl := schema.NewTable("t")
+	tbl.AddAttrs(&CreateStmt{
+		S: "CREATE TABLE `t` (`id` int NOT NULL, PRIMARY KEY (`id`) " +
+			"/*T![clustered_index] NONCLUSTERED */) " +
+			"/*T! SHARD_ROW_ID_BITS=4 */ " +
+			"/*T![auto_id_cache] AUTO_ID_CACHE=1 */ " +
+			"CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+	})
+	i := &tinspect{}
+	err := i.setShardRowIDBits(tbl)
+	require.NoError(t, err)
+	err = i.setAutoIDCache(tbl)
+	require.NoError(t, err)
+
+	shard := &ShardRowIDBits{}
+	require.True(t, sqlx.Has(tbl.Attrs, shard))
+	require.Equal(t, 4, shard.N)
+
+	aic := &AutoIDCache{}
+	require.True(t, sqlx.Has(tbl.Attrs, aic))
+	require.Equal(t, 1, aic.N)
+}
+
+func TestTableAttrDiff_CombinedAutoIDCacheAndShardRowIDBits(t *testing.T) {
+	// When both ShardRowIDBits and AutoIDCache change simultaneously,
+	// the diff should produce two separate changes.
+	differ := newTiDBDiffer()
+	testSchema := &schema.Schema{Name: "test"}
+
+	from := schema.NewTable("t")
+	from.Schema = testSchema
+	from.AddAttrs(&ShardRowIDBits{N: 2}, &AutoIDCache{N: 100})
+	to := schema.NewTable("t")
+	to.Schema = testSchema
+	to.AddAttrs(&ShardRowIDBits{N: 4}, &AutoIDCache{N: 1})
+	changes, err := differ.TableDiff(from, to)
+	require.NoError(t, err)
+	require.Len(t, changes, 2)
+
+	// First change: ShardRowIDBits modification.
+	modShard, ok := changes[0].(*schema.ModifyAttr)
+	require.True(t, ok, "expected ModifyAttr for ShardRowIDBits, got %T", changes[0])
+	_, ok = modShard.From.(*ShardRowIDBits)
+	require.True(t, ok)
+
+	// Second change: AutoIDCache modification.
+	modAIC, ok := changes[1].(*schema.ModifyAttr)
+	require.True(t, ok, "expected ModifyAttr for AutoIDCache, got %T", changes[1])
+	_, ok = modAIC.From.(*AutoIDCache)
+	require.True(t, ok)
+}
+
+func TestCheckUnsupportedChanges_AutoIDCacheAllowed(t *testing.T) {
+	// Unlike PreSplitRegions, modifying AUTO_ID_CACHE via ALTER TABLE is
+	// supported by TiDB. Verify it passes through without error.
+	changes := []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("users"),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &AutoIDCache{N: AutoIDCacheDefault},
+					To:   &AutoIDCache{N: 1},
+				},
+			},
+		},
+	}
+	err := checkUnsupportedChanges(changes)
+	require.NoError(t, err)
 }
 
 func TestAutoRandom_ColumnDiffRemovalDetected(t *testing.T) {

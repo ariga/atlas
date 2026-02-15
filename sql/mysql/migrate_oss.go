@@ -754,6 +754,15 @@ func (s *state) tableAttrs(b *sqlx.Builder, c schema.Change, attrs ...schema.Att
 					b.P(fmt.Sprintf("/*T! PRE_SPLIT_REGIONS=%d */", a.N))
 				}
 			}
+		case *AutoIDCache:
+			// TiDB AUTO_ID_CACHE: controls the cache size for auto-increment ID allocation.
+			// - CREATE TABLE: uses /*T![auto_id_cache] AUTO_ID_CACHE=N */
+			// - ALTER TABLE: uses AUTO_ID_CACHE = N (without comment wrapper)
+			if isAlter {
+				b.P("AUTO_ID_CACHE =", strconv.Itoa(a.N))
+			} else if a.N > 0 {
+				b.P(fmt.Sprintf("/*T![auto_id_cache] AUTO_ID_CACHE=%d */", a.N))
+			}
 		}
 	}
 }

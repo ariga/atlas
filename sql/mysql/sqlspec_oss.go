@@ -200,6 +200,16 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 			t.AddAttrs(&PreSplitRegions{N: v})
 		}
 	}
+	if attr, ok := spec.Attr("auto_id_cache"); ok {
+		v, err := attr.Int()
+		if err != nil {
+			return nil, err
+		}
+		if v <= 0 {
+			return nil, fmt.Errorf("auto_id_cache for table %q must be a positive integer (>= 1), got %d", t.Name, v)
+		}
+		t.AddAttrs(&AutoIDCache{N: v})
+	}
 	// Validate TiDB constraints with cross-reference checking.
 	if err := validateTiDBTableConstraints(t, shardBits, preSplitRegions); err != nil {
 		return nil, err
@@ -503,6 +513,9 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	}
 	if p := (&PreSplitRegions{}); sqlx.Has(t.Attrs, p) && p.N > 0 {
 		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.IntAttr("pre_split_regions", p.N))
+	}
+	if a := (&AutoIDCache{}); sqlx.Has(t.Attrs, a) && a.N > 0 && a.N != AutoIDCacheDefault {
+		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.IntAttr("auto_id_cache", a.N))
 	}
 	return ts, nil
 }

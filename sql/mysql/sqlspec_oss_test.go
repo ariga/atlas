@@ -2405,3 +2405,172 @@ schema "test" {
 		require.Contains(t, err.Error(), "cannot have both shard_row_id_bits and auto_random")
 	})
 }
+
+func TestMarshalSpec_AutoIDCache(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+					},
+				},
+				Attrs: []schema.Attr{
+					&AutoIDCache{N: 1},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	require.Contains(t, string(buf), "auto_id_cache = 1")
+}
+
+func TestUnmarshalSpec_AutoIDCache(t *testing.T) {
+	var s schema.Schema
+	f := `
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = bigint
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  auto_id_cache = 100
+}
+`
+	err := EvalHCLBytes([]byte(f), &s, nil)
+	require.NoError(t, err)
+	require.Len(t, s.Tables, 1)
+	aic := &AutoIDCache{}
+	require.True(t, sqlx.Has(s.Tables[0].Attrs, aic))
+	require.Equal(t, 100, aic.N)
+}
+
+func TestUnmarshalSpec_AutoIDCacheNegative(t *testing.T) {
+	var s schema.Schema
+	err := EvalHCLBytes([]byte(`
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = bigint
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  auto_id_cache = -1
+}
+`), &s, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "auto_id_cache")
+}
+
+func TestUnmarshalSpec_AutoIDCacheZero(t *testing.T) {
+	var s schema.Schema
+	err := EvalHCLBytes([]byte(`
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = bigint
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  auto_id_cache = 0
+}
+`), &s, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "auto_id_cache")
+}
+
+func TestMarshalSpec_AutoIDCacheDefaultOmitted(t *testing.T) {
+	// When AUTO_ID_CACHE equals the TiDB default (30000), it should
+	// NOT be written to HCL to avoid unnecessary noise and non-idempotent diffs.
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+					},
+				},
+				Attrs: []schema.Attr{
+					&AutoIDCache{N: AutoIDCacheDefault},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	require.NotContains(t, string(buf), "auto_id_cache")
+}
+
+func TestAutoIDCache_HCLDefaultValueLossy(t *testing.T) {
+	// auto_id_cache = 30000 (the TiDB default) unmarshals successfully but
+	// marshaling back omits it. This is by design: the default value should
+	// not appear in HCL to avoid non-idempotent diffs.
+	var s schema.Schema
+	err := EvalHCLBytes([]byte(`
+schema "test" {}
+table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = bigint
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  auto_id_cache = 30000
+}
+`), &s, nil)
+	require.NoError(t, err)
+	require.Len(t, s.Tables, 1)
+	aic := &AutoIDCache{}
+	require.True(t, sqlx.Has(s.Tables[0].Attrs, aic))
+	require.Equal(t, AutoIDCacheDefault, aic.N)
+	// Marshal back: default value should be omitted.
+	buf, err := MarshalHCL(&s)
+	require.NoError(t, err)
+	require.NotContains(t, string(buf), "auto_id_cache")
+}
+
+func TestAutoIDCache_HCLRoundTrip(t *testing.T) {
+	f := `table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = bigint
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  auto_id_cache = 1
+}
+`
+	var s schema.Schema
+	err := EvalHCLBytes([]byte("schema \"test\" {}\n"+f), &s, nil)
+	require.NoError(t, err)
+	aic := &AutoIDCache{}
+	require.True(t, sqlx.Has(s.Tables[0].Attrs, aic))
+	require.Equal(t, 1, aic.N)
+	// Marshal back and check it round-trips.
+	buf, err := MarshalHCL(&s)
+	require.NoError(t, err)
+	require.Contains(t, string(buf), "auto_id_cache = 1")
+}
