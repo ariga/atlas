@@ -165,6 +165,16 @@ type (
 		URL             string
 		RevisionsSchema string
 	}
+	// MigrateLsParams are the parameters for the `migrate ls` command.
+	MigrateLsParams struct {
+		ConfigURL string
+		Env       string
+		Vars      VarArgs
+
+		DirURL string
+		Short  bool // -s: print only migration version (omit description and .sql suffix)
+		Latest bool // -l: print only the latest migration file
+	}
 	// MigrateSetParams are the parameters for the `migrate set` command.
 	MigrateSetParams struct {
 		ConfigURL string
@@ -428,6 +438,30 @@ func (c *Client) MigrateStatus(ctx context.Context, params *MigrateStatusParams)
 	}
 	// NOTE: This command only support one result.
 	return firstResult(jsonDecode[MigrateStatus](c.runCommand(ctx, args)))
+}
+
+// MigrateLs runs the 'migrate ls' command and returns the listed migration file names (or versions when Short is true), one per line.
+func (c *Client) MigrateLs(ctx context.Context, params *MigrateLsParams) (string, error) {
+	args := []string{"migrate", "ls"}
+	if params.ConfigURL != "" {
+		args = append(args, "--config", params.ConfigURL)
+	}
+	if params.Env != "" {
+		args = append(args, "--env", params.Env)
+	}
+	if params.DirURL != "" {
+		args = append(args, "--dir", params.DirURL)
+	}
+	if params.Vars != nil {
+		args = append(args, params.Vars.AsArgs()...)
+	}
+	if params.Short {
+		args = append(args, "--short")
+	}
+	if params.Latest {
+		args = append(args, "--latest")
+	}
+	return stringVal(c.runCommand(ctx, args))
 }
 
 // MigrateSet runs the 'migrate set' command.

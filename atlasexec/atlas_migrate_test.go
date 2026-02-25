@@ -129,6 +129,112 @@ func TestMigrate_Apply(t *testing.T) {
 	}
 }
 
+func TestMigrate_Ls(t *testing.T) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	c, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
+	require.NoError(t, err)
+
+	for _, tt := range []struct {
+		name   string
+		params *atlasexec.MigrateLsParams
+		args   string
+		stdout string
+	}{
+		{
+			name:   "no params",
+			params: &atlasexec.MigrateLsParams{},
+			args:   "migrate ls",
+			stdout: "\n",
+		},
+		{
+			name: "with dir",
+			params: &atlasexec.MigrateLsParams{
+				DirURL: "file://migrations",
+			},
+			args:   "migrate ls --dir file://migrations",
+			stdout: "\n",
+		},
+		{
+			name: "with short",
+			params: &atlasexec.MigrateLsParams{
+				Short: true,
+			},
+			args:   "migrate ls --short",
+			stdout: "\n",
+		},
+		{
+			name: "with latest",
+			params: &atlasexec.MigrateLsParams{
+				Latest: true,
+			},
+			args:   "migrate ls --latest",
+			stdout: "\n",
+		},
+		{
+			name: "with short and latest",
+			params: &atlasexec.MigrateLsParams{
+				DirURL: "file://migrations",
+				Short:  true,
+				Latest: true,
+			},
+			args:   "migrate ls --dir file://migrations --short --latest",
+			stdout: "20230727105615\n",
+		},
+		{
+			name: "with config and env",
+			params: &atlasexec.MigrateLsParams{
+				ConfigURL: "file://atlas.hcl",
+				Env:       "dev",
+			},
+			args:   "migrate ls --config file://atlas.hcl --env dev",
+			stdout: "\n",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("TEST_ARGS", tt.args)
+			t.Setenv("TEST_STDOUT", tt.stdout)
+			got, err := c.MigrateLs(context.Background(), tt.params)
+			require.NoError(t, err)
+			require.Equal(t, tt.stdout, got)
+		})
+	}
+}
+
+func TestMigrate_Ls_Integration(t *testing.T) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	c, err := atlasexec.NewClient(wd, "atlas")
+	require.NoError(t, err)
+
+	dirURL := "file://testdata/migrations"
+	out, err := c.MigrateLs(context.Background(), &atlasexec.MigrateLsParams{DirURL: dirURL})
+	if err != nil {
+		if strings.Contains(err.Error(), "unknown") || strings.Contains(err.Error(), "unknown command") {
+			t.Skip("atlas binary does not support 'migrate ls' (e.g. OSS build)")
+		}
+		require.NoError(t, err)
+	}
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	require.GreaterOrEqual(t, len(lines), 2)
+	require.Contains(t, out, "20230727105553_init.sql")
+	require.Contains(t, out, "20230727105615_t2.sql")
+
+	outShort, err := c.MigrateLs(context.Background(), &atlasexec.MigrateLsParams{DirURL: dirURL, Short: true})
+	if err != nil && strings.Contains(err.Error(), "unknown flag") {
+		t.Skip("atlas binary does not support --short/--latest (use enterprise or newer build)")
+	}
+	require.NoError(t, err)
+	require.Contains(t, outShort, "20230727105553")
+	require.Contains(t, outShort, "20230727105615")
+	require.NotContains(t, outShort, ".sql")
+
+	outLatest, err := c.MigrateLs(context.Background(), &atlasexec.MigrateLsParams{DirURL: dirURL, Latest: true})
+	require.NoError(t, err)
+	require.Equal(t, 1, len(strings.Split(strings.TrimSpace(outLatest), "\n")))
+	require.Contains(t, outLatest, "20230926085734_destructive-change.sql")
+}
+
 func TestMigrate_Set(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
