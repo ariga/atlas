@@ -599,7 +599,7 @@ func (c *Client) MigrateRebase(ctx context.Context, params *MigrateRebaseParams)
 	if params.DirURL != "" {
 		args = append(args, "--dir", params.DirURL)
 	}
-	args = append(args, strings.Join(params.Files, " "))
+	args = append(args, params.Files...)
 	_, err := c.runCommand(ctx, args)
 	return err
 }
