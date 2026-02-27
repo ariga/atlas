@@ -576,6 +576,17 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 			if a.V > 0 && !sqlx.Has(t.Attrs, &AutoIncrement{}) {
 				t.Attrs = append(t.Attrs, a)
 			}
+		case *AutoRandom:
+			if a.ShardBits == 0 {
+				// ShardBits=0 is a zero-value placeholder; skip SQL generation.
+				break
+			}
+			// Only include range bits if explicitly set and not the default (64).
+			if a.RangeBits > 0 && a.RangeBits != AutoRandomRangeBitsMax {
+				b.P(fmt.Sprintf("AUTO_RANDOM(%d, %d)", a.ShardBits, a.RangeBits))
+			} else {
+				b.P(fmt.Sprintf("AUTO_RANDOM(%d)", a.ShardBits))
+			}
 		default:
 			s.attr(b, a)
 		}

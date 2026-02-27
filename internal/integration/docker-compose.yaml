@@ -170,6 +170,13 @@ services:
     image: pingcap/tidb:v6.6.0
     ports:
       - "4310:4000"
+
+  tidb8:
+    container_name: atlas-integration-tidb8
+    platform: linux/amd64
+    image: pingcap/tidb:v8.5.5
+    ports:
+      - "4311:4000"
   
   cockroach21.2.11:
     container_name: atlas-integration-cockroach21.2.11
