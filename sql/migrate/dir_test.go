@@ -430,11 +430,11 @@ alter table users drop column id;
 -- atlas:import
 -- atlas:import bar baz
 -- atlas:import qux
+-- atlas:import files_📄
 
 alter table users drop column id;
 `))
-	require.Equal(t, []string{"foo", "", "bar baz", "qux"}, f.Directive("import"))
-
+	require.Equal(t, []string{"foo", "", "bar baz", "qux", "files_📄"}, f.Directive("import"))
 	f = migrate.NewLocalFile("1.sql", []byte("-- atlas:import foo\n"))
 	require.Equal(t, []string{"foo"}, f.Directive("import"))
 }

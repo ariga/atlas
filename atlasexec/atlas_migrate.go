@@ -165,6 +165,27 @@ type (
 		URL             string
 		RevisionsSchema string
 	}
+	// MigrateLsParams are the parameters for the `migrate ls` command.
+	MigrateLsParams struct {
+		ConfigURL string
+		Env       string
+		Vars      VarArgs
+
+		DirURL string
+		Short  bool // -s: print only migration version (omit description and .sql suffix)
+		Latest bool // -l: print only the latest migration file
+	}
+	// MigrateSetParams are the parameters for the `migrate set` command.
+	MigrateSetParams struct {
+		ConfigURL string
+		Env       string
+		Vars      VarArgs
+
+		DirURL          string
+		URL             string
+		RevisionsSchema string
+		Version         string
+	}
 	// MigrateDiffParams are the parameters for the `migrate diff` command.
 	MigrateDiffParams struct {
 		ConfigURL string
@@ -419,6 +440,58 @@ func (c *Client) MigrateStatus(ctx context.Context, params *MigrateStatusParams)
 	return firstResult(jsonDecode[MigrateStatus](c.runCommand(ctx, args)))
 }
 
+// MigrateLs runs the 'migrate ls' command and returns the listed migration file names (or versions when Short is true), one per line.
+func (c *Client) MigrateLs(ctx context.Context, params *MigrateLsParams) (string, error) {
+	args := []string{"migrate", "ls"}
+	if params.ConfigURL != "" {
+		args = append(args, "--config", params.ConfigURL)
+	}
+	if params.Env != "" {
+		args = append(args, "--env", params.Env)
+	}
+	if params.DirURL != "" {
+		args = append(args, "--dir", params.DirURL)
+	}
+	if params.Vars != nil {
+		args = append(args, params.Vars.AsArgs()...)
+	}
+	if params.Short {
+		args = append(args, "--short")
+	}
+	if params.Latest {
+		args = append(args, "--latest")
+	}
+	return stringVal(c.runCommand(ctx, args))
+}
+
+// MigrateSet runs the 'migrate set' command.
+func (c *Client) MigrateSet(ctx context.Context, params *MigrateSetParams) error {
+	args := []string{"migrate", "set"}
+	if params.Env != "" {
+		args = append(args, "--env", params.Env)
+	}
+	if params.ConfigURL != "" {
+		args = append(args, "--config", params.ConfigURL)
+	}
+	if params.URL != "" {
+		args = append(args, "--url", params.URL)
+	}
+	if params.DirURL != "" {
+		args = append(args, "--dir", params.DirURL)
+	}
+	if params.RevisionsSchema != "" {
+		args = append(args, "--revisions-schema", params.RevisionsSchema)
+	}
+	if params.Vars != nil {
+		args = append(args, params.Vars.AsArgs()...)
+	}
+	if params.Version != "" {
+		args = append(args, params.Version)
+	}
+	_, err := c.runCommand(ctx, args)
+	return err
+}
+
 // MigrateDiff runs the 'migrate diff --dry-run' command and returns the generated migration files without changing the filesystem.
 // Requires atlas CLI to be logged in to the cloud.
 func (c *Client) MigrateDiff(ctx context.Context, params *MigrateDiffParams) (*MigrateDiff, error) {
@@ -526,7 +599,7 @@ func (c *Client) MigrateRebase(ctx context.Context, params *MigrateRebaseParams)
 	if params.DirURL != "" {
 		args = append(args, "--dir", params.DirURL)
 	}
-	args = append(args, strings.Join(params.Files, " "))
+	args = append(args, params.Files...)
 	_, err := c.runCommand(ctx, args)
 	return err
 }
@@ -734,10 +807,16 @@ func newMigrateApplyError(r []*MigrateApply, stderr string) error {
 
 // Error implements the error interface.
 func (e *MigrateApplyError) Error() string {
-	if e.Stderr != "" {
-		return e.Stderr
+	var errs []string
+	for _, r := range e.Result {
+		if r.Error != "" {
+			errs = append(errs, r.Error)
+		}
 	}
-	return last(e.Result).Error
+	if e.Stderr != "" {
+		errs = append(errs, e.Stderr)
+	}
+	return strings.Join(errs, "\n")
 }
 
 func plural(n int) (s string) {

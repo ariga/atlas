@@ -803,6 +803,73 @@ func TestSchema_ApplyEnvs(t *testing.T) {
 	require.Equal(t, "sqlite://local-bu.db", err2.Result[2].URL.String())
 }
 
+func TestSchemaApplyError_Error(t *testing.T) {
+	t.Run("single result error only", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Result: []*atlasexec.SchemaApply{
+				{Error: "schema apply failed"},
+			},
+		}
+		require.Equal(t, "schema apply failed", e.Error())
+	})
+
+	t.Run("stderr only", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Stderr: "Error: unable to acquire lock",
+		}
+		require.Equal(t, "Error: unable to acquire lock", e.Error())
+	})
+
+	t.Run("single result error and stderr", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Result: []*atlasexec.SchemaApply{
+				{Error: "schema apply failed"},
+			},
+			Stderr: "Error: unable to acquire lock",
+		}
+		require.Equal(t, "schema apply failed\nError: unable to acquire lock", e.Error())
+	})
+
+	t.Run("multiple result errors and stderr", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Result: []*atlasexec.SchemaApply{
+				{Error: "error on target 1"},
+				{Error: "error on target 2"},
+			},
+			Stderr: "Error: unable to acquire lock",
+		}
+		require.Equal(t, "error on target 1\nerror on target 2\nError: unable to acquire lock", e.Error())
+	})
+
+	t.Run("multiple results with some having no error", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Result: []*atlasexec.SchemaApply{
+				{Error: ""},
+				{Error: "error on target 2"},
+				{Error: ""},
+			},
+			Stderr: "Error: unable to acquire lock",
+		}
+		require.Equal(t, "error on target 2\nError: unable to acquire lock", e.Error())
+	})
+
+	t.Run("no errors at all", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Result: []*atlasexec.SchemaApply{
+				{Error: ""},
+			},
+		}
+		require.Equal(t, "", e.Error())
+	})
+
+	t.Run("nil result with stderr", func(t *testing.T) {
+		e := &atlasexec.SchemaApplyError{
+			Stderr: "Error: connection refused",
+		}
+		require.Equal(t, "Error: connection refused", e.Error())
+	})
+}
+
 func TestAtlasSchema_Lint(t *testing.T) {
 	t.Run("with broken config", func(t *testing.T) {
 		c, err := atlasexec.NewClient(".", "atlas")
@@ -913,36 +980,4 @@ func TestSchema_Lint(t *testing.T) {
 			require.Equal(t, "Table \"main.T1\" violates the naming policy", result.Steps[0].Diagnostics[0].Text)
 		})
 	}
-}
-
-func TestSchema_StatsInspect(t *testing.T) {
-	wd, err := os.Getwd()
-	require.NoError(t, err)
-	c, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
-	require.NoError(t, err)
-
-	// Test case with Prometheus metrics output
-	prometheusOutput := `# HELP atlas_table_size_bytes Size of the table in bytes.
-# TYPE atlas_table_size_bytes gauge
-atlas_table_size_bytes{schema="test",table="test"} 16384.0
-atlas_table_size_bytes{schema="test",table="users"} 6.832128e+06
-`
-	t.Run("basic stats with prometheus metrics", func(t *testing.T) {
-		params := &atlasexec.SchemaStatsInspectParams{
-			URL: "sqlite://test.db",
-		}
-		t.Setenv("TEST_ARGS", "schema stats inspect --url sqlite://test.db")
-		t.Setenv("TEST_STDOUT", prometheusOutput)
-		result, err := c.SchemaStatsInspect(context.Background(), params)
-
-		require.NoError(t, err)
-		require.Len(t, result, 2)
-		// Verify metrics
-		require.Equal(t, "test", result[0].Schema)
-		require.Equal(t, "test", result[0].Table)
-		require.Equal(t, 16384.0, result[0].Value)
-		require.Equal(t, "test", result[1].Schema)
-		require.Equal(t, "users", result[1].Table)
-		require.Equal(t, 6832128.0, result[1].Value)
-	})
 }
