@@ -274,7 +274,7 @@ const (
 	directivePrefixSQL  = "-- "
 )
 
-var reDirective = regexp.MustCompile(`^([ -~]*)atlas:(\w+)(?: +([ -~]*))*`)
+var reDirective = regexp.MustCompile(`^([ -~]*)atlas:(\w+)(?: +(.+))*`)
 
 // directive searches in the content a line that matches a directive
 // with the given prefix and name. For example:
