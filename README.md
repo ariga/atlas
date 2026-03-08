@@ -1,4 +1,4 @@
-<h1>Atlas - Manage Your Database Schema as Code</h1>
+# Atlas - Manage Your Database Schema as Code
 
 [![Twitter](https://img.shields.io/twitter/url.svg?label=Follow%20%40atlasgo_io&style=social&url=https%3A%2F%2Ftwitter.com%2Fatlasgo_io)](https://twitter.com/atlasgo_io)
 [![Discord](https://img.shields.io/discord/930720389120794674?label=discord&logo=discord&style=flat-square&logoColor=white)](https://discord.com/invite/zZ6sWVg6NT)
