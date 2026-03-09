@@ -746,6 +746,54 @@ table "users" {
 	})
 }
 
+func TestPostgres_CLI_SchemaApplyPostGISGeography(t *testing.T) {
+	const h = `create extension if not exists postgis;
+
+create table geocoding_cache (
+  id bigserial primary key,
+  location geography(point, 4326)
+);
+`
+	bin := cliPath(t)
+	pgRun(t, func(t *pgTest) {
+		if t.version != "postgres-ext-postgis" {
+			t.Skip()
+		}
+		dir := t.TempDir()
+		path := filepath.Join(dir, "schema.sql")
+		require.NoError(t, os.WriteFile(path, []byte(h), 0600))
+		const (
+			target = "issue3688_target"
+			dev    = "issue3688_dev"
+		)
+		_, err := t.db.Exec("DROP DATABASE IF EXISTS " + target)
+		require.NoError(t, err)
+		_, err = t.db.Exec("DROP DATABASE IF EXISTS " + dev)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err := t.db.Exec("DROP DATABASE IF EXISTS " + target)
+			require.NoError(t, err)
+			_, err = t.db.Exec("DROP DATABASE IF EXISTS " + dev)
+			require.NoError(t, err)
+		})
+		_, err = t.db.Exec("CREATE DATABASE " + target)
+		require.NoError(t, err)
+		_, err = t.db.Exec("CREATE DATABASE " + dev)
+		require.NoError(t, err)
+		out, err := exec.Command(
+			bin, "schema", "apply",
+			"-u", t.dbURL(target, ""),
+			"--to", "file://"+path,
+			"--dev-url", t.dbURL(dev, ""),
+			"--schema", "public",
+			"--dry-run",
+		).CombinedOutput()
+		require.NoError(t, err, string(out))
+		require.Contains(t, string(out), `CREATE TABLE "public"."geocoding_cache"`)
+		require.Contains(t, string(out), `public.geography(Point,4326)`)
+	})
+}
+
 func TestPostgres_MigrateApply(t *testing.T) {
 	var (
 		bin = cliPath(t)
