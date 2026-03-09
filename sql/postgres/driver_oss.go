@@ -664,34 +664,8 @@ func (*inspect) inspectDeps(context.Context, *schema.Realm, *schema.InspectOptio
 	return nil // unimplemented.
 }
 
-func (i *inspect) inspectRealmObjects(ctx context.Context, r *schema.Realm, _ *schema.InspectOptions) error {
-	if len(r.Schemas) == 0 {
-		return nil
-	}
-	args := make([]any, len(r.Schemas))
-	for j, s := range r.Schemas {
-		args[j] = s.Name
-	}
-	rows, err := i.QueryContext(ctx, fmt.Sprintf(extensionsQuery, nArgs(0, len(args))), args...)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var (
-			name       string
-			schemaName string
-		)
-		if err := rows.Scan(&name, &schemaName); err != nil {
-			return err
-		}
-		s, ok := r.Schema(schemaName)
-		if !ok {
-			continue
-		}
-		r.Objects = append(r.Objects, &Extension{Name: name, Schema: s})
-	}
-	return rows.Err()
+func (*inspect) inspectRealmObjects(context.Context, *schema.Realm, *schema.InspectOptions) error {
+	return nil // unimplemented.
 }
 
 func (*state) addView(*schema.AddView) error {
@@ -752,14 +726,6 @@ func (s *state) addObject(add *schema.AddObject) error {
 			Reverse: drop,
 			Comment: fmt.Sprintf("create enum type %q", o.T),
 		})
-	case *Extension:
-		create, drop := s.createDropExtension(o)
-		s.append(&migrate.Change{
-			Source:  add,
-			Cmd:     create,
-			Reverse: drop,
-			Comment: fmt.Sprintf("create extension %q", o.Name),
-		})
 	default:
 		// unsupported object type.
 	}
@@ -775,14 +741,6 @@ func (s *state) dropObject(drop *schema.DropObject) error {
 			Cmd:     dropE,
 			Reverse: create,
 			Comment: fmt.Sprintf("drop enum type %q", o.T),
-		})
-	case *Extension:
-		create, dropE := s.createDropExtension(o)
-		s.append(&migrate.Change{
-			Source:  drop,
-			Cmd:     dropE,
-			Reverse: create,
-			Comment: fmt.Sprintf("drop extension %q", o.Name),
 		})
 	default:
 		// unsupported object type.
@@ -819,43 +777,8 @@ func (*diff) ViewAttrChanges(_, _ *schema.View) []schema.Change {
 
 // RealmObjectDiff returns a changeset for migrating realm (database) objects
 // from one state to the other. For example, adding extensions or users.
-func (*diff) RealmObjectDiff(from, to *schema.Realm) ([]schema.Change, error) {
-	var changes []schema.Change
-	for _, o1 := range from.Objects {
-		e1, ok := o1.(*Extension)
-		if !ok {
-			continue
-		}
-		o2, ok := to.Object(func(o schema.Object) bool {
-			e2, ok := o.(*Extension)
-			return ok && e1.Name == e2.Name
-		})
-		if !ok {
-			if e1.Schema != nil {
-				if _, ok := to.Schema(e1.Schema.Name); !ok {
-					continue
-				}
-			}
-			changes = append(changes, &schema.DropObject{O: e1})
-			continue
-		}
-		if !sqlx.SameSchema(e1.Schema, o2.(*Extension).Schema) {
-			return nil, fmt.Errorf("changing extension schema for %q is not supported", e1.Name)
-		}
-	}
-	for _, o1 := range to.Objects {
-		e1, ok := o1.(*Extension)
-		if !ok {
-			continue
-		}
-		if _, ok := from.Object(func(o schema.Object) bool {
-			e2, ok := o.(*Extension)
-			return ok && e1.Name == e2.Name
-		}); !ok {
-			changes = append(changes, &schema.AddObject{O: e1})
-		}
-	}
-	return changes, nil
+func (*diff) RealmObjectDiff(_, _ *schema.Realm) ([]schema.Change, error) {
+	return nil, nil // unimplemented.
 }
 
 // SchemaObjectDiff returns a changeset for migrating schema objects from

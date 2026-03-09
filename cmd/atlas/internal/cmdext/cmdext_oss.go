@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
@@ -24,6 +25,23 @@ import (
 )
 
 var specOptions []schemahcl.Option
+
+var unsupportedPostgresSQLState = []struct {
+	kind string
+	re   *regexp.Regexp
+}{
+	{kind: "extension", re: regexp.MustCompile(`(?im)^\s*create\s+(?:or\s+replace\s+)?extension\b`)},
+	{kind: "materialized view", re: regexp.MustCompile(`(?im)^\s*create\s+materialized\s+view\b`)},
+	{kind: "view", re: regexp.MustCompile(`(?im)^\s*create\s+view\b`)},
+	{kind: "function", re: regexp.MustCompile(`(?im)^\s*create\s+(?:or\s+replace\s+)?function\b`)},
+	{kind: "procedure", re: regexp.MustCompile(`(?im)^\s*create\s+(?:or\s+replace\s+)?procedure\b`)},
+	{kind: "trigger", re: regexp.MustCompile(`(?im)^\s*create\s+trigger\b`)},
+	{kind: "event trigger", re: regexp.MustCompile(`(?im)^\s*create\s+event\s+trigger\b`)},
+	{kind: "aggregate", re: regexp.MustCompile(`(?im)^\s*create\s+aggregate\b`)},
+	{kind: "domain", re: regexp.MustCompile(`(?im)^\s*create\s+domain\b`)},
+	{kind: "sequence", re: regexp.MustCompile(`(?im)^\s*create\s+sequence\b`)},
+	{kind: "policy", re: regexp.MustCompile(`(?im)^\s*create\s+policy\b`)},
+}
 
 // RemoteSchema is a data source that for reading remote schemas.
 func RemoteSchema(context.Context, *hcl.EvalContext, *hclsyntax.Block) (cty.Value, error) {
@@ -86,6 +104,9 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 		if bytes.Contains(b, []byte("-- atlas:import ")) {
 			return nil, UnsupportedErr("atlas:import directive")
 		}
+		if err := validatePostgresSQLState(path, b, config); err != nil {
+			return nil, err
+		}
 		if dir, err = FilesAsDir(migrate.NewLocalFile(fi.Name(), b)); err != nil {
 			return nil, err
 		}
@@ -105,6 +126,9 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 			if bytes.Contains(b, []byte("-- atlas:import ")) {
 				return nil, UnsupportedErr("atlas:import directive")
 			}
+			if err := validatePostgresSQLState(d.Name(), b, config); err != nil {
+				return nil, err
+			}
 			files = append(files, migrate.NewLocalFile(d.Name(), b))
 		}
 		if dir, err = FilesAsDir(files...); err != nil {
@@ -122,6 +146,23 @@ func StateReaderSQL(ctx context.Context, config *StateReaderConfig) (*StateReadC
 		}
 		return stateReaderSQL(ctx, config, dir, nil, opts)
 	}
+}
+
+func validatePostgresSQLState(name string, b []byte, config *StateReaderConfig) error {
+	if config.Dev == nil || config.Dev.Name != "postgres" {
+		return nil
+	}
+	text := string(b)
+	for _, check := range unsupportedPostgresSQLState {
+		if check.re.MatchString(text) {
+			return fmt.Errorf(
+				"postgres sql state in %q contains %s statements, which are not supported by the community version. use the official Atlas build or avoid managing this object from SQL state",
+				name,
+				check.kind,
+			)
+		}
+	}
+	return nil
 }
 
 // UnsupportedError wraps the standard message

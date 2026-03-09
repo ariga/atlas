@@ -6,6 +6,7 @@ package cmdext
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -168,4 +169,60 @@ table "t1" {
 	})
 	require.EqualError(t, err, `cannot use HCL with more than 1 schema when url is limited to schema "main"`)
 	require.Nil(t, sr)
+}
+
+func TestStateReaderSQL_PostgresUnsupportedObjects(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		name     string
+		path     func(t *testing.T) string
+		want     string
+		wantName func(string) string
+	}{
+		{
+			name: "file",
+			path: func(t *testing.T) string {
+				p := filepath.Join(t.TempDir(), "schema.sql")
+				require.NoError(t, os.WriteFile(p, []byte(`
+create extension if not exists postgis;
+
+create table geocoding_cache (
+  id bigserial primary key
+);
+`), 0644))
+				return p
+			},
+			want: "extension",
+			wantName: func(p string) string {
+				return p
+			},
+		},
+		{
+			name: "schema-dir",
+			path: func(t *testing.T) string {
+				p := filepath.Join(t.TempDir(), "schema")
+				require.NoError(t, os.Mkdir(p, 0755))
+				require.NoError(t, os.WriteFile(filepath.Join(p, "1.sql"), []byte(`
+create function nanoid(size text) returns text language sql as $$ select 'x' $$;
+`), 0644))
+				return p
+			},
+			want: "function",
+			wantName: func(string) string {
+				return "1.sql"
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := tt.path(t)
+			u, err := url.Parse("file://" + p)
+			require.NoError(t, err)
+			_, err = StateReaderSQL(ctx, &StateReaderConfig{
+				Dev:  &sqlclient.Client{Name: "postgres"},
+				URLs: []*url.URL{u},
+			})
+			require.EqualError(t, err, fmt.Sprintf(`postgres sql state in %q contains %s statements, which are not supported by the community version. use the official Atlas build or avoid managing this object from SQL state`, tt.wantName(p), tt.want))
+		})
+	}
 }
