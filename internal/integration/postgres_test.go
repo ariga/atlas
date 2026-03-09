@@ -794,6 +794,70 @@ create table geocoding_cache (
 	})
 }
 
+func TestPostgres_CLI_SchemaApplyPostGISPlanReplay(t *testing.T) {
+	const h = `create extension if not exists postgis;
+
+create table geocoding_cache (
+  id bigserial primary key,
+  location geography(point, 4326)
+);
+`
+	bin := cliPath(t)
+	pgRun(t, func(t *pgTest) {
+		if t.version != "postgres-ext-postgis" {
+			t.Skip()
+		}
+		dir := t.TempDir()
+		path := filepath.Join(dir, "schema.sql")
+		require.NoError(t, os.WriteFile(path, []byte(h), 0600))
+		const (
+			target   = "issue3688_replay_target"
+			dev      = "issue3688_replay_dev"
+			analysis = "issue3688_replay_analysis"
+		)
+		_, err := t.db.Exec("DROP DATABASE IF EXISTS " + target)
+		require.NoError(t, err)
+		_, err = t.db.Exec("DROP DATABASE IF EXISTS " + dev)
+		require.NoError(t, err)
+		_, err = t.db.Exec("DROP DATABASE IF EXISTS " + analysis)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err := t.db.Exec("DROP DATABASE IF EXISTS " + target)
+			require.NoError(t, err)
+			_, err = t.db.Exec("DROP DATABASE IF EXISTS " + dev)
+			require.NoError(t, err)
+			_, err = t.db.Exec("DROP DATABASE IF EXISTS " + analysis)
+			require.NoError(t, err)
+		})
+		_, err = t.db.Exec("CREATE DATABASE " + target)
+		require.NoError(t, err)
+		_, err = t.db.Exec("CREATE DATABASE " + dev)
+		require.NoError(t, err)
+		_, err = t.db.Exec("CREATE DATABASE " + analysis)
+		require.NoError(t, err)
+		out, err := exec.Command(
+			bin, "schema", "apply",
+			"-u", t.dbURL(target, ""),
+			"--to", "file://"+path,
+			"--dev-url", t.dbURL(dev, ""),
+			"--schema", "public",
+			"--dry-run",
+			"--format", "{{ range $c := .Changes.Pending }}{{ printf \"%s;\\n\" $c.Cmd }}{{ end }}",
+		).CombinedOutput()
+		require.NoError(t, err, string(out))
+		require.Contains(t, string(out), "CREATE EXTENSION")
+		stmts, err := migrate.Stmts(string(out))
+		require.NoError(t, err)
+		db, err := sql.Open("postgres", t.dbURL(analysis, ""))
+		require.NoError(t, err)
+		for _, stmt := range stmts {
+			_, err = db.Exec(stmt.Text)
+			require.NoError(t, err, stmt.Text)
+		}
+		require.NoError(t, db.Close())
+	})
+}
+
 func TestPostgres_MigrateApply(t *testing.T) {
 	var (
 		bin = cliPath(t)

@@ -180,6 +180,14 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 				Reverse: s.Build("ALTER TYPE").Ident(e2.T).P("RENAME TO").Ident(e1.T).String(),
 				Comment: fmt.Sprintf("rename an enum from %q to %q", e1.T, e2.T),
 			})
+		case *schema.AddObject:
+			if _, ok := c.O.(*Extension); ok {
+				if err := s.addObject(c); err != nil {
+					return nil, err
+				}
+				continue
+			}
+			planned = append(planned, c)
 		default:
 			planned = append(planned, c)
 		}
@@ -1294,6 +1302,14 @@ func (s *state) createDropEnum(e *schema.EnumType) (string, string) {
 			}).
 			String(),
 		s.Build("DROP TYPE").P(name).String()
+}
+
+func (s *state) createDropExtension(e *Extension) (string, string) {
+	create := s.Build("CREATE EXTENSION").Ident(e.Name)
+	if e.Schema != nil && e.Schema.Name != "" {
+		create.P("WITH SCHEMA").Ident(e.Schema.Name)
+	}
+	return create.String(), s.Build("DROP EXTENSION").Ident(e.Name).String()
 }
 
 func (s *state) enumIdent(e *schema.EnumType) string {

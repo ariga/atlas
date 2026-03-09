@@ -1094,6 +1094,12 @@ type (
 		}
 	}
 
+	Extension struct {
+		schema.Object
+		Name   string
+		Schema *schema.Schema
+	}
+
 	// Identity defines an identity column.
 	Identity struct {
 		schema.Attr
@@ -1533,6 +1539,19 @@ WHERE
 	AND dep.objid IS NULL
 ORDER BY
     nspname`
+
+	extensionsQuery = `
+SELECT
+	e.extname,
+	n.nspname
+FROM
+	pg_extension AS e
+	JOIN pg_namespace AS n
+		ON n.oid = e.extnamespace
+WHERE
+	n.nspname IN (%s)
+ORDER BY
+	e.extname`
 
 	// Query to list table columns.
 	columnsQuery = `
