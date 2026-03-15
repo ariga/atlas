@@ -241,6 +241,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().NL().P("PRIMARY KEY")
 			indexTypeParts(b, pk)
+			primaryKeyClusteredAttr(b, pk)
 		}
 		if len(add.T.Indexes) > 0 {
 			b.Comma()
@@ -415,6 +416,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			case *schema.AddPrimaryKey:
 				b.P("ADD PRIMARY KEY")
 				indexTypeParts(b, change.P)
+				primaryKeyClusteredAttr(b, change.P)
 				reverse = append(reverse, &schema.DropPrimaryKey{P: change.P})
 			case *schema.DropPrimaryKey:
 				b.P("DROP PRIMARY KEY")
@@ -422,6 +424,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			case *schema.ModifyPrimaryKey:
 				b.P("DROP PRIMARY KEY, ADD PRIMARY KEY")
 				indexTypeParts(b, change.To)
+				primaryKeyClusteredAttr(b, change.To)
 				reverse = append(reverse, &schema.ModifyPrimaryKey{From: change.To, To: change.From, Change: change.Change})
 			case *schema.AddForeignKey:
 				b.P("ADD")
@@ -576,6 +579,17 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 			if a.V > 0 && !sqlx.Has(t.Attrs, &AutoIncrement{}) {
 				t.Attrs = append(t.Attrs, a)
 			}
+		case *AutoRandom:
+			if a.ShardBits == 0 {
+				// ShardBits=0 is a zero-value placeholder; skip SQL generation.
+				break
+			}
+			// Only include range bits if explicitly set and not the default (64).
+			if a.RangeBits > 0 && a.RangeBits != AutoRandomRangeBitsMax {
+				b.P(fmt.Sprintf("AUTO_RANDOM(%d, %d)", a.ShardBits, a.RangeBits))
+			} else {
+				b.P(fmt.Sprintf("AUTO_RANDOM(%d)", a.ShardBits))
+			}
 		default:
 			s.attr(b, a)
 		}
@@ -626,6 +640,18 @@ func indexTypeParts(b *sqlx.Builder, idx *schema.Index) {
 	})
 }
 
+// primaryKeyClusteredAttr writes the TiDB CLUSTERED/NONCLUSTERED attribute
+// for primary keys. This must only be called for primary key indexes.
+func primaryKeyClusteredAttr(b *sqlx.Builder, idx *schema.Index) {
+	if ci := (&ClusteredIndex{}); sqlx.Has(idx.Attrs, ci) {
+		if ci.Clustered {
+			b.P("/*T![clustered_index] CLUSTERED */")
+		} else {
+			b.P("/*T![clustered_index] NONCLUSTERED */")
+		}
+	}
+}
+
 func (s *state) fks(commaF func(any, func(int, *sqlx.Builder) error) error, fks ...*schema.ForeignKey) error {
 	return commaF(fks, func(i int, b *sqlx.Builder) error {
 		fk := fks[i]
@@ -664,18 +690,25 @@ func (s *state) fks(commaF func(any, func(int, *sqlx.Builder) error) error, fks 
 // tableAttrs writes the given table attributes to the SQL
 // statement builder when a table is created or altered.
 func (s *state) tableAttrs(b *sqlx.Builder, c schema.Change, attrs ...schema.Attr) {
+	// isAlter is true when this is called from an ALTER TABLE context
+	// (AddAttr, ModifyAttr, or DropAttr), as opposed to CREATE TABLE.
+	var isAlter bool
+	switch c.(type) {
+	case *schema.ModifyAttr, *schema.AddAttr, *schema.DropAttr:
+		isAlter = true
+	}
 	for _, a := range attrs {
 		switch a := a.(type) {
 		case *CreateOptions:
 			b.P(a.V)
 		case *AutoIncrement:
 			// Update the AUTO_INCREMENT if it is a table modification, or it is not the default.
-			if _, ok := c.(*schema.ModifyAttr); ok || a.V > 1 {
+			if isAlter || a.V > 1 {
 				b.P("AUTO_INCREMENT", strconv.FormatInt(a.V, 10))
 			}
 		case *Engine:
 			// Update the ENGINE if it is a table modification, or it is not the default.
-			if _, ok := c.(*schema.ModifyAttr); ok || !a.Default {
+			if isAlter || !a.Default {
 				b.P("ENGINE", a.V)
 			}
 		case *schema.Check:
@@ -687,6 +720,49 @@ func (s *state) tableAttrs(b *sqlx.Builder, c schema.Change, attrs ...schema.Att
 			b.P("COLLATE", a.V)
 		case *schema.Comment:
 			b.P("COMMENT", quote(a.Text))
+		case *ShardRowIDBits:
+			// TiDB SHARD_ROW_ID_BITS: distributes implicit _tidb_rowid across shards.
+			// - CREATE TABLE: uses /*T! SHARD_ROW_ID_BITS=N PRE_SPLIT_REGIONS=M */
+			// - ALTER TABLE: uses SHARD_ROW_ID_BITS = N (without comment wrapper)
+			//
+			// Note: Setting SHARD_ROW_ID_BITS to 0 via ALTER TABLE disables sharding
+			// but keeps existing data distribution. TiDB supports this operation.
+			if isAlter {
+				// ALTER TABLE syntax (TiDB supports changing/adding SHARD_ROW_ID_BITS).
+				b.P("SHARD_ROW_ID_BITS =", strconv.Itoa(a.N))
+			} else if a.N > 0 {
+				// CREATE TABLE syntax with TiDB-specific comment.
+				b.P(fmt.Sprintf("/*T! SHARD_ROW_ID_BITS=%d", a.N))
+				// Check for PRE_SPLIT_REGIONS in the same comment block.
+				if psr := (&PreSplitRegions{}); sqlx.Has(attrs, psr) && psr.N > 0 {
+					b.P(fmt.Sprintf("PRE_SPLIT_REGIONS=%d", psr.N))
+				}
+				b.P("*/")
+			}
+		case *PreSplitRegions:
+			// PRE_SPLIT_REGIONS can only be set at table creation time and cannot
+			// be modified afterwards. It works with either SHARD_ROW_ID_BITS or
+			// AUTO_RANDOM columns.
+			//
+			// When used with SHARD_ROW_ID_BITS, it's handled in that case block above.
+			// When used with AUTO_RANDOM (without SHARD_ROW_ID_BITS), we need to
+			// generate the TiDB comment here.
+			if !isAlter && a.N > 0 {
+				// Only generate if SHARD_ROW_ID_BITS is not present (otherwise it's
+				// already handled in the ShardRowIDBits case).
+				if shard := (&ShardRowIDBits{}); !sqlx.Has(attrs, shard) || shard.N == 0 {
+					b.P(fmt.Sprintf("/*T! PRE_SPLIT_REGIONS=%d */", a.N))
+				}
+			}
+		case *AutoIDCache:
+			// TiDB AUTO_ID_CACHE: controls the cache size for auto-increment ID allocation.
+			// - CREATE TABLE: uses /*T![auto_id_cache] AUTO_ID_CACHE=N */
+			// - ALTER TABLE: uses AUTO_ID_CACHE = N (without comment wrapper)
+			if isAlter {
+				b.P("AUTO_ID_CACHE =", strconv.Itoa(a.N))
+			} else if a.N > 0 {
+				b.P(fmt.Sprintf("/*T![auto_id_cache] AUTO_ID_CACHE=%d */", a.N))
+			}
 		}
 	}
 }
