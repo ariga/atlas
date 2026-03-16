@@ -87,6 +87,36 @@ func TestVersion(t *testing.T) {
 	}
 }
 
+func TestLogin(t *testing.T) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	c, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
+	require.NoError(t, err)
+
+	// Empty token returns error without invoking the binary.
+	err = c.Login(context.Background(), &atlasexec.LoginParams{Token: ""})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "token cannot be empty")
+
+	// Login with token only: must pass "login --token <token>".
+	t.Run("token_only", func(t *testing.T) {
+		t.Setenv("TEST_ARGS", "login --token my-token")
+		t.Setenv("TEST_STDOUT", "ok")
+		t.Setenv("TEST_STDERR", "")
+		err := c.Login(context.Background(), &atlasexec.LoginParams{Token: "my-token"})
+		require.NoError(t, err)
+	})
+
+	// Login with token and GrantOnly: must pass "login --token <token> --grant-only".
+	t.Run("grant_only", func(t *testing.T) {
+		t.Setenv("TEST_ARGS", "login --token my-token --grant-only")
+		t.Setenv("TEST_STDOUT", "ok")
+		t.Setenv("TEST_STDERR", "")
+		err := c.Login(context.Background(), &atlasexec.LoginParams{Token: "my-token", GrantOnly: true})
+		require.NoError(t, err)
+	})
+}
+
 func TestWhoAmI(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)

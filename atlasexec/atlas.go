@@ -33,7 +33,8 @@ type (
 	}
 	// LoginParams are the parameters for the `login` command.
 	LoginParams struct {
-		Token string
+		Token     string
+		GrantOnly bool // If true, runs `atlas login --grant-only` for offline token flow.
 	}
 	// WhoAmIParams are the parameters for the `whoami` command
 	WhoAmIParams struct {
@@ -180,7 +181,11 @@ func (c *Client) Login(ctx context.Context, params *LoginParams) error {
 	if params.Token == "" {
 		return errors.New("token cannot be empty")
 	}
-	_, err := c.runCommand(ctx, []string{"login", "--token", params.Token})
+	args := []string{"login", "--token", params.Token}
+	if params.GrantOnly {
+		args = append(args, "--grant-only")
+	}
+	_, err := c.runCommand(ctx, args)
 	return err
 }
 
