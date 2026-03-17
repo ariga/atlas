@@ -276,6 +276,11 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		}
 		c.Attrs = append(c.Attrs, a)
 	}
+	if attr.autorandom {
+		// Placeholder with zero values; actual ShardBits/RangeBits are
+		// extracted from the CREATE TABLE statement in tinspect.setAutoRandom.
+		c.Attrs = append(c.Attrs, &AutoRandom{})
+	}
 	if attr.onUpdate != "" {
 		c.Attrs = append(c.Attrs, &OnUpdate{A: attr.onUpdate})
 	}
@@ -476,6 +481,7 @@ func (i *inspect) indexQuery() string {
 // extraAttr is a parsed version of the information_schema EXTRA column.
 type extraAttr struct {
 	autoinc          bool
+	autorandom       bool
 	onUpdate         string
 	generatedType    string
 	defaultGenerated bool
@@ -498,6 +504,11 @@ func parseExtra(extra string) (*extraAttr, error) {
 		// and it is handled in Driver.addColumn.
 	case el == autoIncrement:
 		attr.autoinc = true
+	case el == "auto_random" || strings.HasPrefix(el, "auto_random("):
+		// TiDB returns "auto_random" (or "auto_random(5)" in v7+) in the EXTRA
+		// column for columns with the AUTO_RANDOM attribute. Shard/range bits
+		// are extracted from the CREATE TABLE statement in tinspect.setAutoRandom.
+		attr.autorandom = true
 	case reTimeOnUpdate.MatchString(extra):
 		attr.onUpdate = reTimeOnUpdate.FindStringSubmatch(extra)[1]
 	case reGenerateType.MatchString(extra):
@@ -798,6 +809,60 @@ type (
 	AutoIncrement struct {
 		schema.Attr
 		V int64
+	}
+
+	// AutoRandom is a TiDB-specific attribute for BIGINT primary key columns
+	// that generates random unique IDs to avoid write hotspots.
+	//
+	// Restrictions:
+	//   - Only valid on BIGINT primary key columns with CLUSTERED index.
+	//   - Cannot be removed once set (TiDB limitation).
+	//   - ShardBits: 1-15 (default 5).
+	//   - RangeBits: 32-64 or 0 for default (64).
+	AutoRandom struct {
+		schema.Attr
+		ShardBits int
+		RangeBits int
+	}
+
+	// ShardRowIDBits is a TiDB-specific table attribute that distributes
+	// implicit _tidb_rowid values across multiple shards to reduce write hotspots.
+	//
+	// Applicable to tables with NONCLUSTERED primary keys or no primary key.
+	// Value range: 0-15 (0 means no sharding).
+	ShardRowIDBits struct {
+		schema.Attr
+		N int
+	}
+
+	// PreSplitRegions is a TiDB-specific table attribute that pre-splits
+	// the table into 2^N regions when the table is created.
+	//
+	// Must be used with ShardRowIDBits or AutoRandom.
+	// Value must be <= ShardRowIDBits (or AUTO_RANDOM shard bits).
+	PreSplitRegions struct {
+		schema.Attr
+		N int
+	}
+
+	// AutoIDCache is a TiDB-specific table attribute that controls the cache
+	// size for auto-increment ID allocation. The default is 30000 (AutoIDCacheDefault).
+	// Setting it to 1 enables MySQL-compatible strictly increasing IDs.
+	//
+	// Value range: >= 1 (minimum 1, default 30000).
+	AutoIDCache struct {
+		schema.Attr
+		N int
+	}
+
+	// ClusteredIndex is a TiDB-specific index attribute indicating whether
+	// the primary key is CLUSTERED or NONCLUSTERED.
+	//
+	// CLUSTERED: PK values are stored directly in the index (default for INT PKs).
+	// NONCLUSTERED: Uses implicit _tidb_rowid; enables SHARD_ROW_ID_BITS.
+	ClusteredIndex struct {
+		schema.Attr
+		Clustered bool
 	}
 
 	// CreateOptions attribute for describing extra options used with CREATE TABLE.
