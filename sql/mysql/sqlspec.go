@@ -2,8 +2,6 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-//go:build !ent
-
 package mysql
 
 import (
@@ -41,7 +39,7 @@ func (c *Codec) EvalOptions(p *hclparse.Parser, v any, opts *schemahcl.EvalOptio
 			return err
 		}
 		if err := specutil.Scan(v,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Funcs: d.Funcs, Procs: d.Procs, Triggers: d.Triggers},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables},
 			scanFuncs,
 		); err != nil {
 			return fmt.Errorf("mysql: failed converting to *schema.Realm: %w", err)
@@ -65,7 +63,7 @@ func (c *Codec) EvalOptions(p *hclparse.Parser, v any, opts *schemahcl.EvalOptio
 		}
 		r := &schema.Realm{}
 		if err := specutil.Scan(r,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Funcs: d.Funcs, Procs: d.Procs, Triggers: d.Triggers},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables},
 			scanFuncs,
 		); err != nil {
 			return err
@@ -85,21 +83,14 @@ func (c *Codec) EvalOptions(p *hclparse.Parser, v any, opts *schemahcl.EvalOptio
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
 func (c *Codec) MarshalSpec(v any) ([]byte, error) {
 	return specutil.Marshal(v, c.State, specutil.RealmFuncs{
-		Schema:   schemaSpec,
-		Triggers: triggersSpec,
+		Schema: schemaSpec,
 	})
-}
-
-func triggersSpec([]*schema.Trigger, *specutil.Doc) ([]*sqlspec.Trigger, error) {
-	return nil, nil // unimplemented.
 }
 
 var (
 	registrySpecs     = TypeRegistry.Specs()
 	sharedSpecOptions = []schemahcl.Option{
 		schemahcl.WithTypes("table.column.type", registrySpecs),
-		schemahcl.WithTypes("view.column.type", registrySpecs),
-		schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
 		schemahcl.WithScopedEnums("table.engine", EngineInnoDB, EngineMyISAM, EngineMemory, EngineCSV, EngineNDB),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
 		schemahcl.WithScopedEnums("table.index.parser", IndexParserNGram, IndexParserMeCab),
@@ -135,13 +126,11 @@ var (
 	// EvalMariaHCLBytes is a helper that evaluates a MariaDB HCL document from a byte slice.
 	EvalMariaHCLBytes             = specutil.HCLBytesFunc(EvalMariaHCL)
 	specOptions, mariaSpecOptions []schemahcl.Option
-	specFuncs                     = &specutil.SchemaFuncs{
+	specFuncs = &specutil.SchemaFuncs{
 		Table: tableSpec,
-		View:  viewSpec,
 	}
 	scanFuncs = &specutil.ScanFuncs{
 		Table: convertTable,
-		View:  convertView,
 	}
 )
 

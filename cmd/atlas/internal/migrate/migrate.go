@@ -448,22 +448,11 @@ func ChangesToRealm(c *sqlclient.Client, r *schema.Realm) schema.Changes {
 		}
 		for _, t := range s.Tables {
 			changes = append(changes, &schema.AddTable{T: t})
-			for _, r := range t.Triggers {
-				changes = append(changes, &schema.AddTrigger{T: r})
-			}
-		}
-		for _, v := range s.Views {
-			changes = append(changes, &schema.AddView{V: v})
-			for _, r := range v.Triggers {
-				changes = append(changes, &schema.AddTrigger{T: r})
-			}
-		}
-		for _, f := range s.Funcs {
-			changes = append(changes, &schema.AddFunc{F: f})
-		}
-		for _, p := range s.Procs {
-			changes = append(changes, &schema.AddProc{P: p})
 		}
 	}
 	return changes
+}
+
+func openAtlasDir(context.Context, *url.URL) (migrate.Dir, error) {
+	return nil, fmt.Errorf("atlas remote directory is not supported by this release. See: https://atlasgo.io/getting-started")
 }

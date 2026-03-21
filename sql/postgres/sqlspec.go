@@ -2,8 +2,6 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-//go:build !ent
-
 package postgres
 
 import (
@@ -26,16 +24,11 @@ import (
 type (
 	doc struct {
 		Tables        []*sqlspec.Table    `spec:"table"`
-		Views         []*sqlspec.View     `spec:"view"`
-		Materialized  []*sqlspec.View     `spec:"materialized"`
 		Enums         []*enum             `spec:"enum"`
 		Domains       []*domain           `spec:"domain"`
 		Composites    []*composite        `spec:"composite"`
 		Sequences     []*sqlspec.Sequence `spec:"sequence"`
-		Funcs         []*sqlspec.Func     `spec:"function"`
-		Procs         []*sqlspec.Func     `spec:"procedure"`
 		Aggregates    []*aggregate        `spec:"aggregate"`
-		Triggers      []*sqlspec.Trigger  `spec:"trigger"`
 		Policies      []*policy           `spec:"policy"`
 		EventTriggers []*eventTrigger     `spec:"event_trigger"`
 		Extensions    []*extension        `spec:"extension"`
@@ -100,12 +93,20 @@ type (
 
 	// aggregate holds the specification for an aggregation function.
 	aggregate struct {
-		Name      string             `spec:",name"`
-		Qualifier string             `spec:",qualifier"`
-		Schema    *schemahcl.Ref     `spec:"schema"`
-		Args      []*sqlspec.FuncArg `spec:"arg"`
+		Name      string         `spec:",name"`
+		Qualifier string         `spec:",qualifier"`
+		Schema    *schemahcl.Ref `spec:"schema"`
+		Args      []*funcArg     `spec:"arg"`
 		// state_type, state_func and rest of the attributes
 		// are appended after the function arguments.
+		schemahcl.DefaultExtension
+	}
+
+	// funcArg holds the specification for a function argument.
+	funcArg struct {
+		Name    string          `spec:",name"`
+		Type    *schemahcl.Type `spec:"type"`
+		Default cty.Value       `spec:"default"`
 		schemahcl.DefaultExtension
 	}
 
@@ -122,9 +123,6 @@ type (
 // merge merges the doc d1 into d.
 func (d *doc) merge(d1 *doc) {
 	d.Enums = append(d.Enums, d1.Enums...)
-	d.Funcs = append(d.Funcs, d1.Funcs...)
-	d.Procs = append(d.Procs, d1.Procs...)
-	d.Views = append(d.Views, d1.Views...)
 	d.Tables = append(d.Tables, d1.Tables...)
 	d.Domains = append(d.Domains, d1.Domains...)
 	d.Composites = append(d.Composites, d1.Composites...)
@@ -132,21 +130,14 @@ func (d *doc) merge(d1 *doc) {
 	d.Aggregates = append(d.Aggregates, d1.Aggregates...)
 	d.Sequences = append(d.Sequences, d1.Sequences...)
 	d.Extensions = append(d.Extensions, d1.Extensions...)
-	d.Triggers = append(d.Triggers, d1.Triggers...)
 	d.Policies = append(d.Policies, d1.Policies...)
 	d.EventTriggers = append(d.EventTriggers, d1.EventTriggers...)
-	d.Materialized = append(d.Materialized, d1.Materialized...)
 }
 
 func (d *doc) ScanDoc() *specutil.ScanDoc {
 	return &specutil.ScanDoc{
-		Schemas:      d.Schemas,
-		Tables:       d.Tables,
-		Views:        d.Views,
-		Funcs:        d.Funcs,
-		Procs:        d.Procs,
-		Triggers:     d.Triggers,
-		Materialized: d.Materialized,
+		Schemas: d.Schemas,
+		Tables:  d.Tables,
 	}
 }
 
@@ -289,40 +280,23 @@ func (c *Codec) EvalOptions(p *hclparse.Parser, v any, opts *schemahcl.EvalOptio
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
 func (c *Codec) MarshalSpec(v any) ([]byte, error) {
-	var (
-		d  doc
-		ts []*schema.Trigger
-	)
+	var d doc
 	switch rv := v.(type) {
 	case *schema.Schema:
-		d1, trs, err := schemaSpec(rv)
+		d1, err := schemaSpec(rv)
 		if err != nil {
 			return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 		}
-		ts = trs
 		d.merge(d1)
-		if err := schemasObjectSpec(&d, rv); err != nil {
-			return nil, err
-		}
 	case *schema.Realm:
 		for _, s := range rv.Schemas {
-			d1, trs, err := schemaSpec(s)
+			d1, err := schemaSpec(s)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 			}
 			d.merge(d1)
-			ts = append(ts, trs...)
-		}
-		if err := realmObjectsSpec(&d, rv); err != nil {
-			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Tables); err != nil {
-			return nil, err
-		}
-		if err := specutil.QualifyObjects(d.Views); err != nil {
-			return nil, err
-		}
-		if err := specutil.QualifyObjects(d.Materialized); err != nil {
 			return nil, err
 		}
 		if err := specutil.QualifyObjects(d.Aggregates); err != nil {
@@ -340,20 +314,11 @@ func (c *Codec) MarshalSpec(v any) ([]byte, error) {
 		if err := specutil.QualifyObjects(d.Sequences); err != nil {
 			return nil, err
 		}
-		if err := specutil.QualifyObjects(d.Funcs); err != nil {
-			return nil, err
-		}
-		if err := specutil.QualifyObjects(d.Procs); err != nil {
-			return nil, err
-		}
 		if err := specutil.QualifyReferences(d.Tables, rv); err != nil {
 			return nil, err
 		}
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
-	}
-	if err := triggersSpec(ts, &d); err != nil {
-		return nil, err
 	}
 	return c.State.MarshalSpec(&d)
 }
@@ -362,9 +327,6 @@ var (
 	codec = &Codec{
 		State: schemahcl.New(append(specOptions,
 			schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
-			schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
-			schemahcl.WithTypes("materialized.column.type", TypeRegistry.Specs()),
-			schemahcl.WithScopedEnums("view.check_option", schema.ViewCheckOptionLocal, schema.ViewCheckOptionCascaded),
 			schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, "GiST", IndexTypeSPGiST, "SPGiST"),
 			schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
 			schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
@@ -409,28 +371,6 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 		return nil, err
 	}
 	return t, nil
-}
-
-// convertView converts a sqlspec.View to a schema.View.
-func convertView(spec *sqlspec.View, parent *schema.Schema) (*schema.View, error) {
-	v, err := specutil.View(
-		spec, parent,
-		func(c *sqlspec.Column, _ *schema.View) (*schema.Column, error) {
-			return specutil.Column(c, convertColumnType)
-		},
-		func(i *sqlspec.Index, v *schema.View) (*schema.Index, error) {
-			idx, err := convertIndex(i, v.AsTable())
-			if err != nil {
-				return nil, err
-			}
-			idx.Table, idx.View = nil, v
-			return idx, nil
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return v, nil
 }
 
 // convertUnique converts the unique constraints into indexes.
@@ -757,26 +697,22 @@ func enumName(ref *schemahcl.Type) (string, error) {
 }
 
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
-func schemaSpec(s *schema.Schema) (*doc, []*schema.Trigger, error) {
+func schemaSpec(s *schema.Schema) (*doc, error) {
 	spec, err := specutil.FromSchema(s, specFuncs)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	d := &doc{
-		Tables:       spec.Tables,
-		Views:        spec.Views,
-		Materialized: spec.Materialized,
-		Funcs:        spec.Funcs,
-		Procs:        spec.Procs,
-		Schemas:      []*sqlspec.Schema{spec.Schema},
-		Enums:        make([]*enum, 0, len(s.Objects)),
-		Domains:      make([]*domain, 0, len(s.Objects)),
-		Composites:   make([]*composite, 0, len(s.Objects)),
+		Tables:     spec.Tables,
+		Schemas:    []*sqlspec.Schema{spec.Schema},
+		Enums:      make([]*enum, 0, len(s.Objects)),
+		Domains:    make([]*domain, 0, len(s.Objects)),
+		Composites: make([]*composite, 0, len(s.Objects)),
 	}
 	if err := objectSpec(d, spec, s); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return d, spec.Triggers, nil
+	return d, nil
 }
 
 // tableSpec converts from a concrete Postgres sqlspec.Table to a schema.Table.
@@ -817,21 +753,6 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 		spec.Extra.Children = append(spec.Extra.Children, fromPartition(p))
 	}
 	tableAttrsSpec(t, spec)
-	return spec, nil
-}
-
-// viewSpec converts from a concrete PostgreSQL schema.View to a sqlspec.View.
-func viewSpec(view *schema.View) (*sqlspec.View, error) {
-	spec, err := specutil.FromView(
-		view,
-		func(c *schema.Column, _ *schema.View) (*sqlspec.Column, error) {
-			return specutil.FromColumn(c, columnTypeSpec)
-		},
-		indexSpec,
-	)
-	if err != nil {
-		return nil, err
-	}
 	return spec, nil
 }
 

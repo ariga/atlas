@@ -40,9 +40,6 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 	for _, o := range opts {
 		o(&s.PlanOptions)
 	}
-	if err := verifyChanges(ctx, changes); err != nil {
-		return nil, err
-	}
 	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
 	}
@@ -90,18 +87,6 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 			err = s.modifyTable(ctx, c)
 		case *schema.RenameTable:
 			s.renameTable(c)
-		case *schema.AddView:
-			err = s.addView(c)
-		case *schema.DropView:
-			err = s.dropView(c)
-		case *schema.ModifyView:
-			err = s.modifyView(c)
-		case *schema.RenameView:
-			err = s.renameView(c)
-		case *schema.AddTrigger:
-			err = s.addTrigger(c)
-		case *schema.DropTrigger:
-			err = s.dropTrigger(c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}

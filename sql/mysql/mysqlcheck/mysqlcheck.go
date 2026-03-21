@@ -224,3 +224,7 @@ func analyzers(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
 	}
 	return []sqlcheck.Analyzer{ds, dd, cd, bc, sqlcheck.AnalyzerFunc(inlineRefs)}, nil
 }
+
+func init() {
+	sqlcheck.Register(mysql.DriverName, analyzers)
+}

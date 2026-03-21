@@ -2,15 +2,15 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-//go:build !ent
-
-package mysqlcheck
+package vercheck
 
 import (
-	"ariga.io/atlas/sql/mysql"
-	"ariga.io/atlas/sql/sqlcheck"
+	"context"
+	"net/http"
+
+	"ariga.io/atlas/cmd/atlas/internal/cloudapi"
 )
 
-func init() {
-	sqlcheck.Register(mysql.DriverName, analyzers)
+func addHeaders(_ context.Context, req *http.Request) {
+	req.Header.Set("User-Agent", cloudapi.UserAgent())
 }

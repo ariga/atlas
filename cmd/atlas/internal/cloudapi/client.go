@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"runtime"
 	"slices"
 	"strings"
@@ -411,4 +412,13 @@ func UserAgent(systems ...string) string {
 		sysInfo = strings.Join(slices.Insert(systems, 0, sysInfo), "; ")
 	}
 	return fmt.Sprintf("Atlas/%s (%s)", version, sysInfo)
+}
+
+func testingURL(endpoint string) bool {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	return host == "localhost" || host == "127.0.0.1"
 }

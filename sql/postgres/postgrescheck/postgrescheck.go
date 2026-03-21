@@ -53,3 +53,7 @@ func analyzers(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
 	}
 	return []sqlcheck.Analyzer{ds, dd, cd, bc}, nil
 }
+
+func init() {
+	sqlcheck.Register(postgres.DriverName, analyzers)
+}

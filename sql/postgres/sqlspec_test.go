@@ -2,8 +2,6 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-//go:build !ent
-
 package postgres
 
 import (
@@ -325,210 +323,6 @@ schema "public" {
 	require.Equal(t, "public", s.Name)
 	require.Len(t, s.Attrs, 1)
 	require.Equal(t, "schema comment", s.Attrs[0].(*schema.Comment).Text)
-}
-
-func TestMarshalViews(t *testing.T) {
-	s := schema.New("public").
-		AddTables(
-			schema.NewTable("t1").
-				AddColumns(
-					schema.NewIntColumn("id", "int"),
-				),
-		).
-		AddViews(
-			schema.NewView("v1", "SELECT 1").
-				SetCheckOption(schema.ViewCheckOptionLocal),
-			schema.NewView("v2", "SELECT * FROM t2\n\tWHERE id IS NOT NULL"),
-			schema.NewView("v3", "SELECT * FROM t3\n\tWHERE id IS NOT NULL\n\tORDER BY id").
-				AddColumns(
-					schema.NewIntColumn("id", "id"),
-				).
-				SetComment("view comment"),
-			schema.NewMaterializedView("m1", "SELECT * FROM t1"),
-		)
-	s.AddViews(
-		schema.NewView("v4", "SELECT * FROM v2 JOIN t1 USING (id)").
-			AddDeps(
-				s.Views[1],
-				s.Tables[0],
-			),
-		schema.NewMaterializedView("m2", "SELECT * FROM t1").
-			AddDeps(
-				s.Views[1],
-				s.Views[3],
-				s.Tables[0],
-			),
-	)
-	buf, err := MarshalHCL(s)
-	require.NoError(t, err)
-	f := `table "t1" {
-  schema = schema.public
-  column "id" {
-    null = false
-    type = int
-  }
-}
-view "v1" {
-  schema       = schema.public
-  as           = "SELECT 1"
-  check_option = LOCAL
-}
-view "v2" {
-  schema = schema.public
-  as     = <<-SQL
-  SELECT * FROM t2
-  	WHERE id IS NOT NULL
-  SQL
-}
-view "v3" {
-  schema = schema.public
-  column "id" {
-    null = false
-    type = sql("id")
-  }
-  as      = <<-SQL
-  SELECT * FROM t3
-  	WHERE id IS NOT NULL
-  	ORDER BY id
-  SQL
-  comment = "view comment"
-}
-view "v4" {
-  schema     = schema.public
-  as         = "SELECT * FROM v2 JOIN t1 USING (id)"
-  depends_on = [table.t1, view.v2]
-}
-materialized "m1" {
-  schema = schema.public
-  as     = "SELECT * FROM t1"
-}
-materialized "m2" {
-  schema     = schema.public
-  as         = "SELECT * FROM t1"
-  depends_on = [materialized.m1, table.t1, view.v2]
-}
-schema "public" {
-}
-`
-	require.Equal(t, f, string(buf))
-}
-
-func TestUnmarshalViews(t *testing.T) {
-	f := `table "t1" {
-  schema = schema.public
-  column "id" {
-    null = false
-    type = int
-  }
-}
-view "v1" {
-  schema = schema.public
-  as     = "SELECT * FROM t2 WHERE id IS NOT NULL"
-}
-materialized "m1" {
-  schema = schema.public
-  as     = "SELECT * FROM t2 WHERE id IS NOT NULL"
-}
-materialized "m2" {
-  schema     = schema.public
-  as         = "SELECT * FROM multi"
-  depends_on = [view.v1, materialized.m1, table.t1]
-}
-view "v2" {
- schema = schema.public
- column "id" {
-   null = false
-   type = int
- }
- as      = "SELECT * FROM t3 WHERE id IS NOT NULL ORDER BY id"
- comment = "view comment"
-}
-view "v3" {
- schema       = schema.public
- as           = "SELECT * FROM v2 JOIN t1 USING (id)"
- check_option = LOCAL
- depends_on   = [view.v1, table.t1]
-}
-
-table "public" "t2" {
-  schema = schema.public
-  column "id" {
-    type = int
-  }
-}
-
-table "other" "t2" {
-  schema = schema.other
-  column "id" {
-    type = int
-  }
-}
-
-view "public" "v4" {
-  schema = schema.public
-  as     = "SELECT * FROM public.t2"
-  depends_on = [table.public.t2]
-}
-
-view "other" "v4" {
-  schema = schema.other
-  as     = "SELECT * FROM other.t2"
-  depends_on = [table.other.t2]
-}
-
-schema "public" {}
-schema "other" {}
-`
-	var (
-		r      schema.Realm
-		got    schema.Realm
-		public = schema.New("public").
-			AddTables(
-				schema.NewTable("t1").
-					AddColumns(
-						schema.NewIntColumn("id", "int"),
-					),
-				schema.NewTable("t2").
-					AddColumns(
-						schema.NewIntColumn("id", "int"),
-					),
-			).
-			AddViews(
-				schema.NewView("v1", "SELECT * FROM t2 WHERE id IS NOT NULL"),
-				schema.NewView("v2", "SELECT * FROM t3 WHERE id IS NOT NULL ORDER BY id").
-					AddColumns(
-						schema.NewIntColumn("id", "int"),
-					).
-					SetComment("view comment"),
-			)
-		other = schema.New("other").
-			AddTables(
-				schema.NewTable("t2").
-					AddColumns(
-						schema.NewIntColumn("id", "int"),
-					),
-			)
-	)
-	public.AddViews(
-		schema.NewView("v3", "SELECT * FROM v2 JOIN t1 USING (id)").
-			SetCheckOption(schema.ViewCheckOptionLocal).
-			AddDeps(public.Views[0], public.Tables[0]),
-		schema.NewView("v4", "SELECT * FROM public.t2").
-			AddDeps(public.Tables[1]),
-		schema.NewMaterializedView("m1", "SELECT * FROM t2 WHERE id IS NOT NULL"),
-	)
-	m1, _ := public.Materialized("m1")
-	public.AddViews(
-		schema.NewMaterializedView("m2", "SELECT * FROM multi").
-			AddDeps(public.Views[0], m1, public.Tables[0]),
-	)
-	other.AddViews(
-		schema.NewView("v4", "SELECT * FROM other.t2").
-			AddDeps(other.Tables[0]),
-	)
-	r.AddSchemas(public, other)
-	require.NoError(t, EvalHCLBytes([]byte(f), &got, nil))
-	require.EqualValues(t, r, got)
 }
 
 func TestUnmarshalSpec_IndexType(t *testing.T) {
@@ -2226,17 +2020,9 @@ func TestMarshalRealm(t *testing.T) {
 	// Reference is qualified with s1.
 	t5.AddForeignKeys(schema.NewForeignKey("oid2id2").AddColumns(t5.Columns[0]).SetRefTable(t2).AddRefColumns(t2.Columns[0]))
 
-	// Two views with the same name resided in different schemas.
-	v2 := schema.NewView("v2", "SELECT oid FROM s1.t2").
-		AddColumns(schema.NewIntColumn("oid", "int")).
-		AddDeps(t2)
-	v4 := schema.NewView("v2", "SELECT oid FROM s2.t2").
-		AddColumns(schema.NewIntColumn("oid", "int")).
-		AddDeps(t4)
-
 	r := schema.NewRealm(
-		schema.New("s1").AddTables(t1, t2).AddViews(v2),
-		schema.New("s2").AddTables(t3, t4, t5).AddViews(v4),
+		schema.New("s1").AddTables(t1, t2),
+		schema.New("s2").AddTables(t3, t4, t5),
 	)
 	got, err := MarshalHCL.MarshalSpec(r)
 	require.NoError(t, err)
@@ -2295,24 +2081,6 @@ table "t5" {
     ref_columns = [table.s1.t2.column.oid]
   }
 }
-view "s1" "v2" {
-  schema = schema.s1
-  column "oid" {
-    null = false
-    type = int
-  }
-  as         = "SELECT oid FROM s1.t2"
-  depends_on = [table.s1.t2]
-}
-view "s2" "v2" {
-  schema = schema.s2
-  column "oid" {
-    null = false
-    type = int
-  }
-  as         = "SELECT oid FROM s2.t2"
-  depends_on = [table.s2.t2]
-}
 schema "s1" {
 }
 schema "s2" {
@@ -2358,20 +2126,12 @@ func TestMarshalQualifiers(t *testing.T) {
 		s2 = schema.New("s2").
 			AddTables(
 				schema.NewTable("t1").AddColumns(schema.NewIntColumn("id", "int")),
-			).
-			AddViews(
-				schema.NewMaterializedView("m1", "SELECT id FROM s2.t1"),
 			)
 		s3 = schema.New("s3").
 			AddTables(
 				schema.NewTable("s1").AddColumns(schema.NewIntColumn("id", "int")),
-			).
-			AddViews(
-				schema.NewMaterializedView("m1", "SELECT id FROM s3.t1"),
 			)
 	)
-	s2.Views[0].AddDeps(s2.Tables[0])
-	s3.Views[0].AddDeps(s3.Tables[0])
 	buf, err := MarshalHCL.MarshalSpec(schema.NewRealm(s1, s2, s3))
 	require.NoError(t, err)
 	require.Equal(t, `table "s1" "t1" {
@@ -2394,16 +2154,6 @@ table "s3" "s1" {
     null = false
     type = int
   }
-}
-materialized "s2" "m1" {
-  schema     = schema.s2
-  as         = "SELECT id FROM s2.t1"
-  depends_on = [table.s2.t1]
-}
-materialized "s3" "m1" {
-  schema     = schema.s3
-  as         = "SELECT id FROM s3.t1"
-  depends_on = [table.s1]
 }
 schema "s1" {
 }

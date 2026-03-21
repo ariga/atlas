@@ -167,19 +167,6 @@ func TestSameTable(t *testing.T) {
 	require.False(t, SameTable(t1, schema.NewTable("t1").SetSchema(schema.New("private"))))
 }
 
-func TestSameView(t *testing.T) {
-	v1 := schema.NewView("v1", "")
-	require.True(t, SameView(v1, v1))
-	require.True(t, SameView(v1, schema.NewView("v1", "")), "same copy")
-	require.False(t, SameView(v1, schema.NewView("v2", "")))
-
-	v1.SetSchema(schema.New("public"))
-	require.True(t, SameView(v1, v1))
-	require.True(t, SameView(v1, schema.NewView("v1", "").SetSchema(schema.New("public"))), "same copy")
-	require.False(t, SameView(v1, schema.NewView("v1", "")))
-	require.False(t, SameView(v1, schema.NewView("v1", "").SetSchema(schema.New("private"))))
-}
-
 func TestSortDropTables_WithFK(t *testing.T) {
 	t1 := schema.NewTable("t1").AddColumns(schema.NewColumn("c1"))
 	t2 := schema.NewTable("t2").AddColumns(schema.NewColumn("c1"), schema.NewColumn("c2"))
@@ -189,9 +176,6 @@ func TestSortDropTables_WithFK(t *testing.T) {
 			AddRefColumns(t1.Columns[0]).
 			SetRefTable(t1),
 	)
-	t1.Triggers = []*schema.Trigger{
-		{Table: t1, Deps: []schema.Object{t2}},
-	}
 	changes := []schema.Change{&schema.DropTable{T: t2}, &schema.DropTable{T: t1}}
 	require.Equal(t, []schema.Change{changes[0], changes[1]}, SortChanges(changes, nil))
 	changes = []schema.Change{&schema.DropTable{T: t1}, &schema.DropTable{T: t2}}

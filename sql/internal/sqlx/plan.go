@@ -384,20 +384,6 @@ func byKeys[T any](m map[string]T) []struct {
 
 // SortOptions allows drivers to customize the behavior of the SortChanges function.
 type SortOptions struct {
-	// FuncDepT reports if a function depends on the given table.
-	FuncDepT func(*schema.Func, *schema.Table) bool
-	// FuncDepV reports if a function depends on the given view.
-	FuncDepV func(*schema.Func, *schema.View) bool
-	// FuncDepO reports if a function depends on the given object.
-	FuncDepO func(*schema.Func, schema.Object) bool
-	// ProcDepT reports if a procedure depends on the given table.
-	ProcDepT func(*schema.Proc, *schema.Table) bool
-	// ProcDepO reports if a procedure depends on the given object.
-	ProcDepO func(*schema.Proc, schema.Object) bool
-	// ViewDepT reports if a view depends on the given table.
-	ViewDepT func(*schema.View, *schema.Table) bool
-	// CompareFuncArgs set to true to compare function arguments.
-	CompareFuncArgs bool
 	// DefaultSchema defines the default schema (also known as "search_path") that
 	// is used by the database to search for objects if no qualifier is provided.
 	DefaultSchema string
@@ -405,23 +391,18 @@ type SortOptions struct {
 
 // SortChanges is a helper function to sort to level changes based on their priority.
 func SortChanges(changes []schema.Change, opts *SortOptions) []schema.Change {
-	var views, drop, other []schema.Change
+	var drop, other []schema.Change
 	for _, c := range changes {
 		switch c.(type) {
-		case *schema.AddView, *schema.DropView, *schema.ModifyView:
-			views = append(views, c)
-		case *schema.DropSchema, *schema.DropTable, *schema.DropFunc, *schema.DropProc, *schema.DropObject:
+		case *schema.DropSchema, *schema.DropTable, *schema.DropObject:
 			drop = append(drop, c)
 		default:
 			other = append(other, c)
 		}
 	}
-	if planned, err := sortViewChanges(views); err == nil { // no cycles.
-		views = planned
-	}
 	// To keep backwards compatibility with previous sorting and also in case we miss any dependency between changes
-	// (see, dependsOn function) we push views and drop changes to the end, unless there is a dependency requirement.
-	changes = append(other, append(views, drop...)...)
+	// (see, dependsOn function) we push drop changes to the end, unless there is a dependency requirement.
+	changes = append(other, drop...)
 	var (
 		hasE  = make(map[struct{ e1, e2 schema.Change }]bool)
 		edges = make(map[schema.Change][]schema.Change)
@@ -474,7 +455,6 @@ type (
 	// is a regular table (e.g., row types).
 	RowTyper interface {
 		RowTypeT() *schema.Table
-		RowTypeV() *schema.View
 	}
 )
 
@@ -518,26 +498,6 @@ func depOfDrop(o schema.Object, c schema.Change) bool {
 	switch c := c.(type) {
 	case *schema.DropTable:
 		deps = c.T.Deps
-		for _, t := range c.T.Triggers {
-			for _, d := range t.Deps {
-				// If the trigger depends on the table that has FK to its parent,
-				// this dependency should be ignored as the FK need be dropped first.
-				if t, ok := d.(*schema.Table); !ok || !refTo(t.ForeignKeys, c.T) {
-					deps = append(deps, d)
-				}
-			}
-		}
-	case *schema.DropView:
-		deps = c.V.Deps
-		for _, t := range c.V.Triggers {
-			deps = append(deps, t.Deps...)
-		}
-	case *schema.DropFunc:
-		deps = c.F.Deps
-	case *schema.DropProc:
-		deps = c.P.Deps
-	case *schema.DropTrigger:
-		deps = c.T.Deps
 	}
 	return slices.Contains(deps, o)
 }
@@ -556,32 +516,8 @@ func depOfAdd(refs []schema.Object, c schema.Change) bool {
 			t, ok := o.(*schema.Table)
 			return ok && SameTable(c.T, t)
 		})
-	case *schema.AddView:
-		return slices.ContainsFunc(refs, func(o schema.Object) bool {
-			v, ok := o.(*schema.View)
-			return ok && SameView(c.V, v)
-		})
-	case *schema.ModifyView:
-		return slices.ContainsFunc(refs, func(o schema.Object) bool {
-			v, ok := o.(*schema.View)
-			return ok && SameView(c.To, v)
-		})
 	case *schema.AddObject:
 		o = c.O
-	case *schema.AddTrigger:
-		o = c.T
-	// Check functions and procedures by
-	// names as they might have overloads.
-	case *schema.AddFunc:
-		return slices.ContainsFunc(refs, func(o schema.Object) bool {
-			f, ok := o.(*schema.Func)
-			return ok && c.F.Name == f.Name && SameSchema(c.F.Schema, f.Schema)
-		})
-	case *schema.AddProc:
-		return slices.ContainsFunc(refs, func(o schema.Object) bool {
-			f, ok := o.(*schema.Proc)
-			return ok && c.P.Name == f.Name && SameSchema(c.P.Schema, f.Schema)
-		})
 	default:
 		return false
 	}
@@ -603,14 +539,6 @@ func typeDependsOnT(t schema.Type, tt *schema.Table) bool {
 	}
 	rowT := rt.RowTypeT()
 	return rowT != nil && SameTable(rowT, tt)
-}
-
-// SameView reports if the two objects represent the same view.
-func SameView(v1, v2 *schema.View) bool {
-	if v1 == nil || v2 == nil {
-		return v1 == v2
-	}
-	return v1.Name == v2.Name && SameSchema(v1.Schema, v2.Schema)
 }
 
 // SameTable reports if the two objects represent the same table.

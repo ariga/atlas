@@ -2,8 +2,6 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-//go:build !ent
-
 package postgres
 
 import (
@@ -243,7 +241,7 @@ func (d *Driver) RealmRestoreFunc(desired *schema.Realm) migrate.RestoreFunc {
 	// In that case, all other schemas are dropped, but this one is cleared
 	// object by object. To keep process faster, we drop the schema and recreate it.
 	if !d.crdb && len(desired.Schemas) == 1 && desired.Schemas[0].Name == "public" {
-		if pb := desired.Schemas[0]; len(pb.Tables)+len(pb.Views)+len(pb.Funcs)+len(pb.Procs)+len(pb.Objects) == 0 {
+		if pb := desired.Schemas[0]; len(pb.Tables)+len(pb.Objects) == 0 {
 			return func(ctx context.Context) error {
 				current, err := d.InspectRealm(ctx, nil)
 				if err != nil {
@@ -289,12 +287,6 @@ func withCascade(changes schema.Changes) schema.Changes {
 	for _, c := range changes {
 		switch c := c.(type) {
 		case *schema.DropTable:
-			c.Extra = append(c.Extra, &schema.IfExists{}, &Cascade{})
-		case *schema.DropView:
-			c.Extra = append(c.Extra, &schema.IfExists{}, &Cascade{})
-		case *schema.DropProc:
-			c.Extra = append(c.Extra, &schema.IfExists{}, &Cascade{})
-		case *schema.DropFunc:
 			c.Extra = append(c.Extra, &schema.IfExists{}, &Cascade{})
 		case *schema.DropObject:
 			c.Extra = append(c.Extra, &schema.IfExists{}, &Cascade{})
@@ -601,11 +593,9 @@ var (
 	specOptions []schemahcl.Option
 	specFuncs   = &specutil.SchemaFuncs{
 		Table: tableSpec,
-		View:  viewSpec,
 	}
 	scanFuncs = &specutil.ScanFuncs{
 		Table: convertTable,
-		View:  convertView,
 	}
 )
 
@@ -632,89 +622,6 @@ func (s *state) alterTableAttr(*sqlx.Builder, *schema.ModifyAttr) {
 	// unimplemented.
 }
 
-func realmObjectsSpec(*doc, *schema.Realm) error {
-	return nil // unimplemented.
-}
-
-func triggersSpec([]*schema.Trigger, *doc) error {
-	return nil // unimplemented.
-}
-
-func (*inspect) inspectViews(context.Context, *schema.Realm, *schema.InspectOptions) error {
-	return nil // unimplemented.
-}
-
-func (*inspect) inspectFuncs(context.Context, *schema.Realm, *schema.InspectOptions) error {
-	return nil // unimplemented.
-}
-
-func (*inspect) inspectTypes(context.Context, *schema.Realm, *schema.InspectOptions) error {
-	return nil // unimplemented.
-}
-
-func (*inspect) inspectObjects(context.Context, *schema.Realm, *schema.InspectOptions) error {
-	return nil // unimplemented.
-}
-
-func (*inspect) inspectTriggers(context.Context, *schema.Realm, *schema.InspectOptions) error {
-	return nil // unimplemented.
-}
-
-func (*inspect) inspectDeps(context.Context, *schema.Realm, *schema.InspectOptions) error {
-	return nil // unimplemented.
-}
-
-func (*inspect) inspectRealmObjects(context.Context, *schema.Realm, *schema.InspectOptions) error {
-	return nil // unimplemented.
-}
-
-func (*state) addView(*schema.AddView) error {
-	return nil // unimplemented.
-}
-
-func (*state) dropView(*schema.DropView) error {
-	return nil // unimplemented.
-}
-
-func (*state) modifyView(*schema.ModifyView) error {
-	return nil // unimplemented.
-}
-
-func (*state) renameView(*schema.RenameView) {
-	// unimplemented.
-}
-
-func (s *state) addFunc(*schema.AddFunc) error {
-	return nil // unimplemented.
-}
-
-func (s *state) dropFunc(*schema.DropFunc) error {
-	return nil // unimplemented.
-}
-
-func (s *state) modifyFunc(*schema.ModifyFunc) error {
-	return nil // unimplemented.
-}
-
-func (s *state) renameFunc(*schema.RenameFunc) error {
-	return nil // unimplemented.
-}
-
-func (s *state) addProc(*schema.AddProc) error {
-	return nil // unimplemented.
-}
-
-func (s *state) dropProc(*schema.DropProc) error {
-	return nil // unimplemented.
-}
-
-func (s *state) modifyProc(*schema.ModifyProc) error {
-	return nil // unimplemented.
-}
-
-func (s *state) renameProc(*schema.RenameProc) error {
-	return nil // unimplemented.
-}
 
 func (s *state) addObject(add *schema.AddObject) error {
 	switch o := add.O.(type) {
@@ -755,25 +662,6 @@ func (s *state) modifyObject(modify *schema.ModifyObject) error {
 	return nil // unimplemented.
 }
 
-func (*state) addTrigger(*schema.AddTrigger) error {
-	return nil // unimplemented.
-}
-
-func (*state) dropTrigger(*schema.DropTrigger) error {
-	return nil // unimplemented.
-}
-
-func (*state) renameTrigger(*schema.RenameTrigger) error {
-	return nil // unimplemented.
-}
-
-func (*state) modifyTrigger(*schema.ModifyTrigger) error {
-	return nil // unimplemented.
-}
-
-func (*diff) ViewAttrChanges(_, _ *schema.View) []schema.Change {
-	return nil // unimplemented.
-}
 
 // RealmObjectDiff returns a changeset for migrating realm (database) objects
 // from one state to the other. For example, adding extensions or users.
@@ -817,10 +705,6 @@ func (*diff) SchemaObjectDiff(from, to *schema.Schema, _ *schema.DiffOptions) ([
 		}
 	}
 	return changes, nil
-}
-
-func verifyChanges(context.Context, []schema.Change) error {
-	return nil // unimplemented.
 }
 
 func convertDomains(_ []*sqlspec.Table, domains []*domain, _ *schema.Realm) error {
@@ -867,10 +751,6 @@ func convertEventTriggers(evs []*eventTrigger, _ *schema.Realm) error {
 
 func normalizeRealm(*schema.Realm) error {
 	return nil
-}
-
-func schemasObjectSpec(*doc, ...*schema.Schema) error {
-	return nil // unimplemented.
 }
 
 // objectSpec converts from a concrete schema objects into specs.
