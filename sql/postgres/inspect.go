@@ -2,8 +2,6 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-//go:build !ent
-
 package postgres
 
 import (
@@ -53,41 +51,12 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 			if err := i.inspectEnums(ctx, r); err != nil {
 				return nil, err
 			}
-			if err := i.inspectTypes(ctx, r, nil); err != nil {
-				return nil, err
-			}
 		}
 		if mode.Is(schema.InspectTables) {
 			if err := i.inspectTables(ctx, r, nil); err != nil {
 				return nil, err
 			}
 			sqlx.LinkSchemaTables(schemas)
-		}
-		if mode.Is(schema.InspectViews) {
-			if err := i.inspectViews(ctx, r, nil); err != nil {
-				return nil, err
-			}
-		}
-		if mode.Is(schema.InspectFuncs) {
-			if err := i.inspectFuncs(ctx, r, nil); err != nil {
-				return nil, err
-			}
-		}
-		if mode.Is(schema.InspectObjects) {
-			if err := i.inspectObjects(ctx, r, nil); err != nil {
-				return nil, err
-			}
-			if err := i.inspectRealmObjects(ctx, r, nil); err != nil {
-				return nil, err
-			}
-		}
-		if mode.Is(schema.InspectTriggers) {
-			if err := i.inspectTriggers(ctx, r, nil); err != nil {
-				return nil, err
-			}
-		}
-		if err := i.inspectDeps(ctx, r, nil); err != nil {
-			return nil, err
 		}
 	}
 	return schema.ExcludeRealm(r, opts.Exclude)
@@ -152,38 +121,12 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		if err := i.inspectEnums(ctx, r); err != nil {
 			return nil, err
 		}
-		if err := i.inspectTypes(ctx, r, opts); err != nil {
-			return nil, err
-		}
 	}
 	if mode.Is(schema.InspectTables) {
 		if err := i.inspectTables(ctx, r, opts); err != nil {
 			return nil, err
 		}
 		sqlx.LinkSchemaTables(schemas)
-	}
-	if mode.Is(schema.InspectViews) {
-		if err := i.inspectViews(ctx, r, opts); err != nil {
-			return nil, err
-		}
-	}
-	if mode.Is(schema.InspectFuncs) {
-		if err := i.inspectFuncs(ctx, r, opts); err != nil {
-			return nil, err
-		}
-	}
-	if mode.Is(schema.InspectObjects) {
-		if err := i.inspectObjects(ctx, r, opts); err != nil {
-			return nil, err
-		}
-	}
-	if mode.Is(schema.InspectTriggers) {
-		if err := i.inspectTriggers(ctx, r, nil); err != nil {
-			return nil, err
-		}
-	}
-	if err := i.inspectDeps(ctx, r, opts); err != nil {
-		return nil, err
 	}
 	return schema.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }

@@ -142,3 +142,23 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 	}
 	return nil
 }
+
+func (*Analyzer) hasEmptyTableCheck(*sqlcheck.Pass, *schema.Table) bool {
+	return false // unimplemented.
+}
+
+func (*Analyzer) hasEmptyColumnCheck(*sqlcheck.Pass, *schema.Table, *schema.Column) bool {
+	return false // unimplemented.
+}
+
+func (*Analyzer) emptyTableCheckStmt(*sqlcheck.Pass, *schema.Table) (*migrate.Stmt, error) {
+	return nil, errors.New("unimplemented")
+}
+
+func (*Analyzer) emptyColumnCheckStmt(*sqlcheck.Pass, *schema.Table, string) (*migrate.Stmt, error) {
+	return nil, errors.New("unimplemented")
+}
+
+func withSuggestion(_ *sqlcheck.Pass, r sqlcheck.Report, _ []*migrate.Stmt) sqlcheck.Report {
+	return r // unimplemented.
+}

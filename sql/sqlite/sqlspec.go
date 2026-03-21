@@ -20,10 +20,8 @@ import (
 )
 
 type doc struct {
-	Tables   []*sqlspec.Table   `spec:"table"`
-	Views    []*sqlspec.View    `spec:"view"`
-	Triggers []*sqlspec.Trigger `spec:"trigger"`
-	Schemas  []*sqlspec.Schema  `spec:"schema"`
+	Tables  []*sqlspec.Table  `spec:"table"`
+	Schemas []*sqlspec.Schema `spec:"schema"`
 }
 
 // Codec for schemahcl.
@@ -45,7 +43,7 @@ func (c *Codec) EvalOptions(p *hclparse.Parser, v any, opts *schemahcl.EvalOptio
 			return err
 		}
 		if err := specutil.Scan(v,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Triggers: d.Triggers},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables},
 			scanFuncs,
 		); err != nil {
 			return fmt.Errorf("sqlite: failed converting to *schema.Realm: %w", err)
@@ -60,7 +58,7 @@ func (c *Codec) EvalOptions(p *hclparse.Parser, v any, opts *schemahcl.EvalOptio
 		}
 		r := &schema.Realm{}
 		if err := specutil.Scan(r,
-			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables, Views: d.Views, Triggers: d.Triggers},
+			&specutil.ScanDoc{Schemas: d.Schemas, Tables: d.Tables},
 			scanFuncs,
 		); err != nil {
 			return err
@@ -77,8 +75,7 @@ func (c *Codec) EvalOptions(p *hclparse.Parser, v any, opts *schemahcl.EvalOptio
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
 func (c *Codec) MarshalSpec(v any) ([]byte, error) {
 	return specutil.Marshal(v, c.State, specutil.RealmFuncs{
-		Schema:   schemaSpec,
-		Triggers: triggersSpec,
+		Schema: schemaSpec,
 	})
 }
 
@@ -109,23 +106,6 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 		}
 	}
 	return t, nil
-}
-
-// convertView converts a sqlspec.View to a schema.View.
-func convertView(spec *sqlspec.View, parent *schema.Schema) (*schema.View, error) {
-	v, err := specutil.View(
-		spec, parent,
-		func(c *sqlspec.Column, _ *schema.View) (*schema.Column, error) {
-			return specutil.Column(c, convertColumnType)
-		},
-		func(i *sqlspec.Index, v *schema.View) (*schema.Index, error) {
-			return nil, fmt.Errorf("unexpected view index %s.%s", v.Name, i.Name)
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return v, nil
 }
 
 // convertIndex converts a sqlspec.Index into a schema.Index.
@@ -174,7 +154,6 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 func schemaSpec(s *schema.Schema) (*specutil.SchemaSpec, error) {
 	return specutil.FromSchema(s, &specutil.SchemaFuncs{
 		Table: tableSpec,
-		View:  viewSpec,
 	})
 }
 
@@ -200,21 +179,6 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	}
 	if options != nil {
 		spec.Extra.Children = append(spec.Extra.Children, options)
-	}
-	return spec, nil
-}
-
-// viewSpec converts from a concrete SQLite schema.View to a sqlspec.View.
-func viewSpec(view *schema.View) (*sqlspec.View, error) {
-	spec, err := specutil.FromView(
-		view,
-		func(c *schema.Column, _ *schema.View) (*sqlspec.Column, error) {
-			return specutil.FromColumn(c, columnTypeSpec)
-		},
-		indexSpec,
-	)
-	if err != nil {
-		return nil, err
 	}
 	return spec, nil
 }
@@ -299,7 +263,6 @@ var (
 		State: schemahcl.New(append(
 			specOptions,
 			schemahcl.WithTypes("table.column.type", TypeRegistry.Specs()),
-			schemahcl.WithTypes("view.column.type", TypeRegistry.Specs()),
 			schemahcl.WithScopedEnums("table.column.as.type", stored, virtual),
 			schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 			schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),

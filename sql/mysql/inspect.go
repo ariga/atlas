@@ -2,14 +2,13 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-//go:build !ent
-
 package mysql
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -902,7 +901,7 @@ type (
 
 // NewAutoIncrement returns an "auto increment" attribute.
 func NewAutoIncrement(v uint64) *AutoIncrement {
-	return &AutoIncrement{V: max(0, int64(v))} // Keep BC with old ent versions.
+	return &AutoIncrement{V: max(0, int64(min(v, uint64(math.MaxInt64))))} //nolint:gosec // Keep BC with old ent versions.
 }
 
 // addIndex adds an index to the list of indexes

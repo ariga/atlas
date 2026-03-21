@@ -20,40 +20,25 @@ type (
 	// SchemaSpec is returned by driver convert functions to
 	// marshal a *schema.Schema into top-level spec objects.
 	SchemaSpec struct {
-		Schema       *sqlspec.Schema
-		Tables       []*sqlspec.Table
-		Views        []*sqlspec.View
-		Funcs        []*sqlspec.Func
-		Procs        []*sqlspec.Func
-		Materialized []*sqlspec.View
-		// Collected triggers to convert into spec.
-		Triggers []*schema.Trigger
+		Schema *sqlspec.Schema
+		Tables []*sqlspec.Table
 	}
 	// RealmFuncs represents the functions that used
 	// to convert the schema.Realm into HCL spec document.
 	RealmFuncs struct {
-		Schema   func(*schema.Schema) (*SchemaSpec, error)
-		Triggers func([]*schema.Trigger, *Doc) ([]*sqlspec.Trigger, error)
+		Schema func(*schema.Schema) (*SchemaSpec, error)
 	}
 	// Doc represents the common HCL spec document.
 	Doc struct {
-		Tables       []*sqlspec.Table   `spec:"table"`
-		Views        []*sqlspec.View    `spec:"view"`
-		Materialized []*sqlspec.View    `spec:"materialized"`
-		Funcs        []*sqlspec.Func    `spec:"function"`
-		Procs        []*sqlspec.Func    `spec:"procedure"`
-		Triggers     []*sqlspec.Trigger `spec:"trigger"`
-		Schemas      []*sqlspec.Schema  `spec:"schema"`
+		Tables  []*sqlspec.Table  `spec:"table"`
+		Schemas []*sqlspec.Schema `spec:"schema"`
 	}
 )
 
 // Marshal marshals v into an Atlas DDL document using a schemahcl.Marshaler. Marshal uses the given
-// schemaSpec function to convert a *schema.Schema into *sqlspec.Schema, []*sqlspec.Table and []*sqlspec.View.
+// schemaSpec function to convert a *schema.Schema into *sqlspec.Schema and []*sqlspec.Table.
 func Marshal(v any, marshaler schemahcl.Marshaler, funcs RealmFuncs) ([]byte, error) {
-	var (
-		d  = &Doc{}
-		ts []*schema.Trigger
-	)
+	d := &Doc{}
 	switch s := v.(type) {
 	case *schema.Schema:
 		spec, err := funcs.Schema(s)
@@ -61,12 +46,7 @@ func Marshal(v any, marshaler schemahcl.Marshaler, funcs RealmFuncs) ([]byte, er
 			return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 		}
 		d.Tables = spec.Tables
-		d.Views = spec.Views
-		d.Materialized = spec.Materialized
 		d.Schemas = []*sqlspec.Schema{spec.Schema}
-		d.Funcs = spec.Funcs
-		d.Procs = spec.Procs
-		ts = spec.Triggers
 	case *schema.Realm:
 		for _, s := range s.Schemas {
 			spec, err := funcs.Schema(s)
@@ -74,26 +54,9 @@ func Marshal(v any, marshaler schemahcl.Marshaler, funcs RealmFuncs) ([]byte, er
 				return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 			}
 			d.Tables = append(d.Tables, spec.Tables...)
-			d.Views = append(d.Views, spec.Views...)
-			d.Materialized = append(d.Materialized, spec.Materialized...)
 			d.Schemas = append(d.Schemas, spec.Schema)
-			d.Funcs = append(d.Funcs, spec.Funcs...)
-			d.Procs = append(d.Procs, spec.Procs...)
-			ts = append(ts, spec.Triggers...)
 		}
 		if err := QualifyObjects(d.Tables); err != nil {
-			return nil, err
-		}
-		if err := QualifyObjects(d.Views); err != nil {
-			return nil, err
-		}
-		if err := QualifyObjects(d.Materialized); err != nil {
-			return nil, err
-		}
-		if err := QualifyObjects(d.Funcs); err != nil {
-			return nil, err
-		}
-		if err := QualifyObjects(d.Procs); err != nil {
 			return nil, err
 		}
 		if err := QualifyReferences(d.Tables, s); err != nil {
@@ -101,13 +64,6 @@ func Marshal(v any, marshaler schemahcl.Marshaler, funcs RealmFuncs) ([]byte, er
 		}
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
-	}
-	if funcs.Triggers != nil {
-		specs, err := funcs.Triggers(ts, d)
-		if err != nil {
-			return nil, err
-		}
-		d.Triggers = specs
 	}
 	return marshaler.MarshalSpec(d)
 }
@@ -239,21 +195,6 @@ func TableSpecRef(t *schema.Table) *schemahcl.Ref {
 	if s := t.Schema; s != nil && s.Realm != nil && len(s.Realm.Schemas) > 1 && slices.ContainsFunc(s.Realm.Schemas, func(s1 *schema.Schema) bool {
 		return s1 != s && slices.ContainsFunc(s1.Tables, func(t1 *schema.Table) bool {
 			return t1.Name == t.Name
-		})
-	}) {
-		idx.V = append([]string{s.Name}, idx.V...)
-	}
-	return schemahcl.BuildRef([]schemahcl.PathIndex{idx})
-}
-
-// ViewSpecRef returns a reference to the view in the spec. In case there is more than
-// one view with the same name, the reference will be qualified with the schema name.
-func ViewSpecRef(v *schema.View) *schemahcl.Ref {
-	typ, name := typeView, v.Name
-	idx := schemahcl.PathIndex{T: typ, V: []string{name}}
-	if s := v.Schema; s != nil && s.Realm != nil && len(s.Realm.Schemas) > 1 && slices.ContainsFunc(s.Realm.Schemas, func(s1 *schema.Schema) bool {
-		return s1 != s && slices.ContainsFunc(s1.Views, func(v1 *schema.View) bool {
-			return v.Name == v1.Name
 		})
 	}) {
 		idx.V = append([]string{s.Name}, idx.V...)

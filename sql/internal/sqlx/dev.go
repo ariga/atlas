@@ -74,25 +74,9 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 				name2pos.putTable(t, tk)
 			}
 		}
-		for _, v := range s.Views {
-			changes = append(changes, addViewChange(v)...)
-			// If the view was loaded with its position,
-			// record the position of its children.
-			if vk, ok := name2pos.put(v.Attrs, k, keyV, v.Name); ok {
-				name2pos.putView(v, vk)
-			}
-		}
 		for _, o := range s.Objects {
 			name2pos.putObject(o, k)
 			changes = append(changes, &schema.AddObject{O: o})
-		}
-		for _, f := range s.Funcs {
-			name2pos.put(f.Attrs, k, keyFn, f.Name)
-			changes = append(changes, &schema.AddFunc{F: f})
-		}
-		for _, p := range s.Procs {
-			name2pos.put(p.Attrs, k, keyPr, p.Name)
-			changes = append(changes, &schema.AddProc{P: p})
 		}
 	}
 	if err := d.Driver.ApplyChanges(ctx, changes); err != nil {
@@ -154,30 +138,12 @@ func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sch
 			name2pos.putTable(t, tk)
 		}
 	}
-	for _, v := range s.Views {
-		// If objects are not strongly connected.
-		if v.Schema != s {
-			v.Schema = s
-		}
-		changes = append(changes, addViewChange(v)...)
-		if vk, ok := name2pos.put(v.Attrs, k, keyV, v.Name); ok {
-			name2pos.putView(v, vk)
-		}
-	}
 	for _, o := range s.Objects {
 		if d.PatchObject != nil {
 			d.PatchObject(s, o)
 		}
 		name2pos.putObject(o, k)
 		changes = append(changes, &schema.AddObject{O: o})
-	}
-	for _, f := range s.Funcs {
-		name2pos.put(f.Attrs, k, keyFn, f.Name)
-		changes = append(changes, &schema.AddFunc{F: f})
-	}
-	for _, p := range s.Procs {
-		name2pos.put(p.Attrs, k, keyPr, p.Name)
-		changes = append(changes, &schema.AddProc{P: p})
 	}
 	if err := d.Driver.ApplyChanges(ctx, changes, func(opts *migrate.PlanOptions) {
 		noQualifier := ""
@@ -202,17 +168,13 @@ func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sch
 }
 
 const (
-	keyS  = "schema"
-	keyV  = "view"
-	keyT  = "table"
-	keyC  = "column"
-	keyI  = "index"
-	keyP  = "pk"
-	keyF  = "fk"
-	keyK  = "check"
-	keyTg = "trigger"
-	keyFn = "function"
-	keyPr = "procedure"
+	keyS = "schema"
+	keyT = "table"
+	keyC = "column"
+	keyI = "index"
+	keyP = "pk"
+	keyF = "fk"
+	keyK = "check"
 )
 
 type key2pos map[string]*schema.Pos
@@ -232,21 +194,6 @@ func (k key2pos) putTable(t *schema.Table, tk string) {
 	}
 	if t.PrimaryKey != nil {
 		k.put(t.PrimaryKey.Attrs, tk, keyP, t.PrimaryKey.Name)
-	}
-	for _, r := range t.Triggers {
-		k.put(r.Attrs, tk, keyTg, r.Name)
-	}
-}
-
-func (k key2pos) putView(v *schema.View, vk string) {
-	for _, c := range v.Columns {
-		k.put(c.Attrs, vk, keyC, c.Name)
-	}
-	for _, i := range v.Indexes {
-		k.put(i.Attrs, vk, keyI, i.Name)
-	}
-	for _, r := range v.Triggers {
-		k.put(r.Attrs, vk, keyTg, r.Name)
 	}
 }
 
@@ -307,9 +254,6 @@ func (k key2pos) patchSchema(s *schema.Schema) {
 		if !ok {
 			continue
 		}
-		for _, tr := range t.Triggers {
-			k.patch(tr, tk, keyTg, tr.Name)
-		}
 		for _, c := range t.Columns {
 			k.patch(c, tk, keyC, c.Name)
 		}
@@ -322,27 +266,6 @@ func (k key2pos) patchSchema(s *schema.Schema) {
 		for _, ck := range t.Checks() {
 			k.patch(ck, tk, keyK, ck.Name)
 		}
-	}
-	for _, v := range s.Views {
-		vk, ok := k.patch(v, ks, keyV, v.Name)
-		if !ok {
-			continue
-		}
-		for _, tr := range v.Triggers {
-			k.patch(tr, vk, keyTg, tr.Name)
-		}
-		for _, c := range v.Columns {
-			k.patch(c, vk, keyC, c.Name)
-		}
-		for _, i := range v.Indexes {
-			k.patch(i, vk, keyI, i.Name)
-		}
-	}
-	for _, f := range s.Funcs {
-		k.patch(f, ks, keyFn, f.Name)
-	}
-	for _, p := range s.Procs {
-		k.patch(p, ks, keyPr, p.Name)
 	}
 }
 

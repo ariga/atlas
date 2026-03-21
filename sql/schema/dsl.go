@@ -72,10 +72,10 @@ func (s *Schema) AddTables(tables ...*Table) *Schema {
 	return s
 }
 
-// AddViews adds and links the given views to the schema.
+// AddViews adds the given views to the schema.
 func (s *Schema) AddViews(views ...*View) *Schema {
 	for _, v := range views {
-		v.SetSchema(s)
+		v.Schema = s
 	}
 	s.Views = append(s.Views, views...)
 	return s
@@ -84,24 +84,6 @@ func (s *Schema) AddViews(views ...*View) *Schema {
 // AddObjects adds the given objects to the schema.
 func (s *Schema) AddObjects(objs ...Object) *Schema {
 	s.Objects = append(s.Objects, objs...)
-	return s
-}
-
-// AddFuncs appends the given functions to the schema.
-func (s *Schema) AddFuncs(funcs ...*Func) *Schema {
-	for _, f := range funcs {
-		f.Schema = s
-	}
-	s.Funcs = append(s.Funcs, funcs...)
-	return s
-}
-
-// AddProcs appends the given procedures to the schema.
-func (s *Schema) AddProcs(procs ...*Proc) *Schema {
-	for _, f := range procs {
-		f.Schema = s
-	}
-	s.Procs = append(s.Procs, procs...)
 	return s
 }
 
@@ -158,6 +140,29 @@ func (r *Realm) UnsetCollation() *Realm {
 // NewTable creates a new Table.
 func NewTable(name string) *Table {
 	return &Table{Name: name}
+}
+
+// NewView creates a new View with the given name and definition.
+func NewView(name, def string) *View {
+	return &View{Name: name, Def: def}
+}
+
+// SetComment sets or appends the Comment attribute to the view with the given value.
+func (v *View) SetComment(c string) *View {
+	ReplaceOrAppend(&v.Attrs, &Comment{Text: c})
+	return v
+}
+
+// AddColumns adds the given columns to the view.
+func (v *View) AddColumns(columns ...*Column) *View {
+	v.Columns = append(v.Columns, columns...)
+	return v
+}
+
+// AddDeps adds the given dependencies to the view.
+func (v *View) AddDeps(deps ...Object) *View {
+	v.Deps = append(v.Deps, deps...)
+	return v
 }
 
 // SetCharset sets or appends the Charset attribute
@@ -299,14 +304,6 @@ func SortRefs(refs []Object) {
 		switch o1 := a.(type) {
 		case *Table:
 			return strings.Compare(o1.Name, b.(*Table).Name)
-		case *View:
-			return strings.Compare(o1.Name, b.(*View).Name)
-		case *Trigger:
-			return strings.Compare(o1.Name, b.(*Trigger).Name)
-		case *Func:
-			return strings.Compare(o1.Name, b.(*Func).Name)
-		case *Proc:
-			return strings.Compare(o1.Name, b.(*Proc).Name)
 		default:
 			return 0
 		}
@@ -322,75 +319,6 @@ func (t *Table) AddRefs(refs ...Object) {
 // RemoveDep removes the given object from the table dependencies.
 func (t *Table) RemoveDep(o Object) {
 	t.Deps = removeObj(t.Deps, o)
-}
-
-// NewView creates a new View.
-func NewView(name, def string) *View {
-	return &View{Name: name, Def: def}
-}
-
-// NewMaterializedView creates a new materialized View.
-func NewMaterializedView(name, def string) *View {
-	return NewView(name, def).
-		SetMaterialized(true)
-}
-
-// SetSchema sets the schema (named-database) of the view.
-func (v *View) SetSchema(s *Schema) *View {
-	v.Schema = s
-	return v
-}
-
-// AddColumns appends the given columns to the table column list.
-func (v *View) AddColumns(columns ...*Column) *View {
-	v.Columns = append(v.Columns, columns...)
-	return v
-}
-
-// SetComment sets or appends the Comment attribute
-// to the view with the given value.
-func (v *View) SetComment(c string) *View {
-	ReplaceOrAppend(&v.Attrs, &Comment{Text: c})
-	return v
-}
-
-// AddAttrs adds and additional attributes to the view.
-func (v *View) AddAttrs(attrs ...Attr) *View {
-	v.Attrs = append(v.Attrs, attrs...)
-	return v
-}
-
-// AddDeps adds the given objects as dependencies to the view.
-func (v *View) AddDeps(objs ...Object) *View {
-	v.Deps = append(v.Deps, objs...)
-	addRefs(v, objs)
-	return v
-}
-
-// RemoveDep removes the given object from the view dependencies.
-func (v *View) RemoveDep(o Object) {
-	v.Deps = removeObj(v.Deps, o)
-}
-
-// AddRefs adds references to the view.
-func (v *View) AddRefs(refs ...Object) {
-	v.Refs = append(v.Refs, refs...)
-	SortRefs(v.Refs)
-}
-
-// AddIndexes appends the given indexes to the table index list.
-func (v *View) AddIndexes(indexes ...*Index) *View {
-	for _, idx := range indexes {
-		idx.View = v
-	}
-	v.Indexes = append(v.Indexes, indexes...)
-	return v
-}
-
-// SetCheckOption sets the check option of the view.
-func (v *View) SetCheckOption(opt string) *View {
-	ReplaceOrAppend(&v.Attrs, &ViewCheckOption{V: opt})
-	return v
 }
 
 // NewColumn creates a new column with the given name.
@@ -940,42 +868,6 @@ func (f *ForeignKey) SetOnDelete(o ReferenceOption) *ForeignKey {
 func (f *ForeignKey) AddAttrs(attrs ...Attr) *ForeignKey {
 	f.Attrs = append(f.Attrs, attrs...)
 	return f
-}
-
-// AddDeps adds the given objects as dependencies to the function.
-func (f *Func) AddDeps(objs ...Object) *Func {
-	f.Deps = append(f.Deps, objs...)
-	addRefs(f, objs)
-	return f
-}
-
-// RemoveDep removes the given object from the function dependencies.
-func (f *Func) RemoveDep(o Object) {
-	f.Deps = removeObj(f.Deps, o)
-}
-
-// AddRefs adds references to the function.
-func (f *Func) AddRefs(refs ...Object) {
-	f.Refs = append(f.Refs, refs...)
-	SortRefs(f.Refs)
-}
-
-// AddDeps adds the given objects as dependencies to the procedure.
-func (p *Proc) AddDeps(objs ...Object) *Proc {
-	p.Deps = append(p.Deps, objs...)
-	addRefs(p, objs)
-	return p
-}
-
-// RemoveDep removes the given object from the procedure dependencies.
-func (p *Proc) RemoveDep(o Object) {
-	p.Deps = removeObj(p.Deps, o)
-}
-
-// AddRefs adds references to the procedure.
-func (p *Proc) AddRefs(refs ...Object) {
-	p.Refs = append(p.Refs, refs...)
-	SortRefs(p.Refs)
 }
 
 // ReplaceOrAppend searches an attribute of the same type as v in

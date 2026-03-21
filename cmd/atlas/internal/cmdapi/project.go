@@ -157,22 +157,6 @@ type (
 		AddForeignKey    bool `spec:"add_foreign_key"`
 		DropForeignKey   bool `spec:"drop_foreign_key"`
 		ModifyForeignKey bool `spec:"modify_foreign_key"`
-		AddView          bool `spec:"add_view"`
-		DropView         bool `spec:"drop_view"`
-		ModifyView       bool `spec:"modify_view"`
-		RenameView       bool `spec:"rename_view"`
-		AddFunc          bool `spec:"add_func"`
-		DropFunc         bool `spec:"drop_func"`
-		ModifyFunc       bool `spec:"modify_func"`
-		RenameFunc       bool `spec:"rename_func"`
-		AddProc          bool `spec:"add_proc"`
-		DropProc         bool `spec:"drop_proc"`
-		ModifyProc       bool `spec:"modify_proc"`
-		RenameProc       bool `spec:"rename_proc"`
-		AddTrigger       bool `spec:"add_trigger"`
-		DropTrigger      bool `spec:"drop_trigger"`
-		ModifyTrigger    bool `spec:"modify_trigger"`
-		RenameTrigger    bool `spec:"rename_trigger"`
 		RenameConstraint bool `spec:"rename_constraint"`
 		schemahcl.DefaultExtension
 	}
@@ -443,10 +427,6 @@ func (d *Diff) Options() (opts []schema.DiffOption) {
 	)
 	for _, c := range []schema.Change{
 		&schema.AddSchema{}, &schema.DropSchema{}, &schema.ModifySchema{},
-		&schema.AddView{}, &schema.DropView{}, &schema.ModifyView{}, &schema.RenameView{},
-		&schema.AddFunc{}, &schema.DropFunc{}, &schema.ModifyFunc{}, &schema.RenameFunc{},
-		&schema.AddProc{}, &schema.DropProc{}, &schema.ModifyProc{}, &schema.RenameProc{},
-		&schema.AddTrigger{}, &schema.DropTrigger{}, &schema.ModifyTrigger{}, &schema.RenameTrigger{},
 		&schema.AddTable{}, &schema.DropTable{}, &schema.ModifyTable{}, &schema.RenameTable{},
 		&schema.AddColumn{}, &schema.DropColumn{}, &schema.ModifyColumn{}, &schema.AddIndex{},
 		&schema.DropIndex{}, &schema.ModifyIndex{}, &schema.AddForeignKey{}, &schema.DropForeignKey{},

@@ -2,8 +2,6 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-//go:build !ent
-
 package mysql
 
 import (
@@ -19,7 +17,6 @@ import (
 	"ariga.io/atlas/sql/mysql/internal/mysqlversion"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
-	"ariga.io/atlas/sql/sqlspec"
 )
 
 type (
@@ -490,14 +487,3 @@ func (*inspect) tablesQueryArgs(context.Context) string {
 	return tablesQueryArgs
 }
 
-func viewSpec(*schema.View) (*sqlspec.View, error) {
-	return nil, nil // unimplemented.
-}
-
-func convertView(*sqlspec.View, *schema.Schema) (*schema.View, error) {
-	return nil, nil // unimplemented.
-}
-
-func verifyChanges(context.Context, []schema.Change) error {
-	return nil // unimplemented.
-}

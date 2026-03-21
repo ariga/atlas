@@ -58,10 +58,6 @@ func (d *diff) TableAttrDiff(from, to *schema.Table, opts *schema.DiffOptions) (
 	return append(changes, sqlx.CheckDiffMode(from, to, opts.Mode)...), nil
 }
 
-func (*diff) ViewAttrChanges(_, _ *schema.View) []schema.Change {
-	return nil // Not implemented.
-}
-
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
 // Note that column comments are ignored as SQLite does not support it.
 func (d *diff) ColumnChange(_ *schema.Table, from, to *schema.Column, _ *schema.DiffOptions) (schema.Change, error) {

@@ -158,3 +158,7 @@ func isRenameT(c schema.Change, from, to string) bool {
 	r, ok := c.(*schema.RenameTable)
 	return ok && r.From.Name == from && r.To.Name == to
 }
+
+func init() {
+	sqlcheck.Register(sqlite.DriverName, analyzers)
+}

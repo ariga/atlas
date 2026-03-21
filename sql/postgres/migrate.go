@@ -2,8 +2,6 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-//go:build !ent
-
 package postgres
 
 import (
@@ -28,7 +26,7 @@ var DefaultPlan migrate.PlanApplier = &planApply{conn: &conn{ExecQuerier: sqlx.N
 type planApply struct{ *conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
+func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	s := &state{
 		conn: p.conn,
 		Plan: migrate.Plan{
@@ -38,9 +36,6 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 	}
 	for _, o := range opts {
 		o(&s.PlanOptions)
-	}
-	if err := verifyChanges(ctx, changes); err != nil {
-		return nil, err
 	}
 	if err := s.plan(changes); err != nil {
 		return nil, err

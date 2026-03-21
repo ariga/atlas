@@ -2,8 +2,6 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-//go:build !ent
-
 package schema
 
 import (
@@ -128,52 +126,6 @@ func excludeS(s *Schema, glob []string) (err error) {
 		}
 		s.Tables = tables
 	}
-	if globV, exclude := excludeType(typeV, glob[0]); exclude {
-		var views []*View
-		for _, v := range s.Views {
-			match, err := filepath.Match(globV, v.Name)
-			if err != nil {
-				return err
-			}
-			if match {
-				if len(glob) == 1 {
-					detachObject(v, v.Refs)
-					continue
-				}
-				if err := excludeV(v, glob[1]); err != nil {
-					return err
-				}
-			}
-			views = append(views, v)
-		}
-		s.Views = views
-	}
-	if globF, exclude := excludeType(typeFn, glob[0]); exclude && len(glob) == 1 {
-		var err error
-		s.Funcs, err = filter(s.Funcs, func(f *Func) (bool, error) {
-			if match, err := filepath.Match(globF, f.Name); !match || err != nil {
-				return false, err
-			}
-			detachObject(f, f.Refs)
-			return true, nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-	if globP, exclude := excludeType(typePr, glob[0]); exclude && len(glob) == 1 {
-		var err error
-		s.Procs, err = filter(s.Procs, func(p *Proc) (bool, error) {
-			if match, err := filepath.Match(globP, p.Name); !match || err != nil {
-				return false, err
-			}
-			detachObject(p, p.Refs)
-			return true, nil
-		})
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -211,11 +163,6 @@ func excludeT(t *Table, pattern string) (err error) {
 			return filepath.Match(p, fk.Symbol)
 		})
 	}
-	if p, exclude := excludeType(typeTg, pattern); exclude {
-		t.Triggers, err = filter(t.Triggers, func(t *Trigger) (bool, error) {
-			return filepath.Match(p, t.Name)
-		})
-	}
 	if p, exclude := excludeType(typeK, pattern); exclude {
 		t.Attrs, err = filter(t.Attrs, func(a Attr) (bool, error) {
 			c, ok := a.(*Check)
@@ -227,24 +174,6 @@ func excludeT(t *Table, pattern string) (err error) {
 				return false, err
 			}
 			return true, nil
-		})
-	}
-	return
-}
-
-func excludeV(v *View, pattern string) (err error) {
-	if p, exclude := excludeType(typeC, pattern); exclude {
-		v.Columns, err = filter(v.Columns, func(c *Column) (bool, error) {
-			match, err := filepath.Match(p, c.Name)
-			if !match || err != nil {
-				return false, err
-			}
-			return true, nil
-		})
-	}
-	if p, exclude := excludeType(typeTg, pattern); exclude {
-		v.Triggers, err = filter(v.Triggers, func(t *Trigger) (bool, error) {
-			return filepath.Match(p, t.Name)
 		})
 	}
 	return
@@ -292,16 +221,12 @@ func excludeObjects(all []Object, glob []string) ([]Object, error) {
 }
 
 const (
-	typeV  = "view"
-	typeT  = "table"
-	typeS  = "schema"
-	typeC  = "column"
-	typeI  = "index"
-	typeF  = "fk"
-	typeK  = "check"
-	typeTg = "trigger"
-	typeFn = "function"
-	typePr = "procedure"
+	typeT = "table"
+	typeS = "schema"
+	typeC = "column"
+	typeI = "index"
+	typeF = "fk"
+	typeK = "check"
 )
 
 var reType = regexp.MustCompile(`\[type=([a-z|_]+)+\]$`)

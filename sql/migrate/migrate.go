@@ -1134,6 +1134,10 @@ func (e *StmtExecError) Unwrap() error {
 	return e.Err
 }
 
+func (e *StmtExecError) Error() string {
+	return fmt.Sprintf("sql/migrate: executing statement %q from version %q: %v", e.Stmt.Text, e.Version, e.Err)
+}
+
 func (e *NotCleanError) Error() string {
 	return "sql/migrate: connected database is not clean: " + e.Reason
 }
@@ -1281,4 +1285,31 @@ func LogIntro(l Logger, revs []*Revision, files []File) {
 func LogNoPendingFiles(l Logger, revs []*Revision) {
 	LogIntro(l, revs, nil)
 	l.Log(LogDone{})
+}
+
+// IsCheckpoint reports whether the file is a checkpoint file.
+func (f *LocalFile) IsCheckpoint() bool {
+	return f.isCheckpoint()
+}
+
+// CheckpointTag returns the tag of the checkpoint file, if defined.
+func (f *LocalFile) CheckpointTag() (string, error) {
+	return f.checkpointTag()
+}
+
+// fileStmts returns the statements defined in the given file.
+func (e *Executor) fileStmts(f File) ([]*Stmt, error) {
+	return FileStmtDecls(e.drv, f)
+}
+
+func (e *Executor) fileChecks(context.Context, File, *Revision) error {
+	return nil // unimplemented
+}
+
+// ValidateDir before operating on it.
+func (e *Executor) ValidateDir(context.Context) error {
+	if err := Validate(e.dir); err != nil {
+		return fmt.Errorf("sql/migrate: validate migration directory: %w", err)
+	}
+	return nil
 }
