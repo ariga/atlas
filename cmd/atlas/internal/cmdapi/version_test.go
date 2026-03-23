@@ -24,7 +24,7 @@ func TestCLI_Version(t *testing.T) {
 			cmd: exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 				"version",
 			),
-			expected: "atlas unofficial version - development\nhttps://github.com/ariga/atlas/releases/latest\n",
+			expected: "atlas community version - development\nhttps://github.com/ariga/atlas/releases/latest\n",
 		},
 		{
 			name: "release",
@@ -34,7 +34,7 @@ func TestCLI_Version(t *testing.T) {
 				"ariga.io/atlas/cmd/atlas",
 				"version",
 			),
-			expected: "atlas unofficial version v1.2.3\nhttps://github.com/ariga/atlas/releases/tag/v1.2.3\n",
+			expected: "atlas community version v1.2.3\nhttps://github.com/ariga/atlas/releases/tag/v1.2.3\n",
 		},
 		{
 			name: "canary",
@@ -44,7 +44,7 @@ func TestCLI_Version(t *testing.T) {
 				"ariga.io/atlas/cmd/atlas",
 				"version",
 			),
-			expected: "atlas unofficial version v0.3.0-6539f2704b5d-canary\nhttps://github.com/ariga/atlas/releases/latest\n",
+			expected: "atlas community version v0.3.0-6539f2704b5d-canary\nhttps://github.com/ariga/atlas/releases/latest\n",
 		},
 		{
 			name: "flavor",
@@ -54,7 +54,7 @@ func TestCLI_Version(t *testing.T) {
 				"ariga.io/atlas/cmd/atlas",
 				"version",
 			),
-			expected: "atlas unofficial flavor version - development\nhttps://github.com/ariga/atlas/releases/latest\n",
+			expected: "atlas community flavor version - development\nhttps://github.com/ariga/atlas/releases/latest\n",
 		},
 	}
 	for _, tt := range tests {

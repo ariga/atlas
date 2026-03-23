@@ -5,6 +5,6 @@
 package cmdapi
 
 const (
-	versionFmt  = "atlas unofficial "
+	versionFmt  = "atlas community "
 	versionInfo = "To download an official version, visit: https://atlasgo.io/getting-started#installation\n"
 )

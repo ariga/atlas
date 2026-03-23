@@ -155,7 +155,7 @@ func initialize(ctx context.Context) (context.Context, func(error)) {
 		if runtime.GOOS == "windows" {
 			release = "https://release.ariga.io/atlas/atlas-windows-amd64-latest.exe"
 		}
-		if err := cmdlog.WarnOnce(os.Stderr, cmdlog.ColorCyan(fmt.Sprintf(`You're running the community build of Atlas, which may differ from the official version.
+		if err := cmdlog.WarnOnce(os.Stderr, cmdlog.ColorCyan(fmt.Sprintf(`You're running the community build of Atlas, which differs from the official version.
 If this error persists, try installing the official version as a troubleshooting step:
 
   %s
