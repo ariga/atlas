@@ -138,7 +138,7 @@ func Test_SchemaPlan(t *testing.T) {
 		plan, err := c.SchemaPlan(ctx, &atlasexec.SchemaPlanParams{
 			From:   []string{"file://schema-1.lt.hcl"},
 			To:     []string{"file://schema-2.lt.hcl"},
-			DevURL: "sqlite://:memory:?_fk=1",
+			DevURL: "sqlite://?mode=memory&_fk=1",
 			DryRun: true,
 		})
 		require.NoError(t, err)
@@ -152,7 +152,7 @@ func Test_SchemaPlan(t *testing.T) {
 		plan, err := c.SchemaPlan(ctx, &atlasexec.SchemaPlanParams{
 			From:   []string{"file://schema-1.lt.hcl"},
 			To:     []string{"file://schema-2.lt.hcl"},
-			DevURL: "sqlite://:memory:?_fk=1",
+			DevURL: "sqlite://?mode=memory&_fk=1",
 			Save:   true,
 		})
 		require.NoError(t, err)
