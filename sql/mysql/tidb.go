@@ -35,6 +35,9 @@ type (
 // dropped if its foreign key was not dropped before.
 func priority(change schema.Change) int {
 	switch c := change.(type) {
+	case *schema.AddSchema:
+		// CREATE DATABASE must come before any tables in that database.
+		return 0
 	case *schema.ModifyTable:
 		// each modifyTable should have a single change since we apply `flat` before we sort.
 		return priority(c.Changes[0])
