@@ -1,6 +1,6 @@
 module ariga.io/atlas/cmd/atlas
 
-go 1.25.0
+go 1.25.9
 
 replace ariga.io/atlas => ../..
 
