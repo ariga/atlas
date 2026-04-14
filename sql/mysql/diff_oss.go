@@ -97,9 +97,11 @@ func (d *diff) TableAttrDiff(from, to *schema.Table, opts *schema.DiffOptions) (
 	if change := d.systemVerChange(from.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
-	if err := partitionChanged(from, to); err != nil {
+	pChanges, err := partitionDiff(from, to)
+	if err != nil {
 		return nil, err
 	}
+	changes = append(changes, pChanges...)
 	if !d.SupportsCheck() && sqlx.Has(to.Attrs, &schema.Check{}) {
 		return nil, fmt.Errorf("version %q does not support CHECK constraints", d.V)
 	}
@@ -742,28 +744,28 @@ func (*diff) ViewAttrChanges(_, _ *schema.View) []schema.Change {
 	return nil // Not implemented.
 }
 
-// partitionChanged checks if the partition configuration has changed between
-// two table states. Partition changes require drop and recreate.
-func partitionChanged(from, to *schema.Table) error {
+// partitionDiff returns schema changes for migrating partition configuration.
+func partitionDiff(from, to *schema.Table) ([]schema.Change, error) {
 	var fromP, toP Partition
-	switch fromHas, toHas := sqlx.Has(from.Attrs, &fromP), sqlx.Has(to.Attrs, &toP); {
+	fromHas, toHas := sqlx.Has(from.Attrs, &fromP), sqlx.Has(to.Attrs, &toP)
+	switch {
 	case !fromHas && !toHas:
-		return nil
-	case fromHas && !toHas:
-		return fmt.Errorf("partition cannot be dropped from %q (drop and add is required)", from.Name)
+		return nil, nil
 	case !fromHas && toHas:
-		return fmt.Errorf("partition cannot be added to %q (drop and add is required)", to.Name)
+		return []schema.Change{&schema.AddAttr{A: &toP}}, nil
+	case fromHas && !toHas:
+		return []schema.Change{&schema.DropAttr{A: &fromP}}, nil
 	default:
 		if !partitionsEqual(fromP, toP) {
-			return fmt.Errorf("partition of table %q cannot be changed (drop and add is required)", to.Name)
+			return []schema.Change{&schema.ModifyAttr{From: &fromP, To: &toP}}, nil
 		}
+		return nil, nil
 	}
-	return nil
 }
 
-// partitionsEqual compares two Partition values structurally.
-func partitionsEqual(a, b Partition) bool {
-	if strings.ToUpper(a.T) != strings.ToUpper(b.T) || a.Count != b.Count || len(a.Key) != len(b.Key) || len(a.Parts) != len(b.Parts) {
+// partitionKeysEqual compares the Key slices of two Partitions.
+func partitionKeysEqual(a, b *Partition) bool {
+	if len(a.Key) != len(b.Key) {
 		return false
 	}
 	for i := range a.Key {
@@ -782,6 +784,17 @@ func partitionsEqual(a, b Partition) bool {
 		default:
 			return false
 		}
+	}
+	return true
+}
+
+// partitionsEqual compares two Partition values structurally.
+func partitionsEqual(a, b Partition) bool {
+	if strings.ToUpper(a.T) != strings.ToUpper(b.T) || a.Count != b.Count || len(a.Parts) != len(b.Parts) {
+		return false
+	}
+	if !partitionKeysEqual(&a, &b) {
+		return false
 	}
 	for i := range a.Parts {
 		ap, bp := a.Parts[i], b.Parts[i]

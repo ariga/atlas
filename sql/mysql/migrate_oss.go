@@ -307,7 +307,10 @@ func (s *state) dropTable(drop *schema.DropTable) error {
 // modifyTable builds and appends the migration changes for
 // bringing the table into its modified state.
 func (s *state) modifyTable(modify *schema.ModifyTable) error {
-	var changes [2][]schema.Change
+	var (
+		changes   [2][]schema.Change
+		partChanges []schema.Change
+	)
 	if len(modify.T.Columns) == 0 {
 		return fmt.Errorf("table %q has no columns; drop the table instead", modify.T.Name)
 	}
@@ -341,6 +344,25 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 			changes[1] = append(changes[1], &schema.AddIndex{
 				I: change.To,
 			})
+		// Partition changes must be separate ALTER TABLE statements.
+		case *schema.AddAttr:
+			if _, ok := change.A.(*Partition); ok {
+				partChanges = append(partChanges, change)
+			} else {
+				changes[1] = append(changes[1], change)
+			}
+		case *schema.DropAttr:
+			if _, ok := change.A.(*Partition); ok {
+				partChanges = append(partChanges, change)
+			} else {
+				changes[1] = append(changes[1], change)
+			}
+		case *schema.ModifyAttr:
+			if _, ok := change.From.(*Partition); ok {
+				partChanges = append(partChanges, change)
+			} else {
+				changes[1] = append(changes[1], change)
+			}
 		default:
 			changes[1] = append(changes[1], change)
 		}
@@ -350,6 +372,11 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 			if err := s.alterTable(modify.T, changes[i]); err != nil {
 				return err
 			}
+		}
+	}
+	for _, c := range partChanges {
+		if err := s.partitionAlter(modify.T, c); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -512,6 +539,198 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		if change.Reverse, err = build(reverse); err != nil {
 			return fmt.Errorf("reversed alter table %q: %v", t.Name, err)
 		}
+	}
+	s.append(change)
+	return nil
+}
+
+// partitionAlter generates ALTER TABLE statements for partition changes.
+// Partition operations cannot be combined with other ALTER clauses.
+func (s *state) partitionAlter(t *schema.Table, c schema.Change) error {
+	b := s.Build("ALTER TABLE").SchemaResource(t.Schema, t.Name)
+	var (
+		reverse    string
+		reversible = true
+	)
+	switch c := c.(type) {
+	case *schema.AddAttr:
+		p := c.A.(*Partition)
+		ps, err := formatPartition(*p)
+		if err != nil {
+			return fmt.Errorf("alter table %q: %v", t.Name, err)
+		}
+		b.P(ps)
+		reverse = s.Build("ALTER TABLE").SchemaResource(t.Schema, t.Name).P("REMOVE PARTITIONING").String()
+	case *schema.DropAttr:
+		b.P("REMOVE PARTITIONING")
+		p := c.A.(*Partition)
+		ps, err := formatPartition(*p)
+		if err != nil {
+			return fmt.Errorf("alter table %q: %v", t.Name, err)
+		}
+		reverse = s.Build("ALTER TABLE").SchemaResource(t.Schema, t.Name).P(ps).String()
+	case *schema.ModifyAttr:
+		fromP := c.From.(*Partition)
+		toP := c.To.(*Partition)
+		changes := partitionModifyChanges(fromP, toP)
+		for _, pc := range changes {
+			if err := s.appendPartitionChange(t, pc); err != nil {
+				return err
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("unexpected partition change type: %T", c)
+	}
+	change := &migrate.Change{
+		Cmd: b.String(),
+		Source: &schema.ModifyTable{
+			T:       t,
+			Changes: []schema.Change{c},
+		},
+		Comment: fmt.Sprintf("modify %q table partition", t.Name),
+	}
+	if reversible {
+		change.Reverse = reverse
+	}
+	s.append(change)
+	return nil
+}
+
+// Partition modification operations.
+const (
+	partitionOpAdd  = "add"
+	partitionOpDrop = "drop"
+	partitionOpFull = "full"
+)
+
+// partitionModifyChange represents a single partition modification operation.
+type partitionModifyChange struct {
+	op    string          // partitionOpAdd, partitionOpDrop, partitionOpFull
+	parts []*PartitionDef // for add/drop
+	from  *Partition      // for full replacement
+	to    *Partition      // for full replacement or add context
+}
+
+// partitionModifyChanges determines the optimal set of partition operations
+// when modifying a partition configuration.
+func partitionModifyChanges(from, to *Partition) []partitionModifyChange {
+	// If type or key changed, full replacement is required.
+	if strings.ToUpper(from.T) != strings.ToUpper(to.T) || !partitionKeysEqual(from, to) || from.Count != to.Count {
+		return []partitionModifyChange{{op: partitionOpFull, from: from, to: to}}
+	}
+	// For HASH/KEY with only count change, full replacement.
+	if from.Count > 0 || to.Count > 0 {
+		return []partitionModifyChange{{op: partitionOpFull, from: from, to: to}}
+	}
+	// Build index of existing partitions by name.
+	fromIdx := make(map[string]int, len(from.Parts))
+	for i, p := range from.Parts {
+		fromIdx[p.Name] = i
+	}
+	toIdx := make(map[string]int, len(to.Parts))
+	for i, p := range to.Parts {
+		toIdx[p.Name] = i
+	}
+	// Check for modifications (bound changes) — requires full replacement.
+	for name, fi := range fromIdx {
+		if ti, ok := toIdx[name]; ok {
+			if from.Parts[fi].Bound != to.Parts[ti].Bound {
+				return []partitionModifyChange{{op: partitionOpFull, from: from, to: to}}
+			}
+		}
+	}
+	var changes []partitionModifyChange
+	// Dropped partitions.
+	var dropped []*PartitionDef
+	for _, p := range from.Parts {
+		if _, ok := toIdx[p.Name]; !ok {
+			dropped = append(dropped, p)
+		}
+	}
+	if len(dropped) > 0 {
+		changes = append(changes, partitionModifyChange{op: partitionOpDrop, parts: dropped})
+	}
+	// Added partitions.
+	var added []*PartitionDef
+	for _, p := range to.Parts {
+		if _, ok := fromIdx[p.Name]; !ok {
+			added = append(added, p)
+		}
+	}
+	if len(added) > 0 {
+		changes = append(changes, partitionModifyChange{op: partitionOpAdd, parts: added, to: to})
+	}
+	// Reorder-only changes are not supported incrementally; use full replacement.
+	if len(changes) == 0 {
+		return []partitionModifyChange{{op: partitionOpFull, from: from, to: to}}
+	}
+	return changes
+}
+
+// appendPartitionChange generates a single ALTER TABLE statement for a partition operation.
+func (s *state) appendPartitionChange(t *schema.Table, pc partitionModifyChange) error {
+	b := s.Build("ALTER TABLE").SchemaResource(t.Schema, t.Name)
+	var (
+		reverse    string
+		reversible = true
+	)
+	switch pc.op {
+	case partitionOpFull:
+		ps, err := formatPartition(*pc.to)
+		if err != nil {
+			return fmt.Errorf("alter table %q: %v", t.Name, err)
+		}
+		b.P(ps)
+		rps, err := formatPartition(*pc.from)
+		if err != nil {
+			return fmt.Errorf("alter table %q reverse: %v", t.Name, err)
+		}
+		reverse = s.Build("ALTER TABLE").SchemaResource(t.Schema, t.Name).P(rps).String()
+	case partitionOpAdd:
+		prefix := partitionValuePrefix(pc.to.T)
+		b.P("ADD PARTITION (")
+		for i, p := range pc.parts {
+			if i > 0 {
+				b.P(",")
+			}
+			b.P("PARTITION")
+			b.Ident(p.Name)
+			if p.Bound != "" && prefix != "" {
+				b.P(prefix)
+				b.P(p.Bound)
+			}
+		}
+		b.P(")")
+		// Reverse: DROP PARTITION p1, p2 (single statement).
+		rb := s.Build("ALTER TABLE").SchemaResource(t.Schema, t.Name).P("DROP PARTITION")
+		for i, p := range pc.parts {
+			if i > 0 {
+				rb.P(",")
+			}
+			rb.Ident(p.Name)
+		}
+		reverse = rb.String()
+	case partitionOpDrop:
+		b.P("DROP PARTITION")
+		for i, p := range pc.parts {
+			if i > 0 {
+				b.P(",")
+			}
+			b.Ident(p.Name)
+		}
+		// DROP PARTITION is not safely reversible (data loss).
+		reversible = false
+	}
+	change := &migrate.Change{
+		Cmd: b.String(),
+		Source: &schema.ModifyTable{
+			T: t,
+		},
+		Comment: fmt.Sprintf("modify %q table partition", t.Name),
+	}
+	if reversible {
+		change.Reverse = reverse
 	}
 	s.append(change)
 	return nil

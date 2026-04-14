@@ -1817,6 +1817,379 @@ func TestFormatPartition_Hash(t *testing.T) {
 	require.Contains(t, s, "PARTITIONS 4")
 }
 
+func TestMigrate_AddPartition(t *testing.T) {
+	migrate, mk, err := newMigrate("8.0.13")
+	require.NoError(t, err)
+	mk.ExpectExec(sqltest.Escape("ALTER TABLE `events` PARTITION BY RANGE (YEAR(`created`)) ( PARTITION `p0` VALUES LESS THAN (2020) , PARTITION `p1` VALUES LESS THAN MAXVALUE )")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	err = migrate.ApplyChanges(context.Background(), []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.AddAttr{A: &Partition{
+					T: PartitionTypeRange,
+					Key: []*PartitionKeyPart{
+						{X: &schema.RawExpr{X: "YEAR(`created`)"}},
+					},
+					Parts: []*PartitionDef{
+						{Name: "p0", Bound: "(2020)"},
+						{Name: "p1", Bound: "MAXVALUE"},
+					},
+				}},
+			},
+		},
+	})
+	require.NoError(t, err)
+}
+
+func TestMigrate_RemovePartitioning(t *testing.T) {
+	migrate, mk, err := newMigrate("8.0.13")
+	require.NoError(t, err)
+	mk.ExpectExec(sqltest.Escape("ALTER TABLE `events` REMOVE PARTITIONING")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	err = migrate.ApplyChanges(context.Background(), []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.DropAttr{A: &Partition{
+					T: PartitionTypeRange,
+					Key: []*PartitionKeyPart{
+						{X: &schema.RawExpr{X: "YEAR(`created`)"}},
+					},
+					Parts: []*PartitionDef{
+						{Name: "p0", Bound: "(2020)"},
+					},
+				}},
+			},
+		},
+	})
+	require.NoError(t, err)
+}
+
+func TestMigrate_AddDropPartitionDef(t *testing.T) {
+	migrate, mk, err := newMigrate("8.0.13")
+	require.NoError(t, err)
+	// Adding a new partition definition to an existing RANGE partition.
+	mk.ExpectExec(sqltest.Escape("ALTER TABLE `events` ADD PARTITION ( PARTITION `p2` VALUES LESS THAN (2025) )")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	err = migrate.ApplyChanges(context.Background(), []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Partition{
+						T: PartitionTypeRange,
+						Key: []*PartitionKeyPart{
+							{X: &schema.RawExpr{X: "YEAR(`created`)"}},
+						},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2023)"},
+						},
+					},
+					To: &Partition{
+						T: PartitionTypeRange,
+						Key: []*PartitionKeyPart{
+							{X: &schema.RawExpr{X: "YEAR(`created`)"}},
+						},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2023)"},
+							{Name: "p2", Bound: "(2025)"},
+						},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+}
+
+func TestMigrate_DropPartitionDef(t *testing.T) {
+	migrate, mk, err := newMigrate("8.0.13")
+	require.NoError(t, err)
+	// Dropping a partition definition.
+	mk.ExpectExec(sqltest.Escape("ALTER TABLE `events` DROP PARTITION `p1`")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	err = migrate.ApplyChanges(context.Background(), []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Partition{
+						T: PartitionTypeRange,
+						Key: []*PartitionKeyPart{
+							{X: &schema.RawExpr{X: "YEAR(`created`)"}},
+						},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2023)"},
+						},
+					},
+					To: &Partition{
+						T: PartitionTypeRange,
+						Key: []*PartitionKeyPart{
+							{X: &schema.RawExpr{X: "YEAR(`created`)"}},
+						},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+						},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+}
+
+func TestMigrate_FullPartitionReplacement(t *testing.T) {
+	migrate, mk, err := newMigrate("8.0.13")
+	require.NoError(t, err)
+	// When partition type changes, full PARTITION BY replacement.
+	mk.ExpectExec(sqltest.Escape("ALTER TABLE `events` PARTITION BY HASH (YEAR(`created`)) PARTITIONS 4")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	err = migrate.ApplyChanges(context.Background(), []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Partition{
+						T: PartitionTypeRange,
+						Key: []*PartitionKeyPart{
+							{X: &schema.RawExpr{X: "YEAR(`created`)"}},
+						},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+						},
+					},
+					To: &Partition{
+						T:     PartitionTypeHash,
+						Key:   []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Count: 4,
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+}
+
+func TestMigrate_PartitionReorder(t *testing.T) {
+	// M1: Reorder-only (same partitions, different order) triggers full replacement.
+	db, _, err := newMigrate("8.0.13")
+	require.NoError(t, err)
+	plan, err := db.PlanChanges(context.Background(), "reorder", []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2025)"},
+						},
+					},
+					To: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p1", Bound: "(2025)"},
+							{Name: "p0", Bound: "(2020)"},
+						},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, plan.Changes, 1)
+	require.Contains(t, plan.Changes[0].Cmd, "PARTITION BY")
+}
+
+func TestMigrate_PartitionAlterReverse(t *testing.T) {
+	db, _, err := newMigrate("8.0.13")
+	require.NoError(t, err)
+
+	// ADD partition: reverse should be REMOVE PARTITIONING.
+	plan, err := db.PlanChanges(context.Background(), "add-part", []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.AddAttr{A: &Partition{
+					T:   PartitionTypeRange,
+					Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+					Parts: []*PartitionDef{
+						{Name: "p0", Bound: "(2020)"},
+					},
+				}},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, plan.Changes, 1)
+	require.Contains(t, plan.Changes[0].Cmd, "PARTITION BY RANGE")
+	require.Equal(t, "ALTER TABLE `events` REMOVE PARTITIONING", plan.Changes[0].Reverse)
+
+	// REMOVE PARTITIONING: reverse should re-add partitioning.
+	plan, err = db.PlanChanges(context.Background(), "remove-part", []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.DropAttr{A: &Partition{
+					T:   PartitionTypeRange,
+					Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+					Parts: []*PartitionDef{
+						{Name: "p0", Bound: "(2020)"},
+					},
+				}},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, plan.Changes, 1)
+	require.Equal(t, "ALTER TABLE `events` REMOVE PARTITIONING", plan.Changes[0].Cmd)
+	require.Contains(t, plan.Changes[0].Reverse, "PARTITION BY RANGE")
+
+	// ADD PARTITION definition: reverse should be DROP PARTITION with correct syntax.
+	plan, err = db.PlanChanges(context.Background(), "add-def", []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+						},
+					},
+					To: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2025)"},
+							{Name: "p2", Bound: "MAXVALUE"},
+						},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, plan.Changes, 1)
+	require.Contains(t, plan.Changes[0].Cmd, "ADD PARTITION")
+	// Reverse should use correct MySQL syntax: DROP PARTITION p1, p2 (not repeated keyword).
+	require.Equal(t, "ALTER TABLE `events` DROP PARTITION `p1` , `p2`", plan.Changes[0].Reverse)
+
+	// DROP PARTITION: should have no reverse (data loss).
+	plan, err = db.PlanChanges(context.Background(), "drop-def", []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2025)"},
+						},
+					},
+					To: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+						},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, plan.Changes, 1)
+	// DROP PARTITION uses correct syntax: single keyword, comma-separated names.
+	require.Equal(t, "ALTER TABLE `events` DROP PARTITION `p1`", plan.Changes[0].Cmd)
+	require.Empty(t, plan.Changes[0].Reverse)
+
+	// Full replacement: reverse should be the original PARTITION BY.
+	plan, err = db.PlanChanges(context.Background(), "full-replace", []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+						},
+					},
+					To: &Partition{
+						T:     PartitionTypeHash,
+						Key:   []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Count: 4,
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, plan.Changes, 1)
+	require.Contains(t, plan.Changes[0].Cmd, "PARTITION BY HASH")
+	require.Contains(t, plan.Changes[0].Reverse, "PARTITION BY RANGE")
+}
+
+func TestMigrate_DropMultiplePartitions(t *testing.T) {
+	// Verify correct MySQL syntax for dropping multiple partitions: DROP PARTITION p1, p2
+	db, _, err := newMigrate("8.0.13")
+	require.NoError(t, err)
+	plan, err := db.PlanChanges(context.Background(), "drop-multi", []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2023)"},
+							{Name: "p2", Bound: "(2025)"},
+						},
+					},
+					To: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+						},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, plan.Changes, 1)
+	// Must NOT be "DROP PARTITION `p1` , DROP PARTITION `p2`"
+	require.Equal(t, "ALTER TABLE `events` DROP PARTITION `p1` , `p2`", plan.Changes[0].Cmd)
+}
+
 func TestMigrate_AddTableWithPartition(t *testing.T) {
 	migrate, mk, err := newMigrate("8.0.13")
 	require.NoError(t, err)

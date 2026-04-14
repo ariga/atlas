@@ -913,13 +913,15 @@ func TestSkipChanges(t *testing.T) {
 	})
 }
 
-func TestPartitionChanged(t *testing.T) {
-	// No partition on either side: no error.
+func TestPartitionDiff(t *testing.T) {
+	// No partition on either side: no changes.
 	from := &schema.Table{Name: "t", Schema: &schema.Schema{}}
 	to := &schema.Table{Name: "t", Schema: &schema.Schema{}}
-	require.NoError(t, partitionChanged(from, to))
+	changes, err := partitionDiff(from, to)
+	require.NoError(t, err)
+	require.Empty(t, changes)
 
-	// Same partition on both sides: no error.
+	// Same partition on both sides: no changes.
 	p := &Partition{
 		T:   PartitionTypeRange,
 		Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
@@ -927,31 +929,42 @@ func TestPartitionChanged(t *testing.T) {
 			{Name: "p0", Bound: "(2020)"},
 		},
 	}
-	from.AddAttrs(p)
-	to.AddAttrs(p)
-	require.NoError(t, partitionChanged(from, to))
+	from = &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+	to = &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+	changes, err = partitionDiff(from, to)
+	require.NoError(t, err)
+	require.Empty(t, changes)
 
-	// Partition added: error.
-	from2 := &schema.Table{Name: "t", Schema: &schema.Schema{}}
-	to2 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
-	require.Error(t, partitionChanged(from2, to2))
+	// Partition added: AddAttr.
+	from = &schema.Table{Name: "t", Schema: &schema.Schema{}}
+	to = &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+	changes, err = partitionDiff(from, to)
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	require.IsType(t, &schema.AddAttr{}, changes[0])
 
-	// Partition removed: error.
-	from3 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
-	to3 := &schema.Table{Name: "t", Schema: &schema.Schema{}}
-	require.Error(t, partitionChanged(from3, to3))
+	// Partition removed: DropAttr.
+	from = &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+	to = &schema.Table{Name: "t", Schema: &schema.Schema{}}
+	changes, err = partitionDiff(from, to)
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	require.IsType(t, &schema.DropAttr{}, changes[0])
 
-	// Partition type changed: error.
+	// Partition type changed: ModifyAttr.
 	p2 := &Partition{
-		T:   PartitionTypeHash,
-		Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+		T:     PartitionTypeHash,
+		Key:   []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
 		Count: 4,
 	}
-	from4 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
-	to4 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p2}}
-	require.Error(t, partitionChanged(from4, to4))
+	from = &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+	to = &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p2}}
+	changes, err = partitionDiff(from, to)
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	require.IsType(t, &schema.ModifyAttr{}, changes[0])
 
-	// Partition definition value changed: error.
+	// Partition definition value changed: ModifyAttr.
 	p3 := &Partition{
 		T:   PartitionTypeRange,
 		Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
@@ -959,7 +972,177 @@ func TestPartitionChanged(t *testing.T) {
 			{Name: "p0", Bound: "(2025)"},
 		},
 	}
-	from5 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
-	to5 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p3}}
-	require.Error(t, partitionChanged(from5, to5))
+	from = &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+	to = &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p3}}
+	changes, err = partitionDiff(from, to)
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	require.IsType(t, &schema.ModifyAttr{}, changes[0])
+}
+
+// TestTableDiff_Partition verifies that partition changes are detected
+// through the full TableDiff pipeline (not just the internal partitionDiff).
+func TestTableDiff_Partition(t *testing.T) {
+	rangePartition := func(parts ...*PartitionDef) *Partition {
+		return &Partition{
+			T:   PartitionTypeRange,
+			Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+			Parts: parts,
+		}
+	}
+	col := func(name string) *schema.Column {
+		return &schema.Column{Name: name, Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}}
+	}
+
+	tests := []struct {
+		name        string
+		from, to    *schema.Table
+		wantChanges []schema.Change
+	}{
+		{
+			name: "add partition to unpartitioned table",
+			from: func() *schema.Table {
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			to: func() *schema.Table {
+				p := rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"})
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			wantChanges: []schema.Change{
+				&schema.AddAttr{A: rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"})},
+			},
+		},
+		{
+			name: "remove partition from partitioned table",
+			from: func() *schema.Table {
+				p := rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"})
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			to: func() *schema.Table {
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			wantChanges: []schema.Change{
+				&schema.DropAttr{A: rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"})},
+			},
+		},
+		{
+			name: "add partition definition",
+			from: func() *schema.Table {
+				p := rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"})
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			to: func() *schema.Table {
+				p := rangePartition(
+					&PartitionDef{Name: "p0", Bound: "(2020)"},
+					&PartitionDef{Name: "p1", Bound: "(2025)"},
+				)
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			wantChanges: []schema.Change{
+				&schema.ModifyAttr{
+					From: rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"}),
+					To: rangePartition(
+						&PartitionDef{Name: "p0", Bound: "(2020)"},
+						&PartitionDef{Name: "p1", Bound: "(2025)"},
+					),
+				},
+			},
+		},
+		{
+			name: "drop partition definition",
+			from: func() *schema.Table {
+				p := rangePartition(
+					&PartitionDef{Name: "p0", Bound: "(2020)"},
+					&PartitionDef{Name: "p1", Bound: "(2025)"},
+				)
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			to: func() *schema.Table {
+				p := rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"})
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			wantChanges: []schema.Change{
+				&schema.ModifyAttr{
+					From: rangePartition(
+						&PartitionDef{Name: "p0", Bound: "(2020)"},
+						&PartitionDef{Name: "p1", Bound: "(2025)"},
+					),
+					To: rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"}),
+				},
+			},
+		},
+		{
+			name: "change partition type",
+			from: func() *schema.Table {
+				p := rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"})
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			to: func() *schema.Table {
+				p := &Partition{
+					T:     PartitionTypeHash,
+					Key:   []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+					Count: 4,
+				}
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			wantChanges: []schema.Change{
+				&schema.ModifyAttr{
+					From: rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"}),
+					To: &Partition{
+						T:     PartitionTypeHash,
+						Key:   []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Count: 4,
+					},
+				},
+			},
+		},
+		{
+			name: "no partition changes",
+			from: func() *schema.Table {
+				p := rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"})
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			to: func() *schema.Table {
+				p := rangePartition(&PartitionDef{Name: "p0", Bound: "(2020)"})
+				t := &schema.Table{Name: "events", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+				t.AddColumns(col("id"), col("created"))
+				return t
+			}(),
+			wantChanges: nil,
+		},
+	}
+	for _, tt := range tests {
+		db, m, err := sqlmock.New()
+		require.NoError(t, err)
+		mock{m}.version("8.0.19")
+		drv, err := Open(db)
+		require.NoError(t, err)
+		t.Run(tt.name, func(t *testing.T) {
+			changes, err := drv.TableDiff(tt.from, tt.to)
+			require.NoError(t, err)
+			require.EqualValues(t, tt.wantChanges, changes)
+		})
+	}
 }
