@@ -473,6 +473,18 @@ const (
 	EngineCSV    = "CSV"
 	EngineNDB    = "NDB" // NDBCLUSTER
 
+	// Partition type constants use underscores (e.g., RANGE_COLUMNS) as
+	// stable identifiers for HCL enum values and internal comparison.
+	// partitionTypeSQL() converts them to SQL syntax with spaces (e.g., "RANGE COLUMNS").
+	PartitionTypeRange        = "RANGE"
+	PartitionTypeRangeColumns = "RANGE_COLUMNS"
+	PartitionTypeList         = "LIST"
+	PartitionTypeListColumns  = "LIST_COLUMNS"
+	PartitionTypeHash         = "HASH"
+	PartitionTypeLinearHash   = "LINEAR_HASH"
+	PartitionTypeKey          = "KEY"
+	PartitionTypeLinearKey    = "LINEAR_KEY"
+
 	currentTS     = "current_timestamp"
 	defaultGen    = "default_generated"
 	autoIncrement = "auto_increment"

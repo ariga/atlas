@@ -276,11 +276,6 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		}
 		c.Attrs = append(c.Attrs, a)
 	}
-	if attr.autorandom {
-		// Placeholder with zero values; actual ShardBits/RangeBits are
-		// extracted from the CREATE TABLE statement in tinspect.setAutoRandom.
-		c.Attrs = append(c.Attrs, &AutoRandom{})
-	}
 	if attr.onUpdate != "" {
 		c.Attrs = append(c.Attrs, &OnUpdate{A: attr.onUpdate})
 	}
@@ -481,7 +476,6 @@ func (i *inspect) indexQuery() string {
 // extraAttr is a parsed version of the information_schema EXTRA column.
 type extraAttr struct {
 	autoinc          bool
-	autorandom       bool
 	onUpdate         string
 	generatedType    string
 	defaultGenerated bool
@@ -505,10 +499,7 @@ func parseExtra(extra string) (*extraAttr, error) {
 	case el == autoIncrement:
 		attr.autoinc = true
 	case el == "auto_random" || strings.HasPrefix(el, "auto_random("):
-		// TiDB returns "auto_random" (or "auto_random(5)" in v7+) in the EXTRA
-		// column for columns with the AUTO_RANDOM attribute. Shard/range bits
-		// are extracted from the CREATE TABLE statement in tinspect.setAutoRandom.
-		attr.autorandom = true
+		// TiDB-specific; handled by tinspect.setAutoRandom.
 	case reTimeOnUpdate.MatchString(extra):
 		attr.onUpdate = reTimeOnUpdate.FindStringSubmatch(extra)[1]
 	case reGenerateType.MatchString(extra):
@@ -533,6 +524,9 @@ func (i *inspect) showCreate(ctx context.Context, s *schema.Schema) error {
 		}
 		st.setIndexParser(c)
 		if err := st.setAutoInc(t, c); err != nil {
+			return err
+		}
+		if err := setPartition(t, c); err != nil {
 			return err
 		}
 	}
@@ -811,60 +805,6 @@ type (
 		V int64
 	}
 
-	// AutoRandom is a TiDB-specific attribute for BIGINT primary key columns
-	// that generates random unique IDs to avoid write hotspots.
-	//
-	// Restrictions:
-	//   - Only valid on BIGINT primary key columns with CLUSTERED index.
-	//   - Cannot be removed once set (TiDB limitation).
-	//   - ShardBits: 1-15 (default 5).
-	//   - RangeBits: 32-64 or 0 for default (64).
-	AutoRandom struct {
-		schema.Attr
-		ShardBits int
-		RangeBits int
-	}
-
-	// ShardRowIDBits is a TiDB-specific table attribute that distributes
-	// implicit _tidb_rowid values across multiple shards to reduce write hotspots.
-	//
-	// Applicable to tables with NONCLUSTERED primary keys or no primary key.
-	// Value range: 0-15 (0 means no sharding).
-	ShardRowIDBits struct {
-		schema.Attr
-		N int
-	}
-
-	// PreSplitRegions is a TiDB-specific table attribute that pre-splits
-	// the table into 2^N regions when the table is created.
-	//
-	// Must be used with ShardRowIDBits or AutoRandom.
-	// Value must be <= ShardRowIDBits (or AUTO_RANDOM shard bits).
-	PreSplitRegions struct {
-		schema.Attr
-		N int
-	}
-
-	// AutoIDCache is a TiDB-specific table attribute that controls the cache
-	// size for auto-increment ID allocation. The default is 30000 (AutoIDCacheDefault).
-	// Setting it to 1 enables MySQL-compatible strictly increasing IDs.
-	//
-	// Value range: >= 1 (minimum 1, default 30000).
-	AutoIDCache struct {
-		schema.Attr
-		N int
-	}
-
-	// ClusteredIndex is a TiDB-specific index attribute indicating whether
-	// the primary key is CLUSTERED or NONCLUSTERED.
-	//
-	// CLUSTERED: PK values are stored directly in the index (default for INT PKs).
-	// NONCLUSTERED: Uses implicit _tidb_rowid; enables SHARD_ROW_ID_BITS.
-	ClusteredIndex struct {
-		schema.Attr
-		Clustered bool
-	}
-
 	// CreateOptions attribute for describing extra options used with CREATE TABLE.
 	CreateOptions struct {
 		schema.Attr
@@ -953,6 +893,41 @@ type (
 		T string
 	}
 
+	// Partition defines the partitioning specification of a MySQL table.
+	Partition struct {
+		schema.Attr
+		// T defines the partition type/strategy.
+		// Uses constants: PartitionTypeRange, PartitionTypeRangeColumns,
+		// PartitionTypeList, PartitionTypeListColumns, PartitionTypeHash,
+		// PartitionTypeLinearHash, PartitionTypeKey, PartitionTypeLinearKey.
+		T string
+		// Key holds the partition key: columns or expressions used in
+		// the PARTITION BY clause.
+		Key []*PartitionKeyPart
+		// Parts holds the individual partition definitions (named partitions
+		// with value boundaries). Empty for HASH/KEY with PARTITIONS N.
+		Parts []*PartitionDef
+		// Count holds the number of partitions for HASH/KEY when using
+		// PARTITIONS N syntax (no explicit partition definitions).
+		Count int
+	}
+
+	// PartitionKeyPart represents a single part of the partition key
+	// (a column or expression).
+	PartitionKeyPart struct {
+		X schema.Expr    // Expression (e.g., YEAR(created))
+		C *schema.Column // Column reference
+	}
+
+	// PartitionDef represents a single named partition definition.
+	PartitionDef struct {
+		Name string // Partition name (e.g., "p0")
+		// Bound holds the boundary expression without the VALUES LESS THAN / VALUES IN
+		// prefix. The prefix is inferred from the partition type at SQL generation time.
+		// Examples: "(2020)", "MAXVALUE", "(1,2)", "('2020-01-01')".
+		Bound string
+	}
+
 	// putShow is an intermediate table attribute used
 	// on inspection to indicate if the 'SHOW TABLE' is
 	// required and for what.
@@ -1027,6 +1002,334 @@ func (s *showTable) setIndexParser(c *CreateStmt) {
 			idx.AddAttrs(&IndexParser{P: matches[1]})
 		}
 	}
+}
+
+// rePartitionBy matches the PARTITION BY clause from CREATE TABLE output.
+// MySQL wraps it in /*!50100 ... */ comments in SHOW CREATE TABLE.
+var rePartitionBy = regexp.MustCompile(`(?i)(?:/\*!\d+\s+)?PARTITION\s+BY\s+`)
+
+// reVersionComment matches the MySQL version-specific comment wrapper (e.g., /*!50100).
+var reVersionComment = regexp.MustCompile(`/\*!\d+\s+`)
+
+// setPartition parses partition information from the CREATE TABLE statement
+// and attaches it as a Partition attribute to the table.
+func setPartition(t *schema.Table, c *CreateStmt) error {
+	loc := rePartitionBy.FindStringIndex(c.S)
+	if loc == nil {
+		return nil
+	}
+	s := c.S[loc[0]:]
+	// Strip the /*!50100 version comment wrapper if present.
+	s = reVersionComment.ReplaceAllString(s, "")
+	if idx := strings.LastIndex(s, "*/"); idx != -1 {
+		s = strings.TrimSpace(s[:idx])
+	}
+	s = strings.TrimSpace(s)
+	// Verify the expected prefix after stripping.
+	if !strings.HasPrefix(strings.ToUpper(s), "PARTITION BY ") {
+		return fmt.Errorf("unexpected partition clause for table %q: %q", t.Name, s)
+	}
+	p, err := parsePartition(s, t)
+	if err != nil {
+		return fmt.Errorf("parse partition for table %q: %w", t.Name, err)
+	}
+	// Remove "partitioned" from CreateOptions before adding the Partition
+	// attribute, so that slice indices are not affected by the append.
+	for i, attr := range t.Attrs {
+		co, ok := attr.(*CreateOptions)
+		if !ok {
+			continue
+		}
+		v := rePartitioned.ReplaceAllString(co.V, "")
+		v = strings.TrimSpace(v)
+		if v == "" {
+			t.Attrs = append(t.Attrs[:i], t.Attrs[i+1:]...)
+		} else {
+			co.V = v
+		}
+		break
+	}
+	t.AddAttrs(p)
+	return nil
+}
+
+// rePartitioned matches the word "partitioned" as a whole word in CREATE_OPTIONS.
+var rePartitioned = regexp.MustCompile(`\bpartitioned\b`)
+
+// partitionTypes maps SQL syntax prefixes to internal partition type constants.
+// Ordered by longest prefix first to avoid ambiguous matches.
+var partitionTypes = []struct {
+	prefix string
+	typ    string
+}{
+	{"RANGE COLUMNS", PartitionTypeRangeColumns},
+	{"LIST COLUMNS", PartitionTypeListColumns},
+	{"LINEAR HASH", PartitionTypeLinearHash},
+	{"LINEAR KEY", PartitionTypeLinearKey},
+	{"RANGE", PartitionTypeRange},
+	{"LIST", PartitionTypeList},
+	{"HASH", PartitionTypeHash},
+	{"KEY", PartitionTypeKey},
+}
+
+// parsePartition parses a PARTITION BY clause string into a Partition struct.
+// The input string should start with "PARTITION BY".
+func parsePartition(s string, t *schema.Table) (*Partition, error) {
+	p := &Partition{}
+	// Remove "PARTITION BY" prefix.
+	s = strings.TrimSpace(s[len("PARTITION BY"):])
+	upper := strings.ToUpper(s)
+	var keyStart int
+	for _, pt := range partitionTypes {
+		if strings.HasPrefix(upper, pt.prefix) {
+			p.T = pt.typ
+			keyStart = len(pt.prefix)
+			break
+		}
+	}
+	if p.T == "" {
+		return nil, fmt.Errorf("unknown partition type in: %q", s)
+	}
+	s = strings.TrimSpace(s[keyStart:])
+
+	// Parse partition key expression (inside parentheses).
+	if len(s) == 0 || s[0] != '(' {
+		return nil, fmt.Errorf("expected '(' after partition type, got: %q", s)
+	}
+	keyEnd := matchParen(s, 0)
+	if keyEnd == -1 {
+		return nil, fmt.Errorf("unmatched '(' in partition key: %q", s)
+	}
+	keyExpr := strings.TrimSpace(s[1:keyEnd])
+	// Parse key parts (comma-separated columns or expressions).
+	parts := splitTopLevel(keyExpr, ',')
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		kp := &PartitionKeyPart{}
+		// Check if it's a simple column reference (backtick-quoted or plain identifier).
+		colName := strings.Trim(part, "`")
+		if col, ok := t.Column(colName); ok && (part == "`"+colName+"`" || isIdentifier(part)) {
+			kp.C = col
+		} else {
+			// It's an expression (e.g., YEAR(`created`)).
+			kp.X = &schema.RawExpr{X: part}
+		}
+		p.Key = append(p.Key, kp)
+	}
+	s = strings.TrimSpace(s[keyEnd+1:])
+
+	// Parse PARTITIONS N or individual partition definitions.
+	upper = strings.ToUpper(s)
+	if strings.HasPrefix(upper, "PARTITIONS") {
+		n, err := strconv.Atoi(strings.TrimSpace(s[len("PARTITIONS"):]))
+		if err != nil {
+			return nil, fmt.Errorf("invalid PARTITIONS count: %w", err)
+		}
+		p.Count = n
+	} else if len(s) > 0 && s[0] == '(' {
+		defs, err := parsePartitionDefs(s)
+		if err != nil {
+			return nil, err
+		}
+		p.Parts = defs
+	}
+	return p, nil
+}
+
+// parsePartitionDefs parses individual partition definitions from a string
+// like "(PARTITION p0 VALUES LESS THAN (2020), PARTITION p1 ...)".
+func parsePartitionDefs(s string) ([]*PartitionDef, error) {
+	// Remove outer parentheses.
+	s = strings.TrimSpace(s)
+	if s[0] != '(' {
+		return nil, fmt.Errorf("expected '(' for partition definitions, got: %q", s)
+	}
+	// Find the matching closing paren.
+	end := matchParen(s, 0)
+	if end == -1 {
+		return nil, fmt.Errorf("unmatched '(' in partition definitions")
+	}
+	inner := strings.TrimSpace(s[1:end])
+
+	// Split partition definitions by top-level commas.
+	defStrs := splitTopLevel(inner, ',')
+	var defs []*PartitionDef
+	for _, ds := range defStrs {
+		ds = strings.TrimSpace(ds)
+		if ds == "" {
+			continue
+		}
+		def, err := parseOnePartitionDef(ds)
+		if err != nil {
+			return nil, err
+		}
+		defs = append(defs, def)
+	}
+	return defs, nil
+}
+
+// rePartitionDef matches a single partition definition.
+// The second capture group is optional to support HASH/KEY partitions without VALUES clause.
+// Uses (?s) so that . matches newlines (e.g., long COMMENT values).
+var rePartitionDef = regexp.MustCompile("(?is)^PARTITION\\s+`?(\\w+)`?(?:\\s+(.*))?$")
+
+// parseOnePartitionDef parses a single partition definition string.
+func parseOnePartitionDef(s string) (*PartitionDef, error) {
+	matches := rePartitionDef.FindStringSubmatch(s)
+	if matches == nil {
+		return nil, fmt.Errorf("invalid partition definition: %q", s)
+	}
+	def := &PartitionDef{Name: matches[1]}
+	rest := strings.TrimSpace(matches[2])
+	if rest == "" {
+		return def, nil
+	}
+	upper := strings.ToUpper(rest)
+	switch {
+	case strings.HasPrefix(upper, "VALUES LESS THAN"):
+		bound := strings.TrimSpace(rest[len("VALUES LESS THAN"):])
+		bound = stripPartitionOptions(bound)
+		def.Bound = bound
+	case strings.HasPrefix(upper, "VALUES IN"):
+		bound := strings.TrimSpace(rest[len("VALUES IN"):])
+		bound = stripPartitionOptions(bound)
+		def.Bound = bound
+	}
+	return def, nil
+}
+
+// stripPartitionOptions removes trailing per-partition options like ENGINE = InnoDB.
+func stripPartitionOptions(s string) string {
+	// Options typically appear after the value specification.
+	// Common patterns: ENGINE = InnoDB, COMMENT = '...', DATA DIRECTORY = '...'
+	upper := strings.ToUpper(s)
+	for _, kw := range []string{" ENGINE", " COMMENT", " DATA DIRECTORY", " INDEX DIRECTORY", " MAX_ROWS", " MIN_ROWS", " TABLESPACE"} {
+		// Find the keyword at top level (not inside parentheses).
+		idx := findTopLevel(upper, kw)
+		if idx != -1 {
+			s = strings.TrimSpace(s[:idx])
+			upper = strings.ToUpper(s)
+		}
+	}
+	return s
+}
+
+// findTopLevel finds the index of substr in s, ignoring occurrences
+// inside parentheses or quoted strings.
+func findTopLevel(s, substr string) int {
+	depth := 0
+	inQuote := byte(0)
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if inQuote != 0 {
+			if c == '\\' && i+1 < len(s) {
+				i++
+				continue
+			}
+			if c == inQuote {
+				inQuote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\'', '"', '`':
+			inQuote = c
+		case '(':
+			depth++
+		case ')':
+			depth--
+		default:
+			if depth == 0 && i+len(substr) <= len(s) && s[i:i+len(substr)] == substr {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+// matchParen returns the index of the closing parenthesis matching the opening
+// parenthesis at position start, skipping quoted strings.
+func matchParen(s string, start int) int {
+	depth := 0
+	inQuote := byte(0)
+	for i := start; i < len(s); i++ {
+		c := s[i]
+		if inQuote != 0 {
+			if c == '\\' && i+1 < len(s) {
+				i++
+				continue
+			}
+			if c == inQuote {
+				inQuote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\'', '"', '`':
+			inQuote = c
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+// splitTopLevel splits s by sep, but only at the top level
+// (not inside parentheses or quoted strings).
+func splitTopLevel(s string, sep byte) []string {
+	var parts []string
+	depth := 0
+	start := 0
+	inQuote := byte(0)
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if inQuote != 0 {
+			if c == '\\' && i+1 < len(s) {
+				i++
+				continue
+			}
+			if c == inQuote {
+				inQuote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\'', '"', '`':
+			inQuote = c
+		case '(':
+			depth++
+		case ')':
+			depth--
+		case sep:
+			if depth == 0 {
+				parts = append(parts, s[start:i])
+				start = i + 1
+			}
+		}
+	}
+	parts = append(parts, s[start:])
+	return parts
+}
+
+// isIdentifier checks if s is a simple SQL identifier (letters, digits, underscores).
+func isIdentifier(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	for _, c := range s {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 func putShow(t *schema.Table) *showTable {

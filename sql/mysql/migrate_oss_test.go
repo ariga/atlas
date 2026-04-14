@@ -1401,7 +1401,7 @@ func TestPlanChanges(t *testing.T) {
 					},
 					Changes: []schema.Change{
 						&schema.ModifyAttr{
-							From: &AutoIDCache{N: AutoIDCacheDefault},
+							From: &AutoIDCache{N: autoIDCacheDefault},
 							To:   &AutoIDCache{N: 1},
 						},
 					},
@@ -1448,7 +1448,7 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
-		// ALTER TABLE: drop AUTO_ID_CACHE (restore to AutoIDCacheDefault=30000).
+		// ALTER TABLE: drop AUTO_ID_CACHE (restore to autoIDCacheDefault=30000).
 		{
 			version: "5.7.25-TiDB-v6.1.0",
 			changes: []schema.Change{
@@ -1462,7 +1462,7 @@ func TestPlanChanges(t *testing.T) {
 					Changes: []schema.Change{
 						&schema.ModifyAttr{
 							From: &AutoIDCache{N: 1},
-							To:   &AutoIDCache{N: AutoIDCacheDefault},
+							To:   &AutoIDCache{N: autoIDCacheDefault},
 						},
 					},
 				},
@@ -1744,3 +1744,106 @@ func newMigrate(version string) (migrate.PlanApplier, *mock, error) {
 }
 
 func join(lines ...string) string { return strings.Join(lines, "\n") }
+
+func TestFormatPartition_Range(t *testing.T) {
+	p := Partition{
+		T: PartitionTypeRange,
+		Key: []*PartitionKeyPart{
+			{X: &schema.RawExpr{X: "YEAR(`created`)"}},
+		},
+		Parts: []*PartitionDef{
+			{Name: "p0", Bound: "(2020)"},
+			{Name: "p1", Bound: "MAXVALUE"},
+		},
+	}
+	s, err := formatPartition(p)
+	require.NoError(t, err)
+	require.Contains(t, s, "PARTITION BY RANGE")
+	require.Contains(t, s, "YEAR(`created`)")
+	require.Contains(t, s, "PARTITION `p0` VALUES LESS THAN (2020)")
+	require.Contains(t, s, "PARTITION `p1` VALUES LESS THAN MAXVALUE")
+}
+
+func TestFormatPartition_LinearHash(t *testing.T) {
+	col := &schema.Column{Name: "id"}
+	p := Partition{
+		T:     PartitionTypeLinearHash,
+		Key:   []*PartitionKeyPart{{C: col}},
+		Count: 8,
+	}
+	s, err := formatPartition(p)
+	require.NoError(t, err)
+	require.Contains(t, s, "PARTITION BY LINEAR HASH")
+	require.Contains(t, s, "`id`")
+	require.Contains(t, s, "PARTITIONS 8")
+}
+
+func TestFormatPartition_RangeColumns(t *testing.T) {
+	col := &schema.Column{Name: "created"}
+	p := Partition{
+		T:   PartitionTypeRangeColumns,
+		Key: []*PartitionKeyPart{{C: col}},
+		Parts: []*PartitionDef{
+			{Name: "p0", Bound: "('2020-01-01')"},
+		},
+	}
+	s, err := formatPartition(p)
+	require.NoError(t, err)
+	require.Contains(t, s, "PARTITION BY RANGE COLUMNS")
+}
+
+func TestFormatPartition_Errors(t *testing.T) {
+	// Unknown type.
+	_, err := formatPartition(Partition{T: "UNKNOWN", Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "x"}}}})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown partition type")
+	// Missing key.
+	_, err = formatPartition(Partition{T: PartitionTypeRange})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "missing partition key")
+}
+
+func TestFormatPartition_Hash(t *testing.T) {
+	col := &schema.Column{Name: "id"}
+	p := Partition{
+		T:     PartitionTypeHash,
+		Key:   []*PartitionKeyPart{{C: col}},
+		Count: 4,
+	}
+	s, err := formatPartition(p)
+	require.NoError(t, err)
+	require.Contains(t, s, "PARTITION BY HASH")
+	require.Contains(t, s, "`id`")
+	require.Contains(t, s, "PARTITIONS 4")
+}
+
+func TestMigrate_AddTableWithPartition(t *testing.T) {
+	migrate, mk, err := newMigrate("8.0.13")
+	require.NoError(t, err)
+	mk.ExpectExec(sqltest.Escape("CREATE TABLE `events` (`id` int NOT NULL, `created` date NOT NULL) PARTITION BY RANGE (YEAR(`created`)) ( PARTITION `p0` VALUES LESS THAN (2020) , PARTITION `p1` VALUES LESS THAN MAXVALUE )")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	err = migrate.ApplyChanges(context.Background(), []schema.Change{
+		&schema.AddTable{
+			T: &schema.Table{
+				Name: "events",
+				Columns: []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+					{Name: "created", Type: &schema.ColumnType{Type: &schema.TimeType{T: "date"}}},
+				},
+				Attrs: []schema.Attr{
+					&Partition{
+						T: PartitionTypeRange,
+						Key: []*PartitionKeyPart{
+							{X: &schema.RawExpr{X: "YEAR(`created`)"}},
+						},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "MAXVALUE"},
+						},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+}

@@ -2494,7 +2494,7 @@ table "users" {
 	require.Contains(t, err.Error(), "auto_id_cache")
 }
 
-func TestMarshalSpec_AutoIDCacheDefaultOmitted(t *testing.T) {
+func TestMarshalSpec_autoIDCacheDefaultOmitted(t *testing.T) {
 	// When AUTO_ID_CACHE equals the TiDB default (30000), it should
 	// NOT be written to HCL to avoid unnecessary noise and non-idempotent diffs.
 	s := &schema.Schema{
@@ -2509,7 +2509,7 @@ func TestMarshalSpec_AutoIDCacheDefaultOmitted(t *testing.T) {
 					},
 				},
 				Attrs: []schema.Attr{
-					&AutoIDCache{N: AutoIDCacheDefault},
+					&AutoIDCache{N: autoIDCacheDefault},
 				},
 			},
 		},
@@ -2543,7 +2543,7 @@ table "users" {
 	require.Len(t, s.Tables, 1)
 	aic := &AutoIDCache{}
 	require.True(t, sqlx.Has(s.Tables[0].Attrs, aic))
-	require.Equal(t, AutoIDCacheDefault, aic.N)
+	require.Equal(t, autoIDCacheDefault, aic.N)
 	// Marshal back: default value should be omitted.
 	buf, err := MarshalHCL(&s)
 	require.NoError(t, err)
@@ -2573,4 +2573,192 @@ func TestAutoIDCache_HCLRoundTrip(t *testing.T) {
 	buf, err := MarshalHCL(&s)
 	require.NoError(t, err)
 	require.Contains(t, string(buf), "auto_id_cache = 1")
+}
+
+func TestMarshalSpec_Partition(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "events",
+				Columns: []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+					{Name: "created", Type: &schema.ColumnType{Type: &schema.TimeType{T: "date"}}},
+				},
+				Attrs: []schema.Attr{
+					&Partition{
+						T: PartitionTypeRange,
+						Key: []*PartitionKeyPart{
+							{X: &schema.RawExpr{X: "YEAR(`created`)"}},
+						},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2021)"},
+							{Name: "p2", Bound: "MAXVALUE"},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	out := string(buf)
+	require.Contains(t, out, `type = RANGE`)
+	require.Contains(t, out, `expr = "YEAR(`)
+	require.Contains(t, out, `definition "p0"`)
+	require.Contains(t, out, `"(2020)"`)
+	require.Contains(t, out, `"MAXVALUE"`)
+}
+
+func TestUnmarshalSpec_Partition(t *testing.T) {
+	var s schema.Schema
+	f := `
+schema "test" {}
+table "events" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = int
+  }
+  column "created" {
+    null = false
+    type = date
+  }
+  partition {
+    type = RANGE
+    expr = "YEAR(` + "`created`" + `)"
+    definition "p0" {
+      value = "(2020)"
+    }
+    definition "p1" {
+      value = "(2021)"
+    }
+    definition "p2" {
+      value = "MAXVALUE"
+    }
+  }
+}
+`
+	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+	require.Len(t, s.Tables, 1)
+	p := &Partition{}
+	require.True(t, sqlx.Has(s.Tables[0].Attrs, p))
+	require.Equal(t, PartitionTypeRange, p.T)
+	require.Len(t, p.Key, 1)
+	require.NotNil(t, p.Key[0].X)
+	require.Len(t, p.Parts, 3)
+	require.Equal(t, "p0", p.Parts[0].Name)
+	require.Equal(t, "p1", p.Parts[1].Name)
+	require.Equal(t, "p2", p.Parts[2].Name)
+}
+
+func TestUnmarshalSpec_PartitionColumns(t *testing.T) {
+	var s schema.Schema
+	f := `
+schema "test" {}
+table "events" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = int
+  }
+  partition {
+    type    = HASH
+    columns = [column.id]
+    partitions = 4
+  }
+}
+`
+	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+	require.Len(t, s.Tables, 1)
+	p := &Partition{}
+	require.True(t, sqlx.Has(s.Tables[0].Attrs, p))
+	require.Equal(t, PartitionTypeHash, p.T)
+	require.Len(t, p.Key, 1)
+	require.NotNil(t, p.Key[0].C)
+	require.Equal(t, "id", p.Key[0].C.Name)
+	require.Equal(t, 4, p.Count)
+}
+
+func TestRoundTrip_PartitionRangeColumns(t *testing.T) {
+	// Test that RANGE_COLUMNS round-trips through HCL correctly.
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "events",
+				Columns: []*schema.Column{
+					{Name: "created", Type: &schema.ColumnType{Type: &schema.TimeType{T: "date"}}},
+				},
+				Attrs: []schema.Attr{
+					&Partition{
+						T:   PartitionTypeRangeColumns,
+						Key: []*PartitionKeyPart{{C: nil}}, // Will be set below.
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "('2020-01-01')"},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	// Point column reference.
+	s.Tables[0].Attrs[0].(*Partition).Key[0].C = s.Tables[0].Columns[0]
+
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	out := string(buf)
+	require.Contains(t, out, "RANGE_COLUMNS")
+
+	// Unmarshal back.
+	var s2 schema.Schema
+	require.NoError(t, EvalHCLBytes(buf, &s2, nil))
+	p := &Partition{}
+	require.True(t, sqlx.Has(s2.Tables[0].Attrs, p))
+	require.Equal(t, PartitionTypeRangeColumns, p.T)
+	require.Len(t, p.Key, 1)
+	require.NotNil(t, p.Key[0].C)
+	require.Equal(t, "created", p.Key[0].C.Name)
+}
+
+func TestUnmarshalSpec_PartitionByBlocks(t *testing.T) {
+	var s schema.Schema
+	f := `
+schema "test" {}
+table "events" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = int
+  }
+  column "name" {
+    null = false
+    type = varchar(100)
+  }
+  partition {
+    type = RANGE
+    by {
+      expr = "YEAR(id)"
+    }
+    by {
+      column = column.name
+    }
+    definition "p0" {
+      value = "(2020, 'M')"
+    }
+  }
+}
+`
+	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+	require.Len(t, s.Tables, 1)
+	p := &Partition{}
+	require.True(t, sqlx.Has(s.Tables[0].Attrs, p))
+	require.Len(t, p.Key, 2)
+	require.NotNil(t, p.Key[0].X)
+	require.Equal(t, "YEAR(id)", p.Key[0].X.(*schema.RawExpr).X)
+	require.NotNil(t, p.Key[1].C)
+	require.Equal(t, "name", p.Key[1].C.Name)
 }

@@ -38,6 +38,8 @@ func TestAutoRandom_ParseCreateTable(t *testing.T) {
 			wantRange: 0,
 		},
 		{
+			// Note: wantRange=64 here because this tests the raw regex capture.
+			// setAutoRandom normalizes 64→0 separately.
 			name:      "shard and range bits",
 			create:    "CREATE TABLE `t` (`id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5, 64) */, PRIMARY KEY (`id`)) CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
 			wantCol:   "id",
@@ -75,6 +77,13 @@ func TestAutoRandom_ParseCreateTable(t *testing.T) {
 		{
 			name:      "multi-column table",
 			create:    "CREATE TABLE `t` (`name` varchar(100) NOT NULL, `id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5) */, PRIMARY KEY (`id`)) CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+			wantCol:   "id",
+			wantShard: 5,
+			wantRange: 0,
+		},
+		{
+			name:      "multi-line CREATE TABLE",
+			create:    "CREATE TABLE `t` (\n  `name` varchar(100) NOT NULL,\n  `id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5) */,\n  PRIMARY KEY (`id`)\n) CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
 			wantCol:   "id",
 			wantShard: 5,
 			wantRange: 0,
@@ -257,14 +266,15 @@ func TestAutoRandom_ColumnDiffNoChange(t *testing.T) {
 	require.Empty(t, changes)
 }
 
-
 func TestAutoRandom_ColumnDiffRangeChange(t *testing.T) {
 	differ := newTiDBDiffer()
+	// RangeBits=64 is normalized to 0 during inspection, so use 0 here
+	// to match what the inspect path produces.
 	fromT := &schema.Table{
 		Name:   "t",
 		Schema: &schema.Schema{Name: "test"},
 		Columns: []*schema.Column{
-			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoRandom{ShardBits: 5, RangeBits: 64}}},
+			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoRandom{ShardBits: 5, RangeBits: 0}}},
 		},
 	}
 	toT := &schema.Table{
@@ -282,15 +292,14 @@ func TestAutoRandom_ColumnDiffRangeChange(t *testing.T) {
 }
 
 func TestAutoRandom_ParseExtra(t *testing.T) {
+	// parseExtra should not error on auto_random (handled by setAutoRandom).
 	attr, err := parseExtra("auto_random")
 	require.NoError(t, err)
-	require.True(t, attr.autorandom)
 	require.False(t, attr.autoinc)
 
 	// TiDB v7+ may return "auto_random(5)" in the EXTRA column.
-	attr, err = parseExtra("auto_random(5)")
+	_, err = parseExtra("auto_random(5)")
 	require.NoError(t, err)
-	require.True(t, attr.autorandom)
 }
 
 func TestAutoRandom_RegexOnlyMatchesTiDBComment(t *testing.T) {
@@ -327,9 +336,9 @@ func TestAutoRandom_RegexOnlyMatchesTiDBComment(t *testing.T) {
 			matches: false,
 		},
 		{
-			name:    "different TiDB comment feature should not match",
-			input:   "`id` bigint NOT NULL /*T![other_feature] AUTO_RANDOM(5) */",
-			matches: false,
+			name:    "multi-line CREATE should not capture wrong column",
+			input:   "`name` varchar(100),\n`id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5) */",
+			matches: true,
 		},
 	}
 	for _, tt := range tests {
@@ -342,6 +351,16 @@ func TestAutoRandom_RegexOnlyMatchesTiDBComment(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAutoRandom_MultiLineCreateCapturesCorrectColumn(t *testing.T) {
+	// In multi-line CREATE TABLE output, the regex must capture the column
+	// on the same line as the AUTO_RANDOM comment, not an earlier column.
+	input := "CREATE TABLE `t` (\n  `name` varchar(100),\n  `id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5) */,\n  PRIMARY KEY (`id`)\n)"
+	matches := reAutoRandom.FindStringSubmatch(input)
+	require.NotNil(t, matches)
+	require.Equal(t, "id", matches[1], "should capture 'id', not 'name'")
+	require.Equal(t, "5", matches[2])
 }
 
 func mustAtoi(t *testing.T, s string) int {
@@ -635,7 +654,7 @@ func TestCheckUnsupportedChanges_TiDBSpecific(t *testing.T) {
 		}
 		err := checkUnsupportedChanges(changes)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "cannot change primary key clustering mode")
+		require.Contains(t, err.Error(), "cannot change clustering mode")
 	})
 
 	t.Run("AutoRandomModificationBlocked", func(t *testing.T) {
@@ -743,7 +762,7 @@ func TestCheckUnsupportedChanges_TiDBSpecific(t *testing.T) {
 		}
 		err := checkUnsupportedChanges(changes)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "only supported on BIGINT columns")
+		require.Contains(t, err.Error(), "AUTO_RANDOM requires BIGINT")
 	})
 }
 
@@ -955,7 +974,7 @@ func TestAutoIDCache_PatchSchemaDefault(t *testing.T) {
 	require.NoError(t, err)
 	aic := &AutoIDCache{}
 	require.True(t, sqlx.Has(tbl.Attrs, aic))
-	require.Equal(t, AutoIDCacheDefault, aic.N)
+	require.Equal(t, autoIDCacheDefault, aic.N)
 }
 
 func TestAutoIDCache_PatchSchemaNoAutoIDCache(t *testing.T) {
@@ -988,7 +1007,7 @@ func TestTableAttrDiff_AutoIDCache(t *testing.T) {
 		require.True(t, ok, "expected ModifyAttr, got %T", changes[0])
 		fromAIC, ok := modAttr.From.(*AutoIDCache)
 		require.True(t, ok)
-		require.Equal(t, AutoIDCacheDefault, fromAIC.N)
+		require.Equal(t, autoIDCacheDefault, fromAIC.N)
 		toAIC, ok := modAttr.To.(*AutoIDCache)
 		require.True(t, ok)
 		require.Equal(t, 1, toAIC.N)
@@ -1032,17 +1051,17 @@ func TestTableAttrDiff_AutoIDCache(t *testing.T) {
 		// because AUTO_ID_CACHE requires a minimum value of 1.
 		toAIC, ok := modAttr.To.(*AutoIDCache)
 		require.True(t, ok)
-		require.Equal(t, AutoIDCacheDefault, toAIC.N)
+		require.Equal(t, autoIDCacheDefault, toAIC.N)
 	})
 
-	t.Run("AddAutoIDCacheDefaultNoOp", func(t *testing.T) {
+	t.Run("AddautoIDCacheDefaultNoOp", func(t *testing.T) {
 		// Setting AUTO_ID_CACHE to the default value (30000) should not
 		// generate any change, since the table already uses that default.
 		from := schema.NewTable("t")
 		from.Schema = testSchema
 		to := schema.NewTable("t")
 		to.Schema = testSchema
-		to.AddAttrs(&AutoIDCache{N: AutoIDCacheDefault})
+		to.AddAttrs(&AutoIDCache{N: autoIDCacheDefault})
 		changes, err := differ.TableDiff(from, to)
 		require.NoError(t, err)
 		require.Empty(t, changes)
@@ -1053,7 +1072,7 @@ func TestTableAttrDiff_AutoIDCache(t *testing.T) {
 		// should not generate any change (no-op).
 		from := schema.NewTable("t")
 		from.Schema = testSchema
-		from.AddAttrs(&AutoIDCache{N: AutoIDCacheDefault})
+		from.AddAttrs(&AutoIDCache{N: autoIDCacheDefault})
 		to := schema.NewTable("t")
 		to.Schema = testSchema
 		changes, err := differ.TableDiff(from, to)
@@ -1078,7 +1097,7 @@ func TestTableAttrDiff_AutoIDCache(t *testing.T) {
 		// This exercises the fromHasAIC && toHasAIC branch with the default on from.
 		from := schema.NewTable("t")
 		from.Schema = testSchema
-		from.AddAttrs(&AutoIDCache{N: AutoIDCacheDefault})
+		from.AddAttrs(&AutoIDCache{N: autoIDCacheDefault})
 		to := schema.NewTable("t")
 		to.Schema = testSchema
 		to.AddAttrs(&AutoIDCache{N: 1})
@@ -1089,7 +1108,7 @@ func TestTableAttrDiff_AutoIDCache(t *testing.T) {
 		require.True(t, ok, "expected ModifyAttr, got %T", changes[0])
 		fromAIC, ok := modAttr.From.(*AutoIDCache)
 		require.True(t, ok)
-		require.Equal(t, AutoIDCacheDefault, fromAIC.N)
+		require.Equal(t, autoIDCacheDefault, fromAIC.N)
 		toAIC, ok := modAttr.To.(*AutoIDCache)
 		require.True(t, ok)
 		require.Equal(t, 1, toAIC.N)
@@ -1168,7 +1187,7 @@ func TestCheckUnsupportedChanges_AutoIDCacheAllowed(t *testing.T) {
 			T: schema.NewTable("users"),
 			Changes: []schema.Change{
 				&schema.ModifyAttr{
-					From: &AutoIDCache{N: AutoIDCacheDefault},
+					From: &AutoIDCache{N: autoIDCacheDefault},
 					To:   &AutoIDCache{N: 1},
 				},
 			},

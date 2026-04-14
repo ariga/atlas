@@ -20,18 +20,14 @@ import (
 
 // TiDB-specific constraints and defaults.
 const (
-	// AutoRandomShardBitsMin is the minimum value for AUTO_RANDOM shard bits.
-	AutoRandomShardBitsMin = 1
-	// AutoRandomShardBitsMax is the maximum value for AUTO_RANDOM shard bits.
-	AutoRandomShardBitsMax = 15
-	// AutoRandomRangeBitsMin is the minimum value for AUTO_RANDOM range bits.
-	AutoRandomRangeBitsMin = 32
-	// AutoRandomRangeBitsMax is the maximum/default value for AUTO_RANDOM range bits.
-	AutoRandomRangeBitsMax = 64
-	// ShardRowIDBitsMax is the maximum value for SHARD_ROW_ID_BITS.
-	ShardRowIDBitsMax = 15
-	// AutoIDCacheDefault is the default value for AUTO_ID_CACHE in TiDB.
-	AutoIDCacheDefault = 30000
+	autoRandomShardBitsMin = 1
+	autoRandomShardBitsMax = 15
+	autoRandomRangeBitsMin = 32
+	autoRandomRangeBitsMax = 64 // Also the default range.
+	shardRowIDBitsMax      = 15
+	autoIDCacheDefault     = 30000
+	clustered              = "CLUSTERED"
+	nonclustered           = "NONCLUSTERED"
 )
 
 type (
@@ -41,6 +37,33 @@ type (
 	tdiff struct{ diff }
 	// tinspect decorates MySQL inspect.
 	tinspect struct{ inspect }
+
+	// AutoRandom is a TiDB-specific attribute for AUTO_RANDOM primary key columns.
+	AutoRandom struct {
+		schema.Attr
+		ShardBits int // 1-15, default 5
+		RangeBits int // 32-64 or 0 for default (64)
+	}
+	// ShardRowIDBits distributes implicit _tidb_rowid across shards.
+	ShardRowIDBits struct {
+		schema.Attr
+		N int // 0-15, 0 means disabled
+	}
+	// PreSplitRegions pre-splits a table into 2^N regions at creation time.
+	PreSplitRegions struct {
+		schema.Attr
+		N int
+	}
+	// AutoIDCache controls the cache size for auto-increment ID allocation.
+	AutoIDCache struct {
+		schema.Attr
+		N int // >= 1, default 30000
+	}
+	// ClusteredIndex indicates whether a primary key is CLUSTERED or NONCLUSTERED.
+	ClusteredIndex struct {
+		schema.Attr
+		Clustered bool
+	}
 )
 
 // priority computes the priority of each change.
@@ -52,18 +75,10 @@ type (
 func priority(change schema.Change) int {
 	switch c := change.(type) {
 	case *schema.ModifyTable:
-		// Each ModifyTable should have a single change since we apply `flat` before we sort.
-		// Defensive check: if Changes is empty, return default priority.
-		if len(c.Changes) == 0 {
-			return 4
-		}
+		// each modifyTable should have a single change since we apply `flat` before we sort.
 		return priority(c.Changes[0])
 	case *schema.ModifySchema:
-		// Each ModifySchema should have a single change since we apply `flat` before we sort.
-		// Defensive check: if Changes is empty, return default priority.
-		if len(c.Changes) == 0 {
-			return 4
-		}
+		// each modifyTable should have a single change since we apply `flat` before we sort.
 		return priority(c.Changes[0])
 	case *schema.AddColumn:
 		return 1
@@ -80,28 +95,28 @@ func priority(change schema.Change) int {
 // with multiple AddColumn inside it). Note that, the only "changes" that include sub-changes are
 // `ModifyTable` and `ModifySchema`.
 func flat(changes []schema.Change) []schema.Change {
-	var result []schema.Change
+	var flat []schema.Change
 	for _, change := range changes {
 		switch m := change.(type) {
 		case *schema.ModifyTable:
 			for _, c := range m.Changes {
-				result = append(result, &schema.ModifyTable{
+				flat = append(flat, &schema.ModifyTable{
 					T:       m.T,
 					Changes: []schema.Change{c},
 				})
 			}
 		case *schema.ModifySchema:
 			for _, c := range m.Changes {
-				result = append(result, &schema.ModifySchema{
+				flat = append(flat, &schema.ModifySchema{
 					S:       m.S,
 					Changes: []schema.Change{c},
 				})
 			}
 		default:
-			result = append(result, change)
+			flat = append(flat, change)
 		}
 	}
-	return result
+	return flat
 }
 
 // PlanChanges returns a migration plan for the given schema changes.
@@ -110,11 +125,10 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 	if err != nil {
 		return nil, err
 	}
-	// Check for unsupported TiDB-specific changes before planning.
+	planned = flat(planned)
 	if err := checkUnsupportedChanges(planned); err != nil {
 		return nil, err
 	}
-	planned = flat(planned)
 	sort.SliceStable(planned, func(i, j int) bool {
 		return priority(planned[i]) < priority(planned[j])
 	})
@@ -161,94 +175,46 @@ func checkUnsupportedChanges(changes []schema.Change) error {
 func checkUnsupportedTableChange(tableName string, c schema.Change) error {
 	switch c := c.(type) {
 	case *schema.ModifyAttr:
-		// PRE_SPLIT_REGIONS cannot be changed after table creation.
-		// ModifyAttr.From and .To are always the same type, so checking either suffices.
 		if _, ok := c.From.(*PreSplitRegions); ok {
-			return fmt.Errorf(
-				"cannot modify pre_split_regions for table %q: "+
-					"TiDB does not support changing PRE_SPLIT_REGIONS after table creation; "+
-					"you must recreate the table to change this setting",
-				tableName,
-			)
+			return fmt.Errorf("cannot modify pre_split_regions for table %q: recreate the table to apply this change", tableName)
 		}
 	case *schema.AddAttr:
-		// PRE_SPLIT_REGIONS cannot be added after table creation.
 		if _, ok := c.A.(*PreSplitRegions); ok {
-			return fmt.Errorf(
-				"cannot add pre_split_regions to table %q: "+
-					"TiDB does not support adding PRE_SPLIT_REGIONS after table creation; "+
-					"you must recreate the table to add this setting",
-				tableName,
-			)
+			return fmt.Errorf("cannot add pre_split_regions to table %q: recreate the table to apply this change", tableName)
 		}
 	case *schema.DropAttr:
-		// PRE_SPLIT_REGIONS cannot be dropped after table creation.
 		if _, ok := c.A.(*PreSplitRegions); ok {
-			return fmt.Errorf(
-				"cannot drop pre_split_regions from table %q: "+
-					"TiDB does not support removing PRE_SPLIT_REGIONS after table creation; "+
-					"you must recreate the table to remove this setting",
-				tableName,
-			)
+			return fmt.Errorf("cannot drop pre_split_regions from table %q: recreate the table to apply this change", tableName)
 		}
 	case *schema.ModifyIndex:
-		// Check if ClusteredIndex attribute is being changed.
 		if c.From == nil || c.To == nil {
 			break
 		}
 		var fromCI, toCI ClusteredIndex
 		fromHas, toHas := sqlx.Has(c.From.Attrs, &fromCI), sqlx.Has(c.To.Attrs, &toCI)
 		if fromHas && toHas && fromCI.Clustered != toCI.Clustered {
-			return fmt.Errorf(
-				"cannot change primary key clustering mode for table %q: "+
-					"TiDB does not support changing between CLUSTERED and NONCLUSTERED after table creation; "+
-					"you must recreate the table to change this setting",
-				tableName,
-			)
+			return fmt.Errorf("cannot change clustering mode for table %q: recreate the table to apply this change", tableName)
 		}
 	case *schema.ModifyColumn:
-		// Check for AUTO_RANDOM modifications (not additions).
 		if c.From == nil || c.To == nil {
 			break
 		}
 		var fromAR, toAR AutoRandom
 		fromHas, toHas := sqlx.Has(c.From.Attrs, &fromAR), sqlx.Has(c.To.Attrs, &toAR)
-		// Adding AUTO_RANDOM requires BIGINT column type.
-		if !fromHas && toHas {
-			if !isBigIntColumn(c.To) {
-				return fmt.Errorf(
-					"cannot add AUTO_RANDOM to column %q in table %q: "+
-						"AUTO_RANDOM is only supported on BIGINT columns",
-					c.To.Name, tableName,
-				)
-			}
+		if !fromHas && toHas && !isBigIntColumn(c.To) {
+			return fmt.Errorf("cannot add AUTO_RANDOM to column %q in table %q: AUTO_RANDOM requires BIGINT", c.To.Name, tableName)
 		}
-		// Modifying existing AUTO_RANDOM parameters is not supported.
 		if fromHas && toHas && (fromAR.ShardBits != toAR.ShardBits || fromAR.RangeBits != toAR.RangeBits) {
-			return fmt.Errorf(
-				"cannot modify AUTO_RANDOM for column %q in table %q: "+
-					"TiDB does not support changing AUTO_RANDOM shard bits or range bits after column creation; "+
-					"you must recreate the table to change this setting",
-				c.From.Name, tableName,
-			)
+			return fmt.Errorf("cannot modify AUTO_RANDOM for column %q in table %q: recreate the table to apply this change", c.From.Name, tableName)
 		}
-		// Removing AUTO_RANDOM is not supported.
 		if fromHas && !toHas {
-			return fmt.Errorf(
-				"cannot remove AUTO_RANDOM from column %q in table %q: "+
-					"TiDB does not support removing AUTO_RANDOM after it has been set; "+
-					"you must recreate the table to remove this setting",
-				c.From.Name, tableName,
-			)
+			return fmt.Errorf("cannot remove AUTO_RANDOM from column %q in table %q: recreate the table to apply this change", c.From.Name, tableName)
 		}
 	}
 	return nil
 }
 
-// isBigIntColumn checks if the column is a BIGINT type.
-// TiDB's AUTO_RANDOM only supports BIGINT columns (signed or unsigned).
-// The IntegerType.T field contains the base type name (e.g., "bigint"),
-// while the Unsigned field indicates if it's unsigned.
+// isBigIntColumn reports whether the column type is BIGINT (signed or unsigned).
 func isBigIntColumn(c *schema.Column) bool {
 	if c == nil || c.Type == nil || c.Type.Type == nil {
 		return false
@@ -300,21 +266,21 @@ func (d *tdiff) TableAttrDiff(from, to *schema.Table, opts *schema.DiffOptions) 
 	var fromAIC, toAIC AutoIDCache
 	fromHasAIC, toHasAIC := sqlx.Has(from.Attrs, &fromAIC), sqlx.Has(to.Attrs, &toAIC)
 	switch {
-	case !fromHasAIC && toHasAIC && toAIC.N > 0 && toAIC.N != AutoIDCacheDefault:
+	case !fromHasAIC && toHasAIC && toAIC.N > 0 && toAIC.N != autoIDCacheDefault:
 		// Adding AUTO_ID_CACHE. Use ModifyAttr (from default → desired) instead of
 		// AddAttr so that the reverse SQL is correctly generated as a restore to default.
 		changes = append(changes, &schema.ModifyAttr{
-			From: &AutoIDCache{N: AutoIDCacheDefault},
+			From: &AutoIDCache{N: autoIDCacheDefault},
 			To:   &AutoIDCache{N: toAIC.N},
 		})
-	case fromHasAIC && !toHasAIC && fromAIC.N > 0 && fromAIC.N != AutoIDCacheDefault:
+	case fromHasAIC && !toHasAIC && fromAIC.N > 0 && fromAIC.N != autoIDCacheDefault:
 		// Dropping AUTO_ID_CACHE (restoring to TiDB default).
 		// Unlike SHARD_ROW_ID_BITS (which can be set to 0), AUTO_ID_CACHE
 		// requires a minimum value of 1, so we restore the default (30000).
 		// Skip if the current value is already the default to avoid no-op ALTERs.
 		changes = append(changes, &schema.ModifyAttr{
 			From: &AutoIDCache{N: fromAIC.N},
-			To:   &AutoIDCache{N: AutoIDCacheDefault},
+			To:   &AutoIDCache{N: autoIDCacheDefault},
 		})
 	case fromHasAIC && toHasAIC && fromAIC.N != toAIC.N:
 		// Modifying AUTO_ID_CACHE value.
@@ -465,9 +431,6 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 }
 
 func (i *tinspect) patchColumn(_ context.Context, c *schema.Column) {
-	if c == nil || c.Type == nil || c.Type.Type == nil {
-		return
-	}
 	_, ok := c.Type.Type.(*BitType)
 	if !ok {
 		return
@@ -482,14 +445,11 @@ func (i *tinspect) patchColumn(_ context.Context, c *schema.Column) {
 // e.g. []byte{4} -> b'100', []byte{2,1} -> b'1000000001'.
 // See: https://github.com/pingcap/tidb/issues/32655.
 func bytesToBitLiteral(b []byte) string {
-	// MySQL BIT type supports up to 64 bits (8 bytes).
-	// If input exceeds 8 bytes, truncate to the last 8 bytes.
-	if len(b) > 8 {
-		b = b[len(b)-8:]
+	bytes := make([]byte, 8)
+	for i := 0; i < len(b); i++ {
+		bytes[8-len(b)+i] = b[i]
 	}
-	buf := make([]byte, 8)
-	copy(buf[8-len(b):], b)
-	val := binary.BigEndian.Uint64(buf)
+	val := binary.BigEndian.Uint64(bytes)
 	return fmt.Sprintf("b'%b'", val)
 }
 
@@ -500,13 +460,11 @@ var reColl = regexp.MustCompile(`(?i)CHARSET\s*=\s*(\w+)\s*COLLATE\s*=\s*(\w+)`)
 func (i *tinspect) setCollate(t *schema.Table) error {
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("mysql: missing CREATE TABLE statement in attributes for table %q; "+
-			"this may indicate an internal error during schema inspection", t.Name)
+		return fmt.Errorf("missing CREATE TABLE statement in attributes for %q", t.Name)
 	}
 	matches := reColl.FindStringSubmatch(c.S)
 	if len(matches) != 3 {
-		return fmt.Errorf("mysql: could not extract CHARSET and COLLATE from CREATE TABLE statement for table %q; "+
-			"expected format 'CHARSET=... COLLATE=...' but got: %s", t.Name, c.S)
+		return fmt.Errorf("missing COLLATE and/or CHARSET information on CREATE TABLE statement for %q", t.Name)
 	}
 	t.SetCharset(matches[1])
 	t.SetCollation(matches[2])
@@ -519,24 +477,10 @@ func (i *tinspect) setCollate(t *schema.Table) error {
 //	`id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5) */
 //	`id` bigint NOT NULL /*T![auto_rand] AUTO_RANDOM(5, 64) */
 //
-// Pattern breakdown:
-//   - `([^`]+)` captures the column name (any chars except backtick)
-//   - [^`]*/\*T!\[auto_rand\] matches the TiDB-specific comment marker
-//     This ensures we only match AUTO_RANDOM in TiDB comments, not in SQL comments
-//   - \s*AUTO_RANDOM\((\d+) captures the shard bits (required, 1-15)
-//   - (?:\s*,\s*(\d+))? optionally captures range bits (32-64, default 64)
-//
-// Group 1: column name, Group 2: shard bits, Group 3: optional range bits.
-//
-// Note: Column names with escaped backticks are extremely rare
-// and not supported by this pattern.
-var reAutoRandom = regexp.MustCompile("`([^`]+)`[^`]*/\\*T!\\[auto_rand\\]\\s*AUTO_RANDOM\\((\\d+)(?:\\s*,\\s*(\\d+))?\\)")
+// Captures: (1) column name, (2) shard bits, (3) optional range bits.
+var reAutoRandom = regexp.MustCompile("`([^`]+)`[^`\n]*/\\*T!\\[auto_rand\\]\\s*AUTO_RANDOM\\((\\d+)(?:\\s*,\\s*(\\d+))?\\)")
 
-// setAutoRandom extracts the shard and range bits from CREATE TABLE statement.
-// TiDB allows at most one AUTO_RANDOM column per table. Unlike older TiDB versions
-// (v5/v6) which set "auto_random" in the EXTRA column of INFORMATION_SCHEMA, newer
-// versions (v8+) leave EXTRA empty. Therefore, this function identifies the column
-// directly from the CREATE TABLE statement rather than relying on a placeholder.
+// setAutoRandom extracts AUTO_RANDOM shard and range bits from the CREATE TABLE statement.
 func (i *tinspect) setAutoRandom(t *schema.Table) error {
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
@@ -564,7 +508,7 @@ func (i *tinspect) setAutoRandom(t *schema.Table) error {
 		// Normalize the default range (64) to 0 so that HCL round-trips
 		// are lossless: columnSpec omits auto_random_range when it equals
 		// the default, and convertColumn reads the absence as 0.
-		if rangeBits != AutoRandomRangeBitsMax {
+		if rangeBits != autoRandomRangeBitsMax {
 			ar.RangeBits = rangeBits
 		}
 	}
@@ -572,16 +516,15 @@ func (i *tinspect) setAutoRandom(t *schema.Table) error {
 	return nil
 }
 
-// setAutoIncrement extracts the actual AUTO_INCREMENT value from the CREATE TABLE statement.
 func (i *tinspect) setAutoIncrement(t *schema.Table) error {
-	// patch only it is set (set falsely to '1' due to this bug: https://github.com/pingcap/tidb/issues/24702).
+	// patch only it is set (set falsely to '1' due to this bug:https://github.com/pingcap/tidb/issues/24702).
 	ai := &AutoIncrement{}
 	if !sqlx.Has(t.Attrs, ai) {
 		return nil
 	}
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("mysql: missing CREATE TABLE statement in attributes for table %q", t.Name)
+		return fmt.Errorf("missing CREATE TABLE statement in attributes for %q", t.Name)
 	}
 	matches := reAutoinc.FindStringSubmatch(c.S)
 	if len(matches) != 2 {
@@ -589,53 +532,24 @@ func (i *tinspect) setAutoIncrement(t *schema.Table) error {
 	}
 	v, err := strconv.ParseInt(matches[1], 10, 64)
 	if err != nil {
-		return fmt.Errorf("parsing AUTO_INCREMENT for table %q: %w", t.Name, err)
+		return err
 	}
 	ai.V = v
 	schema.ReplaceOrAppend(&t.Attrs, ai)
 	return nil
 }
 
-// reShardRowID matches SHARD_ROW_ID_BITS=N in CREATE TABLE statement.
-// TiDB wraps these in a special comment block:
-//
-//	) /*T! SHARD_ROW_ID_BITS=4 PRE_SPLIT_REGIONS=2 */
-//
-// The pattern requires the TiDB comment marker /*T! to ensure we only match
-// TiDB-specific attributes, not values in SQL comments or other contexts.
-// Valid range: 0-15 (0 means disabled).
-var reShardRowID = regexp.MustCompile(`/\*T![^*]*SHARD_ROW_ID_BITS\s*=\s*(\d+)`)
+// reShardRowID matches SHARD_ROW_ID_BITS=N inside TiDB's /*T! ... */ comment block.
+var reShardRowID = regexp.MustCompile(`/\*T!.*?SHARD_ROW_ID_BITS\s*=\s*(\d+)`)
 
-// rePreSplitRegions matches PRE_SPLIT_REGIONS=N in CREATE TABLE statement.
-// TiDB wraps these in a special comment block:
-//
-//	) /*T! SHARD_ROW_ID_BITS=4 PRE_SPLIT_REGIONS=2 */
-//
-// The pattern requires the TiDB comment marker /*T! to ensure we only match
-// TiDB-specific attributes. Must be used together with SHARD_ROW_ID_BITS or AUTO_RANDOM.
-// The value must be <= SHARD_ROW_ID_BITS (or AUTO_RANDOM shard bits).
-// Creates 2^N regions at table creation time.
-var rePreSplitRegions = regexp.MustCompile(`/\*T![^*]*PRE_SPLIT_REGIONS\s*=\s*(\d+)`)
+// rePreSplitRegions matches PRE_SPLIT_REGIONS=N inside TiDB's /*T! ... */ comment block.
+var rePreSplitRegions = regexp.MustCompile(`/\*T!.*?PRE_SPLIT_REGIONS\s*=\s*(\d+)`)
 
-// reAutoIDCache matches AUTO_ID_CACHE=N in CREATE TABLE statement.
-// TiDB wraps this in a feature-tagged comment block:
-//
-//	/*T![auto_id_cache] AUTO_ID_CACHE=100 */
-//
-// Note: Unlike SHARD_ROW_ID_BITS/PRE_SPLIT_REGIONS which use the generic /*T! ... */
-// format, AUTO_ID_CACHE uses the feature-tagged /*T![feature_name] ... */ format.
-// The pattern matches the specific tag to avoid false positives.
+// reAutoIDCache matches AUTO_ID_CACHE=N inside TiDB's /*T![auto_id_cache] ... */ comment block.
 var reAutoIDCache = regexp.MustCompile(`/\*T!\[auto_id_cache\]\s*AUTO_ID_CACHE\s*=\s*(\d+)`)
 
-// reClustered matches CLUSTERED or NONCLUSTERED in PRIMARY KEY definition.
-// TiDB wraps this in a special comment:
-//
-//	PRIMARY KEY (`id`) /*T![clustered_index] NONCLUSTERED */
-//	PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */
-//
-// Pattern captures "NONCLUSTERED" first (if present), otherwise "CLUSTERED".
-// This is important because "NONCLUSTERED" contains "CLUSTERED" as a substring.
-// The pattern explicitly matches the TiDB comment format /*T![...] ... */.
+// reClustered matches CLUSTERED or NONCLUSTERED inside TiDB's /*T![clustered_index] ... */ comment block.
+// "NONCLUSTERED" is listed first in the alternation because it contains "CLUSTERED" as a substring.
 var reClustered = regexp.MustCompile(`PRIMARY\s+KEY\s*\([^)]+\)\s*/\*T!\[clustered_index\]\s*(NONCLUSTERED|CLUSTERED)\s*\*/`)
 
 // setShardRowIDBits extracts SHARD_ROW_ID_BITS and PRE_SPLIT_REGIONS from CREATE TABLE.
@@ -700,7 +614,6 @@ func (i *tinspect) setClusteredIndex(t *schema.Table) error {
 	if matches == nil {
 		return nil
 	}
-	clustered := matches[1] == "CLUSTERED"
-	t.PrimaryKey.AddAttrs(&ClusteredIndex{Clustered: clustered})
+	t.PrimaryKey.AddAttrs(&ClusteredIndex{Clustered: matches[1] == clustered})
 	return nil
 }

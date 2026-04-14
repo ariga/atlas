@@ -97,6 +97,9 @@ func (d *diff) TableAttrDiff(from, to *schema.Table, opts *schema.DiffOptions) (
 	if change := d.systemVerChange(from.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
+	if err := partitionChanged(from, to); err != nil {
+		return nil, err
+	}
 	if !d.SupportsCheck() && sqlx.Has(to.Attrs, &schema.Check{}) {
 		return nil, fmt.Errorf("version %q does not support CHECK constraints", d.V)
 	}
@@ -737,4 +740,54 @@ func (d *diff) defaultCharset(attrs *[]schema.Attr) error {
 
 func (*diff) ViewAttrChanges(_, _ *schema.View) []schema.Change {
 	return nil // Not implemented.
+}
+
+// partitionChanged checks if the partition configuration has changed between
+// two table states. Partition changes require drop and recreate.
+func partitionChanged(from, to *schema.Table) error {
+	var fromP, toP Partition
+	switch fromHas, toHas := sqlx.Has(from.Attrs, &fromP), sqlx.Has(to.Attrs, &toP); {
+	case !fromHas && !toHas:
+		return nil
+	case fromHas && !toHas:
+		return fmt.Errorf("partition cannot be dropped from %q (drop and add is required)", from.Name)
+	case !fromHas && toHas:
+		return fmt.Errorf("partition cannot be added to %q (drop and add is required)", to.Name)
+	default:
+		if !partitionsEqual(fromP, toP) {
+			return fmt.Errorf("partition of table %q cannot be changed (drop and add is required)", to.Name)
+		}
+	}
+	return nil
+}
+
+// partitionsEqual compares two Partition values structurally.
+func partitionsEqual(a, b Partition) bool {
+	if strings.ToUpper(a.T) != strings.ToUpper(b.T) || a.Count != b.Count || len(a.Key) != len(b.Key) || len(a.Parts) != len(b.Parts) {
+		return false
+	}
+	for i := range a.Key {
+		ak, bk := a.Key[i], b.Key[i]
+		switch {
+		case ak.C != nil && bk.C != nil:
+			if ak.C.Name != bk.C.Name {
+				return false
+			}
+		case ak.X != nil && bk.X != nil:
+			aRaw, aOk := ak.X.(*schema.RawExpr)
+			bRaw, bOk := bk.X.(*schema.RawExpr)
+			if !aOk || !bOk || aRaw.X != bRaw.X {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	for i := range a.Parts {
+		ap, bp := a.Parts[i], b.Parts[i]
+		if ap.Name != bp.Name || ap.Bound != bp.Bound {
+			return false
+		}
+	}
+	return true
 }

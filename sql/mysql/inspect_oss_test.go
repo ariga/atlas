@@ -1108,3 +1108,181 @@ func (m mock) tables(schema string, tables ...string) {
 		WithArgs(schema).
 		WillReturnRows(rows)
 }
+
+func TestSetPartition_Range(t *testing.T) {
+	tbl := &schema.Table{
+		Name: "events",
+		Columns: []*schema.Column{
+			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			{Name: "created", Type: &schema.ColumnType{Type: &schema.TimeType{T: "date"}}},
+		},
+	}
+	c := &CreateStmt{
+		S: "CREATE TABLE `events` (\n  `id` int NOT NULL,\n  `created` date DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\n/*!50100 PARTITION BY RANGE (YEAR(`created`))\n(PARTITION p0 VALUES LESS THAN (2020) ENGINE = InnoDB,\n PARTITION p1 VALUES LESS THAN (2021) ENGINE = InnoDB,\n PARTITION p2 VALUES LESS THAN MAXVALUE ENGINE = InnoDB) */",
+	}
+	require.NoError(t, setPartition(tbl, c))
+	p := &Partition{}
+	require.True(t, sqlx.Has(tbl.Attrs, p))
+	require.Equal(t, PartitionTypeRange, p.T)
+	require.Len(t, p.Key, 1)
+	require.Equal(t, "YEAR(`created`)", p.Key[0].X.(*schema.RawExpr).X)
+	require.Len(t, p.Parts, 3)
+	require.Equal(t, "p0", p.Parts[0].Name)
+	require.Equal(t, "(2020)", p.Parts[0].Bound)
+	require.Equal(t, "p1", p.Parts[1].Name)
+	require.Equal(t, "p2", p.Parts[2].Name)
+	require.Equal(t, "MAXVALUE", p.Parts[2].Bound)
+}
+
+func TestSetPartition_Hash(t *testing.T) {
+	tbl := &schema.Table{
+		Name: "events",
+		Columns: []*schema.Column{
+			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+		},
+	}
+	c := &CreateStmt{
+		S: "CREATE TABLE `events` (\n  `id` int NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4\n/*!50100 PARTITION BY HASH (`id`)\nPARTITIONS 4 */",
+	}
+	require.NoError(t, setPartition(tbl, c))
+	p := &Partition{}
+	require.True(t, sqlx.Has(tbl.Attrs, p))
+	require.Equal(t, PartitionTypeHash, p.T)
+	require.Len(t, p.Key, 1)
+	require.Equal(t, "id", p.Key[0].C.Name)
+	require.Equal(t, 4, p.Count)
+}
+
+func TestSetPartition_NoPartition(t *testing.T) {
+	tbl := &schema.Table{Name: "users"}
+	c := &CreateStmt{
+		S: "CREATE TABLE `users` (\n  `id` int NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+	}
+	require.NoError(t, setPartition(tbl, c))
+	p := &Partition{}
+	require.False(t, sqlx.Has(tbl.Attrs, p))
+}
+
+func TestSetPartition_RangeColumns(t *testing.T) {
+	tbl := &schema.Table{
+		Name: "events",
+		Columns: []*schema.Column{
+			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			{Name: "created", Type: &schema.ColumnType{Type: &schema.TimeType{T: "date"}}},
+		},
+	}
+	c := &CreateStmt{
+		S: "CREATE TABLE `events` (\n  `id` int NOT NULL,\n  `created` date DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4\n/*!50100 PARTITION BY RANGE COLUMNS(`created`)\n(PARTITION p0 VALUES LESS THAN ('2020-01-01') ENGINE = InnoDB,\n PARTITION p1 VALUES LESS THAN ('2021-01-01') ENGINE = InnoDB) */",
+	}
+	require.NoError(t, setPartition(tbl, c))
+	p := &Partition{}
+	require.True(t, sqlx.Has(tbl.Attrs, p))
+	require.Equal(t, PartitionTypeRangeColumns, p.T)
+	require.Len(t, p.Key, 1)
+	require.Equal(t, "created", p.Key[0].C.Name)
+	require.Len(t, p.Parts, 2)
+	require.Equal(t, "p0", p.Parts[0].Name)
+	require.Equal(t, "('2020-01-01')", p.Parts[0].Bound)
+	// Verify formatPartition produces correct SQL with spaces.
+	sql, err := formatPartition(*p)
+	require.NoError(t, err)
+	require.Contains(t, sql, "PARTITION BY RANGE COLUMNS")
+}
+
+func TestSetPartition_LinearHash(t *testing.T) {
+	tbl := &schema.Table{
+		Name: "events",
+		Columns: []*schema.Column{
+			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+		},
+	}
+	c := &CreateStmt{
+		S: "CREATE TABLE `events` (\n  `id` int NOT NULL\n) ENGINE=InnoDB\n/*!50100 PARTITION BY LINEAR HASH (`id`)\nPARTITIONS 8 */",
+	}
+	require.NoError(t, setPartition(tbl, c))
+	p := &Partition{}
+	require.True(t, sqlx.Has(tbl.Attrs, p))
+	require.Equal(t, PartitionTypeLinearHash, p.T)
+	require.Equal(t, 8, p.Count)
+}
+
+func TestSetPartition_List(t *testing.T) {
+	tbl := &schema.Table{
+		Name: "events",
+		Columns: []*schema.Column{
+			{Name: "status", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+		},
+	}
+	c := &CreateStmt{
+		S: "CREATE TABLE `events` (\n  `status` int NOT NULL\n) ENGINE=InnoDB\n/*!50100 PARTITION BY LIST (`status`)\n(PARTITION p_active VALUES IN (1,2) ENGINE = InnoDB,\n PARTITION p_inactive VALUES IN (3,4) ENGINE = InnoDB) */",
+	}
+	require.NoError(t, setPartition(tbl, c))
+	p := &Partition{}
+	require.True(t, sqlx.Has(tbl.Attrs, p))
+	require.Equal(t, PartitionTypeList, p.T)
+	require.Len(t, p.Parts, 2)
+	require.Equal(t, "p_active", p.Parts[0].Name)
+	require.Equal(t, "(1,2)", p.Parts[0].Bound)
+}
+
+func TestParsePartition_Errors(t *testing.T) {
+	tbl := &schema.Table{Name: "t"}
+	// Unknown partition type.
+	_, err := parsePartition("PARTITION BY UNKNOWN (x)", tbl)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown partition type")
+	// Missing opening paren.
+	_, err = parsePartition("PARTITION BY RANGE x", tbl)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "expected '('")
+	// Unmatched paren.
+	_, err = parsePartition("PARTITION BY RANGE (x", tbl)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unmatched '('")
+}
+
+// TestPartition_FullRoundTrip tests the complete pipeline:
+// SHOW CREATE TABLE → setPartition → fromPartition → HCL → convertPartition → formatPartition → SQL
+func TestPartition_FullRoundTrip(t *testing.T) {
+	tbl := &schema.Table{
+		Name: "events",
+		Columns: []*schema.Column{
+			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			{Name: "created", Type: &schema.ColumnType{Type: &schema.TimeType{T: "date"}}},
+		},
+	}
+	c := &CreateStmt{
+		S: "CREATE TABLE `events` (\n  `id` int NOT NULL,\n  `created` date DEFAULT NULL\n) ENGINE=InnoDB\n/*!50100 PARTITION BY RANGE (YEAR(`created`))\n(PARTITION p0 VALUES LESS THAN (2020) ENGINE = InnoDB,\n PARTITION p1 VALUES LESS THAN MAXVALUE ENGINE = InnoDB) */",
+	}
+	// Step 1: Parse from CREATE TABLE.
+	require.NoError(t, setPartition(tbl, c))
+	p := &Partition{}
+	require.True(t, sqlx.Has(tbl.Attrs, p))
+
+	// Step 2: Generate SQL with formatPartition.
+	sql, err := formatPartition(*p)
+	require.NoError(t, err)
+	require.Contains(t, sql, "PARTITION BY RANGE")
+	require.Contains(t, sql, "VALUES LESS THAN (2020)")
+	require.Contains(t, sql, "VALUES LESS THAN MAXVALUE")
+
+	// Step 3: Convert to HCL.
+	s := &schema.Schema{Name: "test", Tables: []*schema.Table{tbl}}
+	tbl.Schema = s
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+
+	// Step 4: Parse HCL back to schema.
+	var s2 schema.Schema
+	require.NoError(t, EvalHCLBytes(buf, &s2, nil))
+	p2 := &Partition{}
+	require.True(t, sqlx.Has(s2.Tables[0].Attrs, p2))
+	require.Equal(t, p.T, p2.T)
+	require.Len(t, p2.Key, len(p.Key))
+	require.Len(t, p2.Parts, len(p.Parts))
+
+	// Step 5: Generate SQL from the round-tripped schema.
+	sql2, err := formatPartition(*p2)
+	require.NoError(t, err)
+	require.Equal(t, sql, sql2)
+}

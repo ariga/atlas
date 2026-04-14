@@ -912,3 +912,54 @@ func TestSkipChanges(t *testing.T) {
 		require.IsType(t, &schema.DropColumn{}, changes[0].(*schema.ModifyTable).Changes[0])
 	})
 }
+
+func TestPartitionChanged(t *testing.T) {
+	// No partition on either side: no error.
+	from := &schema.Table{Name: "t", Schema: &schema.Schema{}}
+	to := &schema.Table{Name: "t", Schema: &schema.Schema{}}
+	require.NoError(t, partitionChanged(from, to))
+
+	// Same partition on both sides: no error.
+	p := &Partition{
+		T:   PartitionTypeRange,
+		Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+		Parts: []*PartitionDef{
+			{Name: "p0", Bound: "(2020)"},
+		},
+	}
+	from.AddAttrs(p)
+	to.AddAttrs(p)
+	require.NoError(t, partitionChanged(from, to))
+
+	// Partition added: error.
+	from2 := &schema.Table{Name: "t", Schema: &schema.Schema{}}
+	to2 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+	require.Error(t, partitionChanged(from2, to2))
+
+	// Partition removed: error.
+	from3 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+	to3 := &schema.Table{Name: "t", Schema: &schema.Schema{}}
+	require.Error(t, partitionChanged(from3, to3))
+
+	// Partition type changed: error.
+	p2 := &Partition{
+		T:   PartitionTypeHash,
+		Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+		Count: 4,
+	}
+	from4 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+	to4 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p2}}
+	require.Error(t, partitionChanged(from4, to4))
+
+	// Partition definition value changed: error.
+	p3 := &Partition{
+		T:   PartitionTypeRange,
+		Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+		Parts: []*PartitionDef{
+			{Name: "p0", Bound: "(2025)"},
+		},
+	}
+	from5 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p}}
+	to5 := &schema.Table{Name: "t", Schema: &schema.Schema{}, Attrs: []schema.Attr{p3}}
+	require.Error(t, partitionChanged(from5, to5))
+}

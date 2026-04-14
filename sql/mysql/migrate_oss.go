@@ -267,6 +267,13 @@ func (s *state) addTable(add *schema.AddTable) error {
 		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errs, ", "))
 	}
 	s.tableAttrs(b, add, add.T.Attrs...)
+	if p := (Partition{}); sqlx.Has(add.T.Attrs, &p) {
+		ps, err := formatPartition(p)
+		if err != nil {
+			return fmt.Errorf("create table %q: %s", add.T.Name, err)
+		}
+		b.P(ps)
+	}
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  add,
@@ -585,7 +592,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 				break
 			}
 			// Only include range bits if explicitly set and not the default (64).
-			if a.RangeBits > 0 && a.RangeBits != AutoRandomRangeBitsMax {
+			if a.RangeBits > 0 && a.RangeBits != autoRandomRangeBitsMax {
 				b.P(fmt.Sprintf("AUTO_RANDOM(%d, %d)", a.ShardBits, a.RangeBits))
 			} else {
 				b.P(fmt.Sprintf("AUTO_RANDOM(%d)", a.ShardBits))
@@ -703,12 +710,12 @@ func (s *state) tableAttrs(b *sqlx.Builder, c schema.Change, attrs ...schema.Att
 			b.P(a.V)
 		case *AutoIncrement:
 			// Update the AUTO_INCREMENT if it is a table modification, or it is not the default.
-			if isAlter || a.V > 1 {
+			if _, ok := c.(*schema.ModifyAttr); ok || a.V > 1 {
 				b.P("AUTO_INCREMENT", strconv.FormatInt(a.V, 10))
 			}
 		case *Engine:
 			// Update the ENGINE if it is a table modification, or it is not the default.
-			if isAlter || !a.Default {
+			if _, ok := c.(*schema.ModifyAttr); ok || !a.Default {
 				b.P("ENGINE", a.V)
 			}
 		case *schema.Check:
@@ -721,43 +728,24 @@ func (s *state) tableAttrs(b *sqlx.Builder, c schema.Change, attrs ...schema.Att
 		case *schema.Comment:
 			b.P("COMMENT", quote(a.Text))
 		case *ShardRowIDBits:
-			// TiDB SHARD_ROW_ID_BITS: distributes implicit _tidb_rowid across shards.
-			// - CREATE TABLE: uses /*T! SHARD_ROW_ID_BITS=N PRE_SPLIT_REGIONS=M */
-			// - ALTER TABLE: uses SHARD_ROW_ID_BITS = N (without comment wrapper)
-			//
-			// Note: Setting SHARD_ROW_ID_BITS to 0 via ALTER TABLE disables sharding
-			// but keeps existing data distribution. TiDB supports this operation.
 			if isAlter {
-				// ALTER TABLE syntax (TiDB supports changing/adding SHARD_ROW_ID_BITS).
 				b.P("SHARD_ROW_ID_BITS =", strconv.Itoa(a.N))
 			} else if a.N > 0 {
-				// CREATE TABLE syntax with TiDB-specific comment.
 				b.P(fmt.Sprintf("/*T! SHARD_ROW_ID_BITS=%d", a.N))
-				// Check for PRE_SPLIT_REGIONS in the same comment block.
 				if psr := (&PreSplitRegions{}); sqlx.Has(attrs, psr) && psr.N > 0 {
 					b.P(fmt.Sprintf("PRE_SPLIT_REGIONS=%d", psr.N))
 				}
 				b.P("*/")
 			}
 		case *PreSplitRegions:
-			// PRE_SPLIT_REGIONS can only be set at table creation time and cannot
-			// be modified afterwards. It works with either SHARD_ROW_ID_BITS or
-			// AUTO_RANDOM columns.
-			//
-			// When used with SHARD_ROW_ID_BITS, it's handled in that case block above.
-			// When used with AUTO_RANDOM (without SHARD_ROW_ID_BITS), we need to
-			// generate the TiDB comment here.
+			// Already emitted inside ShardRowIDBits block when both are present.
+			// This handles the AUTO_RANDOM-only case.
 			if !isAlter && a.N > 0 {
-				// Only generate if SHARD_ROW_ID_BITS is not present (otherwise it's
-				// already handled in the ShardRowIDBits case).
 				if shard := (&ShardRowIDBits{}); !sqlx.Has(attrs, shard) || shard.N == 0 {
 					b.P(fmt.Sprintf("/*T! PRE_SPLIT_REGIONS=%d */", a.N))
 				}
 			}
 		case *AutoIDCache:
-			// TiDB AUTO_ID_CACHE: controls the cache size for auto-increment ID allocation.
-			// - CREATE TABLE: uses /*T![auto_id_cache] AUTO_ID_CACHE=N */
-			// - ALTER TABLE: uses AUTO_ID_CACHE = N (without comment wrapper)
 			if isAlter {
 				b.P("AUTO_ID_CACHE =", strconv.Itoa(a.N))
 			} else if a.N > 0 {
@@ -903,4 +891,83 @@ func quote(s string) string {
 		return s
 	}
 	return strconv.Quote(s)
+}
+
+// partitionTypeSQL converts an internal partition type constant to its SQL syntax.
+func partitionTypeSQL(t string) string {
+	switch strings.ToUpper(t) {
+	case PartitionTypeRangeColumns:
+		return "RANGE COLUMNS"
+	case PartitionTypeListColumns:
+		return "LIST COLUMNS"
+	case PartitionTypeLinearHash:
+		return "LINEAR HASH"
+	case PartitionTypeLinearKey:
+		return "LINEAR KEY"
+	default:
+		return strings.ToUpper(t)
+	}
+}
+
+// partitionValuePrefix returns the SQL VALUES prefix for a partition type.
+func partitionValuePrefix(t string) string {
+	switch strings.ToUpper(t) {
+	case PartitionTypeRange, PartitionTypeRangeColumns:
+		return "VALUES LESS THAN"
+	case PartitionTypeList, PartitionTypeListColumns:
+		return "VALUES IN"
+	default:
+		return ""
+	}
+}
+
+// formatPartition returns the SQL string for a PARTITION BY clause.
+func formatPartition(p Partition) (string, error) {
+	b := &sqlx.Builder{QuoteOpening: '`', QuoteClosing: '`'}
+	b.P("PARTITION BY")
+	switch strings.ToUpper(p.T) {
+	case PartitionTypeRange, PartitionTypeList, PartitionTypeHash,
+		PartitionTypeKey, PartitionTypeRangeColumns, PartitionTypeListColumns,
+		PartitionTypeLinearHash, PartitionTypeLinearKey:
+		b.P(partitionTypeSQL(p.T))
+	default:
+		return "", fmt.Errorf("unknown partition type: %q", p.T)
+	}
+	if len(p.Key) == 0 {
+		return "", fmt.Errorf("missing partition key")
+	}
+	b.Wrap(func(b *sqlx.Builder) {
+		b.MapComma(p.Key, func(i int, b *sqlx.Builder) {
+			switch k := p.Key[i]; {
+			case k.C != nil:
+				b.Ident(k.C.Name)
+			case k.X != nil:
+				if raw, ok := k.X.(*schema.RawExpr); ok {
+					b.P(raw.X)
+				}
+			}
+		})
+	})
+	switch {
+	case p.Count > 0:
+		b.P("PARTITIONS", strconv.Itoa(p.Count))
+	case len(p.Parts) > 0:
+		prefix := partitionValuePrefix(p.T)
+		b.P("(")
+		for i, part := range p.Parts {
+			if i > 0 {
+				b.P(",")
+			}
+			b.P("PARTITION")
+			b.Ident(part.Name)
+			if part.Bound != "" {
+				if prefix != "" {
+					b.P(prefix)
+				}
+				b.P(part.Bound)
+			}
+		}
+		b.P(")")
+	}
+	return b.String(), nil
 }

@@ -103,10 +103,16 @@ var (
 		schemahcl.WithScopedEnums("table.engine", EngineInnoDB, EngineMyISAM, EngineMemory, EngineCSV, EngineNDB),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
 		schemahcl.WithScopedEnums("table.index.parser", IndexParserNGram, IndexParserMeCab),
-		schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial, "CLUSTERED", "NONCLUSTERED"),
+		schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial, clustered, nonclustered),
 		schemahcl.WithScopedEnums("table.column.as.type", stored, persistent, virtual),
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+		schemahcl.WithScopedEnums("table.partition.type",
+			PartitionTypeRange, PartitionTypeRangeColumns,
+			PartitionTypeList, PartitionTypeListColumns,
+			PartitionTypeHash, PartitionTypeLinearHash,
+			PartitionTypeKey, PartitionTypeLinearKey,
+		),
 	}
 	codec = &Codec{
 		State: schemahcl.New(
@@ -179,8 +185,8 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 		if err != nil {
 			return nil, err
 		}
-		if v < 0 || v > ShardRowIDBitsMax {
-			return nil, fmt.Errorf("shard_row_id_bits for table %q must be between 0 and %d, got %d", t.Name, ShardRowIDBitsMax, v)
+		if v < 0 || v > shardRowIDBitsMax {
+			return nil, fmt.Errorf("shard_row_id_bits for table %q must be between 0 and %d, got %d", t.Name, shardRowIDBitsMax, v)
 		}
 		shardBits = v
 		if v > 0 {
@@ -212,6 +218,9 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 	}
 	// Validate TiDB constraints with cross-reference checking.
 	if err := validateTiDBTableConstraints(t, shardBits, preSplitRegions); err != nil {
+		return nil, err
+	}
+	if err := convertPartition(spec.Extra, t); err != nil {
 		return nil, err
 	}
 	return t, nil
@@ -259,8 +268,6 @@ func validateTiDBTableConstraints(t *schema.Table, shardBits, preSplitRegions in
 		}
 	}
 	// SHARD_ROW_ID_BITS and AUTO_RANDOM are mutually exclusive.
-	// SHARD_ROW_ID_BITS distributes the implicit _tidb_rowid, while AUTO_RANDOM
-	// distributes the primary key column. They cannot be used together.
 	if shardBits > 0 && autoRandomShardBits > 0 {
 		return fmt.Errorf(
 			"table %q cannot have both shard_row_id_bits and auto_random; "+
@@ -293,8 +300,10 @@ func validateTiDBTableConstraints(t *schema.Table, shardBits, preSplitRegions in
 }
 
 // convertPK converts a sqlspec.PrimaryKey into a schema.Index.
+// Unlike regular indexes, we call specutil.Index directly (bypassing convertIndex)
+// because the "type" attribute on primary keys has dual meaning: it can be a standard
+// MySQL index type (BTREE, HASH) or a TiDB clustering mode (CLUSTERED, NONCLUSTERED).
 func convertPK(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
-	// Create index without the "type" attribute to process it separately.
 	idx, err := specutil.Index(&sqlspec.Index{
 		Parts:            spec.Parts,
 		Columns:          spec.Columns,
@@ -312,9 +321,9 @@ func convertPK(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, e
 			return nil, err
 		}
 		switch strings.ToUpper(v) {
-		case "CLUSTERED":
+		case clustered:
 			idx.AddAttrs(&ClusteredIndex{Clustered: true})
-		case "NONCLUSTERED":
+		case nonclustered:
 			idx.AddAttrs(&ClusteredIndex{Clustered: false})
 		case IndexTypeBTree, IndexTypeHash:
 			// Standard MySQL index type.
@@ -428,8 +437,8 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 		if err != nil {
 			return nil, err
 		}
-		if v < AutoRandomShardBitsMin || v > AutoRandomShardBitsMax {
-			return nil, fmt.Errorf("auto_random shard bits for column %q must be between %d and %d, got %d", c.Name, AutoRandomShardBitsMin, AutoRandomShardBitsMax, v)
+		if v < autoRandomShardBitsMin || v > autoRandomShardBitsMax {
+			return nil, fmt.Errorf("auto_random shard bits for column %q must be between %d and %d, got %d", c.Name, autoRandomShardBitsMin, autoRandomShardBitsMax, v)
 		}
 		ar := &AutoRandom{ShardBits: v}
 		if rangeAttr, ok := spec.Attr("auto_random_range"); ok {
@@ -437,13 +446,13 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 			if err != nil {
 				return nil, err
 			}
-			if r < AutoRandomRangeBitsMin || r > AutoRandomRangeBitsMax {
-				return nil, fmt.Errorf("auto_random_range for column %q must be between %d and %d, got %d", c.Name, AutoRandomRangeBitsMin, AutoRandomRangeBitsMax, r)
+			if r < autoRandomRangeBitsMin || r > autoRandomRangeBitsMax {
+				return nil, fmt.Errorf("auto_random_range for column %q must be between %d and %d, got %d", c.Name, autoRandomRangeBitsMin, autoRandomRangeBitsMax, r)
 			}
 			// Normalize the default range (64) to 0 so that diffs between
 			// the inspected state (which also normalizes 64→0) and the
 			// desired state from HCL are consistent.
-			if r != AutoRandomRangeBitsMax {
+			if r != autoRandomRangeBitsMax {
 				ar.RangeBits = r
 			}
 		}
@@ -514,8 +523,11 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	if p := (&PreSplitRegions{}); sqlx.Has(t.Attrs, p) && p.N > 0 {
 		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.IntAttr("pre_split_regions", p.N))
 	}
-	if a := (&AutoIDCache{}); sqlx.Has(t.Attrs, a) && a.N > 0 && a.N != AutoIDCacheDefault {
+	if a := (&AutoIDCache{}); sqlx.Has(t.Attrs, a) && a.N > 0 && a.N != autoIDCacheDefault {
 		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.IntAttr("auto_id_cache", a.N))
+	}
+	if p := (&Partition{}); sqlx.Has(t.Attrs, p) {
+		ts.Extra.Children = append(ts.Extra.Children, fromPartition(*p))
 	}
 	return ts, nil
 }
@@ -534,9 +546,9 @@ func pkSpec(idx *schema.Index) (*sqlspec.PrimaryKey, error) {
 	// TiDB CLUSTERED/NONCLUSTERED attribute.
 	if ci := (&ClusteredIndex{}); sqlx.Has(idx.Attrs, ci) {
 		if ci.Clustered {
-			pk.Extra.Attrs = append(pk.Extra.Attrs, specutil.VarAttr("type", "CLUSTERED"))
+			pk.Extra.Attrs = append(pk.Extra.Attrs, specutil.VarAttr("type", clustered))
 		} else {
-			pk.Extra.Attrs = append(pk.Extra.Attrs, specutil.VarAttr("type", "NONCLUSTERED"))
+			pk.Extra.Attrs = append(pk.Extra.Attrs, specutil.VarAttr("type", nonclustered))
 		}
 	}
 	return pk, nil
@@ -597,7 +609,7 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	}
 	if ar := (&AutoRandom{}); sqlx.Has(c.Attrs, ar) && ar.ShardBits > 0 {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.IntAttr("auto_random", ar.ShardBits))
-		if ar.RangeBits > 0 && ar.RangeBits != AutoRandomRangeBitsMax {
+		if ar.RangeBits > 0 && ar.RangeBits != autoRandomRangeBitsMax {
 			spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.IntAttr("auto_random_range", ar.RangeBits))
 		}
 	}
@@ -761,4 +773,162 @@ func unsignedTypeAttr() *schemahcl.TypeAttr {
 		Name: "unsigned",
 		Kind: reflect.Bool,
 	}
+}
+
+// convertPartition converts the HCL partition block into a Partition attribute on the table.
+func convertPartition(spec schemahcl.Resource, table *schema.Table) error {
+	r, ok := spec.Resource("partition")
+	if !ok {
+		return nil
+	}
+	var p struct {
+		Type    string           `spec:"type"`
+		Columns []*schemahcl.Ref `spec:"columns"`
+		Expr    string           `spec:"expr"`
+		Parts   []*struct {
+			Expr   string         `spec:"expr"`
+			Column *schemahcl.Ref `spec:"column"`
+		} `spec:"by"`
+	}
+	if err := r.As(&p); err != nil {
+		return fmt.Errorf("parsing %s.partition: %w", table.Name, err)
+	}
+	if p.Type == "" {
+		return fmt.Errorf("missing attribute %s.partition.type", table.Name)
+	}
+	part := &Partition{T: p.Type}
+	// Count non-zero key sources.
+	sources := 0
+	if len(p.Columns) > 0 {
+		sources++
+	}
+	if p.Expr != "" {
+		sources++
+	}
+	if len(p.Parts) > 0 {
+		sources++
+	}
+	if sources > 1 {
+		return fmt.Errorf(`multiple definitions for %s.partition key, use "columns", "expr", or "by"`, table.Name)
+	}
+	switch {
+	case len(p.Columns) > 0:
+		for _, ref := range p.Columns {
+			c, err := specutil.ColumnByRef(table, ref)
+			if err != nil {
+				return err
+			}
+			part.Key = append(part.Key, &PartitionKeyPart{C: c})
+		}
+	case p.Expr != "":
+		part.Key = append(part.Key, &PartitionKeyPart{X: &schema.RawExpr{X: p.Expr}})
+	case len(p.Parts) > 0:
+		for i, bp := range p.Parts {
+			switch {
+			case bp.Column == nil && bp.Expr == "":
+				return fmt.Errorf("missing column or expr for %s.partition.by at position %d", table.Name, i)
+			case bp.Column != nil && bp.Expr != "":
+				return fmt.Errorf("multiple definitions for %s.partition.by at position %d", table.Name, i)
+			case bp.Column != nil:
+				c, err := specutil.ColumnByRef(table, bp.Column)
+				if err != nil {
+					return err
+				}
+				part.Key = append(part.Key, &PartitionKeyPart{C: c})
+			case bp.Expr != "":
+				part.Key = append(part.Key, &PartitionKeyPart{X: &schema.RawExpr{X: bp.Expr}})
+			}
+		}
+	default:
+		return fmt.Errorf("missing columns, expr, or by for %s.partition", table.Name)
+	}
+	// Parse partition count (for HASH/KEY).
+	if attr, ok := r.Attr("partitions"); ok {
+		n, err := attr.Int()
+		if err != nil {
+			return fmt.Errorf("parsing %s.partition.partitions: %w", table.Name, err)
+		}
+		if n <= 0 {
+			return fmt.Errorf("%s.partition.partitions must be positive, got %d", table.Name, n)
+		}
+		part.Count = n
+	}
+	// Parse named partition definitions.
+	for _, child := range r.Children {
+		if child.Type != "definition" {
+			continue
+		}
+		def := &PartitionDef{Name: child.Name}
+		if attr, ok := child.Attr("value"); ok {
+			v, err := attr.String()
+			if err != nil {
+				return fmt.Errorf("parsing %s.partition.definition.%s.value: %w", table.Name, child.Name, err)
+			}
+			def.Bound = v
+		}
+		part.Parts = append(part.Parts, def)
+	}
+	// Validate mutual exclusivity: Count and Parts cannot both be set.
+	if part.Count > 0 && len(part.Parts) > 0 {
+		return fmt.Errorf("%s.partition: cannot specify both partitions count and named definitions", table.Name)
+	}
+	table.AddAttrs(part)
+	return nil
+}
+
+// fromPartition converts a Partition attribute to an HCL resource spec.
+func fromPartition(p Partition) *schemahcl.Resource {
+	key := &schemahcl.Resource{
+		Type: "partition",
+		Attrs: []*schemahcl.Attr{
+			specutil.VarAttr("type", p.T),
+		},
+	}
+	// Partition key: try columns first, then single expr, then by blocks.
+	allColumns := true
+	for _, k := range p.Key {
+		if k.C == nil {
+			allColumns = false
+			break
+		}
+	}
+	switch {
+	case allColumns && len(p.Key) > 0:
+		refs := make([]*schemahcl.Ref, 0, len(p.Key))
+		for _, k := range p.Key {
+			refs = append(refs, specutil.ColumnRef(k.C.Name))
+		}
+		key.Attrs = append(key.Attrs, schemahcl.RefsAttr("columns", refs...))
+	case len(p.Key) == 1 && p.Key[0].X != nil:
+		if raw, ok := p.Key[0].X.(*schema.RawExpr); ok {
+			key.Attrs = append(key.Attrs, schemahcl.StringAttr("expr", raw.X))
+		}
+	case len(p.Key) > 1:
+		// Mixed column/expression keys: use "by" blocks.
+		for _, k := range p.Key {
+			part := &schemahcl.Resource{Type: "by"}
+			switch {
+			case k.C != nil:
+				part.Attrs = append(part.Attrs, schemahcl.RefAttr("column", specutil.ColumnRef(k.C.Name)))
+			case k.X != nil:
+				if raw, ok := k.X.(*schema.RawExpr); ok {
+					part.Attrs = append(part.Attrs, schemahcl.StringAttr("expr", raw.X))
+				}
+			}
+			key.Children = append(key.Children, part)
+		}
+	}
+	// Partition count (HASH/KEY).
+	if p.Count > 0 {
+		key.Attrs = append(key.Attrs, schemahcl.IntAttr("partitions", p.Count))
+	}
+	// Named partition definitions.
+	for _, def := range p.Parts {
+		child := &schemahcl.Resource{Type: "definition", Name: def.Name}
+		if def.Bound != "" {
+			child.Attrs = append(child.Attrs, schemahcl.StringAttr("value", def.Bound))
+		}
+		key.Children = append(key.Children, child)
+	}
+	return key
 }
