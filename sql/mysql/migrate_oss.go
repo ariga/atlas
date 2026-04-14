@@ -599,17 +599,20 @@ func (s *state) partitionAlter(t *schema.Table, c schema.Change) error {
 
 // Partition modification operations.
 const (
-	partitionOpAdd  = "add"
-	partitionOpDrop = "drop"
-	partitionOpFull = "full"
+	partitionOpAdd   = "add"
+	partitionOpDrop  = "drop"
+	partitionOpFull  = "full"
+	partitionOpReorg = "reorganize"
 )
 
 // partitionModifyChange represents a single partition modification operation.
 type partitionModifyChange struct {
-	op    string          // partitionOpAdd, partitionOpDrop, partitionOpFull
-	parts []*PartitionDef // for add/drop
-	from  *Partition      // for full replacement
-	to    *Partition      // for full replacement or add context
+	op      string          // partitionOpAdd, partitionOpDrop, partitionOpFull, partitionOpReorg
+	parts   []*PartitionDef // for add/drop
+	from    *Partition      // for full replacement or reorganize context
+	to      *Partition      // for full replacement, add, or reorganize context
+	reorgFrom []*PartitionDef // source partitions for REORGANIZE
+	reorgTo   []*PartitionDef // target partitions for REORGANIZE
 }
 
 // partitionModifyChanges determines the optimal set of partition operations
@@ -632,31 +635,42 @@ func partitionModifyChanges(from, to *Partition) []partitionModifyChange {
 	for i, p := range to.Parts {
 		toIdx[p.Name] = i
 	}
-	// Check for modifications (bound changes) — requires full replacement.
+	// Identify bound-changed, dropped, and added partitions.
+	var boundChanged []*PartitionDef
 	for name, fi := range fromIdx {
 		if ti, ok := toIdx[name]; ok {
 			if from.Parts[fi].Bound != to.Parts[ti].Bound {
-				return []partitionModifyChange{{op: partitionOpFull, from: from, to: to}}
+				boundChanged = append(boundChanged, from.Parts[fi])
 			}
 		}
 	}
-	var changes []partitionModifyChange
-	// Dropped partitions.
 	var dropped []*PartitionDef
 	for _, p := range from.Parts {
 		if _, ok := toIdx[p.Name]; !ok {
 			dropped = append(dropped, p)
 		}
 	}
-	if len(dropped) > 0 {
-		changes = append(changes, partitionModifyChange{op: partitionOpDrop, parts: dropped})
-	}
-	// Added partitions.
 	var added []*PartitionDef
 	for _, p := range to.Parts {
 		if _, ok := fromIdx[p.Name]; !ok {
 			added = append(added, p)
 		}
+	}
+	// If there are bound changes, dropped, or added partitions, try REORGANIZE.
+	// REORGANIZE PARTITION works for RANGE/LIST types and handles:
+	// - splitting a partition (e.g., MAXVALUE → two new partitions)
+	// - merging partitions
+	// - changing boundary values
+	if len(boundChanged) > 0 || (len(dropped) > 0 && len(added) > 0) {
+		reorg := buildReorganize(from, to, fromIdx, toIdx)
+		if reorg != nil {
+			return reorg
+		}
+		return []partitionModifyChange{{op: partitionOpFull, from: from, to: to}}
+	}
+	var changes []partitionModifyChange
+	if len(dropped) > 0 {
+		changes = append(changes, partitionModifyChange{op: partitionOpDrop, parts: dropped})
 	}
 	if len(added) > 0 {
 		changes = append(changes, partitionModifyChange{op: partitionOpAdd, parts: added, to: to})
@@ -666,6 +680,106 @@ func partitionModifyChanges(from, to *Partition) []partitionModifyChange {
 		return []partitionModifyChange{{op: partitionOpFull, from: from, to: to}}
 	}
 	return changes
+}
+
+// buildReorganize attempts to build REORGANIZE PARTITION operations by finding
+// contiguous ranges of affected partitions. Returns nil if REORGANIZE cannot
+// express the change (fallback to full replacement).
+func buildReorganize(from, to *Partition, fromIdx, toIdx map[string]int) []partitionModifyChange {
+	// Identify which "from" partitions are affected (bound changed or dropped).
+	affected := make(map[string]bool)
+	for _, p := range from.Parts {
+		if ti, ok := toIdx[p.Name]; ok {
+			if p.Bound != to.Parts[ti].Bound {
+				affected[p.Name] = true
+			}
+		} else {
+			// Dropped partition — candidate for reorganize source.
+			affected[p.Name] = true
+		}
+	}
+	if len(affected) == 0 {
+		return nil
+	}
+	// Find contiguous range(s) of affected partitions in the "from" ordering.
+	// Each contiguous range becomes one REORGANIZE PARTITION statement.
+	var changes []partitionModifyChange
+	i := 0
+	for i < len(from.Parts) {
+		if !affected[from.Parts[i].Name] {
+			i++
+			continue
+		}
+		// Start of a contiguous affected range.
+		start := i
+		for i < len(from.Parts) && affected[from.Parts[i].Name] {
+			i++
+		}
+		reorgFrom := from.Parts[start:i]
+		// Find the corresponding "to" partitions that replace this range.
+		// These are the "to" partitions whose position falls in this range,
+		// including new partitions and partitions with changed bounds.
+		reorgTo := findReorgTarget(reorgFrom, to, fromIdx)
+		if len(reorgTo) == 0 {
+			return nil // Cannot determine target; fallback.
+		}
+		changes = append(changes, partitionModifyChange{
+			op:        partitionOpReorg,
+			from:      from,
+			to:        to,
+			reorgFrom: reorgFrom,
+			reorgTo:   reorgTo,
+		})
+	}
+	// After reorganize, handle any purely added partitions that aren't
+	// covered by reorganize (appended at the end, not replacing anything).
+	var trailingAdded []*PartitionDef
+	for _, p := range to.Parts {
+		if _, ok := fromIdx[p.Name]; ok {
+			continue
+		}
+		// Check if this added partition is already included in a reorganize target.
+		covered := false
+		for _, c := range changes {
+			for _, rp := range c.reorgTo {
+				if rp.Name == p.Name {
+					covered = true
+					break
+				}
+			}
+			if covered {
+				break
+			}
+		}
+		if !covered {
+			trailingAdded = append(trailingAdded, p)
+		}
+	}
+	if len(trailingAdded) > 0 {
+		changes = append(changes, partitionModifyChange{op: partitionOpAdd, parts: trailingAdded, to: to})
+	}
+	return changes
+}
+
+// findReorgTarget finds the "to" partitions that replace the given "from" partitions.
+// It collects partitions that are new or have changed bounds, positioned between
+// the boundaries of the reorganized range.
+func findReorgTarget(reorgFrom []*PartitionDef, to *Partition, fromIdx map[string]int) []*PartitionDef {
+	// Build a set of source partition names.
+	srcNames := make(map[string]bool, len(reorgFrom))
+	for _, p := range reorgFrom {
+		srcNames[p.Name] = true
+	}
+	// Collect target partitions: those that are new (not in fromIdx) or
+	// have the same name as a source partition (bound changed).
+	var result []*PartitionDef
+	for _, p := range to.Parts {
+		_, inFrom := fromIdx[p.Name]
+		if srcNames[p.Name] || !inFrom {
+			result = append(result, p)
+		}
+	}
+	return result
 }
 
 // appendPartitionChange generates a single ALTER TABLE statement for a partition operation.
@@ -721,6 +835,50 @@ func (s *state) appendPartitionChange(t *schema.Table, pc partitionModifyChange)
 		}
 		// DROP PARTITION is not safely reversible (data loss).
 		reversible = false
+	case partitionOpReorg:
+		prefix := partitionValuePrefix(pc.to.T)
+		b.P("REORGANIZE PARTITION")
+		for i, p := range pc.reorgFrom {
+			if i > 0 {
+				b.P(",")
+			}
+			b.Ident(p.Name)
+		}
+		b.P("INTO (")
+		for i, p := range pc.reorgTo {
+			if i > 0 {
+				b.P(",")
+			}
+			b.P("PARTITION")
+			b.Ident(p.Name)
+			if p.Bound != "" && prefix != "" {
+				b.P(prefix)
+				b.P(p.Bound)
+			}
+		}
+		b.P(")")
+		// Reverse: reorganize back to original.
+		rb := s.Build("ALTER TABLE").SchemaResource(t.Schema, t.Name).P("REORGANIZE PARTITION")
+		for i, p := range pc.reorgTo {
+			if i > 0 {
+				rb.P(",")
+			}
+			rb.Ident(p.Name)
+		}
+		rb.P("INTO (")
+		for i, p := range pc.reorgFrom {
+			if i > 0 {
+				rb.P(",")
+			}
+			rb.P("PARTITION")
+			rb.Ident(p.Name)
+			if p.Bound != "" && prefix != "" {
+				rb.P(prefix)
+				rb.P(p.Bound)
+			}
+		}
+		rb.P(")")
+		reverse = rb.String()
 	}
 	change := &migrate.Change{
 		Cmd: b.String(),

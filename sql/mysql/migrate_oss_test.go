@@ -2014,6 +2014,127 @@ func TestMigrate_PartitionReorder(t *testing.T) {
 	require.Contains(t, plan.Changes[0].Cmd, "PARTITION BY")
 }
 
+func TestMigrate_ReorganizePartition(t *testing.T) {
+	db, _, err := newMigrate("8.0.13")
+	require.NoError(t, err)
+
+	// Split MAXVALUE partition into two.
+	// p0(<2020), p1(MAXVALUE) → p0(<2020), p1(<2025), p2(MAXVALUE)
+	plan, err := db.PlanChanges(context.Background(), "reorg-split", []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "MAXVALUE"},
+						},
+					},
+					To: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2025)"},
+							{Name: "p2", Bound: "MAXVALUE"},
+						},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, plan.Changes, 1)
+	require.Equal(t,
+		"ALTER TABLE `events` REORGANIZE PARTITION `p1` INTO ( PARTITION `p1` VALUES LESS THAN (2025) , PARTITION `p2` VALUES LESS THAN MAXVALUE )",
+		plan.Changes[0].Cmd,
+	)
+	// Reverse should reorganize back.
+	require.Equal(t,
+		"ALTER TABLE `events` REORGANIZE PARTITION `p1` , `p2` INTO ( PARTITION `p1` VALUES LESS THAN MAXVALUE )",
+		plan.Changes[0].Reverse,
+	)
+
+	// Merge two partitions into one.
+	// p0(<2020), p1(<2025), p2(MAXVALUE) → p0(<2020), p1(MAXVALUE)
+	plan, err = db.PlanChanges(context.Background(), "reorg-merge", []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2025)"},
+							{Name: "p2", Bound: "MAXVALUE"},
+						},
+					},
+					To: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "MAXVALUE"},
+						},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, plan.Changes, 1)
+	require.Equal(t,
+		"ALTER TABLE `events` REORGANIZE PARTITION `p1` , `p2` INTO ( PARTITION `p1` VALUES LESS THAN MAXVALUE )",
+		plan.Changes[0].Cmd,
+	)
+
+	// Change bound value of an existing partition.
+	// p0(<2020), p1(<2025) → p0(<2020), p1(<2030)
+	plan, err = db.PlanChanges(context.Background(), "reorg-bound", []schema.Change{
+		&schema.ModifyTable{
+			T: schema.NewTable("events").
+				AddColumns(schema.NewColumn("id"), schema.NewColumn("created")),
+			Changes: []schema.Change{
+				&schema.ModifyAttr{
+					From: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2025)"},
+						},
+					},
+					To: &Partition{
+						T:   PartitionTypeRange,
+						Key: []*PartitionKeyPart{{X: &schema.RawExpr{X: "YEAR(`created`)"}}},
+						Parts: []*PartitionDef{
+							{Name: "p0", Bound: "(2020)"},
+							{Name: "p1", Bound: "(2030)"},
+						},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, plan.Changes, 1)
+	require.Equal(t,
+		"ALTER TABLE `events` REORGANIZE PARTITION `p1` INTO ( PARTITION `p1` VALUES LESS THAN (2030) )",
+		plan.Changes[0].Cmd,
+	)
+	require.Equal(t,
+		"ALTER TABLE `events` REORGANIZE PARTITION `p1` INTO ( PARTITION `p1` VALUES LESS THAN (2025) )",
+		plan.Changes[0].Reverse,
+	)
+}
+
 func TestMigrate_PartitionAlterReverse(t *testing.T) {
 	db, _, err := newMigrate("8.0.13")
 	require.NoError(t, err)

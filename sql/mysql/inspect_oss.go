@@ -205,6 +205,9 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 			t.Attrs = append(t.Attrs, &CreateOptions{
 				V: options.String,
 			})
+			if strings.Contains(options.String, "partitioned") {
+				putShow(t)
+			}
 		}
 		if sqlx.ValidString(engine) && defaultE.Valid {
 			t.Attrs = append(t.Attrs, &Engine{
