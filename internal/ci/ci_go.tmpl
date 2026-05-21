@@ -24,8 +24,8 @@ jobs:
   lint:
     runs-on: {{ $.Runner }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: cmd/atlas/go.mod
       {{- with .SharedSteps }}
@@ -40,15 +40,15 @@ jobs:
       {{- end }}
       {{- end }}
       - name: Run linters
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6.5.2
         with:
           args: --verbose
 
   generate-cmp:
     runs-on: {{ $.Runner }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: cmd/atlas/go.mod
       {{- with .SharedSteps }}
@@ -83,8 +83,8 @@ jobs:
       matrix:
         go: {{ with $.GoVersions }}{{ . }}{{ end }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version: {{ "${{ matrix.go }}" }}
       {{- with .SharedSteps }}
@@ -108,8 +108,8 @@ jobs:
   cli:
     runs-on: {{ $.Runner }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: cmd/atlas/go.mod
       {{- with .SharedSteps }}
@@ -130,8 +130,8 @@ jobs:
   integration:
     runs-on: {{ $.Runner }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: cmd/atlas/go.mod
       {{- with .SharedSteps }}
