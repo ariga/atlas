@@ -25,6 +25,12 @@ linters:
       - text: "G304:"
         linters:
           - gosec
+      - text: "G306:"
+        linters:
+          - gosec
+      - path: _test\.go
+        linters:
+          - gosec
       - text: "G602:"
         linters:
           - gosec

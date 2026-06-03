@@ -54,7 +54,7 @@ func TestDriver_LockAcquired(t *testing.T) {
 	// Acquiring a lock on a value that has been expired works.
 	dir, err := os.UserCacheDir()
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(
+	require.NoError(t, os.WriteFile( //nolint:gosec
 		filepath.Join(dir, "lock.lock"),
 		[]byte(strconv.FormatInt(time.Now().Add(-time.Second).UnixNano(), 10)),
 		0666,

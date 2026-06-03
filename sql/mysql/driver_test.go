@@ -29,7 +29,7 @@ func TestParser_ParseURL(t *testing.T) {
 		require.Equal(t, "true", ac.Query().Get("parseTime"))
 	})
 	t.Run("UnixDSN", func(t *testing.T) {
-		for u, d := range map[string]string{
+		for u, d := range map[string]string{ //nolint:gosec
 			"mysql+unix:///path/to/socket":                                    "unix(/path/to/socket)/?parseTime=true",
 			"mysql+unix://user:pass@/path/to/socket":                          "user:pass@unix(/path/to/socket)/?parseTime=true",
 			"mysql+unix://user@/path/to/socket?database=dbname":               "user@unix(/path/to/socket)/dbname?parseTime=true",

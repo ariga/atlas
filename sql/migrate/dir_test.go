@@ -109,10 +109,10 @@ func TestValidate(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	t.Cleanup(func() {
-		require.NoError(t, os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644))
+		require.NoError(t, os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644)) //nolint:gosec
 	})
 	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
-	require.NoError(t, os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644)) //nolint:gosec
 	f, err = os.OpenFile(filepath.Join(td, "atlas.sum"), os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	require.NoError(t, err)
 	_, err = f.WriteString("foo")

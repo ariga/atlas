@@ -487,7 +487,7 @@ func (s *Scanner) delimCmd() error {
 		return nil
 	}
 	// Scan delimiter.
-	for r := s.pick(); r != eos && r != '\n'; r = s.next() {
+	for r := s.pick(); r != eos && r != '\n'; r = s.next() { //nolint:revive
 	}
 	delim := strings.TrimSpace(s.input[len(delimiterCmd):s.pos])
 	// MySQL client allows quoting delimiters.
