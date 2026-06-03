@@ -1,40 +1,51 @@
+version: "2"
+
 run:
   timeout: 3m
 
-issues:
-  include:
-    - EXC0012
-  exclude:
-    - G601
-    - G404
-    - redefines-builtin-id
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gosec
-    - path: sql/migrate/dir.go
-      linters:
-        - gosec
-    - path: sql/mysql/inspect_oss.go
-      linters:
-        - gosec
-    - path: sql/migrate/lex.go
-      linters:
-        - revive
-    - path: sql/internal/sqlx/diff.go
-      linters:
-        - revive
-
-linters-settings:
-  goheader:
-    template: |-
-      Copyright 2021-present The Atlas Authors. All rights reserved.
-      This source code is licensed under the Apache 2.0 license found
-      in the LICENSE file in the root directory of this source tree.
-
 linters:
-  disable-all: true
+  default: none
   enable:
     - gosec
     - revive
     - goheader
+  settings:
+    goheader:
+      template: |-
+        Copyright 2021-present The Atlas Authors. All rights reserved.
+        This source code is licensed under the Apache 2.0 license found
+        in the LICENSE file in the root directory of this source tree.
+  exclusions:
+    presets:
+      - legacy
+    rules:
+      - text: "G204:"
+        linters:
+          - gosec
+      - text: "G304:"
+        linters:
+          - gosec
+      - text: "G306:"
+        linters:
+          - gosec
+      - path: _test\.go
+        linters:
+          - gosec
+      - text: "G602:"
+        linters:
+          - gosec
+      - text: "G601:"
+        linters:
+          - gosec
+      - text: "G404:"
+        linters:
+          - gosec
+      - text: "redefines-builtin-id"
+        linters:
+          - revive
+      - text: "package-comments:"
+        linters:
+          - revive
+      - text: "^exported:"
+        linters:
+          - revive

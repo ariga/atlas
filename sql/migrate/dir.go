@@ -138,7 +138,7 @@ func (d *LocalDir) Open(name string) (fs.File, error) {
 
 // WriteFile implements Dir.WriteFile.
 func (d *LocalDir) WriteFile(name string, b []byte) error {
-	return os.WriteFile(filepath.Join(d.path, name), b, 0644)
+	return os.WriteFile(filepath.Join(d.path, name), b, 0644) //nolint:gosec
 }
 
 // Files implements Dir.Files. It looks for all files with .sql suffix and orders them by filename.

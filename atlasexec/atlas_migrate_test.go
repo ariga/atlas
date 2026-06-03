@@ -828,7 +828,7 @@ func TestAtlasMigrate_Push(t *testing.T) {
 func TestMigrateHash(t *testing.T) {
 	td := t.TempDir()
 	require.NoError(t, os.Mkdir(fmt.Sprintf("%s/migrations", td), 0777))
-	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/migrations/1.sql", td), []byte(`create table t (c int not null)`), 0666))
+	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/migrations/1.sql", td), []byte(`create table t (c int not null)`), 0666)) //nolint:gosec
 	c, err := atlasexec.NewClient(td, "atlas")
 	require.NoError(t, err)
 	inspect := func() error {
@@ -848,8 +848,8 @@ func TestMigrateRebase(t *testing.T) {
 	td := t.TempDir()
 	require.NoError(t, os.Mkdir(fmt.Sprintf("%s/migrations", td), 0777))
 	// create initial migrations dir state
-	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/migrations/2024030709.sql", td), []byte(`create table t (c int not null)`), 0666))
-	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/migrations/2024030711.sql", td), []byte("alter table `t` add column `c3` text not null;"), 0666))
+	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/migrations/2024030709.sql", td), []byte(`create table t (c int not null)`), 0666)) //nolint:gosec
+	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/migrations/2024030711.sql", td), []byte("alter table `t` add column `c3` text not null;"), 0666)) //nolint:gosec
 	c, err := atlasexec.NewClient(td, "atlas")
 	require.NoError(t, err)
 	require.NoError(t, c.MigrateHash(context.Background(), &atlasexec.MigrateHashParams{}))
@@ -859,7 +859,7 @@ func TestMigrateRebase(t *testing.T) {
 	require.NoError(t, err)
 
 	// add a new migration
-	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/migrations/2024030710.sql", td), []byte("alter table `t` add column `c2` text not null;"), 0666))
+	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/migrations/2024030710.sql", td), []byte("alter table `t` add column `c2` text not null;"), 0666)) //nolint:gosec
 	require.NoError(t, c.MigrateHash(context.Background(), &atlasexec.MigrateHashParams{}))
 	require.FileExists(t, fmt.Sprintf("%s/migrations/atlas.sum", td))
 	require.NoError(t, c.MigrateRebase(context.Background(), &atlasexec.MigrateRebaseParams{
@@ -1158,7 +1158,7 @@ func TestMigrate_Diff(t *testing.T) {
 	c, err := atlasexec.NewClient(".", "atlas")
 	require.NoError(t, err)
 	td := t.TempDir()
-	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/schema.sql", td), []byte(`create table t (c int not null)`), 0666))
+	require.NoError(t, os.WriteFile(fmt.Sprintf("%s/schema.sql", td), []byte(`create table t (c int not null)`), 0666)) //nolint:gosec
 	params := &atlasexec.MigrateDiffParams{
 		ToURL:  fmt.Sprintf("file://%s/schema.sql", td),
 		DevURL: "sqlite://file?mode=memory",
