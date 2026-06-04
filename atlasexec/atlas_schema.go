@@ -115,6 +115,7 @@ type (
 		From, To   []string
 		Repo       string
 		Name       string
+		NameFormat string
 		Directives []string
 		// The below are mutually exclusive and can be replaced
 		// with the 'schema plan' sub-commands instead.
@@ -478,6 +479,9 @@ func (c *Client) SchemaPlan(ctx context.Context, params *SchemaPlanParams) (*Sch
 	}
 	if params.Name != "" {
 		args = append(args, "--name", params.Name)
+	}
+	if params.NameFormat != "" {
+		args = append(args, "--name-format", params.NameFormat)
 	}
 	if params.Repo != "" {
 		args = append(args, "--repo", params.Repo)
