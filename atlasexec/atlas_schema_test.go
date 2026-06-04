@@ -304,6 +304,13 @@ func TestSchema_Plan(t *testing.T) {
 			args: "schema plan --format {{ json . }} --name example --auto-approve",
 		},
 		{
+			name: "with name-format",
+			params: &atlasexec.SchemaPlanParams{
+				NameFormat: `pr-42-{{ printf "%.8s" (base64url .FromHash) }}`,
+			},
+			args: `schema plan --format {{ json . }} --name-format pr-42-{{ printf "%.8s" (base64url .FromHash) }} --auto-approve`,
+		},
+		{
 			name: "with dry-run",
 			params: &atlasexec.SchemaPlanParams{
 				DryRun: true,
