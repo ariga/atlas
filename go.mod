@@ -1,6 +1,6 @@
 module ariga.io/atlas
 
-go 1.25.0
+go 1.26.4
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
