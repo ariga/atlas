@@ -149,6 +149,59 @@ func TestWhoAmI(t *testing.T) {
 	require.Equal(t, "boring", v.Org)
 }
 
+func TestCloudRepoCreate(t *testing.T) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	c, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
+	require.NoError(t, err)
+
+	// Empty name returns error without invoking the binary.
+	_, err = c.CloudRepoCreate(context.Background(), &atlasexec.CloudRepoCreateParams{Type: "schema", Driver: "mysql"})
+	require.EqualError(t, err, "name cannot be empty")
+
+	// Empty type returns error without invoking the binary.
+	_, err = c.CloudRepoCreate(context.Background(), &atlasexec.CloudRepoCreateParams{Name: "payments", Driver: "mysql"})
+	require.EqualError(t, err, "type cannot be empty")
+
+	// Empty driver returns error without invoking the binary.
+	_, err = c.CloudRepoCreate(context.Background(), &atlasexec.CloudRepoCreateParams{Name: "payments", Type: "schema"})
+	require.EqualError(t, err, "driver cannot be empty")
+
+	// Success with required flags only.
+	t.Setenv("TEST_ARGS", "cloud repo create --format {{ json . }} --name payments --type schema --driver mysql")
+	t.Setenv("TEST_STDOUT", `{"Slug":"payments","Title":"Payments","Type":"SCHEMA","URL":"https://atlasgo.cloud/repos/payments","Driver":"mysql"}`)
+	t.Setenv("TEST_STDERR", "")
+	got, err := c.CloudRepoCreate(context.Background(), &atlasexec.CloudRepoCreateParams{
+		Name:   "payments",
+		Type:   "schema",
+		Driver: "mysql",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, "payments", got.Slug)
+	require.Equal(t, "Payments", got.Title)
+	require.Equal(t, "SCHEMA", got.Type)
+	require.Equal(t, "https://atlasgo.cloud/repos/payments", got.URL)
+	require.Equal(t, "mysql", got.Driver)
+
+	// Success with all flags.
+	t.Setenv("TEST_ARGS", "cloud repo create --format {{ json . }} --name inventory --type m --driver postgres --description My inventory --skip-if-exists")
+	t.Setenv("TEST_STDOUT", `{"Slug":"inventory","Title":"Inventory","Type":"MIGRATION_DIRECTORY","URL":"https://atlasgo.cloud/repos/inventory","Driver":"postgres"}`)
+	t.Setenv("TEST_STDERR", "")
+	got, err = c.CloudRepoCreate(context.Background(), &atlasexec.CloudRepoCreateParams{
+		Name:         "inventory",
+		Type:         "m",
+		Driver:       "postgres",
+		Description:  "My inventory",
+		SkipIfExists: true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, "inventory", got.Slug)
+	require.Equal(t, "MIGRATION_DIRECTORY", got.Type)
+	require.Equal(t, "postgres", got.Driver)
+}
+
 func TestVars2(t *testing.T) {
 	var vars = atlasexec.Vars2{
 		"key1": "value1",

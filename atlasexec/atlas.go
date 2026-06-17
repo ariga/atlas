@@ -211,6 +211,30 @@ func (c *Client) WhoAmI(ctx context.Context, params *WhoAmIParams) (*WhoAmI, err
 	return firstResult(jsonDecode[WhoAmI](c.runCommand(ctx, args)))
 }
 
+// CloudRepoCreate runs the 'cloud repo create' command.
+func (c *Client) CloudRepoCreate(ctx context.Context, params *CloudRepoCreateParams) (*CloudRepo, error) {
+	args := []string{"cloud", "repo", "create", "--format", "{{ json . }}"}
+	if params.Name == "" {
+		return nil, errors.New("name cannot be empty")
+	}
+	args = append(args, "--name", params.Name)
+	if params.Type == "" {
+		return nil, errors.New("type cannot be empty")
+	}
+	args = append(args, "--type", params.Type)
+	if params.Driver == "" {
+		return nil, errors.New("driver cannot be empty")
+	}
+	args = append(args, "--driver", params.Driver)
+	if params.Description != "" {
+		args = append(args, "--description", params.Description)
+	}
+	if params.SkipIfExists {
+		args = append(args, "--skip-if-exists")
+	}
+	return firstResult(jsonDecode[CloudRepo](c.runCommand(ctx, args)))
+}
+
 var reVersion = regexp.MustCompile(`^atlas version v(\d+\.\d+.\d+)-?([a-z0-9]*)?`)
 
 // Version runs the 'version' command.
@@ -289,6 +313,25 @@ var defaultEnvs = map[string]string{
 // ErrRequireLogin is returned when a command requires the user to be logged in.
 // It exists here to be shared between the different packages that require login.
 var ErrRequireLogin = errors.New("command requires 'atlas login'")
+
+type (
+	// CloudRepoCreateParams are the parameters for the `cloud repo create` command.
+	CloudRepoCreateParams struct {
+		Name         string // Repository name (required).
+		Type         string // Repository type: schema/s or migration_directory/m (required).
+		Driver       string // Database driver (required).
+		Description  string // Repository description (optional).
+		SkipIfExists bool   // Skip creation if the repository already exists (optional).
+	}
+	// CloudRepo contains the result of a `cloud repo create` or similar command.
+	CloudRepo struct {
+		Slug   string `json:"Slug,omitempty"`
+		Title  string `json:"Title,omitempty"`
+		Type   string `json:"Type,omitempty"`
+		URL    string `json:"URL,omitempty"`
+		Driver string `json:"Driver,omitempty"`
+	}
+)
 
 // runCommand runs the given command and returns its output.
 func (c *Client) runCommand(ctx context.Context, args []string) (io.Reader, error) {
