@@ -183,23 +183,6 @@ func TestCloudRepoCreate(t *testing.T) {
 	require.Equal(t, "SCHEMA", got.Type)
 	require.Equal(t, "https://atlasgo.cloud/repos/payments", got.URL)
 	require.Equal(t, "mysql", got.Driver)
-
-	// Success with all flags.
-	t.Setenv("TEST_ARGS", "cloud repo create --format {{ json . }} --name inventory --type m --driver postgres --description My inventory --skip-if-exists")
-	t.Setenv("TEST_STDOUT", `{"Slug":"inventory","Title":"Inventory","Type":"MIGRATION_DIRECTORY","URL":"https://atlasgo.cloud/repos/inventory","Driver":"postgres"}`)
-	t.Setenv("TEST_STDERR", "")
-	got, err = c.CloudRepoCreate(context.Background(), &atlasexec.CloudRepoCreateParams{
-		Name:         "inventory",
-		Type:         "m",
-		Driver:       "postgres",
-		Description:  "My inventory",
-		SkipIfExists: true,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	require.Equal(t, "inventory", got.Slug)
-	require.Equal(t, "MIGRATION_DIRECTORY", got.Type)
-	require.Equal(t, "postgres", got.Driver)
 }
 
 func TestVars2(t *testing.T) {

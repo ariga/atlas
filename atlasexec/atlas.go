@@ -226,12 +226,6 @@ func (c *Client) CloudRepoCreate(ctx context.Context, params *CloudRepoCreatePar
 		return nil, errors.New("driver cannot be empty")
 	}
 	args = append(args, "--driver", params.Driver)
-	if params.Description != "" {
-		args = append(args, "--description", params.Description)
-	}
-	if params.SkipIfExists {
-		args = append(args, "--skip-if-exists")
-	}
 	return firstResult(jsonDecode[CloudRepo](c.runCommand(ctx, args)))
 }
 
@@ -320,8 +314,6 @@ type (
 		Name         string // Repository name (required).
 		Type         string // Repository type: schema/s or migration_directory/m (required).
 		Driver       string // Database driver (required).
-		Description  string // Repository description (optional).
-		SkipIfExists bool   // Skip creation if the repository already exists (optional).
 	}
 	// CloudRepo contains the result of a `cloud repo create` or similar command.
 	CloudRepo struct {
