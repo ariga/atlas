@@ -1,0 +1,36 @@
+name: Release Dev Container Features
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .devcontainer/features/**
+      - .github/workflows/release-devcontainer-features.yaml
+  workflow_dispatch:
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Publish Features to ghcr.io/ariga/atlas
+        uses: devcontainers/action@1082abd5d2bf3a11abccba70eef98df068277772 # v1.4.3
+        with:
+          publish-features: "true"
+          base-path-to-features: ./.devcontainer/features/src
+          generate-docs: "true"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit generated documentation
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain ./.devcontainer/features)" ]; then
+            git add ./.devcontainer/features
+            git commit -m "docs: update dev container features documentation [skip ci]"
+            git push origin master
+          else
+            echo "No documentation changes to commit."
+          fi

@@ -1,0 +1,27 @@
+{
+    "install_latest": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "cli": {
+                "version": "latest"
+            }
+        }
+    },
+    "install_version": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "cli": {
+                "version": "1.2.0"
+            }
+        }
+    },
+    "install_flavor": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "cli": {
+                "version": "latest",
+                "flavor": "oracle"
+            }
+        }
+    }
+}
