@@ -23,7 +23,7 @@
                 "spanner",
                 "databricks"
             ],
-            "default": "oracle",
+            "default": "extended",
             "description": "Atlas flavor to install. Selecting one of the extended drivers (oracle, snowflake, spanner, databricks) installs the extended Atlas build with that driver. Leave empty for the default build."
         }
     },
