@@ -23,14 +23,3 @@ jobs:
           generate-docs: "true"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Commit generated documentation
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          if [ -n "$(git status --porcelain ./.devcontainer/features)" ]; then
-            git add ./.devcontainer/features
-            git commit -m "docs: update dev container features documentation [skip ci]"
-            git push origin master
-          else
-            echo "No documentation changes to commit."
-          fi
