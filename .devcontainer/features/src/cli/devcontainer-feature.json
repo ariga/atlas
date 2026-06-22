@@ -1,0 +1,40 @@
+{
+    "id": "cli",
+    "version": "1.0.0",
+    "name": "Atlas CLI",
+    "description": "Installs the Atlas CLI (atlasgo.io) for database schema management and migrations.",
+    "documentationURL": "https://github.com/ariga/atlas/tree/master/.devcontainer/features/src/cli",
+    "licenseURL": "https://github.com/ariga/atlas/blob/master/LICENSE",
+    "options": {
+        "version": {
+            "type": "string",
+            "proposals": [
+                "latest"
+            ],
+            "default": "latest",
+            "description": "Version of the Atlas CLI to install. Use 'latest' or a specific version like '1.2.0'."
+        },
+        "flavor": {
+            "type": "string",
+            "enum": [
+                "",
+                "oracle",
+                "snowflake",
+                "spanner",
+                "databricks"
+            ],
+            "default": "extended",
+            "description": "Atlas flavor to install. Selecting one of the extended drivers (oracle, snowflake, spanner, databricks) installs the extended Atlas build with that driver. Leave empty for the default build."
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "Ariga.atlas-hcl"
+            ]
+        }
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}
