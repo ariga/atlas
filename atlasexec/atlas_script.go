@@ -16,10 +16,11 @@ type (
 		Env       string
 		Vars      VarArgs
 
-		URL   string   // Database URL to execute against. (required)
-		Files []string // URL(s) to script files or directories.
-		Match string   // Run only scripts matching regexp.
-		Quiet bool     // Output only the script's output.
+		URL    string   // Database URL to execute against. (required)
+		Files  []string // URL(s) to script files or directories.
+		Match  string   // Run only scripts matching regexp.
+		Quiet  bool     // Output only the script's output.
+		Format string   // Output format. Defaults to JSON.
 	}
 	// ScriptQueryParams are the parameters for the `script query` command.
 	ScriptQueryParams struct {
@@ -27,10 +28,11 @@ type (
 		Env       string
 		Vars      VarArgs
 
-		URL   string   // Database URL to query against. (required)
-		Files []string // URL(s) to script files or directories.
-		Match string   // Run only scripts matching regexp.
-		Quiet bool     // Output only the script's output.
+		URL    string   // Database URL to query against. (required)
+		Files  []string // URL(s) to script files or directories.
+		Match  string   // Run only scripts matching regexp.
+		Quiet  bool     // Output only the script's output.
+		Format string   // Output format. Defaults to JSON.
 	}
 	// ScriptLoopParams are the parameters for the `script loop` command.
 	ScriptLoopParams struct {
@@ -38,10 +40,11 @@ type (
 		Env       string
 		Vars      VarArgs
 
-		URL   string   // Database URL to run against. (required)
-		Files []string // URL(s) to script files or directories.
-		Match string   // Run only scripts matching regexp.
-		Quiet bool     // Output only the script's output.
+		URL    string   // Database URL to run against. (required)
+		Files  []string // URL(s) to script files or directories.
+		Match  string   // Run only scripts matching regexp.
+		Quiet  bool     // Output only the script's output.
+		Format string   // Output format. Defaults to JSON.
 	}
 	// ScriptTestParams are the parameters for the `script test` command.
 	ScriptTestParams struct {
@@ -143,7 +146,7 @@ type (
 
 // ScriptExec runs the 'script exec' command.
 func (c *Client) ScriptExec(ctx context.Context, params *ScriptExecParams) (*ScriptExec, error) {
-	args := []string{"script", "exec", "--format", "{{ json . }}"}
+	args := []string{"script", "exec"}
 	// Global flags
 	if params.ConfigURL != "" {
 		args = append(args, "--config", params.ConfigURL)
@@ -165,12 +168,17 @@ func (c *Client) ScriptExec(ctx context.Context, params *ScriptExecParams) (*Scr
 	if params.Quiet {
 		args = append(args, "--quiet")
 	}
+	format := "{{ json . }}"
+	if params.Format != "" {
+		format = params.Format
+	}
+	args = append(args, "--format", format)
 	return firstResult(jsonDecode[ScriptExec](c.runCommand(ctx, args)))
 }
 
 // ScriptQuery runs the 'script query' command.
 func (c *Client) ScriptQuery(ctx context.Context, params *ScriptQueryParams) (*ScriptExec, error) {
-	args := []string{"script", "query", "--format", "{{ json . }}"}
+	args := []string{"script", "query"}
 	// Global flags
 	if params.ConfigURL != "" {
 		args = append(args, "--config", params.ConfigURL)
@@ -192,12 +200,17 @@ func (c *Client) ScriptQuery(ctx context.Context, params *ScriptQueryParams) (*S
 	if params.Quiet {
 		args = append(args, "--quiet")
 	}
+	format := "{{ json . }}"
+	if params.Format != "" {
+		format = params.Format
+	}
+	args = append(args, "--format", format)
 	return firstResult(jsonDecode[ScriptExec](c.runCommand(ctx, args)))
 }
 
 // ScriptLoop runs the 'script loop' command.
 func (c *Client) ScriptLoop(ctx context.Context, params *ScriptLoopParams) (*ScriptExec, error) {
-	args := []string{"script", "loop", "--format", "{{ json . }}"}
+	args := []string{"script", "loop"}
 	// Global flags
 	if params.ConfigURL != "" {
 		args = append(args, "--config", params.ConfigURL)
@@ -219,6 +232,11 @@ func (c *Client) ScriptLoop(ctx context.Context, params *ScriptLoopParams) (*Scr
 	if params.Quiet {
 		args = append(args, "--quiet")
 	}
+	format := "{{ json . }}"
+	if params.Format != "" {
+		format = params.Format
+	}
+	args = append(args, "--format", format)
 	return firstResult(jsonDecode[ScriptExec](c.runCommand(ctx, args)))
 }
 

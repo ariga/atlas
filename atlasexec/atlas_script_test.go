@@ -29,7 +29,7 @@ func TestScript_Exec(t *testing.T) {
 		{
 			name:   "url only",
 			params: &atlasexec.ScriptExecParams{URL: "sqlite://file?mode=memory"},
-			args:   "script exec --format {{ json . }} --url sqlite://file?mode=memory",
+			args:   "script exec --url sqlite://file?mode=memory --format {{ json . }}",
 			stdout: `{"Scripts":[{"Name":"a"}]}`,
 		},
 		{
@@ -42,7 +42,16 @@ func TestScript_Exec(t *testing.T) {
 				Match:     "purge_.*",
 				Quiet:     true,
 			},
-			args:   "script exec --format {{ json . }} --config file://config.hcl --env dev --url sqlite://file?mode=memory --file file://a.script.hcl --file file://b.script.hcl --run purge_.* --quiet",
+			args:   "script exec --config file://config.hcl --env dev --url sqlite://file?mode=memory --file file://a.script.hcl --file file://b.script.hcl --run purge_.* --quiet --format {{ json . }}",
+			stdout: `{"Scripts":[{"Name":"a"}]}`,
+		},
+		{
+			name: "custom format",
+			params: &atlasexec.ScriptExecParams{
+				URL:    "sqlite://file?mode=memory",
+				Format: "{{ json .Scripts }}",
+			},
+			args:   "script exec --url sqlite://file?mode=memory --format {{ json .Scripts }}",
 			stdout: `{"Scripts":[{"Name":"a"}]}`,
 		},
 	} {
@@ -63,7 +72,7 @@ func TestScript_Query(t *testing.T) {
 	c, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
 	require.NoError(t, err)
 
-	t.Setenv("TEST_ARGS", "script query --format {{ json . }} --url sqlite://file?mode=memory")
+	t.Setenv("TEST_ARGS", "script query --url sqlite://file?mode=memory --format {{ json . }}")
 	t.Setenv("TEST_STDOUT", `{"Scripts":[{"Name":"q","Queries":[{"Index":0,"Out":"1"}]}]}`)
 	result, err := c.ScriptQuery(context.Background(), &atlasexec.ScriptQueryParams{URL: "sqlite://file?mode=memory"})
 	require.NoError(t, err)
@@ -77,7 +86,7 @@ func TestScript_Loop(t *testing.T) {
 	c, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
 	require.NoError(t, err)
 
-	t.Setenv("TEST_ARGS", "script loop --format {{ json . }} --url sqlite://file?mode=memory")
+	t.Setenv("TEST_ARGS", "script loop --url sqlite://file?mode=memory --format {{ json . }}")
 	t.Setenv("TEST_STDOUT", `{"Scripts":[{"Name":"l","Iterations":[{"Index":0,"Size":10}]}]}`)
 	result, err := c.ScriptLoop(context.Background(), &atlasexec.ScriptLoopParams{URL: "sqlite://file?mode=memory"})
 	require.NoError(t, err)
