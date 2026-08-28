@@ -942,6 +942,15 @@ func TestAtlasMigrate_Lint(t *testing.T) {
 						},
 					}},
 				}},
+			}, {
+				// Dropping a table is reported by both checks: destructive for the
+				// change itself, backward incompatible for its effect on clients.
+				Text: "backward incompatible changes detected",
+				Diagnostics: []sqlcheck.Diagnostic{{
+					Pos:  0,
+					Text: `Clients using table "t2" will fail`,
+					Code: "BC103",
+				}},
 			}},
 			Error: "destructive changes detected",
 		}
