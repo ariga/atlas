@@ -47,7 +47,7 @@ type (
 		Name        string `json:"Name"`                  // Extension the vulnerability was reported for.
 		Version     string `json:"Version"`               // Its installed version.
 		ID          string `json:"ID"`                    // e.g., CVE-2024-10977.
-		Level       string `json:"Level"`                 // Severity as the Security Graph grades it. May be empty.
+		Level       string `json:"Level"`                 // Severity as the Security Graph grades it. Always set.
 		Severity    string `json:"Severity"`              // CVSS rating of the record. Empty if it carries none.
 		Title       string `json:"Title,omitempty"`       // Empty for the records with no assigned title.
 		Description string `json:"Description,omitempty"` // Verbatim, may run to a paragraph.
@@ -124,15 +124,13 @@ func (s *SecurityScan) Count() int {
 	return n
 }
 
-// Levels returns the number of issues per severity level, highest first. Levels
-// that reported none are omitted, as are the issues left ungraded.
+// Levels returns the number of issues per severity level, highest first,
+// and omits the levels that reported none.
 func (s *SecurityScan) Levels() []SecurityScanLevel {
 	counts := make(map[string]int)
 	for _, t := range s.Targets {
 		for _, v := range t.Vulnerabilities {
-			if v.Level != "" {
-				counts[strings.ToUpper(v.Level)]++
-			}
+			counts[strings.ToUpper(v.Level)]++
 		}
 	}
 	levels := make([]SecurityScanLevel, 0, len(counts))

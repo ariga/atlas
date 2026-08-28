@@ -159,9 +159,9 @@ func TestSecurityVulnerability_LevelText(t *testing.T) {
 			text: `Extension "ext" version "1.0" is vulnerable to CVE-0000-0001 (CRITICAL): Arbitrary code execution. Upgrade to 1.1`,
 		},
 		{
-			name: "no version, level or suggestion",
-			v:    &atlasexec.SecurityVulnerability{Name: "ext", ID: "CVE-0000-0002"},
-			text: `Extension "ext" is vulnerable to CVE-0000-0002`,
+			name: "no version or suggestion",
+			v:    &atlasexec.SecurityVulnerability{Name: "ext", ID: "CVE-0000-0002", Level: "ELEVATED"},
+			text: `Extension "ext" is vulnerable to CVE-0000-0002 (ELEVATED)`,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
