@@ -384,6 +384,137 @@ func TestMigrate_Down(t *testing.T) {
 	}
 }
 
+func TestMigrate_Drift(t *testing.T) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	c, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
+	require.NoError(t, err)
+
+	for _, tt := range []struct {
+		name     string
+		params   *atlasexec.MigrateDriftParams
+		args     string
+		stdout   string
+		stderr   string
+		exitCode string
+		expect   *atlasexec.MigrateDrift
+	}{
+		{
+			name: "no drift",
+			params: &atlasexec.MigrateDriftParams{
+				URL:    "sqlite://file?mode=memory",
+				DevURL: "sqlite://dev?mode=memory",
+			},
+			args:   "migrate drift --format {{ json . }} --url sqlite://file?mode=memory --dev-url sqlite://dev?mode=memory",
+			stdout: `{"Mode":"local","Version":"2"}`,
+			expect: &atlasexec.MigrateDrift{Mode: "local", Version: "2"},
+		},
+		{
+			name: "all flags",
+			params: &atlasexec.MigrateDriftParams{
+				Env:             "test",
+				ConfigURL:       "file://atlas.hcl",
+				URL:             "url",
+				DirURL:          "file://migrations",
+				DevURL:          "dev",
+				RevisionsSchema: "revisions",
+				Exclude:         []string{"external"},
+				LockTimeout:     "30s",
+				LockName:        "drift",
+				SkipLock:        true,
+				NoCache:         true,
+				Vars:            atlasexec.Vars2{"tenant": "a"},
+			},
+			args:   "migrate drift --format {{ json . }} --env test --config file://atlas.hcl --url url --dir file://migrations --dev-url dev --revisions-schema revisions --exclude external --lock-timeout 30s --lock-name drift --skip-lock --no-cache --var tenant=a",
+			stdout: `{"Mode":"local","Version":"2","Cached":true}`,
+			expect: &atlasexec.MigrateDrift{Mode: "local", Version: "2", Cached: true},
+		},
+		{
+			name: "drift detected",
+			params: &atlasexec.MigrateDriftParams{
+				URL:    "url",
+				DirURL: "atlas://mydir",
+			},
+			args:     "migrate drift --format {{ json . }} --url url --dir atlas://mydir",
+			stdout:   `{"Mode":"registry","Version":"2","Pending":1,"Drifted":true,"Fingerprint":"b9b58ddce50b","Summary":{"Total":1,"Extra":1,"Types":{"table":1}},"Changes":[{"Type":"table","Kind":"extra","Object":"table \"t9\"","Cmds":["CREATE TABLE t9 (c int NULL)"]}]}`,
+			exitCode: "1",
+			expect: &atlasexec.MigrateDrift{
+				Mode:        "registry",
+				Version:     "2",
+				Pending:     1,
+				Drifted:     true,
+				Fingerprint: "b9b58ddce50b",
+				Summary:     &atlasexec.MigrateDriftSummary{Total: 1, Extra: 1, Types: map[string]int{"table": 1}},
+				Changes:     []atlasexec.MigrateDriftChange{{Type: "table", Kind: "extra", Object: `table "t9"`, Cmds: []string{"CREATE TABLE t9 (c int NULL)"}}},
+			},
+		},
+		{
+			name: "drift reported with a warning",
+			params: &atlasexec.MigrateDriftParams{
+				URL:    "url",
+				DevURL: "dev",
+			},
+			args:     "migrate drift --format {{ json . }} --url url --dev-url dev",
+			stdout:   `{"Mode":"local","Version":"3","Drifted":true,"Fingerprint":"KCdKkeAdYP6336FeduFd3KVw8Z5YBHF2DObTpGGzAsc=","Summary":{"Total":3,"Extra":1,"Missing":1,"Modified":1,"Types":{"index":1,"table":2}},"Changes":[{"Type":"table","Kind":"extra","Object":"table \"audit\"","Cmds":["CREATE TABLE \"audit\" (\"id\" integer NOT NULL)"]},{"Type":"index","Kind":"missing","Object":"index \"users_email\"","Cmds":["DROP INDEX \"users_email\""]},{"Type":"table","Kind":"modified","Object":"table \"users\"","Cmds":["ALTER TABLE \"users\" ADD COLUMN \"nickname\" text NULL","ALTER TABLE \"users\" ALTER COLUMN \"email\" TYPE text"]}]}`,
+			stderr:   "Warning: replaying the migration directory without cache: opening cache dir",
+			exitCode: "1",
+			expect: &atlasexec.MigrateDrift{
+				Mode:        "local",
+				Version:     "3",
+				Drifted:     true,
+				Fingerprint: "KCdKkeAdYP6336FeduFd3KVw8Z5YBHF2DObTpGGzAsc=",
+				Summary:     &atlasexec.MigrateDriftSummary{Total: 3, Extra: 1, Missing: 1, Modified: 1, Types: map[string]int{"index": 1, "table": 2}},
+				Changes: []atlasexec.MigrateDriftChange{
+					{Type: "table", Kind: "extra", Object: `table "audit"`, Cmds: []string{`CREATE TABLE "audit" ("id" integer NOT NULL)`}},
+					{Type: "index", Kind: "missing", Object: `index "users_email"`, Cmds: []string{`DROP INDEX "users_email"`}},
+					{Type: "table", Kind: "modified", Object: `table "users"`, Cmds: []string{`ALTER TABLE "users" ADD COLUMN "nickname" text NULL`, `ALTER TABLE "users" ALTER COLUMN "email" TYPE text`}},
+				},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("TEST_ARGS", tt.args)
+			t.Setenv("TEST_STDOUT", tt.stdout)
+			t.Setenv("TEST_STDERR", tt.stderr)
+			t.Setenv("TEST_EXIT_CODE", tt.exitCode)
+			result, err := c.MigrateDrift(context.Background(), tt.params)
+			require.NoError(t, err)
+			require.Equal(t, tt.expect, result)
+		})
+	}
+	// A failure to complete the check is returned as an error, whether
+	// it was reported on stderr or the exit carries no drift report.
+	t.Setenv("TEST_ARGS", "migrate drift --format {{ json . }} --url url")
+	t.Setenv("TEST_EXIT_CODE", "1")
+	for _, tt := range []struct{ stdout, stderr, err string }{
+		{stderr: "Error: no migration history found on the connected database", err: "Error: no migration history found on the connected database"},
+		{stdout: `{"Mode":"local","Version":"2"}`, err: `{"Mode":"local","Version":"2"}`},
+		{stdout: "Error: template: format:1: unexpected EOF", err: "Error: template: format:1: unexpected EOF"},
+	} {
+		t.Setenv("TEST_STDOUT", tt.stdout)
+		t.Setenv("TEST_STDERR", tt.stderr)
+		_, err = c.MigrateDrift(context.Background(), &atlasexec.MigrateDriftParams{URL: "url"})
+		require.EqualError(t, err, tt.err)
+	}
+	// A drift report left on stdout by a killed process is not
+	// reported as a result, but as the error the command failed with.
+	c1, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// Cancel the context after the report was written, but before the command returns.
+	c1.SetStdout(writeFunc(func(b []byte) (int, error) { cancel(); return len(b), nil }))
+	t.Setenv("TEST_STDOUT", `{"Mode":"local","Version":"2","Drifted":true}`)
+	t.Setenv("TEST_STDERR", "")
+	_, err = c1.MigrateDrift(ctx, &atlasexec.MigrateDriftParams{URL: "url"})
+	require.EqualError(t, err, `{"Mode":"local","Version":"2","Drifted":true}`)
+}
+
+// writeFunc is an io.Writer implemented by a function.
+type writeFunc func([]byte) (int, error)
+
+func (f writeFunc) Write(b []byte) (int, error) { return f(b) }
+
 func TestMigrate_Test(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)

@@ -221,6 +221,51 @@ type (
 		Error     string      `json:"Error,omitempty"`     // Last Error that occurred
 		SQL       string      `json:"SQL,omitempty"`       // SQL that caused the last Error
 	}
+	// MigrateDriftParams are the parameters for the `migrate drift` command.
+	MigrateDriftParams struct {
+		ConfigURL string
+		Env       string
+		Vars      VarArgs
+
+		URL             string
+		DirURL          string
+		DevURL          string
+		RevisionsSchema string
+		Exclude         []string
+		LockTimeout     string
+		LockName        string
+		SkipLock        bool
+		NoCache         bool
+	}
+	// MigrateDrift contains the result of a `migrate drift` command.
+	MigrateDrift struct {
+		URL         string               `json:"URL,omitempty"`         // Redacted URL of the checked database
+		Dir         string               `json:"Dir,omitempty"`         // Migration directory
+		Mode        string               `json:"Mode,omitempty"`        // How the expected state was resolved (registry or local)
+		Version     string               `json:"Version,omitempty"`     // Applied version the expected state was resolved at
+		Pending     int                  `json:"Pending,omitempty"`     // Files after the applied version, not considered
+		Drifted     bool                 `json:"Drifted,omitempty"`     // Whether the database drifted from the expected state
+		Fingerprint string               `json:"Fingerprint,omitempty"` // Stable identifier of the drift content
+		Summary     *MigrateDriftSummary `json:"Summary,omitempty"`     // Counts of the changes below
+		Changes     []MigrateDriftChange `json:"Changes,omitempty"`     // Objects the database diverged in
+		Cached      bool                 `json:"Cached,omitempty"`      // Expected state was read from the cache
+	}
+	// MigrateDriftChange is one object the database diverged in.
+	MigrateDriftChange struct {
+		Type   string   `json:"Type,omitempty"`   // Kind of the object, e.g. "table" or "role"
+		Kind   string   `json:"Kind,omitempty"`   // "extra", "missing" or "modified", from the actual state's point of view
+		Object string   `json:"Object,omitempty"` // The object, e.g. table "public"."users"
+		Cmds   []string `json:"Cmds,omitempty"`   // Statements the divergence is described by
+	}
+	// MigrateDriftSummary counts the changes of a drift report, by their
+	// kind and by the type of the objects they apply to.
+	MigrateDriftSummary struct {
+		Total    int            `json:"Total,omitempty"`
+		Extra    int            `json:"Extra,omitempty"`
+		Missing  int            `json:"Missing,omitempty"`
+		Modified int            `json:"Modified,omitempty"`
+		Types    map[string]int `json:"Types,omitempty"` // e.g. {"table": 2, "role": 1}
+	}
 )
 
 // MigratePush runs the 'migrate push' command.
@@ -438,6 +483,60 @@ func (c *Client) MigrateStatus(ctx context.Context, params *MigrateStatusParams)
 	}
 	// NOTE: This command only support one result.
 	return firstResult(jsonDecode[MigrateStatus](c.runCommand(ctx, args)))
+}
+
+// MigrateDrift runs the 'migrate drift' command. Detected drift is returned in
+// the result, not as an error; an error means the check could not be completed.
+func (c *Client) MigrateDrift(ctx context.Context, params *MigrateDriftParams) (*MigrateDrift, error) {
+	args := []string{"migrate", "drift", "--format", "{{ json . }}"}
+	if params.Env != "" {
+		args = append(args, "--env", params.Env)
+	}
+	if params.ConfigURL != "" {
+		args = append(args, "--config", params.ConfigURL)
+	}
+	if params.URL != "" {
+		args = append(args, "--url", params.URL)
+	}
+	if params.DirURL != "" {
+		args = append(args, "--dir", params.DirURL)
+	}
+	if params.DevURL != "" {
+		args = append(args, "--dev-url", params.DevURL)
+	}
+	if params.RevisionsSchema != "" {
+		args = append(args, "--revisions-schema", params.RevisionsSchema)
+	}
+	args = append(args, repeatFlag("--exclude", params.Exclude)...)
+	if params.LockTimeout != "" {
+		args = append(args, "--lock-timeout", params.LockTimeout)
+	}
+	if params.LockName != "" {
+		args = append(args, "--lock-name", params.LockName)
+	}
+	if params.SkipLock {
+		args = append(args, "--skip-lock")
+	}
+	if params.NoCache {
+		args = append(args, "--no-cache")
+	}
+	if params.Vars != nil {
+		args = append(args, params.Vars.AsArgs()...)
+	}
+	switch r, err := c.runCommand(ctx, args); {
+	case err == nil:
+		return firstResult(jsonDecode[MigrateDrift](r, nil))
+	default:
+		// The command exits with an error when drift is detected, after the
+		// report was already written to stdout. A killed process may leave the
+		// same output behind, hence the exit and the context are checked too.
+		if cliErr := (&Error{}); ctx.Err() == nil && errors.As(err, &cliErr) && cliErr.ExitCode() == 1 && cliErr.Stdout != "" {
+			if d, derr := jsonDecode[MigrateDrift](strings.NewReader(cliErr.Stdout), nil); derr == nil && len(d) == 1 && d[0].Drifted {
+				return d[0], nil
+			}
+		}
+		return nil, err
+	}
 }
 
 // MigrateLs runs the 'migrate ls' command and returns the listed migration file names (or versions when Short is true), one per line.
