@@ -496,6 +496,28 @@ func TestMigrate_Drift(t *testing.T) {
 		_, err = c.MigrateDrift(context.Background(), &atlasexec.MigrateDriftParams{URL: "url"})
 		require.EqualError(t, err, tt.err)
 	}
+	// The reports of multiple targets, e.g. an environment defined with
+	// for_each, are returned in order, and are one too many for a single one.
+	t.Setenv("TEST_ARGS", "migrate drift --format {{ json . }} --env tenants")
+	t.Setenv("TEST_STDOUT", "{\"Mode\":\"local\",\"Version\":\"2\"}\n{\"Mode\":\"local\",\"Version\":\"2\",\"Drifted\":true}")
+	t.Setenv("TEST_STDERR", "")
+	reports, err := c.MigrateDriftSlice(context.Background(), &atlasexec.MigrateDriftParams{Env: "tenants"})
+	require.NoError(t, err)
+	require.Equal(t, []*atlasexec.MigrateDrift{{Mode: "local", Version: "2"}, {Mode: "local", Version: "2", Drifted: true}}, reports)
+	_, err = c.MigrateDrift(context.Background(), &atlasexec.MigrateDriftParams{Env: "tenants"})
+	require.EqualError(t, err, "The command returned more than one result, use Slice function instead")
+	// A target whose check could not be completed is reported with its error,
+	// and fails the call with the reports of all the targets.
+	t.Setenv("TEST_STDOUT", "{\"Mode\":\"local\",\"Version\":\"2\",\"Drifted\":true}\n{\"URL\":\"sqlite://t2\",\"Error\":\"no migration history found on the connected database\"}")
+	t.Setenv("TEST_EXIT_CODE", "1")
+	_, err = c.MigrateDriftSlice(context.Background(), &atlasexec.MigrateDriftParams{Env: "tenants"})
+	require.EqualError(t, err, "no migration history found on the connected database")
+	derr := (&atlasexec.MigrateDriftError{})
+	require.ErrorAs(t, err, &derr)
+	require.Equal(t, []*atlasexec.MigrateDrift{
+		{Mode: "local", Version: "2", Drifted: true},
+		{URL: "sqlite://t2", Error: "no migration history found on the connected database"},
+	}, derr.Result)
 	// A drift report left on stdout by a killed process is not
 	// reported as a result, but as the error the command failed with.
 	c1, err := atlasexec.NewClient(t.TempDir(), filepath.Join(wd, "./mock-atlas.sh"))
@@ -504,6 +526,7 @@ func TestMigrate_Drift(t *testing.T) {
 	defer cancel()
 	// Cancel the context after the report was written, but before the command returns.
 	c1.SetStdout(writeFunc(func(b []byte) (int, error) { cancel(); return len(b), nil }))
+	t.Setenv("TEST_ARGS", "migrate drift --format {{ json . }} --url url")
 	t.Setenv("TEST_STDOUT", `{"Mode":"local","Version":"2","Drifted":true}`)
 	t.Setenv("TEST_STDERR", "")
 	_, err = c1.MigrateDrift(ctx, &atlasexec.MigrateDriftParams{URL: "url"})
