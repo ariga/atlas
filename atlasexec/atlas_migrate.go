@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -249,6 +250,7 @@ type (
 		Summary     *MigrateDriftSummary `json:"Summary,omitempty"`     // Counts of the changes below
 		Changes     []MigrateDriftChange `json:"Changes,omitempty"`     // Objects the database diverged in
 		Cached      bool                 `json:"Cached,omitempty"`      // Expected state was read from the cache
+		Error       string               `json:"Error,omitempty"`       // The check could not be completed
 	}
 	// MigrateDriftChange is one object the database diverged in.
 	MigrateDriftChange struct {
@@ -265,6 +267,12 @@ type (
 		Missing  int            `json:"Missing,omitempty"`
 		Modified int            `json:"Modified,omitempty"`
 		Types    map[string]int `json:"Types,omitempty"` // e.g. {"table": 2, "role": 1}
+	}
+	// MigrateDriftError is returned when a check could not be completed. Its
+	// Result holds the reports of the targets, the failed one with Error set.
+	MigrateDriftError struct {
+		Result []*MigrateDrift
+		Stderr string
 	}
 )
 
@@ -488,6 +496,14 @@ func (c *Client) MigrateStatus(ctx context.Context, params *MigrateStatusParams)
 // MigrateDrift runs the 'migrate drift' command. Detected drift is returned in
 // the result, not as an error; an error means the check could not be completed.
 func (c *Client) MigrateDrift(ctx context.Context, params *MigrateDriftParams) (*MigrateDrift, error) {
+	return firstResult(c.MigrateDriftSlice(ctx, params))
+}
+
+// MigrateDriftSlice runs the 'migrate drift' command for multiple targets, such
+// as an environment defined with for_each, and returns their reports in order.
+// A check that could not be completed is returned as a MigrateDriftError holding
+// the reports of the targets, the failed one with its Error set.
+func (c *Client) MigrateDriftSlice(ctx context.Context, params *MigrateDriftParams) ([]*MigrateDrift, error) {
 	args := []string{"migrate", "drift", "--format", "{{ json . }}"}
 	if params.Env != "" {
 		args = append(args, "--env", params.Env)
@@ -525,17 +541,27 @@ func (c *Client) MigrateDrift(ctx context.Context, params *MigrateDriftParams) (
 	}
 	switch r, err := c.runCommand(ctx, args); {
 	case err == nil:
-		return firstResult(jsonDecode[MigrateDrift](r, nil))
+		return jsonDecode[MigrateDrift](r, nil)
 	default:
 		// The command exits with an error when drift is detected, after the
-		// report was already written to stdout. A killed process may leave the
-		// same output behind, hence the exit and the context are checked too.
-		if cliErr := (&Error{}); ctx.Err() == nil && errors.As(err, &cliErr) && cliErr.ExitCode() == 1 && cliErr.Stdout != "" {
-			if d, derr := jsonDecode[MigrateDrift](strings.NewReader(cliErr.Stdout), nil); derr == nil && len(d) == 1 && d[0].Drifted {
-				return d[0], nil
-			}
+		// reports were written to stdout, as it does when a check could not
+		// be completed; the report of that target carries its error. A killed
+		// process may leave the same output behind, hence the context is checked.
+		cliErr := (&Error{})
+		if ctx.Err() != nil || !errors.As(err, &cliErr) || cliErr.ExitCode() != 1 || cliErr.Stdout == "" {
+			return nil, err
 		}
-		return nil, err
+		d, derr := jsonDecode[MigrateDrift](strings.NewReader(cliErr.Stdout), nil)
+		switch {
+		case derr != nil:
+			return nil, err
+		case slices.ContainsFunc(d, func(r *MigrateDrift) bool { return r.Error != "" }):
+			return nil, &MigrateDriftError{Result: d, Stderr: cliErr.Stderr}
+		case slices.ContainsFunc(d, func(r *MigrateDrift) bool { return r.Drifted }):
+			return d, nil
+		default:
+			return nil, err
+		}
 	}
 }
 
@@ -906,6 +932,20 @@ func newMigrateApplyError(r []*MigrateApply, stderr string) error {
 
 // Error implements the error interface.
 func (e *MigrateApplyError) Error() string {
+	var errs []string
+	for _, r := range e.Result {
+		if r.Error != "" {
+			errs = append(errs, r.Error)
+		}
+	}
+	if e.Stderr != "" {
+		errs = append(errs, e.Stderr)
+	}
+	return strings.Join(errs, "\n")
+}
+
+// Error implements the error interface.
+func (e *MigrateDriftError) Error() string {
 	var errs []string
 	for _, r := range e.Result {
 		if r.Error != "" {
