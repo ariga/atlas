@@ -223,10 +223,29 @@ type (
 		ToDesc    string          `json:"ToDesc,omitempty"`    // Optional description of the 'to' state.
 		Migration string          `json:"Migration,omitempty"` // Migration SQL.
 		Stmts     []*migrate.Stmt `json:"Stmts,omitempty"`     // Statements in the migration (available only in the JSON output).
+		Changes   *ChangeSummary  `json:"Changes,omitempty"`   // Changes by object (available only in the JSON output, when computed).
 		// registry only fields.
 		URL    string `json:"URL,omitempty"`    // URL of the plan in Atlas format.
 		Link   string `json:"Link,omitempty"`   // Link to the plan in the registry.
 		Status string `json:"Status,omitempty"` // Status of the plan in the registry.
+	}
+	// ChangeSummary summarizes the changes of a plan by object: the diff each
+	// object presents, and the statements implementing it. Statements that
+	// recreate a dependent of a changed object are attributed to that object.
+	ChangeSummary struct {
+		Objects    []*ObjectChange `json:"Objects,omitempty"`    // Changed objects, in the order of the diff.
+		Other      []int           `json:"Other,omitempty"`      // Statements that change no object.
+		Stmts      int             `json:"Stmts"`                // Statements in the plan.
+		Dependents int             `json:"Dependents,omitempty"` // Statements that recreate dependents.
+	}
+	// ObjectChange is one object of a ChangeSummary.
+	ObjectChange struct {
+		Type       string `json:"Type"`                 // Kind of the object, e.g. "table" or "view".
+		Op         string `json:"Op"`                   // "add", "drop", "modify" or "rename".
+		Object     string `json:"Object"`               // The object, e.g. "public"."users".
+		Diff       string `json:"Diff,omitempty"`       // Unified diff of the object's DDL.
+		Stmts      []int  `json:"Stmts,omitempty"`      // Indexes of its statements in the plan.
+		Dependents int    `json:"Dependents,omitempty"` // Of Stmts, those recreating dependents.
 	}
 	// SchemaCleanParams are the parameters for the `schema clean` command.
 	SchemaCleanParams struct {
