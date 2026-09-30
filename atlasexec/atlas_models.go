@@ -50,7 +50,8 @@ type (
 	// A SummaryReport contains a summary of the analysis of all files.
 	// It is used as an input to templates to report the CI results.
 	SummaryReport struct {
-		URL string `json:"URL,omitempty"` // URL of the report, if exists.
+		URL         string `json:"URL,omitempty"`         // URL of the report, if exists.
+		ReportError string `json:"ReportError,omitempty"` // Error reporting to Atlas Cloud, if any.
 		// Env holds the environment information.
 		Env struct {
 			Driver string         `json:"Driver,omitempty"` // Driver name.
