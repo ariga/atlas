@@ -82,8 +82,8 @@ type (
 		Text    string            `json:"Text,omitempty"`    // Contents of the file.
 		Reports []sqlcheck.Report `json:"Reports,omitempty"` // List of reports.
 		Error   string            `json:"Error,omitempty"`   // File specific error.
-		Stmts   []*migrate.Stmt   `json:"Stmts,omitempty"`   // Statements of the file (available only in the JSON output).
-		Changes *ChangeSummary    `json:"Changes,omitempty"` // Changes by object (available only in the JSON output, when computed).
+		Stmts   []*migrate.Stmt   `json:"Stmts,omitempty"`   // Statements of the file.
+		Changes *ChangeSummary    `json:"Changes,omitempty"` // Changes by object.
 	}
 	// FileChecks represents a set of checks to run before applying a file.
 	FileChecks struct {
