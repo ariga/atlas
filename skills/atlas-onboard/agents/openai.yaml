@@ -1,0 +1,6 @@
+interface:
+  display_name: "Atlas Onboarding"
+  short_description: "Onboard a repository onto Atlas, one verified stage at a time"
+
+policy:
+  allow_implicit_invocation: false
