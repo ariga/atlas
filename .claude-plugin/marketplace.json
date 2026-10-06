@@ -1,0 +1,26 @@
+{
+  "name": "ariga",
+  "description": "Agent skills for Atlas, the database schema-as-code tool.",
+  "owner": {
+    "name": "Ariga",
+    "url": "https://atlasgo.io"
+  },
+  "plugins": [
+    {
+      "name": "atlas",
+      "displayName": "Atlas",
+      "source": "./skills",
+      "skills": [
+        "./atlas",
+        "./atlas-onboard"
+      ],
+      "version": "6f1e92cf25f7",
+      "description": "Atlas skills for coding agents: database schema management with the Atlas CLI, and guided onboarding of a project onto Atlas.",
+      "author": {
+        "name": "Ariga",
+        "url": "https://atlasgo.io"
+      },
+      "homepage": "https://atlasgo.io/guides/ai-tools/agent-skills"
+    }
+  ]
+}
