@@ -14,9 +14,10 @@ state, and writes a new migration file. Same schema change, same output, whichev
 
 ```bash
 atlas migrate diff --env <name> "add_users_email"        # everything from atlas.hcl
+# --to takes an HCL or SQL file, a directory, an ORM loader, or a database URL
 atlas migrate diff add_users_email \
   --dir "file://migrations" \
-  --to "file://schema.hcl" \                                # HCL, SQL file or directory, ORM, or a database URL
+  --to "file://schema.hcl" \
   --dev-url "docker://postgres/17/dev?search_path=public"
 atlas migrate diff --env <name> "name" --edit             # open the generated file in $EDITOR before saving
 atlas migrate diff --env <name> "name" --format '{{ sql . "  " }}'   # indented SQL
@@ -31,7 +32,7 @@ atlas migrate diff --env <name> "name" --format '{{ sql . "  " }}'   # indented 
 | `--qualifier` | Qualify table names with a custom schema name when working on a single schema |
 | `--edit` | Edit the file before it is written; `atlas.sum` is updated after the editor closes |
 | `--format` | Go template for the output |
-| `--lock-timeout` | Wait for the directory lock (multi-writer CI) |
+| `--lock-timeout` | How long to wait for the database lock (default 10s) |
 
 A no-op diff (directory already matches `--to`) prints "The migration directory is synced with the
 desired state, no changes to be made" and creates nothing.
@@ -68,7 +69,10 @@ env "local" {
       with_no_data = true              # CREATE MATERIALIZED VIEW ... WITH NO DATA
     }
     add_table  { if_not_exists = true }
-    drop_table { cascade = true, if_exists = true }
+    drop_table {
+      cascade   = true
+      if_exists = true
+    }
     add_column { if_not_exists = true }
     add_index  { if_not_exists = true }
   }
@@ -113,7 +117,7 @@ baseline is not wanted (for example, a database that only contains objects exclu
 | `atlas migrate rebase --env <name> <version>` | Move a migration to the end of the directory after a merge brought newer files in. Only for a file no environment has applied: rebase renames the file without reading the revisions table, so an applied file would run twice. Check `atlas migrate status` first. Re-lint afterwards: rebase reorders, it does not re-plan |
 | `atlas migrate rm --env <name> <version>` | Remove an unapplied local file and update `atlas.sum`. Not for remote directories |
 | `atlas migrate checkpoint --env <name> [tag]` | Write a checkpoint file that captures the whole directory state so new databases skip earlier files. Requires `--dev-url` or `dev` |
-| `atlas migrate validate --env <name>` | Check `atlas.sum` and that every file parses |
+| `atlas migrate validate --env <name>` | Check `atlas.sum`. With a dev database (`--dev-url` or the env's `dev`), also replay every file on it |
 | `atlas migrate ls --env <name>`, `atlas migrate show <version>` | List files, print one |
 | `atlas migrate set --env <name> <version>` | Overwrite the revisions table to say the database is at `version`. Recovery only, with the user's explicit approval |
 | `atlas migrate import --from "file://migrations?format=flyway" --to "file://atlas-migrations"` | Convert another tool's directory to Atlas format |
@@ -128,7 +132,7 @@ Applies pending files in order and records each in the revisions table. Always `
 shared environments and check Atlas Cloud state (`references/cloud.md`).
 
 ```bash
-atlas migrate apply --env <name> --dry-run          # prints the SQL with per-statement timings; nothing runs
+atlas migrate apply --env <name> --dry-run          # prints the pending SQL; only pre-migration checks run
 atlas migrate apply --env <name>                    # all pending
 atlas migrate apply --env <name> 1                  # at most one file
 atlas migrate apply --env <name> --to-version 20260301120000
@@ -146,7 +150,7 @@ atlas migrate apply --url "$DATABASE_URL" --dir "atlas://app?tag=latest"   # dep
 | `--exec-order linear\|linear-skip\|non-linear` | `linear` (default) fails when a file older than the current version is pending (out-of-order merge); `linear-skip` ignores it; `non-linear` applies it |
 | `--revisions-schema` | Schema that holds `atlas_schema_revisions` |
 | `--lock-timeout`, `--lock-name`, `--skip-lock` | Advisory lock so two deployers do not race |
-| `--dry-run` | Print the SQL and the pre-checks without executing |
+| `--dry-run` | Print the pending SQL without executing it. Pre-migration checks still run |
 | `--format` | Go template; `{{ json . }}` for machine-readable output |
 
 MySQL and other engines without transactional DDL cannot roll back a failed file completely; after a
@@ -166,9 +170,11 @@ env "prod" {
       message   = "Apply at most 3 files per run. Split the deployment."
     }
     deny "no_index_in_peak_hours" {
-      condition = anytrue([for s in self.planned_migration.statements : regexmatch("(?i)create +index", s)])
-                  && tonumber(formatdate("HH", timestamp())) >= 10
-                  && tonumber(formatdate("HH", timestamp())) <= 14
+      condition = (
+        anytrue([for s in self.planned_migration.statements : regexmatch("(?i)create +index", s)])
+        && tonumber(formatdate("HH", timestamp())) >= 10
+        && tonumber(formatdate("HH", timestamp())) <= 14
+      )
       message   = "CREATE INDEX is blocked between 10:00 and 14:00 UTC"
     }
     drift {                          # see references/drift.md
@@ -178,8 +184,9 @@ env "prod" {
 }
 ```
 
-Migration files can also carry their own checks (`-- atlas:txtar` pre-migration checks that abort
-the file when a condition holds) and hooks; see the docs links below.
+A migration file can also carry pre-migration checks (`-- atlas:txtar` files with assertions that
+must hold before the file runs), and `hook` blocks in `atlas.hcl` run SQL inside the migration
+transaction; see the docs links below.
 
 ### Down migrations
 
@@ -219,7 +226,7 @@ records the run as one multi-target deployment (`references/cloud.md`).
 ## Registry
 
 ```bash
-atlas migrate push --env <name> app               # push the directory; tag defaults to the git commit
+atlas migrate push --env <name> app               # push the directory; without a tag, updates `latest`
 atlas migrate push --env <name> app:v1.2.0        # explicit tag
 atlas migrate apply --url "$URL" --dir "atlas://app?tag=v1.2.0"
 atlas migrate apply --url "$URL" --dir "atlas://app?version=20260301120000"
@@ -244,10 +251,10 @@ repo, and it is what `migrate lint` compares against by default and what the dri
 | Error | Action |
 |-------|--------|
 | `checksum mismatch` / `atlas.sum` out of sync | `atlas migrate hash --env <name>` |
-| `migration file ... was not applied in order` (out-of-order) | Newer files landed first. `atlas migrate rebase <version>` locally, or `--exec-order linear-skip` only with approval |
+| `migration file ... was added out of order` | Newer files landed first. `atlas migrate rebase <version>` locally, or `--exec-order linear-skip` only with approval |
 | `connected database is not clean` | The database has objects but no revisions table. Baseline it (`--baseline`) or, if intended, `--allow-dirty` |
 | `The migration directory is synced with the desired state` | Not an error: nothing to generate. Check the schema edit was saved and `--to` points at it |
-| `ModifySchema is not allowed` | Dev URL scope does not match the target scope |
+| `modify schema "<name>" is not allowed when migration plan is scoped to one schema` (or `add`, `drop`) | Dev URL scope does not match the target scope |
 | Statement failed mid-file on MySQL | The file is partially applied. Compare `atlas migrate status` with the database, fix forward with a new file |
 
 ## Documentation

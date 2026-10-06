@@ -14,7 +14,7 @@
         "./atlas",
         "./atlas-onboard"
       ],
-      "version": "6f1e92cf25f7",
+      "version": "eaea6c3a9531",
       "description": "Atlas skills for coding agents: database schema management with the Atlas CLI, and guided onboarding of a project onto Atlas.",
       "author": {
         "name": "Ariga",

@@ -75,9 +75,9 @@ Each analyzer owns a family of check codes. The report prints the code and a lin
 | Backward-incompatible changes | `BC101`-`BC104` | Renaming or dropping tables and columns that running code still uses | Warning |
 | Non-linear changes | (no code) | Files added out of order, or edited after they were pushed | Warning |
 | Table locks and rebuilds (MySQL) | `MY101`-`MY148` | ALTERs that lock or copy the table | Warning |
-| Concurrent index policy (PostgreSQL) | `PG101`-`PG110` | Index changes without `CONCURRENTLY`, missing `atlas:txmode none`, constraint creation that takes `ACCESS EXCLUSIVE` | Warning |
-| Blocking changes (PostgreSQL) | `PG301`-`PG308` | Type changes that rewrite the table, volatile defaults, constraints that scan the whole table | Warning |
-| Nested transactions | `TX101`, `TX201` | Transaction statements inside a migration that Atlas already wraps | Warning |
+| Concurrent index policy (PostgreSQL) | `PG101`-`PG109` | Index changes without `CONCURRENTLY`, missing `atlas:txmode none`, constraint creation that takes `ACCESS EXCLUSIVE` | Warning |
+| Blocking changes (PostgreSQL) | `PG301`-`PG320` | Type changes that rewrite the table, volatile defaults, constraints that scan the whole table, replication and autovacuum settings | Warning |
+| Transaction safety | `TX101`, `TX201` | Statements that cannot run in one transaction (`TX101`), and `BEGIN`/`COMMIT` in a file that Atlas already wraps in a transaction (`TX201`) | Warning |
 | Naming conventions | `NM101`-`NM106` | Names that violate the configured pattern | Warning |
 | Ownership policy | `OW101`, `OW102` | Changes to objects the author's team does not own | Warning |
 | SQL injection | `SA101` | Unsafe string concatenation in functions and procedures | Warning |
@@ -148,18 +148,23 @@ Annotate the statement with `-- atlas:nolint` to exclude it from analysis. Prefe
 Never add `nolint` without telling the user why the finding is a false positive.
 
 ```sql
--- atlas:nolint                    -- all analyzers, this statement
+-- All analyzers, this statement:
+-- atlas:nolint
 ALTER TABLE t1 DROP COLUMN c1;
 
--- atlas:nolint destructive        -- one analyzer by name
+-- One analyzer, by name:
+-- atlas:nolint destructive
 ALTER TABLE t2 DROP COLUMN c2;
 
--- atlas:nolint DS103              -- one check by code
+-- One check, by code:
+-- atlas:nolint DS103
 ALTER TABLE t3 DROP COLUMN c3;
 ```
 
-A directive on the first line of the file (`-- atlas:nolint` before any statement) applies to the
-whole file. `destructive { force = true }` disables `nolint` for destructive checks.
+Never put a comment after the directive on the same line: Atlas reads the rest of the line as analyzer
+names and codes, so `-- atlas:nolint -- reason` no longer skips all analyzers. A directive at the top
+of the file, followed by an empty line, applies to the whole file. `destructive { force = true }`
+disables `nolint` for destructive checks.
 
 ## Custom Rules
 
@@ -230,8 +235,8 @@ tables, RLS, security invoker views, roles, and permissions: https://atlasgo.io/
    - Data-dependent (`MF*`): add a default, backfill first, or split into two migrations.
    - Backward-incompatible (`BC*`): coordinate the rename with application code, or add and migrate
      instead of renaming.
-   - Concurrent index (`PG*`): use `CREATE INDEX CONCURRENTLY` and add `-- atlas:txmode none` at the
-     top of the file.
+   - Concurrent index (`PG101`-`PG109`): use `CREATE INDEX CONCURRENTLY` and add
+     `-- atlas:txmode none` at the top of the file.
    - Naming (`NM*`) and custom rules: rename to match the policy.
 3. Fix the migration file (unapplied only), then `atlas migrate hash --env <name>` and re-lint.
 4. If the change is applied already, write a new corrective migration instead.

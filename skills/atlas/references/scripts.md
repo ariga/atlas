@@ -99,7 +99,7 @@ a failing `assert` or `check` aborts the run and rolls it back. The body needs a
 | Block | Purpose |
 |-------|---------|
 | `tx { mode, on_error }` | `mode = AUTO` (default, one transaction) or `NONE`; `on_error = ROLLBACK` (default) or `COMMIT` |
-| `condition "<name>" { sql }` | Pre-flight guard, only at the start of the body. Falsy (`false`/`0`) stops gracefully; `NULL` is an error. Wrap nullable expressions in `COALESCE(..., 0)` |
+| `condition "<name>" { sql }` | Pre-flight guard, only at the start of the body. Falsy (`false`/`0`) stops gracefully; `NULL` is an error. Wrap nullable expressions in `COALESCE` with a value of the same type, such as `COALESCE(..., false)` |
 | `break "<name>" { sql \| expr }` | Stops mid-body when true, commits work so far. `expr` evaluates in-process, e.g. `length(query.pending.rows) == 0` |
 | `assert "<name>" { sql, error_message }` | Invariant check. Falsy or `NULL` fails the run and rolls back |
 | `check "<name>" { sql, output \| match, format }` | Compares serialized query output (CSV default, or TABLE) to an exact `output` or a regexp `match` |
@@ -111,7 +111,7 @@ a failing `assert` or `check` aborts the run and rolls it back. The body needs a
 ```hcl
 script "exec" "archive_user" {
   condition "is_active" {
-    sql = "SELECT COALESCE(status = 'active', 0) FROM users WHERE id = $1"
+    sql = "SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND status = 'active')"
     args = [var.user_id]
   }
   exec "archive" {
@@ -283,6 +283,9 @@ and asserts on the result.
 ```hcl
 # scripts.test.hcl
 test "script" "archive_user" {
+  schema {
+    url = "file://schema.sql"     # first: the case starts on an empty database
+  }
   exec {
     sql = "INSERT INTO users (id, status) VALUES (1, 'active')"
   }
@@ -322,7 +325,8 @@ atlas script test --env dev --run archive_user
 - `as { role = "<role>" }` or `as { user = "<user>", password = "..." }` runs the script under another
   principal to prove it works with exactly those privileges.
 - `test "schema"` runs against the desired schema on a clean dev database; `test "migrate"` migrates to a
-  chosen version first; `test "script"` starts from a fresh database with no schema.
+  chosen version first; `test "script"` starts from an empty database, so load the schema with a
+  `schema` block before any `exec`.
 
 ## Registry
 
@@ -356,8 +360,9 @@ binds an env to its registry repo.
 1. Anchor `--run` (`'^name$'`) so a prefix match does not run a second script.
 2. Never put credentials in a script or on the command line. Use `--env` with `getenv()` in `atlas.hcl`.
 3. Every `loop` must be bounded: an exhausting iterator, a `break`, or `policy.schedule` `limit`/`timeout`.
-4. `http` calls cannot be rolled back. They require `policy.tx.mode = MANUAL`; set `expect_status`,
-   or a 4xx/5xx reply counts as success.
+4. `http` calls cannot be rolled back. They require `tx { mode = NONE }` in an `exec` script and
+   `policy { tx { mode = MANUAL } }` in a `loop`; set `expect_status`, or a 4xx/5xx reply counts as
+   success.
 5. Mask PII before it reaches a report, an export, or the agent's context.
 6. A `NULL` from `condition` or `assert` is an error, not a graceful stop. Use `COALESCE`.
 7. Use a migration, not a script, when the change belongs to the schema.
@@ -369,7 +374,7 @@ binds an env to its registry repo.
 | `No scripts found to run` | The `--run` regexp matched nothing. Check the script name and kind (`exec` vs `query` vs `loop`) |
 | `exec kind requires at least one 'assert', 'check', or 'exec' block` | A body of only a bound `query` and `output`. Use `script "query"` for a read |
 | `command requires 'atlas login'` or `available only to Atlas Pro users` | Run `atlas login` |
-| `tx` command or `http` rejected | Set `policy { tx { mode = MANUAL } }` in the loop |
+| `tx` command or `http` rejected | Set `tx { mode = NONE }` in an `exec` script, or `policy { tx { mode = MANUAL } }` in a loop |
 | `expect_rows` mismatch | The write affected a different row count. The run aborted and rolled back; inspect the predicate |
 
 ## Documentation
