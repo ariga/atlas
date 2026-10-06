@@ -31,7 +31,7 @@ data "external_schema" "drizzle" {
 
 # SQLAlchemy (Python)
 data "external_schema" "sqlalchemy" {
-  program = ["python", "-m", "atlas_provider_sqlalchemy", "--path", "./models", "--dialect", "postgresql"]
+  program = ["atlas-provider-sqlalchemy", "--path", "./models", "--dialect", "postgresql"]
 }
 
 # Django (Python)
@@ -86,7 +86,7 @@ data "composite_schema" "app" {
 
 ## Dev-Database Dialects
 
-The dev URL format depends on whether your project uses **schema-scoped** or **database-scoped** migrations. Getting this wrong causes errors like `ModifySchema is not allowed` or silently drops database-level objects (extensions, event triggers) from migrations.
+The dev URL format depends on whether your project uses **schema-scoped** or **database-scoped** migrations. Getting this wrong causes errors like `modify schema "public" is not allowed when migration plan is scoped to one schema`, or silently drops database-level objects (extensions, event triggers) from migrations.
 
 **Schema-scoped** (single schema — most common): include the database name and schema scope so Atlas creates objects in the correct schema. Use this when all tables live in one schema (e.g., `public`).
 

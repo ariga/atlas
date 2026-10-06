@@ -2,7 +2,7 @@
 name: atlas-onboard
 description: "Guided onboarding of a repository onto Atlas, one verified stage at a time: plan the units and the workflow, define the schema as code, set up the migration workflow, add CI with the Atlas Registry, deploy to staging, and promote to production. Each stage ends on a check the agent runs itself, such as a dry run with no changes or a deployment recorded in Atlas Cloud. Use when the user asks to onboard, adopt, or set up Atlas for a project or a team, or to resume an onboarding."
 disable-model-invocation: true
-allowed-tools: Bash(atlas version) Bash(atlas whoami) Bash(atlas cloud repo list:*) Bash(atlas cloud repo describe:*) Bash(atlas cloud database list:*) Bash(atlas cloud database describe:*) Bash(atlas cloud migration list:*) Bash(atlas cloud migration describe:*) Bash(atlas schema inspect:*) Bash(atlas schema validate:*) Bash(atlas schema test:*) Bash(atlas migrate ls:*) Bash(atlas migrate validate:*) Bash(atlas migrate lint:*) Bash(atlas migrate diff:*) Bash(atlas migrate hash:*) Bash(atlas migrate import:*) Bash(jq:*)
+allowed-tools: Bash(atlas version) Bash(atlas whoami) Bash(atlas cloud repo list:*) Bash(atlas cloud repo describe:*) Bash(atlas cloud database list:*) Bash(atlas cloud database describe:*) Bash(atlas cloud migration list:*) Bash(atlas cloud migration describe:*) Bash(atlas schema inspect:*) Bash(atlas schema validate:*) Bash(atlas schema test:*) Bash(atlas migrate ls:*) Bash(atlas migrate validate:*) Bash(atlas migrate lint:*) Bash(atlas migrate diff:*) Bash(atlas migrate hash:*) Bash(atlas migrate import:*)
 ---
 
 # Atlas Onboarding
@@ -195,9 +195,22 @@ When the pilot finishes stage 5, or the last stage the user wants:
 
    For declarative units, the change lines are: change the desired state, then `atlas schema apply
    --env local` against the local database; CI plans the change for review on the PR.
-2. Offer to commit the `atlas` skill into the repository, in the directory the team's agents load:
-   `.claude/skills/atlas` (Claude Code), `.agents/skills/atlas` (Codex), `.cursor/skills/atlas` (Cursor),
-   `.github/skills/atlas` (GitHub Copilot). If the install already put it there, commit it unchanged.
+2. Offer to commit the skills, so every teammate's agent gets them:
+   - Claude Code: merge these keys into `.claude/settings.json`. Claude Code installs the Atlas plugin
+     for each teammate who trusts the repository folder.
+
+     ```json
+     {
+       "extraKnownMarketplaces": {
+         "ariga": { "source": { "source": "github", "repo": "ariga/atlas" } }
+       },
+       "enabledPlugins": { "atlas@ariga": true }
+     }
+     ```
+
+   - Codex, Cursor, GitHub Copilot: run `npx skills add ariga/atlas -a <agent> -y` from the repository
+     root, with `codex`, `cursor`, or `github-copilot`, and commit `.agents/skills/` and
+     `skills-lock.json`. If the install already put them there, commit them unchanged.
 3. Next steps: offer the practices from the guides that fit what the scan found, one at a time. The
    full list is https://atlasgo.io/guides/evaluation/advanced-topics.
 
@@ -237,7 +250,7 @@ When the pilot finishes stage 5, or the last stage the user wants:
   first segment names the schema: `public.audit_*`, `public.*[type=function]`, or `internal` to skip a
   whole schema.
 - The dev database must match the target's engine version and scope (https://atlasgo.io/concepts/dev-database).
-  The wrong scope fails with `ModifySchema is not allowed` or silently drops extensions.
+  The wrong scope fails with `modify schema "<name>" is not allowed when migration plan is scoped to one schema`, or silently drops extensions.
 - The same difference on every table (collation, charset, owner) means the dev database's defaults
   differ from the target's. Fix the dev database; never write a migration for it.
 - A split SQL source (`schema/main.sql` plus one file per object) reads only the files `main.sql`

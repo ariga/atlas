@@ -187,7 +187,8 @@ schemas, extensions, or event triggers.
 --dev-url "docker://sqlserver/2022-latest/dev?mode=database"
 ```
 
-Using the wrong scope causes errors (`ModifySchema is not allowed`) or silently drops database-level
+Using the wrong scope causes errors such as
+`modify schema "public" is not allowed when migration plan is scoped to one schema`, or silently drops database-level
 objects (extensions, event triggers) from migrations. For PostGIS or pgvector schemas, use
 `docker://postgis/latest/dev` or `docker://pgvector/pg17/dev`.
 
@@ -223,9 +224,9 @@ atlas schema inspect --env <name> --format "{{ json . }}" | jq ".schemas[].table
 atlas schema inspect --env <name> --format "{{ sql . }}"
 
 # Filter with --include/--exclude (useful for large schemas)
-atlas schema inspect --env <name> --include "users_*"           # Only matching tables
+atlas schema inspect --env <name> --include "users_*"           # Only matching tables (needs atlas login)
 atlas schema inspect --env <name> --exclude "*_backup"          # Skip matching tables
-atlas schema inspect --env <name> --exclude "*[type=trigger]"   # Skip triggers
+atlas schema inspect --env <name> --exclude "*.*[type=trigger]" # Skip triggers (database scope: "*.*.*[type=trigger]")
 
 # Open a visual ERD in the browser (requires atlas login)
 atlas schema inspect --env <name> -w
@@ -446,7 +447,8 @@ atlas migrate hash --env <name>               # Repair migration integrity after
 - `'atlas login' is required for organization <org> as specified in atlas.hcl`: the project pins its
   org. Ask the user to run `atlas login` with an account in that org.
 - Missing driver error: ensure `--url` or `--dev-url` is correctly specified.
-- `ModifySchema is not allowed`: the dev URL scope does not match the target. See Dev Database above.
+- `add`, `drop`, or `modify schema "<name>" is not allowed when migration plan is scoped to one schema`:
+  the dev URL scope does not match the target. See Dev Database above.
 
 ## Key Rules
 
@@ -459,7 +461,8 @@ atlas migrate hash --env <name>               # Repair migration integrity after
 7. Never edit an applied migration. Create a corrective migration instead.
 8. Never ignore lint errors. Fix them or get explicit user approval.
 9. Run `atlas login` once per machine. Linting, testing, drift, `schema plan`, the review policy,
-    scripts, ERD, and Atlas Cloud need it, and fail without it: report the skipped step and continue.
+    scripts, ERD, `migrate checkpoint`, `schema inspect --include`, and Atlas Cloud need it, and fail
+    without it: report the skipped step and continue.
     Inspecting and diffing a database do not fail without it; they skip objects. Log in before either.
 10. Before deploying to shared environments, check Atlas Cloud for `FAILED` or `PENDING` targets
     and recent failed deployments (`references/cloud.md`).

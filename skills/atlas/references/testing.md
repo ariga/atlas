@@ -10,7 +10,7 @@ writes the tests next to them, and Atlas executes both and reports failures to f
 | `atlas schema test --env <name>` | `test "schema"` | The desired schema, created on the dev database | Functions, views, triggers, constraints, RLS, queries |
 | `atlas migrate test --env <name>` | `test "migrate"` | An empty database, migrated to a chosen version | Data migrations and the migration files themselves |
 | `atlas schema plan test --env <name>` | `test "plan"` | A given schema snapshot, then a plan file applied | Declarative plans before approval |
-| `atlas script test --env <name>` | `test "script"` | A fresh database with no schema | Data Scripts in isolation (see `references/scripts.md`) |
+| `atlas script test --env <name>` | `test "script"` | An empty database, or the schema its `schema` block loads | Data Scripts in isolation (see `references/scripts.md`) |
 
 All four accept `--run <regexp>` to select cases by name, `--var name=value` for input variables, and
 optional paths to test files as trailing arguments.
@@ -75,7 +75,7 @@ test "schema" "postal_code_domain" {
   }
   catch {
     sql   = "SELECT 'hello'::us_postal_code"
-    error = "invalid input value"
+    error = "violates check constraint"
   }
 }
 
@@ -165,9 +165,9 @@ test "plan" "20260613061102" {
     format = table
     output = <<-TAB
       first_name | last_name
-      -----------+----------
-       Ada       | Lovelace
-       Grace     | Hopper
+      ------------+-----------
+       Ada        | Lovelace
+       Grace      | Hopper
     TAB
   }
 }
@@ -178,8 +178,8 @@ plan approvals).
 
 ## Script Tests
 
-`test "script"` starts from a fresh database. Seed with `exec`, run the script with the `script`
-command, and assert on what it prints or leaves behind. Details and the `as` block for privilege
+`test "script"` starts from an empty database. Load the schema with a `schema` block first, seed with
+`exec`, run the script with the `script` command, and assert on what it prints or leaves behind. Details and the `as` block for privilege
 testing are in `references/scripts.md`.
 
 ## Agent Workflow

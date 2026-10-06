@@ -24,6 +24,14 @@ password or connection string. Report the findings as a short table before doing
 ## 0.2 Log In
 
 ```bash
+atlas version
+```
+
+If the command is not found, ask before installing the CLI: `curl -sSf https://atlasgo.sh | sh` on macOS
+and Linux, or `brew install ariga/tap/atlas`. Other methods are at https://atlasgo.io/getting-started.
+Then check the login:
+
+```bash
 atlas whoami
 ```
 
