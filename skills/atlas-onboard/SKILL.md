@@ -34,8 +34,8 @@ point into that skill.
 | 1 Schema as code | `atlas.hcl` and the desired state: the database exported to SQL or HCL, or the ORM models | `references/stage-1-schema.md` | `atlas schema apply --env local --dry-run` reports no changes |
 | 2 Migration workflow | Versioned: the baseline migration and the `migrate diff` loop. Declarative: the `schema apply` loop | `references/stage-2-workflow.md` | Versioned: `atlas migrate diff` reports the directory is synced; the project PR is open |
 | 3 CI | Lint (versioned) or plan (declarative) on pull requests, push to the Atlas Registry on merge | `references/stage-3-ci.md` | CI passed on the merge, and the registry has its version |
-| 4 Deploy | Staging deploys from the registry, and the old tool stops deploying to staging | `references/stage-4-deploy.md` | Atlas Cloud records the staging deployment |
-| 5 Promote | Production applies only the version staging runs (environment promotion) | `references/stage-5-promote.md` | The user ran the first production deployment, on staging's version |
+| 4 Deploy to staging | Staging deploys from the registry, and the old tool stops deploying to staging | `references/stage-4-deploy.md` | Atlas Cloud records the staging deployment |
+| 5 Promote to production | Production applies only the version staging runs (environment promotion) | `references/stage-5-promote.md` | The user ran the first production deployment, on staging's version |
 
 Run the stages for the pilot unit first. Every other unit repeats stages 1 to 5 with the decisions
 already recorded. After the pilot, Hand Off.
@@ -50,9 +50,10 @@ already recorded. After the pilot, Hand Off.
    `atlas whoami` first.
 3. Ask only at the decision points each stage lists. Everywhere else, take the stated default and say
    which one you took.
-4. Before the first file write of a stage, create a branch `atlas-onboard/<unit>-<stage>` from an
-   up-to-date default branch with a clean working tree. Stage files by path, never `git add -A`. Every
-   change lands as a pull request, and the PR is the review gate. A separate GitOps repository gets its
+4. Before the first file write for a pull request, create a branch `atlas-onboard/<unit>-<stage>` from
+   an up-to-date default branch with a clean working tree. Stage 2 continues on the stage 1 branch,
+   since both land in the project PR; every later stage starts its own branch. Stage files by path,
+   never `git add -A`. Every change lands as a pull request, and the PR is the review gate. A separate GitOps repository gets its
    own PR.
 5. Credentials of shared environments never enter the conversation. The user exports those URL
    variables in the shell that starts the agent; a `!` command would put the value in the conversation.

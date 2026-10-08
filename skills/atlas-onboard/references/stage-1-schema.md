@@ -61,9 +61,9 @@ target's engine, version, and scope. For a schema-scoped PostgreSQL unit, its UR
 `search_path=public` whatever the target schema is called: schema-scoped DDL has no schema qualifiers,
 so it runs the same in any schema.
 
-Docker dev URLs from https://atlasgo.io/concepts/dev-database#introduction. Replace the version with the
-target's, such as `docker://postgres/16/dev` for PostgreSQL 16 or `docker://mysql/8.0/dev` for MySQL 8.0
-(`mysql:8` resolves to a newer minor version):
+Docker dev URLs from https://atlasgo.io/concepts/dev-database#introduction. The dev database must use the
+same engine and version as the target, so replace the version with the target's, such as
+`docker://postgres/16/dev` for PostgreSQL 16:
 
 | Engine | Schema scope | Database scope |
 |--------|--------------|----------------|

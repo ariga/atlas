@@ -12,10 +12,12 @@
       "source": "./skills",
       "skills": [
         "./atlas",
-        "./atlas-onboard"
+        "./atlas-mysql",
+        "./atlas-onboard",
+        "./atlas-postgres"
       ],
-      "version": "eaea6c3a9531",
-      "description": "Atlas skills for coding agents: database schema management with the Atlas CLI, and guided onboarding of a project onto Atlas.",
+      "version": "9575e16ae6ea",
+      "description": "Atlas skills for coding agents: database schema management with the Atlas CLI, guided onboarding of a project onto Atlas, and the specifics of each database: PostgreSQL, MySQL, and MariaDB.",
       "author": {
         "name": "Ariga",
         "url": "https://atlasgo.io"

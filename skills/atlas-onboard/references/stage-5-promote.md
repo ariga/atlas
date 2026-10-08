@@ -27,6 +27,7 @@ data "cloud_databases" "staging" {
 
 env "prod" {
   url     = urlqueryset(getenv("PROD_DATABASE_URL"), "search_path", "identity")
+  dev     = local.dev
   exclude = local.exclude
   migration {
     dir        = "atlas://<repo>"
@@ -45,7 +46,9 @@ Declarative units pin the desired state to staging's version
 
 ```hcl
 env "prod" {
-  url = urlqueryset(getenv("PROD_DATABASE_URL"), "search_path", "identity")
+  url     = urlqueryset(getenv("PROD_DATABASE_URL"), "search_path", "identity")
+  dev     = local.dev
+  exclude = local.exclude
   schema {
     src = "atlas://<repo>?version=${data.cloud_databases.staging.targets[0].current_version}"
   }
