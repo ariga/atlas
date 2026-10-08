@@ -425,9 +425,11 @@ atlas schema inspect --env <name> --format '{{ sql . | split | write "src" }}'
 atlas migrate diff --env <name> "baseline" --to "file://src"
 
 # 3. Record the baseline as applied on each existing database (the version from the filename).
-#    This writes to the database: dry-run first, and run it only with the user's approval of the
-#    named target. Deploy envs can set baseline = "<version>" in their migration block instead.
+#    Deploy envs can set baseline = "<version>" in their migration block instead.
+#    Preview first; --dry-run writes nothing:
 atlas migrate apply --env <name> --baseline '<version>' --dry-run
+#    Then, only after the user approves the named target, record it (this writes the revisions table):
+atlas migrate apply --env <name> --baseline '<version>'
 ```
 
 The baseline migration captures the current state without executing it on existing databases. On new

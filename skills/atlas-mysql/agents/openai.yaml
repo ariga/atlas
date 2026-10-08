@@ -1,0 +1,6 @@
+interface:
+  display_name: "Atlas for MySQL"
+  short_description: "MySQL and MariaDB rules, edge cases, and fixes for Atlas"
+
+policy:
+  allow_implicit_invocation: true

@@ -1,4 +1,4 @@
-# Stage 4: Deploy
+# Stage 4: Deploy to Staging
 
 Goal: staging deployments of the unit apply versions from the Atlas Registry, every run is recorded in
 Atlas Cloud, and the old tool no longer deploys the unit to staging. This stage writes staging
