@@ -12,12 +12,21 @@
       "source": "./skills",
       "skills": [
         "./atlas",
+        "./atlas-action",
+        "./atlas-clickhouse",
+        "./atlas-databricks",
+        "./atlas-mssql",
         "./atlas-mysql",
         "./atlas-onboard",
-        "./atlas-postgres"
+        "./atlas-operator",
+        "./atlas-oracle",
+        "./atlas-postgres",
+        "./atlas-redshift",
+        "./atlas-snowflake",
+        "./atlas-spanner"
       ],
-      "version": "9575e16ae6ea",
-      "description": "Atlas skills for coding agents: database schema management with the Atlas CLI, guided onboarding of a project onto Atlas, and the specifics of each database: PostgreSQL, MySQL, and MariaDB.",
+      "version": "34c9d2ecad57",
+      "description": "Atlas skills for coding agents: database schema management with the Atlas CLI, guided onboarding of a project onto Atlas, the CI/CD steps of the Atlas actions, the Atlas Kubernetes Operator, and the specifics of each database: PostgreSQL, MySQL, and MariaDB.",
       "author": {
         "name": "Ariga",
         "url": "https://atlasgo.io"

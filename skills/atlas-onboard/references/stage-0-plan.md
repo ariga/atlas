@@ -12,7 +12,7 @@ password or connection string. Report the findings as a short table before doing
 
 | Look for | Where | Feeds |
 |----------|-------|-------|
-| Engines and major versions | `docker-compose*.yml` image tags, ORM config, Helm values, Terraform database resources | The dev database (stage 1). If the version is not in the repository, ask: this is a decision point |
+| Engines and major versions | `docker-compose*.yml` image tags, ORM config, Helm values, Terraform database resources | The dev database (stage 1), and the database skill to read now (Requires). If the version is not in the repository, ask: this is a decision point |
 | Schema source | ORM models (GORM, Drizzle, SQLAlchemy, Django, Ent, Sequelize, TypeORM, Prisma), `*.sql` or `*.hcl` schema files | Stage 1 |
 | Current migration tool | Flyway `V1__*.sql` and `flyway.conf`, Liquibase changelogs, golang-migrate `*.up.sql`, goose `-- +goose Up`, dbmate `-- migrate:up`, ORM migration folders (Django, Alembic, Prisma Migrate) | The tool stage 4 retires, and its history table to exclude |
 | Objects outside the ORM | `RunSQL` or raw `CREATE VIEW`, `CREATE TRIGGER`, `CREATE FUNCTION`, `CREATE EXTENSION` in migrations | 0.2, stage 1 |

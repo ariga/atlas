@@ -26,6 +26,24 @@ https://atlasgo.io/skills/atlas/SKILL.md to `../atlas/SKILL.md` and each referen
 Files section to `../atlas/references/<name>` before starting. Paths below that start with `atlas/`
 point into that skill.
 
+On PostgreSQL, MySQL, or MariaDB, also the database skill, installed next to this one: `atlas-postgres`
+(`../atlas-postgres/SKILL.md`), or `atlas-mysql` (`../atlas-mysql/SKILL.md`) for MySQL and MariaDB. It
+holds the engine's rules, such as the dev database, the URL scope, and the lint findings to review.
+Read it once stage 0 finds the engine, and follow it in every stage. If it is missing, recommend that
+the user install it: `claude plugin update atlas@ariga` in Claude Code, or the
+`npx skills add ariga/atlas -a <agent> -y` command again in other agents. Until then, read it from
+https://atlasgo.io/skills/atlas-postgres/SKILL.md or https://atlasgo.io/skills/atlas-mysql/SKILL.md.
+
+When stage 4 deploys with the Atlas Kubernetes Operator (4.6, 4.7), also read the `atlas-operator`
+skill (`../atlas-operator/SKILL.md`). Install and read it the same way, from
+https://atlasgo.io/skills/atlas-operator/SKILL.md when it is missing. It covers the operator's install,
+tokens, resource policies, and troubleshooting.
+
+For stage 3 and the CI deploy job of stage 4, also read the `atlas-action` skill
+(`../atlas-action/SKILL.md`). Install and read it the same way, from
+https://atlasgo.io/skills/atlas-action/SKILL.md when it is missing. It covers the Atlas CI steps on each
+platform, their tokens and permissions, and the fix for each failed step.
+
 ## Stages
 
 | Stage | What it sets up | Read | Done when |
@@ -194,8 +212,11 @@ When the pilot finishes stage 5, or the last stage the user wants:
    - Use the `atlas` skill for schema work.
    ```
 
-   For declarative units, the change lines are: change the desired state, then `atlas schema apply
-   --env local` against the local database; CI plans the change for review on the PR.
+   For declarative units, the change lines are: change the desired state, then
+   `atlas schema apply --env local` against the local database; CI plans the change for review on the
+   PR. On PostgreSQL,
+   the last line names both skills: Use the `atlas` and `atlas-postgres` skills for schema work. On
+   MySQL and MariaDB, name `atlas-mysql` instead.
 2. Offer to commit the skills, so every teammate's agent gets them:
    - Claude Code: merge these keys into `.claude/settings.json`. Claude Code installs the Atlas plugin
      for each teammate who trusts the repository folder.
