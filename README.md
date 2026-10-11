@@ -67,6 +67,25 @@ npx @ariga/atlas
 
 See [installation docs](https://atlasgo.io/getting-started#installation) for all platforms.
 
+## Install the skills
+
+Claude Code:
+
+```bash
+claude plugin marketplace add ariga/atlas
+claude plugin install atlas@ariga
+```
+
+Codex, Cursor, or GitHub Copilot, from the root of your repository:
+
+```bash
+npx skills add ariga/atlas -a codex -y   # or: -a cursor, -a github-copilot
+```
+
+> [!NOTE]
+> The [Atlas website](https://atlasgo.io/guides/ai-tools/agent-skills) has the most up-to-date version
+> of these skills: they are maintained there and copied to [`skills/`](skills) from time to time.
+
 ## Key Features
 
 - **[Declarative schema migrations](https://atlasgo.io/declarative/apply)**: The `atlas schema` command offers various options for [inspecting](https://atlasgo.io/inspect), diffing, comparing, [planning](https://atlasgo.io/declarative/plan) and applying migrations using standard Terraform-like workflows.
