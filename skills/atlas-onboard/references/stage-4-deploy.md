@@ -96,8 +96,8 @@ env "staging" {
   version pushed only with a tag, the check prints `no state found for version ...` and is skipped,
   even with `FAIL`. Keep `latest` on in the push job; a CLI pipeline pushes `<repo>` as well as
   `<repo>:<sha>`.
-- Versioned deploys have no approval step of their own. Review happens on the PR, and `check
-  "migrate_apply"` rules, the drift check, and promotion (stage 5) guard the apply.
+- Versioned deploys have no approval step of their own. Review happens on the PR, and
+  `check "migrate_apply"` rules, the drift check, and promotion (stage 5) guard the apply.
 
 ## 4.4 CI Deploy Job
 
@@ -107,7 +107,7 @@ GitHub Actions, added to the stage 3 workflow after the push job:
   deploy-staging:
     needs: push
     runs-on: ubuntu-latest                   # copy runs-on and network setup from the old migration job
-    environment: staging
+    environment: staging                     # deployment branches: the default branch
     env:
       STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
     steps:
@@ -125,9 +125,12 @@ GitHub Actions, added to the stage 3 workflow after the push job:
 - The runner must reach the staging database. Hosted runners cannot reach a private database: copy
   the runner and network setup of the job that runs the old tool today.
 - The job must finish before the application deploys. Add it to the application deploy job's `needs`.
-- The user stores `STAGING_DATABASE_URL` as a secret, with the deploy user.
+- The user stores `STAGING_DATABASE_URL`, with the deploy user, as a secret of the `staging`
+  environment, whose deployment branches are the default branch only, so pull request jobs never get
+  it.
 - GitLab CI: the `migrate-apply` component, as its own job with `rules` that limit it to the default
-  branch, `env: staging`, and the runner tags of the application's staging deploy.
+  branch, `env: staging`, the URL from a protected variable, and the runner tags of the application's
+  staging deploy.
 - Other CI systems: install the CLI, export the bot token as `ATLAS_TOKEN`, and run
   `atlas migrate apply --env staging`.
 - Declarative units: `ariga/atlas-action/schema/apply@v1` after the approve and push steps of
@@ -145,7 +148,9 @@ environment. Release only after the stage 3 push job passed, so the registry has
 
 ## 4.6 Atlas Operator with Argo CD
 
-The Operator must be installed in the cluster (https://atlasgo.io/integrations/kubernetes/install).
+Read the `atlas-operator` skill first (Requires): it covers the operator's install, the
+bot token Secret, the resource policies, and the errors a first rollout hits. The Operator must be
+installed in the cluster (https://atlasgo.io/integrations/kubernetes/install).
 That is usually the platform team's change; ask before adding it. Ask for a local checkout of the GitOps
 repository, and write to its staging overlay only, never to a shared base. Reference Secrets that the
 cluster's secret manager creates, by name, and never write secret values to Git:
@@ -213,9 +218,9 @@ provider to the latest release on the Terraform Registry; version pins in older 
    `No migrations found.`
 2. Approval with a named target. Ask the user for the staging database's name instead of reading the
    URL: "Deploy `<repo>` version `<version>` to staging (`<database>`)?"
-3. Dry run, with `STAGING_DATABASE_URL` in the agent's shell: `atlas migrate apply --env staging
-   --dry-run` (declarative: `atlas schema apply --env staging --dry-run`). Atlas Cloud records it as
-   `DRY_RUN`.
+3. Dry run, with `STAGING_DATABASE_URL` in the agent's shell:
+   `atlas migrate apply --env staging --dry-run` (declarative:
+   `atlas schema apply --env staging --dry-run`). Atlas Cloud records it as `DRY_RUN`.
 4. The user merges the deploy PR, or merges the GitOps PR, or runs the release.
 5. Check:
 

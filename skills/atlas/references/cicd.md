@@ -11,6 +11,12 @@ The docs name the secret `ATLAS_CLOUD_TOKEN` on GitHub Actions and GitLab CI, an
 CircleCI, Bitbucket, and Azure DevOps; the CLI also reads `ATLAS_TOKEN` from the environment. If the
 repo already has a token secret, use its name.
 
+One bot token, a repository secret, serves every job. Keep the database URLs out of pull request jobs:
+a job that a branch triggers runs that branch's workflow file and `atlas.hcl`, whose `data "external"`
+blocks run programs, so it can read every secret it gets. The URLs live in an environment that only
+the default branch can use, and only deploy jobs name it. The `atlas-action` skill covers each
+platform.
+
 How `migrate lint` decides which files are "new" depends on whether the directory is pushed to the
 Atlas Registry. Read `atlas.hcl` and pick the matching case:
 
@@ -42,7 +48,9 @@ env "ci" {
 ```
 
 With a registry repo configured, do not add `git { base }` or `--git-base`: the registry comparison is
-what makes lint independent of branch history and what the drift checks read from.
+what makes lint independent of branch history and what the drift checks read from. The `migrate/lint`
+action always compares with the registry (its `dir-name` input is required), so in case 2 lint with the
+CLI in a plain step, `atlas migrate lint --env ci`, after checking out with `fetch-depth: 0`.
 
 The registry repo must exist before the first CI run. Create it once, after the user approves the name:
 from CI with the `create-repo` action, or with the first `atlas migrate push` / `atlas schema push`.
@@ -113,9 +121,9 @@ from secrets and `tx-mode: none` (https://github.com/atlasdemos/databricks/tree/
 
 | Stage | Trigger | What runs | GitHub Action |
 |-------|---------|-----------|---------------|
-| Lint | pull request | Replays the files not yet in the registry (or, without a registry, the files added since the base branch) on a dev database, comments findings on the PR, fails on errors | `ariga/atlas-action/migrate/lint@v1` |
+| Lint | pull request | Replays the files not yet in the registry on a dev database, comments findings on the PR, fails on errors (without a registry: `atlas migrate lint` in a plain step, case 2 above) | `ariga/atlas-action/migrate/lint@v1` |
 | Diff (optional) | pull request | Plans migrations from the schema source and commits them to the PR when the developer did not | `ariga/atlas-action/migrate/diff@v1` |
-| Test (optional) | pull request | `migrate test` and `schema test` on the dev database, results on the PR | `ariga/atlas-action/migrate/test@v1`, `schema/test@v1` |
+| Test (optional) | pull request | `migrate test` and `schema test` on the dev database, results in the job log | `ariga/atlas-action/migrate/test@v1`, `schema/test@v1` |
 | Autorebase | push to a non-default branch | Moves the branch's migration files after the ones on the target branch and updates `atlas.sum` | `ariga/atlas-action/migrate/autorebase@v1` |
 | Push | merge to main | Pushes the directory to the registry, tagged with the commit and `latest` | `ariga/atlas-action/migrate/push@v1` |
 | Deploy | release / manual / GitOps | `migrate apply` from `atlas://app?tag=...` against the target | `ariga/atlas-action/migrate/apply@v1`, operator, Terraform |
@@ -130,11 +138,13 @@ on:
     paths: ['migrations/*', 'schema.sql', 'atlas.hcl']
 permissions:
   contents: read
-  pull-requests: write
 jobs:
   lint:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write               # only the lint job comments
     steps:
       - uses: actions/checkout@v4
         with:
@@ -145,6 +155,7 @@ jobs:
       - uses: ariga/atlas-action/migrate/lint@v1
         with:
           env: ci
+          dir-name: app                        # required: the registry repo slug
         env:
           GITHUB_TOKEN: ${{ github.token }}    # lets the action comment on the PR
       - uses: ariga/atlas-action/migrate/test@v1
@@ -179,13 +190,14 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production              # required reviewers; deployment branches: the default branch
     steps:
       - uses: ariga/setup-atlas@v0
         with:
           cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
       - uses: ariga/atlas-action/migrate/apply@v1
         with:
-          url: ${{ secrets.DATABASE_URL }}
+          url: ${{ secrets.DATABASE_URL }}       # an environment secret
           dir: atlas://app?tag=latest          # or ?tag=<commit> for a pinned release
 ```
 
@@ -196,9 +208,9 @@ Action inputs worth knowing: `env` and `config` select the `atlas.hcl` env; `var
 ### Automatic migration generation (`migrate/diff`)
 
 When the schema is code (HCL, SQL, or ORM) and a developer changes it without generating the
-migration, `migrate/diff` plans it on the PR and commits the file to the migration directory. It also
-fails when the directory and the schema are out of sync. `dir`, `to`, and `dev-url` are required but
-come from `atlas.hcl` when `env` is set.
+migration, `migrate/diff` plans it on the PR and commits the file to the migration directory; it does
+not fail the PR for the missing file. `dir`, `to`, and `dev-url` are required but come from `atlas.hcl`
+when `env` is set.
 
 ```yaml
 # .github/workflows/atlas-diff.yaml
@@ -220,7 +232,7 @@ jobs:
           cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PAT }}      # a PAT, so the pushed commit triggers the lint workflow
+          token: ${{ secrets.PAT }}      # fine-grained, this repository only: the branch's code can read it
           fetch-depth: 0
       - name: config git to commit changes
         run: |
@@ -277,7 +289,7 @@ which is exactly the state this action fixes. Without the action, the developer 
 take either side of `atlas.sum`, `atlas migrate rebase <version>`, `atlas migrate hash`, re-lint.
 
 The same two actions exist for other platforms: `migrate-diff` on GitLab, Azure DevOps, and
-Bitbucket; `migrate_autorebase` on CircleCI, and `migrate autorebase` on Azure DevOps and Bitbucket.
+Bitbucket; `migrate_auto_rebase` on CircleCI, and `migrate autorebase` on Azure DevOps and Bitbucket.
 
 ### Deploying from the registry
 
@@ -310,11 +322,13 @@ on:
     paths: ['schema.sql', 'atlas.hcl']
 permissions:
   contents: read
-  pull-requests: write
 jobs:
   plan:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write               # only the plan job comments
     steps:
       - uses: actions/checkout@v4
       - uses: ariga/setup-atlas@v0
@@ -359,13 +373,15 @@ Rules that keep the plan usable at deploy time:
 - Ad-hoc approval: when `schema apply` runs in CD and no approved plan matches (a manual change
   drifted the database, or the change skipped CI), the `lint { review }` policy decides whether it
   pauses. With `review = ALWAYS` on `prod` it pauses and prints a registry link where a human approves.
+  The `schema/apply` action waits only with its `lint-review` input (and `wait-timeout`); without them
+  the step fails with the link, and a rerun after approval applies the plan.
 
 ## Other CI Platforms
 
 | Platform | Integration | Docs |
 |----------|-------------|------|
 | GitLab CI | `migrate-lint`, `migrate-push`, `migrate-diff`, `schema-plan`, `schema-push` components | https://atlasgo.io/integrations/gitlab-ci-components |
-| CircleCI | `atlas-orb` (`migrate_lint`, `migrate_push`, `migrate_autorebase`, `schema_plan`) | https://atlasgo.io/integrations/circleci-orbs |
+| CircleCI | `atlas-orb` (`migrate_lint`, `migrate_push`, `migrate_auto_rebase`, `schema_plan`) | https://atlasgo.io/integrations/circleci-orbs |
 | Bitbucket | `migrate/lint`, `migrate/push`, `migrate/autorebase`, `schema/plan`, `schema/push` pipes | https://atlasgo.io/integrations/bitbucket-pipes |
 | Azure DevOps | `migrate lint`, `migrate push`, `migrate diff`, `migrate autorebase`, `schema plan`, `schema push` tasks | https://atlasgo.io/integrations/azure-devops |
 | Kubernetes | Atlas Operator: `AtlasMigration` (versioned) and `AtlasSchema` (declarative) resources | https://atlasgo.io/integrations/kubernetes |
@@ -398,6 +414,7 @@ The CLI equivalents run anywhere: `atlas login --token "$ATLAS_TOKEN"`, then the
 - [Declarative CI/CD setup](https://atlasgo.io/declarative/setup-cicd)
 - [GitHub Actions reference](https://atlasgo.io/integrations/github-actions)
 - [atlas-action repository, every action with inputs and examples](https://github.com/ariga/atlas-action)
+- The `atlas-action` skill: each step's inputs, outputs, tokens, and error messages on each CI platform
 - [Additional example: both pipelines on ClickHouse](https://github.com/atlasdemos/clickhouse/tree/main/.github/workflows)
 - [Additional example: both pipelines on Databricks](https://github.com/atlasdemos/databricks/tree/main/.github/workflows)
 - [Pre-approval workflow on GitHub Actions](https://atlasgo.io/integrations/github-actions/pre-approval)

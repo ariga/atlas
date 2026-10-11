@@ -40,9 +40,10 @@ Drift Status: OK
   -- Pending Files:   0
 ```
 
-Exit codes: `0` no drift, `1` drift found (the report lists the objects and the SQL that would
-reconcile them). This is the background check: run it from a cron job, a scheduled CI workflow, or a
-Kubernetes CronJob and it fails on drift without parsing output, so the same command serves an ad hoc
+Exit codes: `0` no drift, `1` drift found (the report lists the objects and the SQL that reproduces
+the drift, as if it had been executed on the expected state; it is not the fix). This is the
+background check: run it from a cron job, a scheduled CI workflow, or a Kubernetes CronJob and it
+fails on drift without parsing output, so the same command serves an ad hoc
 question and continuous checking. On an env with
 `for_each` (multi-tenant), one report is printed per target and the run fails if any target drifted.
 
@@ -134,7 +135,7 @@ version and still have drifted objects.
 
 1. Read `atlas.hcl`: versioned (`migration` block) or declarative (`schema` block)?
 2. Versioned: `atlas migrate drift --env <name>`. Report the status, the current version, the pending
-   file count, and the reconciling SQL if drift was found.
+   file count, and the SQL that reproduces the drift if drift was found.
 3. Declarative: `atlas schema apply --env <name> --dry-run` and report the SQL Atlas would apply
    ("Schema is synced, no changes to be made" means no drift). Without a login the lint section of that
    output is redacted ("Run atlas login ... to view diagnostics"); say so rather than reporting "no issues".

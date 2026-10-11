@@ -99,7 +99,7 @@ What is the request?
 │  │  └─ schema apply --auto-approve for fast edit-apply cycles
 │  └─ Not sure → Read atlas.hcl first
 ├─ CI/CD: lint on PRs, push to the registry, deploy from it
-│  └─ references/cicd.md
+│  └─ references/cicd.md (each step's inputs and errors on each platform: the atlas-action skill)
 ├─ A data change (backfill, purge, report, invariant check)
 │  └─ Data Scripts: references/scripts.md
 ├─ A lint failure, a lint policy, or a custom rule
@@ -335,7 +335,8 @@ Plan editing, `push`, `pull`, `lint`, `validate`, the review policy, and `schema
 Lint (or plan) on pull requests, push the directory or schema to the Atlas Registry on merge, deploy
 from `atlas://<repo>` with drift and pre-execution checks. Workflows for GitHub Actions and the
 equivalents for GitLab, CircleCI, Bitbucket, Azure DevOps, Kubernetes, and Terraform:
-`references/cicd.md`.
+`references/cicd.md`. Each step's inputs, outputs, tokens, permissions, and failure messages: the
+`atlas-action` skill (https://atlasgo.io/guides/ai-tools/agent-skills#cicd-skill).
 
 ## Standard Workflow
 

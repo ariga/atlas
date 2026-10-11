@@ -6,8 +6,8 @@ the project PR from stage 2 is merged. Nothing deploys in this stage.
 
 This stage decides which workflows to add, handles the manual steps, and checks the result. Each CI
 system has a step-by-step guide for each workflow; follow the one that matches the scan and the
-workflow from stage 0. `atlas/references/cicd.md` summarizes the GitHub Actions pipelines and the
-other platforms' integrations.
+workflow from stage 0. `atlas/references/cicd.md` summarizes the GitHub Actions pipelines, and the
+`atlas-action` skill has each step's inputs on every platform and the fix for each failed step.
 
 | CI system | Versioned | Declarative |
 |-----------|-----------|-------------|
@@ -152,11 +152,11 @@ Open the PR, titled `Add Atlas CI for <unit>`.
 ## Check
 
 1. The PR's Atlas job passes. The PR adds no migration files, so lint has nothing to analyze and may post
-   no report; the first report appears on the next schema PR. Read the result with `gh pr checks
-   <number>`, `glab ci status`, or ask the user.
-2. After the user merges, the push run on the default branch passed (`gh run list --workflow <file>
-   --branch <default> --limit 1`, the GitLab pipeline page, or ask), and the registry has the merge
-   commit's version:
+   no report; the first report appears on the next schema PR. Read the result with
+   `gh pr checks <number>`, `glab ci status`, or ask the user.
+2. After the user merges, the push run on the default branch passed
+   (`gh run list --workflow <file> --branch <default> --limit 1`, the GitLab pipeline page, or ask),
+   and the registry has the merge commit's version:
 
    ```bash
    atlas migrate ls --dir "atlas://<repo>?tag=<merge commit sha>" --latest
