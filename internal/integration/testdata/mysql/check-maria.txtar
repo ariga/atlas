@@ -6,6 +6,13 @@ cmp expected.hcl got.hcl
 atlas schema inspect --url file://schema.sql --dev-url URL --format '{{ sql . "  " }}' > got.sql
 cmp expected.sql got.sql
 
+atlas migrate diff v1 --to file://schema.sql --dev-url URL --format '{{ sql . "  " }}'
+cmpmig 0 expected.sql
+atlas migrate diff v2 --to file://schema.v2.sql --dev-url URL --format '{{ sql . "  " }}'
+cmpmig 1 migration.v2.sql
+atlas migrate diff v2-check --to file://schema.v2.sql --dev-url URL --format '{{ sql . "  " }}'
+stdout 'The migration directory is synced with the desired state, no changes to be made'
+
 -- schema.sql --
 CREATE TABLE t1(
   buf json,
@@ -95,3 +102,20 @@ CREATE TABLE `t2` (
   CONSTRAINT `check1` CHECK (`name` <> 'a' or `age` > 10),
   CONSTRAINT `name` CHECK (`name` in ('a','b','c'))
 ) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
+-- schema.v2.sql --
+CREATE TABLE t1(
+  buf json,
+  name varchar(20) CHECK(name in ('a', 'b', 'c')),
+  age int CHECK(age > 0),
+  CONSTRAINT `check1` CHECK (name <> 'b' or age > 10)
+);
+
+CREATE TABLE t2(
+  buf json,
+  name varchar(20) CHECK(name in ('a', 'b', 'c')),
+  age int CHECK(age > 1),
+  CONSTRAINT `check1` CHECK (name <> 'a' or age > 10)
+);
+-- migration.v2.sql --
+-- Modify "t1" table
+ALTER TABLE `t1` DROP CONSTRAINT `check1`, ADD CONSTRAINT `check1` CHECK (`name` <> 'b' or `age` > 10);
