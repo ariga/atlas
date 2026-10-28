@@ -461,7 +461,13 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					b.P("ALTER CHECK").Ident(change.From.Name).P("NOT ENFORCED")
 				// Expr was changed.
 				case change.From.Expr != change.To.Expr:
-					b.P("DROP CHECK").Ident(change.From.Name).Comma().P("ADD")
+					// MariaDB has no DROP CHECK, and MySQL's DROP CONSTRAINT fails
+					// when a key or a foreign key of the table shares the name.
+					drop := "DROP CHECK"
+					if s.Maria() {
+						drop = "DROP CONSTRAINT"
+					}
+					b.P(drop).Ident(change.From.Name).Comma().P("ADD")
 					s.check(b, change.To)
 				default:
 					return errors.New("unknown check constraint change")

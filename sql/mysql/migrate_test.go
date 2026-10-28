@@ -865,6 +865,29 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
+			version: "10.11.4-MariaDB",
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "bigint")),
+					Changes: []schema.Change{
+						&schema.ModifyCheck{
+							From: &schema.Check{Name: "check1", Expr: "(id > 0)"},
+							To:   &schema.Check{Name: "check1", Expr: "(id >= 0)"},
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` DROP CONSTRAINT `check1`, ADD CONSTRAINT `check1` CHECK (id >= 0)",
+						Reverse: "ALTER TABLE `users` DROP CONSTRAINT `check1`, ADD CONSTRAINT `check1` CHECK (id > 0)",
+					},
+				},
+			},
+		},
+		{
 			changes: []schema.Change{
 				&schema.AddTable{
 					T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "bigint").SetCharset("utf8mb4")),
