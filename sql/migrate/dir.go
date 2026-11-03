@@ -346,7 +346,9 @@ func (f *LocalFile) comments() []string {
 	// File comments are separated by double newlines from file content (detached from actual statements).
 	// However, if the file does not contain any statements (only comments, such as atlas:import) then the
 	// collected comments should treat as file comments.
-	if !strings.HasPrefix(strings.TrimLeft(content, " \t"), "\n") && content != "" {
+	// Additionally, if there are multiple consecutive comment lines, they are treated as file directives
+	// even without a blank line separator.
+	if !strings.HasPrefix(strings.TrimLeft(content, " \t"), "\n") && content != "" && len(comments) <= 1 {
 		return nil
 	}
 	return comments

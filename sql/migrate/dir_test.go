@@ -403,7 +403,6 @@ alter table pets drop column id;
 
 	f = migrate.NewLocalFile("1.sql", []byte(`-- atlas:lint ignore
 -- atlas:txmode none
-
 alter table users drop column id;
 
 -- atlas:lint DS102
