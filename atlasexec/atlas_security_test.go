@@ -63,8 +63,9 @@ func TestSecurity_Scan(t *testing.T) {
 	}
 }
 
-// Records the Security Graph reports for a legacy database, next to a database
-// that could not be scanned, as the CLI prints them.
+// Records the Security Graph reports for the extensions of a legacy database and
+// for the engine of another, next to a database that could not be scanned, as the
+// CLI prints them.
 const securityScanIssues = `{"Targets":[{"URL":"postgres://localhost:5433/legacy","Driver":"postgres","Version":"9.3.0","Extensions":["hstore","postgis"],` +
 	`"Vulnerabilities":[` +
 	`{"Name":"hstore","Version":"1.3","ID":"CVE-2014-2669","Level":"ELEVATED","Severity":"MEDIUM",` +
@@ -72,22 +73,30 @@ const securityScanIssues = `{"Targets":[{"URL":"postgres://localhost:5433/legacy
 	`"Suggestion":"Upgrade the database engine to version 9.3.3 or later to resolve CVE-2014-2669: the fix for extension \"hstore\" ships in engine releases"},` +
 	`{"Name":"postgis","Version":"2.3.1","ID":"CVE-2017-18359","Level":"HIGH","Severity":"HIGH",` +
 	`"Suggestion":"Upgrade extension \"postgis\" to version 2.3.3 or later to resolve CVE-2017-18359"}]},` +
+	`{"URL":"clickhouse://root:xxxxx@localhost:9000/","Driver":"clickhouse","Version":"24.10.4.191",` +
+	`"Vulnerabilities":[` +
+	`{"Engine":"clickhouse","Version":"24.10.4.191","ID":"CVE-2026-116366","Level":"CRITICAL","Severity":"CRITICAL",` +
+	`"Title":"Unauthenticated RCE vulnerability against ClickHouse Server",` +
+	`"Description":"An issue has been discovered in ClickHouse Server that, under certain conditions, could allow an unauthenticated user with network access to execute arbitrary code on the ClickHouse Server.",` +
+	`"Suggestion":"Upgrade database engine \"clickhouse\" to version 26.3.62.3 or later to resolve CVE-2026-116366"}]},` +
 	`{"URL":"postgres://localhost:5434/gone","Error":"connection refused"}]}`
 
 func TestSecurity_ScanIssues(t *testing.T) {
 	c := mockClient(t)
-	t.Setenv("TEST_ARGS", "security scan --url postgres://localhost:5433/legacy --url postgres://localhost:5434/gone --fail-on HIGH --format {{ json . }}")
+	t.Setenv("TEST_ARGS", "security scan --url postgres://localhost:5433/legacy --url clickhouse://root:pass@localhost:9000/ "+
+		"--url postgres://localhost:5434/gone --fail-on HIGH --format {{ json . }}")
 	t.Setenv("TEST_STDERR", "")
 	t.Setenv("TEST_STDOUT", securityScanIssues)
 	// The scan reports its result and fails the command on it.
 	t.Setenv("TEST_EXIT_CODE", "1")
 	scan, err := c.SecurityScan(context.Background(), &atlasexec.SecurityScanParams{
-		URL:    []string{"postgres://localhost:5433/legacy", "postgres://localhost:5434/gone"},
+		URL:    []string{"postgres://localhost:5433/legacy", "clickhouse://root:pass@localhost:9000/", "postgres://localhost:5434/gone"},
 		FailOn: "HIGH",
 	})
 	require.ErrorIs(t, err, atlasexec.ErrSecurityScan)
-	require.Equal(t, 2, scan.Count())
+	require.Equal(t, 3, scan.Count())
 	require.Equal(t, []atlasexec.SecurityScanLevel{
+		{Level: "CRITICAL", Count: 1},
 		{Level: "HIGH", Count: 1},
 		{Level: "ELEVATED", Count: 1},
 	}, scan.Levels())
@@ -106,6 +115,14 @@ func TestSecurity_ScanIssues(t *testing.T) {
 			Suggestion: `Upgrade extension "postgis" to version 2.3.3 or later to resolve CVE-2017-18359`,
 		},
 	}, scan.Targets[0].Vulnerabilities)
+	require.Equal(t, []*atlasexec.SecurityVulnerability{
+		{
+			Engine: "clickhouse", Version: "24.10.4.191", ID: "CVE-2026-116366", Level: "CRITICAL", Severity: "CRITICAL",
+			Title:       "Unauthenticated RCE vulnerability against ClickHouse Server",
+			Description: "An issue has been discovered in ClickHouse Server that, under certain conditions, could allow an unauthenticated user with network access to execute arbitrary code on the ClickHouse Server.",
+			Suggestion:  `Upgrade database engine "clickhouse" to version 26.3.62.3 or later to resolve CVE-2026-116366`,
+		},
+	}, scan.Targets[1].Vulnerabilities)
 }
 
 // The command prints the report before the steps that follow it can fail, e.g. a
@@ -120,7 +137,7 @@ func TestSecurity_ScanReportedThenFailed(t *testing.T) {
 	})
 	require.EqualError(t, err, `Error: security.notify.http "slack": unexpected status 500`)
 	require.NotErrorIs(t, err, atlasexec.ErrSecurityScan)
-	require.Equal(t, 2, scan.Count())
+	require.Equal(t, 3, scan.Count())
 }
 
 // The command is Pro-gated: without the plan it reports on stderr and scans nothing.
@@ -162,6 +179,17 @@ func TestSecurityVulnerability_LevelText(t *testing.T) {
 			name: "no version or suggestion",
 			v:    &atlasexec.SecurityVulnerability{Name: "ext", ID: "CVE-0000-0002", Level: "ELEVATED"},
 			text: `Extension "ext" is vulnerable to CVE-0000-0002 (ELEVATED)`,
+		},
+		{
+			name: "engine",
+			v: &atlasexec.SecurityVulnerability{
+				Engine: "clickhouse", Version: "24.10.4.191", ID: "CVE-2026-116366", Level: "CRITICAL", Severity: "CRITICAL",
+				Title:      "Unauthenticated RCE vulnerability against ClickHouse Server",
+				Suggestion: `Upgrade database engine "clickhouse" to version 26.3.62.3 or later to resolve CVE-2026-116366`,
+			},
+			text: `Engine "clickhouse" version "24.10.4.191" is vulnerable to CVE-2026-116366 (CRITICAL): ` +
+				`Unauthenticated RCE vulnerability against ClickHouse Server. ` +
+				`Upgrade database engine "clickhouse" to version 26.3.62.3 or later to resolve CVE-2026-116366`,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

@@ -42,10 +42,11 @@ type (
 		Vulnerabilities []*SecurityVulnerability `json:"Vulnerabilities,omitempty"`
 		Error           string                   `json:"Error,omitempty"` // Set if the database was not scanned.
 	}
-	// SecurityVulnerability is a vulnerability reported for an installed extension.
+	// SecurityVulnerability is a vulnerability reported for an installed extension, or for the engine.
 	SecurityVulnerability struct {
-		Name        string `json:"Name"`                  // Extension the vulnerability was reported for.
-		Version     string `json:"Version"`               // Its installed version.
+		Name        string `json:"Name,omitempty"`        // Extension the vulnerability was reported for. Empty for the engine.
+		Engine      string `json:"Engine,omitempty"`      // Engine the vulnerability was reported for, e.g., clickhouse.
+		Version     string `json:"Version"`               // Installed version of the extension, or of the engine.
 		ID          string `json:"ID"`                    // e.g., CVE-2024-10977.
 		Level       string `json:"Level"`                 // Severity as the Security Graph grades it. Always set.
 		Severity    string `json:"Severity"`              // CVSS rating of the record. Empty if it carries none.
@@ -168,7 +169,11 @@ func (s *SecurityScan) Failures() []*SecurityScanTarget {
 // LevelText describes the vulnerability, graded by the level the Security Graph gave it.
 func (v *SecurityVulnerability) LevelText() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Extension %q", v.Name)
+	if v.Engine != "" {
+		fmt.Fprintf(&b, "Engine %q", v.Engine)
+	} else {
+		fmt.Fprintf(&b, "Extension %q", v.Name)
+	}
 	if v.Version != "" {
 		fmt.Fprintf(&b, " version %q", v.Version)
 	}
