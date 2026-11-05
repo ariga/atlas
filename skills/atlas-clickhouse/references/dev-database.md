@@ -103,9 +103,6 @@ Read the target's version with `SELECT version()`, and pin the tag: `docker://cl
 | `TimeSeries` columns kept in the engine's inner tables | 26.0 |
 | WASM modules and WASM UDFs | 26.3 |
 
-Below 24.1, Atlas guesses a dictionary's dependencies from a `CLICKHOUSE` source's text only, so it can
-order the dictionary before a table it reads.
-
 ## The `docker` Block
 
 A `docker "clickhouse"` block configures the dev container: `image` (required), `schema`, `baseline`,
@@ -170,16 +167,15 @@ When the target defines a `cluster` macro, the dev database must be on a cluster
 with `dev database must also be in a cluster configuration`. `docker://` starts a single node, so it
 cannot serve a clustered target (https://atlasgo.io/guides/clickhouse/cluster-mode):
 
-- At database scope, use an empty database dedicated to Atlas on a cluster with the target's
-  topology. It can sit on the target's own cluster, next to the target database, such as `app_dev` next
-  to `app`. Set `mode=cluster` on both URLs.
+- At database scope, use an empty database dedicated to Atlas on a separate cluster that mirrors the
+  target's topology. Set `mode=cluster` on both URLs.
 - At server scope, the dev server must hold nothing, so it needs a separate cluster. ClickHouse
   publishes Docker Compose recipes for local clusters.
 
 ```hcl
 env "prod" {
-  url = "clickhouse://user:pass@ch-host:9000/app?mode=cluster"
-  dev = "clickhouse://user:pass@ch-host:9000/app_dev?mode=cluster"
+  url = "clickhouse://user:pass@prod-host:9000/app?mode=cluster"
+  dev = "clickhouse://user:pass@dev-host:9000/app_dev?mode=cluster"
 }
 ```
 

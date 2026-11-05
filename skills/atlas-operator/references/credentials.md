@@ -154,7 +154,7 @@ but a registry directory still needs `cloud.tokenFrom` (`references/install.md`)
   configuration (`references/config.md`).
 - The operator pod opens the connections, not the dev database pod. A cloud identity, such as an IAM
   role or a workload identity, belongs to the operator's service account, which the chart's values
-  configure (https://github.com/ariga/atlas-operator/blob/master/charts/atlas-operator/values.yaml).
+  configure (https://atlasgo.io/integrations/kubernetes/install#supported-values).
 - For Azure SQL, Atlas reads the identity through the `fedauth` parameter, for example
   `azuresql://<instance>.database.windows.net?fedauth=ActiveDirectoryDefault&database=master`
   (https://atlasgo.io/concepts/url).

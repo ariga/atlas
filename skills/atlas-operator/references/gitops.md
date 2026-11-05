@@ -29,11 +29,13 @@ the tag into the manifest and commit it:
     dev-url: 'mysql://root:pass@localhost:3306/dev'
 
 - name: Update tag in migration.yaml
+  if: github.ref == 'refs/heads/main'
   run: |
     SHA="${GITHUB_SHA}"
     sed -i "s|tag: \".*\"|tag: \"${SHA}\"|" manifests/migration.yaml
 
 - name: Commit and push changes
+  if: github.ref == 'refs/heads/main'
   run: |
     git config user.name "github-actions[bot]"
     git config user.email "github-actions[bot]@users.noreply.github.com"

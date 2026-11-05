@@ -15,16 +15,18 @@ Databricks has no driver-specific analyzers. Lint runs these (https://atlasgo.io
 | `DS102`, `DS103` | Dropping a table, or a column |
 | `BC103`, `BC104` | Dropping a table or a column that clients may still read |
 | `CD101`, `CD102`, `CD103` | Dropping a foreign key, a check, or a primary key |
+| `MF104` | `SET NOT NULL`, which fails on a table whose rows hold `NULL` in the column |
 | `NM101` to `NM106` | Names that break the `naming` policy |
 | `TX102` | An `atlas:txmode` directive attached to a statement instead of the file header, which takes no effect |
 
 What lint does not check on Databricks:
 
-- No data-dependent checks (`MF*`) run. Nothing reports `SET NOT NULL` on a column that holds `NULL`, or a
-  type change that existing values may not fit. Cover those with migration tests on seeded rows
-  (`references/testing.md`).
-- `TX101`, the multi-statement file that cannot run in a transaction, never fires on Databricks: the
-  driver reports no statement as the cause, and the check needs one.
+- `MF104` reports every `SET NOT NULL`, which fails on a table whose rows hold `NULL` in the column.
+  It is reported even when an `UPDATE` fills the column first: confirm that, then add
+  `-- atlas:nolint MF104` to the statement. Cover type changes that existing values may not fit with
+  migration tests on seeded rows (`references/testing.md`).
+- `TX101`, the multi-statement file that cannot run in a transaction, never fires on Databricks: keep
+  each file to one logical change (Transactions below).
 - Plans that change a key report `CD101` or `CD103`, because Atlas drops and re-adds the key
   (`references/objects.md`, Keys and Constraints). Review them, then accept them with
   `-- atlas:nolint CD101` on the statement, with the user's approval.

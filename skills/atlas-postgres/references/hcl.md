@@ -321,6 +321,10 @@ The rules are in `references/security.md`; the HCL details:
 
 - `privileges = [ALL]` grants everything the object supports. A schema supports only `USAGE` and
   `CREATE`.
+- `default_permission` declares default privileges (`owner`, `schema`, `on`, `to`, `privileges`,
+  `grantable`), only in an env that manages access to schemas whose objects another tool creates. It
+  needs `mode "postgres" { default_permissions = true }` (`references/security.md`, Default
+  Privileges).
 
 ## Seed Data
 

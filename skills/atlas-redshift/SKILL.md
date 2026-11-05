@@ -76,9 +76,9 @@ Files section to `../atlas/references/<name>`.
    deployments in CI.
 9. With `roles = true`, Atlas inspects every principal on the cluster. With a dev database on its own
    cluster, an undeclared principal is planned for a drop: scope the env with `include` patterns such
-   as `"app_*[type=role]"`, and mark the admin and other teams' principals `external = true`. With a
-   dev database on the target's cluster, the desired state picks up every principal the cluster holds,
-   so a principal removed from the schema is never dropped: drop it by hand. Inspection skips the user Atlas
+   as `"app_*[type=role]"`, and mark the admin and other teams' principals `external = true`. Give an
+   env with `roles = true` a dev database on its own cluster or Serverless workgroup, never one on the
+   target's cluster (`references/dev-database.md`). Inspection skips the user Atlas
    connects as: declaring it without `external = true` plans a `CREATE USER` that fails on apply
    (`references/security.md`).
 10. Primary keys, foreign keys, unique and check constraints, indexes, sequences, and triggers are not
@@ -120,7 +120,7 @@ Files section to `../atlas/references/<name>`.
 | A failed file left some statements applied | It ran under `-- atlas:txmode none`: fix the rest of the file, run `atlas migrate hash`, and re-apply (`references/migrations.md`, Transactions) |
 | A `SET` or a temporary table is gone in the next statement, through the Data API | Each statement outside a transaction runs in its own session (`references/migrations.md`, The Data API) |
 | A plan drops users, roles, or groups no one declared | Scope `roles` with `include`, and mark the rest `external = true` (`references/security.md`) |
-| A user or role removed from the schema is never dropped | The dev database shares the target's cluster, so the desired state holds every principal: drop it by hand, or use a dev database on its own cluster (`references/security.md`) |
+| A user or role removed from the schema is never dropped | The dev database shares the target's cluster, so the desired state holds every principal: give the dev database its own cluster or Serverless workgroup (`references/dev-database.md`) |
 | `pq: schema "..." does not exist` when replaying migrations on the dev database | The dev URL's `search_path` names another schema than the target's: create an empty schema of the same name in the dev database (Rule 2) |
 | `execute baseline: pq: ... already exists` on the second run | Atlas does not remove what a `baseline` created: write it with `IF NOT EXISTS` (`references/dev-database.md`, The `dev` Block and `baseline`) |
 | Every plan creates the user Atlas connects as (`CREATE USER ... PASSWORD DISABLE`) | Inspection skips the connecting user: declare it `external = true`, or leave it out (`references/security.md`) |

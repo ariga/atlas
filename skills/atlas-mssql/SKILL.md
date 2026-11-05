@@ -1,6 +1,6 @@
 ---
 name: atlas-mssql
-description: "SQL Server specifics for Atlas (also Azure SQL and MSSQL): login, dev database and URL scope (mode=schema vs mode=database, the database query parameter), compatibility level and collation, system-generated constraint names, clustered index defaults and datetime2 precision in HCL, GO batches and the delimiter directive, transactions and statements that cannot run in one, identity, computed and temporal columns, alias and table types, changes planned as a drop and an add, what Atlas leaves out (DENY, synonyms, row-level security, sparse columns), database roles, users and grants, schema and migration tests, and custom lint rules. Use with the atlas skill whenever Atlas manages a SQL Server or Azure SQL database."
+description: "SQL Server specifics for Atlas (also Azure SQL and MSSQL): login, Azure SQL sign-in with Microsoft Entra ID (fedauth, no password), dev database and URL scope (mode=schema vs mode=database, the database query parameter), compatibility level and collation, system-generated constraint names, clustered index defaults and datetime2 precision in HCL, GO batches and the delimiter directive, transactions and statements that cannot run in one, identity, computed and temporal columns, alias and table types, changes planned as a drop and an add, what Atlas leaves out (DENY, synonyms, row-level security, sparse columns), database roles, users and grants, schema and migration tests, and custom lint rules. Use with the atlas skill whenever Atlas manages a SQL Server or Azure SQL database."
 ---
 
 # Atlas for SQL Server
@@ -18,7 +18,7 @@ This skill is `SKILL.md` plus seven reference files under `references/`, each se
 
 | File | Read it for |
 |------|-------------|
-| `references/dev-database.md` | Connection URLs, `mode=schema` and `mode=database`, Docker dev URLs, `atlas tool docker`, the `docker` block (`collate`, `baseline`), your own dev database, compatibility level and collation, Azure SQL |
+| `references/dev-database.md` | Connection URLs, `mode=schema` and `mode=database`, Docker dev URLs, `atlas tool docker`, the `docker` block (`collate`, `baseline`), your own dev database, compatibility level and collation, Azure SQL and its Microsoft Entra ID sign-in |
 | `references/security.md` | Database roles and users, users for logins, fixed database roles, `GRANT` and `REVOKE`, what is not managed (`DENY`, logins, row-level security) |
 | `references/objects.md` | Constraint names, identity and sequences, column changes, alias and table types, functions, procedures, triggers and views, clustered indexes, temporal, memory-optimized and partitioned tables, what Atlas does not manage |
 | `references/hcl.md` | Writing the schema in HCL: the `NOT NULL` default, defaults and their names, types (`-1` for `MAX`, `datetime2(7)`), `nonclustered`, routines, sequences and types, seed data |
@@ -50,9 +50,8 @@ Files section to `../atlas/references/<name>`.
      its tables. Limit the run with `schemas` or `--schema`.
    - The dev URL takes the target's scope: `docker://sqlserver/2022-latest/dev?mode=schema`, or
      `?mode=database`.
-3. The dev database runs the target's major version, compatibility level, and collation. Atlas changes
-   views and triggers with `CREATE OR ALTER` only at level 130 and later, and a case-sensitive target
-   needs a case-sensitive dev database: set `collate` in a `docker` block. Create what the schema
+3. The dev database runs the target's major version, compatibility level, and collation. A case-sensitive
+   target needs a case-sensitive dev database: set `collate` in a `docker` block. Create what the schema
    references but does not manage in the block's `baseline`. Never point `dev` at a real environment's
    database.
 4. Name every primary key, check, and default in a SQL schema with `CONSTRAINT <name>`, and give every
@@ -112,6 +111,7 @@ Files section to `../atlas/references/<name>`.
 | A local SQL Server database to apply migrations to | `atlas tool docker --url "docker://sqlserver/2022-latest/myapp" --name my-db` prints its URL; `atlas tool docker kill --name my-db` stops it (`references/dev-database.md`) |
 | `The sqlserver driver is available only to Atlas Pro users`, or `login is required to use the 'sqlserver' driver` | Ask the user to run `atlas login` (Rule 1) |
 | Inspection prints an empty `schema "dbo" {}` for a database that has tables | The database is in the URL path; move it to `?database=` (Rule 2) |
+| Connect to Azure SQL without a password (Microsoft Entra ID, a managed identity, a CI service principal) | `azuresql://<instance>.database.windows.net?fedauth=ActiveDirectoryDefault&database=<name>`: the driver gets the token from the Azure credentials where Atlas runs, with no data source (`references/dev-database.md`, Azure SQL and Fabric) |
 | `cannot diff a schema "dbo" with a database connection`, or the reverse | Give the URL and the dev URL the same `mode` (`references/dev-database.md`) |
 | `cannot use HCL with more than 1 schema when dev-url is limited to schema "dbo"` | Use `mode=database` on both URLs (`references/dev-database.md`) |
 | `schema connection mode requires a default schema to be set for the user` | Give the user a `DEFAULT_SCHEMA`, or use `mode=database` (`references/dev-database.md`) |
@@ -133,6 +133,7 @@ Files section to `../atlas/references/<name>`.
 | `cannot set value for generated column "id"` in a `data` block | Identity columns cannot be seeded from HCL; seed them from SQL (`references/objects.md`) |
 | `connected database is not clean` | `dev` points at a database that is not empty (`references/dev-database.md`) |
 | `already exists` or `There is already an object named` on the dev database, on a later run | A user, login, or unmanaged object stayed on a dev database you provide: use a Docker dev database (`references/dev-database.md`) |
+| `There is already an object named` while loading a `composite_schema` | The object is defined in two of its sources, such as a shared base and an environment folder: keep one (https://atlasgo.io/guides/environment-specific-objects) |
 | `Invalid object name 'X'` while loading the schema | Identifier case on a case-sensitive dev database, or an object missing from the `baseline` (`references/dev-database.md`) |
 | `User, group, or role 'db_...' already exists in the current database` | Remove the fixed-role `role` blocks from the HCL (`references/security.md`) |
 | `unknown attribute external in block of type role` | SQL Server roles have no `external` (`references/security.md`) |

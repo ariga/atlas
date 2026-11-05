@@ -63,7 +63,9 @@ atlas migrate rebase --env <name> <version>          # Rebase a migration onto n
 atlas migrate push --env <name>                      # Push the directory to the Atlas Registry
 
 # Linting and testing (see references/lint.md, references/testing.md)
-atlas migrate lint --env ci                          # CI: new files vs the registry; --git-base master only without a registry
+atlas migrate lint --env ci                          # CI: new files vs the registry repo they match
+atlas migrate lint --env ci --base atlas://<repo>    # The same, naming the repo: when several match
+atlas migrate lint --env ci --git-base master        # No registry: new files vs the base branch
 atlas schema lint --env <name>                       # Lint the whole schema against policy
 atlas schema test --env <name> --run <case>          # Schema tests: functions, views, triggers
 atlas schema plan test --env <name>                  # Test a declarative plan file
@@ -354,8 +356,9 @@ log in if it fails. Logged out, `atlas schema inspect` and `atlas schema diff` s
 procedures, triggers, sequences, extensions, and other objects and still exit 0, so their output looks
 complete when it is not.
 
-Other commands that need a login fail with `command requires 'atlas login'` or `available only to Atlas
-Pro users`. Tell the user that step was skipped and why, and continue with the remaining steps.
+Other commands that need a login fail with `command requires 'atlas login'` or
+`available only to Atlas Pro users`. Tell the user that step was skipped and why, and continue with the
+remaining steps.
 
 ## Drift Detection
 
@@ -452,6 +455,21 @@ atlas migrate hash --env <name>               # Repair migration integrity after
 - Missing driver error: ensure `--url` or `--dev-url` is correctly specified.
 - `add`, `drop`, or `modify schema "<name>" is not allowed when migration plan is scoped to one schema`:
   the dev URL scope does not match the target. See Dev Database above.
+- `migrate lint` asks `Multiple directories found. Select one to lint against`, and fails in CI with
+  `Error: ^D`: more than one registry repo matches the local directory. Pass `--base atlas://<repo>`.
+- `missing data source handler for "<name>"`, or a documented command that prints only its parent's
+  usage (such as `atlas migrate drift`): the installed Atlas lacks it (an older release or the
+  Community Edition build), or the data source type is misspelled. An unknown data source fails
+  every env in the file, including envs that never reference it. Check the type against
+  https://atlasgo.io/atlas-schema/projects#data-sources, run `atlas version`, and install the latest
+  release (https://atlasgo.io/getting-started#step-1-install-atlas).
+- `Call to unknown function`: `atlas.hcl` takes `file`, `fileset`, `getenv`, and the functions listed at
+  https://atlasgo.io/hcl/functions. There is no `coalesce`.
+- A `docker://` dev URL starts the container, then fails with
+  `dial tcp <address>: connect: connection refused`: Atlas runs in a container that uses the host's
+  Docker daemon, such as a devcontainer, and cannot reach the port the daemon published. Start the dev
+  database container yourself and set `dev` to its URL at an address the container can reach, such as
+  its IP on the Docker network (https://atlasgo.io/faq/docker-in-docker).
 
 ## Key Rules
 
@@ -467,6 +485,7 @@ atlas migrate hash --env <name>               # Repair migration integrity after
     scripts, ERD, `migrate checkpoint`, `schema inspect --include`, and Atlas Cloud need it, and fail
     without it: report the skipped step and continue.
     Inspecting and diffing a database do not fail without it; they skip objects. Log in before either.
+    A user without an account can start a free trial with `atlas login`.
 10. Before deploying to shared environments, check Atlas Cloud for `FAILED` or `PENDING` targets
     and recent failed deployments (`references/cloud.md`).
 11. Use Data Scripts, not ad-hoc SQL, for data changes: guard with `condition`, assert the outcome,

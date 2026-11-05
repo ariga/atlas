@@ -26,13 +26,15 @@ https://atlasgo.io/skills/atlas/SKILL.md to `../atlas/SKILL.md` and each referen
 Files section to `../atlas/references/<name>` before starting. Paths below that start with `atlas/`
 point into that skill.
 
-On PostgreSQL, MySQL, or MariaDB, also the database skill, installed next to this one: `atlas-postgres`
-(`../atlas-postgres/SKILL.md`), or `atlas-mysql` (`../atlas-mysql/SKILL.md`) for MySQL and MariaDB. It
-holds the engine's rules, such as the dev database, the URL scope, and the lint findings to review.
-Read it once stage 0 finds the engine, and follow it in every stage. If it is missing, recommend that
-the user install it: `claude plugin update atlas@ariga` in Claude Code, or the
-`npx skills add ariga/atlas -a <agent> -y` command again in other agents. Until then, read it from
-https://atlasgo.io/skills/atlas-postgres/SKILL.md or https://atlasgo.io/skills/atlas-mysql/SKILL.md.
+Also the database skill for the engine, when it has one, installed next to this one
+(`../<skill>/SKILL.md`). The skills are `atlas-postgres` (PostgreSQL), `atlas-mysql` (MySQL and
+MariaDB), `atlas-mssql` (SQL Server and Azure SQL), `atlas-clickhouse`, `atlas-snowflake`,
+`atlas-databricks`, `atlas-redshift`, `atlas-oracle`, and `atlas-spanner`. On Databricks Lakebase, read
+`atlas-lakebase` with `atlas-postgres`. The database skill holds the engine's rules,
+such as the dev database, the URL scope, and the lint findings to review. Read it once stage 0 finds
+the engine, and follow it in every stage. If it is missing, recommend that the user install it:
+`claude plugin update atlas@ariga` in Claude Code, or the `npx skills add ariga/atlas -a <agent> -y`
+command again in other agents. Until then, read it from `https://atlasgo.io/skills/<skill>/SKILL.md`.
 
 When stage 4 deploys with the Atlas Kubernetes Operator (4.6, 4.7), also read the `atlas-operator`
 skill (`../atlas-operator/SKILL.md`). Install and read it the same way, from
@@ -65,7 +67,8 @@ already recorded. After the pilot, Hand Off.
 2. Log in before reading a database. Logged out, `atlas schema inspect` and `atlas schema diff` skip
    views, functions, procedures, triggers, and other objects and still exit 0. A schema exported that
    way loses them. The skip notice prints once per machine, so its absence proves nothing. Run
-   `atlas whoami` first.
+   `atlas whoami` first. If it fails, ask the user to run `atlas login`; a user without an account can
+   start a free trial with it.
 3. Ask only at the decision points each stage lists. Everywhere else, take the stated default and say
    which one you took.
 4. Before the first file write for a pull request, create a branch `atlas-onboard/<unit>-<stage>` from
@@ -118,7 +121,7 @@ Run every Atlas command from the unit's directory.
 
 ## Detect the Stage
 
-1. `atlas whoami`. If it fails, ask the user to log in, then continue.
+1. `atlas whoami`. If it fails, ask the user to run `atlas login` (Rule 2), then continue.
 2. `git fetch origin`. Read the files below from the default branch
    (`git show origin/<default>:<path>`), not from the working tree.
 3. Look for work an earlier session left open: `git branch -r --list 'origin/atlas-onboard/*'` and open
@@ -214,9 +217,9 @@ When the pilot finishes stage 5, or the last stage the user wants:
 
    For declarative units, the change lines are: change the desired state, then
    `atlas schema apply --env local` against the local database; CI plans the change for review on the
-   PR. On PostgreSQL,
-   the last line names both skills: Use the `atlas` and `atlas-postgres` skills for schema work. On
-   MySQL and MariaDB, name `atlas-mysql` instead.
+   PR. When the engine has a database skill (Requires), the last line names it too, for example:
+   Use the `atlas` and `atlas-postgres` skills for schema work. On Databricks Lakebase, the line names
+   `atlas`, `atlas-lakebase`, and `atlas-postgres`.
 2. Offer to commit the skills, so every teammate's agent gets them:
    - Claude Code: merge these keys into `.claude/settings.json`. Claude Code installs the Atlas plugin
      for each teammate who trusts the repository folder.
@@ -281,7 +284,8 @@ When the pilot finishes stage 5, or the last stage the user wants:
 - `Error: missing scheme` on an env that reads `getenv()` means the variable is not set in the agent's
   shell, not that a stage failed.
 - Without the baseline version, the first `migrate apply` on an existing database aborts with
-  `connected database is not clean`. Set `baseline`; never get past it with `--allow-dirty`.
+  `connected database is not clean`. Set `baseline`; never get past it with `--allow-dirty`. On a new
+  database, follow the database skill: `atlas-lakebase` runs that first apply once with `--allow-dirty`.
 - Codex runs commands in its `workspace-write` sandbox by default, with outbound network access off
   until the user approves it. Atlas needs the network for Atlas Cloud and the database, so ask the user
   to approve Atlas commands, or to enable network access, before Detect the Stage.

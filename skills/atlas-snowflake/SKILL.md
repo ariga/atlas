@@ -1,6 +1,6 @@
 ---
 name: atlas-snowflake
-description: "Snowflake specifics for Atlas: the extended build and login, URL scope (database vs schema), the dev database on the same account, identifier case, account and database roles, users and grants, table kinds (transient, dynamic, hybrid, external, Iceberg), stages, pipes, tasks, alerts, tags and policies, secrets, warehouses and other account-level objects, changes Snowflake makes only by recreating and the allow_recreate policy, no transactional DDL and no apply lock, TX101 and DS lint findings, schema and migration tests, and custom lint rules. Use with the atlas skill whenever Atlas manages a Snowflake database."
+description: "Snowflake specifics for Atlas: the extended build and login, URL scope (database vs schema), the dev database on the same account, identifier case, account and database roles, users and grants, table kinds (transient, dynamic, hybrid, external, Iceberg, interactive), stages, pipes, tasks, alerts, tags and policies, secrets, standard and interactive warehouses and other account-level objects, changes Snowflake makes only by recreating and the allow_recreate policy, no transactional DDL and no apply lock, TX101 and DS lint findings, schema and migration tests, and custom lint rules. Use with the atlas skill whenever Atlas manages a Snowflake database."
 ---
 
 # Atlas for Snowflake
@@ -73,12 +73,14 @@ Files section to `../atlas/references/<name>`.
      terminal, Atlas asks first. When the `CI` variable is set or stdout is not a TTY, the diff fails.
      The `modify_column { allow_recreate = true }` diff policy plans the drop and add without asking:
      for data you keep, write the migration by hand.
-   - Atlas plans a drop and a create for changes to a dynamic table's query or columns, an external
+   - Atlas plans a drop and a create for changes to a dynamic table's query or columns, an interactive
+     table's `cluster_by`, columns, or dynamic query, adding or removing its `target_lag`, an external
      table, non-alterable Iceberg settings, function and procedure bodies, pipe definitions, a
      sequence's `start` (or `order` turned on), and stage credentials. A renamed table, or a renamed
      column in CI, is a drop and an add. Review every `DROP` before applying.
-8. Set `warehouse` on every `dynamic_table`. Without it, Atlas writes the warehouse of the connection
-   that plans the change, which for `migrate diff` is the dev URL's.
+8. Set `warehouse` on every `dynamic_table`, and on every `interactive_table` with `target_lag`.
+   Without it, Atlas writes the warehouse of the connection that plans the change, which for
+   `migrate diff` is the dev URL's.
 9. Manage roles and grants in a declarative env of their own, never in a migration directory:
    replaying the directory on the dev database runs `CREATE ROLE` on the shared account and fails with
    `Object '...' already exists`. Atlas never creates or drops users; a `user` block manages role
@@ -114,12 +116,18 @@ Files section to `../atlas/references/<name>`.
 | `adding identity to existing column "..." is not supported` | Snowflake cannot add an identity to an existing column: write the change by hand, such as a new table filled from the old one (`references/objects.md`, Column Changes) |
 | `cannot alter TYPE of file format "..." after creation` | Create a new file format under another name and point the stages at it (`references/objects.md`) |
 | `iceberg table requires NUMBER to specify precision, e.g. NUMBER(38, 0)` | Iceberg columns need an explicit precision: write `NUMBER(38, 0)`, not `NUMBER` (`references/hcl.md`, Column Types) |
-| A dynamic table's migration names the dev warehouse | Set `warehouse` on the `dynamic_table` (`references/hcl.md`, Other Table Kinds) |
+| A dynamic or interactive table's migration names the dev warehouse | Set `warehouse` on the `dynamic_table`, or on the `interactive_table` with `target_lag` (`references/hcl.md`, Other Table Kinds) |
+| Changing an interactive table's `as` query plans nothing | Snowflake does not keep the query of a static interactive table (one without `target_lag`): Atlas detects a change only when it adds, drops, or renames a column (`references/objects.md`, Changes Snowflake Makes Only by Recreating) |
+| `cannot change table type to interactive after creation`, or `... from interactive after creation` | Snowflake fixes the kind at creation: create a new table and move the data (`references/objects.md`, Table Kinds) |
+| `attribute target_lag is required when warehouse is set` | A static interactive table takes no `warehouse`: remove it, or add `target_lag` (`references/hcl.md`, Other Table Kinds) |
+| `attribute warehouse is required when initialization_warehouse is set` | A static interactive table (no `target_lag`) takes no `initialization_warehouse`: remove it. With `target_lag`, set `warehouse` (`references/hcl.md`, Other Table Kinds) |
+| `interactive warehouse "...": auto_suspend must be at least 86400`, or `statement_timeout_in_seconds must be at most 5` | Snowflake's limits for an interactive warehouse: raise `auto_suspend` or leave it out, and lower the timeout (`references/hcl.md`, Account-Level Blocks) |
+| `cannot change warehouse type to interactive after creation`, or `... from interactive after creation` | Declare a new warehouse under another name (`references/hcl.md`, Account-Level Blocks) |
 | `Object '...' already exists` when replaying the migration directory | Account-level `CREATE` statements in migration files: move them to a declarative env (`references/security.md`, Keep Roles out of Migration Directories) |
 | `permission.privileges does not support ALL, list the privileges to grant instead` | List each privilege (`references/security.md`) |
 | `Specification of grant option is not supported in a managed access schema` | Drop `grantable` for objects in a `managed_access` schema (`references/security.md`, Permissions) |
 | `query policies: ... syntax error ... unexpected 'JOIN'` | The account's edition lacks join or row access policies: turn `policies` off (`references/objects.md`) |
-| `create resource monitor "...": ... already exists` on every plan | Account-level objects collide on the dev account once they exist (`references/dev-database.md`, Account-Level Objects During Planning) |
+| `create resource monitor "...": ... already exists` on every plan | A same-account dev database collides with the live monitor: point the env's `dev` at a database on a separate Snowflake account (`references/dev-database.md`, Account-Level Objects During Planning) |
 | `permission.for reference to undeclared ... must be qualified as ref(...)` | Write `ref("<kind>.<schema>.<name>")`, inside a `composite_schema` (`references/security.md`) |
 | `the SECRET_STRING of secret "..." is written only by an in-place apply` | Manage secrets with `atlas schema apply`, not migration files (`references/objects.md`, Secrets) |
 | `secret "..." requires its ..., which inspection cannot read back` | The `secret` block has no value: pass it from an input variable (`references/objects.md`, Secrets) |

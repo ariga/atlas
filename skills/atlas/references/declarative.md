@@ -35,7 +35,11 @@ Approval happens in one of three ways:
 2. Review policy: `lint { review = ERROR }` (or `WARNING`) auto-approves plans that lint clean and
    prompts only when the report has errors (or warnings). `ALWAYS` is the default and always prompts.
    Requires `atlas login`: once the policy is in `atlas.hcl`, every `schema apply` for that env,
-   including `--dry-run`, aborts without one.
+   including `--dry-run`, aborts without one. The policy replaces `--auto-approve`: with any `review`
+   value, the flag fails with `auto-approve is not allowed when a lint policy is set to "<policy>"`.
+   In CI, a plan the policy approves applies without a prompt. A plan that needs review prompts, and
+   fails without a terminal: pre-approve it, or use an ad-hoc approval, from the GitHub Action
+   (`schema/apply` with `lint-review`) or the Kubernetes Operator (`policy.lint.review`).
 3. A pre-approved plan for this exact transition exists in the registry: Atlas applies it with no
    prompt and no re-planning.
 
@@ -64,7 +68,8 @@ plan "20260923085308" {
 ```
 
 Prerequisites: `atlas login` (every `schema plan` subcommand needs it, including `--dry-run` and
-`--save`), and the env's `schema` block names a registry repo:
+`--save`; a user without an account can start a free trial with it), and the env's `schema` block
+names a registry repo:
 
 ```hcl
 env "dev" {
@@ -79,6 +84,8 @@ env "dev" {
 ```
 
 Create the repo with the first `atlas schema push --env dev` (or `atlas cloud repo create --type schema`).
+The first push takes no `--tag`: a tagged push to a repo without a `latest` version fails with
+`cannot tag a non-existing schema definition`.
 
 ### Lifecycle
 
@@ -175,7 +182,9 @@ Reviewed change (registry, plan workflow):
 | `multiple pre-planned migrations were found in the registry` | `atlas schema apply --plan <name>` or `atlas schema plan rm --url ...` |
 | Plan rejected after editing (drift) | The edited SQL does not reach `to`. Keep the DDL Atlas planned; add only data statements |
 | `schema.repo` not set / repository not found | Add `schema { repo { name = "..." } }`, run `atlas schema push` once, or `--repo` |
-| Prompt appears in CI | Set `lint { review = ERROR }` (needs `atlas login` in CI), pre-approve a plan, or pass `--auto-approve` only where the pipeline is the approver |
+| Prompt appears in CI | Set `lint { review = ERROR }` (needs `atlas login` in CI), pre-approve a plan, or pass `--auto-approve` only where the pipeline is the approver and the env sets no `review` policy |
+| `auto-approve is not allowed when a lint policy is set to "<policy>"` | The env's `lint { review }` decides the approval: drop `--auto-approve`, or remove the policy from an env where the pipeline is the approver |
+| `cannot tag a non-existing schema definition. Sync the schema first with a tag of 'latest'` | The repo has no `latest` version yet: run `atlas schema push --env <name>` without `--tag` once, then the tagged push |
 | `available only to Atlas Pro users` | `schema plan`, the review policy, and `schema test` need a login. Run `atlas login` |
 
 ## Documentation

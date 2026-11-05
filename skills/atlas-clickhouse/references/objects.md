@@ -36,8 +36,8 @@ change that ClickHouse cannot make with `ALTER`:
 | Engine | A sort key, partition, primary key, or engine change |
 |--------|-----------------------------------------------------|
 | MergeTree family | Copies the rows into `<table>_tmp` and swaps it in with `EXCHANGE TABLES` |
-| `Replicated*` with quoted arguments, such as an explicit ZooKeeper path | Drops and creates the table again, which loses its rows. Asked in a terminal, skipped without one |
-| `TimeSeries` | Any change drops and creates it again, losing the data of its inner tables. Asked in a terminal, skipped without one |
+| `Replicated*` with a fixed ZooKeeper path (one without `{uuid}`) that the change keeps | Drops and creates the table again, which loses its rows. Asked in a terminal, fails without one unless `allow_recreate` is set |
+| `TimeSeries` | Any change drops and creates it again, losing the data of its inner tables. Asked in a terminal, fails without one unless `allow_recreate` is set |
 | `Kafka`, `RabbitMQ`, `NATS`, `S3Queue`, `FileLog` | Any change drops and creates it again. These hold no rows |
 | `Distributed`, `Merge`, `Buffer`, `Null`, `S3`, `URL`, `File`, `MySQL`, `PostgreSQL`, and other engines whose data lives elsewhere | Drops and creates it again, without copying rows, which would duplicate them at the source |
 | `KeeperMap` | Drops and creates it again, without copying rows and without asking. Its rows live in Keeper and can be lost with the drop: change it by hand |
@@ -97,11 +97,14 @@ Atlas plans `MODIFY COLUMN`, and the plan fails when Atlas runs it on the dev da
 that starts with `analyzing plan: executing statement: ALTER TABLE ... MODIFY COLUMN` and ends with the
 server's reason:
 
-- A sort or primary key column: `code: 524, message: ALTER of key column <name> from type <a> to type
-  <b> is not safe because it can change the representation of primary key`.
-- A skip index column: `code: 524, message: Trying to ALTER <name> column which is a part of index <index>`.
-- A projection column: `code: 524, message: Cannot ALTER column: Cannot apply mutation because it breaks
-  projection <projection>`.
+```text
+# A sort or primary key column
+code: 524, message: ALTER of key column <name> from type <a> to type <b> is not safe because it can change the representation of primary key
+# A skip index column
+code: 524, message: Trying to ALTER <name> column which is a part of index <index>
+# A projection column
+code: 524, message: Cannot ALTER column: Cannot apply mutation because it breaks projection <projection>
+```
 
 Change a key column with a table rebuild (`references/migrations.md`, Table Rebuilds). For an index or
 a projection, write a migration with `atlas migrate new`: drop it, `MODIFY COLUMN`, add it back, and
@@ -119,15 +122,14 @@ default changes on the same column are planned in place either way.
 - New columns keep their declared position, with `FIRST` or `AFTER`.
 - A type Atlas cannot format fails the plan with an error that starts with
   `formatting type for column "<name>": unsupported type` (`references/hcl.md`, Columns and Types).
-- An expression default is compared by evaluating `SELECT <from> = <to>` on the dev database. A default
-  that names another column cannot be evaluated this way, and is planned as changed when its text
-  differs.
+- A default that names another column is planned as changed when its text differs from the
+  target's. Write it as `atlas schema inspect --env <name>` reads it back.
 
 ## Views
 
 - A view is changed with `CREATE OR REPLACE VIEW`. When a change adds, drops, or modifies a column of a
-  table the view selects, Atlas recreates the view too, so its column list stays current. It finds the
-  tables by parsing the view's query; a query it cannot parse is not recreated.
+  table the view selects, Atlas recreates the view too, so its column list stays current. Check that
+  the plan recreates the view, and recreate it by hand when it does not.
 - A view without `security` is compared with the server's `default_normal_view_sql_security` setting,
   and a materialized view defaults to `DEFINER`. When the dev server and the target disagree on the
   setting, plans keep showing a `security` change: declare `security` on each view.
@@ -155,8 +157,8 @@ default changes on the same column are planned in place either way.
 - A literal attribute `default` is written as `DEFAULT '<value>'`, and a `sql()` default as
   `EXPRESSION <expr>`, which ClickHouse computes from the source row instead.
 - Atlas does not apply a dictionary's `comment`, and does not plan a change to an attribute's `default`
-  alone. Attributes are compared by position: renaming one, with the same type, plans nothing. Replace
-  the dictionary by hand for these changes.
+  alone. Renaming an attribute without changing its type plans nothing. Replace the dictionary by hand
+  for these changes.
 - Atlas orders dictionaries after the tables, views, and named collections their source reads, and drops
   a dictionary only after the tables and views that call it, such as a `dictGet` in a column default.
 - A `source` with a password is a secret: see `references/security.md`, Secrets. Prefer a named
@@ -206,9 +208,8 @@ Named collections need `named_collections = true`, server scope, and a user allo
 ## Normalized Definitions
 
 ClickHouse rewrites expressions when it stores them: defaults, TTLs, sort keys, partition keys, and view
-queries. Atlas compares them after loading the desired state on the dev database, and compares an
-expression default by evaluating `SELECT <from> = <to>` there. Always plan with a dev URL, on the
-target's version.
+queries. Atlas compares them after loading the desired state on the dev database. Always plan with a
+dev URL, on the target's version.
 
 ## Not Inspected
 

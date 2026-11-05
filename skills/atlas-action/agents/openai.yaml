@@ -1,6 +1,0 @@
-interface:
-  display_name: "Atlas Actions"
-  short_description: "Atlas CI/CD steps on GitHub, GitLab, CircleCI, Bitbucket, and Azure DevOps"
-
-policy:
-  allow_implicit_invocation: true

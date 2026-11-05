@@ -7,8 +7,9 @@ are in `references/hcl.md`.
 
 ## What Atlas Reads, and the Switches
 
-Every Snowflake command needs `atlas login`. Beyond that, an env's `mode` blocks decide what Atlas
-inspects and plans:
+Every Snowflake command needs `atlas login`. If `atlas whoami` shows no login, ask the user to run
+`atlas login`; a user without an account can start a free trial with it. Beyond that, an env's
+`mode` blocks decide what Atlas inspects and plans:
 
 | Objects | Read by default | Switch | Scope |
 |---------|-----------------|--------|-------|
@@ -24,7 +25,7 @@ inspects and plans:
 | Alerts | No | `mode "snowflake" { alerts = true }` | Either |
 | Network rules | No | `mode "snowflake" { network_rules = true }` | Either |
 | External access integrations | No | `mode "snowflake" { external_access_integrations = true }` | Database |
-| Warehouses | No | `mode "snowflake" { warehouses = true }` | Database |
+| Warehouses and interactive warehouses | No | `mode "snowflake" { warehouses = true }` | Database |
 | Resource monitors | No | `mode "snowflake" { resource_monitors = true }` | Database |
 | External volumes | No | `mode "snowflake" { external_volumes = true }` | Database |
 
@@ -46,9 +47,9 @@ env "prod" {
   `objects`, `roles`, `permissions`, `sensitive`).
 - `schemas = false` skips schemas and everything in them, for an env that manages only account-level
   objects, such as warehouses or roles. Grants on schemas and tables need the schemas in scope.
-- Policies need a Snowflake edition that supports them (Enterprise or higher). Atlas reads every policy
-  kind in one query, so on an account without join or row access policies, `policies = true` fails
-  every command with `query policies: 001003 (42000): SQL compilation error: syntax error ... unexpected 'JOIN'`.
+- Policies need a Snowflake edition that supports them (Enterprise or higher). On an account without
+  join or row access policies, `policies = true` fails every command with
+  `query policies: 001003 (42000): SQL compilation error: syntax error ... unexpected 'JOIN'`.
   Leave `policies` off there.
 - With an account-level switch on, every object of that kind on the account is in scope: scope the
   env with `include`, such as `"ETL_WH[type=warehouse]"`, or Atlas plans to drop the ones it does not
@@ -77,6 +78,7 @@ the schema depends on them (`references/dev-database.md`):
 | `hybrid_table` | `CREATE HYBRID TABLE`, dropped with `DROP TABLE` | Yes |
 | `external_table` | `CREATE EXTERNAL TABLE` over a stage | Yes |
 | `iceberg_table` | `CREATE ICEBERG TABLE` on an external volume | Yes |
+| `interactive_table` | `CREATE INTERACTIVE TABLE ... AS <query>` | Yes |
 
 Snowflake fixes a table's kind when it creates it, and Atlas does not plan a conversion. Changing
 `transient`, or moving a `table` to `dynamic_table`, fails the plan:
@@ -86,6 +88,8 @@ cannot change permanent table to transient after creation
 cannot change transient table to permanent after creation
 cannot change table type to dynamic after creation
 cannot change table type from iceberg after creation
+cannot change table type to interactive after creation
+cannot change table type from interactive after creation
 ```
 
 Schemas work the same way: `cannot change permanent schema to transient after creation`. Write the
@@ -101,6 +105,7 @@ Atlas go with the dropped object:
 | `dynamic_table` | The query or `refresh_mode` changes, or a column is added or dropped | `target_lag`, `warehouse`, `cluster_by`, comment |
 | `external_table` | Its location, file format, pattern, partitioning, or refresh settings change | Columns, tags, and policies, through `ALTER TABLE` |
 | `iceberg_table` | `external_volume`, `catalog`, `base_location`, `partition_by`, `storage_serialization_policy`, or `iceberg_version` changes | `cluster_by`, `target_file_size`, `catalog_sync`, `log_event_level`, `enable_data_compaction`, `enable_iceberg_merge_on_read`, `error_logging`, `path_layout`, `replace_invalid_characters`, comment, columns |
+| `interactive_table` | `cluster_by` or a dynamic table's query changes, `target_lag` is added or removed, or a column is added, dropped, or renamed | The `target_lag` value, `warehouse`, `initialization_warehouse`, comment, tags, policies, column comments |
 | `function`, `procedure` | The definition changes, such as the body, the handler, or an argument default; `secure` on a procedure | Comment, tags, `secure` on a function |
 | `masking_policy` | `arg`, `return`, or `exempt_other_policies` changes | The body (`as`), comment, tags |
 | `pipe` | Anything but the alterable settings changes | `error_integration`, comment, tags |
@@ -112,6 +117,9 @@ Atlas go with the dropped object:
 - Dropping and creating a dynamic table refreshes it again from scratch, on its warehouse.
 - Dropping a Snowflake-managed Iceberg table deletes its data. Review every `DROP ICEBERG TABLE` in a
   plan.
+- Snowflake does not keep the `as` query of a static interactive table (one without `target_lag`), so
+  changing it is detected only when it adds, drops, or renames a column.
+- Recreating a static interactive table re-snapshots its data, and its drop cannot be reversed.
 - An `iceberg_table` cannot set both `partition_by` and `cluster_by`:
   `iceberg table "events": partition_by and cluster_by cannot be specified together`.
 - A file format's `type` cannot change: `cannot alter TYPE of file format "CSV_FORMAT" after creation`.
@@ -207,8 +215,7 @@ Renames have no `renamed_from` attribute on Snowflake:
   outside Atlas are lost.
 - `imports` blocks name staged files, and `secrets` blocks bind secrets to an alias the handler reads.
   A secret binding needs an external access integration that allows it; when the integration is
-  managed outside Atlas, it must allow the dev database's copy too, such as
-  `ALLOWED_AUTHENTICATION_SECRETS = ALL`.
+  managed outside Atlas, it must allow the dev database's copy too.
 
 ## Tasks, Pipes, Alerts, Stages
 
@@ -235,7 +242,7 @@ Renames have no `renamed_from` attribute on Snowflake:
   the order of the detach and the drop in the plan before applying.
 - Which policy kinds each object takes: tables, dynamic tables, and Iceberg tables take all five; hybrid
   tables take row access and masking; external tables take row access, join, and masking on columns;
-  views take all five.
+  interactive tables take row access, aggregation, join, and masking on columns; views take all five.
 
 ## Secrets
 

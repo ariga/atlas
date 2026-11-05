@@ -51,14 +51,13 @@ GitHub `ariga/atlas-action/create-repo@v1` · GitLab `create-repo` · Bitbucket
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `description` |  |  | Accepted, but not passed to the CLI in this version. |
 | `driver` | yes |  | The database driver to use for the repository. |
 | `name` | yes |  | The name of the repository to create in Atlas Cloud. |
-| `type` | yes |  | `migration_directory` (or `m`) or `schema` (or `s`). The CLI rejects `migration`, the value the action metadata lists, and the GitLab component accepts only that list. |
+| `type` | yes |  | `migration_directory` (or `m`) or `schema` (or `s`). On GitLab, create a migration repo with the first push instead. |
 
 | Output | Description |
 |--------|-------------|
-| `url` | Link to the new repository in Atlas Cloud (set, though not declared in the metadata). |
+| `url` | Link to the new repository in Atlas Cloud. |
 
 ## `migrate/apply`
 
@@ -129,7 +128,7 @@ GitHub `ariga/atlas-action/migrate/diff@v1` · GitLab `migrate-diff` · Bitbucke
 
 Common inputs: `working-directory`, `config`, `env`, `vars`, `dev-url`.
 
-No outputs (`url` is declared in the metadata but never set).
+No outputs.
 
 ## `migrate/down`
 
@@ -217,7 +216,7 @@ Common inputs: `working-directory`, `config`, `env`, `vars`, `dev-url`, `revisio
 
 | Output | Description |
 |--------|-------------|
-| `report-url` | Link to the lint report in Atlas Cloud. The action metadata lists it as `url`, which is never set. |
+| `report-url` | Link to the lint report in Atlas Cloud. |
 
 ## `migrate/push`
 
@@ -238,7 +237,7 @@ Common inputs: `working-directory`, `config`, `env`, `vars`, `dev-url`, `revisio
 
 | Output | Description |
 |--------|-------------|
-| `url` | Link to the pushed version in Atlas Cloud (set, though not declared in the metadata). |
+| `url` | Link to the pushed version in Atlas Cloud. |
 
 ## `migrate/set`
 

@@ -66,7 +66,8 @@ touching production.
 Production deploys with the same target as staging (stage 4), with production values:
 
 - CI: a separate job or workflow with `env: prod` that runs only after the staging deployment succeeded,
-  in a protected environment that requires approval. It never runs on the merge alone.
+  in a protected environment that requires approval. It never runs on the merge alone. On a private
+  GitHub repository, an environment's required reviewers need GitHub Enterprise.
 - Atlas Operator: an `AtlasMigration` in the production overlay with `envName: prod` and the tag
   staging runs. With the Operator, promotion is the tag.
 - Platform release step: the production environment's release command, with `PROD_DATABASE_URL`.

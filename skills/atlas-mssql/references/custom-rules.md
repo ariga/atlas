@@ -4,7 +4,8 @@ Lint runs Atlas's built-in analyzers (`references/migrations.md`), and SQL Serve
 own. When no analyzer covers a check, or the user states a convention, write a custom rule in Atlas's
 HCL rule language. A rule can check any attribute of any object Atlas inspects, and `atlas schema lint`
 and `atlas migrate lint` enforce it on every change (https://atlasgo.io/lint/rules). Lint needs
-`atlas login`, which SQL Server needs anyway.
+`atlas login`, which SQL Server needs anyway. If `atlas whoami` shows no login, ask the user to run
+`atlas login`; a user without an account can start a free trial with it.
 
 ## The Rule Language
 

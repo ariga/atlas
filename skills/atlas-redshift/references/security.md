@@ -36,9 +36,9 @@ env "redshift" {
   desired state is authoritative over all of them: a principal it does not declare is planned for a
   `DROP`. Scope the env with `include` patterns, or `exclude` the ones to leave alone, and declare the
   rest with `external = true`.
-- With a dev database on the target's cluster, loading the desired state there brings back every
-  principal the cluster holds, so an undeclared principal is part of the desired state and is never
-  dropped. Removing a `user` or `role` block then plans nothing: drop the principal by hand.
+- With `roles = true`, the dev database needs its own cluster or workgroup. On the target's cluster,
+  loading the desired state brings back every principal the cluster holds, so removing a `user` or
+  `role` block plans nothing.
 - Inspection skips the user Atlas connects as, the AWS-internal `rdsdb` user, and the `sys:` and `ds:`
   roles. The connecting user therefore never shows up in plans as a drop, but declaring it as a plain
   `user` block plans a `CREATE USER` on every run, which fails on apply: leave it out, or declare it
@@ -116,7 +116,6 @@ user "rpt_bi" {
 
 - `external = true` on a `role` or `user` marks a principal Atlas never creates, alters, or drops. Use
   it for the admin user, the user Atlas connects as when grants name it, and other teams' principals.
-  Atlas creates no principal on the dev database, external or not.
 - Principals whose names start with `sys:` are provisioned by Redshift, and the `ds:` roles belong to
   datashares. Atlas never plans them, and never reads the privileges of a `ds:` role as grants.
 - Federated identities are users named with an `IAM:` or `IAMR:` prefix. Atlas manages them like any
@@ -242,7 +241,7 @@ permission {
 | `permission.for reference to undeclared function "..." must carry the exact signature Redshift grants by` | Write the argument types: `ref("function.s.f(integer)")` |
 | `permission.for reference to undeclared function "..." must be qualified as ref("function.<schema>.<name>(<args>)")` | Put the schema and the argument types in the reference |
 | Replaying migrations fails on the dev database for a user or role that already exists | The dev database shares the target's cluster; give it its own cluster or workgroup |
-| A user or role removed from the schema stays, and the plan reports no changes | The dev database shares the target's cluster: drop it by hand, or give the dev database its own cluster |
+| A user or role removed from the schema stays, and the plan reports no changes | The dev database shares the target's cluster: give the dev database its own cluster or workgroup |
 | `redshift: only a user can be a member of group "..."` | Put roles in roles, and users in groups |
 | `redshift: the membership of "..." in ... cannot be granted with the admin option` | `admin = true` only for a role granted to a user |
 | `redshift: the grant option cannot be granted to role "..."` | Use `grantable` with a user grantee |

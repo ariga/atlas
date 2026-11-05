@@ -122,8 +122,8 @@ Create the branch `atlas-onboard/<unit>-3` (Rule 4), then:
    Units that manage roles and permissions copy the `mode` block and the dev database from stage 2.
 2. Add the PR and merge pipeline from the platform's guide in the table above, with the secret names
    from 3.2. On GitHub Actions, `atlas/references/cicd.md` has the same pipelines: Versioned Pipeline
-   (`atlas-ci.yaml`) or Declarative Pipeline (`atlas-plan.yaml`). Remove every apply step, such as the
-   declarative `schema/apply` and the commented `migrate/apply`: stage 4 adds deployment.
+   (`atlas-ci.yaml`) or Declarative Pipeline (`atlas-plan.yaml`). Leave out the declarative `deploy`
+   job: stage 4 adds deployment.
 3. For ORM units, every job whose env loads the models (the declarative plan, and the optional migration
    generation job) installs the ORM's runtime and its Atlas provider before Atlas runs, as the ORM's
    guide shows. For Django: `actions/setup-python`, then `pip install django atlas-provider-django`

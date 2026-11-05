@@ -62,20 +62,22 @@ get none. Keep the database URLs out of those jobs:
   deployment branches limited to the default branch. A job gets them only by naming the environment
   (`environment: production`), and only when it runs on that branch. Required reviewers pause every job
   that names the environment, so put them on the environments that deploy, and give scheduled jobs an
-  environment without reviewers.
+  environment without reviewers. On a private repository, environments, environment secrets, and
+  deployment branches need a paid GitHub plan, and required reviewers need GitHub Enterprise.
 - Never run Atlas on `pull_request_target` or `workflow_run` with the pull request's code checked out:
   those events hand the repository's secrets to code from forks.
 - With protected flows on a registry repo, only members and bots with the Writer role can push to it
   or approve its plans, so the bot needs that role (https://atlasgo.io/cloud/roles-and-permissions).
-  Protected flows are an Atlas Pro feature: a user without it starts a free trial with `atlas login`.
+  Protected flows need a plan that includes them; a user without an account can start a free trial
+  with `atlas login`.
   For stricter separation, a second bot with the Writer role can serve only the merge jobs, from an
   environment limited to the default branch, so pull request jobs cannot push or approve.
 - A deploy job can hold no database password at all: the `aws_rds_token`, `gcp_cloudsql_token`,
   `aws_dsql_token`, and `azure_db_token` (Microsoft Entra ID) data sources in `atlas.hcl` mint a
   short-lived token from the runner's cloud identity, and `runtimevar` reads the password from a secret
-  manager when the step runs (https://atlasgo.io/guides/deploying/secrets). Azure SQL takes the
-  identity through `fedauth` in its `azuresql://` URL
-  (https://atlasgo.io/concepts/url#supported-schemes).
+  manager when the step runs (https://atlasgo.io/guides/deploying/secrets). Azure SQL needs no data
+  source: `fedauth=ActiveDirectoryDefault` in its `azuresql://` URL takes the runner's Azure identity
+  (https://atlasgo.io/guides/deploying/secrets#using-iam-authentication).
 - The other platforms keep database URLs on the default branch the same way: protected variables on
   GitLab, which only protected branches read; deployment variables on Bitbucket; restricted contexts
   on CircleCI; and environments with a branch control check on Azure DevOps
@@ -202,7 +204,7 @@ env "local" {
 Give the step an `id` and read `${{ steps.<id>.outputs.<name> }}`. Outputs are also set when the step
 fails (`error`, the report of a failed lint), so a later step with `if: failure()` or `if: always()` can
 use them. The output names of every step are in `references/actions.md`; the lint report link is
-`report-url`, not the `url` the action metadata lists.
+`report-url`.
 
 ## Runners
 
@@ -248,8 +250,8 @@ jobs:
 
 - In a `container:` job, reach the service by its name (`postgres:5432`), not `localhost`.
 - The dev database runs the target's engine and major version, with the same extensions, and its URL has
-  the target's scope (`atlas/references/schema-sources.md`, and `atlas-postgres` or `atlas-mysql` for the
-  engine).
+  the target's scope (`atlas/references/schema-sources.md`, and the engine's database skill, such as
+  `atlas-postgres`).
 - A `docker://` URL starts a fresh container for each command. A service container is shared by every
   step of the job: objects that live outside a database, such as PostgreSQL roles, survive from one step
   to the next, so a second step that creates the same role fails with `role "..." already exists`. Give

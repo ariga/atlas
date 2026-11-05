@@ -40,7 +40,7 @@ principal that already exists in the account: Databricks resolves it when the `G
 |-----------|-----------|
 | User | The user's email, such as `"ana@example.com"` |
 | Group | The group name, such as `"data-engineers"` |
-| Service principal | Its application ID, such as `"e2d9532b-b61a-46ca-8bf3-aa9ed2060f46"` |
+| Service principal | Its application ID, such as `"b21bc072-9110-4af2-81af-21a670c49233"` |
 
 A grant to a principal that does not exist fails on Databricks, and on the dev catalog first when Atlas
 loads the desired state there.
@@ -49,7 +49,7 @@ loads the desired state there.
 
 ```hcl
 permission {
-  to         = "e2d9532b-b61a-46ca-8bf3-aa9ed2060f46"
+  to         = "b21bc072-9110-4af2-81af-21a670c49233"
   for        = table.users
   privileges = [SELECT, MODIFY]
 }
@@ -89,19 +89,19 @@ plans the grants and revokes and never creates, alters, or drops the object itse
 
 ```hcl
 permission {
-  to         = "e2d9532b-b61a-46ca-8bf3-aa9ed2060f46"
+  to         = "b21bc072-9110-4af2-81af-21a670c49233"
   for        = ref("table.default.users")
   privileges = [MODIFY]
 }
 
 permission {
-  to         = "e2d9532b-b61a-46ca-8bf3-aa9ed2060f46"
+  to         = "b21bc072-9110-4af2-81af-21a670c49233"
   for        = ref("view.default.active_users")
   privileges = [SELECT]
 }
 
 permission {
-  to         = "e2d9532b-b61a-46ca-8bf3-aa9ed2060f46"
+  to         = "b21bc072-9110-4af2-81af-21a670c49233"
   for        = ref("schema.default")
   privileges = [SELECT]
 }
@@ -116,7 +116,8 @@ as ordinary ones (https://atlasgo.io/atlas-schema/projects#data-source-composite
 `CREATE OR REPLACE` drops the grants on a view, a materialized view, a function, or a procedure. When a
 change rewrites one of them (`references/objects.md`), Atlas plans the grants again right after the
 rewrite, so the plan shows `GRANT` statements for privileges that did not change. That is expected. A
-plain view whose query changes is altered with `ALTER VIEW ... AS`, which keeps its grants.
+plain view without `column` blocks changes its query with `ALTER VIEW ... AS`, which keeps its grants.
+A view with `column` blocks is rewritten with `CREATE OR REPLACE VIEW` instead, followed by its grants.
 
 ## Ownership
 

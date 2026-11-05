@@ -14,8 +14,8 @@ repo already has a token secret, use its name.
 One bot token, a repository secret, serves every job. Keep the database URLs out of pull request jobs:
 a job that a branch triggers runs that branch's workflow file and `atlas.hcl`, whose `data "external"`
 blocks run programs, so it can read every secret it gets. The URLs live in an environment that only
-the default branch can use, and only deploy jobs name it. The `atlas-action` skill covers each
-platform.
+the default branch can use, and only the jobs that deploy or check a database name it. The
+`atlas-action` skill covers each platform.
 
 How `migrate lint` decides which files are "new" depends on whether the directory is pushed to the
 Atlas Registry. Read `atlas.hcl` and pick the matching case:
@@ -111,11 +111,9 @@ Engines without transactional DDL (ClickHouse, Databricks) need `tx-mode: none` 
 or `migration { tx_mode = none }` in the env, so Atlas does not wrap files in a transaction the engine
 cannot roll back.
 
-The docs are the reference for every action and input (links at the end). Two runnable repositories
-show both pipelines end to end as additional examples: ClickHouse, with the databases started by
-`docker compose` in the job and their URLs loaded into `GITHUB_ENV`
-(https://github.com/atlasdemos/clickhouse/tree/main/.github/workflows), and Databricks, with URLs
-from secrets and `tx-mode: none` (https://github.com/atlasdemos/databricks/tree/main/.github/workflows).
+The docs are the reference for every action and input (links at the end). The engine guides walk
+through both workflows on ClickHouse (https://atlasgo.io/guides/clickhouse) and the declarative
+workflow on Databricks (https://atlasgo.io/guides/databricks/automatic-migrations).
 
 ## Versioned Pipeline
 
@@ -173,10 +171,8 @@ jobs:
         with:
           env: ci
           dir-name: app
-      # Small projects deploy in the same job, right after the push, as in the atlasdemos example:
-      # - uses: ariga/atlas-action/migrate/apply@v1
-      #   with:
-      #     env: ci                        # url comes from DATABASE_URL through atlas.hcl
+      # To deploy on merge, add a job with `needs: push` and `environment: production`,
+      # shaped like the deploy workflow below.
 ```
 
 Without an `env`, pass the inputs directly: `dir: file://migrations`, `dir-name: app`,
@@ -200,6 +196,9 @@ jobs:
           url: ${{ secrets.DATABASE_URL }}       # an environment secret
           dir: atlas://app?tag=latest          # or ?tag=<commit> for a pinned release
 ```
+
+On a private repository, environments, environment secrets, and deployment branches need a paid
+GitHub plan, and required reviewers need GitHub Enterprise.
 
 Action inputs worth knowing: `env` and `config` select the `atlas.hcl` env; `vars` passes
 `--var` values as a JSON string; `dir-name` is the registry repo slug; `tag` pins a registry version;
@@ -353,8 +352,19 @@ jobs:
       - uses: ariga/atlas-action/schema/push@v1
         with:
           env: ci
-      # Deploy on merge: apply runs the plan approved above with no prompt.
-      # Move this step to a separate deploy workflow for staged rollouts.
+  # Deploy on merge: apply runs the plan approved above with no prompt.
+  # Move this job to a separate deploy workflow for staged rollouts.
+  deploy:
+    needs: approve-push
+    runs-on: ubuntu-latest
+    environment: production              # deployment branches: the default branch
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}   # an environment secret, read by atlas.hcl
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
       - uses: ariga/atlas-action/schema/apply@v1
         with:
           env: ci
@@ -413,10 +423,9 @@ The CLI equivalents run anywhere: `atlas login --token "$ATLAS_TOKEN"`, then the
 - [Versioned CI/CD setup](https://atlasgo.io/versioned/setup-cicd)
 - [Declarative CI/CD setup](https://atlasgo.io/declarative/setup-cicd)
 - [GitHub Actions reference](https://atlasgo.io/integrations/github-actions)
-- [atlas-action repository, every action with inputs and examples](https://github.com/ariga/atlas-action)
 - The `atlas-action` skill: each step's inputs, outputs, tokens, and error messages on each CI platform
-- [Additional example: both pipelines on ClickHouse](https://github.com/atlasdemos/clickhouse/tree/main/.github/workflows)
-- [Additional example: both pipelines on Databricks](https://github.com/atlasdemos/databricks/tree/main/.github/workflows)
+- [ClickHouse guide: both workflows](https://atlasgo.io/guides/clickhouse)
+- [Databricks guide: declarative workflow](https://atlasgo.io/guides/databricks/automatic-migrations)
 - [Pre-approval workflow on GitHub Actions](https://atlasgo.io/integrations/github-actions/pre-approval)
 - [Ad-hoc approval on GitHub Actions](https://atlasgo.io/integrations/github-actions/ad-hoc-approval)
 - [Kubernetes operator](https://atlasgo.io/integrations/kubernetes)

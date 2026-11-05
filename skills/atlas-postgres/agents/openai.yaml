@@ -1,6 +1,0 @@
-interface:
-  display_name: "Atlas for PostgreSQL"
-  short_description: "PostgreSQL rules, edge cases, and fixes for Atlas"
-
-policy:
-  allow_implicit_invocation: true

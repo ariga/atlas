@@ -37,21 +37,17 @@ database you own instead (https://atlasgo.io/concepts/dev-database#providing-you
 
 | Option | Works for | Notes |
 |--------|-----------|-------|
-| A second database on the target's cluster or workgroup | Tables, views, materialized views, functions, procedures, external schemas, and declarative plans of principals and grants | The cheapest option. Create it once, outside Atlas: `CREATE DATABASE atlas_dev;` |
-| A separate Serverless workgroup or cluster | Everything, including migration directories that create users, groups, roles, or datashares | Required for the versioned workflow with principals or datashares; a small Serverless workgroup bills only while it runs |
+| A second database on the target's cluster or workgroup | Tables, views, materialized views, functions, procedures, external schemas, and grants with `roles` off | The cheapest option. Create it once, outside Atlas: `CREATE DATABASE atlas_dev;` |
+| A separate Serverless workgroup or cluster | Everything, including `roles = true` and migration directories that create users, groups, roles, or datashares | Required when an env with `roles = true` uses a dev database (https://atlasgo.io/guides/redshift/security-declarative#isolating-the-dev-database), and for migration directories with principals or datashares; a small Serverless workgroup bills only while it runs |
 
 Principals and datashare names belong to the cluster, not to a database. On a dev database that shares
 the target's cluster:
 
 - Replaying a migration directory with `CREATE USER` or `CREATE ROLE` fails on a principal the cluster
   already holds, and a replayed `DROP` would drop a live one.
-- With `roles = true`, the dev database is restored after each run by diffing the cluster's principals
-  against the snapshot taken at the start, so principals created by anyone else during the run can be
-  dropped.
+- With `roles = true`, cleanup of the dev database can drop principals created on the cluster during
+  the run.
 - A datashare replayed from a migration file collides with the one the target already holds.
-
-When loading an HCL or SQL desired state, Atlas never creates principals on the dev database, and it
-holds grants to roles and users out of the replay, so a schema that declares them still loads.
 
 Atlas restores the dev database only for what the env inspects. In an env without
 `mode "redshift" { datashares = true }`, a datashare that a replayed migration file creates stays on

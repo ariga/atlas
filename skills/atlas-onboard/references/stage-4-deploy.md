@@ -127,14 +127,15 @@ GitHub Actions, added to the stage 3 workflow after the push job:
 - The job must finish before the application deploys. Add it to the application deploy job's `needs`.
 - The user stores `STAGING_DATABASE_URL`, with the deploy user, as a secret of the `staging`
   environment, whose deployment branches are the default branch only, so pull request jobs never get
-  it.
+  it. On a private repository, environments, environment secrets, and deployment branches need a
+  paid GitHub plan.
 - GitLab CI: the `migrate-apply` component, as its own job with `rules` that limit it to the default
   branch, `env: staging`, the URL from a protected variable, and the runner tags of the application's
   staging deploy.
 - Other CI systems: install the CLI, export the bot token as `ATLAS_TOKEN`, and run
   `atlas migrate apply --env staging`.
-- Declarative units: `ariga/atlas-action/schema/apply@v1` after the approve and push steps of
-  `atlas-plan.yaml`. Plan, approve, and apply must see the same starting state
+- Declarative units: `ariga/atlas-action/schema/apply@v1` in a deploy job with `needs: approve-push`
+  in `atlas-plan.yaml`. Plan, approve, and apply must see the same starting state
   (`atlas/references/cicd.md`, Declarative Pipeline).
 
 ## 4.5 Platform Release Step

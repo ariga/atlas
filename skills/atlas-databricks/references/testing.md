@@ -45,9 +45,8 @@ env "dev" {
 - Databricks commits DDL as it goes, so a migration file that fails halfway stays half applied
   (`references/migrations.md`, Transactions). A migration test runs the files on the dev catalog first,
   where a failing statement fails the test instead of production.
-- Lint runs no data-dependent checks on Databricks. A `SET NOT NULL` over rows that hold `NULL`, or a
-  type change existing values do not fit, shows up only when the migration runs on data. Seeded rows in
-  a migration test are the only check before production.
+- Lint flags `SET NOT NULL` (`MF104`), but a type change existing values do not fit shows up only when
+  the migration runs on data. Seeded rows in a migration test catch it before production.
 - The dev catalog is the real engine, reached through the warehouse. Tests see Databricks' own
   behavior, and each statement takes a round trip, so a suite takes minutes. Keep cases focused.
 - Every case runs as the principal of the dev URL's token. Functions that read the session, such as
@@ -63,9 +62,10 @@ migration test instead: migrate to the version that creates the object, then que
 
 ## Migration Tests
 
-Each case starts from an empty dev catalog. Migrate to a version, seed rows, migrate further, and check
-the data (https://atlasgo.io/guides/testing/data-migrations). The same shape covers the logic in the
-schema, with the version that creates the object as the target:
+Each case starts from an empty dev catalog, or from the baseline when `dev` is a `dev "databricks"`
+block that sets one (`references/dev-database.md`). Migrate to a version, seed rows, migrate further,
+and check the data (https://atlasgo.io/guides/testing/data-migrations). The same shape covers the
+logic in the schema, with the version that creates the object as the target:
 
 ```hcl
 test "migrate" "add_numbers" {
@@ -140,7 +140,10 @@ Write a migration test for each migration that:
 
 ## CI
 
-Run the tests in CI with the same env, the token in a secret, and `--env`:
+Run the tests in CI with the same env, the token in a secret, and `--env`. A pull request job runs
+the branch's `atlas.hcl` and migration files, so give it a token for a principal that can use only
+the dev catalog. The token that reaches the target catalogs stays in an environment that only the
+default branch can use, and only deploy jobs name it (`../atlas/references/cicd.md`):
 
 ```bash
 atlas migrate test --env dev

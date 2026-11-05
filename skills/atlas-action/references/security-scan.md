@@ -1,8 +1,10 @@
 # Security Scan Reference: `security/scan`
 
-Runs `atlas security scan` against one or more databases: it lists the extensions installed in each and
-reports the ones with known vulnerabilities, as recorded in the Atlas Security Graph. It needs the login,
-on a plan that includes the Security Graph. The step only reads, so give it a read-only database user.
+Runs `atlas security scan` against one or more databases: it checks the server version of each, and the
+extensions installed in it, against the Atlas Security Graph, and reports the ones with known
+vulnerabilities. Server versions are checked on PostgreSQL, MySQL, MariaDB, ClickHouse, and SQL Server
+(not Azure SQL Database), and extensions on PostgreSQL. It needs the login, on a plan that includes the
+Security Graph. The step only reads, so give it a read-only database user.
 
 ```yaml
 name: Database Security Scan
@@ -44,16 +46,19 @@ jobs:
 | A database could not be scanned | Fails: `` `atlas security scan` could not scan N database(s): <urls> ``, because its state is unknown |
 
 - Outputs: `count` (findings reported), `failures` (databases not scanned), `report` (JSON per database:
-  its extensions and vulnerabilities, each with its CVE ID and severity level).
+  its server version, extensions, and vulnerabilities, each with its CVE ID and severity level).
 - With `env`, the step uses the env's `security` block (`min_severity`, `fail_on`, `cve { ignore }`,
   and `notify` endpoints), so the thresholds live in `atlas.hcl`
   (https://atlasgo.io/guides/security-scan#configuration).
-- Each finding carries its fix in `Suggestion`. For an extension built into the engine, such as
-  `hstore` or `pgcrypto`, the fix ships in an engine release, so the finding names an engine upgrade.
-- For a custom gate, read the `report` output: `.Targets[].Vulnerabilities[]` has `Name` (extension),
-  `Version`, `ID` (the CVE), `Level` (the Security Graph's severity, always set), `Severity` (the
-  record's CVSS rating, may be empty), `Title`, `Description`, and `Suggestion` (often the version to
-  upgrade to); `.Targets[].Error` is set for a database that was not scanned.
+- Each finding carries its fix in `Suggestion`. A finding of the server version names an engine
+  upgrade. For an extension built into the engine, such as `hstore` or `pgcrypto`, the fix ships in an
+  engine release, so the finding names an engine upgrade too.
+- For a custom gate, read the `report` output: `.Targets[].Vulnerabilities[]` has `Name` (the
+  extension; absent on a finding of the server version, which from v1.17.13 sets `Engine` instead, e.g.
+  `clickhouse`), `Version` (of the extension or the server), `ID` (the CVE), `Level` (the Security
+  Graph's severity, always set), `Severity` (the record's CVSS rating, may be empty), `Title`,
+  `Description`, and `Suggestion` (often the version to upgrade to); `.Targets[].Error` is set for a
+  database that was not scanned.
 - A failure after the report, such as a notification the command could not send, fails the step even
   when no finding reached `fail-on`; the findings are still reported.
 - A registry repo's Security Graph prints as JSON with `atlas cloud repo secgraph --slug <slug>`, each

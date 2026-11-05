@@ -106,7 +106,7 @@ the tables below, fix the cause, and push; never rerun a deploy, approve a plan,
 | `plan approval pending, review here: <url>` (`migrate/down`) | The revert needs approval | The user approves in Atlas Cloud and reruns, or set `wait-timeout` |
 | `plan rejected, review here: <url>` | The revert was rejected in Atlas Cloud | Nothing to run; talk to the reviewer |
 | The deploy stopped on the drift check | The target differs from its migration history | Run `migrate/drift` to see the difference (`references/drift.md`) |
-| `The INSERT permission was denied on the object 'atlas_schema_revisions'` on a dry run | Old CLI versions wrote to the revisions table on a dry run with `--env` and a token | Upgrade the CLI, or grant the role write access to the revisions table only |
+| `The INSERT permission was denied on the object 'atlas_schema_revisions'` on a dry run | An outdated CLI version | Upgrade the CLI, or grant the role write access to the revisions table only |
 | `unexpected transaction status idle` | `BEGIN`/`COMMIT` in a file Atlas already wraps | Remove them, or put `-- atlas:txmode none` at the top of the file; lint reports them as nested transactions (https://atlasgo.io/lint/analyzers#nested-transactions) |
 | `migrate/apply` runs `.down.sql` files, or fails on a statement from one | A golang-migrate directory read in the Atlas format | `format = golang-migrate` in the env's `migration` block, or `dir: file://<path>?format=golang-migrate` (https://atlasgo.io/faq/migrations-with-golang) |
 
@@ -129,7 +129,7 @@ the tables below, fix the cause, and push; never rerun a deploy, approve a plan,
 | `` `atlas migrate drift` detected drift in N database(s) `` | Objects changed outside the migrations | The log lists them; fix forward with a migration or revert the manual change |
 | `<url> could not be checked` or `could not be scanned` | Connection or permission problem on that database | Check the URL secret, network access from the runner, the user's privileges |
 | `only one of the inputs 'config' or 'url' must be given` | `monitor/schema` got both `url` and `config`/`env` | Keep one |
-| `` `atlas security scan` completed with N issue(s) `` | Findings at or above `fail-on` | Upgrade the extension, or `ignore` the CVE with a recorded reason |
+| `` `atlas security scan` completed with N issue(s) `` | Findings at or above `fail-on` | Upgrade the server or extension the finding names, or `ignore` the CVE with a recorded reason |
 | `<script>: assert "<name>" failed` or `check "<name>" failed` | The data did not meet the script's expectation | The run rolled back what it could; read the diff in the log |
 | A script step passed but did nothing | `match` selected no script of that kind | Anchor and check the name: `'^name$'` |
 

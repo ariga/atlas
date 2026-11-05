@@ -163,7 +163,8 @@ env "staging" {
 ```
 
 Azure SQL (SQL Server) with Microsoft Entra ID: the `fedauth` parameter of the URL picks the sign-in
-method (https://atlasgo.io/concepts/url, SQL Server tab):
+method, and `ActiveDirectoryDefault` gets the token from `az login`, a managed identity, or a workload
+identity, with no data source (https://atlasgo.io/guides/deploying/secrets#using-iam-authentication):
 
 ```
 azuresql://app-db.database.windows.net?fedauth=ActiveDirectoryDefault&database=app

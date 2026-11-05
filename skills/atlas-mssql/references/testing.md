@@ -3,7 +3,8 @@
 Atlas runs tests on the dev database: `atlas schema test` checks the logic in the schema, and
 `atlas migrate test` checks migration files against seeded data. The test syntax and every command are
 in `../atlas/references/testing.md`; this file covers how to use them on SQL Server. Testing needs
-`atlas login`, which SQL Server needs anyway.
+`atlas login`, which SQL Server needs anyway. If `atlas whoami` shows no login, ask the user to run
+`atlas login`; a user without an account can start a free trial with it.
 
 ## Test Every Change
 

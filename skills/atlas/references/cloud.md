@@ -18,8 +18,9 @@ atlas login                     # interactive login
 atlas login --token "$TOKEN"    # CI / non-interactive; ATLAS_TOKEN env var also works
 ```
 
-The error `command requires 'atlas login'` means no session exists. `login with token failed:
-Unauthorized` means a stale token: run `atlas logout`, then `atlas login`.
+The error `command requires 'atlas login'` means no session exists: ask the user to run
+`atlas login`, which starts a free trial for a user without an account.
+`login with token failed: Unauthorized` means a stale token: run `atlas logout`, then `atlas login`.
 
 ## Command Tree
 

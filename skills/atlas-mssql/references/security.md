@@ -56,10 +56,14 @@ login too, or the plan fails with
 you provide (`execute baseline: mssql: The server principal 'svc_login' already exists.`):
 
 ```hcl
+locals {
+  password = uuid()
+}
+
 dev "sqlserver" "dev" {
   url      = getenv("DEV_URL")      # ...?database=dev&mode=database
   baseline = <<-SQL
-    IF SUSER_ID('svc_login') IS NULL CREATE LOGIN svc_login WITH PASSWORD = 'Dev_Only_Pass1';
+    IF SUSER_ID('svc_login') IS NULL CREATE LOGIN svc_login WITH PASSWORD = '${local.password}';
   SQL
 }
 ```

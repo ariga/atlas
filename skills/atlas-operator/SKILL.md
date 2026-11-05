@@ -34,8 +34,8 @@ This skill is `SKILL.md` plus eleven reference files under `references/`, each s
 
 The `atlas` skill, installed next to this one (`../atlas/SKILL.md`). If it is missing, download
 https://atlasgo.io/skills/atlas/SKILL.md to `../atlas/SKILL.md` and each reference file listed in its
-Files section to `../atlas/references/<name>`. On PostgreSQL, MySQL, or MariaDB, also read the database
-skill (`../atlas-postgres/SKILL.md` or `../atlas-mysql/SKILL.md`): its rules on scope and objects
+Files section to `../atlas/references/<name>`. When the engine has a database skill, such as
+`../atlas-postgres/SKILL.md` or `../atlas-mssql/SKILL.md`, also read it: its rules on scope and objects
 apply to what the operator deploys.
 
 ## Setup Path

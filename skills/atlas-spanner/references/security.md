@@ -27,9 +27,7 @@ env "prod" {
 
 The dev database must be an empty database on a real Spanner instance, not the emulator
 (`references/dev-database.md`, Your Own Dev Database). The emulator parses role and grant statements
-and does nothing with them
-(https://github.com/GoogleCloudPlatform/cloud-spanner-emulator/releases/tag/v1.5.41), so planning
-against it fails:
+and does nothing with them, so planning against it fails:
 
 | Mode | Error on the emulator |
 |------|-----------------------|

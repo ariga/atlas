@@ -114,7 +114,7 @@ fails with `the action should be run in a branch context`.
 |--------|----------|
 | none of the below | Runs the approved plan for the transition if one exists; otherwise plans and applies per the env's review policy, and fails when that policy needs an approval it does not have |
 | `plan: atlas://app/plans/<name>` | Runs that plan |
-| `auto-approve: true` | Applies without review: only where the pipeline is the approver, such as preview or disposable databases |
+| `auto-approve: true` | Applies without review: only where the pipeline is the approver, such as preview or disposable databases. Fails with `auto-approve is not allowed when a lint policy is set to "<policy>"` when the env sets `lint { review }` |
 | `dry-run: true` | Prints the SQL, changes nothing |
 | `lint-review` (+ `wait-timeout`, `wait-interval`) | Ad-hoc approval, below |
 
@@ -143,3 +143,11 @@ Push the desired schema once, on merge, then apply that version to staging and t
 production env, a `check "schema_apply"` block with a `deny` rule refuses a version staging has not
 run, with the staging version read by a `cloud_databases` data source
 (https://atlasgo.io/guides/environment-promotion-declarative).
+
+- An approved plan belongs to its transition, not to one environment: `schema/apply` runs it on every
+  target that is at the plan's starting state. To hold production for its own approval, gate the
+  production job (`references/setup.md`).
+- A target with no reviewed plan for its transition, such as a new, empty environment or one that is
+  several merges behind, is planned at deploy time, and the env's review policy or the step's
+  `lint-review` decides whether it needs an approval. When it does, the step waits only with
+  `lint-review` and `wait-timeout`, and fails otherwise (`schema/apply` above).

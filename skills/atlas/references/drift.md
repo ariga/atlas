@@ -19,7 +19,8 @@ last migration left it, which is why the checks below exist.
 
 ## `atlas migrate drift` (versioned, on demand or scheduled)
 
-Requires `atlas login`. Reads the revisions table of the connected database, resolves the state the migration directory defines
+Requires `atlas login`; a user without an account can start a free trial with it. Reads the
+revisions table of the connected database, resolves the state the migration directory defines
 at the last applied version, inspects the database, and diffs the two. Files after the applied version
 are pending, not drift, and are reported as ignored. The command never changes the database, and it
 takes the same advisory lock as `migrate apply`, so an in-flight deployment is not reported as drift.
@@ -60,8 +61,10 @@ question and continuous checking. On an env with
 ## Pre-Apply Check (versioned, at deploy time)
 
 Runs at the start of every `atlas migrate apply` for the env and aborts before any file runs if the
-target has drifted from the expected state at its current revision. Requires the directory to be
-pushed to the Atlas Registry and at least one applied revision (a fresh database skips the check).
+target has drifted from the expected state at its current revision. Requires at least one applied
+revision (a fresh database skips the check). The expected state comes from the Atlas Registry when
+the env names the repo (an `atlas://` dir, or `migration.repo.name`); otherwise Atlas computes it from
+the local directory (set `dev` in the env).
 
 The registry stores the expected state only for untagged pushes, such as the `latest` push that the
 `migrate/push` action makes by default. If the applied version was pushed only with a tag
@@ -100,6 +103,10 @@ exclude = ["audit_log", "monitoring_*", "*[type=policy|function]"]
 exclude = ["audit.*", "public.monitoring_*", "*.*[type=trigger]"]
 ```
 
+The pre-apply check reads `drift.exclude`, and `migrate drift` reads `--exclude` or
+`migration.exclude`, before it falls back to the env's `exclude`. A list there replaces the env's list
+instead of adding to it, so repeat the env's patterns in it.
+
 The revisions table and its schema are excluded automatically by `migrate drift` and the pre-apply
 check. `schema diff` does not exclude them: pass `--exclude atlas_schema_revisions`.
 
@@ -117,13 +124,14 @@ atlas schema diff --from file://migrations --to file://schema.hcl --dev-url dock
 The output is the SQL that turns `--from` into `--to`; "Schemas are synced, no changes to be made" means
 no drift. `--from env://url` reads the env's `url` so the database URL is never typed. `--to` is the
 env's schema source (`schema.src` in `atlas.hcl`). On a versioned database add
-`--exclude atlas_schema_revisions`, or the revisions table is reported as a table to drop.
+`--exclude atlas_schema_revisions`, or the revisions table is reported as a table to drop (at database
+scope, its schema `atlas_schema_revisions` is reported as a schema to drop).
 
 ## Schema Monitoring (Atlas Cloud, agent-based)
 
 Atlas Cloud Schema Monitoring inspects databases on a schedule through a lightweight agent and reports
 drift against a deployed migration target or against another database's snapshot. It shows the diff as
-ERD, HCL, and SQL, and notifies Slack or a webhook when drift appears. It is set up in the Atlas Cloud
+ERD, HCL, and SQL, and notifies Slack when drift appears. It is set up in the Atlas Cloud
 UI, not from the CLI: https://atlasgo.io/monitoring/drift-detection. Use it when the user wants an agent
 watching many databases with alerts, rather than a scheduled `migrate drift` job they operate themselves.
 
