@@ -1,6 +1,0 @@
-interface:
-  display_name: "Atlas Kubernetes Operator"
-  short_description: "Set up, deploy with, and troubleshoot the Atlas Kubernetes Operator"
-
-policy:
-  allow_implicit_invocation: true

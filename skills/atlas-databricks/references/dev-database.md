@@ -68,8 +68,10 @@ the `permission` blocks (`references/security.md`).
 
 - The token goes in the user part of the URL, and the warehouse path follows the port directly:
   `@<host>:443/sql/1.0/warehouses/<id>`.
-- Store the token as a CI secret, and pass it with `getenv`. Never write it into `atlas.hcl` or a
-  command line.
+- Store the token as a CI secret in a scope that only the default branch can read, such as a protected
+  environment, and pass it with `getenv`. Never write it into `atlas.hcl` or a command line. Jobs that
+  run on pull requests get a token that can use only the dev catalog
+  (`references/testing.md`, CI).
 - A token is tied to a principal. Atlas sees and changes only what that principal can read and alter,
   and objects it cannot see are missing from inspection. Use a principal that can read every object
   Atlas manages.
@@ -129,22 +131,42 @@ Atlas loads the desired state on the dev catalog and inspects it back, so the pl
 Databricks stores them. Databricks adds things of its own there, and Atlas removes them again:
 
 - Table properties the desired state does not list, such as the `delta.*` defaults.
-- A `location`: Atlas never creates a dev table at the target's path. It drops the clause before loading
-  the desired state, and puts the declared one back after.
+- A `location`: the dev catalog shares the metastore with the target, and Unity Catalog requires the
+  path of an external table to be unique across the metastore. An external Delta table is created at a
+  managed path, from the desired state or a migration file alike, `ALTER TABLE ... SET LOCATION` is
+  skipped, and inspection puts the declared location back. A table the dev catalog cannot create at a
+  managed path, such as a `USING PARQUET` table or one without a column list, runs as written.
 - The column list Databricks reports for a view that declares none, the schema's collation when the
   definition names none, and the determinism and SQL data access it derives for a routine that
   declares neither.
 
-A SQL schema source (`file://schema.sql`) is different: Atlas runs it on the dev catalog and takes the
-result as the desired state, so every property Databricks assigned there appears in the plan's
-`CREATE TABLE`. Prefer an HCL schema, or list only the properties you own after inspecting.
+A SQL schema source (`file://schema.sql`) works the same way: it keeps only the table properties it
+declares, in the `TBLPROPERTIES` of `CREATE TABLE` or in `ALTER TABLE ... SET TBLPROPERTIES`.
 
-### No `docker` or `dev` block
+### The `dev` block and `baseline`
 
-Atlas has no `docker` block and no `dev` block for Databricks, so there is no `baseline` to run on the
-dev catalog first: `dev` is the URL and nothing else. An object the schema references but does not
-manage, such as a function in another catalog, must already exist where the SQL names it, and the dev
-catalog itself must stay empty.
+Databricks has no `docker` block. A `dev "databricks"` block takes the dev catalog's URL and a
+`baseline`, SQL that Atlas runs on the dev catalog before every computation and undoes on exit
+(https://atlasgo.io/concepts/dev-database#baseline-schema):
+
+```hcl
+dev "databricks" "dev" {
+  url      = var.dev_url
+  baseline = file("baseline.sql")
+}
+
+env "prod" {
+  url = var.url
+  dev = dev.databricks.dev.url
+}
+```
+
+- Use the baseline for objects the schema reads but does not manage, such as the tables of another
+  schema that a view selects from, or fixture rows for tests. Outside the baseline, the dev catalog
+  must stay empty.
+- With a baseline, the values Databricks assigns on its own (`delta.*` defaults, the `__unitystorage`
+  path, the catalog's default collation) stay out of the plan.
+- An object in another catalog that the SQL names must already exist there.
 
 ## Errors
 

@@ -84,11 +84,59 @@ data "composite_schema" "app" {
 }
 ```
 
+### Objects that differ per environment
+
+When most objects are shared and some differ between environments (a procedure body in `prod`
+and another in `uat`), keep the shared objects in a base and each environment's objects in
+`envs/<env>/`, and give two `schema` blocks with the same name. `composite_schema` needs
+`atlas login`, which starts a free trial:
+
+```hcl
+data "composite_schema" "app" {
+  schema "dbo" {
+    url = "file://schema/main.sql"
+  }
+  schema "dbo" {
+    url = "file://envs/${atlas.env}"
+  }
+}
+
+env {
+  name = atlas.env
+  url  = getenv("DATABASE_URL")
+  dev  = "docker://sqlserver/2022-latest/dev?mode=schema"
+  schema {
+    src = data.composite_schema.app.url
+    repo {
+      name = "app-${atlas.env}"
+    }
+  }
+}
+```
+
+- `DATABASE_URL` must use `mode=schema`, the same scope as `dev` (https://atlasgo.io/concepts/url#scope).
+- An object lives in the base or in the environment folders, never both: a duplicate fails to
+  load with `There is already an object named '<name>' in the database`.
+- Keep tests out of `envs/<env>/`: SQL and HCL files in one folder fail with
+  `ambiguous schema: both SQL and HCL files found`. Use `tests/<env>/`.
+- Files moved from a split export into `envs/<env>/` keep `-- atlas:import ../...` lines that no
+  longer resolve: delete them.
+- When only values differ (IDs, codes), use one `template_dir` of templates with a map of values
+  per environment instead of folders.
+- Before reporting a change done, run `atlas schema validate --env <env>` and
+  `atlas schema test --env <env> tests/<env>` for every environment, not only the changed one.
+  To adopt existing databases, `atlas schema diff --env <env> --from env://url --to env://schema.src`
+  must print `Schemas are synced, no changes to be made.` for each.
+
+Full guide, including adoption from existing databases:
+https://atlasgo.io/guides/environment-specific-objects
+
 ## Dev-Database Dialects
 
 The dev URL format depends on whether your project uses **schema-scoped** or **database-scoped** migrations. Getting this wrong causes errors like `modify schema "public" is not allowed when migration plan is scoped to one schema`, or silently drops database-level objects (extensions, event triggers) from migrations.
 
-**Schema-scoped** (single schema — most common): include the database name and schema scope so Atlas creates objects in the correct schema. Use this when all tables live in one schema (e.g., `public`).
+**Schema-scoped** (single schema, most common): include the database name and schema scope so Atlas
+creates objects in the correct schema. Use this when all tables live in one schema (e.g., `public`).
 
 | Dialect    | Dev URL (schema-scoped)                              |
 |------------|------------------------------------------------------|
@@ -109,7 +157,7 @@ The dev URL format depends on whether your project uses **schema-scoped** or **d
 | SQL Server | `docker://sqlserver/2022-latest/dev?mode=database`   |
 | ClickHouse | `docker://clickhouse/23.11`                          |
 
-**PostgreSQL with extensions** — use PostGIS or pgvector images when the schema uses those extensions:
+**PostgreSQL with extensions**: use PostGIS or pgvector images when the schema uses those extensions:
 ```
 docker://postgis/latest/dev?search_path=public
 docker://pgvector/pg17/dev?search_path=public

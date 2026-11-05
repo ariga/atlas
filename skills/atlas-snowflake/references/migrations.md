@@ -22,9 +22,9 @@ There are no `MF` (data-dependent) or `BC` (backward-incompatible) checks on Sno
 rule or a `statement` rule for what the user needs checked (`references/custom-rules.md`).
 
 `TX101` fires on most multi-statement Snowflake files, since nearly every DDL statement commits on its
-own. It skips the first migration file. The analyzer's remedies are to split the statements into
-separate files, or to start the file with `-- atlas:txmode none` and an empty line. The directive
-silences the check; it does not make the file atomic.
+own. The analyzer's remedies are to split the statements into separate files, or to start the file
+with `-- atlas:txmode none` and an empty line. The directive silences the check; it does not make the
+file atomic.
 
 Each check is tuned in the `lint` block (https://atlasgo.io/lint/analyzers#check-policy):
 

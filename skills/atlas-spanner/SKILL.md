@@ -1,6 +1,6 @@
 ---
 name: atlas-spanner
-description: "Google Cloud Spanner specifics for Atlas: the extended build and login, URLs and Application Default Credentials, GoogleSQL and PostgreSQL dialects, the emulator dev database and what it lacks, `-- atlas:txmode none` in every migration file, partial failures and long-running schema changes (index backfills, validations, Google's batch limits), what Spanner cannot change in place (primary keys, interleaving, column types, renames), objects Atlas leaves out or plans wrongly (identity columns, NOT ENFORCED foreign keys, interleaved indexes, change streams, database options), hotspot-free keys and bit-reversed sequences, named schemas, roles and grants, migration tests in place of schema tests, mutation limits and batched backfills, and custom lint rules. Use with the atlas skill whenever Atlas manages a Spanner database."
+description: "Google Cloud Spanner specifics for Atlas: the extended build and login, URLs and Application Default Credentials, GoogleSQL and PostgreSQL dialects, the emulator dev database and what it lacks, `-- atlas:txmode none` in every migration file, partial failures and long-running schema changes (index backfills, validations, Google's batch limits), what Spanner cannot change in place (primary keys, interleaving, column types, renames), objects Atlas leaves out or plans differently (identity columns, NOT ENFORCED foreign keys, interleaved indexes, change streams, database options), hotspot-free keys and bit-reversed sequences, named schemas, roles and grants, migration tests in place of schema tests, mutation limits and batched backfills, and custom lint rules. Use with the atlas skill whenever Atlas manages a Spanner database."
 ---
 
 # Atlas for Spanner
@@ -18,7 +18,7 @@ This skill is `SKILL.md` plus seven reference files under `references/`, each se
 | File | Read it for |
 |------|-------------|
 | `references/dev-database.md` | Scope and named schemas, `docker://spanner` and `docker://spannerpg`, what the emulator lacks, your own dev database on a real instance, URLs, credentials, and IAM, running an emulator by hand |
-| `references/objects.md` | What Atlas leaves out or plans wrongly, keys and hotspots, interleaving, type changes, indexes, foreign keys, checks and generated columns, sequences, views, change streams, TTL, named schemas, Enterprise features, the PostgreSQL dialect |
+| `references/objects.md` | What Atlas leaves out or plans differently, keys and hotspots, interleaving, type changes, indexes, foreign keys, checks and generated columns, sequences, views, change streams, TTL, named schemas, Enterprise features, the PostgreSQL dialect |
 | `references/hcl.md` | Writing the schema in HCL: HCL or SQL, `STRING(MAX)`, generated columns and options, `interleave`, indexes, sequences, views, change streams, locality groups and placements, property graphs |
 | `references/migrations.md` | `-- atlas:txmode none`, partial failures and recovery, long-running changes and Google's limits, lint on Spanner, dependent objects, changes to write by hand, renames, data changes and mutation limits, the revisions table, baselines |
 | `references/security.md` | Database roles and grants, why they need a real Spanner dev database, `DEFINER` views, IAM bindings outside Atlas |

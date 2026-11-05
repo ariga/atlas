@@ -72,8 +72,7 @@ include:
   it (`references/diff.md`).
 - Outputs go to a dotenv artifact as `ATLAS_OUTPUT_<STEP>_<OUTPUT>` (the lint report link is
   `ATLAS_OUTPUT_MIGRATE_LINT_REPORT_URL`), read by later jobs that list the job in `needs` with
-  `artifacts: true`. Only components that declare outputs publish the artifact, so the `url` that
-  `migrate-push` sets does not reach later jobs.
+  `artifacts: true`. `migrate-push` publishes no outputs to later jobs.
 - Dev database: a `services:` database, with the service name as the host in its URL, as above.
 - Self-managed GitLab: mirror the `arigaio/atlas` component project to the instance first.
 
@@ -264,3 +263,10 @@ log in with `atlas login --token "$ATLAS_TOKEN"`, and run each step's command wi
 binary stops with `atlasaction: no action found for the current environment`. The `arigaio/atlas` image
 has no shell, Docker client, or git: use its Alpine-based images for scripts, a separate dev database
 container instead of `docker://`, and an image with git for `--git-base`.
+On Jenkins (https://atlasgo.io/guides/ci-platforms/jenkins), keep the bot token in a folder that the
+Multibranch Pipeline reads, and the database URL in a folder that only the deploy job reads. A pull
+request build runs the pull request's `atlas.hcl`, which can run programs, with the bot token, so
+configure the branch source to discover pull requests from the repository itself, not from forks. The
+deploy job builds only `main`, with `disableConcurrentBuilds()`, and pushes to the registry before it
+applies, so each build deploys the change it pushed. The optional Writer bot (`references/setup.md`)
+goes in the deploy job's folder.

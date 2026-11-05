@@ -286,6 +286,8 @@ Provider admin roles and their grants are covered in `references/security.md`.
   `references/migrations.md`).
 - Azure Database for PostgreSQL: use `sslmode=require`, allow extensions in the `azure.extensions`
   server parameter, and give the user as `user@server-name` where the server requires it.
+- Databricks Lakebase: use the `atlas-lakebase` skill, which holds only what is specific to Lakebase
+  (https://atlasgo.io/guides/postgres/databricks-lakebase).
 
 ## Connection URLs
 

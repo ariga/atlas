@@ -11,12 +11,14 @@ rules against the whole desired schema.
 | `atlas schema lint --env <name>` | The entire desired schema | Every finding in the schema |
 
 Use `migrate lint` in the versioned workflow and in CI. Use `schema lint` to audit an existing schema
-against policy. Run `atlas login` before linting.
+against policy. Run `atlas login` before linting; a user without an account can start a free trial
+with it.
 
 ## Running `migrate lint`
 
 ```bash
 atlas migrate lint --env <name>                     # registry project: files not yet pushed to the registry
+atlas migrate lint --env <name> --base atlas://<repo>  # the same, naming the repo (several repos match)
 atlas migrate lint --env <name> --latest 1          # the newest N migration files (local development)
 atlas migrate lint --env <name> --git-base master   # no registry: files added since the git base branch
 atlas migrate lint --env <name> -w                  # any of the above: open the report in the browser
@@ -26,10 +28,11 @@ atlas migrate lint --env <name> --format '{{ json . }}'   # any of the above: ma
 Changeset detection picks which files to analyze. Read `atlas.hcl` first and use the case that
 matches the project:
 
-1. Registry comparison (most projects): the directory is pushed to the Atlas Registry
-   (`migration.repo.name` is set, or `dir` is an `atlas://` URL). The local directory is compared with
-   the latest pushed state. No flag and no git configuration needed; this is the CI default whenever
-   a registry repo exists.
+1. Registry comparison (most projects): the directory is pushed to the Atlas Registry. Atlas finds the
+   registry repo whose files match the local directory and compares with its latest pushed state; no
+   flag or git configuration needed. When more than one repo matches, for example a copy of the project
+   or an empty repo, it asks which one, and a CI run fails on the question. Pass `--base atlas://<repo>`
+   to name the repo.
 2. `--latest N`: the last N files by version. For local development, just pass `--latest 1`; no
    configuration needed.
 3. `--git-base <branch>` (plus `--git-dir <path>` when the directory is not the repo root): files added
@@ -39,7 +42,7 @@ matches the project:
 The equivalent `atlas.hcl` settings:
 
 ```hcl
-# Registry project: nothing to configure for lint beyond the repo.
+# Registry project: nothing to configure for lint (to name the repo, pass --base atlas://<repo>).
 env "ci" {
   migration {
     dir = "file://migrations"
@@ -220,6 +223,53 @@ rule "migrate" "disallow-add-table-with-null-columns" {
   report. Nested blocks traverse the schema (`table { column { ... } }`) or the change
   (`add { table { ... } }`, `modify`, `drop`). Inside, `match` filters and `assert` checks.
 - `self` is the current object; `${self.name}`, `${self.table.name}`, `${self.schema.name}` interpolate.
+- Attribute blocks such as `name`, `null`, and `default` take operators (`eq`, `ne`, `match`, ...).
+  A table's `primary_key` and `schema` are objects and take only `condition` or `predicate`
+  (https://atlasgo.io/hcl/rule#predicate.table).
+- `assert` takes a `predicate`, `vars` for the predicate's variables, and a `message`. A check over child
+  objects, such as `any { column { ... } }`, goes in a predicate, never directly in `assert`.
+
+Two common policies, a primary key on every table and a required column:
+
+```hcl
+predicate "table" "has_primary_key" {
+  primary_key {
+    condition = self != null
+  }
+}
+
+predicate "table" "has_column" {
+  variable "name" {
+    type = string
+  }
+  any {
+    column {
+      condition = self.name == var.name
+    }
+  }
+}
+
+rule "schema" "table-has-primary-key" {
+  description = "every table must have a primary key"
+  table {
+    assert {
+      predicate = predicate.table.has_primary_key
+      message   = "table ${self.name} must have a primary key"
+    }
+  }
+}
+
+rule "schema" "id-column-required" {
+  description = "table must have an 'id' column"
+  table {
+    assert {
+      predicate = predicate.table.has_column
+      vars      = { name = "id" }
+      message   = "table ${self.name} is missing an 'id' column"
+    }
+  }
+}
+```
 
 Wire the file in with `lint { rule "hcl" "<name>" { src = ["schema.rule.hcl"] } }`, globally or per
 env, then run `migrate lint` or `schema lint`. Examples for columns, foreign keys, functions, audit
@@ -250,6 +300,8 @@ tables, RLS, security invoker views, roles, and permissions: https://atlasgo.io/
 | Lint exits 1 with no findings printed | Run with `-w` or `--format '{{ json . }}'` to see the full report |
 | `--git-base` finds no files | The branch has no new files, or `dir` is wrong. Use `--latest 1` locally |
 | Custom rule fails to parse | Check the `.rule.hcl` extension, the `predicate.<type>.<name>` reference, and that `description` is set |
+| `either condition or predicate must be set in primary_key block` | `primary_key` takes `condition = self != null`, not `ne = null` (Custom Rules) |
+| `missing required attribute predicate` in an `assert` block | Move the `any` or `all` check into a predicate and reference it from `assert` (Custom Rules) |
 | `command requires 'atlas login'` | Run `atlas login` |
 
 ## Documentation

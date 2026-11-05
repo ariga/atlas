@@ -98,6 +98,7 @@ atlas migrate diff baseline --env <name> --to env://url
 #    or: atlas schema inspect --env <name> --format '{{ sql . | split | write "src" }}' then --to file://src
 
 # 2. On every existing database, mark the baseline as applied without running it.
+#    It prints only "No migration files to execute"; atlas migrate status shows the baseline version.
 atlas migrate apply --env <name> --baseline "<version-from-filename>"
 
 # 3. New databases run it in full.

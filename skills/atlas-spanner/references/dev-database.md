@@ -32,8 +32,7 @@ schema (`CREATE SCHEMA sales`). There is no schema-scoped URL.
   own and plans in it.
 - Pin a release. `latest` is whatever image the machine pulled last, and an old one rejects newer DDL:
   `SQL SECURITY DEFINER` views need 1.5.56 or later, and fail on older images with
-  `Expecting 'INVOKER' but found 'DEFINER'`. Releases:
-  https://github.com/GoogleCloudPlatform/cloud-spanner-emulator/releases.
+  `Expecting 'INVOKER' but found 'DEFINER'`.
 - The emulator starts in a few seconds and keeps everything in memory.
 - `docker://` needs a Docker client and a reachable daemon. Without one, run the emulator yourself and
   point `dev` at an empty database in it (Connection URLs, below).
@@ -55,8 +54,7 @@ atlas tool docker kill --name my-spanner
 ## What the Emulator Does Not Do
 
 The emulator accepts most DDL, but it is not production
-(https://docs.cloud.google.com/spanner/docs/emulator,
-https://github.com/GoogleCloudPlatform/cloud-spanner-emulator/blob/master/README.md):
+(https://docs.cloud.google.com/spanner/docs/emulator):
 
 | Area | On the emulator | Effect on Atlas |
 |------|-----------------|-----------------|

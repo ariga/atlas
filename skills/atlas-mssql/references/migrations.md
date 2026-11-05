@@ -2,7 +2,8 @@
 
 How Atlas runs migrations on SQL Server, what lint catches, and what to write by hand. Tests are in
 `references/testing.md`. Lint, custom rules, the `not_null` policy, and seed data need `atlas login`,
-which SQL Server needs anyway.
+which SQL Server needs anyway. If `atlas whoami` shows no login, ask the user to run `atlas login`;
+a user without an account can start a free trial with it.
 
 ## What Lint Catches on SQL Server
 

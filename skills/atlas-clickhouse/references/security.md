@@ -207,21 +207,17 @@ Without `sensitive = ALLOW` (the default):
   `kafka_sasl_password = var.kafka_password` is created without it. The dev database receives a
   placeholder in their place, never the value.
 - Masked values are compared as equal to the desired ones, so a plan stays quiet about them.
-- A change that must drop and recreate an existing object that holds a secret setting fails instead of
-  dropping the secret:
-  `table "events" must be recreated for this change, which drops its secrets. Enable the sensitive mode to plan it:`.
-  Kafka, RabbitMQ, NATS, S3Queue, and FileLog tables are recreated for any change, a comment included.
+- Kafka, RabbitMQ, NATS, S3Queue, and FileLog tables are recreated for any change, a comment included.
 - Named collections are created and changed with their keys, and empty values. Value changes are not
   planned (https://atlasgo.io/guides/clickhouse/named-collections).
 
 In migration files, whatever the mode:
 
-- Secret settings are left out. A change that must recreate a table holding one fails with
-  `..., as a deferred plan does not hold them. Recreate it manually to apply this change`.
+- Secret settings are left out.
 - Passwords are left out (Passwords, above).
 - Credentials inside engine arguments and dictionary sources are written into the file, and the
-  statement is marked `-- atlas:sensitive`. Keep such files out of shared logs, or move the credential
-  into a named collection.
+  statement is marked `-- atlas:sensitive`, which keeps them out of logs, not out of the file. Do not
+  commit such a file: move the credential into a named collection, whose values migration files omit.
 
 With `sensitive = ALLOW`:
 

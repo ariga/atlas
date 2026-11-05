@@ -1,6 +1,6 @@
 ---
 name: atlas-clickhouse
-description: "ClickHouse specifics for Atlas: the login-only driver, dev database and URL scope (database vs server), Docker dev images and version checks, cluster mode and ON CLUSTER, table engines, sort keys and table rebuilds, plans that skip destructive changes without a terminal, mutations and CH lint checks, materialized views, dictionaries, UDFs and WASM, named collections, users, roles, grants, row policies and settings profiles, secret settings and the sensitive mode, no transactions and no lock, ClickHouse Cloud, schema and migration tests, and custom lint rules. Use with the atlas skill whenever Atlas manages a ClickHouse database."
+description: "ClickHouse specifics for Atlas: the login-only driver, dev database and URL scope (database vs server), Docker dev images and version checks, cluster mode and ON CLUSTER, table engines, sort keys and table rebuilds, plans that skip destructive changes without a terminal, table recreation and the allow_recreate policy, mutations and CH lint checks, materialized views, dictionaries, UDFs and WASM, named collections, users, roles, grants, row policies and settings profiles, secret settings and the sensitive mode, no transactions and no lock, ClickHouse Cloud, schema and migration tests, and custom lint rules. Use with the atlas skill whenever Atlas manages a ClickHouse database."
 ---
 
 # Atlas for ClickHouse
@@ -20,7 +20,7 @@ This skill is `SKILL.md` plus seven reference files under `references/`, each se
 | `references/security.md` | Users, roles, grants, row policies, settings profiles, access storages, passwords, secret settings and the sensitive mode |
 | `references/objects.md` | What each object needs (scope, `mode` flags), engines, column conversions, materialized views, dictionaries, UDFs, WASM, named collections, what Atlas skips or does not plan |
 | `references/hcl.md` | Writing the schema in HCL: `Nullable`, types, defaults and `default_kind`, codecs, TTL, `sort`, `partition`, `primary_key`, indexes, projections, views, seed data |
-| `references/migrations.md` | `CH3*` lint findings, table rebuilds, skipped changes, mutations, diff policies, no transactions, no lock, cluster mode DDL, the revisions table |
+| `references/migrations.md` | `CH3*` lint findings, table rebuilds, skipped changes, table recreation and `allow_recreate`, mutations, diff policies, no transactions, no lock, cluster mode DDL, the revisions table |
 | `references/testing.md` | Testing every change: schema tests, migration tests with seeded rows, mutations and merges in tests |
 | `references/custom-rules.md` | Writing a custom lint rule in the HCL rule language when no analyzer covers a check: what each ClickHouse object exposes, examples |
 
@@ -56,12 +56,15 @@ Files section to `../atlas/references/<name>`.
 4. On a cluster, add `mode=cluster` to both URLs: Atlas then writes ``ON CLUSTER `{cluster}```, `SYNC`
    drops, and `SETTINGS alter_sync = 2`, and keeps the revisions table in a `ReplicatedMergeTree`
    (`references/migrations.md`, Cluster Mode).
-5. Without a terminal, Atlas leaves out of the plan, without an error, the changes it can apply only by
-   dropping data: a column change ClickHouse cannot make in place, any change to a `TimeSeries` table,
-   and a sort key, partition, primary key, or engine change on a `Replicated*` table whose engine holds
-   an explicit ZooKeeper path. This is the case in CI and in most agent shells. After every diff, check
-   that each edit appears in the plan; when one is missing, write the migration by hand or ask the user
-   to run the command in a terminal, where Atlas asks before dropping (`references/migrations.md`).
+5. Without a terminal, Atlas leaves out of the plan, without an error, a column change ClickHouse cannot
+   make in place, as it can apply it only by dropping data. This is the case in CI and in most agent
+   shells. After every diff, check that each edit appears in the plan; when one is missing, write the
+   migration by hand or ask the user to run the command in a terminal, where Atlas asks before dropping
+   (`references/migrations.md`). Any change to a `TimeSeries` table, and a sort key, partition, primary
+   key, or engine change on a `Replicated*` table whose engine sets a fixed ZooKeeper path (one without
+   `{uuid}`) that the change keeps, drop and recreate the table: without a terminal the command fails,
+   unless the user accepts the loss and sets `modify_table { allow_recreate = true }` in
+   `diff "clickhouse"` (`references/migrations.md`, Table Recreation).
 6. Review every `CH3*` lint finding before applying to a large table: a sort key, partition, primary
    key, or engine change rebuilds the table by copying its rows into `<table>_tmp` and swapping it with
    `EXCHANGE TABLES`, and rows written after the copy are lost (`CH302`). A column type change rewrites
@@ -73,9 +76,9 @@ Files section to `../atlas/references/<name>`.
 8. Never write secrets into the schema: pass them through input variables. Without `sensitive = ALLOW`
    in the env's `schema.mode`, Atlas never writes a secret setting (such as `kafka_sasl_password`), a
    user password, or a named collection value: a new user is created with no password, and anyone can
-   log in as it. Migration files never hold secret settings or passwords;
-   a credential inside an engine's arguments or a dictionary source is written, under
-   `-- atlas:sensitive` (`references/security.md`, Secrets).
+   log in as it. Migration files never hold secret settings or passwords, but they do hold a credential
+   inside an engine's arguments or a dictionary source: keep it in a named collection instead
+   (`references/security.md`, Secrets).
 9. Declare a nullable column with its wrapper, `type = sql("Nullable(Date)")`. `null = true` on its own
    fails with `nullable column must have type wrapped with "Nullable()"` (`references/hcl.md`).
 10. Test every change before reporting it done, as a habit. Run `atlas schema validate`, add a
@@ -102,15 +105,14 @@ Files section to `../atlas/references/<name>`.
 | `code: 81, message: Database <name> does not exist` | The URL's path names a database that does not exist: create it, or use server scope (`references/dev-database.md`) |
 | A plan drops the `default` database | Server scope covers every database: declare `schema "default" {}` (`references/dev-database.md`, Scope) |
 | A view or dictionary fails at server scope because a table does not exist in `default` | Name the table with its database in the query, `FROM app.events` (`references/dev-database.md`, Scope) |
-| A column type or sort key change is missing from the plan, or `no changes to be made` | Atlas skipped a destructive rebuild without a terminal (`references/migrations.md`, Changes Skipped Without a Terminal) |
+| A column type change is missing from the plan, or `no changes to be made` | Atlas skipped a destructive column change without a terminal (`references/migrations.md`, Changes Skipped Without a Terminal) |
+| `... Recreate the table manually, or set 'allow_recreate' in the 'modify_table' block of the diff policy to plan it` | The change drops the table's rows: back them up first, or write the migration by hand. Once the user accepts the loss, set `modify_table { allow_recreate = true }` (`references/migrations.md`, Table Recreation) |
 | `nullable column must have type wrapped with "Nullable()"` | Write `type = sql("Nullable(T)")`; on `LowCardinality(Nullable(T))`, leave `null` unset (`references/hcl.md`) |
 | `formatting type for column "...": unsupported type` | Atlas does not know the type, often a SQL alias such as `VARCHAR`: write the ClickHouse type (`references/hcl.md`, Columns and Types) |
 | `converting index "...": unsupported index type` | Use a supported skip index type (`references/hcl.md`, Tables) |
 | Lint reports `CH301`, `CH302`, or `CH303` | A mutation, a table copy, or an index or projection materialized over existing parts (`references/migrations.md`) |
 | A migration failed halfway | ClickHouse kept the statements before the failure: fix the rest and run `atlas migrate hash`, or undo them with `atlas migrate down` (`references/migrations.md`, Transactions) |
 | A materialized view lost its rows after a change | Any change but its refresh drops and recreates it; keep rows in a `to` table (`references/objects.md`, Materialized Views) |
-| `... must be recreated for this change, which drops its secrets. Enable the sensitive mode to plan it:` | The recreate would lose a secret setting, declared or only on the server: plan it with `sensitive = ALLOW` (`references/security.md`, Secrets) |
-| `..., as a deferred plan does not hold them. Recreate it manually to apply this change` | A migration file cannot recreate an object that holds secrets: do it by hand (`references/security.md`, Secrets) |
 | Sensitive mode reports the same dictionary, table, or named collection change on every run | The server reads secrets back masked, so they never match (`references/security.md`, Secrets) |
 | `modify schema "..." is not allowed when migration plan is scoped to one schema` | A database `settings` change in a migration file needs server scope (`references/dev-database.md`, Scope) |
 | Undeclared users or roles are planned for a drop | Declare them, or skip drops with `drop_user` and `drop_role` (`references/security.md`) |

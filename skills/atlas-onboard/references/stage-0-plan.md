@@ -41,6 +41,7 @@ the scan found: logged out, inspect and diff cover schemas, tables, columns, ind
 only, and skip views, materialized views, functions, procedures, triggers, sequences, domains, and
 extensions without an error. Some drivers, such as SQL Server and ClickHouse, need a login for every
 command. The later stages need it too: lint, the Atlas Registry, CI, and deployment reporting.
+A user without an account can start a free trial with `atlas login`.
 
 If the user declines, stop before 0.3 for any existing database. Offer the scan report only.
 

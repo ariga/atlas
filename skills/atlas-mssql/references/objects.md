@@ -89,8 +89,6 @@ CREATE TABLE users (
   `INOUT` is not accepted.
 - Changing a function's arguments or return type drops and recreates it. Changing its body, or a
   procedure's arguments or body, is an `ALTER`, which keeps its grants.
-- Views and triggers are changed with `CREATE OR ALTER` at compatibility level 130 (SQL Server 2016) and
-  later, and dropped and recreated below it.
 - `schema_bound = true` adds `WITH SCHEMABINDING`. An indexed view is a `schema_bound` view with an
   `index` block: Atlas creates the first one `UNIQUE CLUSTERED`.
 - `execute_as` sets `EXECUTE AS` on functions, procedures, and triggers: `sql("OWNER")`, `sql("SELF")`,

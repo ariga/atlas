@@ -5,7 +5,7 @@ and batched loops. Atlas runs them with `atlas script exec`, `atlas script query
 with transactions, guards, assertions, and output masking built in. They are Day 2 work that comes after
 the schema is in place, run on demand, and not recorded in the migration history.
 
-Run `atlas login` before using them.
+Run `atlas login` before using them; a user without an account can start a free trial with it.
 
 ## When to Use a Script
 
@@ -352,7 +352,9 @@ binds an env to its registry repo.
    leave behind.
 4. Write a `test "script"` case that seeds data, runs the script, and asserts on the outcome. Run
    `atlas script test --env <name>`.
-5. Run the script with an anchored `--run '^name$'`. Review the streaming report, then the closing summary.
+5. Run the script with an anchored `--run '^name$'`. On a shared or production env, run an `exec` or
+   `loop` only after the user approves the named target. Review the streaming report, then the closing
+   summary.
 6. For reports the agent will read, add `mask` blocks on PII columns and use `--quiet` or `--format '{{ json . }}'`.
 
 ## Key Rules

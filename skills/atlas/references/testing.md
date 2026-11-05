@@ -3,7 +3,7 @@
 The Atlas testing framework runs test cases written in HCL against a dev database. The agent writes
 the schema logic (functions, views, triggers, constraints, policies), data migrations, or scripts,
 writes the tests next to them, and Atlas executes both and reports failures to fix. Testing requires
-`atlas login`.
+`atlas login`; a user without an account can start a free trial with it.
 
 | Command | Test block | Starts from | Use for |
 |---------|-----------|-------------|---------|

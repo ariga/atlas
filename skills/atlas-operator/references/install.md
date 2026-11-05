@@ -31,7 +31,7 @@ The chart installs these resource kinds, all in `db.atlasgo.io/v1alpha1`:
 | `AtlasSchema` | Declarative: apply a desired state (`references/declarative.md`) | v0.1 |
 | `AtlasMigration` | Versioned: apply a migration directory (`references/versioned.md`) | v0.2 |
 | `AtlasDriftCheck` | Check an `AtlasMigration`'s database for drift on a schedule (`references/drift.md`) | v0.8.0 |
-| `AtlasSecurityScan` | Scan a database for vulnerable extensions (`references/security-scan.md`) | v0.8.0 |
+| `AtlasSecurityScan` | Scan a database for vulnerable extensions, and its server version since v0.8.6 (`references/security-scan.md`) | v0.8.0 |
 | `AtlasSecurityReport` | The findings of a scan, written by the operator | v0.8.0 |
 
 The kinds have no short names: use `kubectl get atlasschemas`, `atlasmigrations`, `atlasdriftchecks`,
@@ -165,7 +165,8 @@ helm upgrade atlas-operator oci://ghcr.io/ariga/charts/atlas-operator --version 
   operator release, so upgrading is the first step when a known Atlas issue appears. The operator log
   prints the operator and Atlas versions.
 - Features by release: `policy.drift` and `devDB.metadata` need v0.7.52; `AtlasDriftCheck`,
-  `AtlasSecurityScan`, and the per-resource `prewarmDevDB` need v0.8.0.
+  `AtlasSecurityScan`, and the per-resource `prewarmDevDB` need v0.8.0; server-version findings in a
+  scan need v0.8.6.
 
 ## Uninstalling
 

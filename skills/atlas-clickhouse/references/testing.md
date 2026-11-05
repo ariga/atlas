@@ -11,8 +11,8 @@ user to run `atlas login`; a user without an account can start a free trial with
 A schema or migration change is done when its tests pass:
 
 1. After editing the schema, run `atlas schema validate --env <name>`.
-2. Check that the plan holds every edit: Atlas leaves destructive rebuilds out of the plan without a
-   terminal (`references/migrations.md`, Changes Skipped Without a Terminal).
+2. Check that the plan holds every edit: Atlas leaves destructive column changes out of the plan
+   without a terminal (`references/migrations.md`, Changes Skipped Without a Terminal).
 3. Add or update a test case for what the change touches: a `test "schema"` case for a materialized
    view, dictionary, UDF, check, default expression, or row policy, and a `test "migrate"` case for a
    migration that rebuilds a table, converts a column, or moves data.

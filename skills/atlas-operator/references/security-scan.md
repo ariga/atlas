@@ -4,7 +4,9 @@ Since v0.8.0, an `AtlasSecurityScan` runs `atlas security scan` against a databa
 after an `AtlasSchema` or `AtlasMigration` listed in its `triggers` applies a new version
 (https://atlasgo.io/guides/security-scan/kubernetes). It grades the findings, known vulnerabilities in
 the database's extensions, against a policy, and writes them to an `AtlasSecurityReport` of the same
-name. It needs Atlas Pro with the Security Graph, and a bot token.
+name. Since v0.8.6, it also checks the server version: on PostgreSQL, MySQL, MariaDB, ClickHouse, and
+SQL Server (not Azure SQL Database), with extensions on PostgreSQL. It needs Atlas Pro with the Security
+Graph, and a bot token.
 
 ## Creating a Scan
 
@@ -45,7 +47,7 @@ kubectl get atlassecurityscans
 
 ```
 NAME   READY   REASON    COMPLIANT   FINDINGS   HIGHEST   LAST SCAN   NEXT SCAN              AGE
-app    True    Scanned   False       3          HIGH      0s          2026-10-01T06:00:00Z   6s
+app    True    Scanned   False       2          HIGH      0s          2026-10-01T06:00:00Z   6s
 ```
 
 ## Fields
@@ -107,8 +109,9 @@ kubectl get atlassecurityscan app -o yaml
 kubectl get atlassecurityreport app -o yaml
 ```
 
-The report lists each finding with its extension, version, level, and suggested fix. It is replaced on
-every successful scan.
+The report lists each finding with its extension, version, level, and suggested fix. From v0.8.6, a
+finding of the server version sets `engine` (e.g. `clickhouse`) and leaves `extension` empty. The report
+is replaced on every successful scan.
 
 ## Waivers
 
@@ -118,8 +121,8 @@ spec:
     minSeverity: ELEVATED
     failOn: HIGH
     ignore:
-      - id: CVE-2026-14678
-        reason: "pg_trgm is not reachable from the application role; SEC-1234"
+      - id: CVE-2026-18022
+        reason: "Affects 32-bit systems only; the nodes run 64-bit. SEC-1234"
         expirationTime: "2026-12-31T00:00:00Z"
 ```
 
@@ -128,10 +131,10 @@ expires, a new scan runs.
 
 ## Access to Reports
 
-Reports name the database's extensions and their vulnerabilities, so the built-in `view` and `edit` roles
-cannot read them. The chart ships a ClusterRole for them, aggregated into `admin` by default. It is named
-`<release>-atlas-operator-securityreport-viewer`, or `<release>-securityreport-viewer` when the release
-name already contains `atlas-operator`.
+Reports name the server version, the database's extensions, and their vulnerabilities, so the built-in
+`view` and `edit` roles cannot read them. The chart ships a ClusterRole for them, aggregated into
+`admin` by default. It is named `<release>-atlas-operator-securityreport-viewer`, or
+`<release>-securityreport-viewer` when the release name already contains `atlas-operator`.
 
 ```yaml
 rbac:

@@ -122,8 +122,8 @@ Migration files are SQL sent to the server, not SQL*Plus scripts.
 
 - Packages live only in migration files: the declarative workflow leaves them out of plans, and
   `migrate diff` neither creates nor drops them (`references/objects.md`).
-- Anonymous blocks (`BEGIN ... END;` and `DECLARE ... END;`) fail: Atlas strips the block's final
-  semicolon, with `/`, `END;;`, or `-- atlas:delimiter` alike, and Oracle answers
+- Anonymous blocks (`BEGIN ... END;` and `DECLARE ... END;`) fail, with `/`, `END;;`, or
+  `-- atlas:delimiter` alike, and Oracle answers
   `PLS-00103: Encountered the symbol "end-of-file" when expecting one of the following`. Write the logic
   as plain SQL statements, call procedures with `CALL`, or wrap the block in a procedure that the file
   creates, calls, and drops:

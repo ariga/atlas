@@ -211,6 +211,31 @@ dynamic_table "DAILY_EVENTS" {
   `change_tracking = false` fails with
   `iceberg table "...": change tracking is always enabled and cannot be turned off`.
 
+- An `interactive_table` needs `cluster_by`, and is created from its `as` query. Without `target_lag`
+  it is a static snapshot of the query result; with it, Snowflake refreshes it within that lag. Declare
+  the same columns the query returns: column `type` and `null` are informational only, and the columns
+  are always nullable. `column` blocks take `comment` and a masking `policy`; tags and the other
+  policies go on the table:
+
+  ```hcl
+  interactive_table "DAILY_REVENUE_BY_REGION" {
+    schema     = schema.PUBLIC
+    cluster_by = ["REGION", "ORDER_DATE"]
+    target_lag = "5 minutes" # omit with warehouse for a static table
+    warehouse  = "DEMO_WH"
+    as         = "SELECT REGION, ORDER_DATE, SUM(AMOUNT) AS REVENUE FROM ORDERS GROUP BY REGION, ORDER_DATE"
+    depends_on = [table.ORDERS]
+    column "REGION" {}
+    column "ORDER_DATE" {}
+    column "REVENUE" {}
+  }
+  ```
+
+- A static interactive table takes no `warehouse`:
+  `attribute target_lag is required when warehouse is set`. With `target_lag`, always set `warehouse`
+  (Rule 8 in `SKILL.md`). `initialization_warehouse` needs `warehouse`:
+  `attribute warehouse is required when initialization_warehouse is set`.
+
 ## Views
 
 ```hcl
@@ -415,6 +440,31 @@ resource_monitor "MONTHLY_CAP" {
   }
 }
 ```
+
+An `interactive_warehouse` serves interactive tables. It uses the `warehouses` switch, and its
+`include` pattern takes `[type=interactive_warehouse]`:
+
+```hcl
+interactive_warehouse "SALES_IWH" {
+  size                         = XSMALL
+  auto_suspend                 = 86400
+  initially_suspended          = true
+  fallback_warehouse           = warehouse.TRANSFORM_WH
+  statement_timeout_in_seconds = 5
+  tables                       = [interactive_table.CUSTOMER_LOOKUP]
+}
+```
+
+- `tables` takes `interactive_table` references, or qualified names (`"PUBLIC.LOOKUP"`) for tables
+  Atlas does not manage. Changes are planned as `ALTER WAREHOUSE ... ADD TABLES` and `DROP TABLES`.
+- `auto_suspend` is at least 86400, or left out to never suspend, and `statement_timeout_in_seconds`
+  is at most 5. Other values fail before planning, such as
+  `interactive warehouse "SALES_IWH": auto_suspend must be at least 86400, got 60`.
+- `initially_suspended = true` creates it suspended, so it bills nothing until resumed. Snowflake does
+  not report it back, so inspection leaves it out.
+- A warehouse cannot change between standard and interactive:
+  `modify warehouse "<name>": cannot change warehouse type to interactive after creation`. Declare a
+  new warehouse under another name.
 
 `external_volume` takes `storage_location "<PROVIDER>" "<name>"` blocks (`S3`, `S3GOV`, `GCS`, `AZURE`,
 `S3COMPAT`). `external_access_integration` takes `allowed_network_rules` (at least one, or the plan

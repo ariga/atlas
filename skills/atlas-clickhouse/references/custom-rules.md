@@ -59,8 +59,7 @@ walk into (https://atlasgo.io/hcl/rule):
 
 ## Examples
 
-From the rule tests and docs (https://atlasgo.io/lint/rules). Adapt the closest one before writing a
-rule from scratch.
+Adapt the closest one before writing a rule from scratch (https://atlasgo.io/lint/rules#examples).
 
 Tables on a replicated engine:
 

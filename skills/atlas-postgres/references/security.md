@@ -39,6 +39,17 @@ env "dev" {
   users out of plans (https://atlasgo.io/versioned/diff#diff-policy).
 - With `permissions = true` and `roles` off, Atlas plans grants without managing roles. Name the grantee
   as a string: `to = "app_reader"`.
+- Default privileges as `default_permission` blocks are enabled apart, in the `mode` block labeled
+  `postgres`, and only in an env that manages access to schemas whose objects another tool creates
+  (Default Privileges below):
+
+  ```hcl
+  mode "postgres" {
+    roles               = true
+    permissions         = true
+    default_permissions = true
+  }
+  ```
 - To manage only roles and users, disable `schemas` and `objects`. This env needs no dev database
   (https://atlasgo.io/atlas-schema/projects):
 
@@ -70,10 +81,23 @@ env "dev" {
 
 ## Default Privileges
 
-Atlas does not manage `ALTER DEFAULT PRIVILEGES` as a database object: a default applies only to future
-objects created by the role that ran it, so reading it from a database does not say what any object has.
-In a SQL schema, Atlas runs the statement on the dev database while loading the desired state. Every
-object defined after it receives the privileges, and the plan grants them object by object:
+Who creates the objects decides (https://atlasgo.io/guides/postgres/security-default-privileges):
+
+- Atlas creates them, in the declarative or the versioned workflow: declare their grants with
+  `permission` blocks or `GRANT` statements, and keep `default_permissions` off. Atlas plans and checks
+  the grants of every object, and accounts for default privileges only on the objects it creates.
+- Another tool creates them, such as the application's migration tool: Atlas cannot declare their
+  grants, but it can manage the default privileges that grant access to them as they are created (When
+  another tool creates the objects, below).
+
+Never enable `default_permissions` in an env that migrates the schema. Atlas is declarative, and default
+privileges are not the state of any object: they only decide what objects created later get, so existing
+objects keep their grants, and the grants of an object depend on when it was created.
+
+### When Atlas creates the objects
+
+In a SQL schema, Atlas runs `ALTER DEFAULT PRIVILEGES` on the dev database while loading the desired
+state. Every object defined after it receives the privileges, and the plan grants them object by object:
 
 ```sql
 ALTER DEFAULT PRIVILEGES GRANT SELECT ON TABLES TO PUBLIC;
@@ -122,8 +146,9 @@ GRANT SELECT ON TABLE "public"."t2" TO PUBLIC;
 
 ### One role on every table
 
-A default privilege, or a `for_each` permission, still becomes one GRANT per object, so giving a new
-role access to every table in a large database produces thousands of statements. For read access to
+When Atlas creates the objects, a default privilege, or a `for_each` permission, still becomes one GRANT
+per object, so giving a new role access to every table in a large database produces thousands of
+statements. For read access to
 all data, make the role a member of PostgreSQL's predefined `pg_read_all_data` role instead (PostgreSQL
 14 and later, https://www.postgresql.org/docs/current/predefined-roles.html): it reads every table,
 view, and sequence in every schema, and row-level security still applies to it. Predefined roles need
@@ -147,6 +172,67 @@ role "app_readonly" {
 ```
 
 In a SQL schema: `CREATE ROLE "app_readonly" IN ROLE "pg_read_all_data";`.
+
+### When another tool creates the objects
+
+Manage access from an env of its own, which excludes the other tool's objects and enables the mode:
+
+```hcl
+env "prod" {
+  url     = getenv("DATABASE_URL")
+  dev     = "docker://postgres/18/dev"
+  exclude = [
+    "public.*",                          # the objects of the migration tool
+    "*[type=default_permission].PUBLIC", # PostgreSQL's built-in PUBLIC privileges
+  ]
+  schema {
+    src = "file://schema.pg.hcl"
+    mode "postgres" {
+      roles               = true
+      permissions         = true
+      default_permissions = true
+    }
+  }
+}
+```
+
+```hcl
+default_permission {
+  owner      = user.migrations   # FOR ROLE; omitted: the role Atlas connects as
+  schema     = schema.public     # IN SCHEMA; omitted: every schema
+  on         = TABLES            # TABLES, SEQUENCES, FUNCTIONS, TYPES or SCHEMAS
+  to         = user.app
+  privileges = [DELETE, INSERT, SELECT, UPDATE]
+}
+```
+
+- Start from `atlas schema inspect --env prod`. The blocks are the whole state for these object types:
+  Atlas revokes every default privilege that no block declares, for every role it inspects.
+- Both URLs need database scope: no `search_path` in `url` or `dev`.
+- `public.*` excludes the objects of a schema, not the schema: its grants, extensions, and default
+  privileges stay managed. Excluding the schema itself would exclude the default privileges set in it.
+- Without the `PUBLIC` exclusion, inspection prints the built-in `FUNCTIONS` and `TYPES` blocks of every
+  role for `PUBLIC`, and a role added without them gets them revoked. `privileges` cannot be empty: to
+  revoke a built-in, delete its block.
+- Review the plan with `atlas schema apply --env prod --dry-run` before applying it. To check for
+  drift, `atlas schema diff --env prod --from env://url --to env://schema.src` prints the
+  `ALTER DEFAULT PRIVILEGES` that restore the file. With `--format '{{ sql . }}'` it prints nothing
+  when the database matches, which a scheduled CI job on the default branch can test. Keep the
+  database URL in a scope only the default branch can read, such as a protected environment.
+- Default privileges never change existing objects. Grant on those once, outside Atlas, for example
+  `GRANT SELECT ON ALL TABLES IN SCHEMA public TO reader;` in the other tool's migrations.
+- Before a `DROP ROLE`, Atlas revokes the role's default privileges and what they gave it on all
+  tables, sequences, and routines of their schemas, and on the types and schemas Atlas manages.
+  Privileges on types Atlas does not manage, and on excluded objects in schemas that no default
+  privileges cover, need a manual `REVOKE`. With `schemas = false`, Atlas revokes only in the schemas
+  that default privileges are defined in.
+- A non-superuser Atlas user needs the privileges of each role whose default privileges it changes
+  (`GRANT migrations TO atlas WITH INHERIT TRUE;`) and, to set those of the roles it creates,
+  `ALTER ROLE atlas SET createrole_self_grant = 'inherit';`. Both need PostgreSQL 16 or later. Without
+  them, the apply fails with `permission denied to change default privileges`. On earlier versions,
+  use `GRANT migrations TO atlas;`. Exclude the admin role the user then sees:
+  `postgres[type=role|user|default_permission]`.
+- On managed services, exclude the provider's roles with their default privileges (Managed Providers).
 
 ## Ownership
 
@@ -214,6 +300,10 @@ inspection, and a diff through a local dev database plans a `REVOKE` from the ad
   ```
 
   This removes only the role object; its grants still show up.
+- With `default_permissions`, exclude the provider's roles together with their default privileges, as
+  the Atlas user cannot change those: `rds*[type=role|user|default_permission]` on RDS and Aurora,
+  `cloudsql*[type=role|user|default_permission]` on Cloud SQL, and
+  `azure*[type=role|user|default_permission]` on Azure.
 - Grants to the admin cannot be planned through a local dev database, where `postgres` is the
   superuser and its grants are implicit. To manage them, use a dev database where the admin is an
   ordinary role, such as a second Cloud SQL instance. The other providers behave the same with their

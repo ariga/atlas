@@ -15,6 +15,7 @@
         "./atlas-action",
         "./atlas-clickhouse",
         "./atlas-databricks",
+        "./atlas-lakebase",
         "./atlas-mssql",
         "./atlas-mysql",
         "./atlas-onboard",
@@ -25,8 +26,8 @@
         "./atlas-snowflake",
         "./atlas-spanner"
       ],
-      "version": "34c9d2ecad57",
-      "description": "Atlas skills for coding agents: database schema management with the Atlas CLI, guided onboarding of a project onto Atlas, the CI/CD steps of the Atlas actions, the Atlas Kubernetes Operator, and the specifics of each database: PostgreSQL, MySQL, and MariaDB.",
+      "version": "d66e97a25526",
+      "description": "Atlas skills for coding agents: database schema management with the Atlas CLI, guided onboarding of a project onto Atlas, the CI/CD steps of the Atlas actions, the Atlas Kubernetes Operator, and the specifics of each database: PostgreSQL, MySQL and MariaDB, SQL Server and Azure SQL, ClickHouse, Snowflake, Databricks, Databricks Lakebase, Redshift, Oracle Database, and Google Cloud Spanner.",
       "author": {
         "name": "Ariga",
         "url": "https://atlasgo.io"

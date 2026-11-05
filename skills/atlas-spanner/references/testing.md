@@ -115,8 +115,7 @@ the env's `test` block, as above. Without that, the run fails with
 - Constraints that Spanner checks against existing rows, such as `NOT NULL`, a shorter `STRING(n)`, a
   unique index, a foreign key, or a check, pass on an empty database. Only seeded rows show the failure.
 - The emulator is not production. It does not enforce mutation limits or quotas, and it accepts some
-  SQL that production rejects
-  (https://github.com/GoogleCloudPlatform/cloud-spanner-emulator/blob/master/README.md). A data
+  SQL that production rejects (`references/dev-database.md`, What the Emulator Does Not Do). A data
   migration that passes its test can still exceed the 80,000 mutations one production DML statement
   allows (`references/migrations.md`, Data Changes).
 - The emulator runs one read-write transaction or schema change at a time, so tests on one emulator

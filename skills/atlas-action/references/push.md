@@ -26,12 +26,10 @@ jobs:
           driver: postgres
 ```
 
-- `type` takes `migration_directory` (or `m`) or `schema` (or `s`). The action metadata lists
-  `migration`, which the CLI rejects. The GitLab component accepts only the listed values, so there,
-  create a migration repo with the first push instead. The orb and the Azure task have no `create-repo`
-  step.
+- `type` takes `migration_directory` (or `m`) or `schema` (or `s`). On GitLab, create a migration repo
+  with the first push instead. The orb and the Azure task have no `create-repo` step.
 - The step fails when the repo exists, so it runs once, not on every push.
-- `description` is accepted but not sent in this version. The `url` output links to the repo.
+- The `url` output links to the repo.
 
 ## `migrate/push`
 
@@ -73,8 +71,7 @@ jobs:
 - Keep the `latest` push. The registry stores the expected state that drift checks read only for
   untagged pushes, so a directory pushed only with a tag makes the deploy-time drift check print
   `no state found for version ...` and skip.
-- The `url` output links to the pushed version. It is set, though the action metadata does not declare
-  it, so on GitLab, which exports only declared outputs, it is not available to later jobs.
+- The `url` output links to the pushed version. On GitLab, it is not available to later jobs.
 - A `backup` list in the env's `repo` block replicates each push to storage such as S3: the push
   succeeds when Atlas Cloud or one backup accepts it, and `atlas://` reads fall back to the backups in
   order (https://atlasgo.io/guides/backup-continuity-migration-versioned).

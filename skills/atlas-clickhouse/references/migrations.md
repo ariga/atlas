@@ -93,23 +93,45 @@ Atlas leaves these changes out of the plan, without an error or a warning:
   smaller `FixedString`, or an unsupported conversion (`references/objects.md`, Columns). The prompt
   offers `Drop and recreate column "<name>" (data loss)`. A type change on a key, skip index, or
   projection column is not skipped: it fails the plan instead (`references/objects.md`, Columns).
-- A sort key, partition, primary key, or engine change on a `Replicated*` table whose engine holds
-  quoted arguments, such as an explicit ZooKeeper path:
-
-  ```
-  Table "events" must be recreated for this change, and its explicit ZooKeeper path cannot be shared with a replacement holding its rows
-  ```
-
-- Any change to a `TimeSeries` table:
-  `Table "ts" must be recreated for this change, and the data of its inner tables is dropped with it`.
 
 The rest of the plan still runs. A diff that holds only skipped changes reports
 `The migration directory is synced with the desired state, no changes to be made`, or
 `Schema is synced, no changes to be made`. After every diff, check each edit against the plan. When one
 is missing, tell the user, and either write the migration by hand with `atlas migrate new`, or ask the
 user to run the command in a terminal and choose the recreate. Choosing `Abort` fails with the reason,
-such as `Enum conversion changes value for column "status"`, or
-`Recreate the table manually to apply this change`.
+such as `Enum conversion changes value for column "status"`.
+
+## Table Recreation
+
+Two table changes are applied by dropping the table and creating it again, which loses its rows:
+
+- A sort key, partition, primary key, or engine change on a `Replicated*` table whose engine sets a
+  fixed ZooKeeper path, which a copy of the table cannot reuse. A path built from `{database}` and
+  `{table}` counts as fixed. A table whose path uses the `{uuid}` macro or the server default, or that
+  the change moves to a new path, is rebuilt into a copy instead and keeps its rows.
+- Any change to a `TimeSeries` table.
+
+In a terminal, Atlas asks first, offering `Drop and recreate table "<name>" (data loss)`; `Abort` fails
+with `Recreate the table manually to apply this change`. Without one, the command fails:
+
+```
+Table "events" must be dropped and recreated for this change, and its data will be lost: its engine sets the ZooKeeper path '/clickhouse/tables/{shard}/default/events', which a copy of the table cannot reuse.
+Recreate the table manually, or set 'allow_recreate' in the 'modify_table' block of the diff policy to plan it
+```
+
+Tell the user the rows will be lost. To keep them, back them up first, or write the migration by hand
+with `atlas migrate new`. Once the user accepts the loss, the `modify_table` diff policy plans the drop
+and create without asking (Diff Policies below):
+
+```hcl
+env "prod" {
+  diff "clickhouse" {
+    modify_table {
+      allow_recreate = true
+    }
+  }
+}
+```
 
 ## Mutations
 
@@ -160,6 +182,8 @@ env "prod" {
   matches `match`, a glob: on the table name in any database, or on `database.table` when it holds a
   dot. Values override settings of the same name. A new table without any settings, such as a
   non-MergeTree table, gets nothing. A bad glob fails with `syntax error in pattern`.
+- `modify_table { allow_recreate = true }` plans the table recreations that lose rows without asking
+  (Table Recreation above). Set it only after the user accepts the loss.
 
 ## Transactions
 
@@ -198,8 +222,8 @@ Add `mode=cluster` to the URL and the dev URL (https://atlasgo.io/guides/clickho
 
 ```hcl
 env "prod" {
-  url = "clickhouse://user:pass@ch-host:9000/app?mode=cluster"
-  dev = "clickhouse://user:pass@ch-host:9000/app_dev?mode=cluster"
+  url = "clickhouse://user:pass@prod-host:9000/app?mode=cluster"
+  dev = "clickhouse://user:pass@dev-host:9000/app_dev?mode=cluster"
 }
 ```
 

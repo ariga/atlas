@@ -70,8 +70,8 @@ Types are written in upper case, as Databricks spells them:
 
 - Aliases normalize on the dev catalog: `LONG` reads back as `BIGINT`, so prefer the canonical names.
 - Write `DECIMAL` with its precision and scale, `DECIMAL(10,2)`, as inspection prints it.
-- `VARIANT`, `INTERVAL`, `GEOGRAPHY`, `GEOMETRY`, and `OBJECT` have no HCL form that Atlas can write
-  (`references/objects.md`, Types).
+- `VARIANT`, `INTERVAL`, `GEOGRAPHY`, and `GEOMETRY` are written as inspection prints them. `OBJECT`
+  has no form that Atlas can write (`references/objects.md`, Types).
 
 ## Tables
 
@@ -213,6 +213,34 @@ view "recent_orders" {
   `unknown attribute default in block of type column`, `unknown block type mask in block of type column`,
   and `unknown block type primary_key in block of type view`.
 - SQL bodies can interpolate names, so a rename follows them: `FROM ${table.orders.name}`.
+
+### Metric Views
+
+A metric view is a `view` with `metrics = true`. Its `as` holds the YAML definition, not a query:
+
+```hcl
+view "revenue_metrics" {
+  schema     = schema.retail_analytics
+  metrics    = true
+  comment    = "Revenue KPIs by region and day"
+  as         = <<-SQL
+  version: 0.1
+  source: retail_analytics.orders
+  dimensions:
+    - name: region
+      expr: region
+    - name: order_day
+      expr: DATE(placed_on)
+  measures:
+    - name: total_revenue
+      expr: SUM(total_amount)
+  SQL
+  depends_on = [table.orders]
+}
+```
+
+- Its columns come from the YAML, and Atlas does not inspect or compare them.
+- A top-level `comment` key in the YAML is the view's comment, the same as the `comment` attribute.
 
 ## Materialized Views
 

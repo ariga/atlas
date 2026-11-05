@@ -45,8 +45,10 @@ A view's properties are different: they come from its definition, so removing on
   managed tables, so another provider, such as `"parquet"`, needs a `location`.
 - The provider is set on creation only. A change fails with
   `databricks: alter table "...": the data source of a table is set on creation only`.
-- On the dev catalog, Atlas creates every table without its location, so the dev table never points
-  at the target's storage (`references/dev-database.md`, What normalization keeps).
+- Inspection leaves `location` out of managed tables, even where Unity Catalog reports a
+  `__unitystorage` path for them.
+- On the dev catalog, Atlas creates external Delta tables at a managed path instead of the target's
+  path (`references/dev-database.md`, What normalization keeps).
 
 ## Partitioning and Clustering
 
@@ -120,9 +122,11 @@ comment both change takes two statements. Each kind of change:
 | Mask | `ALTER COLUMN c SET MASK ...` or `DROP MASK` |
 | Type or collation | `ALTER COLUMN c TYPE <type> [COLLATE <collation>]` |
 | Drop | `DROP COLUMN IF EXISTS c` |
+| A field of a `STRUCT`, also nested or inside an `ARRAY` or `MAP` | One statement per field: `ADD COLUMN c.f ...`, `ALTER COLUMN c.f TYPE ...`, `ALTER COLUMN c.f FIRST` or `AFTER ...`, `DROP COLUMN IF EXISTS c.f` |
 
-- A drop first plans `ALTER TABLE ... SET TBLPROPERTIES ('delta.columnMapping.mode' = 'name')`, which
-  Delta requires for it. Expect that statement in every such plan.
+- A drop, of a column or a struct field, first plans
+  `ALTER TABLE ... SET TBLPROPERTIES ('delta.columnMapping.mode' = 'name')`, which Delta requires for
+  it. Expect that statement in every such plan.
 - A renamed column is planned as a drop and an add, and its data is lost (Renames below).
 - Atlas plans a type change as `ALTER COLUMN ... TYPE` and leaves it to Databricks to accept it. Delta
   accepts only some type changes on an existing column. When Databricks rejects one, add a new column,
@@ -170,12 +174,14 @@ ALTER TABLE `default`.`users` RENAME COLUMN `email` TO `customer_email`;
 ## Types
 
 Atlas models the numeric, string, binary, boolean, date, and timestamp types (including
-`TIMESTAMP_NTZ`), `DECIMAL(p,s)`, and the composite `ARRAY<...>`, `MAP<..., ...>`, and `STRUCT<...>`.
+`TIMESTAMP_NTZ`), `DECIMAL(p,s)`, `VARCHAR(n)` and `CHAR(n)` (a length change is a type change), and
+the composite `ARRAY<...>`, `MAP<..., ...>`, and `STRUCT<...>`.
 
-`VARIANT`, `OBJECT`, `INTERVAL`, `GEOGRAPHY`, `GEOMETRY`, and type names Atlas does not know are
-inspected as they are, so inspecting a schema that holds them works. Atlas cannot write them:
-creating such a column fails with `databricks: unsupported type: "VARIANT"`, and a plan that compares a
-table holding one fails as well. Keep those tables out of Atlas with `exclude`, for example
+`VARIANT`, `INTERVAL`, `GEOGRAPHY`, and `GEOMETRY` (with an SRID, such as `GEOMETRY(4326)`) are
+inspected as Databricks reports them and written back the same way, so tables that hold them are
+created and diffed. `OBJECT` and type names Atlas does not know are inspected as they are, so inspecting
+a schema that holds them works, but creating such a column fails with
+`databricks: unsupported type: "OBJECT"`. Keep those tables out of Atlas with `exclude`, for example
 `exclude = ["default.raw_events"]` at catalog scope, and manage them by hand.
 
 ## Views and Materialized Views
@@ -185,7 +191,7 @@ grammar covers the change. Otherwise it rewrites them:
 
 | Change | Plain view | Materialized view |
 |--------|-----------|-------------------|
-| Query (`as`) | `ALTER VIEW ... AS ...` | Rewrite |
+| Query (`as`) | `ALTER VIEW ... AS ...`; rewrite when the view declares `column` blocks | Rewrite |
 | Properties | `ALTER VIEW ... SET` or `UNSET TBLPROPERTIES` | Rewrite |
 | Schema binding (`schema_binding`) | `ALTER VIEW ... WITH SCHEMA ...` | Not a clause of a materialized view |
 | Refresh schedule (`refresh`) | Not a clause of a plain view | `ALTER MATERIALIZED VIEW ... ADD`, `ALTER`, or `DROP SCHEDULE` |
@@ -206,6 +212,12 @@ grammar covers the change. Otherwise it rewrites them:
   stable, and migrations show Databricks' form.
 - A refresh interval reads back in a unit Databricks picks (`"1 DAY"` as `"1 DAYS"`). Atlas compares
   intervals as durations, so the difference is not a change.
+- A metric view (`metrics = true`) changes its YAML with `ALTER VIEW ... AS $$ ... $$` and its comment
+  with `COMMENT ON VIEW`, in place, so its grants stay. Atlas creates it after the tables and views its
+  YAML `source` and `joins` name. Turning a view into a metric view, or the reverse, is a drop and a
+  create (`references/hcl.md`, Metric Views).
+- Databricks reorders keys, adds blank lines, and quotes values when it stores a version 1.1 metric
+  view. Atlas compares the YAML as a document, so these rewrites are not changes.
 - Inspection skips the tables Databricks keeps for pipelines: names starting with `event_log_` and
   `__materialization_mat_`.
 

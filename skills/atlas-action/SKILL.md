@@ -91,7 +91,7 @@ for the project's engine, such as `atlas-postgres` or `atlas-mysql`, and for Kub
 | `schema/lint` | Lints the whole desired schema, comments it | Pull request |
 | `script/exec`, `script/query`, `script/loop` | Data Scripts on a target | Schedule or on demand |
 | `script/push` | Pushes Data Scripts to the registry | Merge to the default branch |
-| `security/scan` | Reports vulnerable extensions in databases | Schedule |
+| `security/scan` | Reports vulnerable server versions and extensions in databases | Schedule |
 | `monitor/schema` | Sends a schema snapshot to Atlas Cloud monitoring | Schedule |
 | `create-repo` | Creates a registry repo | Once |
 
@@ -163,7 +163,7 @@ for the project's engine, such as `atlas-postgres` or `atlas-mysql`, and for Kub
 | `--latest, --git-base, and --base are mutually exclusive` | Remove `latest` (and `git`) from the env's `lint` block, and the step's `git-base` input: the action always passes `--base` |
 | Lint ran, but no comment on the pull request | Not a `pull_request` event, or `GITHUB_TOKEN`/`pull-requests: write` missing (`references/setup.md`) |
 | `Resource not accessible by integration` | The job's token cannot write to the pull request: add `permissions: pull-requests: write` to the job |
-| Where is the lint report link? | The `report-url` output; the metadata's `url` output is never set |
+| Where is the lint report link? | The `report-url` output |
 | Lint without Atlas Cloud | The step needs the login and a registry repo. Without a registry, run `atlas migrate lint --env ci --git-base origin/<branch>` in a plain step (`references/lint.md`) |
 | A CLI step ignores the `lint` policy in `atlas.hcl` | Atlas reads `atlas.hcl` only with `--env`, or with `-c` for its top-level blocks: run `atlas migrate lint --env ci` |
 | `Invalid version: <ref>` | Pin a release tag, or the full SHA of a release commit (v1.15.4 or later); for any other commit, build with `ariga/atlas-action/setup@<sha>` |
@@ -186,6 +186,7 @@ for the project's engine, such as `atlas-postgres` or `atlas-mysql`, and for Kub
 | `found multiple schema plans, please approve or delete the existing plans` | Delete stale pending plans in Atlas Cloud, or pass `plan` |
 | `The plan "From" hash does not match the current state hash` | Plan, approve, and apply must read the same state; re-plan |
 | `plan approval pending, review here: <url>` | The user approves in Atlas Cloud and reruns, or the step sets `wait-timeout` |
+| `auto-approve is not allowed when a lint policy is set to "<policy>"` | The env sets `lint { review }`, which decides the approval: remove `auto-approve: true` (`references/declarative.md`) |
 | `exec: "docker": executable file not found in $PATH` | No Docker where the step runs: use a service container dev database |
 | `role "..." already exists` on a later step | A shared service-container dev database keeps roles: separate the steps |
 | `Failed to download atlas-action binary from all sources` | Allow `atlasbinaries.com` and `release.ariga.io`, or build with `ariga/atlas-action/setup` |

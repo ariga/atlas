@@ -106,7 +106,8 @@ Production advances only to a version a lower environment already runs. In the p
 `cloud_databases` data source reads that environment's current version from Atlas Cloud, and
 `migration { to_version = ... }` pins production to it; or a pre-execution `deny` check blocks a higher
 version. Gate the production job with a GitHub environment that has required reviewers
-(`environment: production`). The lower environment's deploys must be recorded, from `atlas://` or with
+(`environment: production`; on a private repository, they need GitHub Enterprise, see
+`references/setup.md`). The lower environment's deploys must be recorded, from `atlas://` or with
 `report = true`, or `cloud_databases` has no version to read. Guide:
 https://atlasgo.io/guides/environment-promotion.
 

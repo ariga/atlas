@@ -105,7 +105,7 @@ versions applied with `migrate/set`, so later deploys do not run them again:
     version: ${{ steps.rebase.outputs.latest_version }}
 ```
 
-Run this only when the base was merged into the branch and the directory changed; the README of
-ariga/atlas-action has a detection step for that. The job holds that database's URL, which the
-branch's code can read: use the flow only for a shared development database. Guide:
-https://atlasgo.io/faq/out-of-order-migrations.
+Run this only on pushes to the shared branch (such as `develop`), after the base was merged into it and
+the directory changed. Keep `DEV_DATABASE_URL` in an environment whose deployment branches are limited
+to that branch: pull request and feature branch jobs never get the URL (`references/setup.md`). Use the
+flow only for a shared development database. Guide: https://atlasgo.io/faq/out-of-order-migrations.

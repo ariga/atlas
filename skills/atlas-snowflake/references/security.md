@@ -9,7 +9,8 @@ https://atlasgo.io/hcl/snowflake#permission.
 
 Roles and permissions are left out of inspection and planning by default. Enable them on an env whose
 URL and dev URL are database-scoped: a schema-scoped connection never reads roles or grants
-(`references/dev-database.md`). The whole driver needs `atlas login`.
+(`references/dev-database.md`). The whole driver needs `atlas login`. If `atlas whoami` shows no login,
+ask the user to run `atlas login`; a user without an account can start a free trial with it.
 
 ```hcl
 env "platform" {
@@ -137,8 +138,9 @@ permission {
 - `grantable = true` adds `WITH GRANT OPTION`. Snowflake refuses it on objects in a schema with
   `managed_access = true`, and the apply fails with
   `003510 (23001): SQL execution error: Specification of grant option is not supported in a managed access schema`.
-- `for` takes `DATABASE`, `schema.X`, `table.X`, `view.X`, `dynamic_table.X`, `hybrid_table.X`,
-  `external_table.X`, and `iceberg_table.X`. Grants on typed tables are planned `ON TABLE`.
+- `for` takes `DATABASE`, `schema.X`, `table.X`, `view.X`, `dynamic_table.X`, `interactive_table.X`,
+  `hybrid_table.X`, `external_table.X`, and `iceberg_table.X`. Grants on typed tables are planned
+  `ON TABLE`.
 - A grant on the database that the file does not declare is planned as a `REVOKE`. Database roles
   receive `USAGE` on their database when created, so Atlas neither inspects nor plans that one.
 - Ownership is not modeled: `OWNERSHIP` grants are not inspected, and objects belong to the role that
@@ -191,8 +193,8 @@ permission {
 ```
 
 - `for` takes `ref("schema.<name>")`, `ref("table.<schema>.<name>")`, `ref("view.<schema>.<name>")`,
-  and, for typed tables, `ref("dynamic_table.<schema>.<name>")`, `hybrid_table`, `external_table`, and
-  `iceberg_table`. A typed table reference without the schema fails with
+  and, for typed tables, `ref("dynamic_table.<schema>.<name>")`, `interactive_table`, `hybrid_table`,
+  `external_table`, and `iceberg_table`. A typed table reference without the schema fails with
   `permission.for reference to undeclared dynamic_table "hourly" must be qualified as ref("dynamic_table.<schema>.<name>")`.
 - A reference of the wrong kind fails with
   `permission.for references dynamic_table "PUBLIC.events", which is declared as a table`.

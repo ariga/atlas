@@ -96,7 +96,8 @@ atlas tool docker kill --name my-db
 ## The `docker` Block
 
 A `docker` block configures the dev container. The `docker` and `dev` blocks need `atlas login`, which
-SQL Server needs anyway:
+SQL Server needs anyway. If `atlas whoami` shows no login, ask the user to run `atlas login`; a user
+without an account can start a free trial with it.
 
 ```hcl
 docker "sqlserver" "dev" {
@@ -156,11 +157,9 @@ env "local" {
 
 ## Versions, Compatibility Level, and Collation
 
-- Atlas gates features by the database's compatibility level, not the server version: a database at
-  level 100 on SQL Server 2022 is treated as SQL Server 2008. Below 130 (2016), views and triggers are
-  changed with `DROP` and `CREATE` instead of `CREATE OR ALTER`, and `DROP ... IF EXISTS` is not used.
-  `inline = true` on a scalar function needs level 150 (2019). The lowest supported level is 100.
-  Give the dev database the target's level, in the `baseline` or `init`:
+- Plans depend on the database's compatibility level, not only the server version. `inline = true` on
+  a scalar function needs level 150 (2019). The lowest supported level is 100. Give the dev database
+  the target's level, in the `baseline` or `init`:
   `ALTER DATABASE CURRENT SET COMPATIBILITY_LEVEL = 140`.
 - Match the target's collation. On a case-sensitive dev database, a view that writes `Orders` for the
   table `orders` fails to load with `mssql: Invalid object name 'Orders'`, and on a case-insensitive
@@ -177,9 +176,20 @@ env "local" {
   azuresql://<instance>.database.windows.net?fedauth=ActiveDirectoryDefault&database=master
   ```
 
-  `ActiveDirectoryDefault` uses the environment's Azure credentials, such as the Azure CLI. With SQL
-  authentication, use `sqlserver://`. The dev database is still a Docker container on the matching
-  SQL Server version.
+  `ActiveDirectoryDefault` gets a token from the Azure credentials where Atlas runs: environment
+  variables, a workload identity, a managed identity, or an Azure CLI login. The URL holds no password,
+  and no data source is needed (https://atlasgo.io/guides/deploying/secrets#using-iam-authentication):
+
+  ```hcl
+  env "azure" {
+    url = "azuresql://myserver.database.windows.net?fedauth=ActiveDirectoryDefault&database=mydb"
+  }
+  ```
+
+  To pass a token from the `azure_db_token` data source instead, use
+  `fedauth=ActiveDirectoryServicePrincipalAccessToken` with an empty user
+  (https://atlasgo.io/atlas-schema/projects#data-source-azure_db_token). With SQL authentication, use
+  `sqlserver://`. The dev database is still a Docker container on the matching SQL Server version.
 - Fabric Data Warehouse cannot run in Docker: the dev URL is a separate, empty warehouse on
   `azuresql://`. Atlas adds `-- atlas:txmode none` to every migration file and `NOT ENFORCED` to keys,
   and a primary key sets `nonclustered = true` (https://atlasgo.io/guides/azure-fabric).
@@ -188,7 +198,7 @@ env "local" {
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `The sqlserver driver is available only to Atlas Pro users`, or `login is required to use the 'sqlserver' driver` | Not logged in | `atlas login` |
+| `The sqlserver driver is available only to Atlas Pro users`, or `login is required to use the 'sqlserver' driver` | Not logged in | Ask the user to run `atlas login`; a user without an account can start a free trial with it |
 | Inspection prints an empty `schema "dbo" {}` for a database with tables | The database is in the URL path, so Atlas connected to `master` | Move it to `?database=<name>` |
 | `mssql: login error: Cannot open database "x" that was requested by the login` | The database does not exist, or the login has no user in it | Create the database, or fix `database` |
 | `mssql: login error: Login failed for user 'x'` | Wrong user or password, or a special character breaks the URL | Percent-encode the password, or use `urlescape` |

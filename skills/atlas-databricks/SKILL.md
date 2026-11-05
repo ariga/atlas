@@ -1,6 +1,6 @@
 ---
 name: atlas-databricks
-description: "Databricks specifics for Atlas: the extended binary and login, connection URLs and scope (catalog vs schema), the dev catalog (no Docker), Delta table properties, managed and external tables, partitioning and liquid clustering, generated and identity columns, defaults and column mapping, renames, informational keys and checks, collations, column masks and row filters, views and materialized views, SQL and Python functions, procedures, Unity Catalog grants, no transactions and no locks, partial failures, schema and migration tests, and custom lint rules. Use with the atlas skill whenever Atlas manages a Databricks database."
+description: "Databricks specifics for Atlas: the extended binary and login, connection URLs and scope (catalog vs schema), the dev catalog (no Docker), Delta table properties, managed and external tables, partitioning and liquid clustering, generated and identity columns, defaults and column mapping, renames, informational keys and checks, collations, column masks and row filters, views, metric views, and materialized views, SQL and Python functions, procedures, Unity Catalog grants, no transactions and no locks, partial failures, schema and migration tests, and custom lint rules. Use with the atlas skill whenever Atlas manages a Databricks database. For Databricks Lakebase, use atlas-lakebase."
 ---
 
 # Atlas for Databricks
@@ -10,6 +10,10 @@ commands; this skill covers the rules, edge cases, and answers that differ on Da
 through a SQL warehouse and manages Unity Catalog objects: schemas, Delta tables, views, materialized
 views, functions, procedures, and grants.
 
+Databricks Lakebase is a managed PostgreSQL service, not a Unity Catalog database: Atlas manages it with
+the `postgres` driver, so use the `atlas-lakebase` skill instead, with `atlas-postgres`
+(https://atlasgo.io/guides/postgres/databricks-lakebase).
+
 ## Files
 
 This skill is `SKILL.md` plus seven reference files under `references/`, each served at
@@ -17,10 +21,10 @@ This skill is `SKILL.md` plus seven reference files under `references/`, each se
 
 | File | Read it for |
 |------|-------------|
-| `references/dev-database.md` | Installing the extended binary, connection URLs and their scope, the dev catalog and its clean checks, what normalization keeps |
+| `references/dev-database.md` | Installing the extended binary, connection URLs and their scope, the dev catalog and its clean checks, what normalization keeps, the `dev` block and `baseline` |
 | `references/security.md` | Grants on schemas, tables, views, and routines, Unity Catalog principals, privileges, grants on objects the schema does not declare, masks and row filters |
-| `references/objects.md` | Delta properties, managed and external tables, partitioning and clustering, keys and checks, generated and identity columns, defaults, column changes, renames, collations, types, views, materialized views, routines, what Atlas does not manage |
-| `references/hcl.md` | Writing the schema in HCL: the `NOT NULL` default, types, every Databricks block and attribute, views, materialized views, functions, procedures, permissions |
+| `references/objects.md` | Delta properties, managed and external tables, partitioning and clustering, keys and checks, generated and identity columns, defaults, column changes, renames, collations, types, views, metric views, materialized views, routines, what Atlas does not manage |
+| `references/hcl.md` | Writing the schema in HCL: the `NOT NULL` default, types, every Databricks block and attribute, views, metric views, materialized views, functions, procedures, permissions |
 | `references/migrations.md` | Lint codes on Databricks, `--tx-mode none` and the `atlas:txmode none` directive, partial failures and recovery, no locks, the revisions table, baselines |
 | `references/testing.md` | Testing every change: why `atlas schema test` does not run on Databricks, migration tests with seeded rows that also cover functions, views, masks, and checks, CI |
 | `references/custom-rules.md` | Writing a custom lint rule in the HCL rule language when no analyzer covers a check: predicates, operators, what each Databricks object exposes, examples |
@@ -80,7 +84,7 @@ Files section to `../atlas/references/<name>`.
 10. Review every plan that touches a materialized view. A change to its query, columns, comment, or
     storage clauses rewrites it with `CREATE OR REPLACE MATERIALIZED VIEW`; only its refresh schedule,
     row filter, and column comments and masks change in place. A plain view's query changes in place
-    with `ALTER VIEW ... AS` (`references/objects.md`).
+    with `ALTER VIEW ... AS`; one that declares `column` blocks is rewritten (`references/objects.md`).
 11. Grants are planned only with `mode { permissions = true }` in the env's `schema` block. Grantees are
     Unity Catalog principals that already exist; Atlas creates none. Once the mode is on, a grant the
     desired state does not declare on a managed object is revoked (`references/security.md`).
@@ -110,10 +114,10 @@ Files section to `../atlas/references/<name>`.
 | The same error from every case of `atlas schema test` | Schema tests do not run on Databricks: cover the change with `test "migrate"` cases (`references/testing.md`, Schema Tests Do Not Run) |
 | A plan drops schemas with `DROP SCHEMA ... CASCADE` | Catalog scope covers every schema: declare them, limit the run with `--schema`, or use schema scope (Rule 2) |
 | A table property was removed from the schema, and the plan has no change | Expected: write `ALTER TABLE ... UNSET TBLPROPERTIES` by hand (Rule 6) |
-| The migration's `CREATE TABLE` lists every `delta.*` property | The desired state lists them: a SQL source, or an inspected HCL file. Trim them (`references/objects.md`, Table Properties) |
+| The migration's `CREATE TABLE` lists every `delta.*` property | The desired state lists them, often an inspected HCL file. Trim them (`references/objects.md`, Table Properties) |
 | `the PARTITIONED BY clause of a table is set on creation only` | Partitioning cannot change in place: create a new table and copy the data (Rule 7) |
 | `a generated column is set on table creation only`, or `the generated clause of a column is set on creation only` | Identity and generated columns exist only at table creation: use a new table, or a plain column (Rule 7) |
-| `unsupported type: "VARIANT"` | Atlas inspects `VARIANT`, `INTERVAL`, `GEOGRAPHY`, `GEOMETRY`, and `OBJECT` columns but cannot create or alter them (`references/objects.md`, Types) |
+| `unsupported type: "OBJECT"`, or another type name | Atlas inspects `OBJECT` and type names it does not know, but cannot create them: keep the table out with `exclude` (`references/objects.md`, Types) |
 | A rename shows up as a drop and an add, or `unknown attribute renamed_from in block of type column` | Databricks has no `renamed_from`: write the rename in a migration file (`references/objects.md`, Renames) |
 | `unsupported modify table change` after editing a check or renaming a primary key | Give the changed check a new name; rename the key in a hand-written migration (`references/objects.md`, Keys and Constraints) |
 | Lint reports `CD101` or `CD103` on a key that only changed | Atlas drops and re-adds a modified foreign or primary key (Rule 9) |

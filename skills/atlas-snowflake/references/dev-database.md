@@ -126,8 +126,11 @@ A database has its own copy in the dev database; an account-level object does no
   an env scoped to it with `include`, and plan with names that do not exist yet.
 - That collision holds after the first apply too: once a declared resource monitor exists, every later
   plan fails while loading the desired state, with
-  `create resource monitor "<name>": 002002 (42710): SQL compilation error: ... already exists`. Create
-  such objects once, then remove their blocks from the desired state, or keep them out of Atlas.
+  `create resource monitor "<name>": 002002 (42710): SQL compilation error: ... already exists`. Point
+  that env's `dev` at a database on a separate Snowflake account, as the docs do for account-level
+  objects (https://atlasgo.io/changelog/snowflake-warehouses-resource-monitors), or keep them out of
+  Atlas: turn their switch in `mode "snowflake"` off first, since removing a block while it is on
+  plans its `DROP`.
 - Replaying a migration directory runs its SQL on the dev database as written. A `CREATE ROLE` or
   `CREATE WAREHOUSE` in a migration file runs against the account on every replay, and fails once the
   object exists. Keep account-level objects in a declarative env (`references/security.md`).

@@ -1,6 +1,6 @@
 ---
 name: atlas-postgres
-description: "PostgreSQL specifics for Atlas: dev database and URL scope (search_path), extensions, roles and grants, ALTER DEFAULT PRIVILEGES, ownership, row-level security, sequences and serial or identity columns, enums and column type changes, partitions, triggers, concurrent indexes, lock-safe migrations, schema and migration tests, custom lint rules, managed services (RDS, Cloud SQL, Supabase, Neon, Azure), and connection poolers. Use with the atlas skill whenever Atlas manages a PostgreSQL database."
+description: "PostgreSQL specifics for Atlas: dev database and URL scope (search_path), extensions, roles and grants, default privileges (ALTER DEFAULT PRIVILEGES, default_permission), ownership, row-level security, sequences and serial or identity columns, enums and column type changes, partitions, triggers, concurrent indexes, lock-safe migrations, schema and migration tests, custom lint rules, managed services (RDS, Cloud SQL, Supabase, Neon, Azure), and connection poolers. Use with the atlas skill whenever Atlas manages a PostgreSQL database."
 ---
 
 # Atlas for PostgreSQL
@@ -18,7 +18,7 @@ This skill is `SKILL.md` plus seven reference files under `references/`, each se
 | File | Read it for |
 |------|-------------|
 | `references/dev-database.md` | The dev URL and its scope, `atlas tool docker`, the `docker` block and `baseline`, extensions, RDS, Cloud SQL, Supabase, Neon, Azure, connection URLs |
-| `references/security.md` | Roles and users, GRANT and REVOKE, `ALTER DEFAULT PRIVILEGES`, ownership, row-level security, provider admin roles |
+| `references/security.md` | Roles and users, GRANT and REVOKE, default privileges (`ALTER DEFAULT PRIVILEGES`, `default_permission`), ownership, row-level security, provider admin roles |
 | `references/objects.md` | Sequences, serial and identity columns, enums, domains, column type changes, functions, triggers, views, partitions, indexes, what Atlas does not manage |
 | `references/hcl.md` | Writing the schema in HCL: the `NOT NULL` default, column types and `sql()`, defaults, references, keys, indexes, table settings, function bodies, seed data, input variables |
 | `references/migrations.md` | Locks and concurrent indexes, `PG*` lint findings, transactions, connection poolers, lock-safe `NOT NULL`, seed data |
@@ -55,8 +55,16 @@ Files section to `../atlas/references/<name>`.
 3. The dev database runs the target's major version and extensions: `docker://postgres/<version>/dev`.
    Create what the schema uses but does not manage, such as extensions, provider roles, or other
    teams' schemas, in a `docker` block `baseline`. Never point `dev` at a real environment's database.
-4. `ALTER DEFAULT PRIVILEGES` in the desired state never appears in a migration: Atlas runs it on the dev
-   database and plans one GRANT per object it covers. Put it before those objects, without `FOR ROLE`.
+4. Who creates the objects decides how their privileges are managed (`references/security.md`, Default
+   Privileges):
+   - Atlas migrates them, in the declarative or the versioned workflow: declare their grants, and keep
+     `default_permissions` off. `ALTER DEFAULT PRIVILEGES` in the desired state never appears in a
+     migration: Atlas runs it on the dev database and plans one GRANT per object it covers. Put it
+     before those objects, without `FOR ROLE`.
+   - Another tool creates them, such as the application's migration tool: manage access from an env
+     that excludes those objects and sets `mode "postgres" { default_permissions = true }`. Never
+     enable it in an env that migrates the schema: default privileges only decide what objects created
+     later get.
 5. Managing roles needs database scope and `mode { roles = true }`. Mark every role Atlas must not change
    with `external = true`, and create the external roles that grants name in the dev `baseline`. On a
    managed service, exclude the provider's admin role
@@ -118,6 +126,10 @@ Files section to `../atlas/references/<name>`.
 | A new role needs `SELECT` on thousands of tables | Make it a member of `pg_read_all_data` instead of granting per table (`references/security.md`) |
 | Objects on the dev database belong to `postgres`, but production has other owners | Owners are not part of the desired state (`references/security.md`, Ownership) |
 | The migration has no `ALTER DEFAULT PRIVILEGES` | Expected: Atlas plans the GRANTs it implies, per object (`references/security.md`) |
+| `permission denied to change default privileges` | The user Atlas connects as needs the privileges of the owner role: `GRANT <owner> TO <atlas user> WITH INHERIT TRUE` (`references/security.md`, When another tool creates the objects) |
+| `postgres: managing default permissions requires enabling "default_permissions" in the schema mode` | `default_permission` blocks need `mode "postgres" { default_permissions = true }`, in an env that manages access only (Rule 4) |
+| `postgres: default_permission blocks are not supported in schema scope, remove search_path from the URLs` | Default privileges belong to the database: remove `search_path` from both `url` and `dev` |
+| A `default_permission` change is planned again on every run | The block grants to a superuser, a predefined `pg_*` role, or the owner itself. Atlas does not manage these, so delete the block |
 | A grant on a sequence turned a `bigserial` column into `bigint` | Expected: the sequence is now managed explicitly (`references/objects.md`) |
 
 ## Documentation
