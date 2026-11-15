@@ -119,6 +119,35 @@ atlas schema apply \
 
 📖 [Getting Started docs](https://atlasgo.io/getting-started/)
 
+## Contributing
+
+We maintain a lot of open source code, including the Atlas core engine. For some projects, including this one,
+we don't accept public pull requests. We know that's disappointing if you came here to send a fix, so here's
+the reasoning.
+
+Atlas runs in CI and deployment pipelines and connects to production databases with credentials that can change
+them. That's a high responsibility, and every decision about how we build Atlas starts from it. If a bad commit
+ever shipped in Atlas, it would run with those credentials in every pipeline that pulled the release.
+
+Since mid-2025, several popular open source projects have been hit by supply chain attacks that started the same
+way: a pull request from a stranger. Nobody had to merge anything. Opening the pull request was enough to start
+a chain that ended with malicious releases published under the project's name. These are strong teams, and it
+still happened to them. We decided to remove the path instead of relying on never making a mistake.
+
+Every change to Atlas comes from our team, goes through a workflow we can't enforce on outside contributors, and
+is tested on our e2e and cloud environments for backward compatibility, regressions and performance before it's
+released.
+
+None of this changes what's open. The code here is yours to read, fork and build on. And if something is broken
+or missing, please tell us:
+
+- [GitHub issues](https://github.com/ariga/atlas/issues)
+- The Intercom chat on [atlasgo.io](https://atlasgo.io)
+- Your support channel, if you're a customer
+
+Atlas is built to make database changes safe, predictable and secure. We hold changes to Atlas itself to the
+same standard.
+
 ## Migration Linting
 
 Atlas ships with 50+ built-in [analyzers](https://atlasgo.io/lint/analyzers) that review your migration files
