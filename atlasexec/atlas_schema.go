@@ -253,9 +253,11 @@ type (
 		Env       string
 		Vars      VarArgs
 
-		URL         string // URL of the schema to clean. (required)
-		DryRun      bool   // If true, --dry-run is set.
-		AutoApprove bool   // If true, --auto-approve is set.
+		URL         string   // URL of the schema to clean. (required)
+		Exclude     []string // Glob patterns of resources to keep, i.e. not to drop.
+		Include     []string // Glob patterns of resources to select for dropping.
+		DryRun      bool     // If true, --dry-run is set.
+		AutoApprove bool     // If true, --auto-approve is set.
 	}
 	// SchemaClean represents the result of a 'schema clean' command.
 	SchemaClean struct {
@@ -807,6 +809,12 @@ func (c *Client) SchemaClean(ctx context.Context, params *SchemaCleanParams) (*S
 	// Flags of the 'schema clean' sub-commands
 	if params.URL != "" {
 		args = append(args, "--url", params.URL)
+	}
+	if len(params.Exclude) > 0 {
+		args = append(args, "--exclude", listString(params.Exclude))
+	}
+	if len(params.Include) > 0 {
+		args = append(args, "--include", listString(params.Include))
 	}
 	switch {
 	case params.DryRun:
