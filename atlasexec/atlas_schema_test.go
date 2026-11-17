@@ -766,6 +766,16 @@ func TestSchema_Clean(t *testing.T) {
 			},
 			args: "schema clean --format {{ json . }} --url sqlite://app1.db --auto-approve",
 		},
+		{
+			name: "with exclude and include",
+			params: &atlasexec.SchemaCleanParams{
+				URL:         "postgres://localhost:5432/dev",
+				Exclude:     []string{"public", "audit"},
+				Include:     []string{"app*"},
+				AutoApprove: true,
+			},
+			args: "schema clean --format {{ json . }} --url postgres://localhost:5432/dev --exclude public,audit --include app* --auto-approve",
+		},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
