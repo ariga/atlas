@@ -1,0 +1,142 @@
+atlas schema apply -u URL --to file://schema.sql --dev-url DEV_URL --auto-approve
+cmpshow users 1.sql
+
+atlas schema apply -u URL --to file://schema.sql --dev-url DEV_URL --auto-approve
+stdout 'Schema is synced, no changes to be made'
+
+atlas schema inspect -u URL > inspected.hcl
+cmp inspected.hcl 1.hcl
+
+atlas schema inspect -u URL --format '{{ sql . }}' > inspected.sql
+cmp inspected.sql 1.inspected.sql
+
+# Rebuilding the table for an unrelated change keeps the collations.
+execsql 'INSERT INTO users (id, email, name) VALUES (1, ''a@b.io'', ''a'')'
+apply 2.hcl
+cmpshow users 2.sql
+
+# Modify, add and drop collations.
+apply 3.hcl
+cmpshow users 3.sql
+
+-- schema.sql --
+CREATE TABLE users (
+  id integer NOT NULL PRIMARY KEY,
+  email text NOT NULL COLLATE NOCASE UNIQUE,
+  name text NOT NULL COLLATE rtrim,
+  bio text NULL
+);
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `id` integer NOT NULL,
+  `email` text NOT NULL COLLATE NOCASE,
+  `name` text NOT NULL COLLATE rtrim,
+  `bio` text NULL,
+  PRIMARY KEY (`id`)
+)
+CREATE UNIQUE INDEX `users_email` ON `users` (`email`)
+
+-- 1.hcl --
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = integer
+  }
+  column "email" {
+    null    = false
+    type    = text
+    collate = "NOCASE"
+  }
+  column "name" {
+    null    = false
+    type    = text
+    collate = "rtrim"
+  }
+  column "bio" {
+    null = true
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "users_email" {
+    unique  = true
+    columns = [column.email]
+  }
+}
+schema "main" {
+}
+-- 1.inspected.sql --
+-- Create "users" table
+CREATE TABLE `users` (`id` integer NOT NULL, `email` text NOT NULL COLLATE NOCASE, `name` text NOT NULL COLLATE rtrim, `bio` text NULL, PRIMARY KEY (`id`));
+-- Create index "users_email" to table: "users"
+CREATE UNIQUE INDEX `users_email` ON `users` (`email`);
+-- 2.hcl --
+schema "main" {}
+
+table "users" {
+  schema = schema.main
+  column "id" {
+    type = integer
+  }
+  column "email" {
+    type    = text
+    collate = "NOCASE"
+  }
+  column "name" {
+    type    = text
+    null    = true
+    collate = "rtrim"
+  }
+  column "bio" {
+    type = text
+    null = true
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "users_email" {
+    unique  = true
+    columns = [column.email]
+  }
+}
+
+-- 2.sql --
+CREATE TABLE "users" (`id` integer NOT NULL, `email` text NOT NULL COLLATE NOCASE, `name` text NULL COLLATE rtrim, `bio` text NULL, PRIMARY KEY (`id`))
+CREATE UNIQUE INDEX `users_email` ON `users` (`email`)
+
+-- 3.hcl --
+schema "main" {}
+
+table "users" {
+  schema = schema.main
+  column "id" {
+    type = integer
+  }
+  column "email" {
+    type    = text
+    collate = "RTRIM"
+  }
+  column "name" {
+    type = text
+    null = true
+  }
+  column "bio" {
+    type    = text
+    null    = true
+    collate = "NOCASE"
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "users_email" {
+    unique  = true
+    columns = [column.email]
+  }
+}
+
+-- 3.sql --
+CREATE TABLE "users" (`id` integer NOT NULL, `email` text NOT NULL COLLATE RTRIM, `name` text NULL, `bio` text NULL COLLATE NOCASE, PRIMARY KEY (`id`))
+CREATE UNIQUE INDEX `users_email` ON `users` (`email`)

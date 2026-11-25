@@ -117,7 +117,7 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	c := &conn{ExecQuerier: db}
 	return &Driver{
 		conn:        c,
-		Differ:      &sqlx.Diff{DiffDriver: &diff{}},
+		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
 		Inspector:   &inspect{c},
 		PlanApplier: &planApply{c},
 	}, nil
@@ -388,6 +388,47 @@ const (
 	virtual = "VIRTUAL"
 	stored  = "STORED"
 )
+
+// Built-in collating sequences.
+// See: https://sqlite.org/datatype3.html#collating_sequences.
+const (
+	collateBinary = "BINARY"
+	collateNoCase = "NOCASE"
+	collateRTrim  = "RTRIM"
+)
+
+// builtinCollation reports if name is a built-in collation.
+func builtinCollation(name string) bool {
+	switch strings.ToUpper(name) {
+	case collateBinary, collateNoCase, collateRTrim:
+		return true
+	}
+	return false
+}
+
+// collation returns the column collation, or "" if the column has none or
+// the connection does not know it. A connection knows the built-in ones, the
+// ones the application registered, and the ones the schema already uses.
+// SQLite rejects unregistered ones, so a rebuild fails rather than drops them.
+func (c *conn) collation(ctx context.Context, col *schema.Column) (string, error) {
+	x := schema.Collation{}
+	if !sqlx.Has(col.Attrs, &x) || x.V == "" || builtinCollation(x.V) {
+		return x.V, nil
+	}
+	rows, err := c.QueryContext(ctx, "SELECT `name` FROM pragma_collation_list WHERE `name` = ? COLLATE NOCASE", x.V)
+	switch {
+	// No database connection. See: DefaultDiff and DefaultPlan.
+	case errors.Is(err, sql.ErrNoRows):
+		return "", nil
+	case err != nil:
+		return "", fmt.Errorf("sqlite: querying collation %q: %w", x.V, err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		return x.V, nil
+	}
+	return "", rows.Err()
+}
 
 // InspectRealm returns schema descriptions of all resources in the given realm.
 func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {

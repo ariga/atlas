@@ -20,7 +20,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlite"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,6 +44,43 @@ func liteRun(t *testing.T, fn func(test *liteTest)) {
 	require.NoError(t, err)
 	tt := &liteTest{T: t, db: db, drv: drv, file: f, rrw: &rrw{}}
 	fn(tt)
+}
+
+// liteCollate is the name of a SQLite driver that registers
+// the custom collations "my_coll", "custom" and "my coll".
+const liteCollate = "sqlite3_test_collate"
+
+func init() {
+	sql.Register(liteCollate, &sqlite3.SQLiteDriver{
+		ConnectHook: func(c *sqlite3.SQLiteConn) error {
+			for _, n := range []string{"my_coll", "custom", "my coll"} {
+				if err := c.RegisterCollation(n, strings.Compare); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	})
+}
+
+// liteDriver opens the SQLite database file at path with the given driver.
+func liteDriver(t *testing.T, name, path string) (*sqlite.Driver, *sql.DB) {
+	db, err := sql.Open(name, "file:"+path)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+	drv, err := sqlite.Open(db)
+	require.NoError(t, err)
+	return drv.(*sqlite.Driver), db
+}
+
+// liteCollation returns the collation of the column, or BINARY if it has none.
+func liteCollation(c *schema.Column) string {
+	for _, a := range c.Attrs {
+		if x, ok := a.(*schema.Collation); ok && x.V != "" {
+			return x.V
+		}
+	}
+	return "BINARY"
 }
 
 func TestSQLite_Executor(t *testing.T) {
@@ -792,6 +829,183 @@ create table atlas_types_sanity
 			testImplicitIndexes(t, t.db)
 		})
 	})
+}
+
+func TestSQLite_CollationInspect(t *testing.T) {
+	t.Parallel()
+	drv, db := liteDriver(t, liteCollate, filepath.Join(t.TempDir(), "test.db"))
+	for _, stmt := range []string{
+		"CREATE TABLE \"t(\" (\n" +
+			"  a text COLLATE nocase, -- comment, with ( and COLLATE x\n" +
+			"  \"b\" text CONSTRAINT nn NOT NULL COLLATE \"RTRIM\" DEFAULT ('x, y'),\n" +
+			"  [c] text COLLATE 'NOCASE' COLLATE BINARY,\n" +
+			"  `d e` text CHECK (\"d e\" COLLATE NOCASE <> 'a') COLLATE `custom`, /* COLLATE x, */\n" +
+			"  \"f\"\"g\" text COLLATE [my coll],\n" +
+			"  h text AS (a COLLATE RTRIM),\n" +
+			"  i text REFERENCES \"t(\"(a) COLLATE NOCASE,\n" +
+			"  j text DEFAULT 'COLLATE NOCASE',\n" +
+			"  k COLLATE RTRIM,\n" +
+			"  collate_l text,\n" +
+			"  CONSTRAINT u UNIQUE (j COLLATE NOCASE),\n" +
+			"  PRIMARY KEY (a COLLATE NOCASE)\n" +
+			") WITHOUT ROWID",
+		// SQLite rewrites the CREATE statement on these changes.
+		"ALTER TABLE \"t(\" ADD COLUMN m text COLLATE rtrim /* x, y */",
+		"ALTER TABLE \"t(\" RENAME COLUMN j TO \"j j\"",
+	} {
+		_, err := db.Exec(stmt)
+		require.NoError(t, err, stmt)
+	}
+	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{Tables: []string{"t("}})
+	require.NoError(t, err)
+	collations := make(map[string]string)
+	for _, c := range s.Tables[0].Columns {
+		// An index without a COLLATE clause uses the column collation.
+		_, err := db.Exec(fmt.Sprintf("CREATE INDEX ix ON \"t(\" (\"%s\")", strings.ReplaceAll(c.Name, `"`, `""`)))
+		require.NoError(t, err)
+		var want string
+		require.NoError(t, db.QueryRow("SELECT coll FROM pragma_index_xinfo('ix') WHERE key = 1").Scan(&want))
+		_, err = db.Exec("DROP INDEX ix")
+		require.NoError(t, err)
+		got := liteCollation(c)
+		require.Truef(t, strings.EqualFold(want, got), "column %q: SQLite uses %q, inspected %q", c.Name, want, got)
+		collations[c.Name] = got
+	}
+	require.Equal(t, map[string]string{
+		"a": "nocase", "b": "RTRIM", "c": "BINARY", "d e": "custom", "f\"g": "my coll", "h": "BINARY",
+		"i": "NOCASE", "j j": "BINARY", "k": "RTRIM", "collate_l": "BINARY", "m": "rtrim",
+	}, collations)
+}
+
+func TestSQLite_CollationDiff(t *testing.T) {
+	t.Parallel()
+	drv, _ := liteDriver(t, liteCollate, filepath.Join(t.TempDir(), "test.db"))
+	from := schema.NewTable("t").AddColumns(
+		schema.NewStringColumn("a", "text"),
+		schema.NewStringColumn("b", "text"),
+		schema.NewStringColumn("c", "text").SetCollation("NOCASE"),
+	)
+	to := schema.NewTable("t").AddColumns(
+		// Unknown to the connection, like a MySQL collation from an ent schema.
+		schema.NewStringColumn("a", "text").SetCollation("utf8mb4_bin"),
+		// Registered on the connection.
+		schema.NewStringColumn("b", "text").SetCollation("my_coll"),
+		schema.NewStringColumn("c", "text").SetCollation("nocase"),
+	)
+	changes, err := drv.TableDiff(from, to)
+	require.NoError(t, err)
+	require.Equal(t, []schema.Change{
+		&schema.ModifyColumn{From: from.Columns[1], To: to.Columns[1], Change: schema.ChangeCollate},
+	}, changes)
+
+	// An unknown collation does not replace an existing one, like a MySQL
+	// collation in an ent schema for a column that uses NOCASE. No change.
+	to.Columns[2].SetCollation("utf8mb4_bin")
+	changes, err = drv.TableDiff(from, to)
+	require.NoError(t, err)
+	require.Equal(t, []schema.Change{
+		&schema.ModifyColumn{From: from.Columns[1], To: to.Columns[1], Change: schema.ChangeCollate},
+	}, changes)
+
+	// Without a connection, only built-in collations are known.
+	to.Columns[2].SetCollation("NOCASE")
+	changes, err = sqlite.DefaultDiff.TableDiff(from, to)
+	require.NoError(t, err)
+	require.Empty(t, changes)
+
+	// The current collation is used even if the connection does not know it,
+	// like on "schema diff" from a database with an app-registered collation.
+	from = schema.NewTable("t").AddColumns(schema.NewStringColumn("a", "text").SetCollation("other_coll"))
+	to = schema.NewTable("t").AddColumns(schema.NewStringColumn("a", "text"))
+	changes, err = drv.TableDiff(from, to)
+	require.NoError(t, err)
+	require.Equal(t, []schema.Change{
+		&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeCollate},
+	}, changes)
+}
+
+func TestSQLite_CollationPlan(t *testing.T) {
+	t.Parallel()
+	var (
+		ctx       = context.Background()
+		path      = filepath.Join(t.TempDir(), "test.db")
+		drv, db   = liteDriver(t, liteCollate, path)
+		showTable = func(db *sql.DB) (s string) {
+			require.NoError(t, db.QueryRow("SELECT sql FROM sqlite_master WHERE name = 'users'").Scan(&s))
+			return s
+		}
+		users = schema.NewTable("users").AddColumns(
+			schema.NewStringColumn("email", "text").SetCollation("NOCASE"),
+			schema.NewNullStringColumn("name", "text").SetCollation("rtrim").SetDefault(&schema.Literal{V: "'a'"}),
+			// Registered on the connection.
+			schema.NewNullStringColumn("nick", "text").SetCollation("my_coll"),
+			// Unknown to the connection, like a MySQL collation from an ent schema. Ignored.
+			schema.NewNullStringColumn("bio", "text").SetCollation("utf8mb4_bin"),
+		)
+		added = []*schema.Column{
+			schema.NewNullStringColumn("title", "text").SetCollation("NOCASE"),
+			schema.NewNullStringColumn("body", "text").SetCollation("utf8mb4_bin"),
+		}
+	)
+	require.NoError(t, drv.ApplyChanges(ctx, []schema.Change{&schema.AddTable{T: users}}))
+	require.NoError(t, drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: users, Changes: []schema.Change{
+		&schema.AddColumn{C: added[0]},
+		&schema.AddColumn{C: added[1]},
+	}}}))
+	users.AddColumns(added...)
+	require.Equal(t, "CREATE TABLE `users` (`email` text NOT NULL COLLATE NOCASE, `name` text NULL DEFAULT 'a' COLLATE rtrim, `nick` text NULL COLLATE `my_coll`, `bio` text NULL, `title` text NULL COLLATE NOCASE, `body` text NULL)", showTable(db))
+
+	// The next diff has no changes.
+	s, err := drv.InspectSchema(ctx, "", &schema.InspectOptions{Tables: []string{"users"}})
+	require.NoError(t, err)
+	changes, err := drv.TableDiff(s.Tables[0], users)
+	require.NoError(t, err)
+	require.Empty(t, changes)
+
+	// A connection that did not register the custom collation still knows it
+	// because the database schema uses it, so rebuilding the table fails
+	// instead of dropping the collation.
+	drv, db = liteDriver(t, "sqlite3", path)
+	s, err = drv.InspectSchema(ctx, "", &schema.InspectOptions{Tables: []string{"users"}})
+	require.NoError(t, err)
+	users.Columns[0].Type.Null = true
+	changes, err = drv.TableDiff(s.Tables[0], users)
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	err = drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: users, Changes: changes}})
+	require.ErrorContains(t, err, "no such collation sequence: my_coll")
+	require.Contains(t, showTable(db), "COLLATE `my_coll`")
+}
+
+func TestSQLite_CollationRebuild(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	drv, db := liteDriver(t, "sqlite3", filepath.Join(t.TempDir(), "test.db"))
+	for _, stmt := range []string{
+		"CREATE TABLE users (email text NOT NULL COLLATE NOCASE, name text NOT NULL)",
+		"INSERT INTO users VALUES ('a@x.io', 'a'), ('A@X.IO', 'b')",
+	} {
+		_, err := db.Exec(stmt)
+		require.NoError(t, err, stmt)
+	}
+	s, err := drv.InspectSchema(ctx, "", &schema.InspectOptions{Tables: []string{"users"}})
+	require.NoError(t, err)
+	// The email collation is unknown to the connection, like a MySQL collation
+	// from an ent schema. Making name nullable rebuilds the table, which keeps
+	// the current collation.
+	users := schema.NewTable("users").SetSchema(schema.New("main")).AddColumns(
+		schema.NewStringColumn("email", "text").SetCollation("utf8mb4_bin"),
+		schema.NewNullStringColumn("name", "text"),
+	)
+	changes, err := drv.TableDiff(s.Tables[0], users)
+	require.NoError(t, err)
+	require.NoError(t, drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: users, Changes: changes}}))
+	var stmt string
+	require.NoError(t, db.QueryRow("SELECT sql FROM sqlite_master WHERE name = 'users'").Scan(&stmt))
+	require.Contains(t, stmt, "COLLATE NOCASE")
+	var n int
+	require.NoError(t, db.QueryRow("SELECT count(*) FROM users WHERE email = 'a@x.io'").Scan(&n))
+	require.Equal(t, 2, n)
 }
 
 func (t *liteTest) driver() migrate.Driver {

@@ -171,6 +171,44 @@ func TestDiff_TableDiff(t *testing.T) {
 		}(),
 		func() testcase {
 			var (
+				s    = schema.New("main")
+				from = schema.NewTable("t1").
+					SetSchema(s).
+					AddColumns(
+						schema.NewStringColumn("c1", "text"),
+						schema.NewStringColumn("c2", "text").SetCollation("NOCASE"),
+						schema.NewStringColumn("c3", "text").SetCollation("NOCASE"),
+						schema.NewStringColumn("c4", "text").SetCollation("nocase"),
+						schema.NewStringColumn("c5", "text").SetCollation("BINARY"),
+					)
+				to = schema.NewTable("t1").
+					SetSchema(s).
+					AddColumns(
+						// Add collation.
+						schema.NewStringColumn("c1", "text").SetCollation("NOCASE"),
+						// Drop collation.
+						schema.NewStringColumn("c2", "text"),
+						// Modify collation.
+						schema.NewStringColumn("c3", "text").SetCollation("RTRIM"),
+						// Collation names are case-insensitive.
+						schema.NewStringColumn("c4", "text").SetCollation("NOCASE"),
+						// BINARY is the default collation.
+						schema.NewStringColumn("c5", "text"),
+					)
+			)
+			return testcase{
+				name: "modify column collation",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeCollate},
+					&schema.ModifyColumn{From: from.Columns[1], To: to.Columns[1], Change: schema.ChangeCollate},
+					&schema.ModifyColumn{From: from.Columns[2], To: to.Columns[2], Change: schema.ChangeCollate},
+				},
+			}
+		}(),
+		func() testcase {
+			var (
 				from = &schema.Table{
 					Name: "t1",
 					Schema: &schema.Schema{
@@ -357,4 +395,28 @@ func TestDefaultDiff(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, changes, 1)
 	require.IsType(t, &schema.DropTable{}, changes[0])
+
+	// An unknown collation does not replace the current one.
+	tchanges, err := DefaultDiff.TableDiff(
+		schema.NewTable("t").AddColumns(schema.NewStringColumn("c", "text").SetCollation("NOCASE")),
+		schema.NewTable("t").AddColumns(schema.NewStringColumn("c", "text").SetCollation("utf8mb4_bin")),
+	)
+	require.NoError(t, err)
+	require.Empty(t, tchanges)
+
+	// A rebuild for another change keeps the current collation.
+	from := schema.NewTable("t").AddColumns(
+		schema.NewStringColumn("email", "text").SetCollation("NOCASE"),
+		schema.NewStringColumn("name", "text"),
+	)
+	to := schema.NewTable("t").AddColumns(
+		schema.NewStringColumn("email", "text").SetCollation("utf8mb4_bin"),
+		schema.NewNullStringColumn("name", "text"),
+	)
+	tchanges, err = DefaultDiff.TableDiff(from, to)
+	require.NoError(t, err)
+	require.Equal(t, []schema.Change{
+		&schema.ModifyColumn{From: from.Columns[1], To: to.Columns[1], Change: schema.ChangeNull},
+	}, tchanges)
+	require.Equal(t, []schema.Attr{&schema.Collation{V: "NOCASE"}}, to.Columns[0].Attrs)
 }

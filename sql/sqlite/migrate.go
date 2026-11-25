@@ -108,7 +108,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	}
 	b.WrapIndent(func(b *sqlx.Builder) {
 		b.MapIndent(add.T.Columns, func(i int, b *sqlx.Builder) {
-			if err := s.column(b, add.T.Columns[i]); err != nil {
+			if err := s.column(ctx, b, add.T.Columns[i]); err != nil {
 				errs = append(errs, err.Error())
 			}
 		})
@@ -191,7 +191,7 @@ func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
 // in: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes.
 func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
 	if alterable(modify) {
-		return s.alterTable(modify)
+		return s.alterTable(ctx, modify)
 	}
 	s.skipFKs = true
 	newT := *modify.T
@@ -234,7 +234,7 @@ func (s *state) renameTable(c *schema.RenameTable) {
 	})
 }
 
-func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
+func (s *state) column(ctx context.Context, b *sqlx.Builder, c *schema.Column) error {
 	t, err := FormatType(c.Type.Type)
 	if err != nil {
 		return err
@@ -250,6 +250,14 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 			return err
 		}
 		b.P("DEFAULT", x)
+	}
+	switch x, err := s.collation(ctx, c); {
+	case err != nil:
+		return err
+	case builtinCollation(x):
+		b.P("COLLATE", x)
+	case x != "":
+		b.P("COLLATE").Ident(x)
 	}
 	switch hasA, hasX := sqlx.Has(c.Attrs, &AutoIncrement{}), sqlx.Has(c.Attrs, &schema.GeneratedExpr{}); {
 	case hasA && hasX:
@@ -456,7 +464,7 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 }
 
 // alterTable alters the table with the given changes. Assuming the changes are "alterable".
-func (s *state) alterTable(modify *schema.ModifyTable) error {
+func (s *state) alterTable(ctx context.Context, modify *schema.ModifyTable) error {
 	for _, change := range modify.Changes {
 		switch change := change.(type) {
 		case *schema.AddIndex:
@@ -477,7 +485,7 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 		case *schema.AddColumn:
 			b := s.Build("ALTER TABLE").Ident(modify.T.Name)
 			r := b.Clone()
-			if err := s.column(b.P("ADD COLUMN"), change.C); err != nil {
+			if err := s.column(ctx, b.P("ADD COLUMN"), change.C); err != nil {
 				return err
 			}
 			s.append(&migrate.Change{

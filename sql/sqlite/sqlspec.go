@@ -139,6 +139,13 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 			c.AddAttrs(&AutoIncrement{})
 		}
 	}
+	if attr, ok := spec.Attr("collate"); ok {
+		s, err := attr.String()
+		if err != nil {
+			return nil, err
+		}
+		c.SetCollation(s)
+	}
 	if err := specutil.ConvertGenExpr(spec.Remain(), c, storedOrVirtual); err != nil {
 		return nil, err
 	}
@@ -202,6 +209,9 @@ func columnSpec(c *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
 	}
 	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
 		s.Extra.Attrs = append(s.Extra.Attrs, schemahcl.BoolAttr("auto_increment", true))
+	}
+	if v, ok := sqlx.Collate(c.Attrs, nil); ok && v != "" {
+		s.Extra.Attrs = append(s.Extra.Attrs, schemahcl.StringAttr("collate", v))
 	}
 	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
 		s.Extra.Children = append(s.Extra.Children, specutil.FromGenExpr(x, storedOrVirtual))

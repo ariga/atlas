@@ -46,6 +46,9 @@ func (i *inspect) columns(ctx context.Context, t *schema.Table) error {
 			return fmt.Errorf("sqlite: %w", err)
 		}
 	}
+	if err := setCollations(t); err != nil {
+		return err
+	}
 	return autoinc(t)
 }
 
@@ -522,6 +525,133 @@ func setGenExpr(t *schema.Table, c *schema.Column, f int64) error {
 	}
 	c.SetGeneratedExpr(&schema.GeneratedExpr{Expr: expr, Type: typ})
 	return nil
+}
+
+// setCollations sets the column collations from the CREATE TABLE statement,
+// as no pragma returns them. See: https://sqlite.org/datatype3.html#collation.
+//
+// A regex would also match COLLATE in CHECK, DEFAULT and AS expressions, table
+// constraints and comments, which do not set the column collation.
+func setCollations(t *schema.Table) error {
+	var s CreateStmt
+	if !sqlx.Has(t.Attrs, &s) {
+		return fmt.Errorf("missing CREATE statement for table: %q", t.Name)
+	}
+	var body string
+	for _, tok := range sqlTokens(s.S) {
+		if tok[0] == '(' {
+			body = tok
+			break
+		}
+	}
+	if len(body) < 2 || body[len(body)-1] != ')' {
+		return nil
+	}
+	var def []string
+	for _, tok := range append(sqlTokens(body[1:len(body)-1]), ",") {
+		if tok != "," {
+			def = append(def, tok)
+			continue
+		}
+		// Table constraints never have a top-level COLLATE clause.
+		if len(def) > 2 {
+			if c, ok := t.Column(unquoteIdent(def[0])); ok {
+				for k := 1; k < len(def)-1; k++ {
+					// The last COLLATE clause wins.
+					if strings.EqualFold(def[k], "COLLATE") {
+						c.SetCollation(unquoteIdent(def[k+1]))
+					}
+				}
+			}
+		}
+		def = def[:0]
+	}
+	return nil
+}
+
+// sqlTokens splits s into top-level tokens. Quoted text is kept as-is, a
+// parenthesized group is one token, and whitespace and comments are dropped.
+func sqlTokens(s string) []string {
+	var tokens []string
+	for i := 0; i < len(s); {
+		j := tokenEnd(s, i)
+		if t := s[i:j]; !isSpace(t[0]) && !strings.HasPrefix(t, "--") && !strings.HasPrefix(t, "/*") {
+			tokens = append(tokens, t)
+		}
+		i = j
+	}
+	return tokens
+}
+
+// tokenEnd returns the end of the token that starts at s[i].
+func tokenEnd(s string, i int) int {
+	switch c := s[i]; {
+	case isSpace(c):
+		return i + 1
+	case strings.HasPrefix(s[i:], "--"):
+		if j := strings.IndexByte(s[i:], '\n'); j != -1 {
+			return i + j + 1
+		}
+	case strings.HasPrefix(s[i:], "/*"):
+		if j := strings.Index(s[i+2:], "*/"); j != -1 {
+			return i + j + 4
+		}
+	case c == '\'', c == '"', c == '`':
+		for j := i + 1; j < len(s); j++ {
+			if s[j] != c {
+				continue
+			}
+			// Quotes are escaped by doubling them.
+			if j+1 < len(s) && s[j+1] == c {
+				j++
+				continue
+			}
+			return j + 1
+		}
+	case c == '[':
+		if j := strings.IndexByte(s[i:], ']'); j != -1 {
+			return i + j + 1
+		}
+	case c == '(':
+		for j := i + 1; j < len(s); j = tokenEnd(s, j) {
+			if s[j] == ')' {
+				return j + 1
+			}
+		}
+	case isIdentChar(c):
+		j := i + 1
+		for j < len(s) && isIdentChar(s[j]) {
+			j++
+		}
+		return j
+	default:
+		return i + 1
+	}
+	// Unterminated token.
+	return len(s)
+}
+
+func isSpace(c byte) bool {
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v'
+}
+
+// isIdentChar reports if c can be part of an unquoted identifier or keyword.
+func isIdentChar(c byte) bool {
+	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_' || c == '$' || c >= 0x80
+}
+
+// unquoteIdent strips the quotes of s, if any, and unescapes doubled quotes.
+func unquoteIdent(s string) string {
+	if len(s) < 2 {
+		return s
+	}
+	switch q := s[0]; {
+	case q == '[' && s[len(s)-1] == ']':
+		return s[1 : len(s)-1]
+	case (q == '"' || q == '`' || q == '\'') && s[len(s)-1] == q:
+		return strings.ReplaceAll(s[1:len(s)-1], string([]byte{q, q}), string(q))
+	}
+	return s
 }
 
 // The following regexes extract named FKs and CHECK constraints defined in table-constraints or inlined
