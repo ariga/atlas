@@ -478,6 +478,42 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		{
+			changes: []schema.Change{
+				&schema.AddTable{
+					T: schema.NewTable("users").AddColumns(
+						// Built-in collations are not looked up.
+						schema.NewStringColumn("a", "text").SetCollation("NOCASE"),
+						// Registered on the connection.
+						schema.NewStringColumn("b", "text").SetCollation("my_coll"),
+						// Unknown to the connection (e.g., an ent schema with a MySQL collation).
+						schema.NewStringColumn("c", "text").SetCollation("utf8mb4_bin"),
+					),
+				},
+			},
+			mock: func(m mock) {
+				m.ExpectQuery(sqltest.Escape("SELECT `name` FROM pragma_collation_list WHERE `name` = ? COLLATE NOCASE")).
+					WithArgs("my_coll").
+					WillReturnRows(sqltest.Rows(`
+ name
+---------
+ my_coll
+`))
+				m.ExpectQuery(sqltest.Escape("SELECT `name` FROM pragma_collation_list WHERE `name` = ? COLLATE NOCASE")).
+					WithArgs("utf8mb4_bin").
+					WillReturnRows(sqlmock.NewRows([]string{"name"}))
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE TABLE `users` (`a` text NOT NULL COLLATE NOCASE, `b` text NOT NULL COLLATE `my_coll`, `c` text NOT NULL)",
+						Reverse: "DROP TABLE `users`",
+					},
+				},
+			},
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
@@ -508,6 +544,16 @@ func TestDefaultPlan(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, len(changes.Changes))
 	require.Equal(t, "CREATE TABLE `t1` (`a` int NOT NULL)", changes.Changes[0].Cmd)
+
+	// Without a connection, only built-in collations are known.
+	changes, err = DefaultPlan.PlanChanges(context.Background(), "plan", []schema.Change{
+		&schema.AddTable{T: schema.NewTable("t1").AddColumns(
+			schema.NewStringColumn("a", "text").SetCollation("NOCASE"),
+			schema.NewStringColumn("b", "text").SetCollation("my_coll"),
+		)},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "CREATE TABLE `t1` (`a` text NOT NULL COLLATE NOCASE, `b` text NOT NULL)", changes.Changes[0].Cmd)
 
 	err = DefaultPlan.ApplyChanges(context.Background(), []schema.Change{
 		&schema.AddTable{T: schema.NewTable("t1").AddColumns(schema.NewIntColumn("a", "int"))},

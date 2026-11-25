@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -550,6 +551,61 @@ func TestRegex_GeneratedExpr(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, tt.column.Attrs, s.Tables[0].Columns[0].Attrs)
+	}
+}
+
+func TestSetCollations(t *testing.T) {
+	tests := []struct {
+		stmt    string
+		columns []string
+		want    map[string]string
+	}{
+		{
+			stmt: "CREATE TABLE \"t(\" (\n" +
+				"  a text COLLATE nocase, -- comment, with ( and COLLATE x\n" +
+				"  \"b\" text CONSTRAINT nn NOT NULL COLLATE \"RTRIM\" DEFAULT ('x, y'),\n" +
+				"  [c] text COLLATE 'NOCASE' COLLATE BINARY,\n" +
+				"  `d e` text CHECK (\"d e\" COLLATE NOCASE <> 'a') COLLATE `custom`, /* COLLATE x, */\n" +
+				"  \"f\"\"g\" text COLLATE [my coll],\n" +
+				"  h text AS (a COLLATE RTRIM),\n" +
+				"  i text REFERENCES \"t(\"(a) COLLATE NOCASE,\n" +
+				"  j text DEFAULT 'COLLATE NOCASE',\n" +
+				"  k COLLATE RTRIM,\n" +
+				"  collate_l text,\n" +
+				"  CONSTRAINT u UNIQUE (j COLLATE NOCASE),\n" +
+				"  PRIMARY KEY (a COLLATE NOCASE)\n" +
+				") WITHOUT ROWID",
+			columns: []string{"a", "b", "c", "d e", "f\"g", "h", "i", "j", "k", "collate_l"},
+			want: map[string]string{
+				"a": "nocase", "b": "RTRIM", "c": "BINARY", "d e": "custom",
+				"f\"g": "my coll", "i": "NOCASE", "k": "RTRIM",
+			},
+		},
+		// Statements that cannot be created in the database.
+		{
+			stmt:    "CREATE VIRTUAL TABLE t USING fts5(a, b)",
+			columns: []string{"a", "b"},
+			want:    map[string]string{},
+		},
+		{
+			stmt:    "CREATE TABLE t (a text COLLATE NOCASE",
+			columns: []string{"a", "b"},
+			want:    map[string]string{},
+		},
+	}
+	for _, tt := range tests {
+		tb := schema.NewTable("t").AddAttrs(&CreateStmt{S: tt.stmt})
+		for _, c := range tt.columns {
+			tb.AddColumns(schema.NewStringColumn(c, "text"))
+		}
+		require.NoError(t, setCollations(tb))
+		got := make(map[string]string)
+		for _, c := range tb.Columns {
+			if x := (schema.Collation{}); sqlx.Has(c.Attrs, &x) {
+				got[c.Name] = x.V
+			}
+		}
+		require.Equal(t, tt.want, got, tt.stmt)
 	}
 }
 

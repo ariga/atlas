@@ -222,6 +222,33 @@ schema "test" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestMarshalSpec_Collate(t *testing.T) {
+	const f = `table "users" {
+  schema = schema.main
+  column "email" {
+    null    = false
+    type    = text
+    collate = "NOCASE"
+  }
+  column "name" {
+    null = true
+    type = text
+  }
+}
+schema "main" {
+}
+`
+	var s schema.Schema
+	require.NoError(t, EvalHCLBytes([]byte(f), &s, nil))
+	users, ok := s.Table("users")
+	require.True(t, ok)
+	require.Equal(t, []schema.Attr{&schema.Collation{V: "NOCASE"}}, users.Columns[0].Attrs)
+	require.Empty(t, users.Columns[1].Attrs)
+	buf, err := MarshalHCL(&s)
+	require.NoError(t, err)
+	require.Equal(t, f, string(buf))
+}
+
 func TestMarshalSpec_IndexPredicate(t *testing.T) {
 	s := &schema.Schema{
 		Name: "test",
